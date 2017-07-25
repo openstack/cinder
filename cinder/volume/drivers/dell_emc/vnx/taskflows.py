@@ -16,7 +16,6 @@
 from oslo_log import log as logging
 from oslo_utils import importutils
 
-storops = importutils.try_import('storops')
 
 import taskflow.engines
 from taskflow.patterns import linear_flow
@@ -28,6 +27,8 @@ from cinder.i18n import _
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import const
 from cinder.volume.drivers.dell_emc.vnx import utils
+
+storops = importutils.try_import('storops')
 
 LOG = logging.getLogger(__name__)
 

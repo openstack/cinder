@@ -16,11 +16,6 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
 
-storops = importutils.try_import('storops')
-if storops:
-    from storops import exception as storops_ex
-    from storops.lib import tasks as storops_tasks
-
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils as cinder_utils
@@ -28,6 +23,10 @@ from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import const
 from cinder.volume.drivers.dell_emc.vnx import utils
 
+storops = importutils.try_import('storops')
+if storops:
+    from storops import exception as storops_ex
+    from storops.lib import tasks as storops_tasks
 
 LOG = logging.getLogger(__name__)
 
@@ -601,6 +600,55 @@ class Client(object):
     def promote_image(self, mirror_name):
         mv = self.vnx.get_mirror_view(mirror_name)
         mv.promote_image()
+
+    def create_mirror_group(self, group_name):
+        try:
+            mg = self.vnx.create_mirror_group(group_name)
+        except storops_ex.VNXMirrorGroupNameInUseError:
+            mg = self.vnx.get_mirror_group(group_name)
+        return mg
+
+    def delete_mirror_group(self, group_name):
+        mg = self.vnx.get_mirror_group(group_name)
+        try:
+            mg.delete()
+        except storops_ex.VNXMirrorGroupNotFoundError:
+            LOG.info('Mirror group %s was already deleted.', group_name)
+
+    def add_mirror(self, group_name, mirror_name):
+        mg = self.vnx.get_mirror_group(group_name)
+        mv = self.vnx.get_mirror_view(mirror_name)
+        try:
+            mg.add_mirror(mv)
+        except storops_ex.VNXMirrorGroupAlreadyMemberError:
+            LOG.info('Mirror %(mirror)s is already a member of %(group)s',
+                     {'mirror': mirror_name, 'group': group_name})
+        return mg
+
+    def remove_mirror(self, group_name, mirror_name):
+        mg = self.vnx.get_mirror_group(group_name)
+        mv = self.vnx.get_mirror_view(mirror_name)
+        try:
+            mg.remove_mirror(mv)
+        except storops_ex.VNXMirrorGroupMirrorNotMemberError:
+            LOG.info('Mirror %(mirror)s is not a member of %(group)s',
+                     {'mirror': mirror_name, 'group': group_name})
+
+    def promote_mirror_group(self, group_name):
+        mg = self.vnx.get_mirror_group(group_name)
+        try:
+            mg.promote_group()
+        except storops_ex.VNXMirrorGroupAlreadyPromotedError:
+            LOG.info('Mirror group %s was already promoted.', group_name)
+        return mg
+
+    def sync_mirror_group(self, group_name):
+        mg = self.vnx.get_mirror_group(group_name)
+        mg.sync_group()
+
+    def fracture_mirror_group(self, group_name):
+        mg = self.vnx.get_mirror_group(group_name)
+        mg.fracture_group()
 
     def get_pool_name(self, lun_name):
         lun = self.get_lun(name=lun_name)

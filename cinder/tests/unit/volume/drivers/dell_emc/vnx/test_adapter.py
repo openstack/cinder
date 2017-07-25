@@ -55,7 +55,6 @@ class TestCommonAdapter(test.TestCase):
     @res_mock.patch_common_adapter
     def test_create_volume(self, vnx_common, _ignore, mocked_input):
         volume = mocked_input['volume']
-        volume.host.split('#')[1]
         with mock.patch.object(vnx_utils, 'get_backend_qos_specs',
                                return_value=None):
             model_update = vnx_common.create_volume(volume)
@@ -1113,6 +1112,31 @@ class TestCommonAdapter(test.TestCase):
                          rep_update['replication_status'])
 
     @utils.patch_extra_specs({'replication_enabled': '<is> True'})
+    @utils.patch_group_specs({'consistent_group_replication_enabled':
+                              '<is> True'})
+    @res_mock.mock_driver_input
+    @res_mock.patch_common_adapter
+    def test_setup_lun_replication_in_group(
+            self, common_adapter, mocked_res, mocked_input):
+        vol1 = mocked_input['vol1']
+        group1 = mocked_input['group1']
+        vol1.group = group1
+        fake_mirror = utils.build_fake_mirror_view()
+        fake_mirror.secondary_client.create_lun.return_value = (
+            mocked_res['lun'])
+        common_adapter.mirror_view = fake_mirror
+        common_adapter.config.replication_device = (
+            [utils.get_replication_device()])
+        rep_update = common_adapter.setup_lun_replication(
+            vol1, 111)
+        fake_mirror.create_mirror.assert_called_once_with(
+            'mirror_' + vol1.id, 111)
+        fake_mirror.add_image.assert_called_once_with(
+            'mirror_' + vol1.id, mocked_res['lun'].lun_id)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         rep_update['replication_status'])
+
+    @utils.patch_extra_specs({'replication_enabled': '<is> True'})
     @res_mock.mock_driver_input
     @res_mock.patch_common_adapter
     def test_cleanup_replication(self, common_adapter,
@@ -1193,6 +1217,8 @@ class TestCommonAdapter(test.TestCase):
                 name=vol1.name)
             self.assertEqual(fake_mirror.secondary_client,
                              common_adapter.client)
+            self.assertEqual(device['backend_id'],
+                             common_adapter.active_backend_id)
         self.assertEqual(device['backend_id'], backend_id)
         for update in updates:
             self.assertEqual(fields.ReplicationStatus.FAILED_OVER,
@@ -1205,9 +1231,9 @@ class TestCommonAdapter(test.TestCase):
         common_adapter.config.replication_device = [
             utils.get_replication_device()]
         vol1 = mocked_input['vol1']
-        self.assertRaises(exception.InvalidInput,
+        self.assertRaises(exception.InvalidReplicationTarget,
                           common_adapter.failover_host,
-                          None, [vol1], 'new_id')
+                          None, [vol1], 'new_id', [])
 
     @utils.patch_extra_specs({'replication_enabled': '<is> True'})
     @res_mock.mock_driver_input
@@ -1216,6 +1242,7 @@ class TestCommonAdapter(test.TestCase):
                                     mocked_input):
         device = utils.get_replication_device()
         common_adapter.config.replication_device = [device]
+        common_adapter.active_backend_id = device['backend_id']
         vol1 = mocked_input['vol1']
         lun1 = mocked_res['lun1']
         with mock.patch.object(common_adapter, 'build_mirror_view') as fake:
@@ -1233,6 +1260,49 @@ class TestCommonAdapter(test.TestCase):
                 name=vol1.name)
             self.assertEqual(fake_mirror.secondary_client,
                              common_adapter.client)
+        self.assertEqual('default', backend_id)
+        for update in updates:
+            self.assertEqual(fields.ReplicationStatus.ENABLED,
+                             update['updates']['replication_status'])
+
+    @utils.patch_group_specs({'consistent_group_replication_enabled':
+                              '<is> True'})
+    @res_mock.mock_driver_input
+    @res_mock.patch_common_adapter
+    def test_failover_host_groups(self, common_adapter, mocked_res,
+                                  mocked_input):
+        device = utils.get_replication_device()
+        common_adapter.config.replication_device = [device]
+        common_adapter.active_backend_id = device['backend_id']
+        mocked_group = mocked_input['group1']
+        group1 = mock.Mock()
+
+        group1.id = mocked_group.id
+        group1.replication_status = mocked_group.replication_status
+        group1.volumes = [mocked_input['vol1'], mocked_input['vol2']]
+        lun1 = mocked_res['lun1']
+        with mock.patch.object(common_adapter, 'build_mirror_view') as fake:
+            fake_mirror = utils.build_fake_mirror_view()
+            fake_mirror.secondary_client.get_lun.return_value = lun1
+            fake_mirror.secondary_client.get_serial.return_value = (
+                device['backend_id'])
+            fake.return_value = fake_mirror
+            backend_id, updates, group_update_list = (
+                common_adapter.failover_host(None, [], 'default', [group1]))
+            fake_mirror.promote_mirror_group.assert_called_once_with(
+                group1.id.replace('-', ''))
+            fake_mirror.secondary_client.get_serial.assert_called_with()
+            fake_mirror.secondary_client.get_lun.assert_called_with(
+                name=mocked_input['vol1'].name)
+            self.assertEqual(fake_mirror.secondary_client,
+                             common_adapter.client)
+            self.assertEqual([{
+                'group_id': group1.id,
+                'updates': {'replication_status':
+                            fields.ReplicationStatus.ENABLED}}],
+                group_update_list)
+            self.assertEqual(2, len(updates))
+            self.assertIsNone(common_adapter.active_backend_id)
         self.assertEqual('default', backend_id)
         for update in updates:
             self.assertEqual(fields.ReplicationStatus.ENABLED,

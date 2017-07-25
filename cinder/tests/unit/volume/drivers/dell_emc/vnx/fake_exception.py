@@ -182,3 +182,23 @@ class VNXMirrorPromotePrimaryError(VNXMirrorException):
 
 class VNXMirrorNotFoundError(VNXMirrorException):
     message = 'Mirror not found'
+
+
+class VNXMirrorGroupNameInUseError(VNXMirrorException):
+    message = 'Mirror Group name already in use'
+
+
+class VNXMirrorGroupNotFoundError(VNXMirrorException):
+    message = 'Unable to locate the specified group'
+
+
+class VNXMirrorGroupAlreadyMemberError(VNXMirrorException):
+    message = 'The mirror is already a member of a group'
+
+
+class VNXMirrorGroupMirrorNotMemberError(VNXMirrorException):
+    message = 'The specified mirror is not a member of the group'
+
+
+class VNXMirrorGroupAlreadyPromotedError(VNXMirrorException):
+    message = 'The Consistency Group has no secondary images to promote'

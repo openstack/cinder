@@ -463,6 +463,72 @@ class TestClient(test.TestCase):
     def test_promote_image(self, client, mocked):
         client.promote_image('mirror_promote')
 
+    @res_mock.patch_client
+    def test_create_mirror_group(self, client, mocked):
+        group_name = 'test_mg'
+        mg = client.create_mirror_group(group_name)
+        self.assertIsNotNone(mg)
+
+    @res_mock.patch_client
+    def test_create_mirror_group_name_in_use(self, client, mocked):
+        group_name = 'test_mg_name_in_use'
+        mg = client.create_mirror_group(group_name)
+        self.assertIsNotNone(mg)
+
+    @res_mock.patch_client
+    def test_delete_mirror_group(self, client, mocked):
+        group_name = 'delete_name'
+        client.delete_mirror_group(group_name)
+
+    @res_mock.patch_client
+    def test_delete_mirror_group_not_found(self, client, mocked):
+        group_name = 'group_not_found'
+        client.delete_mirror_group(group_name)
+
+    @res_mock.patch_client
+    def test_add_mirror(self, client, mocked):
+        group_name = 'group_add_mirror'
+        mirror_name = 'mirror_name'
+        client.add_mirror(group_name, mirror_name)
+
+    @res_mock.patch_client
+    def test_add_mirror_already_added(self, client, mocked):
+        group_name = 'group_already_added'
+        mirror_name = 'mirror_name'
+        client.add_mirror(group_name, mirror_name)
+
+    @res_mock.patch_client
+    def test_remove_mirror(self, client, mocked):
+        group_name = 'group_mirror'
+        mirror_name = 'mirror_name'
+        client.remove_mirror(group_name, mirror_name)
+
+    @res_mock.patch_client
+    def test_remove_mirror_not_member(self, client, mocked):
+        group_name = 'group_mirror'
+        mirror_name = 'mirror_name_not_member'
+        client.remove_mirror(group_name, mirror_name)
+
+    @res_mock.patch_client
+    def test_promote_mirror_group(self, client, mocked):
+        group_name = 'group_promote'
+        client.promote_mirror_group(group_name)
+
+    @res_mock.patch_client
+    def test_promote_mirror_group_already_promoted(self, client, mocked):
+        group_name = 'group_promote'
+        client.promote_mirror_group(group_name)
+
+    @res_mock.patch_client
+    def test_sync_mirror_group(self, client, mocked):
+        group_name = 'group_sync'
+        client.sync_mirror_group(group_name)
+
+    @res_mock.patch_client
+    def test_fracture_mirror_group(self, client, mocked):
+        group_name = 'group_fracture'
+        client.fracture_mirror_group(group_name)
+
     @res_mock.mock_driver_input
     @res_mock.patch_client
     def test_get_lun_id(self, client, mocked, cinder_input):

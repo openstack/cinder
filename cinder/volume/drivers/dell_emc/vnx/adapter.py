@@ -24,26 +24,28 @@ from oslo_log import log as logging
 from oslo_utils import importutils
 import six
 
-storops = importutils.try_import('storops')
-if storops:
-    from storops import exception as storops_ex
 
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
+
 from cinder.volume.drivers.dell_emc.vnx import client
 from cinder.volume.drivers.dell_emc.vnx import common
+from cinder.volume.drivers.dell_emc.vnx import replication
 from cinder.volume.drivers.dell_emc.vnx import taskflows as emc_taskflow
 from cinder.volume.drivers.dell_emc.vnx import utils
 from cinder.volume import utils as vol_utils
 from cinder.zonemanager import utils as zm_utils
 
+storops = importutils.try_import('storops')
+if storops:
+    from storops import exception as storops_ex
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
-class CommonAdapter(object):
+class CommonAdapter(replication.ReplicationAdapter):
 
     VERSION = None
 
@@ -219,7 +221,7 @@ class CommonAdapter(object):
         """Creates a EMC volume."""
         volume_size = volume['size']
         volume_name = volume['name']
-
+        utils.check_type_matched(volume)
         volume_metadata = utils.get_metadata(volume)
         pool = utils.get_pool_from_host(volume.host)
         specs = common.ExtraSpecs.from_volume(volume)
@@ -760,17 +762,6 @@ class CommonAdapter(object):
             pools_stats.append(pool_stats)
         return pools_stats
 
-    def append_replication_stats(self, stats):
-        if self.mirror_view:
-            stats['replication_enabled'] = True
-            stats['replication_count'] = 1
-            stats['replication_type'] = ['sync']
-        else:
-            stats['replication_enabled'] = False
-        stats['replication_targets'] = [
-            device.backend_id for device in common.ReplicationDeviceList(
-                self.config)]
-
     def update_volume_stats(self):
         stats = self.get_enabler_stats()
         stats['pools'] = self.get_pool_stats(stats)
@@ -1135,151 +1126,6 @@ class CommonAdapter(object):
         self.client.detach_snapshot(smp_name)
         return connection_info
 
-    def setup_lun_replication(self, volume, primary_lun_id):
-        """Setup replication for LUN, this only happens in primary system."""
-        specs = common.ExtraSpecs.from_volume(volume)
-        provision = specs.provision
-        tier = specs.tier
-        rep_update = {'replication_driver_data': None,
-                      'replication_status': fields.ReplicationStatus.DISABLED}
-        if specs.is_replication_enabled:
-            LOG.debug('Starting setup replication '
-                      'for volume: %s.', volume.id)
-            lun_size = volume.size
-            mirror_name = utils.construct_mirror_name(volume)
-            pool_name = utils.get_remote_pool(self.config, volume)
-            emc_taskflow.create_mirror_view(
-                self.mirror_view, mirror_name,
-                primary_lun_id, pool_name,
-                volume.name, lun_size,
-                provision, tier)
-
-            LOG.info('Successfully setup replication for %s.', volume.id)
-            rep_update.update({'replication_status':
-                               fields.ReplicationStatus.ENABLED})
-        return rep_update
-
-    def cleanup_lun_replication(self, volume):
-        specs = common.ExtraSpecs.from_volume(volume)
-        if specs.is_replication_enabled:
-            LOG.debug('Starting cleanup replication from volume: '
-                      '%s.', volume.id)
-            mirror_name = utils.construct_mirror_name(volume)
-            mirror_view = self.build_mirror_view(self.config, True)
-            mirror_view.destroy_mirror(mirror_name, volume.name)
-            LOG.info(
-                'Successfully destroyed replication for volume: %s',
-                volume.id)
-
-    def build_mirror_view(self, configuration, failover=True):
-        """Builds a mirror view operation class.
-
-        :param configuration: driver configuration
-        :param failover: True if from primary to configured array,
-        False if from configured array to primary.
-        """
-        rep_devices = configuration.replication_device
-        if not rep_devices:
-            LOG.info('Replication is not configured on backend: %s.',
-                     configuration.config_group)
-            return None
-        elif len(rep_devices) == 1:
-            if not self.client.is_mirror_view_enabled():
-                error_msg = _('Replication is configured, '
-                              'but no MirrorView/S enabler installed on VNX.')
-                raise exception.InvalidInput(reason=error_msg)
-            rep_list = common.ReplicationDeviceList(configuration)
-            device = rep_list[0]
-            secondary_client = client.Client(
-                ip=device.san_ip,
-                username=device.san_login,
-                password=device.san_password,
-                scope=device.storage_vnx_authentication_type,
-                naviseccli=self.client.naviseccli,
-                sec_file=device.storage_vnx_security_file_dir)
-            if failover:
-                mirror_view = common.VNXMirrorView(
-                    self.client, secondary_client)
-            else:
-                # For fail-back, we need to take care of reversed ownership.
-                mirror_view = common.VNXMirrorView(
-                    secondary_client, self.client)
-            return mirror_view
-        else:
-            error_msg = _('VNX Cinder driver does not support '
-                          'multiple replication targets.')
-            raise exception.InvalidInput(reason=error_msg)
-
-    def validate_backend_id(self, backend_id):
-        # Currently, VNX driver only support 1 remote device.
-        replication_device = common.ReplicationDeviceList(self.config)[0]
-        if backend_id not in (
-                'default', replication_device.backend_id):
-            raise exception.InvalidInput(
-                reason='Invalid backend_id specified.')
-
-    def failover_host(self, context, volumes, secondary_backend_id,
-                      groups=None):
-        """Fails over the volume back and forth.
-
-        Driver needs to update following info for failed-over volume:
-        1. provider_location: update serial number and lun id
-        2. replication_status: new status for replication-enabled volume
-        """
-        volume_update_list = []
-        self.validate_backend_id(secondary_backend_id)
-        if secondary_backend_id != 'default':
-            rep_status = fields.ReplicationStatus.FAILED_OVER
-            mirror_view = self.build_mirror_view(self.config, True)
-        else:
-            rep_status = fields.ReplicationStatus.ENABLED
-            mirror_view = self.build_mirror_view(self.config, False)
-
-        def failover_volume(volume, new_status):
-            mirror_name = utils.construct_mirror_name(volume)
-
-            provider_location = volume.provider_location
-            try:
-                mirror_view.promote_image(mirror_name)
-            except storops_ex.VNXMirrorException as ex:
-                LOG.error(
-                    'Failed to failover volume %(volume_id)s '
-                    'to %(target)s: %(error)s.',
-                    {'volume_id': volume.id,
-                     'target': secondary_backend_id,
-                     'error': ex})
-                new_status = fields.ReplicationStatus.FAILOVER_ERROR
-            else:
-                # Transfer ownership to secondary_backend_id and
-                # update provider_location field
-                secondary_client = mirror_view.secondary_client
-                updated = dict()
-                updated['system'] = secondary_client.get_serial()
-                updated['id'] = six.text_type(
-                    secondary_client.get_lun(name=volume.name).lun_id)
-                provider_location = utils.update_provider_location(
-                    provider_location, updated)
-            model_update = {'volume_id': volume.id,
-                            'updates':
-                                {'replication_status': new_status,
-                                 'provider_location': provider_location}}
-            volume_update_list.append(model_update)
-        for volume in volumes:
-            specs = common.ExtraSpecs.from_volume(volume)
-            if specs.is_replication_enabled:
-                failover_volume(volume, rep_status)
-            else:
-                # Since the array has been failed-over
-                # volumes without replication should be in error.
-                volume_update_list.append({
-                    'volume_id': volume.id,
-                    'updates': {'status': 'error'}})
-        # After failover, the secondary is now the primary,
-        # any sequential request will be redirected to it.
-        self.client = mirror_view.secondary_client
-
-        return secondary_backend_id, volume_update_list, []
-
     def get_pool_name(self, volume):
         return self.client.get_pool_name(volume.name)
 
@@ -1293,9 +1139,13 @@ class CommonAdapter(object):
                 'metadata': metadata}
 
     def create_group(self, context, group):
-        return self.create_consistencygroup(context, group)
+        rep_update = self.create_group_replication(group)
+        model_update = self.create_consistencygroup(context, group)
+        model_update.update(rep_update)
+        return model_update
 
     def delete_group(self, context, group, volumes):
+        self.delete_group_replication(group)
         return self.delete_consistencygroup(context, group, volumes)
 
     def create_group_snapshot(self, context, group_snapshot, snapshots):
@@ -1322,6 +1172,16 @@ class CommonAdapter(object):
     def update_group(self, context, group,
                      add_volumes=None, remove_volumes=None):
         """Updates a group."""
+        # 1. First make sure group and volumes have same
+        #    replication extra-specs and replications status.
+        for volume in (add_volumes + remove_volumes):
+            utils.check_type_matched(volume)
+        # 2. Secondly, make sure replication status must be enabled for
+        # replication-enabled group,
+        utils.check_rep_status_matched(group)
+        self.add_volumes_to_group_replication(group, add_volumes)
+        self.remove_volumes_from_group_replication(group, remove_volumes)
+
         return self.do_update_cg(group.id,
                                  add_volumes,
                                  remove_volumes)

@@ -15,6 +15,7 @@
 
 import mock
 
+from cinder import exception
 from cinder import test
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_exception \
     as storops_ex
@@ -233,3 +234,24 @@ class TestUtils(test.TestCase):
         self.assertIsNotNone(r)
         self.assertEqual(100, r[common.QOS_MAX_BWS])
         self.assertEqual(10, r[common.QOS_MAX_IOPS])
+
+    @ut_utils.patch_group_specs({
+        'consistent_group_replication_enabled': '<is> True'})
+    @ut_utils.patch_extra_specs({
+        'replication_enabled': '<is> False'})
+    @res_mock.mock_driver_input
+    def test_check_type_matched_invalid(self, mocked):
+        volume = mocked['volume']
+        volume.group = mocked['group']
+        self.assertRaises(exception.InvalidInput,
+                          vnx_utils.check_type_matched,
+                          volume)
+
+    @ut_utils.patch_group_specs({
+        'consistent_group_replication_enabled': '<is> True'})
+    @res_mock.mock_driver_input
+    def test_check_rep_status_matched_disabled(self, mocked):
+        group = mocked['group']
+        self.assertRaises(exception.InvalidInput,
+                          vnx_utils.check_rep_status_matched,
+                          group)

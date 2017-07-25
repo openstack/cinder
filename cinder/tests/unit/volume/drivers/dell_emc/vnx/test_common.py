@@ -318,3 +318,37 @@ class TestVNXMirrorView(test.TestCase):
         self.primary_client.get_mirror.assert_called_once_with(
             'mirror_name')
         self.assertFalse(self.primary_client.fracture_image.called)
+
+    def test_create_mirror_group(self):
+        self.mirror_view.create_mirror_group('test_group')
+        self.primary_client.create_mirror_group.assert_called_once_with(
+            'test_group')
+
+    def test_delete_mirror_group(self):
+        self.mirror_view.delete_mirror_group('test_group')
+        self.primary_client.delete_mirror_group.assert_called_once_with(
+            'test_group')
+
+    def test_add_mirror(self):
+        self.mirror_view.add_mirror('test_group', 'test_mirror')
+        self.primary_client.add_mirror.assert_called_once_with(
+            'test_group', 'test_mirror')
+
+    def test_remove_mirror(self):
+        self.mirror_view.remove_mirror('test_group', 'test_mirror')
+        self.primary_client.remove_mirror('test_group', 'test_mirror')
+
+    def test_sync_mirror_group(self):
+        self.mirror_view.sync_mirror_group('test_group')
+        self.primary_client.sync_mirror_group.assert_called_once_with(
+            'test_group')
+
+    def test_promote_mirror_group(self):
+        self.mirror_view.promote_mirror_group('test_group')
+        self.secondary_client.promote_mirror_group.assert_called_once_with(
+            'test_group')
+
+    def test_fracture_mirror_group(self):
+        self.mirror_view.fracture_mirror_group('test_group')
+        self.primary_client.fracture_mirror_group.assert_called_once_with(
+            'test_group')

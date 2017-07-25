@@ -20,14 +20,14 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
 
-storops = importutils.try_import('storops')
-
 from cinder import exception
 from cinder.i18n import _
 from cinder.volume import configuration
 from cinder.volume.drivers.dell_emc.vnx import const
+from cinder.volume import group_types
 from cinder.volume import volume_types
 
+storops = importutils.try_import('storops')
 CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
@@ -126,13 +126,14 @@ class ExtraSpecs(object):
     PROVISION_DEFAULT = const.PROVISION_THICK
     TIER_DEFAULT = None
 
-    def __init__(self, extra_specs):
+    def __init__(self, extra_specs, group_specs=None):
         self.specs = extra_specs
         self._provision = self._get_provision()
         self.provision = self._provision
         self._tier = self._get_tier()
         self.tier = self._tier
         self.apply_default_values()
+        self.group_specs = group_specs if group_specs else {}
 
     def apply_default_values(self):
         self.provision = (ExtraSpecs.PROVISION_DEFAULT
@@ -161,6 +162,11 @@ class ExtraSpecs(object):
     def is_replication_enabled(self):
         return self.specs.get('replication_enabled', '').lower() == '<is> true'
 
+    @property
+    def is_group_replication_enabled(self):
+        return self.group_specs.get(
+            'consistent_group_replication_enabled', '').lower() == '<is> true'
+
     def _parse_to_enum(self, key, enum_class):
         value = (self.specs[key]
                  if key in self.specs else None)
@@ -182,6 +188,16 @@ class ExtraSpecs(object):
             specs = volume_types.get_volume_type_extra_specs(type_id)
 
         return cls(specs)
+
+    @classmethod
+    def from_group(cls, group):
+        group_specs = {}
+
+        if group and group.group_type_id:
+            group_specs = group_types.get_group_type_specs(
+                group.group_type_id)
+
+        return cls(extra_specs={}, group_specs=group_specs)
 
     @classmethod
     def from_volume_type(cls, type):
@@ -490,6 +506,7 @@ class VNXMirrorView(object):
         self.primary_client.fracture_image(mirror_name)
 
     def promote_image(self, mirror_name):
+        """Promote the image on the secondary array."""
         self.secondary_client.promote_image(mirror_name)
 
     def destroy_mirror(self, mirror_name, secondary_lun_name):
@@ -509,3 +526,25 @@ class VNXMirrorView(object):
         self.remove_image(mirror_name)
         self.delete_mirror(mirror_name)
         self.delete_secondary_lun(lun_name=secondary_lun_name)
+
+    def create_mirror_group(self, group_name):
+        return self.primary_client.create_mirror_group(group_name)
+
+    def delete_mirror_group(self, group_name):
+        return self.primary_client.delete_mirror_group(group_name)
+
+    def add_mirror(self, group_name, mirror_name):
+        return self.primary_client.add_mirror(group_name, mirror_name)
+
+    def remove_mirror(self, group_name, mirror_name):
+        return self.primary_client.remove_mirror(group_name, mirror_name)
+
+    def sync_mirror_group(self, group_name):
+        return self.primary_client.sync_mirror_group(group_name)
+
+    def promote_mirror_group(self, group_name):
+        """Promote the mirror group on the secondary array."""
+        return self.secondary_client.promote_mirror_group(group_name)
+
+    def fracture_mirror_group(self, group_name):
+        return self.primary_client.fracture_mirror_group(group_name)
