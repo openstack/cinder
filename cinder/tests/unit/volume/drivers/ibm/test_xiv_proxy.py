@@ -419,6 +419,47 @@ class XIVProxyTest(test.TestCase):
               'replication_status': fields.ReplicationStatus.ENABLED}]), ret)
 
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_replication.VolumeReplication.create_replication",
+                mock.MagicMock())
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_replication.GroupReplication.create_replication",
+                mock.MagicMock())
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.XIVProxy._get_target_params",
+                mock.MagicMock(return_value=REPLICA_PARAMS))
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.XIVProxy._get_target",
+                mock.MagicMock(return_value="BLABLA"))
+    @mock.patch("cinder.volume.group_types.get_group_type_specs",
+                mock.MagicMock(return_value=TEST_GROUP_SPECS))
+    def test_enable_replication_remote_cg_exists(self):
+        """Test enable_replication"""
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+        p.ibm_storage_cli = mock.MagicMock()
+        p._call_remote_xiv_xcli = mock.MagicMock()
+        p._update_consistencygroup = mock.MagicMock()
+        p.targets = {'tgt1': 'info1'}
+        error = errors.CgNameExistsError('bla', 'bla',
+                                         ElementTree.Element('bla'))
+        p._call_remote_xiv_xcli.cmd.cg_create.side_effect = error
+
+        group = self._create_test_group('WTF')
+        vol = testutils.create_volume(self.ctxt)
+        ret = p.enable_replication(self.ctxt, group, [vol])
+
+        self.assertEqual((
+            {'replication_status': fields.ReplicationStatus.ENABLED},
+            [{'id': vol['id'],
+              'replication_status': fields.ReplicationStatus.ENABLED}]), ret)
+
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
                 "xiv_replication.VolumeReplication.delete_replication",
                 mock.MagicMock())
     @mock.patch("cinder.volume.group_types.get_group_type_specs",

@@ -265,6 +265,19 @@ class VolumeReplication(Replication):
                 rpo=replication_info['rpo'],
                 schedule=schedule,
                 activate_mirror='yes')
+        except errors.RemoteVolumeExists:
+            # if volume exists (same ID), don't create slave
+            # This only happens when vol is a part of a cg
+            recovery_mgr.create_mirror(
+                resource_name=resource_name,
+                target_name=target,
+                mirror_type=replication_info['mode'],
+                slave_resource_name=resource_name,
+                create_slave='no',
+                remote_pool=pool,
+                rpo=replication_info['rpo'],
+                schedule=schedule,
+                activate_mirror='yes')
         except errors.VolumeMasterError:
             LOG.debug('Volume %(vol)s has been already mirrored',
                       {'vol': resource_name})
