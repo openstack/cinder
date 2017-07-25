@@ -24,10 +24,12 @@ from cinder.volume.drivers.lenovo import lenovo_common
 class LenovoISCSIDriver(dothill_iscsi.DotHillISCSIDriver):
     """OpenStack iSCSI cinder drivers for Lenovo Storage arrays.
 
-    Version history:
-        1.0    - Inheriting from DotHill cinder drivers.
-        1.6    - Add management path redundancy and reduce load placed
-                 on management controller.
+    .. code-block:: default
+
+      Version history:
+          1.0    - Inheriting from DotHill cinder drivers.
+          1.6    - Add management path redundancy and reduce load placed
+                   on management controller.
     """
 
     VERSION = "1.6"
