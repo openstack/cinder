@@ -1905,6 +1905,14 @@ class XIVProxy(proxy.IBMStorageProxy):
     @proxy._trace_time
     def delete_group(self, context, group, volumes):
         """Deletes a group."""
+        rep_status = group.get('replication_status')
+        enabled = fields.ReplicationStatus.ENABLED
+        failed_over = fields.ReplicationStatus.FAILED_OVER
+        if rep_status == enabled or rep_status == failed_over:
+            msg = _("Disable group replication before deleting group.")
+            LOG.error(msg)
+            raise self._get_exception()(msg)
+
         if utils.is_group_a_cg_snapshot_type(group):
             return self._delete_consistencygroup(context, group, volumes)
         else:
