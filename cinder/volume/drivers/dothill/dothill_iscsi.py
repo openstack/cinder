@@ -60,10 +60,7 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
             raise exception.DotHillDriverNotSupported
         super(DotHillISCSIDriver, self).__init__(*args, **kwargs)
         self.common = None
-        self.configuration.append_config_values(dothillcommon.common_opts)
-        self.configuration.append_config_values(dothillcommon.iscsi_opts)
         self.configuration.append_config_values(san.san_opts)
-        self.iscsi_ips = self.configuration.dothill_iscsi_ips
 
     def _init_common(self):
         return dothillcommon.DotHillCommon(self.configuration)
