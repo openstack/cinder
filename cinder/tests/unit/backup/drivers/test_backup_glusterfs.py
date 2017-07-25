@@ -47,10 +47,8 @@ class BackupGlusterfsShareTestCase(test.TestCase):
                          '_init_backup_repo_path',
                          return_value=FAKE_BACKUP_PATH)
 
-        with mock.patch.object(glusterfs.GlusterfsBackupDriver,
-                               '_check_configuration'):
-            driver = glusterfs.GlusterfsBackupDriver(self.ctxt)
-        driver._check_configuration()
+        driver = glusterfs.GlusterfsBackupDriver(self.ctxt)
+        driver.check_for_setup_error()
 
     def test_check_configuration_no_backup_share(self):
         self.override_config('glusterfs_backup_share', None)
@@ -58,11 +56,9 @@ class BackupGlusterfsShareTestCase(test.TestCase):
                          '_init_backup_repo_path',
                          return_value=FAKE_BACKUP_PATH)
 
-        with mock.patch.object(glusterfs.GlusterfsBackupDriver,
-                               '_check_configuration'):
-            driver = glusterfs.GlusterfsBackupDriver(self.ctxt)
-        self.assertRaises(exception.ConfigNotFound,
-                          driver._check_configuration)
+        driver = glusterfs.GlusterfsBackupDriver(self.ctxt)
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          driver.check_for_setup_error)
 
     def test_init_backup_repo_path(self):
         self.override_config('glusterfs_backup_share', FAKE_BACKUP_SHARE)
@@ -72,7 +68,7 @@ class BackupGlusterfsShareTestCase(test.TestCase):
         mock_remotefsclient.get_mount_point = mock.Mock(
             return_value=FAKE_BACKUP_PATH)
         self.mock_object(glusterfs.GlusterfsBackupDriver,
-                         '_check_configuration')
+                         'check_for_setup_error')
         self.mock_object(remotefs_brick, 'RemoteFsClient',
                          return_value=mock_remotefsclient)
         self.mock_object(os, 'getegid',

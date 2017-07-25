@@ -153,6 +153,10 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                                 backup_default_container,
                                                 enable_progress_timer,
                                                 db)
+        if context:
+            self.initialize()
+
+    def initialize(self):
         self.swift_attempts = CONF.backup_swift_retry_attempts
         self.swift_backoff = CONF.backup_swift_retry_backoff
         self.backup_swift_auth_insecure = CONF.backup_swift_auth_insecure
@@ -173,7 +177,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                         "Failed to parse the configuration option "
                         "'keystone_catalog_info', must be in the form "
                         "<service_type>:<service_name>:<endpoint_type>"))
-                for entry in context.service_catalog:
+                for entry in self.context.service_catalog:
                     if entry.get('type') == service_type:
                         # It is assumed that service_types are unique within
                         # the service catalog, so once the correct one is found
@@ -223,7 +227,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                         "Failed to parse the configuration option "
                         "'swift_catalog_info', must be in the form "
                         "<service_type>:<service_name>:<endpoint_type>"))
-                for entry in context.service_catalog:
+                for entry in self.context.service_catalog:
                     if entry.get('type') == service_type:
                         # It is assumed that service_types are unique within
                         # the service catalog, so once the correct one is found
@@ -233,7 +237,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                         break
             else:
                 self.swift_url = '%s%s' % (CONF.backup_swift_url,
-                                           context.project_id)
+                                           self.context.project_id)
             if self.swift_url is None:
                 raise exception.BackupDriverException(_(
                     "Could not determine which Swift endpoint to use. This "
@@ -367,6 +371,32 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         """Swift driver does not use any extra metadata."""
         return None
 
+    def check_for_setup_errors(self):
+        # Here we are trying to connect to swift backend service
+        # without any additional parameters.
+        # At the moment of execution we don't have any user data
+        # After just trying to do easiest operations, that will show
+        # that we've configured swift backup driver in right way
+        if not CONF.backup_swift_url:
+            LOG.warning("We will use endpoints from keystone. It is "
+                        "possible we could have problems because of it.")
+            return
+        conn = swift.Connection(retries=CONF.backup_swift_retry_attempts,
+                                preauthurl=CONF.backup_swift_url)
+        try:
+            conn.get_capabilities()
+            # TODO(e0ne) catch less general exception
+        except Exception:
+            LOG.exception("Can not get Swift capabilities during backup "
+                          "driver initialization.")
+            raise
+
 
 def get_backup_driver(context):
+    # NOTE(mdovgal): at the moment of backup service start we need to
+    #                get driver class instance and for swift at that moment
+    #                we can't get all necessary information like endpoints
+    #                from context, so we have exception as a result.
+    if context.user is None:
+        return SwiftBackupDriver(None)
     return SwiftBackupDriver(context)

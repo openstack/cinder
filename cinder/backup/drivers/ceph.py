@@ -267,6 +267,24 @@ class CephBackupDriver(driver.BackupDriver):
 
         return (old_format, features)
 
+    def check_for_setup_error(self):
+        """Returns an error if prerequisites aren't met."""
+        if rados is None or rbd is None:
+            msg = _('rados and rbd python libraries not found')
+            raise exception.BackupDriverException(message=msg)
+
+        for attr in ['backup_ceph_user', 'backup_ceph_pool',
+                     'backup_ceph_conf']:
+            val = getattr(CONF, attr)
+            if not val:
+                raise exception.InvalidConfigurationValue(option=attr,
+                                                          value=val)
+        # NOTE: Checking connection to ceph
+        # RADOSClient __init__ method invokes _connect_to_rados
+        # so no need to check for self.rados.Error here.
+        with rbd_driver.RADOSClient(self, self._ceph_backup_pool):
+            pass
+
     def _connect_to_rados(self, pool=None):
         """Establish connection to the backup Ceph cluster."""
         client = self.rados.Rados(rados_id=self._ceph_backup_user,

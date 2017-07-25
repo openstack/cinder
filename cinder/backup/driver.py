@@ -410,6 +410,10 @@ class BackupDriver(base.Base):
         """
         return
 
+    def check_for_setup_error(self):
+        """Method for checking if backup backend is successfully installed."""
+        return
+
 
 @six.add_metaclass(abc.ABCMeta)
 class BackupDriverWithVerify(BackupDriver):

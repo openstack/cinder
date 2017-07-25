@@ -131,3 +131,14 @@ class BackupDriver(base.CinderInterface):
                             information
         :returns: None
         """
+
+    def check_for_setup_error(self):
+        """Method for checking if backup backend is successfully installed.
+
+        Depends on storage backend limitations and driver implementation this
+        method could check if all needed config options are configurated well
+        or try to connect to the storage to verify driver can do it without
+        any issues.
+
+        :returns: None
+        """

@@ -271,6 +271,14 @@ class TSMBackupDriver(driver.BackupDriver):
         self.tsm_password = CONF.backup_tsm_password
         self.volume_prefix = CONF.backup_tsm_volume_prefix
 
+    def check_for_setup_error(self):
+        required_flags = ['backup_share']
+        for flag in required_flags:
+            val = getattr(CONF, flag, None)
+            if not val:
+                raise exception.InvalidConfigurationValue(option=flag,
+                                                          value=val)
+
     def _do_backup(self, backup_path, vol_id, backup_mode):
         """Perform the actual backup operation.
 
