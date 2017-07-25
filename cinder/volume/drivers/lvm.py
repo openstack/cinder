@@ -797,6 +797,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
         volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
                                       volume['name'])
 
+        self.vg.activate_lv(volume['name'])
+
         model_update = \
             self.target_driver.ensure_export(context, volume, volume_path)
         return model_update
@@ -806,6 +808,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
             vg = self.configuration.volume_group
 
         volume_path = "/dev/%s/%s" % (vg, volume['name'])
+
+        self.vg.activate_lv(volume['name'])
 
         export_info = self.target_driver.create_export(
             context,
