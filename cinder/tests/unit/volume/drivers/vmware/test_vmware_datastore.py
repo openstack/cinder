@@ -44,6 +44,17 @@ class DatastoreTest(test.TestCase):
         self.assertEqual(profile_id, self._ds_sel.get_profile_id(profile_name))
         get_profile_id_by_name.assert_called_once_with(self._session,
                                                        profile_name)
+        self.assertEqual(profile_id,
+                         self._ds_sel._profile_id_cache[profile_name])
+
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    def test_get_profile_id_cache_hit(self, get_profile_id_by_name):
+        profile_id = mock.sentinel.profile_id
+        profile_name = mock.sentinel.profile_name
+        self._ds_sel._profile_id_cache[profile_name] = profile_id
+
+        self.assertEqual(profile_id, self._ds_sel.get_profile_id(profile_name))
+        self.assertFalse(get_profile_id_by_name.called)
 
     @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
     def test_get_profile_id_with_invalid_profile(self, get_profile_id_by_name):
@@ -316,46 +327,55 @@ class DatastoreTest(test.TestCase):
         select_best_datastore.assert_called_once_with(filtered_datastores,
                                                       valid_host_refs=hosts)
 
-    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
+                'get_profile_id')
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 '_filter_by_profile')
-    def test_is_datastore_compliant(self, filter_by_profile,
-                                    get_profile_id_by_name):
-        # Test with empty profile.
-        profile_name = None
+    def test_is_datastore_compliant_true(
+            self, filter_by_profile, get_profile_id):
+        profile_name = mock.sentinel.profile_name
         datastore = mock.sentinel.datastore
+
+        profile_id = mock.sentinel.profile_id
+        get_profile_id.return_value = profile_id
+        filter_by_profile.return_value = {datastore: None}
+
         self.assertTrue(self._ds_sel.is_datastore_compliant(datastore,
                                                             profile_name))
+        get_profile_id.assert_called_once_with(profile_name)
+        filter_by_profile.assert_called_once_with({datastore: None},
+                                                  profile_id)
 
-        # Test with invalid profile.
+    @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
+                'get_profile_id')
+    @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
+                '_filter_by_profile')
+    def test_is_datastore_compliant_false(
+            self, filter_by_profile, get_profile_id):
         profile_name = mock.sentinel.profile_name
-        get_profile_id_by_name.return_value = None
-        self.assertRaises(vmdk_exceptions.ProfileNotFoundException,
-                          self._ds_sel.is_datastore_compliant,
-                          datastore,
-                          profile_name)
-        get_profile_id_by_name.assert_called_once_with(self._session,
-                                                       profile_name)
+        datastore = mock.sentinel.datastore
 
-        # Test with valid profile and non-compliant datastore.
-        get_profile_id_by_name.reset_mock()
         profile_id = mock.sentinel.profile_id
-        get_profile_id_by_name.return_value = profile_id
+        get_profile_id.return_value = profile_id
         filter_by_profile.return_value = {}
+
         self.assertFalse(self._ds_sel.is_datastore_compliant(datastore,
                                                              profile_name))
-        get_profile_id_by_name.assert_called_once_with(self._session,
-                                                       profile_name)
+        get_profile_id.assert_called_once_with(profile_name)
         filter_by_profile.assert_called_once_with({datastore: None},
                                                   profile_id)
 
-        # Test with valid profile and compliant datastore.
-        get_profile_id_by_name.reset_mock()
-        filter_by_profile.reset_mock()
-        filter_by_profile.return_value = {datastore: None}
-        self.assertTrue(self._ds_sel.is_datastore_compliant(datastore,
-                                                            profile_name))
-        get_profile_id_by_name.assert_called_once_with(self._session,
-                                                       profile_name)
-        filter_by_profile.assert_called_once_with({datastore: None},
-                                                  profile_id)
+    def test_is_datastore_compliant_with_empty_profile(self):
+        self.assertTrue(self._ds_sel.is_datastore_compliant(
+            mock.sentinel.datastore, None))
+
+    @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
+                'get_profile_id')
+    def test_is_datastore_compliant_with_invalid_profile(self, get_profile_id):
+        profile_name = mock.sentinel.profile_name
+        get_profile_id.side_effect = vmdk_exceptions.ProfileNotFoundException
+        self.assertRaises(vmdk_exceptions.ProfileNotFoundException,
+                          self._ds_sel.is_datastore_compliant,
+                          mock.sentinel.datastore,
+                          profile_name)
+        get_profile_id.assert_called_once_with(profile_name)

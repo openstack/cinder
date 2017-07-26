@@ -23,6 +23,7 @@ from oslo_log import log as logging
 from oslo_vmware import pbm
 from oslo_vmware import vim_util
 
+from cinder import coordination
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 
 
@@ -57,7 +58,9 @@ class DatastoreSelector(object):
         self._vops = vops
         self._session = session
         self._max_objects = max_objects
+        self._profile_id_cache = {}
 
+    @coordination.synchronized('vmware-datastore-profile-{profile_name}')
     def get_profile_id(self, profile_name):
         """Get vCenter profile ID for the given profile name.
 
@@ -65,12 +68,18 @@ class DatastoreSelector(object):
         :return: vCenter profile ID
         :raises ProfileNotFoundException:
         """
+        if profile_name in self._profile_id_cache:
+            LOG.debug("Returning cached ID for profile: %s.", profile_name)
+            return self._profile_id_cache[profile_name]
+
         profile_id = pbm.get_profile_id_by_name(self._session, profile_name)
         if profile_id is None:
             LOG.error("Storage profile: %s cannot be found in vCenter.",
                       profile_name)
             raise vmdk_exceptions.ProfileNotFoundException(
                 storage_profile=profile_name)
+
+        self._profile_id_cache[profile_name] = profile_id
         LOG.debug("Storage profile: %(name)s resolved to vCenter profile ID: "
                   "%(id)s.",
                   {'name': profile_name,
