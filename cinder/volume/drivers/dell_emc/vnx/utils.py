@@ -372,15 +372,19 @@ def convert_to_tgt_list_and_itor_tgt_map(zone_mapping):
     """Function to process data from lookup service.
 
     :param zone_mapping: mapping is the data from the zone lookup service
-         with below format
-        {
-             <San name>: {
-                 'initiator_port_wwn_list':
-                 ('200000051e55a100', '200000051e55a121'..)
-                 'target_port_wwn_list':
-                 ('100000051e55a100', '100000051e55a121'..)
-             }
-        }
+                         with below format
+
+        .. code:: python
+
+          {
+               <San name>: {
+                   'initiator_port_wwn_list':
+                   ('200000051e55a100', '200000051e55a121'..)
+                   'target_port_wwn_list':
+                   ('100000051e55a100', '100000051e55a121'..)
+               }
+          }
+
     """
     target_wwns = []
     itor_tgt_map = {}
