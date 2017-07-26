@@ -18,6 +18,7 @@
 import abc
 import time
 
+from os_brick import exception as brick_exception
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_config import types
@@ -432,40 +433,59 @@ class BaseVD(object):
                 time.sleep(tries ** 2)
 
     def _detach_volume(self, context, attach_info, volume, properties,
-                       force=False, remote=False):
-        """Disconnect the volume from the host."""
+                       force=False, remote=False, ignore_errors=False):
+        """Disconnect the volume from the host.
+
+        With the force parameter we can indicate if we give more importance to
+        cleaning up as much as possible or if data integrity has higher
+        priority.  This requires the latests OS-Brick code that adds this
+        feature.
+
+        We can also force errors to be ignored using ignore_errors.
+        """
         # Use Brick's code to do attach/detach
+        exc = brick_exception.ExceptionChainer()
         if attach_info:
             connector = attach_info['connector']
-            connector.disconnect_volume(attach_info['conn']['data'],
-                                        attach_info['device'])
+            with exc.context(force, 'Disconnect failed'):
+                connector.disconnect_volume(attach_info['conn']['data'],
+                                            attach_info['device'], force=force,
+                                            ignore_errors=ignore_errors)
+
         if remote:
             # Call remote manager's terminate_connection which includes
             # driver's terminate_connection and remove export
             rpcapi = volume_rpcapi.VolumeAPI()
-            rpcapi.terminate_connection(context, volume, properties,
-                                        force=force)
+            with exc.context(force, 'Remote terminate connection failed'):
+                rpcapi.terminate_connection(context, volume, properties,
+                                            force=force)
         else:
             # Call local driver's terminate_connection and remove export.
             # NOTE(avishay) This is copied from the manager's code - need to
             # clean this up in the future.
-            try:
-                self.terminate_connection(volume, properties, force=force)
-            except Exception as err:
-                err_msg = (_('Unable to terminate volume connection: %(err)s')
-                           % {'err': six.text_type(err)})
-                LOG.error(err_msg)
-                raise exception.VolumeBackendAPIException(data=err_msg)
+            with exc.context(force,
+                             _('Unable to terminate volume connection')):
+                try:
+                    self.terminate_connection(volume, properties, force=force)
+                except Exception as err:
+                    err_msg = (
+                        _('Unable to terminate volume connection: %(err)s')
+                        % {'err': err})
+                    LOG.error(err_msg)
+                    raise exception.VolumeBackendAPIException(data=err_msg)
 
-            try:
-                LOG.debug("volume %s: removing export", volume['id'])
-                self.remove_export(context, volume)
-            except Exception as ex:
-                LOG.exception("Error detaching volume %(volume)s, "
-                              "due to remove export failure.",
-                              {"volume": volume['id']})
-                raise exception.RemoveExportException(volume=volume['id'],
-                                                      reason=ex)
+            with exc.context(force, _('Unable to remove export')):
+                try:
+                    LOG.debug("volume %s: removing export", volume['id'])
+                    self.remove_export(context, volume)
+                except Exception as ex:
+                    LOG.exception("Error detaching volume %(volume)s, "
+                                  "due to remove export failure.",
+                                  {"volume": volume['id']})
+                    raise exception.RemoveExportException(volume=volume['id'],
+                                                          reason=ex)
+        if exc and not ignore_errors:
+            raise exc
 
     def set_initialized(self):
         self._initialized = True
@@ -816,7 +836,8 @@ class BaseVD(object):
                     utils.brick_detach_volume_encryptor(attach_info,
                                                         encryption)
         finally:
-            self._detach_volume(context, attach_info, volume, properties)
+            self._detach_volume(context, attach_info, volume, properties,
+                                force=True)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
@@ -834,7 +855,10 @@ class BaseVD(object):
                                       image_meta,
                                       attach_info['device']['path'])
         finally:
-            self._detach_volume(context, attach_info, volume, properties)
+            # Since attached volume was not used for writing we can force
+            # detach it
+            self._detach_volume(context, attach_info, volume, properties,
+                                force=True, ignore_errors=True)
 
     def before_volume_copy(self, context, src_vol, dest_vol, remote=None):
         """Driver-specific actions before copyvolume data.

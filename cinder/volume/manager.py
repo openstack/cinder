@@ -1922,7 +1922,8 @@ class VolumeManager(manager.CleanableManager,
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed to attach volume encryptor"
                           " %(vol)s.", {'vol': volume['id']})
-                self._detach_volume(ctxt, attach_info, volume, properties)
+                self._detach_volume(ctxt, attach_info, volume, properties,
+                                    force=True)
         return attach_info
 
     def _detach_volume(self, ctxt, attach_info, volume, properties,
@@ -1937,7 +1938,7 @@ class VolumeManager(manager.CleanableManager,
             if encryption:
                 utils.brick_detach_volume_encryptor(attach_info, encryption)
         connector.disconnect_volume(attach_info['conn']['data'],
-                                    attach_info['device'])
+                                    attach_info['device'], force=force)
 
         if remote:
             rpcapi = volume_rpcapi.VolumeAPI()
@@ -1985,7 +1986,8 @@ class VolumeManager(manager.CleanableManager,
                 LOG.error("Failed to attach source volume for copy.")
                 self._detach_volume(ctxt, dest_attach_info, dest_vol,
                                     properties, remote=dest_remote,
-                                    attach_encryptor=attach_encryptor)
+                                    attach_encryptor=attach_encryptor,
+                                    force=True)
 
         # Check the backend capabilities of migration destination host.
         rpcapi = volume_rpcapi.VolumeAPI()
@@ -1996,7 +1998,6 @@ class VolumeManager(manager.CleanableManager,
                                   capabilities.get('sparse_copy_volume',
                                                    False))
 
-        copy_error = True
         try:
             size_in_mb = int(src_vol['size']) * units.Ki    # vol size is in GB
             vol_utils.copy_volume(src_attach_info['device']['path'],
@@ -2004,7 +2005,6 @@ class VolumeManager(manager.CleanableManager,
                                   size_in_mb,
                                   self.configuration.volume_dd_blocksize,
                                   sparse=sparse_copy_volume)
-            copy_error = False
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed to copy volume %(src)s to %(dest)s.",
@@ -2012,12 +2012,12 @@ class VolumeManager(manager.CleanableManager,
         finally:
             try:
                 self._detach_volume(ctxt, dest_attach_info, dest_vol,
-                                    properties, force=copy_error,
+                                    properties, force=True,
                                     remote=dest_remote,
                                     attach_encryptor=attach_encryptor)
             finally:
                 self._detach_volume(ctxt, src_attach_info, src_vol,
-                                    properties, force=copy_error,
+                                    properties, force=True,
                                     remote=src_remote,
                                     attach_encryptor=attach_encryptor)
 
