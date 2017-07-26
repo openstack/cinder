@@ -1660,8 +1660,8 @@ class Client(client_base.Client):
     def get_snapshots_marked_for_deletion(self, volume_list=None):
         """Get a list of snapshots marked for deletion.
 
-        :param volume_list: placeholder parameter to match 7mode client method
-        signature.
+        :param volume_list: Placeholder parameter to match 7mode client method
+                            signature.
         """
 
         api_args = {
