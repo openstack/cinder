@@ -159,6 +159,9 @@ class ReplicationAdapter(object):
                 raise exception.InvalidInput(reason=error_msg)
             rep_list = common.ReplicationDeviceList(configuration)
             device = rep_list[0]
+            # primary_client always points to the configed VNX.
+            primary_client = self._build_client_from_config(self.config)
+            # secondary_client always points to the VNX in replication_device.
             secondary_client = client.Client(
                 ip=device.san_ip,
                 username=device.san_login,
@@ -168,11 +171,11 @@ class ReplicationAdapter(object):
                 sec_file=device.storage_vnx_security_file_dir)
             if failover:
                 mirror_view = common.VNXMirrorView(
-                    self.client, secondary_client)
+                    primary_client, secondary_client)
             else:
                 # For fail-back, we need to take care of reversed ownership.
                 mirror_view = common.VNXMirrorView(
-                    secondary_client, self.client)
+                    secondary_client, primary_client)
             return mirror_view
         else:
             error_msg = _('VNX Cinder driver does not support '
