@@ -11,6 +11,6 @@ impact. It is also required if the patch adds a feature or
 fixes a long-standing or security bug.
 
 Please see
-http://docs.openstack.org/developer/cinder/devref/releasenotes.html
+https://docs.openstack.org/cinder/latest/contributor/releasenotes.html
 for more details.
 
