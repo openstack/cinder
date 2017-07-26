@@ -1620,6 +1620,8 @@ class VolumeManager(manager.CleanableManager,
         information about the host that will connect to the volume in the
         following format::
 
+          .. code:: json
+
             {
                 'ip': ip,
                 'initiator': initiator,
@@ -1633,6 +1635,8 @@ class VolumeManager(manager.CleanableManager,
 
         driver is responsible for doing any necessary security setup and
         returning a connection_info dictionary in the following format::
+
+          .. code:: json
 
             {
                 'driver_volume_type': driver_volume_type,
@@ -4753,32 +4757,38 @@ class VolumeManager(manager.CleanableManager,
         info. 'backend_id' is a required key in 'replication_device'.
 
         Response Example for admin:
-        {
-            'replication_targets': [
-                {
-                    'backend_id': 'vendor-id-1',
-                    'unique_key': 'val1',
-                    ......
-                },
-                {
-                    'backend_id': 'vendor-id-2',
-                    'unique_key': 'val2',
-                    ......
-                }
-             ]
-        }
+
+        .. code:: json
+
+          {
+              'replication_targets': [
+                  {
+                      'backend_id': 'vendor-id-1',
+                      'unique_key': 'val1',
+                      ......
+                  },
+                  {
+                      'backend_id': 'vendor-id-2',
+                      'unique_key': 'val2',
+                      ......
+                  }
+               ]
+          }
 
         Response example for non-admin:
-        {
-            'replication_targets': [
-                {
-                    'backend_id': 'vendor-id-1'
-                },
-                {
-                    'backend_id': 'vendor-id-2'
-                }
-             ]
-        }
+
+        .. code json
+
+          {
+              'replication_targets': [
+                  {
+                      'backend_id': 'vendor-id-1'
+                  },
+                  {
+                      'backend_id': 'vendor-id-2'
+                  }
+               ]
+          }
 
         """
 
