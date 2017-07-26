@@ -142,24 +142,27 @@ def retry(exc_tuple, tries=5, delay=1, backoff=2):
 class SolidFireDriver(san.SanISCSIDriver):
     """OpenStack driver to enable SolidFire cluster.
 
-    Version history:
-        1.0 - Initial driver
-        1.1 - Refactor, clone support, qos by type and minor bug fixes
-        1.2 - Add xfr and retype support
-        1.2.1 - Add export/import support
-        1.2.2 - Catch VolumeNotFound on accept xfr
-        2.0.0 - Move from httplib to requests
-        2.0.1 - Implement SolidFire Snapshots
-        2.0.2 - Implement secondary account
-        2.0.3 - Implement cluster pairing
-        2.0.4 - Implement volume replication
-        2.0.5 - Try and deal with the stupid retry/clear issues from objects
-                and tflow
-        2.0.6 - Add a lock decorator around the clone_image method
-        2.0.7 - Add scaled IOPS
-        2.0.8 - Add active status filter to get volume ops
-        2.0.9 - Always purge on delete volume
-        2.0.10 - Add response to debug on retryable errors
+    .. code-block:: default
+
+      Version history:
+          1.0 - Initial driver
+          1.1 - Refactor, clone support, qos by type and minor bug fixes
+          1.2 - Add xfr and retype support
+          1.2.1 - Add export/import support
+          1.2.2 - Catch VolumeNotFound on accept xfr
+          2.0.0 - Move from httplib to requests
+          2.0.1 - Implement SolidFire Snapshots
+          2.0.2 - Implement secondary account
+          2.0.3 - Implement cluster pairing
+          2.0.4 - Implement volume replication
+          2.0.5 - Try and deal with the stupid retry/clear issues from objects
+                  and tflow
+          2.0.6 - Add a lock decorator around the clone_image method
+          2.0.7 - Add scaled IOPS
+          2.0.8 - Add active status filter to get volume ops
+          2.0.9 - Always purge on delete volume
+          2.0.10 - Add response to debug on retryable errors
+
     """
 
     VERSION = '2.0.10'
