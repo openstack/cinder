@@ -45,7 +45,7 @@ SSC_API_MAP = {
         'netapp_dedup',
         'netapp_compression',
     ],
-    ('volume', 'show', 'volume-get-iter'): [
+    ('volume', '*show', 'volume-get-iter'): [
         'netapp_flexvol_encryption',
     ],
 }
