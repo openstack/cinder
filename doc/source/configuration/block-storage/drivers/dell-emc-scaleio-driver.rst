@@ -196,59 +196,23 @@ Configure the driver name by adding the following parameter:
 
    volume_driver = cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver
 
-ScaleIO MDM server IP
----------------------
+ScaleIO Gateway server IP
+-------------------------
 
-The ScaleIO Meta Data Manager monitors and maintains the available
-resources and permissions.
+The ScaleIO Gateway provides a REST interface to ScaleIO.
 
-To retrieve the MDM server IP address, use the :command:`drv_cfg --query_mdms`
-command.
-
-Configure the MDM server IP address by adding the following parameter:
+Configure the Gateway server IP address by adding the following parameter:
 
 .. code-block:: ini
 
    san_ip = ScaleIO GATEWAY IP
 
-ScaleIO Protection Domain name
-------------------------------
-
-ScaleIO allows multiple Protection Domains (groups of SDSs that provide
-backup for each other).
-
-To retrieve the available Protection Domains, use the command
-:command:`scli --query_all` and search for the Protection
-Domains section.
-
-Configure the Protection Domain for newly created volumes by adding the
-following parameter:
-
-.. code-block:: ini
-
-   sio_protection_domain_name = ScaleIO Protection Domain
-
-ScaleIO Storage Pool name
--------------------------
-
-A ScaleIO Storage Pool is a set of physical devices in a Protection
-Domain.
-
-To retrieve the available Storage Pools, use the command
-:command:`scli --query_all` and search for available Storage Pools.
-
-Configure the Storage Pool for newly created volumes by adding the
-following parameter:
-
-.. code-block:: ini
-
-   sio_storage_pool_name = ScaleIO Storage Pool
-
 ScaleIO Storage Pools
 ---------------------
 
 Multiple Storage Pools and Protection Domains can be listed for use by
-the virtual machines.
+the virtual machines. The list should include every Protection Domain and
+Storage Pool pair that you would like Cinder to utilize.
 
 To retrieve the available Storage Pools, use the command
 :command:`scli --query_all` and search for available Storage Pools.
@@ -304,8 +268,6 @@ parameters as follows:
    volume_driver = cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver
    volume_backend_name = scaleio
    san_ip = GATEWAY_IP
-   sio_protection_domain_name = Default_domain
-   sio_storage_pool_name = Default_pool
    sio_storage_pools = Domain1:Pool1,Domain2:Pool2
    san_login = SIO_USER
    san_password = SIO_PASSWD

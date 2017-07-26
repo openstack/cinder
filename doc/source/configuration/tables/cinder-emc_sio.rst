@@ -16,27 +16,66 @@
 
    * - Configuration option = Default value
      - Description
+
    * - **[DEFAULT]**
      -
+
    * - ``sio_max_over_subscription_ratio`` = ``10.0``
+
      - (Floating point) max_over_subscription_ratio setting for the ScaleIO driver. This replaces the general max_over_subscription_ratio which has no effect in this driver.Maximum value allowed for ScaleIO is 10.0.
+
    * - ``sio_protection_domain_id`` = ``None``
+
      - (String) Protection Domain ID.
+
+       - **Deprecated**
+
+         Replaced by sio_storage_pools option
+
    * - ``sio_protection_domain_name`` = ``None``
+
      - (String) Protection Domain name.
+
+       - **Deprecated**
+
+         Replaced by sio_storage_pools option
+
    * - ``sio_rest_server_port`` = ``443``
+
      - (String) REST server port.
+
    * - ``sio_round_volume_capacity`` = ``True``
+
      - (Boolean) Round up volume capacity.
+
    * - ``sio_server_certificate_path`` = ``None``
+
      - (String) Server certificate path.
+
    * - ``sio_storage_pool_id`` = ``None``
+
      - (String) Storage Pool ID.
+
+       - **Deprecated**
+
+         Replaced by sio_storage_pools option
+
    * - ``sio_storage_pool_name`` = ``None``
+
      - (String) Storage Pool name.
+
+       - **Deprecated**
+
+         Replaced by sio_storage_pools option
+
    * - ``sio_storage_pools`` = ``None``
+
      - (String) Storage Pools.
+
    * - ``sio_unmap_volume_before_deletion`` = ``False``
+
      - (Boolean) Unmap volume before deletion.
+
    * - ``sio_verify_server_certificate`` = ``False``
+
      - (Boolean) Verify server certificate.
