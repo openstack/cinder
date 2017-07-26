@@ -31,15 +31,20 @@ class VeritasCNFSDriver(nfs.NfsDriver):
 
     """Veritas Clustered NFS based cinder driver
 
-            1.0.0 - Initial driver implementations for Kilo.
-            1.0.1 - Liberty release driver not implemented.
-                    Place holder for Liberty release in case we
-                    need to support.
-            1.0.2 - cinder.interface.volumedriver decorator.
-                    Mitaka/Newton/Okata Release
-            1.0.3 - Seperate create_cloned_volume() and
-                    create_volume_from_snapshot () functionality.
-                    Pike Release
+      .. code-block:: default
+
+        Version History:
+
+          1.0.0 - Initial driver implementations for Kilo.
+          1.0.1 - Liberty release driver not implemented.
+                  Place holder for Liberty release in case we
+                  need to support.
+          1.0.2 - cinder.interface.volumedriver decorator.
+                  Mitaka/Newton/Okata Release
+          1.0.3 - Seperate create_cloned_volume() and
+                  create_volume_from_snapshot () functionality.
+                  Pike Release
+
     Executes commands relating to Volumes.
     """
 
