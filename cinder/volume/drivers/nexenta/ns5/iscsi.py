@@ -37,10 +37,13 @@ TARGET_GROUP_PREFIX = 'cinder-tg-'
 class NexentaISCSIDriver(driver.ISCSIDriver):
     """Executes volume driver commands on Nexenta Appliance.
 
-    Version history:
-        1.0.0 - Initial driver version.
-        1.1.0 - Added HTTPS support.
-                Added use of sessions for REST calls.
+    .. code-block:: default
+
+      Version history:
+          1.0.0 - Initial driver version.
+          1.1.0 - Added HTTPS support.
+                  Added use of sessions for REST calls.
+
     """
 
     VERSION = VERSION

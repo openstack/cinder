@@ -37,14 +37,17 @@ LOG = logging.getLogger(__name__)
 class NexentaNfsDriver(nfs.NfsDriver):
     """Executes volume driver commands on Nexenta Appliance.
 
-    Version history:
-        1.0.0 - Initial driver version.
-        1.1.0 - Added HTTPS support.
-                Added use of sessions for REST calls.
-        1.2.0 - Support for extend volume.
-                Support for extending the volume in
-                create_volume_from_snapshot if the size of new volume is larger
-                than original volume size.
+    .. code-block:: default
+
+      Version history:
+          1.0.0 - Initial driver version.
+          1.1.0 - Added HTTPS support.
+                  Added use of sessions for REST calls.
+          1.2.0 - Support for extend volume.
+                  Support for extending the volume in
+                  create_volume_from_snapshot if the size of new volume
+                  is larger than original volume size.
+
     """
 
     driver_prefix = 'nexenta'
