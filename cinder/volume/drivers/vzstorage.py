@@ -104,7 +104,7 @@ class PloopDevice(object):
 
     This class is for mounting ploop devices using with statement:
     with PloopDevice('/vzt/private/my-ct/harddisk.hdd') as dev_path:
-        # do something
+    # do something
 
     :param path: A path to ploop harddisk dir
     :param snapshot_id: Snapshot id to mount
