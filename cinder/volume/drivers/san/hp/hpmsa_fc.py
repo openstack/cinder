@@ -24,10 +24,13 @@ from cinder.volume.drivers.san.hp import hpmsa_common
 class HPMSAFCDriver(dothill_fc.DotHillFCDriver):
     """OpenStack Fibre Channel cinder drivers for HPMSA arrays.
 
-    Version history:
-        1.0    - Inheriting from DotHill cinder drivers.
-        1.6    - Add management path redundancy and reduce load placed
-                 on management controller.
+    .. code-block:: default
+
+      Version history:
+          1.0    - Inheriting from DotHill cinder drivers.
+          1.6    - Add management path redundancy and reduce load placed
+                   on management controller.
+
     """
 
     VERSION = "1.6"
