@@ -1,0 +1,14 @@
+---
+upgrade:
+  - |
+    The Tegile driver has been marked as unsupported and is now
+    deprecated. ``enable_unsupported_driver`` will need to be set
+    to ``True`` in the driver's section in cinder.conf to continue
+    to use it.
+deprecations:
+  - |
+    The Tegile driver has been marked as unsupported and is now
+    deprecated. ``enable_unsupported_driver`` will need to be set
+    to ``True`` in the driver's section in cinder.conf to continue
+    to use it. If its support status does not change, they will be
+    removed in the Queens development cycle.
