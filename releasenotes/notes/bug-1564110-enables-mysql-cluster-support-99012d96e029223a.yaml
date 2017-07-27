@@ -1,9 +1,0 @@
----
-features:
-  - |
-    Enabled the usage of MySQL Cluster (NDB) with Cinder. This includes the
-    usage of the boolean mysql_enable_ndb setting from oslo.db 4.24 and
-    above. This feature allows operators to select from MySQL (InnoDB) or
-    MySQL Cluster (NDB) as the database storage engine backend. This feature
-    is intended only for new installations as there is no automated migration
-    path from InnoDB to MySQL Cluster (NDB).

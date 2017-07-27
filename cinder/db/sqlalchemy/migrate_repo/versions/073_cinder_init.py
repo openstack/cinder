@@ -15,7 +15,6 @@
 import datetime
 
 from oslo_config import cfg
-from oslo_db.sqlalchemy import ndb
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index
 from sqlalchemy import Integer, MetaData, String, Table, Text, UniqueConstraint
 
@@ -110,14 +109,14 @@ def define_tables(meta):
         Column('project_id', String(255)),
         Column('host', String(255)),
         Column('size', Integer),
-        Column('availability_zone', ndb.AutoStringTinyText(255)),
-        Column('status', ndb.AutoStringSize(255, 64)),
-        Column('attach_status', ndb.AutoStringSize(255, 64)),
+        Column('availability_zone', String(255)),
+        Column('status', String(255)),
+        Column('attach_status', String(255)),
         Column('scheduled_at', DateTime),
         Column('launched_at', DateTime),
         Column('terminated_at', DateTime),
         Column('display_name', String(255)),
-        Column('display_description', ndb.AutoStringTinyText(255)),
+        Column('display_description', String(255)),
         Column('provider_location', String(256)),
         Column('provider_auth', String(256)),
         Column('snapshot_id', String(36)),
@@ -127,10 +126,10 @@ def define_tables(meta):
         Column('provider_geometry', String(255)),
         Column('_name_id', String(36)),
         Column('encryption_key_id', String(36)),
-        Column('migration_status', ndb.AutoStringSize(255, 64)),
-        Column('replication_status', ndb.AutoStringSize(255, 64)),
-        Column('replication_extended_status', ndb.AutoStringTinyText(255)),
-        Column('replication_driver_data', ndb.AutoStringTinyText(255)),
+        Column('migration_status', String(255)),
+        Column('replication_status', String(255)),
+        Column('replication_extended_status', String(255)),
+        Column('replication_driver_data', String(255)),
         Column('consistencygroup_id', String(36),
                ForeignKey('consistencygroups.id')),
         Column('provider_id', String(255)),
