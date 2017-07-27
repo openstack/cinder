@@ -340,6 +340,10 @@ def create_backup(ctxt,
                   temp_snapshot_id=None,
                   snapshot_id=None,
                   data_timestamp=None,
+                  size=None,
+                  container=None,
+                  availability_zone=None,
+                  host=None,
                   **kwargs):
     """Create a backup object."""
     values = {
@@ -349,12 +353,12 @@ def create_backup(ctxt,
         'status': status,
         'display_name': display_name,
         'display_description': display_description,
-        'container': 'fake',
-        'availability_zone': 'fake',
+        'container': container or 'fake',
+        'availability_zone': availability_zone or 'fake',
         'service': 'fake',
-        'size': 5 * 1024 * 1024,
+        'size': size or 5 * 1024 * 1024,
         'object_count': 22,
-        'host': socket.gethostname(),
+        'host': host or socket.gethostname(),
         'parent_id': parent_id,
         'temp_volume_id': temp_volume_id,
         'temp_snapshot_id': temp_snapshot_id,
@@ -364,6 +368,9 @@ def create_backup(ctxt,
     values.update(kwargs)
     backup = objects.Backup(ctxt, **values)
     backup.create()
+    if not snapshot_id:
+        backup.data_timestamp = backup.created_at
+        backup.save()
     return backup
 
 
