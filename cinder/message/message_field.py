@@ -50,7 +50,7 @@ class Detail(object):
     DRIVER_NOT_INITIALIZED = ('002',
                               _('Driver is not initialized at present.'))
     NO_BACKEND_AVAILABLE = ('003',
-                            _('Could not found any available '
+                            _('Could not find any available '
                               'weighted backend.'))
     FAILED_TO_UPLOAD_VOLUME = ('004',
                                _("Failed to upload volume to image "
