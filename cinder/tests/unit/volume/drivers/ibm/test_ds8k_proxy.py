@@ -16,6 +16,7 @@
 """Tests for the IBM DS8K family driver."""
 import ast
 import copy
+import ddt
 import eventlet
 import json
 import mock
@@ -785,6 +786,7 @@ FAKE_ASSIGN_HOST_PORT_RESPONSE = FAKE_GENERIC_RESPONSE
 FAKE_DELETE_MAPPINGS_RESPONSE = FAKE_GENERIC_RESPONSE
 FAKE_DELETE_HOST_PORTS_RESPONSE = FAKE_GENERIC_RESPONSE
 FAKE_DELETE_HOSTS_RESPONSE = FAKE_GENERIC_RESPONSE
+FAKE_PAUSE_RESPONSE = FAKE_GENERIC_RESPONSE
 
 FAKE_REST_API_RESPONSES = {
     TEST_SOURCE_DS8K_IP + '/get':
@@ -879,6 +881,10 @@ FAKE_REST_API_RESPONSES = {
         FAKE_FAILBACK_RESPONSE,
     TEST_TARGET_DS8K_IP + '/cs/pprcs/resume/post':
         FAKE_FAILBACK_RESPONSE,
+    TEST_SOURCE_DS8K_IP + '/cs/pprcs/pause/post':
+        FAKE_PAUSE_RESPONSE,
+    TEST_TARGET_DS8K_IP + '/cs/pprcs/pause/post':
+        FAKE_PAUSE_RESPONSE,
     TEST_SOURCE_DS8K_IP + '/cs/flashcopies/post':
         FAKE_POST_FLASHCOPIES_RESPONSE,
     TEST_SOURCE_DS8K_IP + '/cs/flashcopies/unfreeze/post':
@@ -948,6 +954,9 @@ class FakeDS8KCommonHelper(helper.DS8KCommonHelper):
         self._storage_pools = None
         self.backend = {}
         self.setup()
+        self._existing_pool_ids = [TEST_POOL_ID_1,
+                                   TEST_POOL_ID_2,
+                                   TEST_ECKD_POOL_ID]
 
     def _get_value(self, key):
         value = getattr(self.conf, key, None)
@@ -1044,12 +1053,13 @@ class FakeDS8KProxy(ds8kproxy.DS8KProxy):
     def _do_replication_setup(self, devices, src_helper):
         self._replication = FakeReplication(src_helper, devices[0])
         if self._active_backend_id:
-            self._switch_backend_connection(self._active_backend_id)
+            self._replication.switch_source_and_target_client()
         else:
             self._replication.check_physical_links()
         self._replication_enabled = True
 
 
+@ddt.ddt
 class DS8KProxyTest(test.TestCase):
     """Test proxy for DS8K volume driver."""
 
@@ -1209,6 +1219,8 @@ class DS8KProxyTest(test.TestCase):
             "free_capacity_gb": 10,
             "reserved_percentage": 0,
             "consistent_group_snapshot_enabled": True,
+            "group_replication_enabled": True,
+            "consistent_group_replication_enabled": True,
             "multiattach": False
         }
 
@@ -1429,23 +1441,6 @@ class DS8KProxyTest(test.TestCase):
         # error group will be ignored, so LSS 20 can be used.
         self.assertEqual(lss, '20')
 
-    def test_create_volume_and_assign_to_group_with_wrong_host(self):
-        # create volume for group which has wrong format of host.
-        self.configuration.lss_range_for_cg = '20-23'
-        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
-                                    self.exception, self)
-        self.driver.setup(self.ctxt)
-        group_type = group_types.create(
-            self.ctxt,
-            'group',
-            {'consistent_group_snapshot_enabled': '<is> True'}
-        )
-        group = self._create_group(host="fake_invalid_host",
-                                   group_type_id=group_type.id)
-        volume = self._create_volume(group_id=group.id)
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.create_volume, volume)
-
     @mock.patch.object(helper.DS8KCommonHelper, '_create_lun')
     def test_create_volume_but_lss_full_afterwards(self, mock_create_lun):
         """create volume in a LSS which is full afterwards."""
@@ -1629,7 +1624,8 @@ class DS8KProxyTest(test.TestCase):
 
     @mock.patch.object(proxy.IBMStorageProxy, '__init__')
     @mock.patch.object(replication, 'Replication')
-    @mock.patch.object(ds8kproxy.DS8KProxy, '_switch_backend_connection')
+    @mock.patch.object(replication.Replication,
+                       'switch_source_and_target_client')
     def test_switch_backend_connection(self, mock_switch_connection,
                                        mock_replication, mock_proxy_init):
         """driver should switch connection if it has been failed over."""
@@ -1988,11 +1984,12 @@ class DS8KProxyTest(test.TestCase):
         self.assertRaises(restclient.APIException,
                           self.driver.create_cloned_volume, tgt_vol, src_vol)
 
+    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     @mock.patch.object(helper.DS8KCommonHelper, 'lun_exists')
     @mock.patch.object(helper.DS8KCommonHelper, 'create_lun')
     def test_create_cloned_volume5(self, mock_create_lun, mock_lun_exists,
-                                   mock_get_flashcopy):
+                                   mock_get_flashcopy, mock_sleep):
         """clone a volume when target has volume ID but it is nonexistent."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -2714,6 +2711,84 @@ class DS8KProxyTest(test.TestCase):
                           self.driver.create_group,
                           self.ctxt, group)
 
+    def test_create_generic_group_not_implemented(self):
+        """create generic group is not implemented."""
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group'
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+        self.assertRaises(NotImplementedError,
+                          self.driver.create_group,
+                          self.ctxt, group)
+
+    def test_create_replication_cg_should_verify_volume_types(self):
+        """Cannot put non-replication volume type into replication cg."""
+        self.configuration.lss_range_for_cg = '20-23'
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_replication_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   volume_type_ids=[vol_type.id])
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_group,
+                          self.ctxt, group)
+
+    @ddt.data({'bundle_version': "5.7.51.1067"},
+              {'bundle_version': "5.8.20.1058"})
+    @mock.patch.object(helper.DS8KCommonHelper, '_get_version')
+    def test_create_replication_consisgroup_should_verify_rest_version(
+            self, rest_version, mock_get_version):
+        """Driver should verify whether does REST support pprc cg or not."""
+        self.configuration.lss_range_for_cg = '20-23'
+        mock_get_version.return_value = rest_version
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        vol_type = volume_types.create(
+            self.ctxt, 'VOL_TYPE', {'replication_enabled': '<is> True'})
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_replication_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   volume_type_ids=[vol_type.id])
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_group,
+                          self.ctxt, group)
+
+    def test_create_consistency_group_without_reserve_lss(self):
+        """user should reserve LSS for group if it enables cg."""
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_group, self.ctxt, group)
+
     def test_delete_consistency_group_sucessfully(self):
         """test a successful consistency group deletion."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2759,24 +2834,60 @@ class DS8KProxyTest(test.TestCase):
         self.assertEqual(fields.GroupStatus.ERROR_DELETING,
                          model_update['status'])
 
-    def test_create_consistency_group_without_reserve_lss(self):
-        """user should reserve LSS for group if it enables cg."""
+    def test_delete_replication_group_is_not_implemented(self):
+        """delete replication group is not implemented."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
         self.driver.setup(self.ctxt)
-
         group_type = group_types.create(
             self.ctxt,
             'group',
-            {'consistent_group_snapshot_enabled': '<is> True'}
+            {'group_replication_enabled': '<is> True'}
         )
         group = self._create_group(host=TEST_GROUP_HOST,
                                    group_type_id=group_type.id)
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.create_group, self.ctxt, group)
 
-    def test_update_generic_group_without_enable_cg(self):
-        """update group which not enable cg should return None."""
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps({'vol_hex_id': TEST_VOLUME_ID})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     group_id=group.id)
+        self.assertRaises(NotImplementedError,
+                          self.driver.delete_group,
+                          self.ctxt, group, [volume])
+
+    def test_update_replication_group_is_not_implemented(self):
+        """update replication group is not implemented."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'group_replication_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps({'vol_hex_id': TEST_VOLUME_ID})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     group_id=group.id)
+        self.assertRaises(NotImplementedError,
+                          self.driver.update_group,
+                          self.ctxt, group, [volume], [])
+
+    def test_update_generic_group_is_not_implemented(self):
+        """update group which not enable cg is not implemented."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
         self.driver.setup(self.ctxt)
@@ -2786,11 +2897,9 @@ class DS8KProxyTest(test.TestCase):
                                    group_type_id=group_type.id)
         location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(provider_location=location)
-        model_update, add_volumes_update, remove_volumes_update = (
-            self.driver.update_group(self.ctxt, group, [volume], []))
-        self.assertIsNone(model_update)
-        self.assertIsNone(add_volumes_update)
-        self.assertIsNone(remove_volumes_update)
+        self.assertRaises(NotImplementedError,
+                          self.driver.update_group,
+                          self.ctxt, group, [volume], [])
 
     @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
@@ -2868,9 +2977,8 @@ class DS8KProxyTest(test.TestCase):
         location = ast.literal_eval(add_volumes_update[0]['provider_location'])
         self.assertEqual('2200', location['vol_hex_id'])
 
-    @mock.patch.object(helper.DS8KCommonHelper, 'delete_lun')
-    def test_delete_generic_group_failed(self, mock_delete_lun):
-        """test a failed group deletion."""
+    def test_delete_generic_group_not_implemented(self):
+        """delete generic group but it is not implemented."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
         self.driver.setup(self.ctxt)
@@ -2880,29 +2988,9 @@ class DS8KProxyTest(test.TestCase):
         volume = self._create_volume(group_type_id=group_type.id,
                                      provider_location=location,
                                      group_id=group.id)
-        mock_delete_lun.side_effect = (
-            restclient.APIException('delete volume failed.'))
-        model_update, volumes_model_update = (
-            self.driver.delete_group(self.ctxt, group, [volume]))
-        self.assertEqual('error_deleting', volumes_model_update[0]['status'])
-        self.assertEqual(fields.GroupStatus.ERROR_DELETING,
-                         model_update['status'])
-
-    def test_delete_generic_group_sucessfully(self):
-        """test a successful generic group deletion."""
-        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
-                                    self.exception, self)
-        self.driver.setup(self.ctxt)
-        group_type = group_types.create(self.ctxt, 'CG', {})
-        group = self._create_group(group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
-        volume = self._create_volume(group_type_id=group_type.id,
-                                     provider_location=location,
-                                     group_id=group.id)
-        model_update, volumes_model_update = (
-            self.driver.delete_group(self.ctxt, group, [volume]))
-        self.assertEqual('deleted', volumes_model_update[0]['status'])
-        self.assertEqual(fields.GroupStatus.DELETED, model_update['status'])
+        self.assertRaises(NotImplementedError,
+                          self.driver.delete_group,
+                          self.ctxt, group, [volume])
 
     @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
@@ -3074,6 +3162,38 @@ class DS8KProxyTest(test.TestCase):
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'])
 
+    def test_create_group_from_generic_group(self):
+        """create group from generic group is not implemented."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'group_replication_enabled': '<is> True'}
+        )
+        src_group = self._create_group(host=TEST_GROUP_HOST,
+                                       group_type_id=group_type.id)
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps({'vol_hex_id': TEST_VOLUME_ID})
+        src_volume = self._create_volume(volume_type_id=vol_type.id,
+                                         provider_location=location,
+                                         replication_driver_data=data,
+                                         group_id=src_group.id)
+
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+        volume = self._create_volume(group_id=group.id)
+
+        self.assertRaises(NotImplementedError,
+                          self.driver.create_group_from_src,
+                          self.ctxt, group, [volume],
+                          None, None, src_group, [src_volume])
+
     @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
     def test_failover_host_successfully(self, mock_get_pprc_pairs, mock_sleep):
@@ -3100,8 +3220,91 @@ class DS8KProxyTest(test.TestCase):
             self.ctxt, [volume], TEST_TARGET_DS8K_IP, [])
         self.assertEqual(TEST_TARGET_DS8K_IP, secondary_id)
 
-    @mock.patch.object(replication.Replication, 'do_pprc_failover')
-    def test_failover_host_failed(self, mock_do_pprc_failover):
+    @mock.patch.object(eventlet, 'sleep')
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
+    def test_failover_host_with_group(self, mock_get_pprc_pairs, mock_sleep):
+        """Failover host with group."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'group_replication_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   replication_status='enabled')
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     volume_metadata=metadata,
+                                     group_id=group.id)
+        pprc_pairs = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs[0]['state'] = 'suspended'
+        mock_get_pprc_pairs.side_effect = [pprc_pairs]
+        secondary_id, volume_update_list, group_update_list = (
+            self.driver.failover_host(self.ctxt, [volume],
+                                      TEST_TARGET_DS8K_IP, [group]))
+        self.assertEqual(TEST_TARGET_DS8K_IP, secondary_id)
+        volume_update = volume_update_list[0]
+        self.assertEqual(volume_update['volume_id'], volume.id)
+        self.assertEqual(fields.ReplicationStatus.FAILED_OVER,
+                         volume_update['updates']['replication_status'])
+        group_update = group_update_list[0]
+        self.assertEqual(group_update['group_id'], group.id)
+        self.assertEqual(fields.ReplicationStatus.FAILED_OVER,
+                         group_update['updates']['replication_status'])
+
+    @mock.patch.object(eventlet, 'sleep')
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
+    def test_failover_host_with_group_failed_over(self, mock_get_pprc_pairs,
+                                                  mock_sleep):
+        """Failover host with group that has been failed over."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'group_replication_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   replication_status='failed-over')
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {'default': {'vol_hex_id': TEST_VOLUME_ID}})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     volume_metadata=metadata,
+                                     group_id=group.id)
+        pprc_pairs = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs[0]['state'] = 'suspended'
+        mock_get_pprc_pairs.side_effect = [pprc_pairs]
+        secondary_id, volume_update_list, group_update_list = (
+            self.driver.failover_host(self.ctxt, [volume],
+                                      TEST_TARGET_DS8K_IP, [group]))
+        self.assertEqual(TEST_TARGET_DS8K_IP, secondary_id)
+        self.assertEqual(volume_update_list, [])
+        self.assertEqual(group_update_list, [])
+
+    @mock.patch.object(replication.Replication, 'start_host_pprc_failover')
+    def test_failover_host_failed(self, mock_host_pprc_failover):
         """Failover host should raise exception when failed."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -3119,7 +3322,7 @@ class DS8KProxyTest(test.TestCase):
                                      replication_driver_data=data,
                                      volume_metadata=metadata)
 
-        mock_do_pprc_failover.side_effect = (
+        mock_host_pprc_failover.side_effect = (
             restclient.APIException('failed to do failover.'))
         self.assertRaises(exception.UnableToFailOver,
                           self.driver.failover_host, self.ctxt,
@@ -3155,7 +3358,7 @@ class DS8KProxyTest(test.TestCase):
                                        {'replication_enabled': '<is> True'})
         location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
-            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+            {'default': {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location,
                                      replication_driver_data=data)
@@ -3175,7 +3378,7 @@ class DS8KProxyTest(test.TestCase):
                                        {'replication_enabled': '<is> True'})
         location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
-            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+            {'default': {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location,
                                      replication_driver_data=data)
@@ -3183,42 +3386,6 @@ class DS8KProxyTest(test.TestCase):
             self.ctxt, [volume], 'default', [])
         self.assertIsNone(secondary_id)
         self.assertEqual([], volume_update_list)
-
-    def test_failover_host_which_only_has_unreplicated_volume(self):
-        """Failover host which only has unreplicated volume."""
-        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
-        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
-                                    self.exception, self)
-        self.driver.setup(self.ctxt)
-
-        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
-        volume = self._create_volume(volume_type_id=vol_type.id,
-                                     provider_location=location)
-        secondary_id, volume_update_list, __ = self.driver.failover_host(
-            self.ctxt, [volume], TEST_TARGET_DS8K_IP, [])
-        self.assertEqual(TEST_TARGET_DS8K_IP, secondary_id)
-        self.assertEqual('error', volume_update_list[0]['updates']['status'])
-
-    def test_failback_should_recover_status_of_unreplicated_volume(self):
-        """Failback host should recover the status of unreplicated volume."""
-        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
-        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
-                                    self.exception, self, TEST_TARGET_DS8K_IP)
-        self.driver.setup(self.ctxt)
-
-        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({
-            'vol_hex_id': TEST_VOLUME_ID,
-            'old_status': 'available'
-        })
-        volume = self._create_volume(volume_type_id=vol_type.id,
-                                     provider_location=location)
-        secondary_id, volume_update_list, __ = self.driver.failover_host(
-            self.ctxt, [volume], 'default', [])
-        self.assertEqual('default', secondary_id)
-        self.assertEqual('available',
-                         volume_update_list[0]['updates']['status'])
 
     @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
@@ -3233,7 +3400,7 @@ class DS8KProxyTest(test.TestCase):
                                        {'replication_enabled': '<is> True'})
         location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
-            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+            {'default': {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location,
@@ -3249,8 +3416,8 @@ class DS8KProxyTest(test.TestCase):
             self.ctxt, [volume], 'default', [])
         self.assertEqual('default', secondary_id)
 
-    @mock.patch.object(replication.Replication, 'start_pprc_failback')
-    def test_failback_host_failed(self, mock_start_pprc_failback):
+    @mock.patch.object(replication.Replication, 'start_host_pprc_failback')
+    def test_failback_host_failed(self, mock_start_host_pprc_failback):
         """Failback host should raise exception when failed."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -3261,12 +3428,401 @@ class DS8KProxyTest(test.TestCase):
                                        {'replication_enabled': '<is> True'})
         location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
-            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+            {'default': {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location,
                                      replication_driver_data=data)
-        mock_start_pprc_failback.side_effect = (
+        mock_start_host_pprc_failback.side_effect = (
             restclient.APIException('failed to do failback.'))
         self.assertRaises(exception.UnableToFailOver,
                           self.driver.failover_host, self.ctxt,
                           [volume], 'default', [])
+
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
+    def test_enable_replication_successfully(self, mock_get_pprc_pairs):
+        """Enable replication for the group successfully."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   replication_status='disabled')
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     volume_metadata=metadata,
+                                     group_id=group.id,
+                                     replication_status='disabled')
+        pprc_pairs = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs[0]['state'] = 'suspended'
+        mock_get_pprc_pairs.side_effect = [pprc_pairs]
+        model_update, volumes_update_list = self.driver.enable_replication(
+            self.ctxt, group, [volume])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update.get('replication_status'))
+        for volume_update in volumes_update_list:
+            self.assertEqual(fields.ReplicationStatus.ENABLED,
+                             volume_update.get('replication_status'))
+
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
+    def test_enable_replication_if_pprc_in_invalid_state(
+            self, mock_get_pprc_pairs):
+        """Enable replication but pprc relationship is in invalid state."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   replication_status='disabled')
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     volume_metadata=metadata,
+                                     group_id=group.id,
+                                     replication_status='disabled')
+        pprc_pairs = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs[0]['state'] = 'invalid'
+        mock_get_pprc_pairs.side_effect = [pprc_pairs]
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.enable_replication,
+                          self.ctxt, group, [volume])
+
+    @mock.patch.object(helper.DS8KCommonHelper, 'resume_pprc_pairs')
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
+    def test_enable_replication_but_resume_fails(self, mock_get_pprc_pairs,
+                                                 mock_resume_pprc_pairs):
+        """Enable replication but resume fails."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   replication_status='disabled')
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     volume_metadata=metadata,
+                                     group_id=group.id,
+                                     replication_status='disabled')
+        pprc_pairs = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs[0]['state'] = 'suspended'
+        mock_get_pprc_pairs.side_effect = [pprc_pairs]
+        mock_resume_pprc_pairs.side_effect = (
+            restclient.APIException('failed to resume replication.'))
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.enable_replication,
+                          self.ctxt, group, [volume])
+
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
+    def test_disable_replication_successfully(self, mock_get_pprc_pairs):
+        """Disable replication for the group successfully."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   replication_status='enabled')
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     volume_metadata=metadata,
+                                     group_id=group.id,
+                                     replication_status='enabled')
+        pprc_pairs = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs[0]['state'] = 'full_duplex'
+        mock_get_pprc_pairs.side_effect = [pprc_pairs]
+        model_update, volumes_update_list = self.driver.disable_replication(
+            self.ctxt, group, [volume])
+        self.assertEqual(fields.ReplicationStatus.DISABLED,
+                         model_update.get('replication_status'))
+        for volume_update in volumes_update_list:
+            self.assertEqual(fields.ReplicationStatus.DISABLED,
+                             volume_update.get('replication_status'))
+
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
+    def test_disable_replication_if_pprc_in_invalid_state(
+            self, mock_get_pprc_pairs):
+        """Disable replication but pprc relationship is in invalid state."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   replication_status='enabled')
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     volume_metadata=metadata,
+                                     group_id=group.id,
+                                     replication_status='enabled')
+        pprc_pairs = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs[0]['state'] = 'invalid'
+        mock_get_pprc_pairs.side_effect = [pprc_pairs]
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.disable_replication,
+                          self.ctxt, group, [volume])
+
+    @mock.patch.object(helper.DS8KCommonHelper, 'pause_pprc_pairs')
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
+    def test_disable_replication_but_pause_fails(self, mock_get_pprc_pairs,
+                                                 mock_pause_pprc_pairs):
+        """Disable replication but pause fails."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   replication_status='enabled')
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     volume_metadata=metadata,
+                                     group_id=group.id,
+                                     replication_status='enabled')
+        pprc_pairs = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs[0]['state'] = 'full_duplex'
+        mock_get_pprc_pairs.side_effect = [pprc_pairs]
+        mock_pause_pprc_pairs.side_effect = (
+            restclient.APIException('failed to pause replication.'))
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.disable_replication,
+                          self.ctxt, group, [volume])
+
+    @mock.patch.object(eventlet, 'sleep')
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
+    def test_failover_group_successfully(self, mock_get_pprc_pairs,
+                                         mock_sleep):
+        """Failover group to valid secondary successfully."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     volume_metadata=metadata,
+                                     group_id=group.id)
+        pprc_pairs_1 = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs_1[0]['state'] = 'suspended'
+        pprc_pairs_2 = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs_2[0]['state'] = 'full_duplex'
+        mock_get_pprc_pairs.side_effect = [pprc_pairs_1, pprc_pairs_2]
+        model_update, volumes_update_list = self.driver.failover_replication(
+            self.ctxt, group, [volume], TEST_TARGET_DS8K_IP)
+        self.assertEqual(fields.ReplicationStatus.FAILED_OVER,
+                         model_update.get('replication_status'))
+        for volume_update in volumes_update_list:
+            self.assertEqual(fields.ReplicationStatus.FAILED_OVER,
+                             volume_update.get('replication_status'))
+
+    @mock.patch.object(replication.Replication, 'start_group_pprc_failover')
+    def test_failover_group_failed(self, mock_group_pprc_failover):
+        """Failover group should raise exception when failed."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     volume_metadata=metadata,
+                                     group_id=group.id)
+
+        mock_group_pprc_failover.side_effect = (
+            restclient.APIException('failed to failover group.'))
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.failover_replication, self.ctxt,
+                          group, [volume], TEST_TARGET_DS8K_IP)
+
+    def test_failover_group_to_invalid_target(self):
+        """Failover group to invalid secondary should fail."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     group_id=group.id)
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.driver.failover_replication, self.ctxt,
+                          group, [volume], 'fake_target')
+
+    def test_failover_group_that_has_been_failed_over(self):
+        """Failover group that has been failed over should just return."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   replication_status='failed-over')
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {'default': {'vol_hex_id': TEST_VOLUME_ID}})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     group_id=group.id,
+                                     replication_status='failed-over')
+        model_update, volumes_update_list = self.driver.failover_replication(
+            self.ctxt, group, [volume], TEST_TARGET_DS8K_IP)
+        self.assertEqual({}, model_update)
+        self.assertEqual([], volumes_update_list)
+
+    def test_failback_group_that_has_been_failed_back(self):
+        """Failback group that has been failed back should just return."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self, TEST_TARGET_DS8K_IP)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   replication_status='enabled')
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     group_id=group.id,
+                                     replication_status='available')
+        model_update, volume_update_list = self.driver.failover_replication(
+            self.ctxt, group, [volume], 'default')
+        self.assertEqual({}, model_update)
+        self.assertEqual([], volume_update_list)

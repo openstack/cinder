@@ -61,7 +61,6 @@ Sample settings for cinder.conf:
 
 """
 import ast
-import collections
 import json
 import six
 
@@ -139,9 +138,10 @@ class Lun(object):
 
         1.0.0 - initial revision.
         2.1.0 - Added support for specify pool and lss, also improve the code.
+        2.1.1 - Added support for replication consistency group.
     """
 
-    VERSION = "2.1.0"
+    VERSION = "2.1.1"
 
     class FakeLun(object):
 
@@ -230,6 +230,7 @@ class Lun(object):
             self.replica_ds_name = (
                 "OS%s:%s" % ('Replica', helper.filter_alnum(self.cinder_name))
             )[:16]
+            self.previous_status = volume.previous_status
             self.replication_status = volume.replication_status
             self.replication_driver_data = (
                 json.loads(volume.replication_driver_data)
@@ -238,12 +239,20 @@ class Lun(object):
                 # now only support one replication target.
                 replication_target = sorted(
                     self.replication_driver_data.values())[0]
-                replica_id = replication_target['vol_hex_id']
+                self.replica_ds_id = replication_target['vol_hex_id']
                 self.pool_lss_pair = {
                     'source': (None, self.ds_id[0:2]),
-                    'target': (None, replica_id[0:2])
+                    'target': (None, self.replica_ds_id[0:2])
                 }
-
+                # Don't use self.replication_status to judge if volume has
+                # been failed over or not, because when user fail over a
+                # group, replication_status of each volume in group is
+                # failing over.
+                self.failed_over = (True if 'default' in
+                                    self.replication_driver_data.keys()
+                                    else False)
+            else:
+                self.failed_over = False
         if os400:
             if os400 not in VALID_OS400_VOLUME_TYPES.keys():
                 raise restclient.APIException(
@@ -299,7 +308,6 @@ class Lun(object):
         volume_update = {}
         volume_update['provider_location'] = six.text_type(
             {'vol_hex_id': self.ds_id})
-
         # update metadata
         if self.is_snapshot:
             metadata = self._get_snapshot_metadata(self.volume)
@@ -312,7 +320,9 @@ class Lun(object):
                 metadata.pop('replication', None)
             volume_update['replication_driver_data'] = json.dumps(
                 self.replication_driver_data)
-            volume_update['replication_status'] = self.replication_status
+            volume_update['replication_status'] = (
+                self.replication_status or
+                fields.ReplicationStatus.NOT_CAPABLE)
 
         metadata['data_type'] = (self.data_type if self.data_type else
                                  metadata['data_type'])
@@ -332,11 +342,23 @@ class Group(object):
     def __init__(self, group, is_snapshot=False):
         self.id = group.id
         self.host = group.host
+        self.consisgroup_snapshot_enabled = (
+            utils.is_group_a_cg_snapshot_type(group))
+        self.group_replication_enabled = (
+            utils.is_group_a_type(group,
+                                  "group_replication_enabled"))
+        self.consisgroup_replication_enabled = (
+            utils.is_group_a_type(group,
+                                  "consistent_group_replication_enabled"))
         if is_snapshot:
             self.snapshots = group.snapshots
         else:
+            self.failed_over = (
+                group.replication_status ==
+                fields.ReplicationStatus.FAILED_OVER)
+            # create_volume needs to check volumes in the group,
+            # so get it from volume.group object.
             self.volumes = group.volumes
-        self.consisgroup_enabled = utils.is_group_a_cg_snapshot_type(group)
 
 
 class DS8KProxy(proxy.IBMStorageProxy):
@@ -392,15 +414,8 @@ class DS8KProxy(proxy.IBMStorageProxy):
         self._replication.check_physical_links()
         self._replication.check_connection_type()
         if self._active_backend_id:
-            self._switch_backend_connection(self._active_backend_id)
+            self._replication.switch_source_and_target_client()
         self._replication_enabled = True
-
-    @proxy.logger
-    def _switch_backend_connection(self, backend_id, repl_luns=None):
-        repl_luns = self._replication.switch_source_and_target(backend_id,
-                                                               repl_luns)
-        self._helper = self._replication._source_helper
-        return repl_luns
 
     @staticmethod
     def _b2gb(b):
@@ -435,6 +450,8 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 sum(p['capavail'] for p in storage_pools.values())),
             "reserved_percentage": self.configuration.reserved_percentage,
             "consistent_group_snapshot_enabled": True,
+            "group_replication_enabled": True,
+            "consistent_group_replication_enabled": True,
             "multiattach": False
         }
 
@@ -459,7 +476,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
                     LOG.error(msg)
                     raise exception.VolumeDriverException(message=msg)
                 if lun.type_replication:
-                    target_helper = self._replication._target_helper
+                    target_helper = self._replication.get_target_helper()
                     # PPRC can not copy from ESE volume to standard volume
                     # or vice versa.
                     if target_helper.get_thin_provision():
@@ -477,10 +494,10 @@ class DS8KProxy(proxy.IBMStorageProxy):
                     lun.pool_lss_pair = {
                         'source': self._find_pool_lss_pair_from_spec(
                             lun, excluded_lss)}
-                elif lun.group and lun.group.consisgroup_enabled:
-                    lun.pool_lss_pair = {
-                        'source': self._find_pool_lss_pair_for_cg(
-                            lun, excluded_lss)}
+                elif lun.group and (lun.group.consisgroup_snapshot_enabled or
+                                    lun.group.consisgroup_replication_enabled):
+                    lun.pool_lss_pair = (
+                        self._find_pool_lss_pair_for_cg(lun, excluded_lss))
                 else:
                     if lun.type_replication and not lun.is_snapshot:
                         lun.pool_lss_pair = (
@@ -497,7 +514,8 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 excluded_lss.add(lun.pool_lss_pair['source'][1])
 
     def _find_pool_lss_pair_from_spec(self, lun, excluded_lss):
-        if lun.group and lun.group.consisgroup_enabled:
+        if lun.group and (lun.group.consisgroup_snapshot_enabled or
+           lun.group.consisgroup_replication_enabled):
             msg = _("No support for specifying pool or lss for "
                     "volumes that belong to consistency group.")
             LOG.error(msg)
@@ -509,83 +527,112 @@ class DS8KProxy(proxy.IBMStorageProxy):
 
     @coordination.synchronized('{self.prefix}-consistency-group')
     def _find_pool_lss_pair_for_cg(self, lun, excluded_lss):
-        lss_in_cache = self.consisgroup_cache.get(lun.group.id, set())
-        if not lss_in_cache:
-            lss_in_cg = self._get_lss_in_cg(lun.group, lun.is_snapshot)
-            LOG.debug("LSSs used by CG %(cg)s are %(lss)s.",
-                      {'cg': lun.group.id, 'lss': ','.join(lss_in_cg)})
-            available_lss = lss_in_cg - excluded_lss
+        # NOTE: a group may have multiple LSSs.
+        lss_pairs_in_cache = self.consisgroup_cache.get(lun.group.id, set())
+        if not lss_pairs_in_cache:
+            lss_pairs_in_group = self._get_lss_pairs_in_group(lun.group,
+                                                              lun.is_snapshot)
+            LOG.debug("LSSs used by group %(grp)s are %(lss_pair)s.",
+                      {'grp': lun.group.id, 'lss_pair': lss_pairs_in_group})
+            available_lss_pairs = set(pair for pair in lss_pairs_in_group
+                                      if pair[0] != excluded_lss)
         else:
-            available_lss = lss_in_cache - excluded_lss
-        if not available_lss:
-            available_lss = self._find_lss_for_cg()
+            available_lss_pairs = set(pair for pair in lss_pairs_in_cache
+                                      if pair[0] != excluded_lss)
+        if not available_lss_pairs:
+            available_lss_pairs = self._find_lss_pair_for_cg(lun.group)
 
-        pid, lss = self._find_pool_for_lss(available_lss)
-        if pid:
-            lss_in_cache.add(lss)
-            self.consisgroup_cache[lun.group.id] = lss_in_cache
+        pool_lss_pair, lss_pair = self._find_pool_for_lss(available_lss_pairs)
+        if pool_lss_pair:
+            lss_pairs_in_cache.add(lss_pair)
+            self.consisgroup_cache[lun.group.id] = lss_pairs_in_cache
         else:
             raise exception.VolumeDriverException(
-                message=_('There are still some available LSSs for CG, '
-                          'but they are not in the same node as pool.'))
-        return (pid, lss)
+                message=(_('There are still some available LSSs %s for CG, '
+                           'but they are not in the same node as pool.')
+                         % available_lss_pairs))
+        return pool_lss_pair
 
-    def _get_lss_in_cg(self, group, is_snapshot=False):
-        # Driver can not support the case that dedicating LSS for CG while
-        # user enable multiple backends which use the same DS8K.
-        try:
-            volume_backend_name = (
-                group.host[group.host.index('@') + 1:group.host.index('#')])
-        except ValueError:
-            raise exception.VolumeDriverException(
-                message=(_('Invalid host %(host)s in group %(group)s')
-                         % {'host': group.host, 'group': group.id}))
-        lss_in_cg = set()
-        if volume_backend_name == self.configuration.volume_backend_name:
-            if is_snapshot:
-                luns = [Lun(snapshot, is_snapshot=True)
-                        for snapshot in group.snapshots]
-            else:
-                luns = [Lun(volume) for volume in group.volumes]
-            lss_in_cg = set(lun.ds_id[:2] for lun in luns if lun.ds_id)
-        return lss_in_cg
+    def _get_lss_pairs_in_group(self, group, is_snapshot=False):
+        lss_pairs_in_group = set()
+        if is_snapshot:
+            luns = [Lun(snapshot, is_snapshot=True)
+                    for snapshot in group.snapshots]
+        else:
+            luns = [Lun(volume) for volume in group.volumes]
+        if group.consisgroup_replication_enabled and not is_snapshot:
+            lss_pairs_in_group = set((lun.ds_id[:2], lun.replica_ds_id[:2])
+                                     for lun in luns if lun.ds_id and
+                                     lun.replica_ds_id)
+        else:
+            lss_pairs_in_group = set((lun.ds_id[:2], None)
+                                     for lun in luns if lun.ds_id)
+        return lss_pairs_in_group
 
-    def _find_lss_for_cg(self):
-        # Unable to get CGs/groups belonging to the current tenant, so
-        # get all of them, this function will consume some time if there
-        # are so many CGs/groups.
-        lss_used = set()
+    def _find_lss_pair_for_cg(self, group):
+        lss_pairs_used = set()
         ctxt = context.get_admin_context()
-        existing_groups = objects.GroupList.get_all(
-            ctxt, filters={'status': 'available'})
-        for group in existing_groups:
-            if Group(group).consisgroup_enabled:
-                lss_used = lss_used | self._get_lss_in_cg(group)
-        existing_groupsnapshots = objects.GroupSnapshotList.get_all(
-            ctxt, filters={'status': 'available'})
-        for group in existing_groupsnapshots:
-            if Group(group, True).consisgroup_enabled:
-                lss_used = lss_used | self._get_lss_in_cg(group, True)
-        available_lss = set(self._helper.backend['lss_ids_for_cg']) - lss_used
-        for lss_set in self.consisgroup_cache.values():
-            available_lss -= lss_set
-        self._assert(available_lss,
+        filters = {'host': group.host, 'status': 'available'}
+        groups = objects.GroupList.get_all(ctxt, filters=filters)
+        for grp in groups:
+            grp = Group(grp)
+            if (grp.consisgroup_snapshot_enabled or
+                    grp.consisgroup_replication_enabled):
+                lss_pairs_used |= self._get_lss_pairs_in_group(grp)
+        group_snapshots = (
+            objects.GroupSnapshotList.get_all(ctxt, filters=filters))
+        for grp in group_snapshots:
+            grp = Group(grp, True)
+            if (grp.consisgroup_snapshot_enabled or
+                    grp.consisgroup_replication_enabled):
+                lss_pairs_used |= self._get_lss_pairs_in_group(grp, True)
+        # in order to keep one-to-one pprc mapping relationship, zip LSSs
+        # which reserved by user.
+        if group.consisgroup_replication_enabled:
+            target_helper = self._replication.get_target_helper()
+            available_lss_pairs = zip(self._helper.backend['lss_ids_for_cg'],
+                                      target_helper.backend['lss_ids_for_cg'])
+        else:
+            available_lss_pairs = [(lss, None) for lss in
+                                   self._helper.backend['lss_ids_for_cg']]
+
+        source_lss_used = set()
+        for lss_pair in lss_pairs_used:
+            source_lss_used.add(lss_pair[0])
+        # in concurrency case, lss may be reversed in cache but the group has
+        # not been committed into DB.
+        for lss_pairs_set in self.consisgroup_cache.values():
+            source_lss_used |= set(lss_pair[0] for lss_pair in lss_pairs_set)
+
+        available_lss_pairs = [lss_pair for lss_pair in available_lss_pairs
+                               if lss_pair[0] not in source_lss_used]
+        self._assert(available_lss_pairs,
                      "All LSSs reserved for CG have been used out, "
                      "please reserve more LSS for CG if there are still"
                      "some empty LSSs left.")
-        LOG.debug('_find_lss_for_cg: available LSSs for consistency '
-                  'group are %s', ','.join(available_lss))
-        return available_lss
+        LOG.debug('_find_lss_pair_for_cg: available LSSs for consistency '
+                  'group are %s', available_lss_pairs)
+        return available_lss_pairs
 
     @proxy.logger
-    def _find_pool_for_lss(self, available_lss):
-        for lss in available_lss:
-            pid = self._helper.get_pool(lss)
-            if pid:
-                return (pid, lss)
+    def _find_pool_for_lss(self, available_lss_pairs):
+        # all LSS pairs have target LSS or do not have.
+        for src_lss, tgt_lss in available_lss_pairs:
+            src_pid = self._helper.get_pool(src_lss)
+            if not src_pid:
+                continue
+            if tgt_lss:
+                target_helper = self._replication.get_target_helper()
+                tgt_pid = target_helper.get_pool(tgt_lss)
+                if tgt_pid:
+                    return ({'source': (src_pid, src_lss),
+                             'target': (tgt_pid, tgt_lss)},
+                            (src_lss, tgt_lss))
+            else:
+                return {'source': (src_pid, src_lss)}, (src_lss, tgt_lss)
         raise exception.VolumeDriverException(
             message=(_("Can not find pool for LSSs %s.")
-                     % ','.join(available_lss)))
+                     % ','.join(available_lss_pairs)))
 
     @proxy.logger
     def _clone_lun(self, src_lun, tgt_lun):
@@ -652,7 +699,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
 
     def _create_replica_helper(self, lun):
         if not lun.pool_lss_pair.get('target'):
-            lun = self._replication.enable_replication(lun, True)
+            lun = self._replication.establish_replication(lun, True)
         else:
             lun = self._replication.create_replica(lun)
         return lun
@@ -869,7 +916,8 @@ class DS8KProxy(proxy.IBMStorageProxy):
             # exception happens during clean up can be ignored.
             if new_type_replication:
                 new_lun.type_replication = True
-                new_lun = self._replication.enable_replication(new_lun, True)
+                new_lun = self._replication.establish_replication(new_lun,
+                                                                  True)
             elif old_type_replication:
                 new_lun.type_replication = False
                 try:
@@ -886,7 +934,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
             # lun when failed to enable replication or delete replica.
             if not old_type_replication and new_type_replication:
                 lun.type_replication = True
-                lun = self._replication.enable_replication(lun)
+                lun = self._replication.establish_replication(lun)
             elif old_type_replication and not new_type_replication:
                 lun = self._replication.delete_replica(lun)
                 lun.type_replication = False
@@ -897,73 +945,125 @@ class DS8KProxy(proxy.IBMStorageProxy):
     @proxy.logger
     def initialize_connection(self, volume, connector, **kwargs):
         """Attach a volume to the host."""
-        vol_id = Lun(volume).ds_id
-        LOG.info('Attach the volume %s.', vol_id)
-        return self._helper.initialize_connection(vol_id, connector, **kwargs)
+        lun = Lun(volume)
+        LOG.info('Attach the volume %s.', lun.ds_id)
+        if lun.group and lun.failed_over:
+            backend_helper = self._replication.get_target_helper()
+        else:
+            backend_helper = self._helper
+        return backend_helper.initialize_connection(lun.ds_id, connector,
+                                                    **kwargs)
 
     @proxy._trace_time
     @proxy.logger
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         """Detach a volume from a host."""
-        vol_id = Lun(volume).ds_id
-        LOG.info('Detach the volume %s.', vol_id)
-        return self._helper.terminate_connection(vol_id, connector,
-                                                 force, **kwargs)
+        lun = Lun(volume)
+        LOG.info('Detach the volume %s.', lun.ds_id)
+        if lun.group and lun.failed_over:
+            backend_helper = self._replication.get_target_helper()
+        else:
+            backend_helper = self._helper
+        return backend_helper.terminate_connection(lun.ds_id, connector,
+                                                   force, **kwargs)
 
     @proxy.logger
     def create_group(self, ctxt, group):
-        """Create generic volume group."""
-        if Group(group).consisgroup_enabled:
+        """Create consistency group of FlashCopy or RemoteCopy."""
+        grp = Group(group)
+        if (grp.group_replication_enabled or
+                grp.consisgroup_replication_enabled):
+            for volume_type in group.volume_types:
+                replication_type = utils.is_replicated_spec(
+                    volume_type.extra_specs)
+                self._assert(replication_type,
+                             'Unable to create group: group %(grp)s '
+                             'is for replication type, but volume '
+                             '%(vtype)s is a non-replication one.'
+                             % {'grp': grp.id, 'vtype': volume_type.id})
+        if (grp.consisgroup_snapshot_enabled or
+                grp.consisgroup_replication_enabled):
             self._assert(self._helper.backend['lss_ids_for_cg'],
                          'No LSS(s) for CG, please make sure you have '
                          'reserved LSS for CG via param lss_range_for_cg.')
-        return self._helper.create_group(group)
+            model_update = {}
+            if grp.consisgroup_replication_enabled:
+                self._helper.verify_rest_version_for_pprc_cg()
+                target_helper = self._replication.get_target_helper()
+                target_helper.verify_rest_version_for_pprc_cg()
+                model_update['replication_status'] = (
+                    fields.ReplicationStatus.ENABLED)
+            model_update.update(self._helper.create_group(group))
+            return model_update
+        else:
+            # NOTE(jiamin): If grp.group_replication_enabled is True, the
+            # default implementation will handle the creation of the group
+            # and driver just makes sure each volume type in group has
+            # enabled replication.
+            raise NotImplementedError()
 
     @proxy.logger
     def delete_group(self, ctxt, group, volumes):
-        """Delete group and the volumes in the group."""
-        luns = [Lun(volume) for volume in volumes]
-        if Group(group).consisgroup_enabled:
+        """Delete consistency group and volumes in it."""
+        grp = Group(group)
+        if grp.consisgroup_snapshot_enabled:
+            luns = [Lun(volume) for volume in volumes]
+            return self._delete_group_with_lock(group, luns)
+        elif grp.consisgroup_replication_enabled:
+            self._assert(not grp.failed_over,
+                         'Group %s has been failed over, it does '
+                         'not support to delete it' % grp.id)
+            luns = [Lun(volume) for volume in volumes]
+            for lun in luns:
+                self._replication.delete_replica(lun)
             return self._delete_group_with_lock(group, luns)
         else:
-            return self._helper.delete_group(group, luns)
+            raise NotImplementedError()
 
     @coordination.synchronized('{self.prefix}-consistency-group')
     def _delete_group_with_lock(self, group, luns):
         model_update, volumes_model_update = (
             self._helper.delete_group(group, luns))
         if model_update['status'] == fields.GroupStatus.DELETED:
-            self._update_consisgroup_cache(group.id)
+            self._remove_record_from_consisgroup_cache(group.id)
         return model_update, volumes_model_update
 
     @proxy.logger
     def delete_group_snapshot(self, ctxt, group_snapshot, snapshots):
         """Delete volume group snapshot."""
-        tgt_luns = [Lun(s, is_snapshot=True) for s in snapshots]
-        if Group(group_snapshot, True).consisgroup_enabled:
+        grp = Group(group_snapshot, True)
+        if (grp.consisgroup_snapshot_enabled or
+                grp.consisgroup_replication_enabled):
+            tgt_luns = [Lun(s, is_snapshot=True) for s in snapshots]
             return self._delete_group_snapshot_with_lock(
                 group_snapshot, tgt_luns)
         else:
-            return self._helper.delete_group_snapshot(
-                group_snapshot, tgt_luns)
+            raise NotImplementedError()
 
     @coordination.synchronized('{self.prefix}-consistency-group')
     def _delete_group_snapshot_with_lock(self, group_snapshot, tgt_luns):
         model_update, snapshots_model_update = (
             self._helper.delete_group_snapshot(group_snapshot, tgt_luns))
         if model_update['status'] == fields.GroupStatus.DELETED:
-            self._update_consisgroup_cache(group_snapshot.id)
+            self._remove_record_from_consisgroup_cache(group_snapshot.id)
         return model_update, snapshots_model_update
 
     @proxy.logger
     def create_group_snapshot(self, ctxt, group_snapshot, snapshots):
         """Create volume group snapshot."""
+        tgt_group = Group(group_snapshot, True)
+        if (not tgt_group.consisgroup_snapshot_enabled and
+                not tgt_group.consisgroup_replication_enabled):
+            raise NotImplementedError()
+
+        src_group = Group(group_snapshot.group)
+        self._assert(not src_group.failed_over,
+                     'Group %s has been failed over, it does not '
+                     'support to create group snapshot.' % src_group.id)
         snapshots_model_update = []
         model_update = {'status': fields.GroupStatus.AVAILABLE}
-
-        src_luns = [Lun(snapshot['volume']) for snapshot in snapshots]
+        src_luns = [Lun(snapshot.volume) for snapshot in snapshots]
         tgt_luns = [Lun(snapshot, is_snapshot=True) for snapshot in snapshots]
-
         try:
             if src_luns and tgt_luns:
                 self._clone_group(src_luns, tgt_luns)
@@ -984,89 +1084,89 @@ class DS8KProxy(proxy.IBMStorageProxy):
     @proxy.logger
     def update_group(self, ctxt, group, add_volumes, remove_volumes):
         """Update generic volume group."""
-        if Group(group).consisgroup_enabled:
-            return self._update_group(group, add_volumes, remove_volumes)
+        grp = Group(group)
+        if (grp.consisgroup_snapshot_enabled or
+                grp.consisgroup_replication_enabled):
+            self._assert(not grp.failed_over,
+                         'Group %s has been failed over, it does not '
+                         'support to update it.' % grp.id)
+            return self._update_consisgroup(grp, add_volumes, remove_volumes)
         else:
-            return None, None, None
+            raise NotImplementedError()
 
-    def _update_group(self, group, add_volumes, remove_volumes):
+    def _update_consisgroup(self, grp, add_volumes, remove_volumes):
         add_volumes_update = []
-        group_volume_ids = [vol.id for vol in group.volumes]
-        add_volumes = [vol for vol in add_volumes
-                       if vol.id not in group_volume_ids]
-        remove_volumes = [vol for vol in remove_volumes
-                          if vol.id in group_volume_ids]
         if add_volumes:
-            add_luns = [Lun(vol) for vol in add_volumes]
-            lss_in_cg = [Lun(vol).ds_id[:2] for vol in group.volumes]
-            if not lss_in_cg:
-                lss_in_cg = self._find_lss_for_empty_group(group, add_luns)
-            add_volumes_update = self._add_volumes_into_group(
-                group, add_luns, lss_in_cg)
+            add_volumes_update = self._add_volumes_into_consisgroup(
+                grp, add_volumes)
+        remove_volumes_update = []
         if remove_volumes:
-            self._remove_volumes_in_group(group, add_volumes, remove_volumes)
-        return None, add_volumes_update, None
+            remove_volumes_update = self._remove_volumes_from_consisgroup(
+                grp, add_volumes, remove_volumes)
+        return None, add_volumes_update, remove_volumes_update
 
-    @coordination.synchronized('{self.prefix}-consistency-group')
-    def _find_lss_for_empty_group(self, group, luns):
-        sorted_lss_ids = collections.Counter([lun.ds_id[:2] for lun in luns])
-        available_lss = self._find_lss_for_cg()
-        lss_for_cg = None
-        for lss_id in sorted_lss_ids:
-            if lss_id in available_lss:
-                lss_for_cg = lss_id
-                break
-        if not lss_for_cg:
-            lss_for_cg = available_lss.pop()
-        self._update_consisgroup_cache(group.id, lss_for_cg)
-        return lss_for_cg
-
-    def _add_volumes_into_group(self, group, add_luns, lss_in_cg):
+    @proxy.logger
+    def _add_volumes_into_consisgroup(self, grp, add_volumes):
         add_volumes_update = []
-        luns = [lun for lun in add_luns if lun.ds_id[:2] not in lss_in_cg]
-        for lun in luns:
-            if lun.type_replication:
-                new_lun = self._clone_lun_for_group(group, lun)
-                new_lun.type_replication = True
-                new_lun = self._replication.enable_replication(new_lun, True)
-                lun = self._replication.delete_replica(lun)
-            else:
-                new_lun = self._clone_lun_for_group(group, lun)
-            self._helper.delete_lun(lun)
-            volume_update = new_lun.update_volume(lun)
-            volume_update['id'] = new_lun.os_id
+        new_add_luns, old_add_luns = (
+            self._clone_lun_for_consisgroup(add_volumes, grp))
+        for new_add_lun, old_add_lun in zip(new_add_luns, old_add_luns):
+            volume_update = new_add_lun.update_volume(old_add_lun)
+            volume_update['id'] = new_add_lun.os_id
             add_volumes_update.append(volume_update)
         return add_volumes_update
 
-    def _clone_lun_for_group(self, group, lun):
-        lun.group = Group(group)
-        new_lun = lun.shallow_copy()
-        new_lun.type_replication = False
-        self._clone_lun(lun, new_lun)
-        return new_lun
-
+    @proxy.logger
     @coordination.synchronized('{self.prefix}-consistency-group')
-    def _remove_volumes_in_group(self, group, add_volumes, remove_volumes):
-        if len(remove_volumes) == len(group.volumes) + len(add_volumes):
-            self._update_consisgroup_cache(group.id)
+    def _remove_volumes_from_consisgroup(self, grp, add_volumes,
+                                         remove_volumes):
+        remove_volumes_update = []
+        new_remove_luns, old_remove_luns = (
+            self._clone_lun_for_consisgroup(remove_volumes))
+        for new_remove_lun, old_remove_lun in zip(new_remove_luns,
+                                                  old_remove_luns):
+            volume_update = new_remove_lun.update_volume(old_remove_lun)
+            volume_update['id'] = new_remove_lun.os_id
+            remove_volumes_update.append(volume_update)
+        if len(remove_volumes) == len(grp.volumes) + len(add_volumes):
+            self._remove_record_from_consisgroup_cache(grp.id)
+        return remove_volumes_update
+
+    def _clone_lun_for_consisgroup(self, volumes, grp=None):
+        new_luns = []
+        old_luns = []
+        for volume in volumes:
+            old_lun = Lun(volume)
+            if old_lun.ds_id:
+                new_lun = old_lun.shallow_copy()
+                new_lun.group = grp
+                self._clone_lun(old_lun, new_lun)
+                if old_lun.type_replication:
+                    new_lun = self._create_replica_helper(new_lun)
+                    old_lun = self._replication.delete_replica(old_lun)
+                self._helper.delete_lun(old_lun)
+                new_luns.append(new_lun)
+                old_luns.append(old_lun)
+        return new_luns, old_luns
 
     @proxy.logger
-    def _update_consisgroup_cache(self, group_id, lss_id=None):
-        if lss_id:
-            self.consisgroup_cache[group_id] = set([lss_id])
-        else:
-            if self.consisgroup_cache.get(group_id):
-                LOG.debug('Group %(id)s owns LSS %(lss)s in the cache.', {
-                    'id': group_id,
-                    'lss': ','.join(self.consisgroup_cache[group_id])
-                })
-                self.consisgroup_cache.pop(group_id)
+    def _remove_record_from_consisgroup_cache(self, group_id):
+        lss_pairs = self.consisgroup_cache.get(group_id)
+        if lss_pairs:
+            LOG.debug('Consistecy Group %(id)s owns LSS %(lss)s in the cache.',
+                      {'id': group_id, 'lss': lss_pairs})
+            self.consisgroup_cache.pop(group_id)
 
     @proxy._trace_time
     def create_group_from_src(self, ctxt, group, volumes, group_snapshot,
                               sorted_snapshots, source_group,
                               sorted_source_vols):
         """Create volume group from volume group or volume group snapshot."""
+        grp = Group(group)
+        if (not grp.consisgroup_snapshot_enabled and
+                not grp.consisgroup_replication_enabled):
+            raise NotImplementedError()
+
         model_update = {'status': fields.GroupStatus.AVAILABLE}
         volumes_model_update = []
 
@@ -1076,6 +1176,10 @@ class DS8KProxy(proxy.IBMStorageProxy):
         elif source_group and sorted_source_vols:
             src_luns = [Lun(source_vol)
                         for source_vol in sorted_source_vols]
+            src_group = Group(source_group)
+            self._assert(not src_group.failed_over,
+                         'Group %s has been failed over, it does not '
+                         'support to create a group from it.' % src_group.id)
         else:
             msg = _("_create_group_from_src supports a group snapshot "
                     "source or a group source, other sources can not "
@@ -1084,16 +1188,6 @@ class DS8KProxy(proxy.IBMStorageProxy):
             raise exception.InvalidInput(message=msg)
 
         try:
-            # Don't use paramter volumes because it has DetachedInstanceError
-            # issue frequently. here tries to get and sort new volumes, a lot
-            # of cases have been guaranteed by the _sort_source_vols in
-            # manange.py, so not verify again.
-            sorted_volumes = []
-            for vol in volumes:
-                found_vols = [v for v in group.volumes if v['id'] == vol['id']]
-                sorted_volumes.extend(found_vols)
-            volumes = sorted_volumes
-
             tgt_luns = [Lun(volume) for volume in volumes]
             if src_luns and tgt_luns:
                 self._clone_group(src_luns, tgt_luns)
@@ -1128,7 +1222,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
                     "source_volume": src_lun.ds_id,
                     "target_volume": tgt_lun.ds_id
                 })
-            if tgt_lun.group.consisgroup_enabled:
+            if tgt_lun.group.consisgroup_snapshot_enabled:
                 self._do_flashcopy_with_freeze(vol_pairs)
             else:
                 self._helper.start_flashcopy(vol_pairs)
@@ -1175,49 +1269,53 @@ class DS8KProxy(proxy.IBMStorageProxy):
                          self._active_backend_id)
                 return self._active_backend_id, volume_update_list, []
 
-            backend_id = self._replication._target_helper.backend['id']
+            target_helper = self._replication.get_target_helper()
             if secondary_id is None:
-                secondary_id = backend_id
-            elif secondary_id != backend_id:
+                secondary_id = target_helper.backend['id']
+            elif secondary_id != target_helper.backend['id']:
                 raise exception.InvalidReplicationTarget(
                     message=(_('Invalid secondary_backend_id specified. '
-                               'Valid backend id is %s.') % backend_id))
+                               'Valid backend id is %s.')
+                             % target_helper.backend['id']))
 
-        LOG.debug("Starting failover to %s.", secondary_id)
-
-        replicated_luns = []
-        for volume in volumes:
-            lun = Lun(volume)
-            if lun.type_replication and lun.status == "available":
-                replicated_luns.append(lun)
-            else:
-                volume_update = (
-                    self._replication.failover_unreplicated_volume(lun))
-                volume_update_list.append(volume_update)
-
-        if replicated_luns:
+        LOG.debug("Starting failover host to %s.", secondary_id)
+        # all volumes passed to failover_host are replicated.
+        replicated_luns = [Lun(volume) for volume in volumes if
+                           volume.status in ('available', 'in-use')]
+        # volumes in group may have been failed over.
+        if secondary_id != strings.PRIMARY_BACKEND_ID:
+            failover_luns = [lun for lun in replicated_luns if
+                             not lun.failed_over]
+        else:
+            failover_luns = [lun for lun in replicated_luns if
+                             lun.failed_over]
+        if failover_luns:
             try:
                 if secondary_id != strings.PRIMARY_BACKEND_ID:
-                    self._replication.do_pprc_failover(replicated_luns,
-                                                       secondary_id)
+                    self._replication.start_host_pprc_failover(
+                        failover_luns, secondary_id)
                     self._active_backend_id = secondary_id
-                    replicated_luns = self._switch_backend_connection(
-                        secondary_id, replicated_luns)
                 else:
-                    self._replication.start_pprc_failback(
-                        replicated_luns, self._active_backend_id)
+                    self._replication.start_host_pprc_failback(
+                        failover_luns, secondary_id)
                     self._active_backend_id = ""
-                    self._helper = self._replication._source_helper
+                self._helper = self._replication.get_source_helper()
             except restclient.APIException as e:
                 raise exception.UnableToFailOver(
                     reason=(_("Unable to failover host to %(id)s. "
                               "Exception= %(ex)s")
                             % {'id': secondary_id, 'ex': six.text_type(e)}))
 
-            for lun in replicated_luns:
+            for lun in failover_luns:
                 volume_update = lun.get_volume_update()
+                # failover_host in base cinder has considered previous status
+                # of the volume, it doesn't need to return it for update.
+                volume_update['status'] = (
+                    lun.previous_status or 'available')
                 volume_update['replication_status'] = (
-                    'failed-over' if self._active_backend_id else 'enabled')
+                    fields.ReplicationStatus.FAILED_OVER
+                    if self._active_backend_id else
+                    fields.ReplicationStatus.ENABLED)
                 model_update = {'volume_id': lun.os_id,
                                 'updates': volume_update}
                 volume_update_list.append(model_update)
@@ -1225,11 +1323,160 @@ class DS8KProxy(proxy.IBMStorageProxy):
             LOG.info("No volume has replication capability.")
             if secondary_id != strings.PRIMARY_BACKEND_ID:
                 LOG.info("Switch to the target %s", secondary_id)
-                self._switch_backend_connection(secondary_id)
+                self._replication.switch_source_and_target_client()
                 self._active_backend_id = secondary_id
             else:
                 LOG.info("Switch to the primary %s", secondary_id)
-                self._switch_backend_connection(self._active_backend_id)
+                self._replication.switch_source_and_target_client()
                 self._active_backend_id = ""
 
-        return secondary_id, volume_update_list, []
+        # No group entity in DS8K, so just need to update replication_status
+        # of the group.
+        group_update_list = []
+        groups = [grp for grp in groups if grp.status == 'available']
+        if groups:
+            if secondary_id != strings.PRIMARY_BACKEND_ID:
+                update_groups = [grp for grp in groups
+                                 if grp.replication_status ==
+                                 fields.ReplicationStatus.ENABLED]
+                repl_status = fields.ReplicationStatus.FAILED_OVER
+            else:
+                update_groups = [grp for grp in groups
+                                 if grp.replication_status ==
+                                 fields.ReplicationStatus.FAILED_OVER]
+                repl_status = fields.ReplicationStatus.ENABLED
+            if update_groups:
+                for group in update_groups:
+                    group_update = {
+                        'group_id': group.id,
+                        'updates': {'replication_status': repl_status}
+                    }
+                    group_update_list.append(group_update)
+
+        return secondary_id, volume_update_list, group_update_list
+
+    def enable_replication(self, context, group, volumes):
+        """Resume pprc pairs.
+
+        if user wants to adjust group, he/she does not need to pause/resume
+        pprc pairs, here just provide a way to resume replicaiton.
+        """
+        volumes_model_update = []
+        model_update = (
+            {'replication_status': fields.ReplicationStatus.ENABLED})
+        if volumes:
+            luns = [Lun(volume) for volume in volumes]
+            try:
+                self._replication.enable_replication(luns)
+            except restclient.APIException as e:
+                msg = (_('Failed to enable replication for group %(id)s, '
+                         'Exception: %(ex)s.')
+                       % {'id': group.id, 'ex': six.text_type(e)})
+                LOG.exception(msg)
+                raise exception.VolumeDriverException(message=msg)
+            for lun in luns:
+                volumes_model_update.append(
+                    {'id': lun.os_id,
+                     'replication_status': fields.ReplicationStatus.ENABLED})
+        return model_update, volumes_model_update
+
+    def disable_replication(self, context, group, volumes):
+        """Pause pprc pairs.
+
+        if user wants to adjust group, he/she does not need to pause/resume
+        pprc pairs, here just provide a way to pause replicaiton.
+        """
+        volumes_model_update = []
+        model_update = (
+            {'replication_status': fields.ReplicationStatus.DISABLED})
+        if volumes:
+            luns = [Lun(volume) for volume in volumes]
+            try:
+                self._replication.disable_replication(luns)
+            except restclient.APIException as e:
+                msg = (_('Failed to disable replication for group %(id)s, '
+                         'Exception: %(ex)s.')
+                       % {'id': group.id, 'ex': six.text_type(e)})
+                LOG.exception(msg)
+                raise exception.VolumeDriverException(message=msg)
+            for lun in luns:
+                volumes_model_update.append(
+                    {'id': lun.os_id,
+                     'replication_status': fields.ReplicationStatus.DISABLED})
+        return model_update, volumes_model_update
+
+    def failover_replication(self, context, group, volumes,
+                             secondary_backend_id):
+        """Fail over replication for a group and volumes in the group."""
+        volumes_model_update = []
+        model_update = {}
+        luns = [Lun(volume) for volume in volumes]
+        if secondary_backend_id == strings.PRIMARY_BACKEND_ID:
+            if luns:
+                if not luns[0].failed_over:
+                    LOG.info("Group %s has been failed back. it doesn't "
+                             "need to fail back again.", group.id)
+                    return model_update, volumes_model_update
+            else:
+                return model_update, volumes_model_update
+        else:
+            target_helper = self._replication.get_target_helper()
+            backend_id = target_helper.backend['id']
+            if secondary_backend_id is None:
+                secondary_backend_id = backend_id
+            elif secondary_backend_id != backend_id:
+                raise exception.InvalidReplicationTarget(
+                    message=(_('Invalid secondary_backend_id %(id)s. '
+                               'Valid backend ids are %(ids)s.')
+                             % {'id': secondary_backend_id,
+                                'ids': (strings.PRIMARY_BACKEND_ID,
+                                        backend_id)}))
+            if luns:
+                if luns[0].failed_over:
+                    LOG.info("Group %(grp)s has been failed over to %(id)s.",
+                             {'grp': group.id, 'id': backend_id})
+                    return model_update, volumes_model_update
+            else:
+                return model_update, volumes_model_update
+
+        LOG.debug("Starting failover group %(grp)s to %(id)s.",
+                  {'grp': group.id, 'id': secondary_backend_id})
+        try:
+            if secondary_backend_id != strings.PRIMARY_BACKEND_ID:
+                self._replication.start_group_pprc_failover(
+                    luns, secondary_backend_id)
+                model_update['replication_status'] = (
+                    fields.ReplicationStatus.FAILED_OVER)
+            else:
+                self._replication.start_group_pprc_failback(
+                    luns, secondary_backend_id)
+                model_update['replication_status'] = (
+                    fields.ReplicationStatus.ENABLED)
+        except restclient.APIException as e:
+            raise exception.VolumeDriverException(
+                message=(_("Unable to failover group %(grp_id)s to "
+                           "backend %(bck_id)s. Exception= %(ex)s")
+                         % {'grp_id': group.id,
+                            'bck_id': secondary_backend_id,
+                            'ex': six.text_type(e)}))
+
+        for lun in luns:
+            volume_model_update = lun.get_volume_update()
+            # base cinder doesn't consider previous status of the volume
+            # in failover_replication, so here returns it for update.
+            volume_model_update['previous_status'] = lun.status
+            volume_model_update['status'] = (
+                lun.previous_status or 'available')
+            volume_model_update['replication_status'] = (
+                model_update['replication_status'])
+            volume_model_update['id'] = lun.os_id
+            volumes_model_update.append(volume_model_update)
+        return model_update, volumes_model_update
+
+    def get_replication_error_status(self, context, groups):
+        """Return error info for replicated groups and its volumes.
+
+        all pprc copy related APIs wait until copy is finished, so it does
+        not need to check their status afterwards.
+        """
+        return [], []
