@@ -1,0 +1,3 @@
+---
+fixes:
+  - Update backend state in scheduler when extending volume.

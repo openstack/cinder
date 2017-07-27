@@ -348,9 +348,12 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
 
         filter_properties['new_size'] = new_size
         try:
-            self.driver.backend_passes_filters(context,
-                                               volume.service_topic_queue,
-                                               request_spec, filter_properties)
+            backend_state = self.driver.backend_passes_filters(
+                context,
+                volume.service_topic_queue,
+                request_spec, filter_properties)
+            backend_state.consume_from_volume(
+                {'size': new_size - volume.size})
             volume_rpcapi.VolumeAPI().extend_volume(context, volume, new_size,
                                                     reservations)
         except exception.NoValidBackend as ex:
