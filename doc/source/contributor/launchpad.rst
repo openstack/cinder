@@ -45,8 +45,8 @@ Cinder no longer uses Launchpad Answers to track Cinder technical support questi
 Note that `Ask OpenStack`_ (which is not hosted on Launchpad) can
 be used for technical support requests.
 
-.. _Launchpad: http://launchpad.net
-.. _Wiki: http://wiki.openstack.org
+.. _Launchpad: https://launchpad.net
+.. _Wiki: https://wiki.openstack.org/wiki/Main_Page
 .. _Cinder Team: https://launchpad.net/~cinder
 .. _OpenStack Team: https://launchpad.net/~openstack
-.. _Ask OpenStack: http://ask.openstack.org
+.. _Ask OpenStack: https://ask.openstack.org

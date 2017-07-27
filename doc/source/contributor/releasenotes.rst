@@ -43,7 +43,7 @@ If the following applies to the patch, a release note is required:
 
   * REST API changes
 
-Cinder uses `reno <http://docs.openstack.org/developer/reno/usage.html>`_ to
+Cinder uses `reno <https://docs.openstack.org/reno/latest/>`_ to
 generate release notes. Please read the docs for details. In summary, use
 
 .. code-block:: bash
