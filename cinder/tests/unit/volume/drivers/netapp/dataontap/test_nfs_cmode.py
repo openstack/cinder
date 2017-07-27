@@ -26,6 +26,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder.image import image_utils
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes as \
@@ -161,7 +162,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                 'netapp_aggregate': 'aggr1',
                 'netapp_raid_type': 'raid_dp',
                 'netapp_disk_type': 'SSD',
-                'consistencygroup_support': True,
+                'consistent_group_snapshot_enabled': True,
             },
         }
         mock_get_ssc = self.mock_object(self.driver.ssc_library,
@@ -234,6 +235,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'netapp_raid_type': 'raid_dp',
             'netapp_disk_type': 'SSD',
             'consistencygroup_support': True,
+            'consistent_group_snapshot_enabled': True,
             'replication_enabled': False,
         }]
         if replication_backends:
@@ -1421,16 +1423,16 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.assertEqual('dev1', actual_active)
         self.assertEqual([], vol_updates)
 
-    def test_delete_cgsnapshot(self):
+    def test_delete_group_snapshot(self):
         mock_delete_backing_file = self.mock_object(
             self.driver, '_delete_backing_file_for_snapshot')
-        snapshots = [fake.CG_SNAPSHOT]
+        snapshots = [fake.VG_SNAPSHOT]
 
         model_update, snapshots_model_update = (
-            self.driver.delete_cgsnapshot(
-                fake.CG_CONTEXT, fake.CG_SNAPSHOT, snapshots))
+            self.driver.delete_group_snapshot(
+                fake.VG_CONTEXT, fake.VG_SNAPSHOT, snapshots))
 
-        mock_delete_backing_file.assert_called_once_with(fake.CG_SNAPSHOT)
+        mock_delete_backing_file.assert_called_once_with(fake.VG_SNAPSHOT)
         self.assertIsNone(model_update)
         self.assertIsNone(snapshots_model_update)
 
@@ -1467,3 +1469,214 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.driver._get_backing_flexvol_names()
 
         mock_ssc_library.assert_called_once_with()
+
+    def test_create_group(self):
+
+        model_update = self.driver.create_group(
+            fake.VG_CONTEXT, fake.VOLUME_GROUP)
+
+        self.assertEqual('available', model_update['status'])
+
+    def test_update_group(self):
+
+        model_update, add_volumes_update, remove_volumes_update = (
+            self.driver.update_group(fake.VG_CONTEXT, "foo"))
+
+        self.assertIsNone(add_volumes_update)
+        self.assertIsNone(remove_volumes_update)
+
+    @ddt.data(None,
+              {'replication_status': fields.ReplicationStatus.ENABLED})
+    def test_create_group_from_src(self, volume_model_update):
+        volume_model_update = volume_model_update or {}
+        volume_model_update.update(
+            {'provider_location': fake.PROVIDER_LOCATION})
+        mock_create_volume_from_snapshot = self.mock_object(
+            self.driver, 'create_volume_from_snapshot',
+            return_value=volume_model_update)
+
+        model_update, volumes_model_update = (
+            self.driver.create_group_from_src(
+                fake.VG_CONTEXT, fake.VOLUME_GROUP, [fake.VOLUME],
+                group_snapshot=fake.VG_SNAPSHOT,
+                sorted_snapshots=[fake.SNAPSHOT]))
+
+        expected_volumes_model_updates = [{'id': fake.VOLUME['id']}]
+        expected_volumes_model_updates[0].update(volume_model_update)
+        mock_create_volume_from_snapshot.assert_called_once_with(
+            fake.VOLUME, fake.SNAPSHOT)
+        self.assertIsNone(model_update)
+        self.assertEqual(expected_volumes_model_updates, volumes_model_update)
+
+    @ddt.data(None,
+              {'replication_status': fields.ReplicationStatus.ENABLED})
+    def test_create_group_from_src_source_vols(self, volume_model_update):
+        self.driver.zapi_client = mock.Mock()
+        mock_get_snapshot_flexvols = self.mock_object(
+            self.driver, '_get_flexvol_names_from_hosts')
+        mock_get_snapshot_flexvols.return_value = (set([fake.VG_POOL_NAME]))
+        mock_clone_backing_file = self.mock_object(
+            self.driver, '_clone_backing_file_for_volume')
+        fake_snapshot_name = 'snapshot-temp-' + fake.VOLUME_GROUP['id']
+        mock_busy = self.mock_object(
+            self.driver.zapi_client, 'wait_for_busy_snapshot')
+        self.mock_object(self.driver, '_get_volume_model_update',
+                         return_value=volume_model_update)
+
+        model_update, volumes_model_update = (
+            self.driver.create_group_from_src(
+                fake.VG_CONTEXT, fake.VOLUME_GROUP, [fake.VG_VOLUME],
+                source_group=fake.VOLUME_GROUP,
+                sorted_source_vols=[fake.SOURCE_VG_VOLUME]))
+
+        expected_volumes_model_updates = [{
+            'id': fake.VG_VOLUME['id'],
+            'provider_location': fake.PROVIDER_LOCATION,
+        }]
+        if volume_model_update:
+            expected_volumes_model_updates[0].update(volume_model_update)
+        mock_get_snapshot_flexvols.assert_called_once_with(
+            [fake.SOURCE_VG_VOLUME['host']])
+        self.driver.zapi_client.create_cg_snapshot.assert_called_once_with(
+            set([fake.VG_POOL_NAME]), fake_snapshot_name)
+        mock_clone_backing_file.assert_called_once_with(
+            fake.SOURCE_VG_VOLUME['name'], fake.VG_VOLUME['name'],
+            fake.SOURCE_VG_VOLUME['id'], source_snapshot=fake_snapshot_name)
+        mock_busy.assert_called_once_with(
+            fake.VG_POOL_NAME, fake_snapshot_name)
+        self.driver.zapi_client.delete_snapshot.assert_called_once_with(
+            fake.VG_POOL_NAME, fake_snapshot_name)
+        self.assertIsNone(model_update)
+        self.assertEqual(expected_volumes_model_updates, volumes_model_update)
+
+    def test_create_group_from_src_invalid_parms(self):
+        model_update, volumes_model_update = (
+            self.driver.create_group_from_src(
+                fake.VG_CONTEXT, fake.VOLUME_GROUP, [fake.VOLUME]))
+
+        self.assertIn('error', model_update['status'])
+
+    def test_create_group_snapshot_raise_exception(self):
+        mock_is_cg_snapshot = self.mock_object(
+            volume_utils, 'is_group_a_cg_snapshot_type', return_value=True)
+        mock__get_flexvol_names = self.mock_object(
+            self.driver, '_get_flexvol_names_from_hosts')
+
+        self.mock_object(self.driver.zapi_client, 'create_cg_snapshot',
+                         side_effect=netapp_api.NaApiError)
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.driver.create_group_snapshot,
+                          fake.VG_CONTEXT,
+                          fake.VOLUME_GROUP,
+                          [fake.VG_SNAPSHOT])
+
+        mock_is_cg_snapshot.assert_called_once_with(fake.VOLUME_GROUP)
+        mock__get_flexvol_names.assert_called_once_with(
+            [fake.VG_SNAPSHOT['volume']['host']])
+
+    def test_create_group_snapshot(self):
+        mock_is_cg_snapshot = self.mock_object(
+            volume_utils, 'is_group_a_cg_snapshot_type', return_value=False)
+        mock__clone_backing_file_for_volume = self.mock_object(
+            self.driver, '_clone_backing_file_for_volume')
+
+        model_update, snapshots_model_update = (
+            self.driver.create_group_snapshot(fake.VG_CONTEXT,
+                                              fake.VOLUME_GROUP,
+                                              [fake.SNAPSHOT]))
+
+        self.assertIsNone(model_update)
+        self.assertIsNone(snapshots_model_update)
+        mock_is_cg_snapshot.assert_called_once_with(fake.VOLUME_GROUP)
+        mock__clone_backing_file_for_volume.assert_called_once_with(
+            fake.SNAPSHOT['volume_name'], fake.SNAPSHOT['name'],
+            fake.SNAPSHOT['volume_id'], is_snapshot=True)
+
+    def test_create_consistent_group_snapshot(self):
+        mock_is_cg_snapshot = self.mock_object(
+            volume_utils, 'is_group_a_cg_snapshot_type', return_value=True)
+
+        self.driver.zapi_client = mock.Mock()
+        mock_get_snapshot_flexvols = self.mock_object(
+            self.driver, '_get_flexvol_names_from_hosts')
+        mock_get_snapshot_flexvols.return_value = (set([fake.VG_POOL_NAME]))
+        mock_clone_backing_file = self.mock_object(
+            self.driver, '_clone_backing_file_for_volume')
+        mock_busy = self.mock_object(
+            self.driver.zapi_client, 'wait_for_busy_snapshot')
+
+        model_update, snapshots_model_update = (
+            self.driver.create_group_snapshot(fake.VG_CONTEXT,
+                                              fake.VOLUME_GROUP,
+                                              [fake.VG_SNAPSHOT]))
+
+        self.assertIsNone(model_update)
+        self.assertIsNone(snapshots_model_update)
+        mock_is_cg_snapshot.assert_called_once_with(fake.VOLUME_GROUP)
+        mock_get_snapshot_flexvols.assert_called_once_with(
+            [fake.VG_SNAPSHOT['volume']['host']])
+        self.driver.zapi_client.create_cg_snapshot.assert_called_once_with(
+            set([fake.VG_POOL_NAME]), fake.VOLUME_GROUP_ID)
+        mock_clone_backing_file.assert_called_once_with(
+            fake.VG_SNAPSHOT['volume']['name'], fake.VG_SNAPSHOT['name'],
+            fake.VG_SNAPSHOT['volume']['id'],
+            source_snapshot=fake.VOLUME_GROUP_ID)
+        mock_busy.assert_called_once_with(
+            fake.VG_POOL_NAME, fake.VOLUME_GROUP_ID)
+        self.driver.zapi_client.delete_snapshot.assert_called_once_with(
+            fake.VG_POOL_NAME, fake.VOLUME_GROUP_ID)
+
+    def test_create_group_snapshot_busy_snapshot(self):
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=True)
+        self.driver.zapi_client = mock.Mock()
+        snapshot = fake.VG_SNAPSHOT
+        snapshot['volume'] = fake.VG_VOLUME
+        mock_get_snapshot_flexvols = self.mock_object(
+            self.driver, '_get_flexvol_names_from_hosts')
+        mock_get_snapshot_flexvols.return_value = (set([fake.VG_POOL_NAME]))
+        mock_clone_backing_file = self.mock_object(
+            self.driver, '_clone_backing_file_for_volume')
+        mock_busy = self.mock_object(
+            self.driver.zapi_client, 'wait_for_busy_snapshot')
+        mock_busy.side_effect = exception.SnapshotIsBusy(snapshot['name'])
+        mock_mark_snapshot_for_deletion = self.mock_object(
+            self.driver.zapi_client, 'mark_snapshot_for_deletion')
+
+        self.driver.create_group_snapshot(
+            fake.VG_CONTEXT, fake.VG_SNAPSHOT, [snapshot])
+
+        mock_get_snapshot_flexvols.assert_called_once_with(
+            [snapshot['volume']['host']])
+        self.driver.zapi_client.create_cg_snapshot.assert_called_once_with(
+            set([fake.VG_POOL_NAME]), fake.VG_SNAPSHOT_ID)
+        mock_clone_backing_file.assert_called_once_with(
+            snapshot['volume']['name'], snapshot['name'],
+            snapshot['volume']['id'], source_snapshot=fake.VG_SNAPSHOT_ID)
+        mock_busy.assert_called_once_with(
+            fake.VG_POOL_NAME, fake.VG_SNAPSHOT_ID)
+        self.driver.zapi_client.delete_snapshot.assert_not_called()
+        mock_mark_snapshot_for_deletion.assert_called_once_with(
+            fake.VG_POOL_NAME, fake.VG_SNAPSHOT_ID)
+
+    def test_delete_group_volume_delete_failure(self):
+        self.mock_object(self.driver, '_delete_file', side_effect=Exception)
+
+        model_update, volumes = self.driver.delete_group(
+            fake.VG_CONTEXT, fake.VOLUME_GROUP, [fake.VG_VOLUME])
+
+        self.assertEqual('deleted', model_update['status'])
+        self.assertEqual('error_deleting', volumes[0]['status'])
+
+    def test_delete_group(self):
+        mock_delete_file = self.mock_object(
+            self.driver, '_delete_file')
+
+        model_update, volumes = self.driver.delete_group(
+            fake.VG_CONTEXT, fake.VOLUME_GROUP, [fake.VG_VOLUME])
+
+        self.assertEqual('deleted', model_update['status'])
+        self.assertEqual('deleted', volumes[0]['status'])
+        mock_delete_file.assert_called_once_with(
+            fake.VG_VOLUME_ID, fake.VG_VOLUME_NAME)

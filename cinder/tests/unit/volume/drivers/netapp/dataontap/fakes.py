@@ -457,6 +457,82 @@ CG_VOLUME_SNAPSHOT = {
 }
 
 
+VG_VOLUME_NAME = 'fake_vg_volume'
+VG_GROUP_NAME = 'fake_volume_group'
+VG_POOL_NAME = 'cdot'
+SOURCE_VG_VOLUME_NAME = 'fake_source_vg_volume'
+VG_VOLUME_ID = 'fake_vg_volume_id'
+VG_VOLUME_SIZE = 100
+SOURCE_VG_VOLUME_ID = 'fake_source_vg_volume_id'
+VOLUME_GROUP_NAME = 'fake_vg'
+SOURCE_VOLUME_GROUP_ID = 'fake_source_vg_id'
+VOLUME_GROUP_ID = 'fake_vg_id'
+VG_SNAPSHOT_ID = 'fake_vg_snapshot_id'
+VG_SNAPSHOT_NAME = 'snapshot-' + VG_SNAPSHOT_ID
+VG_VOLUME_SNAPSHOT_ID = 'fake_vg_volume_snapshot_id'
+
+VG_LUN_METADATA = {
+    'OsType': None,
+    'Path': '/vol/aggr1/fake_vg_volume',
+    'SpaceReserved': 'true',
+    'Qtree': None,
+    'Volume': POOL_NAME,
+}
+
+SOURCE_VG_VOLUME = {
+    'name': SOURCE_VG_VOLUME_NAME,
+    'size': VG_VOLUME_SIZE,
+    'id': SOURCE_VG_VOLUME_ID,
+    'host': 'hostname@backend#cdot',
+    'volumegroup_id': None,
+    'status': 'fake_status',
+    'provider_location': PROVIDER_LOCATION,
+}
+
+VG_VOLUME = {
+    'name': VG_VOLUME_NAME,
+    'size': 100,
+    'id': VG_VOLUME_ID,
+    'host': 'hostname@backend#' + VG_POOL_NAME,
+    'volumegroup_id': VOLUME_GROUP_ID,
+    'status': 'fake_status',
+    'provider_location': PROVIDER_LOCATION,
+}
+
+SOURCE_VOLUME_GROUP = {
+    'id': SOURCE_VOLUME_GROUP_ID,
+    'status': 'fake_status',
+}
+
+VOLUME_GROUP = {
+    'id': VOLUME_GROUP_ID,
+    'status': 'fake_status',
+    'name': VG_GROUP_NAME,
+}
+
+VG_CONTEXT = {}
+
+VG_SNAPSHOT = {
+    'id': VG_SNAPSHOT_ID,
+    'name': VG_SNAPSHOT_NAME,
+    'volume_size': VG_VOLUME_SIZE,
+    'volumegroup_id': VOLUME_GROUP_ID,
+    'status': 'fake_status',
+    'volume_id': 'fake_source_volume_id',
+    'volume': VG_VOLUME,
+}
+
+VG_VOLUME_SNAPSHOT = {
+    'name': VG_SNAPSHOT_NAME,
+    'volume_size': VG_VOLUME_SIZE,
+    'vgsnapshot_id': VG_SNAPSHOT_ID,
+    'id': VG_VOLUME_SNAPSHOT_ID,
+    'status': 'fake_status',
+    'volume_id': VG_VOLUME_ID,
+
+}
+
+
 class test_volume(object):
     pass
 

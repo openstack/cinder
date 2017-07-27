@@ -30,6 +30,7 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
@@ -281,3 +282,151 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
             LOG.debug("Snapshot %s deletion successful", snapshot['name'])
 
         return None, None
+
+    @utils.trace_method
+    def create_consistencygroup(self, context, group):
+        """Driver entry point for creating a consistency group.
+
+        ONTAP does not maintain an actual CG construct. As a result, no
+        communtication to the backend is necessary for consistency group
+        creation.
+
+        :returns: Hard-coded model update for consistency group model.
+        """
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
+        return model_update
+
+    @utils.trace_method
+    def delete_consistencygroup(self, context, group, volumes):
+        """Driver entry point for deleting a consistency group.
+
+        :returns: Updated consistency group model and list of volume models
+                  for the volumes that were deleted.
+        """
+        model_update = {'status': fields.ConsistencyGroupStatus.DELETED}
+        volumes_model_update = []
+        for volume in volumes:
+            try:
+                self._delete_file(volume['id'], volume['name'])
+                volumes_model_update.append(
+                    {'id': volume['id'], 'status': 'deleted'})
+            except Exception:
+                volumes_model_update.append(
+                    {'id': volume['id'],
+                     'status': 'error_deleting'})
+                LOG.exception("Volume %(vol)s in the consistency group "
+                              "could not be deleted.", {'vol': volume})
+        return model_update, volumes_model_update
+
+    @utils.trace_method
+    def update_consistencygroup(self, context, group, add_volumes=None,
+                                remove_volumes=None):
+        """Driver entry point for updating a consistency group.
+
+        Since no actual CG construct is ever created in ONTAP, it is not
+        necessary to update any metadata on the backend. Since this is a NO-OP,
+        there is guaranteed to be no change in any of the volumes' statuses.
+        """
+        return None, None, None
+
+    @utils.trace_method
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+        """Creates a Cinder cgsnapshot object.
+
+        The Cinder cgsnapshot object is created by making use of an ONTAP CG
+        snapshot in order to provide write-order consistency for a set of
+        backing flexvols. First, a list of the flexvols backing the given
+        Cinder volumes in the CG is determined. An ONTAP CG snapshot of the
+        flexvols creates a write-order consistent snapshot of each backing
+        flexvol. For each Cinder volume in the CG, it is then necessary to
+        clone its volume from the ONTAP CG snapshot. The naming convention
+        used to create the clones indicates the clone's role as a Cinder
+        snapshot and its inclusion in a Cinder CG snapshot. The ONTAP CG
+        snapshots, of each backing flexvol, are deleted after the cloning
+        operation is completed.
+
+        :returns: An implicit update for the cgsnapshot and snapshot models
+                  that is then used by the manager to set the models to
+                  available.
+        """
+
+        hosts = [snapshot['volume']['host'] for snapshot in snapshots]
+        flexvols = self._get_flexvol_names_from_hosts(hosts)
+
+        # Create snapshot for backing flexvol
+        self.zapi_client.create_cg_snapshot(flexvols, cgsnapshot['id'])
+
+        # Start clone process for snapshot files
+        for snapshot in snapshots:
+            self._clone_backing_file_for_volume(
+                snapshot['volume']['name'], snapshot['name'],
+                snapshot['volume']['id'], source_snapshot=cgsnapshot['id'])
+
+        # Delete backing flexvol snapshots
+        for flexvol_name in flexvols:
+            try:
+                self.zapi_client.wait_for_busy_snapshot(
+                    flexvol_name, cgsnapshot['id'])
+                self.zapi_client.delete_snapshot(
+                    flexvol_name, cgsnapshot['id'])
+            except exception.SnapshotIsBusy:
+                self.zapi_client.mark_snapshot_for_deletion(
+                    flexvol_name, cgsnapshot['id'])
+
+        return None, None
+
+    @utils.trace_method
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+        """Creates a CG from a either a cgsnapshot or group of cinder vols.
+
+        :returns: An implicit update for the volumes model that is
+                  interpreted by the manager as a successful operation.
+        """
+        LOG.debug("VOLUMES %s ", ', '.join([vol['id'] for vol in volumes]))
+        model_update = None
+        volumes_model_update = []
+
+        if cgsnapshot:
+            vols = zip(volumes, snapshots)
+
+            for volume, snapshot in vols:
+                update = self.create_volume_from_snapshot(
+                    volume, snapshot)
+                update['id'] = volume['id']
+                volumes_model_update.append(update)
+
+        elif source_cg and source_vols:
+            hosts = [source_vol['host'] for source_vol in source_vols]
+            flexvols = self._get_flexvol_names_from_hosts(hosts)
+
+            # Create snapshot for backing flexvol
+            snapshot_name = 'snapshot-temp-' + source_cg['id']
+            self.zapi_client.create_cg_snapshot(flexvols, snapshot_name)
+
+            # Start clone process for new volumes
+            vols = zip(volumes, source_vols)
+            for volume, source_vol in vols:
+                self._clone_backing_file_for_volume(
+                    source_vol['name'], volume['name'],
+                    source_vol['id'], source_snapshot=snapshot_name)
+                volume_model_update = (
+                    self._get_volume_model_update(volume) or {})
+                volume_model_update.update({
+                    'id': volume['id'],
+                    'provider_location': source_vol['provider_location'],
+                })
+                volumes_model_update.append(volume_model_update)
+
+            # Delete backing flexvol snapshots
+            for flexvol_name in flexvols:
+                self.zapi_client.wait_for_busy_snapshot(
+                    flexvol_name, snapshot_name)
+                self.zapi_client.delete_snapshot(flexvol_name, snapshot_name)
+        else:
+            LOG.error("Unexpected set of parameters received when "
+                      "creating consistency group from source.")
+            model_update = {'status': fields.ConsistencyGroupStatus.ERROR}
+
+        return model_update, volumes_model_update

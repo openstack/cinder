@@ -1,0 +1,4 @@
+---
+features:
+  - Added generic volume group capability to NetApp cDot drivers with
+    support for write consistent group snapshots.
