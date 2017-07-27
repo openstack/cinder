@@ -11,5 +11,5 @@ the Block Storage service. You can generate the latest configuration file
 by using the tox provided by the Block Storage service. Here is a sample
 configuration file:
 
-.. literalinclude:: ../../samples/cinder.conf.sample
+.. literalinclude:: ../../../_static/cinder.conf.sample
    :language: ini
