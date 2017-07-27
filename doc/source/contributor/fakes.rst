@@ -18,7 +18,7 @@
 Fake Drivers
 ============
 
-.. todo:: document general info about fakes
+TODO: document general info about fakes
 
 When the real thing isn't available and you have some development to do these
 fake implementations of various drivers let you get on with your day.
