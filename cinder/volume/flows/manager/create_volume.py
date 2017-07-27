@@ -742,7 +742,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                         '%(exception)s', {'exception': e})
         return None, False
 
-    @coordination.synchronized('{image_id}-{volume.id}')
+    @coordination.synchronized('{image_id}')
     def _create_from_image_cache_or_download(self, context, volume,
                                              image_location, image_id,
                                              image_meta, image_service):
