@@ -23,9 +23,9 @@ from cinder import test
 # NOTE: The hashes in this list should only be changed if they come with a
 # corresponding version bump in the affected objects.
 object_data = {
-    'Backup': '1.4-c50f7a68bb4c400dd53dd219685b3992',
+    'Backup': '1.5-3ab4b305bd43ec0cff6701fe2a849194',
     'BackupDeviceInfo': '1.0-74b3950676c690538f4bc6796bd0042e',
-    'BackupImport': '1.4-c50f7a68bb4c400dd53dd219685b3992',
+    'BackupImport': '1.5-3ab4b305bd43ec0cff6701fe2a849194',
     'BackupList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'CleanupRequest': '1.0-e7c688b893e1d5537ccf65cc3eb10a28',
     'Cluster': '1.1-e2c533eb8cdd8d229b6c45c6cf3a9e2c',
@@ -126,7 +126,9 @@ class TestObjectVersions(test.TestCase):
         # the converted data, but at least ensures the method doesn't blow
         # up on something simple.
         init_args = {}
-        init_kwargs = {objects.Snapshot: {'context': 'ctxt'}}
+        init_kwargs = {objects.Snapshot: {'context': 'ctxt'},
+                       objects.Backup: {'context': 'ctxt'},
+                       objects.BackupImport: {'context': 'ctxt'}}
         checker = fixture.ObjectVersionChecker(
             base.CinderObjectRegistry.obj_classes())
         checker.test_compatibility_routines(init_args=init_args,

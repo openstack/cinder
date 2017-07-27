@@ -552,6 +552,7 @@ class TestCinderManageCmd(test.TestCase):
                   'size': 123,
                   'object_count': 1,
                   'volume_id': fake.VOLUME_ID,
+                  'backup_metadata': {},
                   }
         backup_get_all.return_value = [backup]
         with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
@@ -605,6 +606,7 @@ class TestCinderManageCmd(test.TestCase):
                   'size': 123,
                   'object_count': 1,
                   'volume_id': fake.VOLUME_ID,
+                  'backup_metadata': {},
                   }
         backup_get_by_host.return_value = [backup]
         backup_cmds = cinder_manage.BackupCommands()

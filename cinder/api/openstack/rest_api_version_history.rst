@@ -361,3 +361,7 @@ user documentation.
   Administrator can disable this ability by updating the
   ``volume:extend_attached_volume`` policy rule.  Extend of a resered
   Volume is NOT allowed.
+
+3.43
+----
+  Support backup CRUD with metadata.

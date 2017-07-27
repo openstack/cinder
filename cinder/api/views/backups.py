@@ -56,7 +56,7 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, backup):
         """Detailed view of a single backup."""
-        return {
+        backup_dict = {
             'backup': {
                 'id': backup.get('id'),
                 'status': backup.get('status'),
@@ -77,6 +77,10 @@ class ViewBuilder(common.ViewBuilder):
                 'data_timestamp': backup.data_timestamp,
             }
         }
+        req_version = request.api_version_request
+        if req_version.matches("3.43"):
+            backup_dict['backup']['metadata'] = backup.metadata
+        return backup_dict
 
     def _list_view(self, func, request, backups, backup_count):
         """Provide a view for a list of backups."""

@@ -39,6 +39,7 @@ class BackupsController(backups_v2.BackupsController):
         """Update a backup."""
         context = req.environ['cinder.context']
         self.assert_valid_body(body, 'backup')
+        req_version = req.api_version_request
 
         backup_update = body['backup']
 
@@ -49,6 +50,8 @@ class BackupsController(backups_v2.BackupsController):
         if 'description' in backup_update:
             update_dict['display_description'] = (
                 backup_update.pop('description'))
+        if req_version.matches('3.43') and 'metadata' in backup_update:
+            update_dict['metadata'] = backup_update.pop('metadata')
         # Check no unsupported fields.
         if backup_update:
             msg = _("Unsupported fields %s.") % (", ".join(backup_update))

@@ -42,6 +42,7 @@ fake_backup = {
     'snapshot_id': None,
     'data_timestamp': None,
     'restore_volume_id': None,
+    'backup_metadata': {},
 }
 
 vol_props = {'status': 'available', 'size': 1}
@@ -65,8 +66,10 @@ class TestBackup(test_objects.BaseObjectsTestCase):
     def test_get_by_id_no_existing_id(self, model_query):
         query = mock.Mock()
         filter_by = mock.Mock()
+        query_options = mock.Mock()
         filter_by.first.return_value = None
-        query.filter_by.return_value = filter_by
+        query_options.filter_by.return_value = filter_by
+        query.options.return_value = query_options
         model_query.return_value = query
         self.assertRaises(exception.BackupNotFound, objects.Backup.get_by_id,
                           self.context, 123)
@@ -86,6 +89,20 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         backup.save()
         backup_update.assert_called_once_with(self.context, backup.id,
                                               {'display_name': 'foobar'})
+
+    @mock.patch('cinder.db.backup_metadata_update',
+                return_value={'key1': 'value1'})
+    @mock.patch('cinder.db.backup_update')
+    def test_save_with_metadata(self, backup_update, metadata_update):
+        backup = objects.Backup._from_db_object(
+            self.context, objects.Backup(), fake_backup)
+
+        backup.metadata = {'key1': 'value1'}
+        self.assertEqual({'metadata': {'key1': 'value1'}},
+                         backup.obj_get_changes())
+        backup.save()
+        metadata_update.assert_called_once_with(self.context, backup.id,
+                                                {'key1': 'value1'}, True)
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
     @mock.patch('cinder.db.sqlalchemy.api.backup_destroy')
@@ -120,6 +137,11 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         backup = objects.Backup(context=self.context,
                                 restore_volume_id='2')
         self.assertEqual('2', backup.restore_volume_id)
+
+    def test_obj_field_metadata(self):
+        backup = objects.Backup(context=self.context,
+                                metadata={'test_key': 'test_value'})
+        self.assertEqual({'test_key': 'test_value'}, backup.metadata)
 
     def test_import_record(self):
         utils.replace_obj_loader(self, objects.Backup)
@@ -222,10 +244,7 @@ class TestBackupList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.backup_get_all_by_host',
                 return_value=[fake_backup])
     def test_get_all_by_host(self, get_all_by_host):
-        fake_volume_obj = fake_volume.fake_volume_obj(self.context)
-
-        backups = objects.BackupList.get_all_by_host(self.context,
-                                                     fake_volume_obj.id)
+        backups = objects.BackupList.get_all_by_host(self.context, "fake_host")
         self.assertEqual(1, len(backups))
         TestBackup._compare(self, fake_backup, backups[0])
 

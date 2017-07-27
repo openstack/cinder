@@ -753,6 +753,11 @@ class BackupMetadataUnsupportedVersion(BackupDriverException):
     message = _("Unsupported backup metadata version requested")
 
 
+class BackupMetadataNotFound(NotFound):
+    message = _("Backup %(backup_id)s has no metadata with "
+                "key %(metadata_key)s.")
+
+
 class BackupVerifyUnsupportedDriver(BackupDriverException):
     message = _("Unsupported backup verify driver")
 

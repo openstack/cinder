@@ -260,10 +260,7 @@ class AdminActionsTest(BaseAdminTest):
 
     def test_backup_reset_status_as_non_admin(self):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
-        backup = db.backup_create(ctx, {'status': 'available',
-                                        'size': 1,
-                                        'volume_id': "fakeid",
-                                        'host': 'test'})
+        backup = test_utils.create_backup(ctx, status='available')
         resp = self._issue_backup_reset(ctx,
                                         backup,
                                         {'status': fields.BackupStatus.ERROR})
