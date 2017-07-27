@@ -200,7 +200,8 @@ class AttachmentsController(wsgi.Controller):
 
         Expected format of the input parameter 'body':
 
-        .. code-block:: json
+        .. code:: json
+
             {
                 "attachment":
                 {
@@ -217,6 +218,7 @@ class AttachmentsController(wsgi.Controller):
                     }
                 }
             }
+
         """
         context = req.environ['cinder.context']
         attachment_ref = (
