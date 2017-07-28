@@ -3607,11 +3607,19 @@ class VMAXCommonTest(test.TestCase):
                 mock_clean.assert_called_once_with(
                     volume, volume_name, device_id, extra_specs)
 
-    def test_get_target_wwns_from_masking_view(self):
+    @mock.patch.object(common.VMAXCommon, '_get_replication_extra_specs',
+                       return_value=VMAXCommonData.rep_extra_specs)
+    def test_get_target_wwns_from_masking_view(self, mock_rep_specs):
         target_wwns = self.common.get_target_wwns_from_masking_view(
             self.data.test_volume, self.data.connector)
         ref_wwns = [self.data.wwnn1]
         self.assertEqual(ref_wwns, target_wwns)
+        # Volume is failed over
+        with mock.patch.object(self.utils, 'is_volume_failed_over',
+                               return_value=True):
+            self.common.get_target_wwns_from_masking_view(
+                self.data.test_volume, self.data.connector)
+            mock_rep_specs.assert_called_once()
 
     def test_get_target_wwns_from_masking_view_no_mv(self):
         with mock.patch.object(self.common, 'get_masking_views_from_volume',
