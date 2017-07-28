@@ -38,6 +38,7 @@ from oslo_vmware import vim_util
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.image import image_utils
 from cinder import interface
 from cinder.volume import configuration
 from cinder.volume import driver
@@ -739,18 +740,37 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         # case. If ca_file is unset and insecure is True, there is no
         # certificate verification, and we should pass cacerts=False.
         cacerts = ca_file if ca_file else not insecure
-        image_transfer.download_flat_image(context,
-                                           timeout,
-                                           image_service,
-                                           image_id,
-                                           image_size=image_size_in_bytes,
-                                           host=host_ip,
-                                           port=port,
-                                           data_center_name=dc_name,
-                                           datastore_name=ds_name,
-                                           cookies=cookies,
-                                           file_path=upload_file_path,
-                                           cacerts=cacerts)
+
+        tmp_images = image_utils.TemporaryImages.for_image_service(
+            image_service)
+        tmp_image = tmp_images.get(context, image_id)
+        if tmp_image:
+            LOG.debug("Using temporary image.")
+            with open(tmp_image) as read_handle:
+                image_transfer.download_file(read_handle,
+                                             host_ip,
+                                             port,
+                                             dc_name,
+                                             ds_name,
+                                             cookies,
+                                             upload_file_path,
+                                             image_size_in_bytes,
+                                             cacerts,
+                                             timeout)
+        else:
+            image_transfer.download_flat_image(context,
+                                               timeout,
+                                               image_service,
+                                               image_id,
+                                               image_size=image_size_in_bytes,
+                                               host=host_ip,
+                                               port=port,
+                                               data_center_name=dc_name,
+                                               datastore_name=ds_name,
+                                               cookies=cookies,
+                                               file_path=upload_file_path,
+                                               cacerts=cacerts)
+
         LOG.debug("Image: %(image_id)s copied to %(path)s.",
                   {'image_id': image_id,
                    'path': upload_file_path})
