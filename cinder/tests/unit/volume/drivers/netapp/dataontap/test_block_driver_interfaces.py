@@ -54,15 +54,11 @@ class NetAppBlockStorageDriverInterfaceTestCase(test.TestCase):
         """
 
         # Get local functions of each driver interface
-        iscsi_7mode = self._get_local_functions(self.iscsi_7mode_driver)
         iscsi_cmode = self._get_local_functions(self.iscsi_cmode_driver)
-        fc_7mode = self._get_local_functions(self.fc_7mode_driver)
         fc_cmode = self._get_local_functions(self.fc_cmode_driver)
 
         # Ensure NetApp block storage driver shims are identical
-        self.assertSetEqual(iscsi_7mode, iscsi_cmode)
-        self.assertSetEqual(iscsi_7mode, fc_7mode)
-        self.assertSetEqual(iscsi_7mode, fc_cmode)
+        self.assertSetEqual(iscsi_cmode, fc_cmode)
 
     def _get_local_functions(self, obj):
         """Get function names of an object without superclass functions."""
