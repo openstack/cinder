@@ -222,20 +222,20 @@ class ExportGroup(common.CoprHDResource):
                                 cg=None, synctimeout=0, varray=None):
         """Add volume to export group.
 
-        :param sync              : synchronous request
-        :param exportgroupname   : Name/id of the export group
-        :param tenantname        : tenant name
-        :param maxpaths          : Maximum number of paths
-        :param minpaths          : Minimum number of paths
-        :param pathsperinitiator : Paths per initiator
-        :param projectname       : name of project
-        :param volumenames       : names of volumes that needs
-                               to be added to exportgroup
-        :param cg                : consistency group
-        :param synctimeout       : Query for task status for "synctimeout" secs
-                               If the task doesn't complete in synctimeout
-                               secs, an exception is thrown
-        :param varray            : Name of varray
+        :param sync: synchronous request
+        :param exportgroupname: Name/id of the export group
+        :param tenantname: tenant name
+        :param maxpaths: Maximum number of paths
+        :param minpaths: Minimum number of paths
+        :param pathsperinitiator: Paths per initiator
+        :param projectname: name of project
+        :param volumenames: names of volumes that needs
+                            to be added to exportgroup
+        :param cg: consistency group
+        :param synctimeout: Query for task status for 'synctimeout' secs
+                            If the task doesn't complete in synctimeout secs,
+                            an exception is thrown
+        :param varray: Name of varray
         :returns: action result
         """
         varrayuri = None

@@ -63,7 +63,7 @@ class ConsistencyGroup(common.CoprHDResource):
     def show(self, name, project, tenant):
         """This function will display the consistency group with details.
 
-        :param name : Name of the consistency group
+        :param name: Name of the consistency group
         :param project: Name of the project
         :param tenant: Name of the tenant
         :returns: details of consistency group
@@ -80,7 +80,7 @@ class ConsistencyGroup(common.CoprHDResource):
     def consistencygroup_query(self, name, project, tenant):
         """This function will return consistency group id.
 
-        :param name : Name/id of the consistency group
+        :param name: Name/id of the consistency group
         :param project: Name of the project
         :param tenant: Name of the tenant
         :returns: id of the consistency group
@@ -113,7 +113,7 @@ class ConsistencyGroup(common.CoprHDResource):
     def create(self, name, project_name, tenant):
         """This function will create consistency group with the given name.
 
-        :param name : Name of the consistency group
+        :param name: Name of the consistency group
         :param project_name: Name of the project path
         :param tenant: Container tenant name
         :returns: status of creation
@@ -172,15 +172,15 @@ class ConsistencyGroup(common.CoprHDResource):
 
         It will update the consistency group with given volumes
 
-        :param uri           : URI of the consistency group
-        :param project       : Name of the project path
-        :param tenant        : Container tenant name
-        :param add_volumes   : volumes to be added to the consistency group
+        :param uri: URI of the consistency group
+        :param project: Name of the project path
+        :param tenant: Container tenant name
+        :param add_volumes: volumes to be added to the consistency group
         :param remove_volumes: volumes to be removed from CG
-        :param sync          : synchronous request
-        :param synctimeout   : Query for task status for "synctimeout" secs.
-                               If the task doesn't complete in synctimeout
-                               secs, an exception is thrown
+        :param sync: synchronous request
+        :param synctimeout: Query for task status for 'synctimeout' secs.
+                            If the task doesn't complete in synctimeout
+                            secs, an exception is thrown
         :returns: status of creation
         """
         if tenant is None:

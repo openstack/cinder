@@ -116,17 +116,17 @@ class Volume(common.CoprHDResource):
                sync, consistencygroup, synctimeout=0):
         """Makes REST API call to create volume under a project.
 
-        :param project_name     : name of the project under which the volume
-                                  will be created
-        :param label            : name of volume
-        :param size             : size of volume
-        :param varray           : name of varray
-        :param vpool            : name of vpool
-        :param sync             : synchronous request
-        :param consistencygroup : To create volume under a consistencygroup
-        :param synctimeout      : Query for task status for "synctimeout" secs.
-                                  If the task doesn't complete in synctimeout
-                                  secs, an exception is thrown
+        :param project_name: name of the project under which the volume
+                             will be created
+        :param label: name of volume
+        :param size: size of volume
+        :param varray: name of varray
+        :param vpool: name of vpool
+        :param sync: synchronous request
+        :param consistencygroup: To create volume under a consistencygroup
+        :param synctimeout: Query for task status for 'synctimeout' secs.
+                            If the task doesn't complete in synctimeout secs,
+                            an exception is thrown
         :returns: Created task details in JSON response payload
         """
 
@@ -269,10 +269,10 @@ class Volume(common.CoprHDResource):
 
         :param new_vol_name: name of volume
         :param resource_uri: uri of source volume
-        :param sync        : synchronous request
-        :param synctimeout : Query for task status for "synctimeout" secs.
-                                 If the task doesn't complete in synctimeout
-                                 secs, an exception is thrown
+        :param sync: synchronous request
+        :param synctimeout: Query for task status for 'synctimeout' secs.
+                            If the task doesn't complete in synctimeout secs,
+                            an exception is thrown
         :returns: Created task details in JSON response payload
         """
         is_snapshot_clone = False
@@ -363,11 +363,11 @@ class Volume(common.CoprHDResource):
     def show(self, full_project_name, name):
         """Retrieves volume details based on volume name.
 
-        :param full_project_name : project path of the volume
+        :param full_project_name: project path of the volume
         :param name: name of the volume. If the volume is under a project,
-            then full XPath needs to be specified.
-            Example: If VOL1 is a volume under project PROJ1, then the name
-            of volume is PROJ1/VOL1
+                     then full XPath needs to be specified.
+                     Example: If VOL1 is a volume under project PROJ1,
+                     then the name of volume is PROJ1/VOL1
         :returns: Volume details in JSON response payload
         """
         if common.is_uri(name):
@@ -425,15 +425,14 @@ class Volume(common.CoprHDResource):
         """Deletes a volume based on volume name.
 
         :param full_project_name: project name
-        :param name        : name of volume to be deleted
-        :param sync        : synchronous request
+        :param name: name of volume to be deleted
+        :param sync: synchronous request
         :param force_delete: if true, it will force the delete of internal
-                          volumes that have the SUPPORTS_FORCE flag
-        :param coprhdonly : to delete volumes from coprHD only
-        :param synctimeout: Query for task status for "synctimeout" secs. If
-                          the task doesn't complete in synctimeout secs, an
-                          exception is thrown
-
+                             volumes that have the SUPPORTS_FORCE flag
+        :param coprhdonly: to delete volumes from coprHD only
+        :param synctimeout: Query for task status for 'synctimeout' secs. If
+                            the task doesn't complete in synctimeout secs,
+                            an exception is thrown
         """
         volume_uri = self.volume_query(full_project_name, name)
         return self.delete_by_uri(volume_uri, sync, force_delete,
