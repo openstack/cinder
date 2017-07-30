@@ -227,6 +227,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
                     'target_luns': [1, 1]
                 }
             }
+
         :param volume: the cinder volume object
         :param connector: the connector object
         :returns: dict -- the iscsi dict
@@ -274,9 +275,9 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         :target_lun:    the lun of the iSCSI target
         :volume_id:    the UUID of the volume
         :auth_method:, :auth_username:, :auth_password:
-            the authentication details. Right now, either auth_method is not
-            present meaning no authentication, or auth_method == `CHAP`
-            meaning use CHAP with the specified credentials.
+        the authentication details. Right now, either auth_method is not
+        present meaning no authentication, or auth_method == `CHAP`
+        meaning use CHAP with the specified credentials.
 
         :param volume: the cinder volume object
         :param ip_and_iqn: list of ip and iqn dicts
