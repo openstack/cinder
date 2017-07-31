@@ -60,16 +60,24 @@ QEMU_IMG_LIMITS = processutils.ProcessLimits(
     cpu_time=8,
     address_space=1 * units.Gi)
 
-# NOTE(abhishekk): qemu-img convert command supports raw, qcow2, qed,
-# vdi, vmdk, vhd and vhdx disk-formats but glance doesn't support qed
-# disk-format.
-# Ref: http://docs.openstack.org/image-guide/convert-images.html
 VALID_DISK_FORMATS = ('raw', 'vmdk', 'vdi', 'qcow2',
                       'vhd', 'vhdx', 'parallels')
+
+QEMU_IMG_FORMAT_MAP = {
+    # Convert formats of Glance images to how they are processed with qemu-img.
+    'iso': 'raw',
+    'vhd': 'vpc',
+}
 
 
 def validate_disk_format(disk_format):
     return disk_format in VALID_DISK_FORMATS
+
+
+def fixup_disk_format(disk_format):
+    """Return the format to be provided to qemu-img convert."""
+
+    return QEMU_IMG_FORMAT_MAP.get(disk_format, disk_format)
 
 
 def qemu_img_info(path, run_as_root=True):
@@ -411,11 +419,8 @@ def fetch_to_volume_format(context, image_service,
         # image and not a different format with a backing file, which may be
         # malicious.
         LOG.debug("%s was %s, converting to %s ", image_id, fmt, volume_format)
-        if image_meta['disk_format'] == 'vhd':
-            # qemu-img still uses the legacy 'vpc' name for vhd format.
-            disk_format = 'vpc'
-        else:
-            disk_format = image_meta['disk_format']
+        disk_format = fixup_disk_format(image_meta['disk_format'])
+
         convert_image(tmp, dest, volume_format,
                       src_format=disk_format,
                       run_as_root=run_as_root)
