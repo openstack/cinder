@@ -522,18 +522,21 @@ class XIVProxy(proxy.IBMStorageProxy):
                            ' should be the same')
                 elif volume.host != volume.group.host:
                     msg = 'Cannot add volume to Group on different host'
-                else:
+                elif volume.group['replication_status'] == 'enabled':
+                    # if group is mirrored and enabled, compare state.
                     group_name = self._cg_name_from_group(volume.group)
                     me = mirrored_entities.MirroredEntities(
                         self.ibm_storage_cli)
                     me_objs = me.get_mirror_resources_by_name_map()
-                    vol_sync_state = me_objs['volumes'][volume.name].sync_state
-                    cg_sync_state = me_objs['cgs'][group_name].sync_state
+                    vol_obj = me_objs['volumes'][volume.name]
+                    vol_sync_state = vol_obj['sync_state']
+                    cg_sync_state = me_objs['cgs'][group_name]['sync_state']
 
                     if (vol_sync_state != 'Synchronized' or
                             cg_sync_state != 'Synchronized'):
                         msg = ('Cannot add volume to Group. Both volume and '
                                'group should have sync_state = Synchronized')
+
                 if msg:
                     LOG.error(msg)
                     raise self.meta['exception'].VolumeBackendAPIException(
@@ -590,8 +593,10 @@ class XIVProxy(proxy.IBMStorageProxy):
                 self._update_consistencygroup(context, group,
                                               remove_volumes=volumes)
                 for volume in volumes:
-                    repl.VolumeReplication(self).create_replication(
-                        volume.name, replication_info)
+                    enabled_status = fields.ReplicationStatus.ENABLED
+                    if volume['replication_status'] != enabled_status:
+                        repl.VolumeReplication(self).create_replication(
+                            volume.name, replication_info)
 
             # mirror entire group
             group_name = self._cg_name_from_group(group)
