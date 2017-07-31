@@ -1260,6 +1260,9 @@ class TestCommonAdapter(test.TestCase):
                 name=vol1.name)
             self.assertEqual(fake_mirror.secondary_client,
                              common_adapter.client)
+            self.assertIsNone(common_adapter.active_backend_id)
+            self.assertFalse(fake_mirror.primary_client ==
+                             fake_mirror.secondary_client)
         self.assertEqual('default', backend_id)
         for update in updates:
             self.assertEqual(fields.ReplicationStatus.ENABLED,

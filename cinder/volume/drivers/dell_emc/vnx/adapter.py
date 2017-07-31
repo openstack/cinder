@@ -67,16 +67,20 @@ class CommonAdapter(replication.ReplicationAdapter):
         self.itor_auto_dereg = None
         self.queue_path = None
 
+    def _build_client_from_config(self, config, queue_path=None):
+        return client.Client(
+            config.san_ip,
+            config.san_login,
+            config.san_password,
+            config.storage_vnx_authentication_type,
+            config.naviseccli_path,
+            config.storage_vnx_security_file_dir,
+            queue_path)
+
     def do_setup(self):
         self._normalize_config()
-        self.client = client.Client(
-            self.config.san_ip,
-            self.config.san_login,
-            self.config.san_password,
-            self.config.storage_vnx_authentication_type,
-            self.config.naviseccli_path,
-            self.config.storage_vnx_security_file_dir,
-            self.queue_path)
+        self.client = self._build_client_from_config(
+            self.config, self.queue_path)
         # Replication related
         if (self.active_backend_id in
                 common.ReplicationDeviceList.get_backend_ids(self.config)):
