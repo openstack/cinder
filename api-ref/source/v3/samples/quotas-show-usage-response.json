@@ -1,0 +1,65 @@
+{
+    "quota_set": {
+        "id": "a7090a26bc554d93aa845a4d41808251",
+        "volumes": {
+            "reserved": 0,
+            "allocated": 0,
+            "limit": 10,
+            "in_use": 0
+        },
+        "volumes_lvmdriver-1": {
+            "reserved": 0,
+            "allocated": 0,
+            "limit": -1,
+            "in_use": 0
+        },
+        "snapshots": {
+            "reserved": 0,
+            "allocated": 0,
+            "limit": 10,
+            "in_use": 0
+        },
+        "snapshots_lvmdriver-1": {
+            "reserved": 0,
+            "allocated": 0,
+            "limit": -1,
+            "in_use": 0
+        },
+        "backups": {
+            "reserved": 0,
+            "allocated": 0,
+            "limit": 10,
+            "in_use": 0
+        },
+        "groups": {
+            "reserved": 0,
+            "allocated": 0,
+            "limit": 10,
+            "in_use": 0
+        },
+        "per_volume_gigabytes": {
+            "reserved": 0,
+            "allocated": 0,
+            "limit": -1,
+            "in_use": 0
+        },
+        "gigabytes": {
+            "reserved": 0,
+            "allocated": 0,
+            "limit": 1000,
+            "in_use": 0
+        },
+        "gigabytes_lvmdriver-1": {
+            "reserved": 0,
+            "allocated": 0,
+            "limit": 1000,
+            "in_use": 0
+        },
+        "backup_gigabytes": {
+            "reserved": 0,
+            "allocated": 0,
+            "limit": 1000,
+            "in_use": 0
+        }
+    }
+}
