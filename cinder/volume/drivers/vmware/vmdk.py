@@ -320,8 +320,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         if profile_name:
             self.ds_sel.get_profile_id(profile_name)
 
-        LOG.debug("Verified disk type and storage profile of volume: %s.",
-                  volume.name)
+        # validate adapter type
+        self._get_adapter_type(volume)
+
+        LOG.debug("Verified disk type, adapter type and storage profile "
+                  "of volume: %s.", volume.name)
 
     def create_volume(self, volume):
         """Creates a volume.
@@ -351,6 +354,17 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         :param volume: Volume object
         """
         self._delete_volume(volume)
+
+    def _get_extra_spec_adapter_type(self, type_id):
+        adapter_type = _get_volume_type_extra_spec(
+            type_id,
+            'adapter_type',
+            default_value=self.configuration.vmware_adapter_type)
+        volumeops.VirtualDiskAdapterType.validate(adapter_type)
+        return adapter_type
+
+    def _get_adapter_type(self, volume):
+        return self._get_extra_spec_adapter_type(volume['volume_type_id'])
 
     def _get_extra_spec_storage_profile(self, type_id):
         """Get storage profile name in the given volume type's extra spec.
@@ -447,8 +461,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         # create a backing with single disk
         disk_type = VMwareVcVmdkDriver._get_disk_type(volume)
         size_kb = volume['size'] * units.Mi
-        adapter_type = create_params.get(
-            CREATE_PARAM_ADAPTER_TYPE, self.configuration.vmware_adapter_type)
+        adapter_type = create_params.get(CREATE_PARAM_ADAPTER_TYPE,
+                                         self._get_adapter_type(volume))
         backing = self.volumeops.create_backing(backing_name,
                                                 size_kb,
                                                 disk_type,
@@ -1179,7 +1193,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         # Get the disk type, adapter type and size of vmdk image
         image_disk_type = ImageDiskType.PREALLOCATED
-        image_adapter_type = self.configuration.vmware_adapter_type
+        image_adapter_type = self._get_adapter_type(volume)
         image_size_in_bytes = metadata['size']
         properties = metadata['properties']
         if properties:
@@ -1588,7 +1602,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             backing,
             disk.capacityInKB,
             VMwareVcVmdkDriver._get_disk_type(volume),
-            self.configuration.vmware_adapter_type,
+            self._get_adapter_type(volume),
             profile_id,
             dest_path.get_descriptor_ds_file_path())
         self.volumeops.update_backing_disk_uuid(backing, volume['id'])
