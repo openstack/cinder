@@ -1,0 +1,3 @@
+---
+features:
+  - Added availability_zone filter for snapshots list.

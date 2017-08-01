@@ -2983,9 +2983,9 @@ def snapshot_get_all(context, filters=None, marker=None, limit=None,
                       paired with corresponding item in sort_keys
     :returns: list of matching snapshots
     """
-    if filters and not is_valid_model_filters(models.Snapshot, filters,
-                                              exclude_list=('host',
-                                                            'cluster_name')):
+    if filters and not is_valid_model_filters(
+            models.Snapshot, filters,
+            exclude_list=('host', 'cluster_name', 'availability_zone')):
         return []
 
     session = get_session()
@@ -3011,7 +3011,7 @@ def _process_snaps_filters(query, filters):
     if filters:
         filters = filters.copy()
 
-        exclude_list = ('host', 'cluster_name')
+        exclude_list = ('host', 'cluster_name', 'availability_zone')
 
         # Ensure that filters' keys exist on the model or is metadata
         for key in filters.keys():
@@ -3043,13 +3043,16 @@ def _process_snaps_filters(query, filters):
         # filter handling for host and cluster name
         host = filters.pop('host', None)
         cluster = filters.pop('cluster_name', None)
-        if host or cluster:
+        az = filters.pop('availability_zone', None)
+        if host or cluster or az:
             query = query.join(models.Snapshot.volume)
         vol_field = models.Volume
         if host:
             query = query.filter(_filter_host(vol_field.host, host))
         if cluster:
             query = query.filter(_filter_host(vol_field.cluster_name, cluster))
+        if az:
+            query = query.filter_by(availability_zone=az)
 
         filters_dict = {}
         LOG.debug("Building query based on filter")
@@ -3162,7 +3165,8 @@ def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
     :returns: list of matching snapshots
     """
     if filters and not is_valid_model_filters(
-            models.Snapshot, filters, exclude_list=('host', 'cluster_name')):
+            models.Snapshot, filters,
+            exclude_list=('host', 'cluster_name', 'availability_zone')):
         return []
 
     authorize_project_context(context, project_id)

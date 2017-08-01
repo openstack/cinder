@@ -126,18 +126,25 @@ class SnapshotApiTest(test.TestCase):
         body = {"snapshot": snap}
         self.controller.create(req, body)
 
-    @ddt.data(('host', 'test_host1'), ('cluster_name', 'cluster1'))
+    @ddt.data(('host', 'test_host1', True), ('cluster_name', 'cluster1', True),
+              ('availability_zone', 'nova1', False))
     @ddt.unpack
-    def test_snapshot_list_with_filter(self, filter_name, filter_value):
+    def test_snapshot_list_with_filter(self, filter_name, filter_value,
+                                       is_admin_user):
         volume1 = test_utils.create_volume(self.ctx, host='test_host1',
-                                           cluster_name='cluster1')
+                                           cluster_name='cluster1',
+                                           availability_zone='nova1')
         volume2 = test_utils.create_volume(self.ctx, host='test_host2',
-                                           cluster_name='cluster2')
+                                           cluster_name='cluster2',
+                                           availability_zone='nova2')
         snapshot1 = test_utils.create_snapshot(self.ctx, volume1.id)
-        snapshot2 = test_utils.create_snapshot(self.ctx, volume2.id)  # noqa
+        test_utils.create_snapshot(self.ctx, volume2.id)
 
         url = '/v3/snapshots?%s=%s' % (filter_name, filter_value)
-        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
+        # Generic filtering is introduced since '3,31' and we add
+        # 'availability_zone' support by using generic filtering.
+        req = fakes.HTTPRequest.blank(url, use_admin_context=is_admin_user,
+                                      version='3.31')
         res_dict = self.controller.detail(req)
 
         self.assertEqual(1, len(res_dict['snapshots']))
