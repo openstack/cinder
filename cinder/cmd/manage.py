@@ -725,7 +725,7 @@ def methods_of(obj):
 
 
 def add_command_parsers(subparsers):
-    for category in CATEGORIES:
+    for category in sorted(CATEGORIES):
         command_object = CATEGORIES[category]()
 
         parser = subparsers.add_parser(category)
