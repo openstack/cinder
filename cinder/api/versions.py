@@ -85,6 +85,12 @@ class Versions(openstack.APIRouter):
                        action='all')
         mapper.redirect('', '/')
 
+    # NOTE (jose-castro-leon): Avoid to register extensions
+    # on the versions router, the versions router does not offer
+    # resources to be extended.
+    def _setup_extensions(self, ext_mgr):
+        pass
+
 
 class VersionsController(wsgi.Controller):
 
