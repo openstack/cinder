@@ -3473,7 +3473,7 @@ def _process_group_types_filters(query, filters):
         if filters['is_public'] and context.project_id is not None:
             projects_attr = getattr(models.GroupTypes, 'projects')
             the_filter.extend([
-                projects_attr.any(project_id=context.project_id, deleted=0)
+                projects_attr.any(project_id=context.project_id, deleted=False)
             ])
         if len(the_filter) > 1:
             query = query.filter(or_(*the_filter))
