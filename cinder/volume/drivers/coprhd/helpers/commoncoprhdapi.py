@@ -326,8 +326,9 @@ def get_node_value(json_object, parent_node_name, child_node_name=None):
     """Returns value of given child_node.
 
     If child_node is not given, then value of parent node is returned
-    returns None: If json_object or parent_node is not given,
-                  If child_node is not found under parent_node
+
+    :returns: None If json_object or parent_node is not given,
+                   If child_node is not found under parent_node
     """
     if not json_object:
         return None

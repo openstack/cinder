@@ -46,10 +46,10 @@ class Snapshot(common.CoprHDResource):
     def snapshot_list_uri(self, otype, otypename, ouri):
         """Makes REST API call to list snapshots under a volume.
 
-        :param otype     : block
-        :param otypename : either volume or consistency-group should be
-                           provided
-        :param ouri      : uri of volume or consistency-group
+        :param otype: block
+        :param otypename: either volume or consistency-group should be
+                          provided
+        :param ouri: uri of volume or consistency-group
         :returns: list of snapshots
         """
         (s, h) = common.service_json_request(
@@ -62,8 +62,8 @@ class Snapshot(common.CoprHDResource):
     def snapshot_show_uri(self, otype, resource_uri, suri):
         """Retrieves snapshot details based on snapshot Name or Label.
 
-        :param otype : block
-        :param suri : uri of the Snapshot.
+        :param otype: block
+        :param suri: uri of the Snapshot.
         :param resource_uri: uri of the source resource
         :returns: Snapshot details in JSON response payload
         """
@@ -138,17 +138,17 @@ class Snapshot(common.CoprHDResource):
                         readonly=False, synctimeout=0):
         """New snapshot is created, for a given volume.
 
-        :param otype       : block type should be provided
-        :param typename    : either volume or consistency-groups should
-                             be provided
-        :param ouri        : uri of volume
-        :param snaplabel   : name of the snapshot
-        :param inactive    : if true, the snapshot will not activate the
-                             synchronization between source and target volumes
-        :param sync        : synchronous request
-        :param synctimeout : Query for task status for "synctimeout" secs.
-                             If the task doesn't complete in synctimeout
-                             secs, an exception is thrown
+        :param otype: block type should be provided
+        :param typename: either volume or consistency-groups should
+                         be provided
+        :param ouri: uri of volume
+        :param snaplabel: name of the snapshot
+        :param inactive: if true, the snapshot will not activate the
+                         synchronization between source and target volumes
+        :param sync: synchronous request
+        :param synctimeout: Query for task status for 'synctimeout' secs.
+                            If the task doesn't complete in synctimeout secs,
+                            an exception is thrown
         """
 
         # check snapshot is already exist
@@ -203,13 +203,13 @@ class Snapshot(common.CoprHDResource):
                             suri, sync, synctimeout=0):
         """Delete a snapshot by uri.
 
-        :param otype : block
+        :param otype: block
         :param resource_uri: uri of the source resource
-        :param suri : Uri of the Snapshot
-        :param sync : To perform operation synchronously
-        :param synctimeout : Query for task status for "synctimeout" secs. If
-                          the task doesn't complete in synctimeout secs, an
-                          exception is thrown
+        :param suri: Uri of the Snapshot
+        :param sync: To perform operation synchronously
+        :param synctimeout: Query for task status for 'synctimeout' secs. If
+                            the task doesn't complete in synctimeout secs,
+                            an exception is thrown
         """
         s = None
         if resource_uri.find("Volume") > 0:
