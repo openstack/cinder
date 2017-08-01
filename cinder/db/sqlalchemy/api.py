@@ -5642,6 +5642,12 @@ def consistencygroup_include_in_cluster(context, cluster,
                                partial_rename, filters)
 
 
+@require_admin_context
+def group_include_in_cluster(context, cluster, partial_rename=True, **filters):
+    """Include all generic groups matching the filters into a cluster."""
+    return _include_in_cluster(context, cluster, models.Group, partial_rename,
+                               filters)
+
 ###############################
 
 

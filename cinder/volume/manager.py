@@ -390,12 +390,15 @@ class VolumeManager(manager.CleanableManager,
             ctxt, self.cluster, host=self.host)
         num_cgs = objects.ConsistencyGroupList.include_in_cluster(
             ctxt, self.cluster, host=self.host)
+        num_gs = objects.GroupList.include_in_cluster(
+            ctxt, self.cluster, host=self.host)
         num_cache = db.image_volume_cache_include_in_cluster(
             ctxt, self.cluster, host=self.host)
         LOG.info('%(num_vols)s volumes, %(num_cgs)s consistency groups, '
-                 'and %(num_cache)s image volume caches from host '
-                 '%(host)s have been included in cluster %(cluster)s.',
-                 {'num_vols': num_vols, 'num_cgs': num_cgs,
+                 '%(num_gs)s generic groups and %(num_cache)s image '
+                 'volume caches from host %(host)s have been included in '
+                 'cluster %(cluster)s.',
+                 {'num_vols': num_vols, 'num_cgs': num_cgs, 'num_gs': num_gs,
                   'host': self.host, 'cluster': self.cluster,
                   'num_cache': num_cache})
 

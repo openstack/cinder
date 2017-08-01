@@ -272,3 +272,24 @@ class TestGroupList(test_objects.BaseObjectsTestCase):
         else:
             self.assertEqual(fake.GROUP_ID, res[0].id)
             self.assertIsNone(res[0].cluster_name)
+
+    @mock.patch('cinder.db.group_include_in_cluster')
+    def test_include_in_cluster(self, include_mock):
+        filters = {'host': mock.sentinel.host,
+                   'cluster_name': mock.sentinel.cluster_name}
+        cluster = 'new_cluster'
+        objects.GroupList.include_in_cluster(self.context, cluster, **filters)
+        include_mock.assert_called_once_with(self.context, cluster, True,
+                                             **filters)
+
+    @mock.patch('cinder.db.group_include_in_cluster')
+    def test_include_in_cluster_specify_partial(self, include_mock):
+        filters = {'host': mock.sentinel.host,
+                   'cluster_name': mock.sentinel.cluster_name}
+        cluster = 'new_cluster'
+        objects.GroupList.include_in_cluster(self.context, cluster,
+                                             mock.sentinel.partial_rename,
+                                             **filters)
+        include_mock.assert_called_once_with(self.context, cluster,
+                                             mock.sentinel.partial_rename,
+                                             **filters)
