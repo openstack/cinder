@@ -53,12 +53,15 @@ class WindowsSmbFsTestCase(test.TestCase):
                                      _FAKE_VOLUME_NAME)
     _FAKE_SHARE_OPTS = '-o username=Administrator,password=12345'
 
+    @mock.patch.object(remotefs.RemoteFSDriver,
+                       '_check_if_volume_db_is_empty')
     @mock.patch.object(smbfs, 'utilsfactory')
     @mock.patch.object(smbfs, 'remotefs_brick')
-    def setUp(self, mock_remotefs, mock_utilsfactory):
+    def setUp(self, mock_remotefs, mock_utilsfactory, mock_is_empty):
         super(WindowsSmbFsTestCase, self).setUp()
 
         self.context = context.get_admin_context()
+        mock_is_empty.return_value = None
 
         self._FAKE_SMBFS_CONFIG = mock.MagicMock(
             smbfs_oversub_ratio = 2,

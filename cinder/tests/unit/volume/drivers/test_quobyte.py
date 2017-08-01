@@ -46,6 +46,9 @@ class FakeDb(object):
         """Mock this if you want results from it."""
         return []
 
+    def volume_get_all(self, *a, **kw):
+        return []
+
 
 class QuobyteDriverTestCase(test.TestCase):
     """Test case for Quobyte driver."""
