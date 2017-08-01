@@ -67,9 +67,6 @@ unsupported_firmware = ['Fabric OS:  v6.2.1']
 
 class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
 
-    def setUp(self):
-        super(TestBrcdFCZoneClientCLI, self).setUp()
-
     # override some of the functions
     def __init__(self, *args, **kwargs):
         test.TestCase.__init__(self, *args, **kwargs)
