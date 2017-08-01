@@ -1309,6 +1309,12 @@ metadata_7:
   in: body
   required: false
   type: object
+metadata_8:
+  description: |
+    The image metadata key value pairs.
+  in: body
+  required: true
+  type: object
 migration_policy:
   description: |
     Specify if the volume should be migrated when it is re-typed.
@@ -1597,6 +1603,12 @@ os-set_image_metadata:
     The ``os-set_image_metadata`` action.
   in: body
   required: true
+  type: object
+os-show_image_metadata:
+  description: |
+    The ``os-show_image_metadata`` action.
+  in: body
+  require: true
   type: object
 os-unmanage:
   description: |

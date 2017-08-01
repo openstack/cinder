@@ -98,7 +98,7 @@ Set image metadata for volume
 
 Sets the image metadata for a volume. Specify the ``os-set_image_metadata`` action in the request body.
 
-Normal response codes: 202,
+Normal response codes: 200
 
 
 Request
@@ -130,7 +130,7 @@ Remove image metadata from volume
 
 Removes image metadata, by key, from a volume. Specify the ``os-unset_image_metadata`` action in the request body and the ``key`` for the metadata key and value pair that you want to remove.
 
-Normal response codes: 202,
+Normal response codes: 200
 
 
 Request
@@ -151,6 +151,46 @@ Request Example
 
 
 
+
+
+Show image metadata for volume
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
+
+Shows image metadata for a volume.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - os-vol-image-meta: os-show_image_metadata
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/image-metadata-show-request.json
+   :language: javascript
+
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - metadata: metadata_8
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/image-metadata-show-response.json
+   :language: javascript
 
 
 
