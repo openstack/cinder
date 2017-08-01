@@ -1,0 +1,5 @@
+---
+features:
+  - Added config option ``vmware_adapter_type`` for the VMware VMDK
+    driver to specify the default adapter type for volumes in vCenter
+    server.
