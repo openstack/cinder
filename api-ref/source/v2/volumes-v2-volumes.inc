@@ -224,9 +224,11 @@ Response Parameters
    - created_at: created_at
    - volume_type: volume_type
 
+Response Example
+----------------
 
-
-
+.. literalinclude:: ./samples/volume-create-response.json
+   :language: javascript
 
 List volumes
 ~~~~~~~~~~~~

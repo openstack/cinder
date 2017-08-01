@@ -209,6 +209,12 @@ Response Parameters
    - volume_id: volume_id
    - volume_name: volume_name
 
+Response Example
+----------------
+
+.. literalinclude:: ./samples/backup-restore-response.json
+   :language: javascript
+
 Create a backup
 ~~~~~~~~~~~~~~~
 

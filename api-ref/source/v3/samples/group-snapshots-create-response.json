@@ -1,6 +1,11 @@
 {
     "group_snapshot": {
         "id": "6f519a48-3183-46cf-a32f-41815f816666",
-        "name": "first_group_snapshot"
+        "name": "first_group_snapshot",
+        "status": "creating",
+        "group_type_id": "58737af7-786b-48b7-ab7c-2447e74b0ef4",
+        "created_at": "2017-06-20T07:44:47.000000",
+        "group_id": "d5577983-23be-47e3-b98b-bf604e5af421",
+        "description": null
     }
 }
