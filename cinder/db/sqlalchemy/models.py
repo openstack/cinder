@@ -446,7 +446,6 @@ class GroupTypeProjects(BASE, CinderBase):
     group_type_id = Column(String, ForeignKey('group_types.id'),
                            nullable=False)
     project_id = Column(String(255))
-    deleted = Column(Integer, default=0)
 
     group_type = relationship(
         GroupTypes,
@@ -454,7 +453,7 @@ class GroupTypeProjects(BASE, CinderBase):
         foreign_keys=group_type_id,
         primaryjoin='and_('
         'GroupTypeProjects.group_type_id == GroupTypes.id,'
-        'GroupTypeProjects.deleted == 0)')
+        'GroupTypeProjects.deleted == False)')
 
 
 class VolumeTypeExtraSpecs(BASE, CinderBase):
