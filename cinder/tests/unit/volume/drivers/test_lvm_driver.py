@@ -212,9 +212,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
         lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
                                          db=db)
 
-        with mock.patch.object(lvm_driver, 'vg'), \
-                mock.patch.object(lvm_driver, '_create_volume'), \
-                mock.patch.object(volutils, 'copy_volume') as mock_copy:
+        with mock.patch.object(lvm_driver, 'vg'):
 
             # Test case for thin LVM
             lvm_driver._sparse_copy_volume = True
@@ -225,16 +223,25 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
             lvm_driver.create_volume_from_snapshot(dst_volume,
                                                    snapshot_ref)
 
-            volume_path = lvm_driver.local_path(dst_volume)
-            snapshot_path = lvm_driver.local_path(snapshot_ref)
-            volume_size = 1024
-            block_size = '1M'
-            mock_copy.assert_called_with(snapshot_path,
-                                         volume_path,
-                                         volume_size,
-                                         block_size,
-                                         execute=lvm_driver._execute,
-                                         sparse=True)
+    def test_create_volume_from_snapshot_sparse_extend(self):
+
+        self.configuration.lvm_type = 'thin'
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
+                                         db=db)
+
+        with mock.patch.object(lvm_driver, 'vg'), \
+                mock.patch.object(lvm_driver, 'extend_volume') as mock_extend:
+
+            # Test case for thin LVM
+            lvm_driver._sparse_copy_volume = True
+            src_volume = tests_utils.create_volume(self.context)
+            snapshot_ref = tests_utils.create_snapshot(self.context,
+                                                       src_volume['id'])
+            dst_volume = tests_utils.create_volume(self.context)
+            dst_volume['size'] = snapshot_ref['volume_size'] + 1
+            lvm_driver.create_volume_from_snapshot(dst_volume,
+                                                   snapshot_ref)
+            mock_extend.assert_called_with(dst_volume, dst_volume['size'])
 
     @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes'}])

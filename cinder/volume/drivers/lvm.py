@@ -409,6 +409,16 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
+        if self.configuration.lvm_type == 'thin':
+            self.vg.create_lv_snapshot(volume['name'],
+                                       self._escape_snapshot(snapshot['name']),
+                                       self.configuration.lvm_type)
+            if volume['size'] > snapshot['volume_size']:
+                LOG.debug("Resize the new volume to %s.", volume['size'])
+                self.extend_volume(volume, volume['size'])
+            self.vg.activate_lv(volume['name'], is_snapshot=True,
+                                permanent=True)
+            return
         self._create_volume(volume['name'],
                             self._sizestr(volume['size']),
                             self.configuration.lvm_type,
