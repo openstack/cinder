@@ -631,7 +631,8 @@ class XIVProxy(proxy.IBMStorageProxy):
         updated_volumes = []
         if utils.is_group_a_cg_snapshot_type(group):
             # one call deletes replication for cgs and volumes together.
-            repl.GroupReplication(self).delete_replication(group,
+            group_name = self._cg_name_from_group(group)
+            repl.GroupReplication(self).delete_replication(group_name,
                                                            replication_info)
             for volume in volumes:
                 # xiv locks volumes after deletion of replication.
