@@ -18,6 +18,8 @@
      - Description
    * - **[DEFAULT]**
      -
+   * - ``vmware_adapter_type`` = ``lsiLogic``
+     - (String) Default adapter type to be used for attaching volumes.
    * - ``vmware_api_retry_count`` = ``10``
      - (Integer) Number of times VMware vCenter server API must be retried upon connection related issues.
    * - ``vmware_ca_file`` = ``None``
