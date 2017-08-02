@@ -37,7 +37,7 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
 ENCRYPTION_IGNORED_FIELDS = ['volume_type_id', 'created_at', 'updated_at',
-                             'deleted_at']
+                             'deleted_at', 'encryption_id']
 
 
 def create(context,
