@@ -230,7 +230,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # 1.6.0 - support for manage existing
     # 1.7.0 - new config option 'vmware_connection_pool_size'
     # 1.7.1 - enforce vCenter server version 5.5
-    VERSION = '1.7.1'
+    # 2.0.0 - performance enhancements
+    #       - new config option 'vmware_adapter_type'
+    #       - new extra-spec option 'vmware:adapter_type'
+    VERSION = '2.0.0'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
