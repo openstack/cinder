@@ -143,6 +143,39 @@ created from an image:
    $ openstack volume create --size 1 --type FAST_CLONE --image MYIMAGE SOURCE_VOL
    $ openstack volume create --size 1 --source SOURCE_VOL DEST_VOL
 
+Adapter type
+~~~~~~~~~~~~
+
+The VMware vCenter VMDK driver supports the adapter types ``LSI Logic Parallel``,
+``BusLogic Parallel``, ``LSI Logic SAS``, ``VMware Paravirtual`` and ``IDE`` for
+volumes. Use the ``vmware:adapter_type`` extra spec key to specify the adapter
+type. The following table captures the mapping for adapter types:
+
+.. list-table:: Extra spec entry to adapter type mapping
+   :header-rows: 1
+
+   * - Adapter type
+     - Extra spec key
+     - Extra spec value
+   * - BusLogic Parallel
+     - ``vmware:adapter_type``
+     - ``busLogic``
+   * - IDE
+     - ``vmware:adapter_type``
+     - ``ide``
+   * - LSI Logic Parallel
+     - ``vmware:adapter_type``
+     - ``lsiLogic``
+   * - LSI Logic SAS
+     - ``vmware:adapter_type``
+     - ``lsiLogicsas``
+   * - VMware Paravirtual
+     - ``vmware:adapter_type``
+     - ``paraVirtual``
+
+If you do not specify the adapter type, the default is the value specified by
+the config option ``vmware_adapter_type``.
+
 Use vCenter storage policies to specify back-end data stores
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
