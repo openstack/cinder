@@ -8,35 +8,22 @@ equivalent functions and differ only in support for their respective host
 attachment methods.
 
 The drivers perform volume operations by communicating with the back-end VMAX
-storage. It uses a CIM client in Python called ``PyWBEM`` to perform CIM
-operations over HTTP.
-
-The EMC CIM Object Manager (ECOM) is packaged with the EMC SMI-S provider. It
-is a CIM server that enables CIM clients to perform CIM operations over HTTP by
-using SMI-S in the back end for VMAX storage operations.
-
-The Dell EMC SMI-S Provider supports the SNIA Storage Management Initiative
-(SMI), an ANSI standard for storage management. It supports the VMAX storage
-system.
+storage. They use the Requests HTTP library to communicate with a Unisphere
+for VMAX instance, using a RESTAPI interface in the backend to perform VMAX
+storage operations.
 
 System requirements
 ~~~~~~~~~~~~~~~~~~~
 
-The Cinder driver supports the VMAX-3 series.
+The Cinder driver supports the VMAX-3 series and VMAX All-Flash arrays.
 
-For VMAX-3 series, Solutions Enabler 8.3.0.11 or later is required. This
-is SSL only. Refer to section below ``SSL support``.
+Solutions Enabler 8.4.0.0 or later, and Unisphere for VMAX 8.4.0.8 or later
+are required.
 
-When installing Solutions Enabler, make sure you explicitly add the SMI-S
-component.
-
-You can download Solutions Enabler from the Dell EMC's support web site
-(login is required). See the ``Solutions Enabler 8.3.0 Installation and
-Configuration Guide`` at ``support.emc.com``.
-
-Ensure that there is only one SMI-S (ECOM) server active on the same VMAX
-array.
-
+You can download Solutions Enabler and Unisphere from the Dell EMC's support
+web site (login is required). See the ``Solutions Enabler 8.4.0 Installation
+and Configuration Guide`` and ``Unisphere for VMAX 8.4.0 Installation Guide``
+at ``support.emc.com``.
 
 Required VMAX software suites for OpenStack
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -52,6 +39,11 @@ There are five Software Suites available for the VMAX All Flash and Hybrid:
 OpenStack requires the Advanced Suite and the Local Replication Suite
 or the Total Productivity Pack (it includes the Advanced Suite and the
 Local Replication Suite) for the VMAX All Flash and Hybrid.
+
+Using the Remote Replication functionality will also require the Remote
+Replication Suite.
+
+The storage system also requires a Unisphere for VMAX (SMC) eLicence.
 
 Each are licensed separately. For further details on how to get the
 relevant license(s), reference eLicensing Support below.
@@ -94,14 +86,12 @@ VMAX drivers support these operations:
 -  Extend a volume
 -  Retype a volume (Host and storage assisted volume migration)
 -  Create a volume from a snapshot
--  Create and delete consistency group
--  Create and delete consistency group snapshot
--  Modify consistency group (add and remove volumes)
--  Create consistency group from source
 -  Create and delete generic volume group
 -  Create and delete generice volume group snapshot
 -  Modify generic volume group (add and remove volumes)
 -  Create generic volume group from source
+-  Live Migration
+-  Volume replication
 
 VMAX drivers also support the following features:
 
@@ -109,16 +99,9 @@ VMAX drivers also support the following features:
 -  Dynamic determination of the target iSCSI IP address
 -  iSCSI multipath support
 -  Oversubscription
--  Live Migration
--  Attach and detach snapshots
--  Volume replication
-
-VMAX All Flash and Hybrid:
-
 -  Service Level support
 -  SnapVX support
--  All Flash support
--  Compression support
+-  Compression support(All Flash only)
 
 .. note::
 
@@ -126,89 +109,6 @@ VMAX All Flash and Hybrid:
    compression enabled by default when associated with Diamond Service Level.
    This means volumes added to any newly created storage groups will be
    compressed.
-
-Setup VMAX drivers
-~~~~~~~~~~~~~~~~~~
-
-.. table:: **Pywbem Versions**
-
- +------------+-----------------------------------+
- |  Pywbem    | Ubuntu14.04(LTS),Ubuntu16.04(LTS),|
- |  Version   | Red Hat Enterprise Linux, CentOS  |
- |            | and Fedora                        |
- +============+=================+=================+
- |            | Python2         | Python3         |
- +            +-------+---------+-------+---------+
- |            | pip   | Native  | pip   | Native  |
- +------------+-------+---------+-------+---------+
- |   0.9.0    |  No   |   N/A   |  Yes  |   N/A   |
- +------------+-------+---------+-------+---------+
- |   0.8.4    |  No   |   N/A   |  Yes  |   N/A   |
- +------------+-------+---------+-------+---------+
- |   0.7.0    |  No   |   Yes   |  No   |   Yes   |
- +------------+-------+---------+-------+---------+
-
-.. note::
-
-   On Python2, use the updated distro version, for example:
-
-   .. code-block:: console
-
-      # apt-get install python-pywbem
-
-.. note::
-
-   On Python3, use the official pywbem version (V0.9.0 or v0.8.4).
-
-#. Install the ``python-pywbem`` package for your distribution.
-
-   -  On Ubuntu:
-
-      .. code-block:: console
-
-         # apt-get install python-pywbem
-
-   -  On openSUSE:
-
-      .. code-block:: console
-
-         # zypper install python-pywbem
-
-   -  On Red Hat Enterprise Linux, CentOS, and Fedora:
-
-      .. code-block:: console
-
-         # yum install pywbem
-
-   .. note::
-
-      A potential issue can exist with the ``python-pywbem`` dependency package,
-      especially M2crypto. To troubleshot and resolve these types of issues,
-      follow these steps.
-
-      -  On Ubuntu:
-
-         .. code-block:: console
-
-            # apt-get remove --purge -y python-m2crypto
-            # pip uninstall pywbem
-            # apt-get install python-pywbem
-
-      -  On openSUSE:
-
-         .. code-block:: console
-
-            # zypper remove --clean-deps python-m2crypto
-            # pip uninstall pywbem
-            # zypper install python-pywbem
-
-      -  On Red Hat Enterprise Linux, CentOS, and Fedora:
-
-         .. code-block:: console
-
-            # yum remove python-m2crypto
-            # sudo pip uninstall pywbem
-            # yum install pywbem
 
 #. Install iSCSI Utilities (for iSCSI drivers only).
 
@@ -236,38 +136,31 @@ Setup VMAX drivers
    #. Enable the iSCSI driver to start automatically.
 
 #. Download Solutions Enabler from ``support.emc.com`` and install it.
-   Make sure you install the SMIS component. A [Y]es response installs the
-   ``SMISPROVIDER`` component.
-
-   .. code-block:: console
-
-      Install EMC Solutions Enabler SMIS Component ? [N]:Y
 
    You can install Solutions Enabler on a non-OpenStack host. Supported
    platforms include different flavors of Windows, Red Hat, and SUSE Linux.
-   Solutions Enabler can be installed on a physical server or a VM hosted by
-   an ESX server. Note that the supported hypervisor for a VM running
-   Solutions Enabler is ESX only. See the ``Solutions Enabler 8.3.0
+   Solutions Enabler can be installed on a physical server, or as a Virtual
+   Appliance (a VMware ESX server VM). Additionally, starting with HYPERMAX
+   OS Q3 2015, you can manage VMAX3 arrays using the Embedded Management
+   (eManagement) container application. See the ``Solutions Enabler 8.4.0
    Installation and Configuration Guide`` on ``support.emc.com`` for more
    details.
 
    .. note::
 
-      You must discover storage arrays on the ECOM before you can use
-      the VMAX drivers. Follow instructions in ``Solutions Enabler 8.3.0
-      Installation and Configuration Guide`` on ``support.emc.com`` for more
+      You must discover storage arrays before you can use the VMAX drivers.
+      Follow instructions in ``Solutions Enabler 8.4.0 Installation and
+      Configuration Guide`` on ``support.emc.com`` for more
       details.
 
-   The ECOM server is usually installed at ``/opt/emc/ECIM/ECOM/bin`` on Linux
-   and ``C:\Program Files\EMC\ECIM\ECOM\bin`` on Windows. After you install and
-   configure the ECOM, go to that directory and type ``TestSmiProvider.exe``
-   for windows and ``./TestSmiProvider`` for linux
+#. Download Unisphere from ``support.emc.com`` and install it.
 
-   Use ``addsys`` in ``TestSmiProvider`` to add an array. Use ``dv`` and examine
-   the output after the array is added. In advance of ``TestSmiProvider``,
-   arrays need to be discovered on the Solutions Enabler by using the
-   :command:`symcfg discover` command. Make sure that the arrays are recognized by the
-   SMI-S server before using the EMC VMAX drivers.
+   Unisphere can be installed in local, remote, or embedded configurations
+   - i.e., on the same server running Solutions Enabler; on a server
+   connected to the Solutions Enabler server; or using the eManagement
+   container application (containing Solutions Enabler and Unisphere for
+   VMAX). See ``Unisphere for VMAX 8.4.0 Installation Guide`` at
+   ``support.emc.com``.
 
 #. Configure Block Storage
 
@@ -279,12 +172,13 @@ Setup VMAX drivers
 
       [CONF_GROUP_ISCSI]
       volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
-      cinder_emc_config_file = /etc/cinder/cinder_emc_config_CONF_GROUP_ISCSI.xml
+      cinder_dell_emc_config_file = /etc/cinder/cinder_dell_emc_config_CONF_GROUP_ISCSI.xml
       volume_backend_name = ISCSI_backend
 
+
       [CONF_GROUP_FC]
-      volume_driver = cinder.volume.drivers.dell_emc.vmax.fc.EMCVMAXFCDriver
-      cinder_emc_config_file = /etc/cinder/cinder_emc_config_CONF_GROUP_FC.xml
+      volume_driver = cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver
+      cinder_dell_emc_config_file = /etc/cinder/cinder_dell_emc_config_CONF_GROUP_FC.xml
       volume_backend_name = FC_backend
 
    In this example, two back-end configuration groups are enabled:
@@ -292,96 +186,246 @@ Setup VMAX drivers
    section describing unique parameters for connections, drivers, the
    ``volume_backend_name``, and the name of the EMC-specific configuration file
    containing additional settings. Note that the file name is in the format
-   ``/etc/cinder/cinder_emc_config_[confGroup].xml``.
+   ``/etc/cinder/cinder_dell_emc_config_[confGroup].xml``.
 
    Once the ``cinder.conf`` and EMC-specific configuration files have been
-   created, :command:`openstack` commands need to be issued in order to create and
-   associate OpenStack volume types with the declared ``volume_backend_names``:
+   created, :command:`openstack` commands need to be issued in order to
+   create and associate OpenStack volume types with the declared
+   ``volume_backend_names``:
 
-   .. code-block:: console
+   Additionally, each volume type will need an associated ``pool_name`` - an
+   extra specification indicating the service level/ workload combination to
+   be used for that volume type.
 
-      $ openstack volume type create VMAX_ISCSI
-      $ openstack volume type set --property volume_backend_name=ISCSI_backend VMAX_ISCSI
-      $ openstack volume type create VMAX_FC
-      $ openstack volume type set --property volume_backend_name=FC_backend VMAX_FC
+   There is also the option to assign a port group to a volume type by
+   setting the ``storagetype:portgroupname`` extra specification.
 
-   By issuing these commands, the Block Storage volume type ``VMAX_ISCSI`` is
-   associated with the ``ISCSI_backend``, and the type ``VMAX_FC`` is
-   associated with the ``FC_backend``.
+``ServiceLevel``
+   The Service Level manages the underlying storage to provide expected
+   performance. Setting the ``ServiceLevel`` to ``NONE`` means that non-FAST
+   managed storage groups will be created instead (storage groups not
+   associated with any service level).
 
-
-   Create the ``/etc/cinder/cinder_emc_config_CONF_GROUP_ISCSI.xml`` file.
-   You do not need to restart the service for this change.
-
-   Add the following lines to the XML file:
-
-   VMAX All Flash and Hybrid
-     .. code-block:: xml
-
-       <?xml version="1.0" encoding="UTF-8" ?>
-       <EMC>
-         <EcomServerIp>1.1.1.1</EcomServerIp>
-         <EcomServerPort>00</EcomServerPort>
-         <EcomUserName>user1</EcomUserName>
-         <EcomPassword>password1</EcomPassword>
-         <PortGroups>
-           <PortGroup>OS-PORTGROUP1-PG</PortGroup>
-           <PortGroup>OS-PORTGROUP2-PG</PortGroup>
-         </PortGroups>
-         <Array>111111111111</Array>
-         <Pool>SRP_1</Pool>
-         <ServiceLevel>Diamond</ServiceLevel>
-         <Workload>OLTP</Workload>
-       </EMC>
-
-   Where:
+``Workload``
+   When a workload type is added, the latency range is reduced due to the
+   added information. Setting the ``Workload`` to ``NONE`` means the latency
+   range will be the widest for its Service Level type. Please note that you
+   cannot set a Workload without a Service Level.
 
 .. note::
 
-   VMAX Hybrid supports Optimized, Diamond, Platinum, Gold, Silver, Bronze, and
-   NONE service levels. VMAX All Flash supports Diamond and NONE. Both
+   Run the command cinder get-pools --detail to query for the pool
+   information. This should list all the available Service Level and Workload
+   combinations available for the SRP as pools belonging to the same backend.
+   You can create many volume types for different service level and workload
+   types using the same backend.
+
+``Port Groups``
+   Port groups refer to VMAX port groups that have been pre-configured to
+   expose volumes managed by this backend. Each supplied port group should
+   have sufficient number and distribution of ports (across directors and
+   switches) as to ensure adequate bandwidth and failure protection for the
+   volume connections. PortGroups can contain one or more port groups of
+   either iSCSI or FC ports. Make sure that any PortGroups provided contain
+   either all FC or all iSCSI port groups (for a given back end), as
+   appropriate for the configured driver (iSCSI or FC). Port groups can be
+   assigned as an extra spec, or can be provided in the xml file.
+   Port groups provided as the extra spec are selected first.
+
+.. note::
+
+   Create as many volume types as the number of Service Level and Workload
+   (available) combinations which you are going to use for provisioning
+   volumes. The pool_name is the additional property which has to be set and
+   is of the format: ``<ServiceLevel>+<Workload>+<SRP>+<Array ID>``. This
+   can be obtained from the output of the ``cinder get-pools--detail``.
+
+.. code-block:: console
+
+   $ openstack volume type create VMAX_ISCI_SILVER_OLTP
+   $ openstack volume type set --property volume_backend_name=ISCSI_backend \
+                               --property pool_name=Silver+OLTP+SRP_1+000197800123 \
+                               --property storagetype:portgroupname=OS-PG2 \
+                               VMAX_ ISCI_SILVER_OLTP
+   $ openstack volume type create VMAX_FC_DIAMOND_DSS
+   $ openstack volume type set --property volume_backend_name=FC_backend \
+                               --property pool_name=Diamond+DSS+SRP_1+000197800123 \
+                                --property port_group_name=OS-PG1 \
+                               VMAX_FC_DIAMOND_DSS
+
+
+By issuing these commands, the Block Storage volume type
+``VMAX_ISCSI_SILVER_OLTP`` is associated with the ``ISCSI_backend``, a Silver
+Service Level, and an OLTP workload.
+
+The type ``VMAX_FC_DIAMOND_DSS`` is associated with the ``FC_backend``, a
+Diamond Service Level, and a DSS workload.
+
+.. note::
+
+   VMAX Hybrid supports Optimized, Diamond, Platinum, Gold, Silver, Bronze,
+   and NONE service levels. VMAX All Flash supports Diamond and NONE. Both
    support DSS_REP, DSS, OLTP_REP, OLTP, and NONE workloads.
 
-``EcomServerIp``
-    IP address of the ECOM server which is packaged with SMI-S.
+#. Create an XML file
 
-``EcomServerPort``
-    Port number of the ECOM server which is packaged with SMI-S.
+   Create the ``/etc/cinder/cinder_dell_emc_config_CONF_GROUP_ISCSI.xml``
+   file. You do not need to restart the service for this change.
 
-``EcomUserName`` and ``EcomPassword``
-    Credentials for the ECOM server.
+   Add the following lines to the XML file:
+
+
+.. code-block:: xml
+
+   <?xml version="1.0" encoding="UTF-8" ?>
+   <EMC>
+      <RestServerIp>1.1.1.1</RestServerIp>
+      <RestServerPort>8443</RestServerPort>
+      <RestUserName>smc</RestUserName>
+      <RestPassword>smc</RestPassword>
+      <PortGroups>
+         <PortGroup>OS-PORTGROUP1-PG</PortGroup>
+         <PortGroup>OS-PORTGROUP2-PG</PortGroup>
+      </PortGroups>
+      <Array>111111111111</Array>
+      <SRP>SRP_1</SRP>
+      <SSLVerify>/path/to/sslcert</SSLVerify>
+   </EMC>
+
+Where:
+
+``RestServerIp``
+   IP address of the Unisphere server.
+
+``RestServerPort``
+   Port number of the Unisphere server.
+
+``RestUserName`` and ``RestPassword``
+   Credentials for the Unisphere server.
 
 ``PortGroups``
-    Supplies the names of VMAX port groups that have been pre-configured to
-    expose volumes managed by this backend. Each supplied port group should
-    have sufficient number and distribution of ports (across directors and
-    switches) as to ensure adequate bandwidth and failure protection for the
-    volume connections. PortGroups can contain one or more port groups of
-    either iSCSI or FC ports. When a dynamic masking view is created by the
-    VMAX driver, the port group is chosen randomly from the PortGroup list, to
-    evenly distribute load across the set of groups provided. Make sure that
-    the PortGroups set contains either all FC or all iSCSI port groups (for a
-    given back end), as appropriate for the configured driver (iSCSI or FC).
+   Supplies the names of VMAX port groups that have been pre-configured to
+   expose volumes managed by this array. Port groups can be supplied in the
+   XML file, or can be specified as an extra spec on a volume type for more
+   control. Please see above section on port groups. When a dynamic masking
+   view is created by the VMAX driver, if there is no port group specified
+   as an extra specification, the port group is chosen randomly from the
+   PortGroup list, to evenly distribute load across the set of groups
+   provided.
 
 ``Array``
-    Unique VMAX array serial number.
+   Unique VMAX array serial number.
 
-``Pool``
-    Unique pool name within a given array. For back ends not using FAST
-    automated tiering, the pool is a single pool that has been created by the
-    administrator. For back ends exposing FAST policy automated tiering, the
-    pool is the bind pool to be used with the FAST policy.
+``SRP``
+   The name of the storage resource pool for the given array.
 
-``ServiceLevel``
-    VMAX All Flash and Hybrid only. The Service Level manages the underlying
-    storage to provide expected performance. Omitting the ``ServiceLevel``
-    tag means that non FAST storage groups will be created instead
-    (storage groups not associated with any service level).
+``SSLVerify``
+   The path to the ``ca_cert.pem`` file of the Unisphere instance below, or
+   ``True`` if the SSL cert has been added to the bundle - see ``SSL support``.
 
-``Workload``
-    VMAX All Flash and Hybrid only. When a workload type is added, the latency
-    range is reduced due to the added information. Omitting the ``Workload``
-    tag means the latency range will be the widest for its SLO type.
+
+Upgrading from SMI-S based driver to RESTAPI based driver
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Seamless upgrades from an SMI-S based driver to RESTAPI based driver,
+following the setup instructions above, are supported with a few exceptions:
+
+#. Live migration functionality will not work on already attached/in-use
+   legacy volumes. These volumes will first need to be detached and reattached
+   using the RESTAPI based driver. This is because we have changed the masking
+   view architecture from Pike to better support this functionality.
+
+#. Consistency groups are deprecated in Pike. Generic Volume Groups are
+   supported from Pike onwards.
+
+#. Please note that the Pike release of VMAX cinder drivers will be the last
+   release which supports Hybrid VMAX3 Arrays.
+
+
+SSL support
+~~~~~~~~~~~
+
+#. Get the CA certificate of the Unisphere server. This pulls the CA cert file
+   and saves it as .pem file:
+
+   .. code-block:: console
+
+      # openssl s_client -showcerts -connect my_unisphere_host:8443 </dev/null 2>/dev/null|openssl x509 -outform PEM >ca_cert.pem
+
+   Where ``my_unisphere_host`` is the hostname of the unisphere instance and
+   ``ca_cert.pem`` is the name of the .pem file.
+
+#. Add this path to the <SSLVerify> tag in
+   ``/etc/cinder/cinder_dell_emc_config_<conf_group>.xml``
+
+   .. code-block:: console
+
+      <SSLVerify>/path/to/ca_cert.pem</SSLVerify>
+
+   ``OR`` follow the steps below:
+
+#. OPTIONAL (if step 2 completed): Copy the pem file to the system certificate
+   directory:
+
+   .. code-block:: console
+
+      # cp ca_cert.pem /usr/share/ca-certificates/ca_cert.crt
+
+#. OPTIONAL: Update CA certificate database with the following commands:
+
+   .. code-block:: console
+
+      # sudo dpkg-reconfigure ca-certificates
+
+   .. note::
+
+      Check that the new ``ca_cert.crt`` will activate by selecting ask on the
+      dialog. If it is not enabled for activation, use the down and up keys to
+      select, and the space key to enable or disable.
+
+      .. code-block:: console
+
+         # sudo update-ca-certificates
+
+#. Ensure ``<SSLVerify>`` tag in
+   ``/etc/cinder/cinder_dell_emc_config_<conf_group>.xml`` is set to True OR
+   the path defined in step 1.
+
+
+.. note::
+
+   Issue
+
+   "Caused by SSLError(CertificateError("hostname 'xx.xx.xx.xx' doesn't match 'xx.xx.xx.xx'
+
+   Solution
+
+   #. Check that ``requests`` and it's dependencies are up to date:
+
+      .. code-block:: console
+
+         $ sudo pip install requests --upgrade
+
+   #. Verify the SSL cert was created using the command:
+
+      .. code-block:: console
+
+         $ openssl s_client -showcerts -connect {my_unisphere_host}:{port} </dev/null 2>/dev/null|openssl x509 -outform PEM >{cert_name}.pem
+
+   #. Verify the cert using command:
+
+      .. code-block:: console
+
+         $ openssl s_client --connect {ip_address}:{port} -CAfile {cert_name}.pem -verify 9
+
+   #. If requests is up to date and the cert is created correctly and verified
+      but the hostname error still persists, install ``ipaddress`` to
+      determine if it clears the hostname error:
+
+      .. code-block:: console
+
+         $ sudo pip install ipaddress
+
 
 FC Zoning with VMAX
 ~~~~~~~~~~~~~~~~~~~
@@ -411,25 +455,19 @@ Masking views are dynamically created by the VMAX FC and iSCSI drivers using
 the following naming conventions. ``[protocol]`` is either ``I`` for volumes
 attached over iSCSI or ``F`` for volumes attached over Fiber Channel.
 
-VMAX All Flash and Hybrid
-
-.. code-block:: text
-
-   OS-[shortHostName]-[SRP]-[SLO]-[workload]-[protocol]-MV
-
 Initiator group names
 ---------------------
 
 For each host that is attached to VMAX volumes using the drivers, an initiator
 group is created or re-used (per attachment type). All initiators of the
 appropriate type known for that host are included in the group. At each new
-attach volume operation, the VMAX driver retrieves the initiators (either WWNNs
-or IQNs) from OpenStack and adds or updates the contents of the Initiator Group
-as required. Names are of the following format. ``[protocol]`` is either ``I``
-for volumes attached over iSCSI or ``F`` for volumes attached over Fiber
-Channel.
+attach volume operation, the VMAX driver retrieves the initiators (either
+WWNNs or IQNs) from OpenStack and adds or updates the contents of the
+Initiator Group as required. Names are of the following format. ``[protocol]``
+is either ``I`` for volumes attached over iSCSI or ``F`` for volumes attached
+over Fiber Channel.
 
-.. code-block:: text
+.. code-block:: console
 
    OS-[shortHostName]-[protocol]-IG
 
@@ -441,209 +479,114 @@ Channel.
 FA port groups
 --------------
 
-VMAX array FA ports to be used in a new masking view are chosen from the list
-provided in the EMC configuration file.
+VMAX array FA ports to be used in a new masking view are retrieved from the
+port group provided as the extra spec on the volume type, or chosen from the
+list provided in the Dell EMC configuration file.
 
 Storage group names
 -------------------
 
-As volumes are attached to a host, they are either added to an existing storage
-group (if it exists) or a new storage group is created and the volume is then
-added. Storage groups contain volumes created from a pool (either single-pool
-or FAST-controlled), attached to a single host, over a single connection type
-(iSCSI or FC). ``[protocol]`` is either ``I`` for volumes attached over iSCSI
-or ``F`` for volumes attached over Fiber Channel.
+As volumes are attached to a host, they are either added to an existing
+storage group (if it exists) or a new storage group is created and the volume
+is then added. Storage groups contain volumes created from a pool, attached
+to a single host, over a single connection type (iSCSI or FC). ``[protocol]``
+is either ``I`` for volumes attached over iSCSI or ``F`` for volumes attached
+over Fiber Channel. VMAX cinder driver utilizes cascaded storage groups -
+a ``parent`` storage group which is associated with the masking view, which
+contains ``child`` storage groups for each configured
+SRP/slo/workload/compression-enabled or disabled/replication-enabled or
+disabled combination.
 
 VMAX All Flash and Hybrid
 
+Parent storage group:
+
 .. code-block:: text
 
-   OS-[shortHostName]-[SRP]-[SLO]-[Workload]-[protocol]-SG
+   OS-[shortHostName]-[protocol]-[portgroup_name]-SG
 
+Child storage groups:
+
+.. code-block:: text
+
+   OS-[shortHostName]-[SRP]-[ServiceLevel/Workload]-[portgroup_name]-CD-RE
+
+.. note::
+
+   CD and RE are only set if compression is explicitly disabled or replication
+   explicitly enabled . see the compression and replication sections below.
 
 Interval and Retries
 --------------------
 
-By default, ``Interval`` and ``Retries`` are ``10`` seconds and ``60``
-retries respectively. These determine how long (``Interval``) and how many
-times (``Retries``) a user is willing to wait for a single SMIS call,
-``10*60=300seconds``. Depending on usage, these may need to be overriden by
-the user in the XML file.  For example, if performance is a factor, then the
-``Interval`` should be decreased to check the job status more frequently,
-and if multiple concurrent provisioning requests are issued then ``Retries``
+By default, ``interval`` and ``retries`` are ``3`` seconds and ``200`` retries
+respectively. These determine how long (``interval``) and how many times
+(``retries``) a user is willing to wait for a single Rest call,
+``3*200=600seconds``. Depending on usage, these may need to be overriden by
+the user in the cinder.conf. For example, if performance is a factor, then the
+``interval`` should be decreased to check the job status more frequently, and
+if multiple concurrent provisioning requests are issued then ``retries``
 should be increased so calls will not timeout prematurely.
 
-In the example below, the driver checks every 5 seconds for the status of the
-job. It will continue checking for 120 retries before it times out.
+In the example below, the driver checks every 3 seconds for the status of the
+job. It will continue checking for 150 retries before it times out.
 
-Add the following lines to the XML file:
+Add the following lines to the VMAX backend in the cinder.conf:
 
-   VMAX All Flash and Hybrid
+.. code-block:: console
 
-     .. code-block:: xml
+   [CONF_GROUP_ISCSI]
+   volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
+   cinder_dell_emc_config_file = /etc/cinder/cinder_dell_emc_config_CONF_GROUP_ISCSI.xml
+   volume_backend_name = ISCSI_backend
+   interval = 3
+   retries = 200
 
-       <?xml version="1.0" encoding="UTF-8" ?>
-       <EMC>
-         <EcomServerIp>1.1.1.1</EcomServerIp>
-         <EcomServerPort>00</EcomServerPort>
-         <EcomUserName>user1</EcomUserName>
-         <EcomPassword>password1</EcomPassword>
-         <PortGroups>
-           <PortGroup>OS-PORTGROUP1-PG</PortGroup>
-           <PortGroup>OS-PORTGROUP2-PG</PortGroup>
-         </PortGroups>
-         <Array>111111111111</Array>
-         <Pool>SRP_1</Pool>
-         <Interval>5</Interval>
-         <Retries>120</Retries>
-       </EMC>
-
-SSL support
-~~~~~~~~~~~
-
-.. note::
-   The ECOM component in Solutions Enabler enforces SSL in 8.3.0.1 or later.
-   By default, this port is 5989.
-
-#. Get the CA certificate of the ECOM server. This pulls the CA cert file and
-   saves it as .pem file. The ECOM server IP address or hostname is ``my_ecom_host``.
-   The sample name of the .pem file is ``ca_cert.pem``:
-
-   .. code-block:: console
-
-      # openssl s_client -showcerts -connect my_ecom_host:5989 </dev/null 2>/dev/null|openssl x509 -outform PEM >ca_cert.pem
-
-#. Copy the pem file to the system certificate directory:
-
-   .. code-block:: console
-
-      # cp ca_cert.pem /usr/share/ca-certificates/ca_cert.crt
-
-#. Update CA certificate database with the following commands:
-
-   .. code-block:: console
-
-      # sudo dpkg-reconfigure ca-certificates
-
-   .. note::
-      Check that the new ``ca_cert.crt`` will activate by selecting
-      :guilabel:`ask` on the dialog. If it is not enabled for activation, use the
-      down and up keys to select, and the space key to enable or disable.
-
-   .. code-block:: console
-
-      # sudo update-ca-certificates
-
-#. Update :file:`/etc/cinder/cinder.conf` to reflect SSL functionality by
-   adding the following to the back end block. ``my_location`` is the location
-   of the .pem file generated in step one:
-
-   .. code-block:: ini
-
-      driver_ssl_cert_verify = False
-      driver_use_ssl = True
-
-   If you skip steps two and three, you must add the location of you .pem file.
-
-   .. code-block:: ini
-
-      driver_ssl_cert_verify = False
-      driver_use_ssl = True
-      driver_ssl_cert_path = /my_location/ca_cert.pem
-
-#. Update EcomServerIp to ECOM host name and EcomServerPort to secure port
-   (5989 by default) in :file:`/etc/cinder/cinder_emc_config_<conf_group>.xml`.
-
-
-Oversubscription support
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Oversubscription support requires the ``/etc/cinder/cinder.conf`` to be
-updated with two additional tags ``max_over_subscription_ratio`` and
-``reserved_percentage``. In the sample below, the value of 2.0 for
-``max_over_subscription_ratio`` means that the pools in oversubscribed by a
-factor of 2, or 200% oversubscribed. The ``reserved_percentage`` is the high
-water mark where by the physical remaining space cannot be exceeded.
-For example, if there is only 4% of physical space left and the reserve
-percentage is 5, the free space will equate to zero. This is a safety
-mechanism to prevent a scenario where a provisioning request fails due to
-insufficient raw space.
-
-The parameter ``max_over_subscription_ratio`` and ``reserved_percentage`` are
-optional.
-
-To set these parameter go to the configuration group of the volume type in
-:file:`/etc/cinder/cinder.conf`.
-
-.. code-block:: ini
-
-    [VMAX_ISCSI_SILVER]
-    cinder_emc_config_file = /etc/cinder/cinder_emc_config_VMAX_ISCSI_SILVER.xml
-    volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
-    volume_backend_name = VMAX_ISCSI_SILVER
-    max_over_subscription_ratio = 2.0
-    reserved_percentage = 10
-
-For the second iteration of over subscription, take into account the
-EMCMaxSubscriptionPercent property on the pool. This value is the highest
-that a pool can be oversubscribed.
-
-Scenario 1
-----------
-
-``EMCMaxSubscriptionPercent`` is 200 and the user defined
-``max_over_subscription_ratio`` is 2.5, the latter is ignored.
-Oversubscription is 200%.
-
-Scenario 2
-----------
-
-``EMCMaxSubscriptionPercent`` is 200 and the user defined
-``max_over_subscription_ratio`` is 1.5, 1.5 equates to 150% and is less than
-the value set on the pool. Oversubscription is 150%.
-
-Scenario 3
-----------
-
-``EMCMaxSubscriptionPercent`` is 0. This means there is no upper limit on the
-pool. The user defined ``max_over_subscription_ratio`` is 1.5.
-Oversubscription is 150%.
-
-Scenario 4
-----------
-
-``EMCMaxSubscriptionPercent`` is 0. ``max_over_subscription_ratio`` is not
-set by the user. We recommend to default to upper limit, this is 150%.
-
-.. note::
-   If FAST is set and multiple pools are associated with a FAST policy,
-   then the same rules apply. The difference is, the TotalManagedSpace and
-   EMCSubscribedCapacity for each pool associated with the FAST policy are
-   aggregated.
-
-Scenario 5
-----------
-
-``EMCMaxSubscriptionPercent`` is 200 on one pool. It is 300 on another pool.
-The user defined ``max_over_subscription_ratio`` is 2.5. Oversubscription is
-200% on the first pool and 250% on the other.
 
 QoS (Quality of Service) support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Quality of service(QoS) has traditionally been associated with network
+Quality of service (QOS) has traditionally been associated with network
 bandwidth usage. Network administrators set limitations on certain networks
 in terms of bandwidth usage for clients. This enables them to provide a
-tiered level of service based on cost. The cinder QoS offers similar
+tiered level of service based on cost. The Nova/cinder QOS offer similar
 functionality based on volume type setting limits on host storage bandwidth
 per service offering. Each volume type is tied to specific QoS attributes
-that are unique to each storage vendor. The VMAX plugin offers limits via
-the following attributes:
+some of which are unique to each storage vendor. In the hypervisor, the QoS
+limits the following
 
-- By I/O limit per second (IOPS)
-- By limiting throughput per second (MB/S)
-- Dynamic distribution
-- The VMAX offers modification of QoS at the Storage Group level
+- Limit by throughput - Total bytes/sec, read bytes/sec, write bytes/sec
+- Limit by IOPS - Total IOPS/sec, read IOPS/sec, write IOPS/sec
+
+QoS enforcement in cinder is done either at the hypervisor (front end),
+the storage subsystem (back end), or both. This document focuses on QoS
+limits that are enforced by either the VMAX backend or the hypervisor
+front end interchangeably or just back end (Vendor Specific). The VMAX driver
+offers support for Total bytes/sec limit in throughput and Total IOPS/sec
+limit of IOPS.
+
+The VMAX driver supports the following attributes that are front end/back end
+agnostic
+
+- total_iops_sec - Maximum IOPs (in I/Os per second). Valid values range from
+  100 IO/Sec to 100,000 IO/sec.
+- total_bytes_sec - Maximum bandwidth (throughput) in bytes per second. Valid
+  values range from 1048576bytes (1MB) to 104857600000bytes (100, 000MB)
+
+The VMAX driver offers the following attribute that is vendor specific to the
+VMAX and dependent on the total_iops_sec and/or total_bytes_sec being set.
+
+- Dynamic Distribution - Enables/Disables dynamic distribution of host I/O
+  limits. Possible values are:
+
+  - Always - Enables full dynamic distribution mode. When enabled, the
+    configured host I/O limits will be dynamically distributed across the
+    configured ports, thereby allowing the limits on each individual port to
+    adjust to fluctuating demand.
+  - OnFailure - Enables port failure capability. When enabled, the fraction
+    of configured host I/O limits available to a configured port will adjust
+    based on the number of ports currently online.
+  - Never - Disables this feature (Default).
 
 USE CASE 1 - Default values
 ---------------------------
@@ -656,21 +599,25 @@ Prerequisites - VMAX
 
 .. table:: **Prerequisites - Block Storage (cinder) back end (storage group)**
 
- +-------------------+--------+
- |  Key              | Value  |
- +===================+========+
- |  maxIOPS          | 4000   |
- +-------------------+--------+
- |  maxMBPS          | 4000   |
- +-------------------+--------+
- |  DistributionType | Always |
- +-------------------+--------+
+ +-------------------+-------------------+
+ |  Key              | Value             |
+ +===================+===================+
+ |  total_iops_sec   |  500              |
+ +-------------------+-------------------+
+ |  total_bytes_sec  | 104857600 (100MB) |
+ +-------------------+-------------------+
+ |  DistributionType | Always            |
+ +-------------------+-------------------+
 
 #. Create QoS Specs with the prerequisite values above:
 
    .. code-block:: console
 
-      $ openstack volume qos create --property maxIOPS=4000 maxMBPS=4000 DistributionType=Always SILVER
+      $ openstack volume qos create --consumer back-end \
+                                    --property total_iops_sec=500 \
+                                    --property total_bytes_sec=104857600 \
+                                    --property DistributionType=Always \
+                                    SILVER
 
 #. Associate QoS specs with specified volume type:
 
@@ -686,8 +633,8 @@ Prerequisites - VMAX
 
 **Outcome - VMAX (storage group)**
 
-- Host I/O Limit (MB/Sec) -     4000
-- Host I/O Limit (IO/Sec) -     4000
+- Host I/O Limit (MB/Sec) -     100
+- Host I/O Limit (IO/Sec) -     500
 - Set Dynamic Distribution -    Always
 
 **Outcome - Block Storage (cinder)**
@@ -706,21 +653,26 @@ Prerequisites - VMAX
 
 .. table:: **Prerequisites - Block Storage (cinder) back end (storage group)**
 
- +-------------------+--------+
- |  Key              | Value  |
- +===================+========+
- |  maxIOPS          | 4000   |
- +-------------------+--------+
- |  maxMBPS          | 4000   |
- +-------------------+--------+
- |  DistributionType | Always |
- +-------------------+--------+
+ +-------------------+-------------------+
+ |  Key              | Value             |
+ +===================+===================+
+ |  total_iops_sec   | 500               |
+ +-------------------+-------------------+
+ |  total_bytes_sec  | 104857600 (100MB) |
+ +-------------------+-------------------+
+ |  DistributionType | Always            |
+ +-------------------+-------------------+
 
-#. Create QoS specifications with the prerequisite values above:
+#. Create QoS specifications with the prerequisite values above. The consumer
+   in this case use case is both for front end and back end:
 
    .. code-block:: console
 
-      $ openstack volume qos create --property maxIOPS=4000 maxMBPS=4000 DistributionType=Always SILVER
+      $ openstack volume qos create --consumer back-end \
+                                    --property total_iops_sec=500 \
+                                    --property total_bytes_sec=104857600 \
+                                    --property DistributionType=Always \
+                                    SILVER
 
 #. Associate QoS specifications with specified volume type:
 
@@ -734,10 +686,16 @@ Prerequisites - VMAX
 
       $ openstack volume create --size 1 --type VOLUME_TYPE TEST_VOLUME
 
+#. Attach the volume created in step 3 to an instance
+
+   .. code-block:: console
+
+      $ openstack server add volume TEST_VOLUME TEST_INSTANCE
+
 **Outcome - VMAX (storage group)**
 
-- Host I/O Limit (MB/Sec) -     4000
-- Host I/O Limit (IO/Sec) -     4000
+- Host I/O Limit (MB/Sec) -     100
+- Host I/O Limit (IO/Sec) -     500
 - Set Dynamic Distribution -    Always
 
 **Outcome - Block Storage (cinder)**
@@ -745,29 +703,58 @@ Prerequisites - VMAX
 Volume is created against volume type and QoS is enforced with the parameters
 above.
 
+**Outcome - Hypervisor (nova)**
+
+Libvirt includes an extra xml flag within the <disk> section called iotune
+that is responsible for rate limitation. To confirm that, first get the
+``OS-EXT-SRV-ATTR:instance_name`` value of the server instance
+i.e. instance-00000005. We then run the following command using the
+``OS-EXT-SRV-ATTR:instance_name`` retrieved above.
+
+.. code-block:: console
+
+   $ virsh dumpxml instance-00000005 | grep -1 "total_bytes_sec\|total_iops_sec"
+
+The outcome is shown below
+
+.. code-block:: xml
+
+   <iotune>
+      <total_bytes_sec>104857600</total_bytes_sec>
+      <total_iops_sec>500</total_iops_sec>
+   </iotune>
+
 
 USE CASE 3 - Preset limits
 --------------------------
 
 Prerequisites - VMAX
 
-- Host I/O Limit (MB/Sec) -     No Limit
-- Host I/O Limit (IO/Sec) -     No Limit
-- Set Dynamic Distribution -    N/A
+- Host I/O Limit (MB/Sec) -     100
+- Host I/O Limit (IO/Sec) -     500
+- Set Dynamic Distribution -    Always
 
 .. table:: **Prerequisites - Block Storage (cinder) back end (storage group)**
 
- +-------------------+--------+
- |  Key              | Value  |
- +===================+========+
- |  DistributionType | Always |
- +-------------------+--------+
+ +-------------------+-------------------+
+ |  Key              | Value             |
+ +===================+===================+
+ |  total_iops_sec   | 500               |
+ +-------------------+-------------------+
+ |  total_bytes_sec  | 104857600 (100MB) |
+ +-------------------+-------------------+
+ |  DistributionType | OnFailure         |
+ +-------------------+-------------------+
 
 #. Create QoS specifications with the prerequisite values above:
 
    .. code-block:: console
 
-      $ openstack volume qos create --property DistributionType=Always SILVER
+      $ openstack volume qos create --consumer back-end \
+                                    --property total_iops_sec=500 \
+                                    --property total_bytes_sec=104857600 \
+                                    --property DistributionType=Always \
+                                    SILVER
 
 #. Associate QoS specifications with specified volume type:
 
@@ -783,16 +770,17 @@ Prerequisites - VMAX
 
 **Outcome - VMAX (storage group)**
 
-- Host I/O Limit (MB/Sec) -     No Limit
-- Host I/O Limit (IO/Sec) -     No Limit
-- Set Dynamic Distribution -    N/A
+- Host I/O Limit (MB/Sec) -     100
+- Host I/O Limit (IO/Sec) -     500
+- Set Dynamic Distribution -    OnFailure
 
 **Outcome - Block Storage (cinder)**
 
-Volume is created against volume type and there is no QoS change.
+Volume is created against volume type and QOS is enforced with the parameters above
 
-USE CASE 4 - Preset limits
---------------------------
+
+USE CASE 4 - Default values
+---------------------------
 
 Prerequisites - VMAX
 
@@ -805,14 +793,16 @@ Prerequisites - VMAX
  +-------------------+-----------+
  |  Key              | Value     |
  +===================+===========+
- |  DistributionType | OnFailure |
+ |  DistributionType | Always    |
  +-------------------+-----------+
 
 #. Create QoS specifications with the prerequisite values above:
 
    .. code-block:: console
 
-      $ openstack volume qos create --property DistributionType=OnFailure SILVER
+      $ openstack volume qos create --consumer back-end \
+                                    --property DistributionType=Always \
+                                    SILVER
 
 #. Associate QoS specifications with specified volume type:
 
@@ -977,159 +967,24 @@ Verify you have multiple initiators available on the compute node for I/O
       ..360000970000196700531533030383039 (dm-6) 252:6    0     3G  0 mpath
       vda
 
-Consistency group support
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Consistency Groups operations are performed through the CLI using v2 of
-the cinder API.
-
-:file:`/etc/cinder/policy.json` may need to be updated to enable new API calls
-for Consistency groups.
-
-.. note::
-   Even though the terminology is 'Consistency Group' in OpenStack, a Storage
-   Group is created on the VMAX, and should not be confused with a VMAX
-   Consistency Group which is an SRDF feature. The Storage Group is not
-   associated with any Service Level.
-
-Operations
-----------
-
-* Create a Consistency Group:
-
-  .. code-block:: console
-
-     cinder --os-volume-api-version 2 consisgroup-create [--name <name>]
-     [--description <description>] [--availability-zone <availability-zone>]
-     <volume-types>
-
-  .. code-block:: console
-
-     $ cinder --os-volume-api-version 2 consisgroup-create --name bronzeCG2 volume_type_1
-
-* List Consistency Groups:
-
-  .. code-block:: console
-
-     cinder consisgroup-list [--all-tenants [<0|1>]]
-
-  .. code-block:: console
-
-      $ cinder consisgroup-list
-
-* Show a Consistency Group:
-
-  .. code-block:: console
-
-     cinder consisgroup-show <consistencygroup>
-
-  .. code-block:: console
-
-     $ cinder consisgroup-show 38a604b7-06eb-4202-8651-dbf2610a0827
-
-* Update a consistency Group:
-
-  .. code-block:: console
-
-     cinder consisgroup-update [--name <name>] [--description <description>]
-     [--add-volumes <uuid1,uuid2,......>] [--remove-volumes <uuid3,uuid4,......>]
-     <consistencygroup>
-
-  Change name:
-
-  .. code-block:: console
-
-     $ cinder consisgroup-update --name updated_name 38a604b7-06eb-4202-8651-dbf2610a0827
-
-  Add volume(s) to a Consistency Group:
-
-  .. code-block:: console
-
-     $ cinder consisgroup-update --add-volumes af1ae89b-564b-4c7f-92d9-c54a2243a5fe 38a604b7-06eb-4202-8651-dbf2610a0827
-
-  Delete volume(s) from a Consistency Group:
-
-  .. code-block:: console
-
-     $ cinder consisgroup-update --remove-volumes af1ae89b-564b-4c7f-92d9-c54a2243a5fe 38a604b7-06eb-4202-8651-dbf2610a0827
-
-* Create a snapshot of a Consistency Group:
-
-  .. code-block:: console
-
-     cinder cgsnapshot-create [--name <name>] [--description <description>]
-     <consistencygroup>
-
-  .. code-block:: console
-
-     $ cinder cgsnapshot-create 618d962d-2917-4cca-a3ee-9699373e6625
-
-* Delete a snapshot of a Consistency Group:
-
-  .. code-block:: console
-
-     cinder cgsnapshot-delete <cgsnapshot> [<cgsnapshot> ...]
-
-  .. code-block:: console
-
-     $ cinder cgsnapshot-delete 618d962d-2917-4cca-a3ee-9699373e6625
-
-* Delete a Consistency Group:
-
-  .. code-block:: console
-
-     cinder consisgroup-delete [--force] <consistencygroup> [<consistencygroup> ...]
-
-  .. code-block:: console
-
-     $ cinder consisgroup-delete --force 618d962d-2917-4cca-a3ee-9699373e6625
-
-* Create a Consistency group from source:
-
-  .. code-block:: console
-
-     cinder consisgroup-create-from-src [--cgsnapshot <cgsnapshot>]
-     [--source-cg <source-cg>] [--name <name>] [--description <description>]
-
-  .. code-block:: console
-
-     $ cinder consisgroup-create-from-src --source-cg 25dae184-1f25-412b-b8d7-9a25698fdb6d
-
-  .. code-block:: console
-
-     $ cinder consisgroup-create-from-src --cgsnapshot 618d962d-2917-4cca-a3ee-9699373e6625
-
-* You can also create a volume in a consistency group in one step:
-
-  .. code-block:: console
-
-     $ openstack volume create [--consistency-group consistency-group>]
-       [--description <description>]  [--type <volume-type>]
-       [--availability-zone <availability-zone>]  [--size <size>] <name>
-
-  .. code-block:: console
-
-     $ openstack volume create --type volume_type_1 ----consistency-group \
-       1de80c27-3b2f-47a6-91a7-e867cbe36462 --size 1 cgBronzeVol
-
 
 Workload Planner (WLP)
 ~~~~~~~~~~~~~~~~~~~~~~
 
 VMAX Hybrid allows you to manage application storage by using Service Level
-Objectives (SLO) using policy based automation rather than the tiering in the
-VMAX2. The VMAX Hybrid comes with up to 6 SLO policies defined. Each has a
+(SL) using policy based automation. The VMAX Hybrid comes with
+up to 6 SL policies defined. Each has a
 set of workload characteristics that determine the drive types and mixes
-which will be used for the SLO. All storage in the VMAX Array is virtually
+which will be used for the SL. All storage in the VMAX Array is virtually
 provisioned, and all of the pools are created in containers called Storage
 Resource Pools (SRP). Typically there is only one SRP, however there can be
 more. Therefore, it is the same pool we will provision to but we can provide
 different SLO/Workload combinations.
 
-The SLO capacity is retrieved by interfacing with Unisphere Workload Planner
+The SL capacity is retrieved by interfacing with Unisphere Workload Planner
 (WLP). If you do not set up this relationship then the capacity retrieved is
 that of the entire SRP. This can cause issues as it can never be an accurate
-representation of what storage is available for any given SLO and Workload
+representation of what storage is available for any given SL and Workload
 combination.
 
 Enabling WLP on Unisphere
@@ -1145,171 +1000,6 @@ Enabling WLP on Unisphere
    This should be set up ahead of time (allowing for several hours of data
    collection), so that the Unisphere for VMAX Performance Analyzer can
    collect rated metrics for each of the supported element types.
-
-Using TestSmiProvider to add statistics access point
-----------------------------------------------------
-
-After enabling WLP you must then enable SMI-S to gain access to the WLP data:
-
-#. Connect to the SMI-S Provider using TestSmiProvider.
-#. Navigate to the :guilabel:`Active` menu.
-#. Type ``reg`` and enter the noted responses to the questions:
-
-   .. code-block:: console
-
-      (EMCProvider:5989) ? reg
-      Current list of statistics Access Points: ?
-      Note: The current list will be empty if there are no existing Access Points.
-      Add Statistics Access Point {y|n} [n]: y
-      HostID [l2se0060.lss.emc.com]: ?
-      Note: Enter the Unisphere for VMAX location using a fully qualified Host ID.
-      Port [8443]: ?
-      Note: The Port default is the Unisphere for VMAX default secure port. If the secure port
-      is different for your Unisphere for VMAX setup, adjust this value accordingly.
-      User [smc]: ?
-      Note: Enter the Unisphere for VMAX username.
-      Password [smc]: ?
-      Note: Enter the Unisphere for VMAX password.
-
-#. Type ``reg`` again to view the current list:
-
-   .. code-block:: console
-
-      (EMCProvider:5988) ? reg
-      Current list of statistics Access Points:
-      HostIDs:
-      l2se0060.lss.emc.com
-      PortNumbers:
-      8443
-      Users:
-      smc
-      Add Statistics Access Point {y|n} [n]: n
-
-
-Attach and detach snapshots
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-``Attach snapshot`` and ``Detach snapshot`` are used internally by
-non-disruptive backup and backup snapshot. As of the Newton release,
-it is possible to back up a volume, but not possible to directly back up
-a snapshot. Volume back up functionality has been available ever since backups
-were introduced into the Cinder service. The ability to back up a volume
-directly is valuable because you can back up a volume in one step. Users can
-take snapshots from the volumes as a way to protect their data. These snapshots
-reside on the storage backend itself. Providing a way
-to backup snapshots directly allows users to protect the snapshots
-taken from the volumes on a backup device, separately from the storage
-backend.
-
-There are users who have taken many snapshots and would like a way to protect
-these snapshots. The functionality to backup snapshots provides another layer
-of data protection.
-
-Please refer to `backup and restore volumes and
-snapshots <https://docs.openstack.org/admin-guide/blockstorage-volume-backups.html>`
-for more more information.
-
-Enable attach and detach snapshot functionality
------------------------------------------------
-
-#. Ensure that the ``cinder-backup`` service is running.
-#. The backup driver for the swift back end performs a volume backup to an
-   object storage system. To enable the swift backup driver, include the
-   following option in the ``cinder.conf`` file:
-
-   .. code-block:: yaml
-
-      backup_driver = cinder.backup.drivers.swift
-
-#. In order to force the volume to run attach and detach on the snapshot
-   and not the volume you need to put the following key-value pair in the
-   ``[DEFAULT]`` section of the ``cinder.conf``:
-
-   .. code-block:: console
-
-      backup_use_same_host = True
-
-.. note::
-
-   You may need to increase the message queue timeout value which is 60 by
-   default in the ``[DEFAULT]`` section of the ``cinder.conf``. This is
-   necessary because the snapshot may take more than this time.
-
-  .. code-block:: console
-
-     rpc_response_timeout = 240
-
-Use case 1 - Create a volume backup when the volume is in-use
--------------------------------------------------------------
-
-#. Create a bootable volume and launch it so the volume status is in-use.
-#. Create a backup of the volume, where ``VOLUME``
-   is the volume name or volume ``ID``. This will initiate a snapshot attach
-   and a snapshot detach on a temporary snapshot:
-
-   .. code-block:: console
-
-      openstack backup create --force VOLUME
-
-#. For example:
-
-   .. code-block:: console
-
-      openstack backup create --force cba1ca83-b857-421a-87c3-df81eb9ea8ab
-
-Use case 2 - Restore a backup of a volume
------------------------------------------
-
-#. Restore the backup from Use case 1, where ``BACKUP_ID`` is the identifier of
-   the backup from Use case 1.
-
-   .. code-block:: console
-
-      openstack backup restore BACKUP_ID
-
-#. For example:
-
-   .. code-block:: console
-
-      openstack backup restore ec7e17ec-ae3c-4495-9ee6-7f45c9a89572
-
-Once complete, launch the back up as an instance, and it should be a
-bootable volume.
-
-Use case 3 - Create a backup of a snapshot
-------------------------------------------
-
-#. Create a volume.
-#. Create a snapshot of the volume.
-#. Create a backup of the snapshot, where ``VOLUME`` is the volume name or
-   volume ID, ``SNAPSHOT_ID`` is the ID of the volume's snapshot. This will
-   initiate a snapshot attach and a snapshot detach on the snapshot.
-
-   .. code-block:: console
-
-      openstack backup create [--snapshot SNAPSHOT_ID} VOLUME
-
-#. For example:
-
-   .. code-block:: console
-
-      openstack backup create --snapshot 6ab440c2-80ef-4f16-ac37-2d9db938732c 9fedfc4a-5f25-4fa1-8d8d-d5bec91f72e0
-
-Use case 4 - Restore backup of a snapshot
------------------------------------------
-
-#. Restore the backup where ``BACKUP_ID`` is the identifier of the backup from
-   Use case 3.
-
-   .. code-block:: console
-
-      openstack backup restore BACKUP_ID
-
-#. For example:
-
-   .. code-block:: console
-
-      openstack backup restore ec7e17ec-ae3c-4495-9ee6-7f45c9a89572
 
 
 All Flash compression support
@@ -1339,7 +1029,7 @@ Use case 1 - Compression disabled create, attach, detach, and delete volume
    compression is disabled on that storage group.
 #. Attach the volume to an instance. Check in Unisphere or symcli to see if the
    volume exists in storage group
-   ``OS-<shorthostname>-<srp>-<servicelevel>-<workload>-CD-SG``, and
+   ``OS-<shorthostname>-<srp>-<servicelevel/workload>-<portgroup>-CD``, and
    compression is disabled on that storage group.
 #. Detach volume from instance. Check in Unisphere or symcli to see if the
    volume exists in storage group ``OS-<srp>-<servicelevel>-<workload>-CD-SG``,
@@ -1393,31 +1083,20 @@ Configure the source and target arrays
    director endpoints. Currently, the only supported mode is `Synchronous`.
 
    .. note::
-      For full failover functionality, the source and target VMAX arrays must be
-      discovered and managed by the same SMI-S/ECOM server, locally connected
-      for example. This SMI-S/ ECOM server cannot be embedded - it can be
-      installed on a physical server or a VM hosted by an ESX server only.
 
-   .. note::
-      With both arrays being managed by the one SMI-S server, it is the cloud
-      storage administrators responsibility to account for a DR scenario where the
-      management (SMI-S) server goes down as well as the primary array. In that
-      event, the details and credentials of a back-up SMI-S server can be passed
-      in to the XML file, and the VMAX cinder driver can be rebooted. It would be
-      advisable to have the SMI-S server at a third location (separate from both
-      arrays) if possible.
-
-   .. note::
-      If the source and target arrays are not managed by the same management
-      server (that is, the target array is remotely connected to server), in the
-      event of a full disaster scenario (for example, the primary array is
-      completely lost and all connectivity to it is gone), the SMI-S server
-      would no longer be able to contact the target array. In this scenario,
-      the volumes would be automatically failed over to the target array, but
-      administrator intervention would be required to either; configure the
-      target (remote) array as local to the current SMI-S server, or enter
-      the details to the XML file of a second SMI-S server, which is locally
-      connected to the target array, and restart the cinder volume service.
+      If the source and target arrays are not managed by the same Unisphere
+      server (that is, the target array is remotely connected to server -
+      for example, if you are using embedded management), in the event of a
+      full disaster scenario (i.e. the primary array is completely lost and
+      all connectivity to it is gone), the Unisphere server would no longer
+      be able to contact the target array. In this scenario, the volumes would
+      be automatically failed over to the target array, but administrator
+      intervention would be required to either; configure the target (remote)
+      array as local to the current Unisphere server (if it is a stand-alone
+      server), or enter the details to the XML file of a second Unisphere
+      server, which is locally connected to the target array (for example, the
+      embedded management Unisphere server of the target array), and restart
+      the cinder volume service.
 
 #. Enable replication in ``/etc/cinder/cinder.conf``.
    To enable the replication functionality in VMAX cinder driver, it is
@@ -1431,16 +1110,14 @@ Configure the source and target arrays
 
       enabled_backends = VMAX_FC_REPLICATION
       [VMAX_FC_REPLICATION]
-      volume_driver = cinder.volume.drivers.emc.emc_vmax_FC.EMCVMAXFCDriver
-      cinder_emc_config_file = /etc/cinder/cinder_emc_config_VMAX_FC_REPLICATION.xml
+      volume_driver = cinder.volume.drivers.dell_emc.vmax_fc.VMAXFCDriver
+      cinder_dell_emc_config_file = /etc/cinder/cinder_dell_emc_config_VMAX_FC_REPLICATION.xml
       volume_backend_name = VMAX_FC_REPLICATION
       replication_device = target_device_id:000197811111, remote_port_group:os-failover-pg, remote_pool:SRP_1, rdf_group_label: 28_11_07, allow_extend:False
 
    * ``target_device_id`` is a unique VMAX array serial number of the target
      array. For full failover functionality, the source and target VMAX arrays
-     must be discovered and managed by the same SMI-S/ECOM server.
-     That is, locally connected. Follow the instructions in the SMI-S release
-     notes.
+     must be discovered and managed by the same U4V server.
 
    * ``remote_port_group`` is the name of a VMAX port group that has been
      pre-configured to expose volumes managed by this backend in the event
@@ -1462,13 +1139,13 @@ Configure the source and target arrays
       group on the target array with the same service level and workload combination
       as the primary. However, if this combination is unavailable on the target
       (for example, in a situation where the source array is a Hybrid, the target array
-      is an All Flash, and an All Flash incompatible SLO like Bronze is
-      configured), no SLO will be applied.
+      is an All Flash, and an All Flash incompatible service level like Bronze is
+      configured), no service level will be applied.
 
    .. note::
       The VMAX cinder drivers can support a single replication target per
       back-end, that is we do not support Concurrent SRDF or Cascaded SRDF.
-      Ensure there is only a single ``.replication_device.`` entry per
+      Ensure there is only a single ``replication_device`` entry per
       back-end stanza.
 
 #. Create a ``replication-enabled`` volume type. Once the
@@ -1479,7 +1156,8 @@ Configure the source and target arrays
 
    .. code-block:: console
 
-      $ openstack volume type set --property replication_enabled = ``<is> True`` VMAX_FC_REPLICATION
+      $ openstack volume type set --property replication_enabled = "<is> True" \
+                            VMAX_FC_REPLICATION
 
 
 Volume replication interoperability with other features
@@ -1487,12 +1165,13 @@ Volume replication interoperability with other features
 
 Most features are supported, except for the following:
 
-* There is no OpenStack Consistency Group or Generic Volume Group support
-  for replication-enabled VMAX volumes.
+* There is no OpenStack Generic Volume Group support for replication-enabled
+  VMAX volumes.
 
 * Storage-assisted retype operations on replication-enabled VMAX volumes
   (moving from a non-replicated type to a replicated-type and vice-versa.
-  Moving to another SLO/workload combination, for example) are not supported.
+  Moving to another service level/workload combination, for example) are
+  not supported.
 
 * The image volume cache functionality is supported (enabled by setting
   ``image_volume_cache_enabled = True``), but one of two actions must be taken
@@ -1538,77 +1217,356 @@ VMAX3 arrays. Cinder requires that for storage assisted migration, a
 volume cannot be retyped across backends. For using storage assisted volume
 retype, follow these steps:
 
-#. Add the parameter ``multi_pool_support`` to the configuration group in the
-   ``/etc/cinder/cinder.conf`` file and set it to ``True``.
-
-   .. code-block:: console
-
-      [CONF_GROUP_FC]
-      volume_driver = cinder.volume.drivers.dell_emc.vmax.fc.EMCVMAXFCDriver
-      cinder_emc_config_file = /etc/cinder/cinder_emc_config_CONF_GROUP_FC.xml
-      volume_backend_name = FC_backend
-      multi_pool_support = True
-
-#. Configure a single backend per SRP for the ``VMAX`` (Only VMAX3 arrays).
-   This is different from the regular configuration where one backend is
-   configured per service level.
-
-#. Create the ``/etc/cinder/cinder_emc_config_CONF_GROUP_FC.xml`` and add
-   the following lines to the XML for VMAX All Flash and Hybrid.
-
-   .. code-block:: console
-
-      <?xml version = "1.0" encoding = "UTF-8" ?>
-      <EMC>
-         <EcomServerIp>1.1.1.1</EcomServerIp>
-         <EcomServerPort>00</EcomServerPort>
-         <EcomUserName>user1</EcomUserName>
-         <EcomPassword>password1</EcomPassword>
-         <PortGroups>
-            <PortGroup>OS-PORTGROUP1-PG</PortGroup>
-            <PortGroup>OS-PORTGROUP2-PG</PortGroup>
-         </PortGroups>
-         <Array>111111111111</Array>
-         <Pool>SRP_1</Pool>
-      </EMC>
-
-   .. note::
-      There is no need to specify the Service Level and Workload in the XML
-      file. A single XML file corresponding to the backend is sufficient
-      instead of creating one each for the desired Service Level and Workload
-      combination.
-
-#. Once the backend is configured in the ``cinder.conf`` file and the VMAX
-   specific configuration XML created, restart the cinder volume service for
-   the changes to take place.
-
-#. Run the command ``cinder get-pools --detail`` to query for the pool
-   information. This should list all the available Service Level and Workload
-   combinations available for the SRP as pools belonging to the same backend.
-
-#. Use the following examples of OpenStack commands to create various volume
-   types. The below example demonstrates creating a volume type for Diamond
-   Service Level and OLTP workload.
-
-   .. code-block:: console
-
-      $ openstack volume type create VMAX_FC_DIAMOND_OLTP
-      $ openstack volume type set --property volume_backend_name=FC_backend VMAX_FC_DIAMOND_OLTP
-      $ openstack volume type set --property pool_name=Diamond+OLTP+SRP_1+111111111111
-
-   .. note::
-      Create as many volume types as the number of Service Level and Workload
-      (available) combinations which you are going to use for provisioning
-      volumes. The ``pool_name`` is the additional property which has to be set
-      and is of the format: ``<ServiceLevel>+<Workload>+<SRP>+<Array ID>``.
-      This can be obtained from the output of the ``cinder get-pools --detail``.
-
 #. For migrating a volume from one Service Level or Workload combination to
    another, use volume retype with the migration-policy to on-demand. The
-   target volume type should have the same ``volume_backend_name`` configured
-   and should have the desired ``pool_name`` to which you are trying to retype
-   to.
+   target volume type should have the same volume_backend_name configured and
+   should have the desired pool_name to which you are trying to retype to
+   (please above ``Setup VMAX Drivers`` for details).
 
    .. code-block:: console
 
       $ cinder retype --migration-policy on-demand <volume> <volume-type>
+
+
+Generic volume group support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Generic volume group operations are performed through the CLI using API
+version 3.1x of the cinder API. Generic volume groups are multi-purpose
+groups which can be used for various features. The only feature supported
+currently by the VMAX plugin is the ability to take group snapshots which
+are consistent based on the group specs. Generic volume groups are a
+replacement for the consistency groups.
+
+Consistent group snapshot
+-------------------------
+
+For creating a consistent group snapshot, a group-spec, having the key
+``consistent_group_snapshot_enabled`` set to ``<is> True``, should be set
+on the group. Similarly the same key should be set on any volume type which
+is specified while creating the group. The VMAX plugin doesn't support
+creating/managing a group which doesn't have this group-spec set. If this key
+is not set on the group-spec then the generic volume group will be
+created/managed by cinder (not the VMAX plugin).
+
+.. note::
+
+   The consistent group snapshot should not be confused with the VMAX
+   consistency which primarily applies to SRDF.
+
+.. note::
+
+   For creating consistent group snapshots, no changes are required to be
+   done to the ``/etc/cinder/policy.json``.
+
+Storage Group Names
+-------------------
+
+Storage groups are created on the VMAX as a result of creation of generic
+volume groups. These storage groups follow a different naming convention
+and are of the following format depending upon whether the groups have a
+name.
+
+.. code-block:: text
+
+   TruncatedGroupName_GroupUUID or GroupUUID
+
+Operations
+----------
+
+- Create a group type
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.11 group-type-create GROUP_TYPE
+
+- Show a group type
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.11 group-type-show GROUP_TYPE
+
+- List group types
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.11 group-type-list
+
+- Delete group type
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.11 group-type-delete GROUP_TYPE
+
+- Set/unset a group spec
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.11 group-type-key GROUP_TYPE set consistent_group_snapshot_enabled= "<is> True"
+
+- List group types and group specs:
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.11 group-specs-list
+
+- Create a group:
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.13 group-create --name GROUP GROUP_TYPE VOLUME_TYPE1,VOLUME_TYPE2
+
+- Show a group:
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.13 group-show GROUP
+
+- List all groups:
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.13 group-list
+
+- Create a volume and add it to a group at the time of creation:
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.13 create --volume-type VOLUME_TYPE1 --group-id GROUP_ID 1
+
+- Modify a group to add or remove volumes:
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.13 group-update --add-volumes UUID1,UUID2 --remove-volumes UUID3,UUID4 GROUP
+
+- Create a group snapshot:
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.14 group-snapshot-create --name GROUP_SNAPSHOT GROUP
+
+- Delete group snapshot(s):
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.14 group-snapshot-delete GROUP_SNAPSHOT
+
+- Create a group from a group snapshot:
+
+.. code-block:: console
+
+   $ cinder --os-volume-api-version 3.14 group-create-from-src --group-snapshot GROUP_SNAPSHOT --name GROUP
+
+- Create a group from a source snapshot:
+
+.. code-block:: console
+
+   $ cinder --os-volume-api-version 3.14 group-create-from-src --source-group SOURCE_GROUP --name GROUP
+
+- Delete a group
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.13 group-delete --delete-volumes GROUP
+
+
+Oversubscription support
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Please refer to the following:
+https://docs.openstack.org/cinder/latest/admin/blockstorage-over-subscription.html
+
+
+Live Migration support
+~~~~~~~~~~~~~~~~~~~~~~
+
+Non-live migration (sometimes referred to simply as 'migration'). The instance
+is shut down for a period of time to be moved to another hypervisor. In this
+case, the instance recognizes that it was rebooted. Live migration
+(or 'true live migration'). Almost no instance downtime. Useful when the
+instances must be kept running during the migration. The different types
+of live migration are:
+
+- Shared storage-based live migration. Both hypervisors have access to shared
+  storage.
+
+- Block live migration. No shared storage is required. Incompatible with
+  read-only devices such as CD-ROMs and Configuration Drive (config_drive).
+
+- Volume-backed live migration. Instances are backed by volumes rather than
+  ephemeral disk.  For VMAX volume-backed live migration on shared storage
+  is required.
+
+The VMAX driver supports shared storage-based live migration.
+
+Architecture
+------------
+
+In VMAX, A volume cannot belong to two or more FAST storage groups at the
+same time. To get around this limitation we leverage both cascaded storage
+groups and a temporary non FAST storage group.
+
+A volume can remain 'live' if moved between masking views that have the same
+initiator group and port groups which preserves the host path.
+
+During live migration, the following steps are performed by the VMAX plugin
+on the volume:
+
+#. Within the originating masking view, the volume is moved from the FAST
+   storage group to the non-FAST storage group within the parent storage
+   group.
+#. The volume is added to the FAST storage group within the destination
+   parent storage group of the destination masking view. At this point the
+   volume belongs to two storage groups.
+#. One of two things happens:
+
+   - If the connection to the destination instance is successful, the volume
+     is removed from the non-FAST storage group in the originating masking
+     view, deleting the storage group if it contains no other volumes.
+   - If the connection to the destination instance fails, the volume is
+     removed from the destination storage group, deleting the storage group,
+     if empty. The volume is reverted back to the original storage group.
+
+
+Libvirt configuration
+---------------------
+
+Make the following updates on all nodes, controller and compute nodes, that
+are involved in live migration. Update the libvirt configurations. Please
+refer to following link for further information:
+http://libvirt.org/remote.html
+
+#. Update the libvirt configurations. Modify the ``/etc/libvirt/libvirtd.conf``
+   file
+
+   .. code-block:: console
+
+      before : #listen_tls = 0
+      after : listen_tls = 0
+
+      before : #listen_tcp = 1
+      after : listen_tcp = 1
+      add: auth_tcp = "none"
+
+#. Modify the /etc/libvirt/qemu.conf file:
+
+   .. code-block:: console
+
+      before : #dynamic_ownership = 1
+      after : dynamic_ownership = 0
+      before : #security_driver = "selinux"
+      after : security_driver = "none"
+      before : #user = "root"
+      after : user = "root"
+      before : #group = "root"
+      after : group = "root"
+
+#. Modify the /etc/default/libvirtd file:
+
+   .. code-block:: console
+
+      before: libvirtd_opts=" -d"
+      after: libvirtd_opts=" -d -l"
+
+#. Restart libvirt. After you run the command below, ensure that libvirt is
+   successfully restarted:
+
+System configuration
+--------------------
+
+``NOVA-INST-DIR/instances/`` (for example, ``/opt/stack/data/nova/instances``)
+has to be mounted by shared storage. Ensure that NOVA-INST-DIR (set with
+state_path in the nova.conf file) is the same on all hosts.
+
+#. Configure your DNS or ``/etc/hosts`` and ensure it is consistent across all
+   hosts. Make sure that the three hosts can perform name resolution with each
+   other. As a test, use the ping command to ping each host from one another.
+
+   .. code-block:: console
+
+      $ ping HostA
+      $ ping HostB
+      $ ping HostC
+
+#. Export NOVA-INST-DIR/instances from HostA, and ensure it is readable and
+   writable by the Compute user on HostB and HostC. Please refer to the
+   relevant OS documentation for further details.
+   e.g. https://help.ubuntu.com/lts/serverguide/network-file-system.html
+   https://help.ubuntu.com/community/SettingUpNFSHowTo
+
+#. On all compute nodes, enable the 'execute/search' bit on your shared
+   directory to allow qemu to be able to use the images within the
+   directories. On all hosts, run the following command:
+
+   .. code-block:: console
+
+       $ chmod o+x NOVA-INST-DIR/instances
+
+.. note::
+
+   If migrating from compute to controller, make sure to run step two above on
+   the controller node to export the instance directory.
+
+
+Use case
+--------
+
+For our use case shown below, we have three hosts with host names HostA, HostB
+and HostC. HostA is the compute node while HostB and HostC are the compute
+nodes. The following were also used in live migration.
+
+- 2 gb bootable volume using the cirros image.
+- Instance created using the 2gb volume above with a flavor m1.small using
+  2048 RAM, 20GB of Disk and 1 VCPU.
+
+#. Create a bootable volume.
+
+   .. code-block:: console
+
+      $ openstack volume create --size 2 \
+                                --image cirros-0.3.5-x86_64-disk \
+                                --volume_lm_1
+
+#. Launch an instance using the volume created above on HostB.
+
+   .. code-block:: console
+
+      $ openstack server create --volume volume_lm_1 \
+                                --flavor m1.small \
+                                --nic net-id=private \
+                                --security-group default \
+                                --availability-zone nova:HostB \
+                                server_lm_1
+
+#. Confirm on HostB has the instance created by running:
+
+   .. code-block:: console
+
+      $ openstack server show server_lm_1 | grep "hypervisor_hostname\|instance_name"
+        | OS-EXT-SRV-ATTR:hypervisor_hostname | HostB
+        | OS-EXT-SRV-ATTR:instance_name | instance-00000006
+
+#. Confirm, through virsh using the instance_name returned in step 3
+   (instance-00000006), on HostB that the instance is created using:
+
+   .. code-block:: console
+
+      $ virsh list --all
+
+      Id   Name                  State
+      --------------------------------
+      1    instance-00000006     Running
+
+#. Migrate the instance from HostB to HostA with:
+
+   .. code-block:: console
+
+      $ openstack server migrate --live HostA \
+                                 server_lm_1
+
+#. Run the command on step 3 above when the instance is back in available
+   status. The hypervisor should be on Host A.
+
+#. Run the command on Step 4 on Host A to confirm that the instance is
+   created through virsh.
