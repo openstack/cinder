@@ -27,6 +27,7 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import utils as test_utils
 from cinder import volume
 
 UUID = '00000000-0000-0000-0000-000000000001'
@@ -124,6 +125,23 @@ class SnapshotApiTest(test.TestCase):
             snap["metadata"] = metadata
         body = {"snapshot": snap}
         self.controller.create(req, body)
+
+    @ddt.data(('host', 'test_host1'), ('cluster_name', 'cluster1'))
+    @ddt.unpack
+    def test_snapshot_list_with_filter(self, filter_name, filter_value):
+        volume1 = test_utils.create_volume(self.ctx, host='test_host1',
+                                           cluster_name='cluster1')
+        volume2 = test_utils.create_volume(self.ctx, host='test_host2',
+                                           cluster_name='cluster2')
+        snapshot1 = test_utils.create_snapshot(self.ctx, volume1.id)
+        snapshot2 = test_utils.create_snapshot(self.ctx, volume2.id)  # noqa
+
+        url = '/v3/snapshots?%s=%s' % (filter_name, filter_value)
+        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
+        res_dict = self.controller.detail(req)
+
+        self.assertEqual(1, len(res_dict['snapshots']))
+        self.assertEqual(snapshot1.id, res_dict['snapshots'][0]['id'])
 
     def test_snapshot_list_with_sort_name(self):
         self._create_snapshot(name='test1')
