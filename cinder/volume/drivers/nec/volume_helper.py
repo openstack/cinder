@@ -15,7 +15,6 @@
 #    under the License.
 
 import random
-import six
 import traceback
 
 from oslo_log import log as logging
@@ -225,7 +224,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
     def _validate_iscsildset_exist(self, ldsets, connector, metadata=None):
         ldset = self.get_ldset(ldsets, metadata)
         if ldset is None:
-            for tldset in six.itervalues(ldsets):
+            for tldset in ldsets.values():
                 if 'initiator_list' not in tldset:
                     continue
                 n = tldset['initiator_list'].count(connector['initiator'])
@@ -249,7 +248,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                 findwwpn = '-'.join([conect[i:i + 4]
                                      for i in range(0, length, 4)])
                 findwwpn = findwwpn.upper()
-                for tldset in six.itervalues(ldsets):
+                for tldset in ldsets.values():
                     if 'wwpn' in tldset and findwwpn in tldset['wwpn']:
                         ldset = tldset
                         break
@@ -795,7 +794,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             # get free lun.
             luns = []
             ldsetlds = ldset['lds']
-            for ld in six.itervalues(ldsetlds):
+            for ld in ldsetlds.values():
                 luns.append(ld['lun'])
 
             target_lun = 0
@@ -960,7 +959,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
 
         luns = []
         ldsetlds = ldset['lds']
-        for ld in six.itervalues(ldsetlds):
+        for ld in ldsetlds.values():
             luns.append(ld['lun'])
         target_lun = 0
         for lun in sorted(luns):
@@ -1042,7 +1041,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             ldsetlist = []
 
             if ldset is None:
-                for tldset in six.itervalues(ldsets):
+                for tldset in ldsets.values():
                     if ld['ldn'] in tldset['lds']:
                         ldsetlist.append(tldset)
                         LOG.debug('ldset=%s.', tldset)
@@ -1110,7 +1109,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         if ld is None:
             msg = _('Exported snapshot could not be found.')
             raise exception.VolumeBackendAPIException(data=msg)
-        for tldset in six.itervalues(ldsets):
+        for tldset in ldsets.values():
             if ld['ldn'] in tldset['lds']:
                 ldsetlist.append(tldset)
         if len(ldsetlist) == 0:
@@ -1335,7 +1334,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             ldn = lds[ldname]['ldn']
 
         lun = None
-        for ldset in six.itervalues(ldsets):
+        for ldset in ldsets.values():
             if ldn in ldset['lds']:
                 lun = ldset['lds'][ldn]['lun']
                 break
