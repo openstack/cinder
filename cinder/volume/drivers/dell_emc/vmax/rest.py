@@ -1015,12 +1015,12 @@ class VMAXRest(object):
         self._modify_volume(array, device_id, rename_vol_payload)
 
     def delete_volume(self, array, device_id):
-        """Deallocate and delete a volume.
+        """Deallocate or delete a volume.
 
         :param array: the array serial number
         :param device_id: volume device id
         """
-        # Deallocate volume
+        # Deallocate volume. Can fail if there are no tracks allocated.
         payload = {"editVolumeActionParam": {
             "freeVolumeParam": {"free_volume": 'true'}}}
         try:
@@ -1028,8 +1028,8 @@ class VMAXRest(object):
         except Exception as e:
             LOG.warning('Deallocate volume failed with %(e)s.'
                         'Attempting delete.', {'e': e})
-        # Delete volume
-        self.delete_resource(array, SLOPROVISIONING, "volume", device_id)
+            # Try to delete the volume if deallocate failed.
+            self.delete_resource(array, SLOPROVISIONING, "volume", device_id)
 
     def find_mv_connections_for_vol(self, array, maskingview, device_id):
         """Find the host_lun_id for a volume in a masking view.
