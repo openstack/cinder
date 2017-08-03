@@ -33,7 +33,7 @@ from cinder.volume.drivers.dell_emc.vmax import provision
 from cinder.volume.drivers.dell_emc.vmax import rest
 from cinder.volume.drivers.dell_emc.vmax import utils
 from cinder.volume import utils as volume_utils
-
+from cinder.volume import volume_types
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
@@ -831,9 +831,11 @@ class VMAXCommon(object):
         qos_specs = {}
         extra_specs = self.utils.get_volumetype_extra_specs(
             volume, volume_type_id)
-        if hasattr(volume, "volume_type") and (
-                volume.volume_type and volume.volume_type.qos_specs):
-            qos_specs = volume.volume_type.qos_specs
+        type_id = volume.volume_type_id
+        if type_id:
+            res = volume_types.get_volume_type_qos_specs(type_id)
+            qos_specs = res['qos_specs']
+
         config_group = None
         # If there are no extra specs then the default case is assumed.
         if extra_specs:
@@ -1047,9 +1049,8 @@ class VMAXCommon(object):
             self.rest.set_rest_credentials(array_info)
 
             extra_specs = self._set_vmax_extra_specs(extra_specs, array_info)
-            if (qos_specs and qos_specs.specs
-                    and qos_specs.consumer != "front-end"):
-                extra_specs['qos'] = qos_specs.specs
+            if qos_specs and qos_specs.get('consumer') != "front-end":
+                extra_specs['qos'] = qos_specs.get('specs')
         except Exception:
             exception_message = (_(
                 "Unable to get configuration information necessary to "
