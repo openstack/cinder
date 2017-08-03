@@ -1,0 +1,18 @@
+---
+features:
+  - |
+    RBD driver supports returning a static total capacity value instead of a
+    dynamic value like it's been doing.  Configurable with
+    `report_dynamic_total_capacity` configuration option.
+upgrade:
+  - |
+    RBD/Ceph backends should adjust `max_over_subscription_ratio` to take into
+    account that the driver is no longer reporting volume's physical usage but
+    it's provisioned size.
+fixes:
+  - |
+    RBD stats report has been fixed, now properly reports
+    `allocated_capacity_gb` and `provisioned_capacity_gb` with the sum of the
+    sizes of the volumes (not physical sizes) for volumes created by Cinder and
+    all available in the pool respectively.  Free capacity will now properly
+    handle quota size restrictions of the pool.
