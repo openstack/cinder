@@ -29,6 +29,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import interface
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.huawei import constants
@@ -310,17 +311,13 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                  {'volume': volume.id, 'params': params})
         return params
 
-    def _create_volume(self, volume, lun_params):
+    def _create_volume(self, lun_params):
         # Create LUN on the array.
-        model_update = {}
         lun_info = self.client.create_lun(lun_params)
-        model_update['provider_location'] = lun_info['ID']
+        metadata = {'huawei_lun_id': lun_info['ID'],
+                    'huawei_lun_wwn': lun_info['WWN']}
+        model_update = {'metadata': metadata}
 
-        admin_metadata = huawei_utils.get_admin_metadata(volume)
-        admin_metadata.update({'huawei_lun_wwn': lun_info['WWN']})
-        model_update['admin_metadata'] = admin_metadata
-        metadata = huawei_utils.get_volume_metadata(volume)
-        model_update['metadata'] = metadata
         return lun_info, model_update
 
     def _create_base_type_volume(self, opts, volume, volume_type):
@@ -329,7 +326,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         Base type is the service type which doesn't conflict with the other.
         """
         lun_params = self._get_lun_params(volume, opts)
-        lun_info, model_update = self._create_volume(volume, lun_params)
+        lun_info, model_update = self._create_volume(lun_params)
         lun_id = lun_info['ID']
 
         try:
@@ -399,10 +396,15 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         model_update = self._add_extend_type_to_volume(opts, lun_params,
                                                        lun_info, model_update)
+
+        model_update['provider_location'] = huawei_utils.to_string(
+            **model_update.pop('metadata'))
+
         return model_update
 
     def _delete_volume(self, volume):
-        lun_id = volume.provider_location
+        metadata = huawei_utils.get_lun_metadata(volume)
+        lun_id = metadata.get('huawei_lun_id')
         if not lun_id:
             return
 
@@ -430,7 +432,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             smart_qos = smartx.SmartQos(self.client)
             smart_qos.remove(qos_id, lun_id)
 
-        metadata = huawei_utils.get_volume_metadata(volume)
+        metadata = huawei_utils.get_lun_metadata(volume)
         if 'hypermetro_id' in metadata:
             metro = hypermetro.HuaweiHyperMetro(self.client,
                                                 self.rmt_client,
@@ -617,7 +619,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         pool_info = self.client.get_pool_info(pool_name, pools)
         src_volume_name = huawei_utils.encode_name(volume.id)
         dst_volume_name = six.text_type(hash(src_volume_name))
-        src_id = volume.provider_location
+
+        metadata = huawei_utils.get_lun_metadata(volume)
+        src_id = metadata['huawei_lun_id']
 
         opts = None
         qos = None
@@ -637,9 +641,12 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         lun_info = self.client.get_lun_info(src_id)
 
-        policy = lun_info['DATATRANSFERPOLICY']
         if opts['policy']:
             policy = opts['policy']
+        else:
+            policy = lun_info.get('DATATRANSFERPOLICY',
+                                  self.configuration.lun_policy)
+
         lun_params = {
             'NAME': dst_volume_name,
             'PARENTID': pool_info['ID'],
@@ -651,8 +658,12 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             'PREFETCHPOLICY': lun_info['PREFETCHPOLICY'],
             'PREFETCHVALUE': lun_info['PREFETCHVALUE'],
             'DATATRANSFERPOLICY': policy,
-            'READCACHEPOLICY': lun_info['READCACHEPOLICY'],
-            'WRITECACHEPOLICY': lun_info['WRITECACHEPOLICY'],
+            'READCACHEPOLICY': lun_info.get(
+                'READCACHEPOLICY',
+                self.configuration.lun_read_cache_policy),
+            'WRITECACHEPOLICY': lun_info.get(
+                'WRITECACHEPOLICY',
+                self.configuration.lun_write_cache_policy),
             'OWNINGCONTROLLER': lun_info['OWNINGCONTROLLER'], }
 
         lun_info = self.client.create_lun(lun_params)
@@ -690,7 +701,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(data=err_msg)
 
         snapshotname = huawei_utils.encode_name(snapshot.id)
-        snapshot_id = snapshot.provider_location
+        metadata = huawei_utils.get_snapshot_metadata(snapshot)
+        snapshot_id = metadata.get('huawei_snapshot_id')
         if snapshot_id is None:
             snapshot_id = self.client.get_snapshot_id_by_name(snapshotname)
         if snapshot_id is None:
@@ -704,7 +716,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         lun_params, lun_info, model_update = (
             self._create_base_type_volume(opts, volume, volume_type))
 
-        tgt_lun_id = model_update['provider_location']
+        tgt_lun_id = lun_info['ID']
         luncopy_name = huawei_utils.encode_name(volume.id)
         LOG.info(_LI(
             'create_volume_from_snapshot: src_lun_id: %(src_lun_id)s, '
@@ -734,6 +746,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         # now, not hypermetro.
         model_update = self._add_extend_type_to_volume(opts, lun_params,
                                                        lun_info, model_update)
+        model_update['provider_location'] = huawei_utils.to_string(
+            **model_update.pop('metadata'))
+
         return model_update
 
     def create_cloned_volume(self, volume, src_vref):
@@ -773,7 +788,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         If not exists, raise or log warning.
         """
         # Firstly, try to find LUN ID by volume.provider_location.
-        lun_id = volume.provider_location
+        metadata = huawei_utils.get_lun_metadata(volume)
+        lun_id = metadata.get('huawei_lun_id')
         # If LUN ID not recorded, find LUN ID by LUN NAME.
         if not lun_id:
             volume_name = huawei_utils.encode_name(volume.id)
@@ -787,8 +803,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                     raise exception.VolumeBackendAPIException(data=msg)
                 return
 
-        metadata = huawei_utils.get_admin_metadata(volume)
-        lun_wwn = metadata.get('huawei_lun_wwn') if metadata else None
+        lun_wwn = metadata.get('huawei_lun_wwn')
         if not lun_wwn:
             LOG.debug("No LUN WWN recorded for volume %s.", volume.id)
 
@@ -864,7 +879,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         snapshot_id = snapshot_info['ID']
         self.client.activate_snapshot(snapshot_id)
 
-        return {'provider_location': snapshot_info['ID'],
+        location = huawei_utils.to_string(huawei_snapshot_id=snapshot_id)
+        return {'provider_location': location,
                 'lun_info': snapshot_info}
 
     def delete_snapshot(self, snapshot):
@@ -877,7 +893,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             {'snapshot': snapshotname,
              'volume': volume_name},)
 
-        snapshot_id = snapshot.provider_location
+        metadata = huawei_utils.get_snapshot_metadata(snapshot)
+        snapshot_id = metadata.get('huawei_snapshot_id')
         if snapshot_id is None:
             snapshot_id = self.client.get_snapshot_id_by_name(snapshotname)
 
@@ -1099,7 +1116,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             'replication_type': None,
         }
 
-        lun_id = volume.provider_location
+        metadata = huawei_utils.get_lun_metadata(volume)
+        lun_id = metadata['huawei_lun_id']
         old_opts = self.get_lun_specs(lun_id)
 
         new_specs = new_type['extra_specs']
@@ -1369,12 +1387,10 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                   {'old_name': lun_info.get('NAME'),
                    'new_name': new_name})
         self.client.rename_lun(lun_id, new_name, description)
-        metadata = huawei_utils.get_admin_metadata(volume)
-        metadata.update({'huawei_lun_wwn': lun_info['WWN']})
 
-        model_update = {}
-        model_update.update({'admin_metadata': metadata})
-        model_update.update({'provider_location': lun_id})
+        location = huawei_utils.to_string(huawei_lun_id=lun_id,
+                                          huawei_lun_wwn=lun_info['WWN'])
+        model_update = {'provider_location': location}
 
         if new_opts and new_opts.get('replication_enabled'):
             LOG.debug("Manage volume need to create replication.")
@@ -1458,9 +1474,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     def manage_existing_snapshot(self, snapshot, existing_ref):
         snapshot_info = self._get_snapshot_info_by_ref(existing_ref)
         snapshot_id = snapshot_info.get('ID')
-        volume = snapshot.volume
-        lun_id = volume.provider_location
-        if lun_id != snapshot_info.get('PARENTID'):
+        parent_metadata = huawei_utils.get_lun_metadata(snapshot.volume)
+        parent_lun_id = parent_metadata.get('huawei_lun_id')
+        if parent_lun_id != snapshot_info.get('PARENTID'):
             msg = (_("Can't import snapshot %s to Cinder. "
                      "Snapshot doesn't belong to volume."), snapshot_id)
             raise exception.ManageExistingInvalidReference(
@@ -1480,7 +1496,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                   {'old_name': snapshot_info.get('NAME'),
                    'new_name': snapshot_name})
 
-        return {'provider_location': snapshot_id}
+        location = huawei_utils.to_string(huawei_snapshot_id=snapshot_id)
+        return {'provider_location': location}
 
     def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
         """Get the size of the existing snapshot."""
@@ -1585,10 +1602,12 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                 info = self.client.create_snapshot(lun_id,
                                                    snapshot_name,
                                                    snapshot_description)
-                snapshot_model_update = {'id': snapshot.id,
-                                         'status': 'available',
-                                         'provider_location': info['ID']}
-                snapshots_model_update.append(snapshot_model_update)
+                location = huawei_utils.to_string(
+                    huawei_snapshot_id=info['ID'])
+                snap_model_update = {'id': snapshot.id,
+                                     'status': fields.SnapshotStatus.AVAILABLE,
+                                     'provider_location': location}
+                snapshots_model_update.append(snap_model_update)
                 added_snapshots_info.append(info)
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -1756,7 +1775,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
     def get_lun_id_and_type(self, volume):
         if hasattr(volume, 'lun_type'):
-            lun_id = volume.provider_location
+            metadata = huawei_utils.get_snapshot_metadata(volume)
+            lun_id = metadata['huawei_snapshot_id']
             lun_type = constants.SNAPSHOT_TYPE
         else:
             lun_id = self._check_volume_exist_on_array(
@@ -2077,6 +2097,11 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
 
         # Add host into hostgroup.
         hostgroup_id = self.client.add_host_to_hostgroup(host_id)
+
+        metadata = huawei_utils.get_lun_metadata(volume)
+        LOG.info(_LI("initialize_connection, metadata is: %s."), metadata)
+        hypermetro_lun = 'hypermetro_id' in metadata
+
         map_info = self.client.do_mapping(lun_id, hostgroup_id,
                                           host_id, portg_id,
                                           lun_type)
@@ -2095,7 +2120,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         # Deal with hypermetro connection.
         metadata = huawei_utils.get_volume_metadata(volume)
         LOG.info(_LI("initialize_connection, metadata is: %s."), metadata)
-        if 'hypermetro_id' in metadata:
+        if hypermetro_lun:
             loc_tgt_wwn = fc_info['data']['target_wwn']
             local_ini_tgt_map = fc_info['data']['initiator_target_map']
             hyperm = hypermetro.HuaweiHyperMetro(self.client,
@@ -2234,7 +2259,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
                 self.client.delete_mapping_view(view_id)
 
         # Deal with hypermetro connection.
-        metadata = huawei_utils.get_volume_metadata(volume)
+        metadata = huawei_utils.get_lun_metadata(volume)
         LOG.info(_LI("Detach Volume, metadata is: %s."), metadata)
 
         if 'hypermetro_id' in metadata:
