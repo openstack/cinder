@@ -11,6 +11,7 @@
 #    under the License.
 
 
+from castellan.common import exception as castellan_exc
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
@@ -392,9 +393,17 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 # hyphenated format (aes-xts-plain64). The algorithm needs
                 # to be parsed out to pass to the key manager (aes).
                 algorithm = cipher.split('-')[0] if cipher else None
-                encryption_key_id = key_manager.create_key(context,
-                                                           algorithm=algorithm,
-                                                           length=length)
+                try:
+                    encryption_key_id = key_manager.create_key(
+                        context,
+                        algorithm=algorithm,
+                        length=length)
+                except castellan_exc.KeyManagerError:
+                    # The messaging back to the client here is
+                    # purposefully terse, so we don't leak any sensitive
+                    # details.
+                    LOG.exception("Key manager error")
+                    raise exception.Invalid(message="Key manager error")
 
         return encryption_key_id
 
