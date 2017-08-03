@@ -761,8 +761,17 @@ class FJFCDriverTestCase(test.TestCase):
         info = self.driver.initialize_connection(TEST_VOLUME,
                                                  TEST_CONNECTOR)
         self.assertEqual(fake_info, info)
+        # Call terminate_connection with connector.
         self.driver.terminate_connection(TEST_VOLUME,
                                          TEST_CONNECTOR)
+
+        info = self.driver.initialize_connection(TEST_VOLUME,
+                                                 TEST_CONNECTOR)
+        self.assertEqual(fake_info, info)
+        # Call terminate_connection without connector.
+        self.driver.terminate_connection(TEST_VOLUME,
+                                         None)
+
         self.driver.delete_volume(TEST_VOLUME)
 
     def test_create_and_delete_snapshot(self):
@@ -879,8 +888,16 @@ class FJISCSIDriverTestCase(test.TestCase):
         info = self.driver.initialize_connection(TEST_VOLUME,
                                                  TEST_CONNECTOR)
         self.assertEqual(fake_info, info)
+        # Call terminate_connection with connector.
         self.driver.terminate_connection(TEST_VOLUME,
                                          TEST_CONNECTOR)
+
+        info = self.driver.initialize_connection(TEST_VOLUME,
+                                                 TEST_CONNECTOR)
+        self.assertEqual(fake_info, info)
+        # Call terminate_connection without connector.
+        self.driver.terminate_connection(TEST_VOLUME,
+                                         None)
         self.driver.delete_volume(TEST_VOLUME)
 
     def test_create_and_delete_snapshot(self):

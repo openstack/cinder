@@ -173,9 +173,11 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
+        initiator = connector.get('initiator') if connector else None
+
         LOG.info('terminate_connection, volume id: %(vid)s, '
                  'initiator: %(initiator)s, Enter method.',
-                 {'vid': volume['id'], 'initiator': connector['initiator']})
+                 {'vid': volume['id'], 'initiator': initiator})
 
         map_exist = self.common.terminate_connection(volume, connector)
 

@@ -728,7 +728,8 @@ class FJDXCommon(object):
                   {'vid': volume['id'], 'prtcl': self.protocol, 'frc': force})
 
         self.conn = self._get_eternus_connection()
-        map_exist = self._unmap_lun(volume, connector)
+        force = True if not connector else force
+        map_exist = self._unmap_lun(volume, connector, force)
 
         LOG.debug('terminate_connection, map_exist: %s.', map_exist)
         return map_exist
