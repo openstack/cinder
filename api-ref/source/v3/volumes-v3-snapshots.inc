@@ -11,21 +11,27 @@ possible:
 
 **Snapshot statuses**
 
-+----------------+-------------------------------------+
-| Status         | Description                         |
-+----------------+-------------------------------------+
-| creating       | The snapshot is being created.      |
-+----------------+-------------------------------------+
-| available      | The snapshot is ready to use.       |
-+----------------+-------------------------------------+
-| backing-up     | The snapshot is being backed up.    |
-+----------------+-------------------------------------+
-| deleting       | The snapshot is being deleted.      |
-+----------------+-------------------------------------+
-| error          | A snapshot creation error occurred. |
-+----------------+-------------------------------------+
-| error_deleting | A snapshot deletion error occurred. |
-+----------------+-------------------------------------+
++----------------+---------------------------------------------+
+| Status         | Description                                 |
++----------------+---------------------------------------------+
+| creating       | The snapshot is being created.              |
++----------------+---------------------------------------------+
+| available      | The snapshot is ready to use.               |
++----------------+---------------------------------------------+
+| backing-up     | The snapshot is being backed up.            |
++----------------+---------------------------------------------+
+| deleting       | The snapshot is being deleted.              |
++----------------+---------------------------------------------+
+| error          | A snapshot creation error occurred.         |
++----------------+---------------------------------------------+
+| deleted        | The snapshot has been deleted.              |
++----------------+---------------------------------------------+
+| unmanaging     | The snapshot is being unmanaged.            |
++----------------+---------------------------------------------+
+| restoring      | The snapshot is being restored to a volume. |
++----------------+---------------------------------------------+
+| error_deleting | A snapshot deletion error occurred.         |
++----------------+---------------------------------------------+
 
 
 List snapshots and details
