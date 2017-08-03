@@ -70,6 +70,7 @@ def create_volume(ctxt,
                   testcase_instance=None,
                   id=None,
                   metadata=None,
+                  cluster_name=None,
                   **kwargs):
     """Create a volume object in the DB."""
     vol = {}
@@ -102,6 +103,8 @@ def create_volume(ctxt,
         vol['replication_driver_data'] = replication_driver_data
     if previous_status:
         vol['previous_status'] = previous_status
+    if cluster_name:
+        vol['cluster_name'] = cluster_name
 
     if id:
         with mock.patch('cinder.objects.Volume.obj_attr_is_set',

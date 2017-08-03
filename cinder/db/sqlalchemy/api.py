@@ -3130,7 +3130,8 @@ def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
                       paired with corresponding item in sort_keys
     :returns: list of matching snapshots
     """
-    if filters and not is_valid_model_filters(models.Snapshot, filters):
+    if filters and not is_valid_model_filters(
+            models.Snapshot, filters, exclude_list=('host', 'cluster_name')):
         return []
 
     authorize_project_context(context, project_id)
