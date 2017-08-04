@@ -106,4 +106,4 @@ Ceph RADOS Block Device driver.
    The ``volume_tmp_dir`` option has been deprecated and replaced by
    ``image_conversion_dir``.
 
-.. include:: ../../tables/cinder-storage_ceph.rst
+.. include:: ../../tables/cinder-storage_ceph.inc

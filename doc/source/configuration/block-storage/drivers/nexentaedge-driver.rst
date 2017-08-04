@@ -156,4 +156,4 @@ Driver options
 
 Nexenta Driver supports these options:
 
-.. include:: ../../tables/cinder-nexenta_edge.rst
+.. include:: ../../tables/cinder-nexenta_edge.inc

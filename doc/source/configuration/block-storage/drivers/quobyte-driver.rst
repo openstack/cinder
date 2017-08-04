@@ -58,4 +58,4 @@ To activate the Quobyte volume driver, configure the corresponding
 The following table contains the configuration options supported by the
 Quobyte driver:
 
-.. include:: ../../tables/cinder-quobyte.rst
+.. include:: ../../tables/cinder-quobyte.inc

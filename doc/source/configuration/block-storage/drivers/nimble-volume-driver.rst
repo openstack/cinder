@@ -131,4 +131,4 @@ Configuration options
 
 The Nimble storage driver supports these configuration options:
 
-.. include:: ../../tables/cinder-nimble.rst
+.. include:: ../../tables/cinder-nimble.inc

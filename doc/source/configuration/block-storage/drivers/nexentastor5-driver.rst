@@ -150,4 +150,4 @@ Driver options
 
 Nexenta Driver supports these options:
 
-.. include:: ../../tables/cinder-nexenta5.rst
+.. include:: ../../tables/cinder-nexenta5.inc

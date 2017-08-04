@@ -165,4 +165,4 @@ Driver-specific options
 The following table contains the configuration options that are specific
 to the Dot Hill drivers.
 
-.. include:: ../../tables/cinder-dothill.rst
+.. include:: ../../tables/cinder-dothill.inc

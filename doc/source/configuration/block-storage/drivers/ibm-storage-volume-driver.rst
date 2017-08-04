@@ -51,7 +51,7 @@ follows:
 
   volume_driver = cinder.volume.drivers.ibm.ibm_storage.IBMStorageDriver
 
-.. include:: ../../tables/cinder-ibm_storage.rst
+.. include:: ../../tables/cinder-ibm_storage.inc
 
 
 

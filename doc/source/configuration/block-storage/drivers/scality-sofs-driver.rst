@@ -65,4 +65,4 @@ file:
    scality_sofs_mount_point = /cinder
    scality_sofs_config = /etc/sfused.conf
 
-.. include:: ../../tables/cinder-scality.rst
+.. include:: ../../tables/cinder-scality.inc

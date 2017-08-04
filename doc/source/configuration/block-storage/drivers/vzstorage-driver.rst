@@ -11,4 +11,4 @@ options to configure it.
 
    volume_driver = cinder.volume.drivers.vzstorage.VZStorageDriver
 
-.. include:: ../../tables/cinder-vzstorage.rst
+.. include:: ../../tables/cinder-vzstorage.inc

@@ -196,7 +196,7 @@ scheduling capabilities.
 Configuration options
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. include:: ../../tables/cinder-blockbridge.rst
+.. include:: ../../tables/cinder-blockbridge.inc
 
 .. _cg_configuration_example:
 

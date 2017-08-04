@@ -230,7 +230,7 @@ Storwize family and SVC driver options in cinder.conf
 The following options specify default values for all volumes. Some can
 be over-ridden using volume types, which are described below.
 
-.. include:: ../../tables/cinder-storwize.rst
+.. include:: ../../tables/cinder-storwize.inc
 
 Note the following:
 

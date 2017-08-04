@@ -291,7 +291,7 @@ Driver options
 
 The Oracle ZFS Storage Appliance NFS driver supports these options:
 
-.. include:: ../../tables/cinder-zfssa-nfs.rst
+.. include:: ../../tables/cinder-zfssa-nfs.inc
 
 This driver shares additional NFS configuration options with the generic
 NFS driver. For a description of these, see :ref:`cinder-storage_nfs`.

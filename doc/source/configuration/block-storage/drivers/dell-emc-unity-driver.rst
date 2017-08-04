@@ -159,7 +159,7 @@ Driver configuration
 Driver options
 ~~~~~~~~~~~~~~
 
-.. include:: ../../tables/cinder-dell_emc_unity.rst
+.. include:: ../../tables/cinder-dell_emc_unity.inc
 
 FC or iSCSI ports option
 ------------------------

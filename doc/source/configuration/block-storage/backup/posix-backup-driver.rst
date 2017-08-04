@@ -15,4 +15,4 @@ option in the ``cinder.conf`` file:
 The following configuration options are available for the POSIX
 file systems backup driver.
 
-.. include:: ../../tables/cinder-backups_posix.rst
+.. include:: ../../tables/cinder-backups_posix.inc

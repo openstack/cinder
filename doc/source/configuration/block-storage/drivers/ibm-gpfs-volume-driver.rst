@@ -74,7 +74,7 @@ in the ``cinder.conf`` as:
 The following table contains the configuration options supported by the
 Spectrum Scale driver in this deployment mode.
 
-.. include:: ../../tables/cinder-ibm_gpfs.rst
+.. include:: ../../tables/cinder-ibm_gpfs.inc
 
 .. note::
 
@@ -114,7 +114,7 @@ in the ``cinder.conf`` as:
 The following table contains the configuration options supported by the
 Spectrum Scale driver in this deployment mode.
 
-.. include:: ../../tables/cinder-ibm_gpfs_remote.rst
+.. include:: ../../tables/cinder-ibm_gpfs_remote.inc
 
 .. note::
 
@@ -149,7 +149,7 @@ in the ``cinder.conf`` as:
 The following table contains the configuration options supported by the
 Spectrum Scale driver in this deployment mode.
 
-.. include:: ../../tables/cinder-ibm_gpfs_nfs.rst
+.. include:: ../../tables/cinder-ibm_gpfs_nfs.inc
 
 Additionally, all the options of the base NFS driver are applicable
 for GPFSNFSDriver. The above table lists the basic configuration

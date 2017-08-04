@@ -15,4 +15,4 @@ To enable the NFS backup driver, include the following option in the
 The following configuration options are available for the NFS back-end
 backup driver.
 
-.. include:: ../../tables/cinder-backups_nfs.rst
+.. include:: ../../tables/cinder-backups_nfs.inc

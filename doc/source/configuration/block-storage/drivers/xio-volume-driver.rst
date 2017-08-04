@@ -57,7 +57,7 @@ iSCSI
 Optional configuration parameters
 ---------------------------------
 
-.. include:: ../../tables/cinder-xio.rst
+.. include:: ../../tables/cinder-xio.inc
 
 Multipath
 ---------

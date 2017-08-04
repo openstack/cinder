@@ -112,7 +112,7 @@ Also, set ``volume_backend_name``.
 
 This table shows configuration options for NEC Storage M series driver.
 
-.. include:: ../../tables/cinder-nec_m.rst
+.. include:: ../../tables/cinder-nec_m.inc
 
 
 

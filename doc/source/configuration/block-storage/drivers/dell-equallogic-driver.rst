@@ -28,7 +28,7 @@ dependent upon the generic block storage driver's SSH settings in the
 ``/etc/cinder/cinder.conf`` file (see
 :ref:`block-storage-sample-configuration-file` for reference).
 
-.. include:: ../../tables/cinder-eqlx.rst
+.. include:: ../../tables/cinder-eqlx.inc
 
 Default (single-instance) configuration
 ---------------------------------------
