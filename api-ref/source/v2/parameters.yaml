@@ -1866,9 +1866,3 @@ volumes:
   in: body
   required: true
   type: array
-volumes:
-  description: |
-    A list of ``volume`` objects.
-  in: body
-  required: true
-  type: array
