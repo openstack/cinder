@@ -56,7 +56,7 @@ driver:
 The following table lists various options that the drivers support for the
 OpenStack Block Storage configuration (``cinder.conf``):
 
-.. include:: ../../tables/cinder-vmware.rst
+.. include:: ../../tables/cinder-vmware.inc
 
 VMDK disk type
 ~~~~~~~~~~~~~~

@@ -52,7 +52,7 @@ On ``cinder-volume`` nodes, set the following in your
 Driver options
 --------------
 
-.. include:: ../../tables/cinder-infortrend.rst
+.. include:: ../../tables/cinder-infortrend.inc
 
 iSCSI configuration example
 ---------------------------

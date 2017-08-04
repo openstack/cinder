@@ -21,4 +21,4 @@ The DISCO driver supports the following features:
 Configuration options
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. include:: ../../tables/cinder-disco.rst
+.. include:: ../../tables/cinder-disco.inc

@@ -78,4 +78,4 @@ following actions:
       {vmstore_data_ip}:/tintri/{submount2}
 
 
-.. include:: ../../tables/cinder-tintri.rst
+.. include:: ../../tables/cinder-tintri.inc

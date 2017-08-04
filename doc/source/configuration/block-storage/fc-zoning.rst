@@ -19,7 +19,7 @@ configuration options to enable Fibre Channel Zone Manager.
 
 Make the following changes in the ``/etc/cinder/cinder.conf`` file.
 
-.. include:: ../tables/cinder-zoning.rst
+.. include:: ../tables/cinder-zoning.inc
 
 To use different Fibre Channel Zone Drivers, use the parameters
 described in this section.
@@ -48,12 +48,12 @@ through HTTP, HTTPS, or SSH.
 
 Set the following options in the ``cinder.conf`` configuration file.
 
-.. include:: ../tables/cinder-zoning_manager_brcd.rst
+.. include:: ../tables/cinder-zoning_manager_brcd.inc
 
 Configure SAN fabric parameters in the form of fabric groups as
 described in the example below:
 
-.. include:: ../tables/cinder-zoning_fabric_brcd.rst
+.. include:: ../tables/cinder-zoning_fabric_brcd.inc
 
 .. note::
 
@@ -99,12 +99,12 @@ Set the following options in the ``cinder.conf`` configuration file.
     fc_fabric_names = CISCO_FABRIC_EXAMPLE
     cisco_sb_connector = cinder.zonemanager.drivers.cisco.cisco_fc_zone_client_cli.CiscoFCZoneClientCLI
 
-.. include:: ../tables/cinder-zoning_manager_cisco.rst
+.. include:: ../tables/cinder-zoning_manager_cisco.inc
 
 Configure SAN fabric parameters in the form of fabric groups as
 described in the example below:
 
-.. include:: ../tables/cinder-zoning_fabric_cisco.rst
+.. include:: ../tables/cinder-zoning_fabric_cisco.inc
 
 .. note::
 

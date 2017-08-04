@@ -358,4 +358,4 @@ Driver options
 The following table contains the configuration options specific to the
 Dell Storage Center volume driver.
 
-.. include:: ../../tables/cinder-dellsc.rst
+.. include:: ../../tables/cinder-dellsc.inc

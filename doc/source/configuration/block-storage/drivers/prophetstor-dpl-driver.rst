@@ -101,4 +101,4 @@ service log files for errors.
 The following table contains the options supported by the ProphetStor
 storage driver.
 
-.. include:: ../../tables/cinder-prophetstor_dpl.rst
+.. include:: ../../tables/cinder-prophetstor_dpl.inc

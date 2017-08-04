@@ -73,7 +73,7 @@ Driver-specific options
 This section contains the configuration options that are specific
 to the Zadara Storage VPSA driver.
 
-.. include:: ../../tables/cinder-zadara.rst
+.. include:: ../../tables/cinder-zadara.inc
 
 .. note::
 

@@ -96,7 +96,7 @@ setting the ``volume_driver``, ``netapp_storage_family`` and
    To use the iSCSI protocol, you must override the default value of
    ``netapp_storage_protocol`` with ``iscsi``.
 
-.. include:: ../../tables/cinder-netapp_cdot_iscsi.rst
+.. include:: ../../tables/cinder-netapp_cdot_iscsi.inc
 
 .. note::
 
@@ -151,7 +151,7 @@ options in the ``cinder.conf`` file as follows:
    netapp_password = password
    nfs_shares_config = /etc/cinder/nfs_shares
 
-.. include:: ../../tables/cinder-netapp_cdot_nfs.rst
+.. include:: ../../tables/cinder-netapp_cdot_nfs.inc
 
 .. note::
 
@@ -263,7 +263,7 @@ extra specs. Use the specs in the following table to configure volumes.
 Define Block Storage volume types by using the :command:`openstack volume
 type set` command.
 
-.. include:: ../../tables/manual/cinder-netapp_cdot_extraspecs.rst
+.. include:: ../../tables/manual/cinder-netapp_cdot_extraspecs.inc
 
 
 NetApp Data ONTAP operating in 7-Mode storage family
@@ -310,7 +310,7 @@ setting the ``volume_driver``, ``netapp_storage_family`` and
    To use the iSCSI protocol, you must override the default value of
    ``netapp_storage_protocol`` with ``iscsi``.
 
-.. include:: ../../tables/cinder-netapp_7mode_iscsi.rst
+.. include:: ../../tables/cinder-netapp_7mode_iscsi.inc
 
 .. note::
 
@@ -362,7 +362,7 @@ the ``volume_driver``, ``netapp_storage_family`` and
    netapp_password = password
    nfs_shares_config = /etc/cinder/nfs_shares
 
-.. include:: ../../tables/cinder-netapp_7mode_nfs.rst
+.. include:: ../../tables/cinder-netapp_7mode_nfs.inc
 
 .. note::
 
@@ -439,7 +439,7 @@ NetApp unified driver, E-Series, and iSCSI respectively by setting the
    To use the iSCSI protocol, you must override the default value of
    ``netapp_storage_protocol`` with ``iscsi``.
 
-.. include:: ../../tables/cinder-netapp_eseries_iscsi.rst
+.. include:: ../../tables/cinder-netapp_eseries_iscsi.inc
 
 .. tip::
 

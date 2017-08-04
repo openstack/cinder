@@ -20,7 +20,7 @@ To enable the IBM TSM backup driver, include the following option in
 The following configuration options are available for the TSM backup
 driver.
 
-.. include:: ../../tables/cinder-backups_tsm.rst
+.. include:: ../../tables/cinder-backups_tsm.inc
 
 This example shows the default options for the TSM backup driver.
 

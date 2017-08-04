@@ -90,4 +90,4 @@ Coho Data Block Storage driver configuration
 
 #. Restart the ``cinder-volume`` service to enable Coho Data driver.
 
-.. include:: ../../tables/cinder-coho.rst
+.. include:: ../../tables/cinder-coho.inc

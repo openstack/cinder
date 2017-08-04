@@ -155,7 +155,7 @@ Set up Hitachi storage volume driver
 
    This table shows configuration options for Hitachi storage volume driver.
 
-   .. include:: ../../tables/cinder-hitachi-hbsd.rst
+   .. include:: ../../tables/cinder-hitachi-hbsd.inc
 
 #. Restart the Block Storage service.
 

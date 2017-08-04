@@ -179,4 +179,4 @@ Driver-specific options
 The following table contains the configuration options that are specific
 to the INFINIDAT driver.
 
-.. include:: ../../tables/cinder-infinidat.rst
+.. include:: ../../tables/cinder-infinidat.inc

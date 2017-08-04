@@ -278,4 +278,4 @@ Configuration options
 
 The ScaleIO driver supports these configuration options:
 
-.. include:: ../../tables/cinder-emc_sio.rst
+.. include:: ../../tables/cinder-emc_sio.inc

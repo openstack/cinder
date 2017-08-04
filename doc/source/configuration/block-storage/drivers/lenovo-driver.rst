@@ -156,4 +156,4 @@ Driver-specific options
 The following table contains the configuration options that are specific
 to the Lenovo drivers.
 
-.. include:: ../../tables/cinder-lenovo.rst
+.. include:: ../../tables/cinder-lenovo.inc

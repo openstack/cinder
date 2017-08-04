@@ -114,4 +114,4 @@ Driver options
 The following table contains the configuration options specific to the
 FalconStor FSS storage volume driver.
 
-.. include:: ../../tables/cinder-falconstor.rst
+.. include:: ../../tables/cinder-falconstor.inc

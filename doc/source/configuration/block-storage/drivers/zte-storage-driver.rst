@@ -155,4 +155,4 @@ Driver-specific options
 The following table contains the configuration options that are specific
 to the ZTE drivers.
 
-.. include:: ../../tables/cinder-zte.rst
+.. include:: ../../tables/cinder-zte.inc

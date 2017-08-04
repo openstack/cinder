@@ -53,7 +53,7 @@ under a separate section in case of multiple back ends (for example
 [XTREMIO]). The configuration file is usually located under the
 following path ``/etc/cinder/cinder.conf``.
 
-.. include:: ../../tables/cinder-emc_xtremio.rst
+.. include:: ../../tables/cinder-emc_xtremio.inc
 
 For a configuration example, refer to the configuration
 :ref:`emc_extremio_configuration_example`.

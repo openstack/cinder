@@ -42,7 +42,7 @@ To enable the Ceph backup driver, include the following option in the
 The following configuration options are available for the Ceph backup
 driver.
 
-.. include:: ../../tables/cinder-backups_ceph.rst
+.. include:: ../../tables/cinder-backups_ceph.inc
 
 This example shows the default options for the Ceph backup driver.
 

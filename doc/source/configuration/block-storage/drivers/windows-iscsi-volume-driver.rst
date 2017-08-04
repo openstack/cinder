@@ -107,7 +107,7 @@ configuration sample for using the Windows iSCSI Driver:
 The following table contains a reference to the only driver specific
 option that will be used by the Block Storage Windows driver:
 
-.. include:: ../../tables/cinder-windows.rst
+.. include:: ../../tables/cinder-windows.inc
 
 Run cinder-volume
 -----------------

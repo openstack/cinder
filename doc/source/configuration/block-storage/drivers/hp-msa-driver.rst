@@ -162,4 +162,4 @@ Driver-specific options
 The following table contains the configuration options that are specific to
 the HP MSA drivers.
 
-.. include:: ../../tables/cinder-hpmsa.rst
+.. include:: ../../tables/cinder-hpmsa.inc

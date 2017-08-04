@@ -14,4 +14,4 @@ your ``cinder.conf`` file, and use the following options to configure it.
 
    volume_driver = cinder.volume.drivers.smbfs.SmbfsDriver
 
-.. include:: ../../tables/cinder-smbfs.rst
+.. include:: ../../tables/cinder-smbfs.inc

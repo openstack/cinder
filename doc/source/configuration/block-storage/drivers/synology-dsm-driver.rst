@@ -121,4 +121,4 @@ Configuration options
 
 The Synology DSM driver supports the following configuration options:
 
-.. include:: ../../tables/cinder-synology.rst
+.. include:: ../../tables/cinder-synology.inc

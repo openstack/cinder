@@ -262,4 +262,4 @@ Driver options
 
 The Oracle ZFSSA iSCSI Driver supports these options:
 
-.. include:: ../../tables/cinder-zfssa-iscsi.rst
+.. include:: ../../tables/cinder-zfssa-iscsi.inc

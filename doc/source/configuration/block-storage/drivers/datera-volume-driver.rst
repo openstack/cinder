@@ -32,7 +32,7 @@ Prerequisites
   * open-iscsi-utils
   * wget
 
-.. include:: ../../tables/cinder-datera.rst
+.. include:: ../../tables/cinder-datera.inc
 
 
 
