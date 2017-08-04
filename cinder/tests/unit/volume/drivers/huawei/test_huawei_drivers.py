@@ -62,8 +62,17 @@ PROVIDER_LOCATION_WITH_HYPERMETRO = (
 SNAP_PROVIDER_LOCATION = '{"huawei_snapshot_id": "11"}'
 
 HOST = 'ubuntu001@backend001#OpenStack_Pool'
+ENCODE_HOST_NAME = huawei_utils.encode_host_name(HOST)
+
+HOST2 = 'ubuntu002@backend002#OpenStack_Pool'
+OLD_ENCODE_HOST_NAME = huawei_utils.old_encode_host_name(HOST2)
+
 ID = '21ec7341-9256-497b-97d9-ef48edcf0635'
 ENCODE_NAME = huawei_utils.encode_name(ID)
+
+ID2 = 'ee00eb7c-40dc-4256-bfea-6c3a16ab850d'
+OLD_ENCODE_NAME = huawei_utils.old_encode_name(ID2)
+
 METADATA = {}
 TEST_PAIR_ID = "3400a30d844d0004"
 VOL_METADATA = [{'key': 'hypermetro_id', 'value': '11'},
@@ -272,6 +281,16 @@ FAKE_GET_HOST_RESPONSE = """
     "data":{"NAME": "ubuntuc001",
             "ID": "1",
             "ISADD2HOSTGROUP": "true"}
+}
+"""
+
+FAKE_PATCH_GET_HOST_RESPONSE = """
+{
+    "error": {
+        "code": 0
+    },
+    "data":[{"NAME": "ubuntuc001",
+            "ID": "1"}]
 }
 """
 
@@ -1269,6 +1288,9 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/lun/11/PUT'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/lun?filter=NAME::%s/GET' % ENCODE_NAME] = (
     json.dumps(FAKE_QUERY_ALL_LUN_RESPONSE))
 
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun?filter=NAME::%s/GET' % OLD_ENCODE_NAME] = (
+    json.dumps(FAKE_QUERY_ALL_LUN_RESPONSE))
+
 MAP_COMMAND_TO_FAKE_RESPONSE['/lun/associate?TYPE=11&ASSOCIATEOBJTYPE=256'
                              '&ASSOCIATEOBJID=11/GET'] = (
     FAKE_LUN_ASSOCIATE_RESPONSE)
@@ -1373,6 +1395,10 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/11/DELETE'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot?filter=NAME::%s/GET' % ENCODE_NAME] = (
     json.dumps(FAKE_SNAPSHOT_LIST_INFO_RESPONSE))
 
+MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot?filter=NAME::%s/GET'
+                             % OLD_ENCODE_NAME] = (
+    json.dumps(FAKE_SNAPSHOT_LIST_INFO_RESPONSE))
+
 # mock QoS info map
 MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/11/GET'] = (
     FAKE_LUN_GET_SUCCESS_RESPONSE)
@@ -1428,9 +1454,12 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator/remove_iscsi_from_host/PUT'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator/'
                              'iqn.1993-08.debian:01:ec2bff7ac3a3/PUT'] = (
     FAKE_ISCSI_INITIATOR_RESPONSE)
-# mock host info map
-MAP_COMMAND_TO_FAKE_RESPONSE['/host?range=[0-65535]/GET'] = (
-    FAKE_GET_ALL_HOST_INFO_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/host?filter=NAME::%s/GET' % ENCODE_HOST_NAME
+                             ] = FAKE_PATCH_GET_HOST_RESPONSE
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/host?filter=NAME::%s/GET' % OLD_ENCODE_HOST_NAME
+                             ] = FAKE_PATCH_GET_HOST_RESPONSE
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/host/1/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
@@ -2145,12 +2174,12 @@ class FakeClient(rest_client.RestClient):
                 log_filter_flag=False):
         url = url.replace('http://192.0.2.69:8082/deviceManager/rest', '')
         command = url.replace('/210235G7J20000000000/', '')
-        data = json.dumps(data) if data else None
+        data = FAKE_COMMON_SUCCESS_RESPONSE
 
         if method:
             command = command + "/" + method
 
-        for item in MAP_COMMAND_TO_FAKE_RESPONSE.keys():
+        for item in MAP_COMMAND_TO_FAKE_RESPONSE:
             if command == item:
                 data = MAP_COMMAND_TO_FAKE_RESPONSE[item]
                 if self.test_fail:
@@ -2272,11 +2301,17 @@ class HuaweiTestBase(test.TestCase):
 
     def test_encode_name(self):
         lun_name = huawei_utils.encode_name(self.volume.id)
+        self.assertEqual('21ec7341-ca82ece92e1ac480c963f1', lun_name)
 
-        # The hash value is different between py27 and py34.
-        # So we use assertIn.
-        self.assertIn(lun_name, ('21ec7341-4687000622165227970',
-                                 '21ec7341-7953146827712520106'))
+    @ddt.data({'name': '9548e5e7-ca1c-46bf-b132',
+               'expected': '9548e5e7-ca1c-46bf-b132'},
+              {'name': '9548e5e7ca1c46bfb132891b425a81f',
+               'expected': '9548e5e7ca1c46bfb132891b425a81f'},
+              {'name': '9548e5e7-ca1c-46bf-b132-891b425a81f5',
+               'expected': '45d6964d772b2efcaad0e3c59538ecc'})
+    @ddt.unpack
+    def test_encode_host_name(self, name, expected):
+        self.assertEqual(expected, huawei_utils.encode_host_name(name))
 
     @mock.patch.object(rest_client, 'RestClient')
     def test_create_snapshot_success(self, mock_client):
@@ -2408,6 +2443,77 @@ class HuaweiTestBase(test.TestCase):
     def test_get_snapshot_metadata(self, snapshot, expect):
         metadata = huawei_utils.get_snapshot_metadata(snapshot)
         self.assertEqual(expect, metadata)
+
+    @ddt.data(
+        {
+            'volume': fake_volume.fake_volume_obj(
+                admin_contex, provider_location=PROVIDER_LOCATION),
+            'expect': ('11', '6643e8c1004c5f6723e9f454003'),
+        },
+        {
+            'volume': fake_volume.fake_volume_obj(
+                admin_contex, id=ID),
+            'expect': ('1', None),
+        },
+        {
+            'volume': fake_volume.fake_volume_obj(
+                admin_contex, id=ID2),
+            'expect': ('1', None),
+        },
+        {
+            'volume': fake_volume.fake_volume_obj(
+                admin_contex, id='fake_id'),
+            'expect': (None, None),
+        }
+    )
+    @ddt.unpack
+    def test_get_volume_lun_id(self, volume, expect):
+        volume_id = huawei_utils.get_volume_lun_id(self.driver.client,
+                                                   volume)
+        self.assertEqual(expect, volume_id)
+
+    @ddt.data(
+        {
+            'snapshot': fake_snapshot.fake_snapshot_obj(
+                admin_contex,
+                provider_location=SNAP_PROVIDER_LOCATION),
+            'expect': '11',
+        },
+        {
+            'snapshot': fake_snapshot.fake_snapshot_obj(
+                admin_contex, id=ID),
+            'expect': '11',
+        },
+        {
+            'snapshot': fake_snapshot.fake_snapshot_obj(
+                admin_contex, id=ID2),
+            'expect': '11',
+        },
+        {
+            'snapshot': fake_snapshot.fake_snapshot_obj(
+                admin_contex, id='fake_id'),
+            'expect': None
+        }
+    )
+    @ddt.unpack
+    def test_get_snapshot_id(self, snapshot, expect):
+        snapshot_id = huawei_utils.get_snapshot_id(self.driver.client,
+                                                   snapshot)
+        self.assertEqual(expect, snapshot_id)
+
+    @ddt.data(
+        {'host_name': HOST,
+         'expect': '1'},
+        {'host_name': HOST2,
+         'expect': '1'},
+        {'host_name': 'fake_host_name',
+         'expect': None},
+    )
+    @ddt.unpack
+    def test_get_host_id(self, host_name, expect):
+        host_id = huawei_utils.get_host_id(self.driver.client,
+                                           host_name)
+        self.assertEqual(expect, host_id)
 
 
 @ddt.ddt
