@@ -421,7 +421,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(availability_zone="zonen:hostn")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        self.assertRaises(exception.InvalidInput,
+        self.assertRaises(exception.InvalidAvailabilityZone,
                           self.controller.create,
                           req, body)
 

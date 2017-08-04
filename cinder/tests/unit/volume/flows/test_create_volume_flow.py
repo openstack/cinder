@@ -244,6 +244,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'group_id': None,
+                           'refresh_az': False,
                            'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
 
@@ -274,7 +275,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         fake_is_encrypted.return_value = False
         fake_get_type_id.return_value = 1
         fake_get_qos.return_value = {'qos_specs': None}
-        self.assertRaises(exception.InvalidInput,
+        self.assertRaises(exception.InvalidAvailabilityZone,
                           task.execute,
                           self.ctxt,
                           size=1,
@@ -345,6 +346,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'group_id': None,
+                           'refresh_az': True,
                            'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
 
@@ -453,6 +455,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
+                           'refresh_az': False,
                            'group_id': None, }
         self.assertEqual(expected_result, result)
 
@@ -510,6 +513,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'group_id': None,
+                           'refresh_az': False,
                            'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
 
@@ -574,6 +578,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'group_id': None,
+                           'refresh_az': False,
                            'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
 
@@ -639,6 +644,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'group_id': None,
+                           'refresh_az': False,
                            'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
 
@@ -703,6 +709,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'group_id': None,
+                           'refresh_az': False,
                            'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
 
