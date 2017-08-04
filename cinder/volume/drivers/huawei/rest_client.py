@@ -293,7 +293,8 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get lun id by name error.'))
 
-        return self._get_id_from_result(result, name, 'NAME')
+        if 'data' in result and result['data']:
+            return result['data'][0]['ID']
 
     def activate_snapshot(self, snapshot_id):
         url = "/snapshot/activate"
@@ -317,19 +318,6 @@ class RestClient(object):
         self._assert_data_in_result(result, msg)
 
         return result['data']
-
-    def get_lun_id(self, volume, volume_name):
-        metadata = huawei_utils.get_lun_metadata(volume)
-        lun_id = (metadata.get('huawei_lun_id') or
-                  self.get_lun_id_by_name(volume_name))
-
-        if not lun_id:
-            msg = (_("Can't find lun info on the array. "
-                     "volume: %(id)s, lun name: %(name)s.") %
-                   {'id': volume.id, 'name': volume_name})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-        return lun_id
 
     def check_snapshot_exist(self, snapshot_id):
         url = "/snapshot/%s" % snapshot_id
@@ -364,7 +352,8 @@ class RestClient(object):
                 return
             self._assert_rest_result(result, _('Get snapshot id error.'))
 
-        return self._get_id_from_result(result, name, 'NAME')
+        if 'data' in result and result['data']:
+            return result['data'][0]['ID']
 
     def create_luncopy(self, luncopyname, srclunid, tgtlunid):
         """Create a luncopy."""
@@ -643,46 +632,41 @@ class RestClient(object):
 
     def get_host_id_by_name(self, host_name):
         """Get the given host ID."""
-        url = "/host?range=[0-65535]"
+        url = "/host?filter=NAME::%s" % host_name
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Find host in hostgroup error.'))
 
-        return self._get_id_from_result(result, host_name, 'NAME')
+        if 'data' in result and result['data']:
+            return result['data'][0]['ID']
 
-    def add_host_with_check(self, host_name, host_name_before_hash):
-        host_id = self.get_host_id_by_name(host_name)
+    def add_host_with_check(self, host_name):
+        host_id = huawei_utils.get_host_id(self, host_name)
         if host_id:
-            LOG.info(_LI(
-                'add_host_with_check. '
-                'host name: %(name)s, '
-                'host id: %(id)s'),
-                {'name': host_name,
-                 'id': host_id})
+            LOG.info(_LI('Got exist host. host name: %(name)s, '
+                         'host id: %(id)s.'),
+                     {'name': host_name,
+                      'id': host_id})
             return host_id
 
-        try:
-            host_id = self._add_host(host_name, host_name_before_hash)
-        except Exception:
-            LOG.info(_LI(
-                'Failed to create host: %(name)s. '
-                'Check if it exists on the array.'),
-                {'name': host_name})
-            host_id = self.get_host_id_by_name(host_name)
-            if not host_id:
-                err_msg = (_(
-                    'Failed to create host: %(name)s. '
-                    'Please check if it exists on the array.'),
-                    {'name': host_name})
-                LOG.error(err_msg)
-                raise exception.VolumeBackendAPIException(data=err_msg)
+        encoded_name = huawei_utils.encode_host_name(host_name)
 
-        LOG.info(_LI(
-            'add_host_with_check. '
-            'create host success. '
-            'host name: %(name)s, '
-            'host id: %(id)s'),
-            {'name': host_name,
-             'id': host_id})
+        try:
+            host_id = self._add_host(encoded_name, host_name)
+        except Exception:
+            LOG.info(_LI('Failed to create host %s, check if already exist.'),
+                     encoded_name)
+            host_id = self.get_host_id_by_name(encoded_name)
+            if not host_id:
+                msg = _('Failed to create host: %(name)s. '
+                        'Please check if it exists on the array.'
+                        ) % {'name': encoded_name}
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.info(_LI('create host success. host name: %(name)s, '
+                     'host id: %(id)s'),
+                 {'name': encoded_name,
+                  'id': host_id})
         return host_id
 
     def _add_host(self, hostname, host_name_before_hash):

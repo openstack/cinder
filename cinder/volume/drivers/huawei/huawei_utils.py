@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import hashlib
 import json
 import six
 import time
@@ -29,9 +30,16 @@ from cinder.volume.drivers.huawei import constants
 LOG = logging.getLogger(__name__)
 
 
-def encode_name(name):
-    pre_name = name.split("-")[0]
-    vol_encoded = six.text_type(hash(name))
+def encode_name(id):
+    encoded_name = hashlib.md5(id.encode('utf-8')).hexdigest()
+    prefix = id.split('-')[0] + '-'
+    postfix = encoded_name[:constants.MAX_NAME_LENGTH - len(prefix)]
+    return prefix + postfix
+
+
+def old_encode_name(id):
+    pre_name = id.split("-")[0]
+    vol_encoded = six.text_type(hash(id))
     if vol_encoded.startswith('-'):
         newuuid = pre_name + vol_encoded
     else:
@@ -40,7 +48,14 @@ def encode_name(name):
 
 
 def encode_host_name(name):
-    if name and (len(name) > constants.MAX_HOSTNAME_LENGTH):
+    if name and len(name) > constants.MAX_NAME_LENGTH:
+        encoded_name = hashlib.md5(name.encode('utf-8')).hexdigest()
+        return encoded_name[:constants.MAX_NAME_LENGTH]
+    return name
+
+
+def old_encode_host_name(name):
+    if name and len(name) > constants.MAX_NAME_LENGTH:
         name = six.text_type(hash(name))
     return name
 
@@ -147,3 +162,50 @@ def get_snapshot_metadata(snapshot):
 
     # To keep compatible with old driver version
     return {'huawei_snapshot_id': six.text_type(info)}
+
+
+def get_volume_lun_id(client, volume):
+    metadata = get_lun_metadata(volume)
+    lun_id = metadata.get('huawei_lun_id')
+
+    # First try the new encoded way.
+    if not lun_id:
+        volume_name = encode_name(volume.id)
+        lun_id = client.get_lun_id_by_name(volume_name)
+
+    # If new encoded way not found, try the old encoded way.
+    if not lun_id:
+        volume_name = old_encode_name(volume.id)
+        lun_id = client.get_lun_id_by_name(volume_name)
+
+    return lun_id, metadata.get('huawei_lun_wwn')
+
+
+def get_snapshot_id(client, snapshot):
+    metadata = get_snapshot_metadata(snapshot)
+    snapshot_id = metadata.get('huawei_snapshot_id')
+
+    # First try the new encoded way.
+    if not snapshot_id:
+        name = encode_name(snapshot.id)
+        snapshot_id = client.get_snapshot_id_by_name(name)
+
+    # If new encoded way not found, try the old encoded way.
+    if not snapshot_id:
+        name = old_encode_name(snapshot.id)
+        snapshot_id = client.get_snapshot_id_by_name(name)
+
+    return snapshot_id
+
+
+def get_host_id(client, host_name):
+    encoded_name = encode_host_name(host_name)
+    host_id = client.get_host_id_by_name(encoded_name)
+    if encoded_name == host_name:
+        return host_id
+
+    if not host_id:
+        encoded_name = old_encode_host_name(host_name)
+        host_id = client.get_host_id_by_name(encoded_name)
+
+    return host_id
