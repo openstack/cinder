@@ -334,6 +334,9 @@ class CohoDriver(nfs.NfsDriver):
     # ThirdPartySystems wiki page name
     CI_WIKI_NAME = "Coho_Data_CI"
 
+    # TODO(smcginnis) Remove driver in Queens if CI issues not fixed
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(CohoDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(coho_opts)
