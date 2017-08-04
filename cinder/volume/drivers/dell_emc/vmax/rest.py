@@ -887,7 +887,7 @@ class VMAXRest(object):
 
     def move_volume_between_storage_groups(
             self, array, device_id, source_storagegroup_name,
-            target_storagegroup_name, extra_specs):
+            target_storagegroup_name, extra_specs, force=False):
         """Move a volume to a different storage group.
 
         :param array: the array serial number
@@ -895,13 +895,15 @@ class VMAXRest(object):
         :param target_storagegroup_name: the destination storage group name
         :param device_id: the device id
         :param extra_specs: extra specifications
+        :param force: force flag (necessary on a detach)
         """
+        force_flag = "true" if force else "false"
         payload = ({"executionOption": "ASYNCHRONOUS",
                     "editStorageGroupActionParam": {
                         "moveVolumeToStorageGroupParam": {
                             "volumeId": [device_id],
                             "storageGroupId": target_storagegroup_name,
-                            "useForceFlag": "false"}}})
+                            "force": force_flag}}})
         status_code, job = self.modify_storage_group(
             array, source_storagegroup_name, payload)
         self.wait_for_job('move volume between storage groups', status_code,
@@ -1604,12 +1606,11 @@ class VMAXRest(object):
         rdf_grp = None
         volume_details = self.get_volume(array, device_id)
         if volume_details:
+            LOG.debug("Vol details: %(vol)s", {'vol': volume_details})
             if volume_details.get('snapvx_target'):
-                snap_target = volume_details['snapvx_target']
-                snapvx_tgt = True if snap_target == 'true' else False
+                snapvx_tgt = volume_details['snapvx_target']
             if volume_details.get('snapvx_source'):
-                snap_source = volume_details['snapvx_source']
-                snapvx_src = True if snap_source == 'true' else False
+                snapvx_src = volume_details['snapvx_source']
             if volume_details.get('rdfGroupId'):
                 rdf_grp = volume_details['rdfGroupId']
         return snapvx_tgt, snapvx_src, rdf_grp

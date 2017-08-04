@@ -61,23 +61,24 @@ class VMAXMasking(object):
         :param maskingview_name: the masking view name
         :param masking_view_dict: the masking view dict
         :param extra_specs: the extra specifications
-        :return: rollback_dict
+        :returns: rollback_dict
         :raises: VolumeBackendAPIException
         """
         storagegroup_name = masking_view_dict[utils.SG_NAME]
         volume_name = masking_view_dict[utils.VOL_NAME]
         masking_view_dict[utils.EXTRA_SPECS] = extra_specs
         device_id = masking_view_dict[utils.DEVICE_ID]
-        if 'source_nf_sg' in masking_view_dict:
-            default_sg_name = masking_view_dict['source_nf_sg']
-        else:
-            default_sg_name = self._get_default_storagegroup_and_remove_vol(
-                serial_number, device_id, masking_view_dict, volume_name,
-                extra_specs)
+        default_sg_name = self.utils.get_default_storage_group_name(
+            masking_view_dict[utils.SRP],
+            masking_view_dict[utils.SLO],
+            masking_view_dict[utils.WORKLOAD],
+            masking_view_dict[utils.DISABLECOMPRESSION],
+            masking_view_dict[utils.IS_RE])
 
         try:
             error_message = self._get_or_create_masking_view(
-                serial_number, masking_view_dict, extra_specs)
+                serial_number, masking_view_dict,
+                default_sg_name, extra_specs)
             LOG.debug(
                 "The masking view in the attach operation is "
                 "%(masking_name)s. The storage group "
@@ -100,6 +101,8 @@ class VMAXMasking(object):
         except Exception as e:
             error_message = ("Error retrieving port group. Exception "
                              "received: %(e)s" % {'e': six.text_type(e)})
+        if 'source_nf_sg' in masking_view_dict:
+            default_sg_name = masking_view_dict['source_nf_sg']
         rollback_dict['default_sg_name'] = default_sg_name
 
         if error_message:
@@ -129,47 +132,67 @@ class VMAXMasking(object):
 
         return rollback_dict
 
-    def _get_default_storagegroup_and_remove_vol(
-            self, serial_number, device_id, masking_view_dict,
-            volume_name, extra_specs):
-        """Get the default storage group and remove volume.
+    def _move_vol_from_default_sg(
+            self, serial_number, device_id, volume_name,
+            default_sg_name, dest_storagegroup, extra_specs):
+        """Get the default storage group and move the volume.
 
         :param serial_number: the array serial number
         :param device_id: the device id
-        :param masking_view_dict: the masking view dict
         :param volume_name: the volume name
+        :param default_sg_name: the name of the default sg
+        :param dest_storagegroup: the destination storage group
         :param extra_specs: the extra specifications
-        :return: default_sg_name
+        :returns: msg
         """
-        default_sg_name = self.utils.get_default_storage_group_name(
-            masking_view_dict[utils.SRP],
-            masking_view_dict[utils.SLO],
-            masking_view_dict[utils.WORKLOAD],
-            masking_view_dict[utils.DISABLECOMPRESSION],
-            masking_view_dict[utils.IS_RE])
-
+        msg = None
         check_vol = self.rest.is_volume_in_storagegroup(
             serial_number, device_id, default_sg_name)
         if check_vol:
-            self.remove_vol_from_storage_group(
-                serial_number, device_id, default_sg_name,
-                volume_name, extra_specs)
+            @coordination.synchronized("emc-sg-{sg_name}")
+            def do_move_vol_from_def_sg(sg_name):
+                num_vol_in_sg = self.rest.get_num_vols_in_sg(
+                    serial_number, default_sg_name)
+                LOG.debug("There are %(num_vol)d volumes in the "
+                          "storage group %(sg_name)s.",
+                          {'num_vol': num_vol_in_sg,
+                           'sg_name': default_sg_name})
+                self.rest.move_volume_between_storage_groups(
+                    serial_number, device_id, default_sg_name,
+                    dest_storagegroup, extra_specs)
+                if num_vol_in_sg == 1:
+                    # Last volume in the storage group - delete sg.
+                    self.rest.delete_storage_group(
+                        serial_number, default_sg_name)
+
+            try:
+                do_move_vol_from_def_sg(default_sg_name)
+            except Exception as e:
+                msg = ("Exception while moving volume from the default "
+                       "storage group to %(sg)s. Exception received was "
+                       "%(e)s")
+                LOG.error(msg, {'sg': dest_storagegroup, 'e': e})
         else:
             LOG.warning(
                 "Volume: %(volume_name)s does not belong "
                 "to default storage group %(default_sg_name)s.",
                 {'volume_name': volume_name,
                  'default_sg_name': default_sg_name})
-        return default_sg_name
+            msg = self._check_adding_volume_to_storage_group(
+                serial_number, device_id, dest_storagegroup,
+                volume_name, extra_specs)
+
+        return msg
 
     def _get_or_create_masking_view(self, serial_number, masking_view_dict,
-                                    extra_specs):
+                                    default_sg_name, extra_specs):
         """Retrieve an existing masking view or create a new one.
 
         :param serial_number: the array serial number
         :param masking_view_dict: the masking view dict
+        :param default_sg_name: the name of the default sg
         :param extra_specs: the extra specifications
-        :return: error message
+        :returns: error message
         """
         maskingview_name = masking_view_dict[utils.MV_NAME]
 
@@ -178,25 +201,27 @@ class VMAXMasking(object):
         if not masking_view_details:
             error_message = self._create_new_masking_view(
                 serial_number, masking_view_dict, maskingview_name,
-                extra_specs)
+                default_sg_name, extra_specs)
 
         else:
             storagegroup_name, error_message = (
                 self._validate_existing_masking_view(
                     serial_number, masking_view_dict, maskingview_name,
-                    extra_specs))
+                    default_sg_name, extra_specs))
 
         return error_message
 
-    def _create_new_masking_view(self, serial_number, masking_view_dict,
-                                 maskingview_name, extra_specs):
+    def _create_new_masking_view(
+            self, serial_number, masking_view_dict,
+            maskingview_name, default_sg_name, extra_specs):
         """Create a new masking view.
 
         :param serial_number: the array serial number
         :param masking_view_dict: the masking view dict
         :param maskingview_name: the masking view name
+        :param default_sg_name: the name of the default sg
         :param extra_specs: the extra specifications
-        :return: error_message
+        :returns: error_message
         """
         init_group_name = masking_view_dict[utils.IG_NAME]
         parent_sg_name = masking_view_dict[utils.PARENT_SG_NAME]
@@ -230,13 +255,13 @@ class VMAXMasking(object):
             return error_message
 
         # Only after the components of the MV have been validated,
-        # add the volume to the storage group and recheck that it
-        # has been successfully added.  This is necessary before
+        # move the volume from the default storage group to the
+        # masking view storage group. This is necessary before
         # creating a new masking view.
-        error_message = self._check_adding_volume_to_storage_group(
+        error_message = self._move_vol_from_default_sg(
             serial_number, masking_view_dict[utils.DEVICE_ID],
-            storagegroup_name, masking_view_dict[utils.VOL_NAME],
-            masking_view_dict[utils.EXTRA_SPECS])
+            masking_view_dict[utils.VOL_NAME], default_sg_name,
+            storagegroup_name, extra_specs)
         if error_message:
             return error_message
 
@@ -252,18 +277,21 @@ class VMAXMasking(object):
 
         return error_message
 
-    def _validate_existing_masking_view(self, serial_number, masking_view_dict,
-                                        maskingview_name, extra_specs):
+    def _validate_existing_masking_view(
+            self, serial_number, masking_view_dict,
+            maskingview_name, default_sg_name, extra_specs):
         """Validate the components of an existing masking view.
 
         :param serial_number: the array serial number
         :param masking_view_dict: the masking view dict
         :param maskingview_name: the amsking view name
+        :param default_sg_name: the default sg name
         :param extra_specs: the extra specifications
-        :return: storage_group_name -- string, msg -- string
+        :returns: storage_group_name -- string, msg -- string
         """
         storage_group_name, msg = self._check_existing_storage_group(
-            serial_number, maskingview_name, masking_view_dict)
+            serial_number, maskingview_name, default_sg_name,
+            masking_view_dict)
         if not msg:
             portgroup_name = self.rest.get_element_from_masking_view(
                 serial_number, maskingview_name, portgroup=True)
@@ -284,7 +312,7 @@ class VMAXMasking(object):
         :param child_sg_name: the name of the child storage group
         :param parent_sg_name: the name of the aprent storage group
         :param extra_specs: the extra specifications
-        :return: error_message or None
+        :returns: error_message or None
         """
         msg = None
         if self.rest.is_child_sg_in_parent_sg(
@@ -355,7 +383,7 @@ class VMAXMasking(object):
         :param storagegroup_name: the storage group name
         :param extra_specs: the extra specifications
         :param parent: flag to indicate if this a parent storage group
-        :return: msg -- string or None
+        :returns: msg -- string or None
         """
         msg = None
         srp = extra_specs[utils.SRP]
@@ -388,7 +416,8 @@ class VMAXMasking(object):
         return msg
 
     def _check_existing_storage_group(
-            self, serial_number, maskingview_name, masking_view_dict):
+            self, serial_number, maskingview_name,
+            default_sg_name, masking_view_dict):
         """Check if the masking view has the child storage group.
 
         Get the parent storage group associated with a masking view and check
@@ -396,8 +425,9 @@ class VMAXMasking(object):
         or create the child storage group.
         :param serial_number: the array serial number
         :param maskingview_name: the masking view name
+        :param default_sg_name: the default sg name
         :param masking_view_dict: the masking view dict
-        :return: storage group name, msg
+        :returns: storage group name, msg
         """
         msg = None
         child_sg_name = masking_view_dict[utils.SG_NAME]
@@ -433,10 +463,10 @@ class VMAXMasking(object):
                     serial_number, masking_view_dict, child_sg_name,
                     masking_view_dict[utils.EXTRA_SPECS])
             if not msg:
-                msg = self._check_adding_volume_to_storage_group(
+                msg = self._move_vol_from_default_sg(
                     serial_number, masking_view_dict[utils.DEVICE_ID],
-                    child_sg_name, masking_view_dict[utils.VOL_NAME],
-                    masking_view_dict[utils.EXTRA_SPECS])
+                    masking_view_dict[utils.VOL_NAME], default_sg_name,
+                    child_sg_name, masking_view_dict[utils.EXTRA_SPECS])
             if not msg and not check_child:
                 msg = self._check_add_child_sg_to_parent_sg(
                     serial_number, child_sg_name, sg_from_mv,
@@ -444,19 +474,22 @@ class VMAXMasking(object):
 
         return child_sg_name, msg
 
+    @coordination.synchronized("emc-sg-{source_storagegroup_name}")
+    @coordination.synchronized("emc-sg-{target_storagegroup_name}")
     def move_volume_between_storage_groups(
-            self, array, device_id, source_storagegroup_name,
+            self, serial_number, device_id, source_storagegroup_name,
             target_storagegroup_name, extra_specs):
-        @coordination.synchronized("emc-sg-{source_storage_group}")
-        @coordination.synchronized("emc-sg-{target_storage_group}")
-        def do_move_volume_between_storage_groups(source_storage_group,
-                                                  target_storage_group):
-            self.rest.move_volume_between_storage_groups(
-                array, device_id, source_storage_group, target_storage_group,
-                extra_specs)
+        """Move a volume between storage groups.
 
-        do_move_volume_between_storage_groups(
-            source_storagegroup_name, target_storagegroup_name)
+        :param serial_number: the array serial number
+        :param device_id: the device id
+        :param source_storagegroup_name: the source sg
+        :param target_storagegroup_name: the target sg
+        :param extra_specs: the extra specifications
+        """
+        self.rest.move_volume_between_storage_groups(
+            serial_number, device_id, source_storagegroup_name,
+            target_storagegroup_name, extra_specs)
 
     def _check_port_group(self, serial_number, portgroup_name):
         """Check that you can get a port group.
@@ -483,7 +516,7 @@ class VMAXMasking(object):
         :param init_group_name: the name of the initiator group
         :param connector: the connector object
         :param extra_specs: the extra specifications
-        :return: name of the initiator group -- string, msg
+        :returns: name of the initiator group -- string, msg
         """
         msg = None
         initiator_names = self.find_initiator_names(connector)
@@ -556,7 +589,7 @@ class VMAXMasking(object):
         :param storagegroup_name: the storage group name
         :param volume_name: volume name
         :param extra_specs: extra specifications
-        :return: msg
+        :returns: msg
         """
         msg = None
         if self.rest.is_volume_in_storagegroup(
@@ -785,7 +818,7 @@ class VMAXMasking(object):
         :param port_group_name: the port group
         :param init_group_name: the initiator group
         :param extra_specs: extra specifications
-        :return: error_message -- string or None
+        :returns: error_message -- string or None
         """
         error_message = None
         try:
@@ -810,7 +843,7 @@ class VMAXMasking(object):
         :param serial_number: the array serial number
         :param device_id: the device id
         :param rollback_dict: the rollback dict
-        :return: error message -- string, or None
+        :returns: error message -- string, or None
         :raises: VolumeBackendAPIException
         """
         message = None
@@ -885,7 +918,7 @@ class VMAXMasking(object):
         :param storagegroup_name: the storage group
         :param portgroup_name: the port group
         :param extra_specs: extra specifications
-        :return: bool, found_ig_from_connector
+        :returns: bool, found_ig_from_connector
         """
         connector = maskingview_dict['connector']
         initiator_names = self.find_initiator_names(connector)
@@ -953,7 +986,7 @@ class VMAXMasking(object):
         :param init_group_name: the name for the initiator group
         :param initiator_names: initaitor names
         :param extra_specs: the extra specifications
-        :return: the initiator group name
+        :returns: the initiator group name
         """
         self.rest.create_initiator_group(
             serial_number, init_group_name, initiator_names, extra_specs)
@@ -998,14 +1031,12 @@ class VMAXMasking(object):
         :param connector: the connector object (optional)
         """
         self._cleanup_deletion(
-            serial_number, device_id, volume_name, extra_specs, connector)
-        if reset:
-            self.add_volume_to_default_storage_group(
-                serial_number, device_id, volume_name, extra_specs)
+            serial_number, device_id, volume_name,
+            extra_specs, connector, reset)
 
     def _cleanup_deletion(
             self, serial_number, device_id, volume_name,
-            extra_specs, connector):
+            extra_specs, connector, reset):
         """Prepare a volume for a delete operation.
 
         :param serial_number: the array serial number
@@ -1014,17 +1045,23 @@ class VMAXMasking(object):
         :param extra_specs: the extra specifications
         :param connector: the connector object
         """
+        move = False
         storagegroup_names = (self.rest.get_storage_groups_from_volume(
             serial_number, device_id))
         if storagegroup_names:
+            if len(storagegroup_names) == 1 and reset is True:
+                move = True
             for sg_name in storagegroup_names:
                 self.remove_volume_from_sg(
                     serial_number, device_id, volume_name, sg_name,
-                    extra_specs, connector)
+                    extra_specs, connector, move)
+        if reset is True and move is False:
+            self.add_volume_to_default_storage_group(
+                serial_number, device_id, volume_name, extra_specs)
 
     def remove_volume_from_sg(
             self, serial_number, device_id, vol_name, storagegroup_name,
-            extra_specs, connector=None):
+            extra_specs, connector=None, move=False):
         """Remove a volume from a storage group.
 
         :param serial_number: the array serial number
@@ -1033,6 +1070,7 @@ class VMAXMasking(object):
         :param storagegroup_name: the storage group name
         :param extra_specs: the extra specifications
         :param connector: the connector object
+        :param move: flag to indicate if move should be used instead of remove
         """
         masking_list = self.rest.get_masking_views_from_storage_group(
             serial_number, storagegroup_name)
@@ -1043,27 +1081,25 @@ class VMAXMasking(object):
             @coordination.synchronized("emc-sg-{sg_name}")
             def do_remove_volume_from_sg(sg_name):
                 # Make sure volume hasn't been recently removed from the sg
-                is_vol = self.rest.is_volume_in_storagegroup(
-                    serial_number, device_id, sg_name)
-                if is_vol:
+                if self.rest.is_volume_in_storagegroup(
+                        serial_number, device_id, sg_name):
                     num_vol_in_sg = self.rest.get_num_vols_in_sg(
                         serial_number, sg_name)
-                    LOG.debug(
-                        "There are %(num_vol)d volumes in the storage group "
-                        "%(sg_name)s.",
-                        {'num_vol': num_vol_in_sg,
-                         'sg_name': sg_name})
+                    LOG.debug("There are %(num_vol)d volumes in the "
+                              "storage group %(sg_name)s.",
+                              {'num_vol': num_vol_in_sg,
+                               'sg_name': sg_name})
 
                     if num_vol_in_sg == 1:
                         # Last volume in the storage group - delete sg.
                         self._last_vol_in_sg(
                             serial_number, device_id, vol_name, sg_name,
-                            extra_specs)
+                            extra_specs, move)
                     else:
                         # Not the last volume so remove it from storage group
                         self._multiple_vols_in_sg(
                             serial_number, device_id, sg_name, vol_name,
-                            extra_specs)
+                            extra_specs, move)
                 else:
                     LOG.info("Volume with device_id %(dev)s is no longer a "
                              "member of %(sg)s.",
@@ -1099,12 +1135,12 @@ class VMAXMasking(object):
                         # Last volume in the storage group - delete sg.
                         self._last_vol_in_sg(
                             serial_number, device_id, vol_name, sg_name,
-                            extra_specs, connector)
+                            extra_specs, move, connector)
                     else:
                         # Not the last volume so remove it from storage group
                         self._multiple_vols_in_sg(
                             serial_number, device_id, sg_name, vol_name,
-                            extra_specs)
+                            extra_specs, move)
                 else:
                     LOG.info("Volume with device_id %(dev)s is no longer a "
                              "member of %(sg)s",
@@ -1114,7 +1150,7 @@ class VMAXMasking(object):
                                             parent_sg_name)
 
     def _last_vol_in_sg(self, serial_number, device_id, volume_name,
-                        storagegroup_name, extra_specs, connector=None):
+                        storagegroup_name, extra_specs, move, connector=None):
         """Steps if the volume is the last in a storage group.
 
         1. Check if the volume is in a masking view.
@@ -1131,8 +1167,9 @@ class VMAXMasking(object):
         :param volume_name: volume name
         :param storagegroup_name: storage group name
         :param extra_specs: extra specifications
+        :param move: flag to indicate a move instead of remove
         :param connector: the connector object
-        :return: status -- bool
+        :returns: status -- bool
         """
         LOG.debug("Only one volume remains in storage group "
                   "%(sgname)s. Driver will attempt cleanup.",
@@ -1142,15 +1179,15 @@ class VMAXMasking(object):
         if not bool(maskingview_list):
             status = self._last_vol_no_masking_views(
                 serial_number, storagegroup_name, device_id, volume_name,
-                extra_specs)
+                extra_specs, move)
         else:
             status = self._last_vol_masking_views(
                 serial_number, storagegroup_name, maskingview_list,
-                device_id, volume_name, extra_specs, connector)
+                device_id, volume_name, extra_specs, connector, move)
         return status
 
     def _last_vol_no_masking_views(self, serial_number, storagegroup_name,
-                                   device_id, volume_name, extra_specs):
+                                   device_id, volume_name, extra_specs, move):
         """Remove the last vol from an sg not associated with an mv.
 
         Helper function for removing the last vol from a storage group
@@ -1160,13 +1197,19 @@ class VMAXMasking(object):
         :param device_id: the device id
         :param volume_name: the volume name
         :param extra_specs: the extra specifications
-        :return: status -- bool
+        :param move: flag to indicate a move instead of remove
+        :returns: status -- bool
         """
         # Check if storage group is a child sg:
         parent_sg = self.get_parent_sg_from_child(
             serial_number, storagegroup_name)
-        # Delete the storage group.
         if parent_sg is None:
+            # Move the volume back to the default storage group, if required
+            if move:
+                self.add_volume_to_default_storage_group(
+                    serial_number, device_id, volume_name,
+                    extra_specs, src_sg=storagegroup_name)
+            # Delete the storage group.
             self.rest.delete_storage_group(serial_number, storagegroup_name)
             status = True
         else:
@@ -1174,17 +1217,18 @@ class VMAXMasking(object):
                 serial_number, parent_sg)
             if num_vols_parent == 1:
                 self._delete_cascaded_storage_groups(
-                    serial_number, storagegroup_name, parent_sg)
+                    serial_number, storagegroup_name, parent_sg,
+                    extra_specs, device_id, move)
             else:
                 self._remove_last_vol_and_delete_sg(
                     serial_number, device_id, volume_name,
-                    storagegroup_name, extra_specs, parent_sg)
+                    storagegroup_name, extra_specs, parent_sg, move)
             status = True
         return status
 
     def _last_vol_masking_views(
             self, serial_number, storagegroup_name, maskingview_list,
-            device_id, volume_name, extra_specs, connector):
+            device_id, volume_name, extra_specs, connector, move):
         """Remove the last vol from an sg associated with masking views.
 
         Helper function for removing the last vol from a storage group
@@ -1195,7 +1239,8 @@ class VMAXMasking(object):
         :param device_id: the device id
         :param volume_name: the volume name
         :param extra_specs: the extra specifications
-        :return: status -- bool
+        :param move: flag to indicate a move instead of remove
+        :returns: status -- bool
         """
         status = False
         for mv in maskingview_list:
@@ -1203,16 +1248,14 @@ class VMAXMasking(object):
                 self._get_num_vols_from_mv(serial_number, mv))
             # If the volume is the last in the masking view, full cleanup
             if num_vols_in_mv == 1:
-                def do_delete_mv_ig_and_sg():
-                    return self._delete_mv_ig_and_sg(
-                        serial_number, mv, storagegroup_name,
-                        parent_sg_name, connector)
+                self._delete_mv_ig_and_sg(
+                    serial_number, device_id, mv, storagegroup_name,
+                    parent_sg_name, connector, move, extra_specs)
 
-                do_delete_mv_ig_and_sg()
             else:
                 self._remove_last_vol_and_delete_sg(
                     serial_number, device_id, volume_name,
-                    storagegroup_name, extra_specs, parent_sg_name)
+                    storagegroup_name, extra_specs, parent_sg_name, move)
             status = True
         return status
 
@@ -1221,7 +1264,7 @@ class VMAXMasking(object):
 
         :param serial_number: the array serial number
         :param storagegroup_name: the name of the storage group
-        :return: the parent storage group name, or None
+        :returns: the parent storage group name, or None
         """
         parent_sg_name = None
         storagegroup = self.rest.get_storage_group(
@@ -1235,7 +1278,7 @@ class VMAXMasking(object):
 
         :param serial_number: the array serial number
         :param maskingview_name: the name of the masking view
-        :return: num_vols, parent_sg_name
+        :returns: num_vols, parent_sg_name
         """
         parent_sg_name = self.rest.get_element_from_masking_view(
             serial_number, maskingview_name, storagegroup=True)
@@ -1243,7 +1286,7 @@ class VMAXMasking(object):
         return num_vols, parent_sg_name
 
     def _multiple_vols_in_sg(self, serial_number, device_id, storagegroup_name,
-                             volume_name, extra_specs):
+                             volume_name, extra_specs, move):
         """Remove the volume from the SG.
 
         If the volume is not the last in the storage group,
@@ -1252,15 +1295,22 @@ class VMAXMasking(object):
         :param device_id: volume device id
         :param volume_name: volume name
         :param storagegroup_name: storage group name
+        :param move: flag to indicate a move instead of remove
         :param extra_specs: extra specifications
         """
-        self.remove_vol_from_storage_group(
-            serial_number, device_id, storagegroup_name,
-            volume_name, extra_specs)
+        if move:
+            self.add_volume_to_default_storage_group(
+                serial_number, device_id, volume_name,
+                extra_specs, src_sg=storagegroup_name)
+        else:
+            self.remove_vol_from_storage_group(
+                serial_number, device_id, storagegroup_name,
+                volume_name, extra_specs)
 
         LOG.debug(
-            "RemoveMembers for volume %(volume_name)s completed "
-            "successfully.", {'volume_name': volume_name})
+            "Volume %(volume_name)s successfully moved/ removed from "
+            "storage group %(sg)s.",
+            {'volume_name': volume_name, 'sg': storagegroup_name})
 
         num_vol_in_sg = self.rest.get_num_vols_in_sg(
             serial_number, storagegroup_name)
@@ -1270,31 +1320,44 @@ class VMAXMasking(object):
                    'sg_name': storagegroup_name})
 
     def _delete_cascaded_storage_groups(self, serial_number, child_sg_name,
-                                        parent_sg_name):
+                                        parent_sg_name, extra_specs,
+                                        device_id, move):
         """Delete a child and parent storage groups.
 
         :param serial_number: the array serial number
         :param child_sg_name: the child storage group name
         :param parent_sg_name: the parent storage group name
+        :param extra_specs: the extra specifications
+        :param device_id: the volume device id
+        :param move: flag to indicate if volume should be moved to default sg
         """
-        self.rest.delete_storage_group(serial_number, parent_sg_name)
+        if move:
+            self.add_volume_to_default_storage_group(
+                serial_number, device_id, "",
+                extra_specs, src_sg=child_sg_name)
+        if child_sg_name != parent_sg_name:
+            self.rest.delete_storage_group(serial_number, parent_sg_name)
+            LOG.debug("Storage Group %(storagegroup_name)s "
+                      "successfully deleted.",
+                      {'storagegroup_name': parent_sg_name})
         self.rest.delete_storage_group(serial_number, child_sg_name)
 
-        LOG.debug("Storage Groups %(storagegroup_name)s and %(parent)s "
-                  "successfully deleted.",
-                  {'storagegroup_name': child_sg_name,
-                   'parent': parent_sg_name})
+        LOG.debug("Storage Group %(storagegroup_name)s successfully deleted.",
+                  {'storagegroup_name': child_sg_name})
 
     def _delete_mv_ig_and_sg(
-            self, serial_number, masking_view, storagegroup_name,
-            parent_sg_name, connector):
+            self, serial_number, device_id, masking_view, storagegroup_name,
+            parent_sg_name, connector, move, extra_specs):
         """Delete the masking view, storage groups and initiator group.
 
         :param serial_number: array serial number
+        :param device_id: the device id
         :param masking_view: masking view name
         :param storagegroup_name: storage group name
         :param parent_sg_name: the parent storage group name
         :param connector: the connector object
+        :param move: flag to indicate if the volume should be moved
+        :param extra_specs: the extra specifications
         """
         host = self.utils.get_host_short_name(connector['host'])
 
@@ -1303,8 +1366,9 @@ class VMAXMasking(object):
         self._last_volume_delete_masking_view(serial_number, masking_view)
         self._last_volume_delete_initiator_group(
             serial_number, initiatorgroup, host)
-        self._delete_cascaded_storage_groups(serial_number, storagegroup_name,
-                                             parent_sg_name)
+        self._delete_cascaded_storage_groups(
+            serial_number, storagegroup_name, parent_sg_name,
+            extra_specs, device_id, move)
 
     def _last_volume_delete_masking_view(self, serial_number, masking_view):
         """Delete the masking view.
@@ -1321,13 +1385,15 @@ class VMAXMasking(object):
                  {'maskingview': masking_view})
 
     def add_volume_to_default_storage_group(
-            self, serial_number, device_id, volume_name, extra_specs):
+            self, serial_number, device_id, volume_name,
+            extra_specs, src_sg=None):
         """Return volume to its default storage group.
 
         :param serial_number: the array serial number
         :param device_id: the volume device id
         :param volume_name: the volume name
         :param extra_specs: the extra specifications
+        :param src_sg: the source storage group, if any
         """
         do_disable_compression = self.utils.is_compression_disabled(
             extra_specs)
@@ -1336,10 +1402,18 @@ class VMAXMasking(object):
             serial_number, extra_specs[utils.SRP], extra_specs[utils.SLO],
             extra_specs[utils.WORKLOAD], extra_specs, do_disable_compression,
             rep_enabled)
-
-        self._check_adding_volume_to_storage_group(
-            serial_number, device_id, storagegroup_name, volume_name,
-            extra_specs)
+        if src_sg is not None:
+            # Need to lock the default storage group
+            @coordination.synchronized("emc-sg-{default_sg_name}")
+            def _move_vol_to_default_sg(default_sg_name):
+                self.rest.move_volume_between_storage_groups(
+                    serial_number, device_id, src_sg,
+                    default_sg_name, extra_specs, force=True)
+            _move_vol_to_default_sg(storagegroup_name)
+        else:
+            self._check_adding_volume_to_storage_group(
+                serial_number, device_id, storagegroup_name, volume_name,
+                extra_specs)
 
     def get_or_create_default_storage_group(
             self, serial_number, srp, slo, workload, extra_specs,
@@ -1363,7 +1437,7 @@ class VMAXMasking(object):
         if storagegroup is None:
             self.provision.create_storage_group(
                 serial_number, storagegroup_name, srp, slo, workload,
-                extra_specs)
+                extra_specs, do_disable_compression)
         else:
             # Check that SG is not part of a masking view
             LOG.info("Using existing default storage group")
@@ -1386,7 +1460,7 @@ class VMAXMasking(object):
 
     def _remove_last_vol_and_delete_sg(
             self, serial_number, device_id, volume_name,
-            storagegroup_name, extra_specs, parent_sg_name=None):
+            storagegroup_name, extra_specs, parent_sg_name=None, move=False):
         """Remove the last volume and delete the storage group.
 
         If the storage group is a child of another storage group,
@@ -1398,9 +1472,14 @@ class VMAXMasking(object):
         :param extra_specs: extra specifications
         :param parent_sg_name: the parent sg name
         """
-        self.remove_vol_from_storage_group(
-            serial_number, device_id, storagegroup_name, volume_name,
-            extra_specs)
+        if move:
+            self.add_volume_to_default_storage_group(
+                serial_number, device_id, volume_name,
+                extra_specs, src_sg=storagegroup_name)
+        else:
+            self.remove_vol_from_storage_group(
+                serial_number, device_id, storagegroup_name, volume_name,
+                extra_specs)
 
         LOG.debug("Remove the last volume %(volumeName)s completed "
                   "successfully.", {'volumeName': volume_name})
@@ -1431,17 +1510,24 @@ class VMAXMasking(object):
                 self.rest.get_masking_views_by_initiator_group(
                     serial_number, initiatorgroup_name))
             if not maskingview_names:
-                LOG.debug(
-                    "Last volume associated with the initiator group - "
-                    "deleting the associated initiator group "
-                    "%(initiatorgroup_name)s.",
-                    {'initiatorgroup_name': initiatorgroup_name})
-                self.rest.delete_initiator_group(
-                    serial_number, initiatorgroup_name)
+                @coordination.synchronized("emc-ig-{ig_name}")
+                def _delete_ig(ig_name):
+                    # Check initiator group hasn't been recently deleted
+                    ig_details = self.rest.get_initiator_group(ig_name)
+                    if ig_details:
+                        LOG.debug(
+                            "Last volume associated with the initiator "
+                            "group - deleting the associated initiator "
+                            "group %(initiatorgroup_name)s.",
+                            {'initiatorgroup_name': initiatorgroup_name})
+                        self.rest.delete_initiator_group(
+                            serial_number, initiatorgroup_name)
+                _delete_ig(initiatorgroup_name)
             else:
-                LOG.warning("Initiator group %(ig_name)s is associated with "
-                            "masking views and can't be deleted. Number of "
-                            "associated masking view is: %(nmv)d.",
+                LOG.warning("Initiator group %(ig_name)s is associated "
+                            "with masking views and can't be deleted. "
+                            "Number of associated masking view is: "
+                            "%(nmv)d.",
                             {'ig_name': initiatorgroup_name,
                              'nmv': len(maskingview_names)})
         else:
