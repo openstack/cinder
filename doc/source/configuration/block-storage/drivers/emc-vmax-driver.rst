@@ -17,7 +17,7 @@ System requirements
 
 The Cinder driver supports the VMAX-3 series and VMAX All-Flash arrays.
 
-Solutions Enabler 8.4.0.0 or later, and Unisphere for VMAX 8.4.0.8 or later
+Solutions Enabler 8.4.0.12 or later, and Unisphere for VMAX 8.4.0.12 or later
 are required.
 
 You can download Solutions Enabler and Unisphere from the Dell EMC's support
@@ -1130,9 +1130,15 @@ Configure the source and target arrays
    * ``allow_extend`` is a flag for allowing the extension of replicated volumes.
      To extend a volume in an SRDF relationship, this relationship must first be
      broken, both the source and target volumes are then independently extended,
-     and then the replication relationship is re-established. As the SRDF link
-     must be severed, due caution should be exercised when performing this
-     operation. If not explicitly set, this flag defaults to ``False``.
+     and then the replication relationship is re-established. If not explicitly
+     set, this flag defaults to ``False``.
+
+     .. note::
+        As the SRDF link must be severed, due caution should be exercised when
+        performing this operation. If absolutely necessary, only one source and
+        target pair should be extended at a time.
+        In Queens, the underlying VMAX architecture will support extending
+        source and target volumes without having to sever links.
 
    .. note::
       Service Level and Workload: An attempt will be made to create a storage
@@ -1471,6 +1477,31 @@ http://libvirt.org/remote.html
 
 #. Restart libvirt. After you run the command below, ensure that libvirt is
    successfully restarted:
+
+.. note::
+
+   OpenStack Oslo uses an open standard for messaging middleware known as AMQP.
+   This messaging middleware (the RPC messaging system) enables the OpenStack
+   services that run on multiple servers to talk to each other.
+   By default, the RPC messaging client is set to timeout after 60 seconds,
+   meaning if any operation you perform takes longer than 60 seconds to
+   complete the operation will timeout and fail with the ERROR message
+   "Messaging Timeout: Timed out waiting for a reply to message ID [message_id]"
+
+   If this occurs, increase the ``rpc_response_timeout`` flag value in
+   ``cinder.conf`` and ``nova.conf`` on all Cinder and Nova nodes and restart
+   the services.
+
+   What to change this value to will depend entirely on your own environment,
+   you might only need to increase it slightly, or if your environment is
+   under heavy network load it could need a bit more time than normal. Fine
+   tuning is required here, change the value and run intensive operations to
+   determine if your timeout value matches your environment requirements.
+
+   At a minimum please set ``rpc_response_timeout`` to ``240``, but this will
+   need to be raised if high concurrency is a factor. This should be
+   sufficient for all cinder backup commands also.
+
 
 System configuration
 --------------------
