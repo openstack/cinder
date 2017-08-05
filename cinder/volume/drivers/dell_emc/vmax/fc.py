@@ -289,8 +289,12 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         loc = volume.provider_location
         name = ast.literal_eval(loc)
         host = connector['host']
-        array = name['array']
-        device_id = name['device_id']
+        try:
+            array = name['array']
+            device_id = name['device_id']
+        except KeyError:
+            array = name['keybindings']['SystemName'].split('+')[1].strip('-')
+            device_id = name['keybindings']['DeviceID']
         LOG.debug("Start FC detach process for volume: %(volume)s.",
                   {'volume': volume.name})
 

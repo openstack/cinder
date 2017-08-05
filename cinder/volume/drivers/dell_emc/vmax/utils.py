@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from copy import deepcopy
 import datetime
 import hashlib
 import random
@@ -45,7 +46,7 @@ ARRAY = 'array'
 SLO = 'slo'
 WORKLOAD = 'workload'
 SRP = 'srp'
-PORTGROUPNAME = 'port_group_name'
+PORTGROUPNAME = 'storagetype:portgroupname'
 DEVICE_ID = 'device_id'
 INITIATOR_CHECK = 'initiator_check'
 SG_NAME = 'storagegroup_name'
@@ -340,6 +341,8 @@ class VMAXUtils(object):
             if srp_name is None:
                 LOG.error("SRP Name must be in the file %(file)s.",
                           {'file': file_name})
+            slo = self._process_tag(dom, 'ServiceLevel')
+            workload = self._process_tag(dom, 'Workload')
             kwargs = (
                 {'RestServerIp': connargs['RestServerIp'],
                  'RestServerPort': connargs['RestServerPort'],
@@ -350,6 +353,8 @@ class VMAXUtils(object):
                  'SerialNumber': serialnumber,
                  'srpName': srp_name,
                  'PortGroup': portgroup})
+            if slo is not None:
+                kwargs.update({'ServiceLevel': slo, 'Workload': workload})
 
         except IndexError:
             pass
@@ -658,3 +663,25 @@ class VMAXUtils(object):
         LOG.debug("Retries are set at: %(retries)s.",
                   {'retries': retries})
         return extra_specs
+
+    @staticmethod
+    def add_legacy_pools(pools):
+        """Add legacy pools to allow extending a volume after upgrade.
+
+        :param pools: the pool list
+        :return: pools - the updated pool list
+        """
+        extra_pools = []
+        for pool in pools:
+            if 'none' in pool['pool_name'].lower():
+                extra_pools.append(pool)
+        for pool in extra_pools:
+            slo = pool['pool_name'].split('+')[0]
+            srp = pool['pool_name'].split('+')[2]
+            array = pool['pool_name'].split('+')[3]
+            new_pool_name = ('%(slo)s+%(srp)s+%(array)s'
+                             % {'slo': slo, 'srp': srp, 'array': array})
+            new_pool = deepcopy(pool)
+            new_pool['pool_name'] = new_pool_name
+            pools.append(new_pool)
+        return pools
