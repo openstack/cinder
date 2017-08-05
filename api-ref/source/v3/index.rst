@@ -47,3 +47,4 @@ Block Storage API V3 (CURRENT)
 .. quota-sets should arguably live closer to limits, but that would mess up
    our nice alphabetical ordering
 .. include:: quota-sets.inc
+.. include:: worker-cleanup.inc

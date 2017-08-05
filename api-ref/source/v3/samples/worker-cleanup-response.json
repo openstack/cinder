@@ -1,0 +1,11 @@
+{
+    "cleaning": [
+        {
+            "id": "dd233343-er34-fr43-54ss-vfdfft433fdf",
+            "host": "127.0.0.1",
+            "binary": "cinder-volume",
+            "cluster_name": "test"
+        }
+    ],
+    "unavailable": []
+}
