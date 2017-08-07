@@ -15,8 +15,9 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-Welcome to Cinder's developer documentation!
-============================================
+===========================================
+Cinder, the OpenStack Block Storage Service
+===========================================
 
 Cinder is an OpenStack project to provide "block storage as a service".
 
@@ -35,7 +36,9 @@ be found on the `OpenStack wiki`_. Cloud administrators, refer to `docs.openstac
 
 
 Installing Cinder
-=================
+~~~~~~~~~~~~~~~~~
+
+To get started installing Cinder for use, start with the following documentation.
 
 .. toctree::
    :maxdepth: 2
@@ -43,14 +46,24 @@ Installing Cinder
    install/index
 
 Admin Docs
-==========
+~~~~~~~~~~
+
+Administrators will find helpful information in the following links including a
+description of how Cinder works, manages storage and how to troubleshoot your
+Cinder installation.
+
 .. toctree::
    :maxdepth: 2
 
    admin/blockstorage
 
 Contributor/Developer Docs
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following links contained information for contributors and developers.
+There is information on setting up a development environment, a lit of our API
+information on how to add a driver and many other resources related to
+contributing to Cinder.
 
 .. toctree::
    :maxdepth: 1
@@ -61,7 +74,13 @@ Contributor/Developer Docs
    upgrade
 
 Command Line Interface Documentation
-====================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Information on the commands available through Cinder's Command Line
+Interface (CLI) can be found in this section of documentation. Full documentation
+on the python-cinderclient is in the `python-cinderclient repo`_.
+
+.. _`python-cinderclient repo`: https://docs.openstack.org/python-cinderclient/latest
 
 .. toctree::
    :maxdepth: 2
@@ -72,7 +91,7 @@ Command Line Interface Documentation
    cli/cli-cinder-scheduling
 
 Drivers
-=======
+~~~~~~~
 
 Cinder maintains drivers for volume backends, backup targets, and fibre
 channel zone manager fabric types. The list of the available drivers can be
@@ -84,12 +103,15 @@ found here:
    drivers
 
 API Extensions
-==============
+~~~~~~~~~~~~~~
 
 Go to http://api.openstack.org for information about Cinder API extensions.
 
 Configuration Reference
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The following links provide information on the many configuration options
+available for Cinder including a sample configuration file.
 
 .. toctree::
     :maxdepth: 1
@@ -98,14 +120,14 @@ Configuration Reference
     sample_config
 
 Indices and tables
-==================
+~~~~~~~~~~~~~~~~~~
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
 
 Glossary
-========
+~~~~~~~~
 
 .. toctree::
    :maxdepth: 1

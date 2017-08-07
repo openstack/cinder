@@ -1,8 +1,8 @@
 .. _block_storage:
 
-=============
-Block Storage
-=============
+=====================
+Cinder Administration
+=====================
 
 The OpenStack Block Storage service works through the interaction of
 a series of daemon processes named ``cinder-*`` that reside
