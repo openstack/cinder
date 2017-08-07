@@ -15,9 +15,9 @@ Tests for resource filters API.
 """
 
 import ddt
+import mock
 import six
 
-from cinder.api import common
 from cinder.api.v3 import resource_filters as v3_filters
 from cinder import test
 from cinder.tests.unit.api import fakes
@@ -49,18 +49,17 @@ class ResourceFiltersAPITestCase(test.TestCase):
                'expected_filters': []})
     @ddt.unpack
     def test_get_allowed_filters(self, filters, resource, expected_filters):
-        common._FILTERS_COLLECTION = filters
         request_url = '/v3/%s/resource_filters' % fake.PROJECT_ID
         if resource is not None:
             request_url += '?resource=%s' % resource
         req = fakes.HTTPRequest.blank(request_url,
                                       version=FILTERS_MICRO_VERSION)
 
-        result = self.controller.index(req)
-
-        six.assertCountEqual(self,
-                             list(six.viewkeys(result)),
-                             ['resource_filters'])
-        six.assertCountEqual(self,
-                             expected_filters,
-                             result['resource_filters'])
+        with mock.patch('cinder.api.common._FILTERS_COLLECTION', filters):
+            result = self.controller.index(req)
+            six.assertCountEqual(self,
+                                 list(six.viewkeys(result)),
+                                 ['resource_filters'])
+            six.assertCountEqual(self,
+                                 expected_filters,
+                                 result['resource_filters'])

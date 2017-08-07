@@ -372,9 +372,9 @@ class GeneralFiltersTest(test.TestCase):
                'expected': {'volume': ['key1', 'key2']}})
     @ddt.unpack
     def test_get_enabled_resource_filters(self, filters, resource, expected):
-        common._FILTERS_COLLECTION = filters
-        result = common.get_enabled_resource_filters(resource)
-        self.assertEqual(expected, result)
+        with mock.patch('cinder.api.common._FILTERS_COLLECTION', filters):
+            result = common.get_enabled_resource_filters(resource)
+            self.assertEqual(expected, result)
 
     @ddt.data({'filters': {'key1': 'value1'},
                'is_admin': False,
@@ -458,6 +458,28 @@ class GeneralFiltersTest(test.TestCase):
                 webob.exc.HTTPBadRequest,
                 common.reject_invalid_filters, fake_context,
                 filters, 'fake_resource')
+
+    @ddt.data({'resource': 'volume',
+               'expected': ["name", "status", "metadata",
+                            "bootable", "migration_status",
+                            "availability_zone", "group_id"]},
+              {'resource': 'backup',
+               'expected': ["name", "status", "volume_id"]},
+              {'resource': 'snapshot',
+               'expected': ["name", "status", "volume_id", "metadata"]},
+              {'resource': 'group_snapshot',
+               'expected': ["status", "group_id"]},
+              {'resource': 'attachment',
+               'expected': ["volume_id", "status", "instance_id",
+                            "attach_status"]},
+              {'resource': 'message',
+               'expected': ["resource_uuid", "resource_type", "event_id",
+                            "request_id", "message_level"]},
+              {'resource': 'pool', 'expected': ["name", "volume_type"]})
+    @ddt.unpack
+    def test_filter_keys_exists(self, resource, expected):
+        result = common.get_enabled_resource_filters(resource)
+        self.assertEqual(expected, result[resource])
 
     @ddt.data({'resource': 'group',
                'filters': {'name~': 'value'},
