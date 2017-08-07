@@ -47,7 +47,9 @@ settings for OpenStack Compute.
 
 The network mode does not interfere with OpenStack Block Storage
 operations, but you must set up networking for Block Storage to work.
-For details, see :ref:`networking`.
+For details, see `networking`_.
+
+.. _networking: https://docs.openstack.org/neutron/latest/
 
 To set up Compute to use volumes, ensure that Block Storage is
 installed along with ``lvm2``. This guide describes how to
