@@ -1859,8 +1859,8 @@ def _attachment_get(context, attachment_id, session=None, read_deleted=False,
               .first())
 
     if not result:
-        msg = _("Unable to find attachment with id: %s"), attachment_id
-        raise exception.VolumeAttachmentNotFound(msg)
+        raise exception.VolumeAttachmentNotFound(filter='attachment_id = %s' %
+                                                 attachment_id)
     return result
 
 

@@ -339,7 +339,7 @@ class MessageNotFound(NotFound):
 
 class VolumeAttachmentNotFound(NotFound):
     message = _("Volume attachment could not be found with "
-                "filter: %(filter)s .")
+                "filter: %(filter)s.")
 
 
 class VolumeMetadataNotFound(NotFound):
