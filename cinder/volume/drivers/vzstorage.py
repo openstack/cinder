@@ -177,7 +177,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         self.base = self.configuration.vzstorage_mount_point_base
         opts = self.configuration.vzstorage_mount_options
 
-        self._remotefsclient = remotefs.RemoteFsClient(
+        self._remotefsclient = remotefs.VZStorageRemoteFSClient(
             'vzstorage', root_helper, execute=execute,
             vzstorage_mount_point_base=self.base,
             vzstorage_mount_options=opts)
