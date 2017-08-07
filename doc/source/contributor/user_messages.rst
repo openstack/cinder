@@ -57,10 +57,10 @@ The Message API Module
     :members:
     :undoc-members:
 
-The Resource Types Module
--------------------------
+The Message Field Module
+------------------------
 
-.. automodule:: cinder.message.resource_types
+.. automodule:: cinder.message.message_field
     :noindex:
 
 The Permitted Messages Module
