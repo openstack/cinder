@@ -1,6 +1,6 @@
-===================================
-Block Storage Service Configuration
-===================================
+============================
+Cinder Service Configuration
+============================
 
 .. toctree::
    :maxdepth: 1
