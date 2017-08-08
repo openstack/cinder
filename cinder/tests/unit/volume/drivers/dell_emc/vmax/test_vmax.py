@@ -1760,13 +1760,14 @@ class VMAXRestTest(test.TestCase):
 
     def test_delete_volume(self):
         device_id = self.data.device_id
-        deallocate_vol_payload = {"editVolumeActionParam": {
-            "freeVolumeParam": {"free_volume": 'true'}}}
         with mock.patch.object(self.rest, 'delete_resource'):
-            with mock.patch.object(self.rest, '_modify_volume'):
-                self.rest.delete_volume(self.data.array, device_id)
-                self.rest._modify_volume.assert_called_once_with(
-                    self.data.array, device_id, deallocate_vol_payload)
+            with mock.patch.object(
+                    self.rest, '_modify_volume',
+                    side_effect=[None, exception.VolumeBackendAPIException]):
+                for x in range(0, 2):
+                    self.rest.delete_volume(self.data.array, device_id)
+                mod_call_count = self.rest._modify_volume.call_count
+                self.assertEqual(2, mod_call_count)
                 self.rest.delete_resource.assert_called_once_with(
                     self.data.array, 'sloprovisioning', 'volume', device_id)
 
