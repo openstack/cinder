@@ -153,6 +153,16 @@ Configure the driver back-end section with the parameters below.
 
   The CHAP parameters are ignored when using the FC protocol.
 
+* Volume compression
+
+  Volume compression is disabled by default.
+  To enable volume compression, add the following parameter:
+
+  .. code-block:: ini
+
+     infinidat_use_compression = true
+
+  Volume compression is available on InfiniBox 3.0 onward.
 
 Configuration example
 ~~~~~~~~~~~~~~~~~~~~~
