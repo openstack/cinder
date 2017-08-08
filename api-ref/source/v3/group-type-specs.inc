@@ -48,11 +48,8 @@ Response Example
    :language: javascript
 
 
-List type specs
-================
-
 List group specs for a group type
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/group_types/{group_type_id}/group_specs
 
@@ -86,9 +83,6 @@ Response Example
 .. literalinclude:: ./samples/group-type-specs-list-response.json
    :language: javascript
 
-
-Show type spec
-==============
 
 Show one specific group spec for a group type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -126,9 +120,6 @@ Response Example
    :language: javascript
 
 
-Update type spec
-================
-
 Update one specific group spec for a group type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -165,9 +156,6 @@ Response Example
 .. literalinclude:: ./samples/group-type-specs-update-response.json
    :language: javascript
 
-
-Delete type spec
-================
 
 Delete one specific group spec for a group type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
