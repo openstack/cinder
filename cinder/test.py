@@ -92,6 +92,7 @@ class TestCase(testtools.TestCase):
     """Test case base class for all unit tests."""
 
     POLICY_PATH = 'cinder/tests/unit/policy.json'
+    RESOURCE_FILTER_PATH = 'etc/cinder/resource_filters.json'
     MOCK_WORKER = True
     MOCK_TOOZ = True
 
@@ -232,7 +233,15 @@ class TestCase(testtools.TestCase):
                                  ),
                                  self.POLICY_PATH),
                              group='oslo_policy')
-
+        self.override_config('resource_query_filters_file',
+                             os.path.join(
+                                 os.path.abspath(
+                                     os.path.join(
+                                         os.path.dirname(__file__),
+                                         '..',
+                                     )
+                                 ),
+                                 self.RESOURCE_FILTER_PATH))
         self._disable_osprofiler()
         self._disallow_invalid_uuids()
 
