@@ -1,6 +1,9 @@
 {
-  "backup":{
-    "name":"test",
-    "description": "this is a backup"
-  }
+    "backup":{
+        "name":"test",
+        "metadata": {
+            "key": "value"
+        },
+        "description": "this is a backup"
+    }
 }

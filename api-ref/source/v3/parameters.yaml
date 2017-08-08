@@ -1343,6 +1343,13 @@ metadata_8:
   in: body
   required: true
   type: object
+metadata_9:
+  description: |
+    The backup metadata key value pairs.
+  in: body
+  required: false
+  type: object
+  min_version: 3.43
 migration_policy:
   description: |
     Specify if the volume should be migrated when it is re-typed.
