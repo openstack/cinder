@@ -20,6 +20,7 @@ import abc
 
 from oslo_concurrency import processutils
 from oslo_log import log as logging
+from oslo_utils import strutils
 import six
 
 from cinder import utils
@@ -221,7 +222,7 @@ class CLIBaseCommand(BaseCommand):
             LOG.error(
                 'Error on execute %(command)s. '
                 'Error code: %(exit_code)d Error msg: %(result)s', {
-                    'command': command_line,
+                    'command': strutils.mask_password(command_line),
                     'exit_code': pe.exit_code,
                     'result': result})
         return rc, result
