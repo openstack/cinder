@@ -1893,6 +1893,18 @@ class VMAXCommon(object):
                       {'name': volume_name})
             return False
 
+        # If the volume is attached, we can't support retype.
+        # Need to explicitly check this after the code change,
+        # as 'move' functionality will cause the volume to appear
+        # as successfully retyped, but will remove it from the masking view.
+        if volume.attach_status == 'attached':
+            LOG.error(
+                "Volume %(name)s is not suitable for storage "
+                "assisted migration using retype "
+                "as it is attached.",
+                {'name': volume_name})
+            return False
+
         if self.utils.is_replication_enabled(extra_specs):
             LOG.error("Volume %(name)s is replicated - "
                       "Replicated volumes are not eligible for "
@@ -1965,17 +1977,13 @@ class VMAXCommon(object):
         :param extra_specs: the extra specifications
         :returns: bool
         """
-        storagegroups = self.rest.get_storage_groups_from_volume(
-            array, device_id)
-        if not storagegroups:
-            LOG.warning("Volume : %(volume_name)s does not currently "
-                        "belong to any storage groups.",
-                        {'volume_name': volume_name})
-        else:
-            self.masking.remove_and_reset_members(
-                array, device_id, None, extra_specs, False)
-
         target_extra_specs = new_type['extra_specs']
+        target_extra_specs[utils.SRP] = srp
+        target_extra_specs[utils.ARRAY] = array
+        target_extra_specs[utils.SLO] = target_slo
+        target_extra_specs[utils.WORKLOAD] = target_workload
+        target_extra_specs[utils.INTERVAL] = extra_specs[utils.INTERVAL]
+        target_extra_specs[utils.RETRIES] = extra_specs[utils.RETRIES]
         is_compression_disabled = self.utils.is_compression_disabled(
             target_extra_specs)
 
@@ -1988,8 +1996,19 @@ class VMAXCommon(object):
                       "Exception received was %(e)s.", {'e': e})
             return False
 
-        self.masking.add_volume_to_storage_group(
-            array, device_id, target_sg_name, volume_name, extra_specs)
+        storagegroups = self.rest.get_storage_groups_from_volume(
+            array, device_id)
+        if not storagegroups:
+            LOG.warning("Volume : %(volume_name)s does not currently "
+                        "belong to any storage groups.",
+                        {'volume_name': volume_name})
+            self.masking.add_volume_to_storage_group(
+                array, device_id, target_sg_name, volume_name, extra_specs)
+        else:
+            self.masking.remove_and_reset_members(
+                array, device_id, volume_name, target_extra_specs,
+                reset=True)
+
         # Check that it has been added.
         vol_check = self.rest.is_volume_in_storagegroup(
             array, device_id, target_sg_name)
@@ -2068,7 +2087,7 @@ class VMAXCommon(object):
                 target_combination = ("%(targetSlo)s+%(targetWorkload)s"
                                       % {'targetSlo': target_slo,
                                          'targetWorkload': target_workload})
-                if target_combination in emc_fast_setting:
+                if target_combination == emc_fast_setting:
                     # Check if migration is from compression to non compression
                     # or vice versa
                     if not do_change_compression:
@@ -2078,7 +2097,7 @@ class VMAXCommon(object):
                             "%(targetCombination)s.",
                             {'volume_name': volume_name,
                              'targetCombination': target_combination})
-                    return false_ret
+                        return false_ret
 
         return True, target_slo, target_workload
 
