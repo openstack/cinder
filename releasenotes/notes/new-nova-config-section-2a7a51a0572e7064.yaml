@@ -8,4 +8,6 @@ deprecations:
     section are deprecated in favor of the settings in
     the [nova] section.
 fixes:
-  - Fixed using of the user's token in the nova client (bug #1686616)
+  - |
+    Fixed using of the user's token in the nova client
+    (`bug #1686616 <https://bugs.launchpad.net/cinder/+bug/1686616>`_)

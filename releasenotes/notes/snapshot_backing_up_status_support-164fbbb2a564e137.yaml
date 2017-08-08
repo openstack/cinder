@@ -1,6 +1,8 @@
 ---
 fixes:
-  - Fix the unreasonable status change for volumes and snapshots when creating
-    backups from snapshots.
+  - When backing up a volume from a snapshot, the volume status would be set
+    to "backing-up", preventing operations on the volume until the backup is
+    complete. This status is now set on the snapshot instead, making the
+    volume available for other operations.
 upgrade:
   - The "backing-up" status is added to snapshot's status matrix.
