@@ -68,6 +68,8 @@ in :ref:`configure-ntp-windows`.
 
 Next, install the requirements as described in :ref:`windows-requirements`.
 
+
+
 Getting the code
 ~~~~~~~~~~~~~~~~
 
@@ -120,3 +122,119 @@ must replace the variables with the proper paths):
 
    PS C:\> python $CinderClonePath\setup.py install
    PS C:\> cmd /c C:\python27\python.exe c:\python27\Scripts\cinder-volume" --config-file $CinderConfPath
+
+Reference material
+------------------
+
+.. _configure-ntp-windows:
+
+Configure NTP
+-------------
+
+Network time services must be configured to ensure proper operation
+of the OpenStack nodes. To set network time on your Windows host you
+must run the following commands:
+
+.. code-block:: bat
+
+   C:\>net stop w32time
+   C:\>w32tm /config /manualpeerlist:pool.ntp.org,0x8 /syncfromflags:MANUAL
+   C:\>net start w32time
+
+Keep in mind that the node will have to be time synchronized with
+the other nodes of your OpenStack environment, so it is important to use
+the same NTP server. Note that in case of an Active Directory environment,
+you may do this only for the AD Domain Controller.
+
+
+.. _windows-requirements:
+
+Requirements
+~~~~~~~~~~~~
+
+Python
+------
+
+Python 2.7 32bit must be installed as most of the libraries are not
+working properly on the 64bit version.
+
+**Setting up Python prerequisites**
+
+#. Download and install Python 2.7 using the MSI installer from here:
+
+   `python-2.7.3.msi download
+   <https://www.python.org/ftp/python/2.7.3/python-2.7.3.msi>`_
+
+   .. code-block:: console
+
+      PS C:\> $src = "https://www.python.org/ftp/python/2.7.3/python-2.7.3.msi"
+      PS C:\> $dest = "$env:temp\python-2.7.3.msi"
+      PS C:\> Invoke-WebRequest –Uri $src –OutFile $dest
+      PS C:\> Unblock-File $dest
+      PS C:\> Start-Process $dest
+
+#. Make sure that the ``Python`` and ``Python\Scripts`` paths are set up
+   in the ``PATH`` environment variable.
+
+   .. code-block:: console
+
+      PS C:\> $oldPath = [System.Environment]::GetEnvironmentVariable("Path")
+      PS C:\> $newPath = $oldPath + ";C:\python27\;C:\python27\Scripts\"
+      PS C:\> [System.Environment]::SetEnvironmentVariable("Path", $newPath, [System.EnvironmentVariableTarget]::User
+
+Python dependencies
+-------------------
+
+The following packages need to be downloaded and manually installed:
+
+setuptools
+  https://pypi.python.org/packages/2.7/s/setuptools/setuptools-0.6c11.win32-py2.7.exe
+
+pip
+  https://pip.pypa.io/en/latest/installing/
+
+PyMySQL
+  http://codegood.com/download/10/
+
+PyWin32
+  https://sourceforge.net/projects/pywin32/files/pywin32/Build%20217/pywin32-217.win32-py2.7.exe
+
+Greenlet
+  http://www.lfd.uci.edu/~gohlke/pythonlibs/#greenlet
+
+PyCryto
+  http://www.voidspace.org.uk/downloads/pycrypto26/pycrypto-2.6.win32-py2.7.exe
+
+The following packages must be installed with pip:
+
+* ecdsa
+* amqp
+* wmi
+
+.. code-block:: console
+
+   PS C:\> pip install ecdsa
+   PS C:\> pip install amqp
+   PS C:\> pip install wmi
+
+Other dependencies
+------------------
+
+``qemu-img`` is required for some of the image related operations.
+You can get it from here: http://qemu.weilnetz.de/.
+You must make sure that the ``qemu-img`` path is set in the
+PATH environment variable.
+
+Some Python packages need to be compiled, so you may use MinGW or
+Visual Studio. You can get MinGW from here:
+http://sourceforge.net/projects/mingw/.
+You must configure which compiler is to be used for this purpose by using the
+``distutils.cfg`` file in ``$Python27\Lib\distutils``, which can contain:
+
+.. code-block:: ini
+
+   [build]
+   compiler = mingw32
+
+As a last step for setting up MinGW, make sure that the MinGW binaries'
+directories are set up in PATH.
