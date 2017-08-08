@@ -68,7 +68,7 @@ class ZFSGarbageCollectorMixIn(object):
             if '@' in name:  # it's a snapshot:
                 volume, snap = name.split('@')
                 parent = '/'.join((path, volume))
-                url = self.get_delete_snapshot_url(zfs_object)
+                url = self.get_original_snapshot_url(zfs_object)
                 try:
                     self.nef.delete(url)
                 except exception.NexentaException as exc:
@@ -91,9 +91,6 @@ class ZFSGarbageCollectorMixIn(object):
                     return
             self._needless_objects.remove(zfs_object)
             self._collect_garbage(parent)
-
-    def get_delete_snapshot_url(self, zfs_object):
-        raise NotImplementedError()
 
     def get_original_snapshot_url(self, zfs_object):
         raise NotImplementedError()
