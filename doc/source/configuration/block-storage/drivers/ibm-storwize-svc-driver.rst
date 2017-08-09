@@ -255,7 +255,7 @@ scheduler to determine placement of new volumes. Make sure to prefix
 these keys with ``capabilities:`` to indicate that the scheduler should
 use them. The following ``extra specs`` are supported:
 
--  ``capabilities:volume_back-end_name`` - Specify a specific back-end
+-  ``capabilities:volume_backend_name`` - Specify a specific back-end
    where the volume should be created. The back-end name is a
    concatenation of the name of the IBM Storwize/SVC storage system as
    shown in ``lssystem``, an underscore, and the name of the pool (mdisk
@@ -263,7 +263,7 @@ use them. The following ``extra specs`` are supported:
 
    .. code-block:: ini
 
-      capabilities:volume_back-end_name=myV7000_openstackpool
+      capabilities:volume_backend_name=myV7000_openstackpool
 
 -  ``capabilities:compression_support`` - Specify a back-end according to
    compression support. A value of ``True`` should be used to request a
@@ -286,16 +286,13 @@ use them. The following ``extra specs`` are supported:
 
       capabilities:easytier_support='<is> True'
 
--  ``capabilities:storage_protocol`` - Specifies the connection protocol
-   used to attach volumes of this type to instances. Legal values are
-   ``iSCSI`` and ``FC``. This ``extra specs`` value is used for both placement
-   and setting the protocol used for this volume. In the example syntax,
-   note ``<in>`` is used as opposed to ``<is>`` which is used in the
-   previous examples.
+-  ``capabilities:pool_name`` - Specify a specific pool to create volume
+   if only multiple pools are configured. pool_name should be one value
+   configured in storwize_svc_volpool_name flag. Example syntax:
 
    .. code-block:: ini
 
-      capabilities:storage_protocol='<in> FC'
+      capabilities:pool_name=cinder_pool2
 
 Configure per-volume creation options
 -------------------------------------
@@ -317,6 +314,7 @@ driver:
 - easytier
 - multipath
 - iogrp
+- mirror_pool
 
 These keys have the same semantics as their counterparts in the
 configuration file. They are set similarly; for example, ``rsize=2`` or
@@ -326,13 +324,12 @@ Example: Volume types
 ---------------------
 
 In the following example, we create a volume type to specify a
-controller that supports iSCSI and compression, to use iSCSI when
-attaching the volume, and to enable compression:
+controller that supports compression, and enable compression:
 
 .. code-block:: console
 
    $ openstack volume type create compressed
-   $ openstack volume type set --property capabilities:storage_protocol='<in> iSCSI' capabilities:compression_support='<is> True' drivers:compression=True
+   $ openstack volume type set --property capabilities:compression_support='<is> True' --property drivers:compression=True compressed
 
 We can then create a 50GB volume using this type:
 
@@ -348,6 +345,15 @@ synchronous replication (metro mirror):
    $ openstack volume type create ReplicationType
    $ openstack volume type set --property replication_type="<in> metro" \
      --property replication_enabled='<is> True' --property volume_backend_name=svc234 ReplicationType
+
+In the following example, we create a volume type to support stretch cluster
+volume or mirror volume:
+
+.. code-block:: console
+
+   $ openstack volume type create mirror_vol_type
+   $ openstack volume type set --property volume_backend_name=svc1 \
+     --property drivers:mirror_pool=pool2 mirror_vol_type
 
 Volume types can be used, for example, to provide users with different
 
@@ -444,6 +450,8 @@ modify volume types, you can also change these extra specs properties:
 
 -  nofmtdisk
 
+-  mirror_pool
+
 .. note::
 
    When you change the ``rsize``, ``grainsize`` or ``compression``
@@ -459,12 +467,22 @@ Replication operation
 ---------------------
 
 A volume is only replicated if the volume is created with a volume-type
-that has the extra spec ``replication_enabled`` set to ``<is> True``. Two
-types of replication are supported now, async (global mirror) and
-sync (metro mirror). It can be specified by a volume-type that has the
-extra spec ``replication_type`` set to ``<in> global`` or
-``replication_type`` set to ``<in> metro``. If no ``replication_type`` is
-specified, global mirror will be created for replication.
+that has the extra spec ``replication_enabled`` set to ``<is> True``. Three
+types of replication are supported now, global mirror(async), global mirror
+with change volume(async) and metro mirror(sync). It can be specified by a
+volume-type that has the extra spec ``replication_type`` set to
+``<in> global``, ``<in> gmcv`` or ``<in> metro``. If no ``replication_type``
+is specified, global mirror will be created for replication.
+
+If ``replication_type`` set to ``<in> gmcv``, cycle_period_seconds can be
+set as the cycling time perform global mirror relationship with multi cycling
+mode. Default value is 300. Example syntax:
+
+.. code-block:: console
+
+   $ cinder type-create gmcv_type
+   $ cinder type-key gmcv_type set replication_enabled='<is> True' \
+     replication_type="<in> gmcv" drivers:cycle_period_seconds=500
 
 .. note::
 
