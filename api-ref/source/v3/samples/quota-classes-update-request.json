@@ -1,0 +1,7 @@
+{
+  "quota_class_set": {
+    "volumes_lmv": 10,
+    "gigabytes_lmv": 1000,
+    "snapshots_lmv": 10
+  }
+}

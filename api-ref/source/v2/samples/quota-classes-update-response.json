@@ -1,0 +1,14 @@
+{
+  "quota_class_set": {
+    "per_volume_gigabytes": -1,
+    "volumes_lvmdriver-1": -1,
+    "groups": 10,
+    "gigabytes": 1000,
+    "backup_gigabytes": 1000,
+    "snapshots": 10,
+    "gigabytes_lvmdriver-1": -1,
+    "volumes": 10,
+    "snapshots_lvmdriver-1": -1,
+    "backups": 10
+  }
+}
