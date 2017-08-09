@@ -26,11 +26,11 @@ from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import context
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import interface
 from cinder.objects import fields
-from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import fc_zone_helper
@@ -1925,7 +1925,7 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
         data['vendor_name'] = 'Huawei'
         return data
 
-    @utils.synchronized('huawei', external=True)
+    @coordination.synchronized('huawei-mapping-{connector[host]}')
     def initialize_connection(self, volume, connector):
         """Map a volume to a host and return target iSCSI information."""
         lun_id, lun_type = self.get_lun_id_and_type(volume)
@@ -1998,7 +1998,7 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
                  properties)
         return {'driver_volume_type': 'iscsi', 'data': properties}
 
-    @utils.synchronized('huawei', external=True)
+    @coordination.synchronized('huawei-mapping-{connector[host]}')
     def terminate_connection(self, volume, connector, **kwargs):
         """Delete map between a volume and a host."""
         lun_id, lun_type = self.get_lun_id_and_type(volume)
@@ -2126,8 +2126,8 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         data['vendor_name'] = 'Huawei'
         return data
 
-    @utils.synchronized('huawei', external=True)
     @fczm_utils.AddFCZone
+    @coordination.synchronized('huawei-mapping-{connector[host]}')
     def initialize_connection(self, volume, connector):
         lun_id, lun_type = self.get_lun_id_and_type(volume)
         wwns = connector['wwpns']
@@ -2272,8 +2272,8 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
 
         return same_host_id
 
-    @utils.synchronized('huawei', external=True)
     @fczm_utils.RemoveFCZone
+    @coordination.synchronized('huawei-mapping-{connector[host]}')
     def terminate_connection(self, volume, connector, **kwargs):
         """Delete map between a volume and a host."""
         lun_id, lun_type = self.get_lun_id_and_type(volume)
