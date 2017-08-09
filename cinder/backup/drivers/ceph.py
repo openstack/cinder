@@ -646,6 +646,7 @@ class CephBackupDriver(driver.BackupDriver):
         rbd_conf = volume_file.rbd_conf
         source_rbd_image = volume_file.rbd_image
         volume_id = backup.volume_id
+        updates = {}
         # Identify our --from-snap point (if one exists)
         from_snap = self._get_most_recent_snap(source_rbd_image)
         LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
@@ -730,6 +731,14 @@ class CephBackupDriver(driver.BackupDriver):
                           "source volume='%(volume)s'.",
                           {'snapshot': new_snap, 'volume': volume_id})
                 source_rbd_image.remove_snap(new_snap)
+        # We update the parent_id here. The from_snap is of the format:
+        # backup.BACKUP_ID.snap.TIMESTAMP. So we need to extract the
+        # backup_id of the parent only from from_snap and set it as
+        # parent_id
+        if from_snap:
+            parent_id = from_snap.split('.')
+            updates = {'parent_id': parent_id[1]}
+        return updates
 
     def _file_is_rbd(self, volume_file):
         """Returns True if the volume_file is actually an RBD image."""
@@ -895,6 +904,7 @@ class CephBackupDriver(driver.BackupDriver):
         If this fails we will attempt to fall back to full copy.
         """
         volume = self.db.volume_get(self.context, backup.volume_id)
+        updates = {}
         if not backup.container:
             backup.container = self._ceph_backup_pool
             backup.save()
@@ -910,7 +920,8 @@ class CephBackupDriver(driver.BackupDriver):
             # If volume an RBD, attempt incremental backup.
             LOG.debug("Volume file is RBD: attempting incremental backup.")
             try:
-                self._backup_rbd(backup, volume_file, volume.name, length)
+                updates = self._backup_rbd(backup, volume_file,
+                                           volume.name, length)
             except exception.BackupRBDOperationFailed:
                 LOG.debug("Forcing full backup of volume %s.", volume.id)
                 do_full_backup = True
@@ -935,6 +946,13 @@ class CephBackupDriver(driver.BackupDriver):
 
         LOG.debug("Backup '%(backup_id)s' of volume %(volume_id)s finished.",
                   {'backup_id': backup.id, 'volume_id': volume.id})
+
+        # If updates is empty then set parent_id to None. This will
+        # take care if --incremental flag is used in CLI but a full
+        # backup is performed instead
+        if not updates and backup.parent_id:
+            updates = {'parent_id': None}
+        return updates
 
     def _full_restore(self, backup, dest_file, dest_name, length,
                       src_snap=None):
