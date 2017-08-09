@@ -1529,6 +1529,9 @@ class VMAXCommon(object):
         host = connector['host']
         short_host_name = self.utils.get_host_short_name(host)
         extra_specs = self._initial_setup(volume)
+        if self.utils.is_volume_failed_over(volume):
+            extra_specs = self._get_replication_extra_specs(
+                extra_specs, self.rep_config)
         array = extra_specs[utils.ARRAY]
         device_id = self._find_device_on_array(volume, extra_specs)
         masking_view_list = self.get_masking_views_from_volume(

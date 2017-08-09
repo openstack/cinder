@@ -23,6 +23,7 @@ import requests.auth
 import requests.packages.urllib3.exceptions as urllib_exp
 import six
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.utils import retry
@@ -1842,6 +1843,7 @@ class VMAXRest(object):
                 number = None
         return number
 
+    @coordination.synchronized('emc-rg-{rdf_group_no}')
     def create_rdf_device_pair(self, array, device_id, rdf_group_no,
                                target_device, remote_array,
                                target_vol_name, extra_specs):
@@ -1873,6 +1875,7 @@ class VMAXRest(object):
         rdf_dict = {'array': remote_array, 'device_id': target_device}
         return rdf_dict
 
+    @coordination.synchronized('emc-rg-{rdf_group}')
     def modify_rdf_device_pair(
             self, array, device_id, rdf_group, extra_specs, split=False):
         """Modify an rdf device pair.
@@ -1910,6 +1913,7 @@ class VMAXRest(object):
         self.wait_for_job('Modify device pair', sc,
                           job, extra_specs)
 
+    @coordination.synchronized('emc-rg-{rdf_group}')
     def delete_rdf_pair(self, array, device_id, rdf_group):
         """Delete an rdf pair.
 
