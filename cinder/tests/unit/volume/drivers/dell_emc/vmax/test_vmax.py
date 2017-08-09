@@ -3045,6 +3045,18 @@ class VMAXCommonTest(test.TestCase):
                 self.common._unmap_lun(volume, connector)
                 self.common._remove_members.assert_not_called()
 
+    def test_unmap_lun_connector_is_none(self):
+        array = self.data.array
+        device_id = self.data.device_id
+        volume = self.data.test_volume
+        extra_specs = deepcopy(self.data.extra_specs_intervals_set)
+        extra_specs['storagetype:portgroupname'] = (
+            self.data.port_group_name_f)
+        with mock.patch.object(self.common, '_remove_members'):
+            self.common._unmap_lun(volume, None)
+            self.common._remove_members.assert_called_once_with(
+                array, volume, device_id, extra_specs, None)
+
     def test_initialize_connection_already_mapped(self):
         volume = self.data.test_volume
         connector = self.data.connector
@@ -3264,6 +3276,19 @@ class VMAXCommonTest(test.TestCase):
         maskingview_list = self.common.get_masking_views_from_volume(
             array, device_id, host)
         self.assertFalse(maskingview_list)
+
+    def test_find_host_lun_id_no_host_check(self):
+        volume = self.data.test_volume
+        extra_specs = self.data.extra_specs
+        host_lun = (self.data.maskingview[0]['maskingViewConnection'][0]
+                    ['host_lun_address'])
+        ref_masked = {'hostlunid': int(host_lun, 16),
+                      'maskingview': self.data.masking_view_name_f,
+                      'array': self.data.array,
+                      'device_id': self.data.device_id}
+        maskedvols, __, __ = self.common.find_host_lun_id(
+            volume, None, extra_specs)
+        self.assertEqual(ref_masked, maskedvols)
 
     def test_register_config_file_from_config_group_exists(self):
         config_group_name = 'CommonTests'
@@ -4455,16 +4480,11 @@ class VMAXFCTest(test.TestCase):
         self.assertEqual(ref_mappings, zoning_mappings2)
 
     def test_get_zoning_mappings_no_mv(self):
-        ref_mappings = {'port_group': None,
-                        'initiator_group': None,
-                        'target_wwns': None,
-                        'init_targ_map': None,
-                        'array': None}
         with mock.patch.object(self.common, 'get_masking_views_from_volume',
                                return_value=None):
             zoning_mappings = self.driver._get_zoning_mappings(
                 self.data.test_volume, self.data.connector)
-            self.assertEqual(ref_mappings, zoning_mappings)
+            self.assertFalse(zoning_mappings)
 
     def test_cleanup_zones_other_vols_mapped(self):
         ref_data = {'driver_volume_type': 'fibre_channel',
@@ -5539,6 +5559,9 @@ class VMAXMaskingTest(test.TestCase):
     def test_last_volume_delete_initiator_group(self, mock_delete_ig):
         self.mask._last_volume_delete_initiator_group(
             self.data.array, self.data.initiatorgroup_name_f, 'Wrong_Host')
+        mock_delete_ig.assert_not_called()
+        self.mask._last_volume_delete_initiator_group(
+            self.data.array, self.data.initiatorgroup_name_f, None)
         mock_delete_ig.assert_not_called()
         mv_list = [self.data.masking_view_name_i,
                    self.data.masking_view_name_f]

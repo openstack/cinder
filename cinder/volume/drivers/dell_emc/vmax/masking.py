@@ -1251,7 +1251,6 @@ class VMAXMasking(object):
                 self._delete_mv_ig_and_sg(
                     serial_number, device_id, mv, storagegroup_name,
                     parent_sg_name, connector, move, extra_specs)
-
             else:
                 self._remove_last_vol_and_delete_sg(
                     serial_number, device_id, volume_name,
@@ -1359,7 +1358,8 @@ class VMAXMasking(object):
         :param move: flag to indicate if the volume should be moved
         :param extra_specs: the extra specifications
         """
-        host = self.utils.get_host_short_name(connector['host'])
+        host = (self.utils.get_host_short_name(connector['host'])
+                if connector else None)
 
         initiatorgroup = self.rest.get_element_from_masking_view(
             serial_number, masking_view, host=True)
@@ -1500,40 +1500,45 @@ class VMAXMasking(object):
         :param initiatorgroup_name: initiator group name
         :param host: the short name of the host
         """
-        protocol = self.utils.get_short_protocol_type(self.protocol)
-        default_ig_name = ("OS-%(shortHostName)s-%(protocol)s-IG"
-                           % {'shortHostName': host,
-                              'protocol': protocol})
+        if host is not None:
+            protocol = self.utils.get_short_protocol_type(self.protocol)
+            default_ig_name = ("OS-%(shortHostName)s-%(protocol)s-IG"
+                               % {'shortHostName': host,
+                                  'protocol': protocol})
 
-        if initiatorgroup_name == default_ig_name:
-            maskingview_names = (
-                self.rest.get_masking_views_by_initiator_group(
-                    serial_number, initiatorgroup_name))
-            if not maskingview_names:
-                @coordination.synchronized("emc-ig-{ig_name}")
-                def _delete_ig(ig_name):
-                    # Check initiator group hasn't been recently deleted
-                    ig_details = self.rest.get_initiator_group(ig_name)
-                    if ig_details:
-                        LOG.debug(
-                            "Last volume associated with the initiator "
-                            "group - deleting the associated initiator "
-                            "group %(initiatorgroup_name)s.",
-                            {'initiatorgroup_name': initiatorgroup_name})
-                        self.rest.delete_initiator_group(
-                            serial_number, initiatorgroup_name)
-                _delete_ig(initiatorgroup_name)
+            if initiatorgroup_name == default_ig_name:
+                maskingview_names = (
+                    self.rest.get_masking_views_by_initiator_group(
+                        serial_number, initiatorgroup_name))
+                if not maskingview_names:
+                    @coordination.synchronized("emc-ig-{ig_name}")
+                    def _delete_ig(ig_name):
+                        # Check initiator group hasn't been recently deleted
+                        ig_details = self.rest.get_initiator_group(ig_name)
+                        if ig_details:
+                            LOG.debug(
+                                "Last volume associated with the initiator "
+                                "group - deleting the associated initiator "
+                                "group %(initiatorgroup_name)s.",
+                                {'initiatorgroup_name': initiatorgroup_name})
+                            self.rest.delete_initiator_group(
+                                serial_number, initiatorgroup_name)
+                    _delete_ig(initiatorgroup_name)
+                else:
+                    LOG.warning("Initiator group %(ig_name)s is associated "
+                                "with masking views and can't be deleted. "
+                                "Number of associated masking view is: "
+                                "%(nmv)d.",
+                                {'ig_name': initiatorgroup_name,
+                                 'nmv': len(maskingview_names)})
             else:
-                LOG.warning("Initiator group %(ig_name)s is associated "
-                            "with masking views and can't be deleted. "
-                            "Number of associated masking view is: "
-                            "%(nmv)d.",
-                            {'ig_name': initiatorgroup_name,
-                             'nmv': len(maskingview_names)})
+                LOG.warning("Initiator group %(ig_name)s was "
+                            "not created by the VMAX driver so will "
+                            "not be deleted by the VMAX driver.",
+                            {'ig_name': initiatorgroup_name})
         else:
-            LOG.warning("Initiator group %(ig_name)s was "
-                        "not created by the VMAX driver so will "
-                        "not be deleted by the VMAX driver.",
+            LOG.warning("Cannot get host name from connector object - "
+                        "initiator group %(ig_name)s will not be deleted.",
                         {'ig_name': initiatorgroup_name})
 
     def pre_live_migration(self, source_nf_sg, source_sg, source_parent_sg,

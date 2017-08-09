@@ -432,15 +432,15 @@ class VMAXCommon(object):
         volume_name = volume.name
         LOG.info("Unmap volume: %(volume)s.",
                  {'volume': volume_name})
-        if connector is None:
-            exception_message = (
-                _("Connector must not be None - Cannot get the required "
-                  "information needed to unmap the volume"))
-            LOG.exception(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
+        if connector is not None:
+            host = connector['host']
+        else:
+            LOG.warning("Cannot get host name from connector object - "
+                        "assuming force-detach.")
+            host = None
 
         device_info, is_live_migration, source_storage_group_list = (
-            self.find_host_lun_id(volume, connector['host'], extra_specs))
+            self.find_host_lun_id(volume, host, extra_specs))
         if 'hostlunid' not in device_info:
             LOG.info("Volume %s is not mapped. No volume to unmap.",
                      volume_name)
@@ -911,7 +911,7 @@ class VMAXCommon(object):
         """Given the volume dict find the host lun id for a volume.
 
         :param volume: the volume dict
-        :param host: host from connector
+        :param host: host from connector (can be None on a force-detach)
         :param extra_specs: the extra specs
         :returns: dict -- the data dict
         """
@@ -919,14 +919,14 @@ class VMAXCommon(object):
         is_live_migration = False
         volume_name = volume.name
         device_id = self._find_device_on_array(volume, extra_specs)
+        host_name = self.utils.get_host_short_name(host) if host else None
         if device_id:
             array = extra_specs[utils.ARRAY]
-            host = self.utils.get_host_short_name(host)
             source_storage_group_list = (
                 self.rest.get_storage_groups_from_volume(array, device_id))
             # return only masking views for this host
             maskingviews = self.get_masking_views_from_volume(
-                array, device_id, host, source_storage_group_list)
+                array, device_id, host_name, source_storage_group_list)
 
             for maskingview in maskingviews:
                 host_lun_id = self.rest.find_mv_connections_for_vol(
@@ -946,21 +946,20 @@ class VMAXCommon(object):
             else:
                 LOG.debug("Device info: %(maskedvols)s.",
                           {'maskedvols': maskedvols})
-                host = self.utils.get_host_short_name(host)
-                hoststr = ("-%(host)s-"
-                           % {'host': host})
+                if host:
+                    hoststr = ("-%(host)s-" % {'host': host_name})
 
-                if hoststr.lower() not in maskedvols['maskingview'].lower():
-                    LOG.debug(
-                        "Volume is masked but not to host %(host)s as is "
-                        "expected. Assuming live migration.",
-                        {'host': host})
-                    is_live_migration = True
-                else:
-                    for storage_group in source_storage_group_list:
-                        if 'NONFAST' in storage_group:
-                            is_live_migration = True
-                            break
+                    if (hoststr.lower()
+                            not in maskedvols['maskingview'].lower()):
+                        LOG.debug("Volume is masked but not to host %(host)s "
+                                  "as is expected. Assuming live migration.",
+                                  {'host': host})
+                        is_live_migration = True
+                    else:
+                        for storage_group in source_storage_group_list:
+                            if 'NONFAST' in storage_group:
+                                is_live_migration = True
+                                break
         else:
             exception_message = (_("Cannot retrieve volume %(vol)s "
                                    "from the array.") % {'vol': volume_name})
@@ -981,18 +980,17 @@ class VMAXCommon(object):
         """
         LOG.debug("Getting masking views from volume")
         maskingview_list = []
-        short_host = self.utils.get_host_short_name(host)
         host_compare = False
         if not storage_group_list:
             storage_group_list = self.rest.get_storage_groups_from_volume(
                 array, device_id)
-            host_compare = True
+            host_compare = True if host else False
         for sg in storage_group_list:
             mvs = self.rest.get_masking_views_from_storage_group(
                 array, sg)
             for mv in mvs:
                 if host_compare:
-                    if short_host.lower() in mv.lower():
+                    if host.lower() in mv.lower():
                         maskingview_list.append(mv)
                 else:
                     maskingview_list.append(mv)
