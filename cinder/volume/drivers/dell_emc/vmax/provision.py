@@ -431,7 +431,7 @@ class VMAXProvision(object):
                 pass
         else:
             exception_message = (_(
-                "Could not retrieve storage group %(sg_name)%. ") %
+                "Could not retrieve storage group %(sg_name)s. ") %
                 {'sg_name': sg_name})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
