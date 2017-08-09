@@ -171,20 +171,23 @@ class FJDXFCDriver(driver.FibreChannelDriver):
     @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
+        wwpns = connector.get('wwpns') if connector else None
+
         LOG.debug('terminate_connection, volume id: %(vid)s, '
                   'wwpns: %(wwpns)s, enter method.',
-                  {'vid': volume['id'], 'wwpns': connector['wwpns']})
+                  {'vid': volume['id'], 'wwpns': wwpns})
 
         map_exist = self.common.terminate_connection(volume, connector)
-        attached = self.common.check_attached_volume_in_zone(connector)
 
         info = {'driver_volume_type': 'fibre_channel',
                 'data': {}}
 
-        if not attached:
-            # No more volumes attached to the host
-            init_tgt_map = self.common.build_fc_init_tgt_map(connector)
-            info['data'] = {'initiator_target_map': init_tgt_map}
+        if connector:
+            attached = self.common.check_attached_volume_in_zone(connector)
+            if not attached:
+                # No more volumes attached to the host
+                init_tgt_map = self.common.build_fc_init_tgt_map(connector)
+                info['data'] = {'initiator_target_map': init_tgt_map}
 
         LOG.debug('terminate_connection, unmap: %(unmap)s, '
                   'connection info: %(info)s, exit method',
