@@ -55,7 +55,7 @@ Cinder installation.
 .. toctree::
    :maxdepth: 2
 
-   admin/blockstorage
+   admin/index
 
 Contributor/Developer Docs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -116,7 +116,7 @@ available for Cinder including a sample configuration file.
 .. toctree::
     :maxdepth: 1
 
-    configuration/block-storage
+    configuration/index
     sample_config
 
 Indices and tables
