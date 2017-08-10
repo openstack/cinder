@@ -1,6 +1,6 @@
-==================================
-Cinder Configuration Documentation
-==================================
+=========================================================
+Cinder Configuration Documentation (source/configuration)
+=========================================================
 
 Introduction:
 -------------
