@@ -19,6 +19,7 @@ For more information, see the
 
 .. toctree::
 
+   get-started-block-storage
    index-obs
    index-rdo
    index-ubuntu
