@@ -281,7 +281,15 @@ class NetAppBlockStorageLibrary(object):
 
         metadata = self._get_lun_attr(lun_name, 'metadata')
         if metadata:
-            self.zapi_client.destroy_lun(metadata['Path'])
+            try:
+                self.zapi_client.destroy_lun(metadata['Path'])
+            except netapp_api.NaApiError as e:
+                if e.code == netapp_api.EOBJECTNOTFOUND:
+                    LOG.warning("Failure deleting LUN %(name)s. %(message)s",
+                                {'name': lun_name, 'message': e})
+                else:
+                    error_message = (_('A NetApp Api Error occurred: %s') % e)
+                    raise exception.NetAppDriverException(error_message)
             self.lun_table.pop(lun_name)
         else:
             LOG.warning("No entry in LUN table for volume/snapshot"
