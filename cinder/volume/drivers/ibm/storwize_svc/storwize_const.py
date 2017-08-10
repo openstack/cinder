@@ -47,6 +47,7 @@ REPLICA_AUX_VOL_PREFIX = 'aux_'
 REPLICA_CHG_VOL_PREFIX = 'chg_'
 
 RCCG_PREFIX = 'rccg-'
+HYPERCG_PREFIX = 'hycg-'
 
 # remote mirror copy status
 REP_CONSIS_SYNC = 'consistent_synchronized'

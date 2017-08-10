@@ -315,6 +315,9 @@ driver:
 - multipath
 - iogrp
 - mirror_pool
+- volume_topology
+- peer_pool
+- host_site
 
 These keys have the same semantics as their counterparts in the
 configuration file. They are set similarly; for example, ``rsize=2`` or
@@ -452,6 +455,12 @@ modify volume types, you can also change these extra specs properties:
 
 -  mirror_pool
 
+-  volume_topology
+
+-  peer_pool
+
+-  host_site
+
 .. note::
 
    When you change the ``rsize``, ``grainsize`` or ``compression``
@@ -515,3 +524,26 @@ default as the ``backend_id``:
    If the synchronization is not done manually, Storwize Block Storage
    service driver will perform the synchronization and do the failback
    after the synchronization is finished.
+
+Hyperswap Volumes
+-----------------
+
+A hyperswap volume is created with a volume-type that has the extra spec
+``drivers:volume_topology`` set to ``hyperswap``.
+To support hyperswap volumes, IBM Storwize/SVC firmware version 7.6.0 or
+later is required.
+
+.. code-block:: console
+
+   $ cinder type-create hyper_type
+   $ cinder type-key hyper_type set drivers:volume_topology=hyperswap \
+     drivers:peer_pool=Pool_site2 drivers:host_site=site1
+
+.. note::
+
+   The property ``rsize`` is considered as ``buffersize`` for hyperswap
+   volume.
+   The hyperswap property ``iogrp`` is selected by storage.
+
+A group is created as a hyperswap group with a group-type that has the
+group spec ``hyperswap_group_enabled`` set to ``<is> True``.

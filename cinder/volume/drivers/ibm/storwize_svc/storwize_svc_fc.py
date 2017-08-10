@@ -95,9 +95,10 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         2.2.2 - Add npiv support
         2.2.3 - Add replication group support
         2.2.4 - Add backup snapshots support
+        2.2.5 - Add hyperswap support
     """
 
-    VERSION = "2.2.3"
+    VERSION = "2.2.5"
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_STORAGE_CI"
@@ -123,10 +124,11 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         # attach the snapshot will be failed.
         self._check_snapshot_replica_volume_status(snapshot)
 
-        vol_attrs = ['id', 'name', 'display_name']
+        vol_attrs = ['id', 'name', 'volume_type_id', 'display_name']
         Volume = collections.namedtuple('Volume', vol_attrs)
         volume = Volume(id=snapshot.id,
                         name=snapshot.name,
+                        volume_type_id=snapshot.volume_type_id,
                         display_name='backup-snapshot')
 
         return self.initialize_connection(volume, connector)
@@ -163,12 +165,36 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         else:
             volume_name, backend_helper, node_state = self._get_vol_sys_info(
                 volume)
+        opts = self._get_vdisk_params(volume.volume_type_id)
+        host_site = opts['host_site']
 
         # Check if a host object is defined for this host name
         host_name = backend_helper.get_host_from_connector(connector)
         if host_name is None:
             # Host does not exist - add a new host to Storwize/SVC
-            host_name = backend_helper.create_host(connector)
+            # The host_site is necessary for hyperswap volume.
+            if self._helpers.is_volume_hyperswap(
+                    volume_name) and host_site is None:
+                msg = (_('There is no host_site configured for a hyperswap'
+                         ' volume %s.') % volume_name)
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+
+            host_name = backend_helper.create_host(connector, host_site)
+        else:
+            host_info = self._helpers.ssh.lshost(host=host_name)
+            if 'site_name' in host_info[0]:
+                if not host_info[0]['site_name'] and host_site:
+                    self._helpers.update_host(host_name, host_site)
+                elif host_info[0]['site_name']:
+                    ref_host_site = host_info[0]['site_name']
+                    if host_site and host_site != ref_host_site:
+                        msg = (_('The existing host site is %(ref_host_site)s,'
+                                 ' but the new host site is %(host_site)s.') %
+                               {'ref_host_site': ref_host_site,
+                                'host_site': host_site})
+                        LOG.error(msg)
+                        raise exception.VolumeDriverException(message=msg)
 
         volume_attributes = backend_helper.get_vdisk_attributes(volume_name)
         if volume_attributes is None:

@@ -351,7 +351,11 @@ class StorwizeSVCManagementSimulator(object):
             'noconsistgrp',
             'global',
             'access',
-            'start'
+            'start',
+            'thin',
+            'removehostmappings',
+            'removefcmaps',
+            'removercrelationships'
         ]
         one_param_args = [
             'chapsecret',
@@ -389,6 +393,9 @@ class StorwizeSVCManagementSimulator(object):
             'cycleperiodseconds',
             'masterchange',
             'auxchange',
+            'pool',
+            'site',
+            'buffersize',
         ]
         no_or_one_param_args = [
             'autoexpand',
@@ -508,17 +515,19 @@ class StorwizeSVCManagementSimulator(object):
 
     # Print mostly made-up stuff in the correct syntax
     def _cmd_lssystem(self, **kwargs):
-        rows = [None] * 3
+        rows = [None] * 4
         rows[0] = ['id', '0123456789ABCDEF']
         rows[1] = ['name', 'storwize-svc-sim']
         rows[2] = ['code_level', '7.2.0.0 (build 87.0.1311291000)']
+        rows[3] = ['topology', '']
         return self._print_info_cmd(rows=rows, **kwargs)
 
     def _cmd_lssystem_aux(self, **kwargs):
-        rows = [None] * 3
+        rows = [None] * 4
         rows[0] = ['id', 'ABCDEF0123456789']
         rows[1] = ['name', 'aux-svc-sim']
         rows[2] = ['code_level', '7.2.0.0 (build 87.0.1311291000)']
+        rows[3] = ['topology', '']
         return self._print_info_cmd(rows=rows, **kwargs)
 
     # Print mostly made-up stuff in the correct syntax, assume -bytes passed
@@ -529,7 +538,7 @@ class StorwizeSVCManagementSimulator(object):
                      'vdisk_count', 'capacity', 'extent_size',
                      'free_capacity', 'virtual_capacity', 'used_capacity',
                      'real_capacity', 'overallocation', 'warning',
-                     'easy_tier', 'easy_tier_status'])
+                     'easy_tier', 'easy_tier_status', 'site_id'])
         for i in range(pool_num):
             row_data = [str(i + 1),
                         self._flags['storwize_svc_volpool_name'][i], 'online',
@@ -537,16 +546,24 @@ class StorwizeSVCManagementSimulator(object):
                         '3573412790272', '256', '3529926246400',
                         '1693247906775',
                         '26843545600', '38203734097', '47', '80', 'auto',
-                        'inactive']
+                        'inactive', '']
             rows.append(row_data)
         rows.append([str(pool_num + 1), 'openstack2', 'online',
                      '1', '0', '3573412790272', '256',
                      '3529432325160', '1693247906775', '26843545600',
-                     '38203734097', '47', '80', 'auto', 'inactive'])
+                     '38203734097', '47', '80', 'auto', 'inactive', ''])
         rows.append([str(pool_num + 2), 'openstack3', 'online',
                      '1', '0', '3573412790272', '128',
                      '3529432325160', '1693247906775', '26843545600',
-                     '38203734097', '47', '80', 'auto', 'inactive'])
+                     '38203734097', '47', '80', 'auto', 'inactive', ''])
+        rows.append([str(pool_num + 3), 'hyperswap1', 'online',
+                     '1', '0', '3573412790272', '256',
+                     '3529432325160', '1693247906775', '26843545600',
+                     '38203734097', '47', '80', 'auto', 'inactive', '1'])
+        rows.append([str(pool_num + 4), 'hyperswap2', 'online',
+                     '1', '0', '3573412790272', '128',
+                     '3529432325160', '1693247906775', '26843545600',
+                     '38203734097', '47', '80', 'auto', 'inactive', '2'])
         if 'obj' not in kwargs:
             return self._print_info_cmd(rows=rows, **kwargs)
         else:
@@ -560,8 +577,12 @@ class StorwizeSVCManagementSimulator(object):
                         row = each_row
                         break
             elif pool_name == 'openstack2':
-                row = rows[-2]
+                row = rows[-4]
             elif pool_name == 'openstack3':
+                row = rows[-4]
+            elif pool_name == 'hyperswap1':
+                row = rows[-2]
+            elif pool_name == 'hyperswap2':
                 row = rows[-1]
             else:
                 return self._errors['CMMVC5754E']
@@ -598,17 +619,17 @@ class StorwizeSVCManagementSimulator(object):
                    'IO_group_id', 'IO_group_name', 'config_node',
                    'UPS_unique_id', 'hardware', 'iscsi_name', 'iscsi_alias',
                    'panel_name', 'enclosure_id', 'canister_id',
-                   'enclosure_serial_number']
+                   'enclosure_serial_number', 'site_id']
         rows[1] = ['1', 'node1', '', '123456789ABCDEF0', 'online', '0',
                    'io_grp0',
                    'yes', '123456789ABCDEF0', '100',
                    'iqn.1982-01.com.ibm:1234.sim.node1', '', '01-1', '1', '1',
-                   '0123ABC']
-        rows[2] = ['2', 'node2', '', '123456789ABCDEF1', 'online', '0',
+                   '0123ABC', '1']
+        rows[2] = ['2', 'node2', '', '123456789ABCDEF1', 'online', '1',
                    'io_grp0',
                    'no', '123456789ABCDEF1', '100',
                    'iqn.1982-01.com.ibm:1234.sim.node2', '', '01-2', '1', '2',
-                   '0123ABC']
+                   '0123ABC', '2']
 
         if self._next_cmd_error['lsnodecanister'] == 'header_mismatch':
             rows[0].pop(2)
@@ -1169,6 +1190,10 @@ port_speed!N/A
         host_info['iscsi_names'] = []
         host_info['wwpns'] = []
 
+        if 'site' in kwargs:
+            host_info['site_name'] = kwargs['site'].strip('\'\"')
+        else:
+            host_info['site_name'] = ''
         out, err = self._add_port_to_host(host_info, **kwargs)
         if not len(err):
             self._hosts_list[host_name] = host_info
@@ -1191,10 +1216,6 @@ port_speed!N/A
 
     # Change host properties
     def _cmd_chhost(self, **kwargs):
-        if 'chapsecret' not in kwargs:
-            return self._errors['CMMVC5707E']
-        secret = kwargs['obj'].strip('\'\"')
-
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
         host_name = kwargs['obj'].strip('\'\"')
@@ -1202,7 +1223,17 @@ port_speed!N/A
         if host_name not in self._hosts_list:
             return self._errors['CMMVC5753E']
 
-        self._hosts_list[host_name]['chapsecret'] = secret
+        if 'chapsecret' in kwargs:
+            secret = kwargs['chapsecret'].strip('\'\"')
+            self._hosts_list[host_name]['chapsecret'] = secret
+
+        if 'site' in kwargs:
+            site_name = kwargs['site'].strip('\'\"')
+            self._hosts_list[host_name]['site_name'] = site_name
+
+        if 'chapsecret' not in kwargs and 'site' not in kwargs:
+            return self._errors['CMMVC5707E']
+
         return ('', '')
 
     # Remove a host
@@ -1225,7 +1256,8 @@ port_speed!N/A
     def _cmd_lshost(self, **kwargs):
         if 'obj' not in kwargs:
             rows = []
-            rows.append(['id', 'name', 'port_count', 'iogrp_count', 'status'])
+            rows.append(['id', 'name', 'port_count', 'iogrp_count',
+                         'status', 'site_name'])
 
             found = False
             # Sort hosts by names to give predictable order for tests
@@ -1236,7 +1268,7 @@ port_speed!N/A
                 if (('filtervalue' not in kwargs) or
                         (kwargs['filtervalue'] == filterstr)):
                     rows.append([host['id'], host['host_name'], '1', '4',
-                                'offline'])
+                                'offline', host['site_name']])
                     found = True
             if found:
                 return self._print_info_cmd(rows=rows, **kwargs)
@@ -1263,6 +1295,7 @@ port_speed!N/A
             rows.append(['mask', '1111'])
             rows.append(['iogrp_count', '4'])
             rows.append(['status', 'online'])
+            rows.append(['site_name', host['site_name']])
             for port in host['iscsi_names']:
                 rows.append(['iscsi_name', port])
                 rows.append(['node_logged_in_count', '0'])
@@ -1447,6 +1480,7 @@ port_speed!N/A
         fcmap_info['progress'] = '0'
         fcmap_info['autodelete'] = True if 'autodelete' in kwargs else False
         fcmap_info['status'] = 'idle_or_copied'
+        fcmap_info['rc_controlled'] = 'no'
 
         # Add fcmap to consistency group
         if 'consistgrp' in kwargs:
@@ -1607,7 +1641,7 @@ port_speed!N/A
                                  source['name'], target['id'], target['name'],
                                  '', '', v['status'], v['progress'],
                                  v['copyrate'], '100', 'off', '', '', 'no', '',
-                                 'no'])
+                                 v['rc_controlled']])
 
         for d in to_delete:
             del self._fcmappings_list[d]
@@ -1962,6 +1996,7 @@ port_speed!N/A
         host_info['id'] = self._find_unused_id(self._hosts_list)
         host_info['host_name'] = connector['host']
         host_info['iscsi_names'] = []
+        host_info['site_name'] = ''
         host_info['wwpns'] = []
         if 'initiator' in connector:
             host_info['iscsi_names'].append(connector['initiator'])
@@ -2331,7 +2366,8 @@ port_speed!N/A
         if 'cluster' not in kwargs:
             return self._errors['CMMVC5707E']
         aux_cluster = kwargs['cluster'].strip('\'\"')
-        if aux_cluster != aux_sys['name']:
+        if (aux_cluster != aux_sys['name'] and
+                aux_cluster != master_sys['name']):
             return self._errors['CMMVC5754E']
 
         rccg_info = {}
@@ -2651,6 +2687,320 @@ port_speed!N/A
             msg = _("The copy should be primary or secondary")
             raise exception.InvalidInput(reason=msg)
 
+    def create_site_volume_and_fcmapping(self, kwargs, name, sitepool,
+                                         fcmapping=False, source=None):
+
+        sitepool_id = self._get_mdiskgrp_id(sitepool)
+        site_volume_info = {}
+        site_volume_info['id'] = self._find_unused_id(self._volumes_list)
+        site_volume_info['uid'] = ('ABCDEF' * 3) + (
+            '0' * 14) + site_volume_info['id']
+
+        site_volume_info['mdisk_grp_name'] = sitepool
+        site_volume_info['mdisk_grp_id'] = str(sitepool_id)
+
+        if 'name' in kwargs or 'obj' in kwargs:
+            site_volume_info['name'] = name
+        else:
+            site_volume_info['name'] = name + site_volume_info['id']
+        # Assume size and unit are given, store it in bytes
+        if "size" in kwargs:
+            capacity = int(kwargs['size'])
+            unit = kwargs['unit']
+            site_volume_info['capacity'] = self._convert_units_bytes(
+                capacity, unit)
+        else:
+            site_volume_info['capacity'] = source['capacity']
+        site_volume_info['IO_group_id'] = '0'
+        site_volume_info['IO_group_name'] = 'io_grp0'
+        site_volume_info['RC_name'] = ''
+        site_volume_info['RC_id'] = ''
+
+        if 'buffersize' in kwargs:
+            site_volume_info['formatted'] = 'no'
+            # Fake numbers
+            site_volume_info['used_capacity'] = '786432'
+            site_volume_info['real_capacity'] = '21474816'
+            site_volume_info['free_capacity'] = '38219264'
+            if 'warning' in kwargs:
+                site_volume_info['warning'] = kwargs['warning'].rstrip('%')
+            else:
+                site_volume_info['warning'] = '80'
+
+            if 'noautoexpand' in kwargs:
+                site_volume_info['autoexpand'] = 'off'
+            else:
+                site_volume_info['autoexpand'] = 'on'
+
+            if 'compressed' in kwargs:
+                site_volume_info['compressed_copy'] = 'yes'
+            else:
+                site_volume_info['compressed_copy'] = 'no'
+
+            if 'thin' in kwargs:
+                site_volume_info['formatted'] = 'no'
+                # Fake numbers
+                site_volume_info['used_capacity'] = '786432'
+                site_volume_info['real_capacity'] = '21474816'
+                site_volume_info['free_capacity'] = '38219264'
+                if 'grainsize' in kwargs:
+                    site_volume_info['grainsize'] = kwargs['grainsize']
+                else:
+                    site_volume_info['grainsize'] = '32'
+        else:
+            site_volume_info['used_capacity'] = site_volume_info['capacity']
+            site_volume_info['real_capacity'] = site_volume_info['capacity']
+            site_volume_info['free_capacity'] = '0'
+            site_volume_info['warning'] = ''
+            site_volume_info['autoexpand'] = ''
+            site_volume_info['grainsize'] = ''
+            site_volume_info['compressed_copy'] = 'no'
+            site_volume_info['formatted'] = 'yes'
+
+        vol_cp = {'id': '0',
+                  'status': 'online',
+                  'sync': 'yes',
+                  'primary': 'yes',
+                  'mdisk_grp_id': str(sitepool_id),
+                  'mdisk_grp_name': sitepool,
+                  'easy_tier': 'on',
+                  'compressed_copy': site_volume_info['compressed_copy']}
+        site_volume_info['copies'] = {'0': vol_cp}
+
+        if site_volume_info['name'] in self._volumes_list:
+            return self._errors['CMMVC6035E']
+        else:
+            self._volumes_list[site_volume_info['name']] = site_volume_info
+
+        # create a flashcopy mapping for site volume and site flashcopy volume
+        if fcmapping:
+            site_fcmap_info = {}
+            site_fcmap_info['source'] = source['name']
+            site_fcmap_info['target'] = site_volume_info['name']
+            site_fcmap_info['id'] = self._find_unused_id(self._fcmappings_list)
+            site_fcmap_info['name'] = 'fcmap' + site_fcmap_info['id']
+            site_fcmap_info['copyrate'] = '50'
+            site_fcmap_info['progress'] = '0'
+            site_fcmap_info['autodelete'] = (True if 'autodelete' in kwargs
+                                             else False)
+            site_fcmap_info['status'] = 'idle_or_copied'
+            site_fcmap_info['rc_controlled'] = 'yes'
+
+            self._fcmappings_list[site_fcmap_info['id']] = site_fcmap_info
+
+        return site_volume_info
+
+    def _cmd_mkvolume(self, **kwargs):
+        pool = kwargs['pool'].strip('\'\"')
+        pool_split = pool.split(':')
+        if len(pool_split) != 2:
+            raise exception.InvalidInput(
+                reason=_('pool %s is invalid for hyperswap '
+                         'volume') % kwargs['pool'])
+        else:
+            site1pool = pool_split[0]
+            site2pool = pool_split[1]
+
+        if pool == kwargs['pool']:
+            raise exception.InvalidInput(
+                reason=_('pool missing quotes %s') % kwargs['pool'])
+
+        if 'name' in kwargs:
+            site1name = kwargs['name'].strip('\'\"')
+            site1fcname = 'fcsite1' + kwargs['name'].strip('\'\"')
+            site2name = 'site2' + kwargs['name'].strip('\'\"')
+            site2fcname = 'fcsite2' + kwargs['name'].strip('\'\"')
+        else:
+            site1name = 'vdisk'
+            site1fcname = 'fcsite1vdisk'
+            site2name = 'site2vdisk'
+            site2fcname = 'fcsite2vdisk'
+
+        # create hyperswap volume on site1
+        site1_volume_info = self.create_site_volume_and_fcmapping(
+            kwargs, site1name, site1pool, False, None)
+        # create flashcopy volume on site1
+        self.create_site_volume_and_fcmapping(kwargs, site1fcname, site1pool,
+                                              True, site1_volume_info)
+        # create hyperswap volume on site2
+        site2_volume_info = self.create_site_volume_and_fcmapping(
+            kwargs, site2name, site2pool, False, site1_volume_info)
+        # create flashcopy volume on site2
+        self.create_site_volume_and_fcmapping(kwargs, site2fcname, site2pool,
+                                              True, site2_volume_info)
+
+        # Create remote copy for site1volume and site2volume
+        master_sys = self._system_list['storwize-svc-sim']
+        aux_sys = self._system_list['storwize-svc-sim']
+        rcrel_info = {}
+        rcrel_info['id'] = self._find_unused_id(self._rcrelationship_list)
+        rcrel_info['name'] = 'rcrel' + rcrel_info['id']
+        rcrel_info['master_cluster_id'] = master_sys['id']
+        rcrel_info['master_cluster_name'] = master_sys['name']
+        rcrel_info['master_vdisk_id'] = site1_volume_info['id']
+        rcrel_info['master_vdisk_name'] = site1_volume_info['name']
+        rcrel_info['aux_cluster_id'] = aux_sys['id']
+        rcrel_info['aux_cluster_name'] = aux_sys['name']
+        rcrel_info['aux_vdisk_id'] = site2_volume_info['id']
+        rcrel_info['aux_vdisk_name'] = site2_volume_info['name']
+        rcrel_info['primary'] = 'master'
+        rcrel_info['consistency_group_id'] = ''
+        rcrel_info['consistency_group_name'] = ''
+        rcrel_info['state'] = 'inconsistent_stopped'
+        rcrel_info['bg_copy_priority'] = '50'
+        rcrel_info['progress'] = '0'
+        rcrel_info['freeze_time'] = ''
+        rcrel_info['status'] = 'online'
+        rcrel_info['sync'] = ''
+        rcrel_info['copy_type'] = 'activeactive'
+        rcrel_info['cycling_mode'] = ''
+        rcrel_info['cycle_period_seconds'] = '300'
+        rcrel_info['master_change_vdisk_id'] = ''
+        rcrel_info['master_change_vdisk_name'] = ''
+        rcrel_info['aux_change_vdisk_id'] = ''
+        rcrel_info['aux_change_vdisk_name'] = ''
+
+        self._rcrelationship_list[rcrel_info['name']] = rcrel_info
+        site1_volume_info['RC_name'] = rcrel_info['name']
+        site1_volume_info['RC_id'] = rcrel_info['id']
+        site2_volume_info['RC_name'] = rcrel_info['name']
+        site2_volume_info['RC_id'] = rcrel_info['id']
+        return ('Hyperswap volume, id [%s], successfully created' %
+                (site1_volume_info['id']), '')
+
+    def _cmd_addvolumecopy(self, **kwargs):
+
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5701E']
+        vol_name = kwargs['obj'].strip('\'\"')
+        site1_volume_info = self._volumes_list[vol_name]
+        site1pool = site1_volume_info['mdisk_grp_name']
+        site2pool = kwargs['pool'].strip('\'\"')
+        site1fcname = 'fcsite1' + vol_name
+        site2name = 'site2' + vol_name
+        site2fcname = 'fcsite2' + vol_name
+
+        # create flashcopy volume on site1
+        self.create_site_volume_and_fcmapping(kwargs, site1fcname, site1pool,
+                                              True, site1_volume_info)
+        # create hyperswap volume on site2
+        site2_volume_info = self.create_site_volume_and_fcmapping(
+            kwargs, site2name, site1pool, False, site1_volume_info)
+        # create flashcopy volume on site2
+        self.create_site_volume_and_fcmapping(kwargs, site2fcname, site2pool,
+                                              True, site2_volume_info)
+
+        # create remote copy for site1volume and site2volume
+        master_sys = self._system_list['storwize-svc-sim']
+        aux_sys = self._system_list['storwize-svc-sim']
+        rcrel_info = {}
+        rcrel_info['id'] = self._find_unused_id(self._rcrelationship_list)
+        rcrel_info['name'] = 'rcrel' + rcrel_info['id']
+        rcrel_info['master_cluster_id'] = master_sys['id']
+        rcrel_info['master_cluster_name'] = master_sys['name']
+        rcrel_info['master_vdisk_id'] = site1_volume_info['id']
+        rcrel_info['master_vdisk_name'] = site1_volume_info['name']
+        rcrel_info['aux_cluster_id'] = aux_sys['id']
+        rcrel_info['aux_cluster_name'] = aux_sys['name']
+        rcrel_info['aux_vdisk_id'] = site2_volume_info['id']
+        rcrel_info['aux_vdisk_name'] = site2_volume_info['name']
+        rcrel_info['primary'] = 'master'
+        rcrel_info['consistency_group_id'] = ''
+        rcrel_info['consistency_group_name'] = ''
+        rcrel_info['state'] = 'inconsistent_stopped'
+        rcrel_info['bg_copy_priority'] = '50'
+        rcrel_info['progress'] = '0'
+        rcrel_info['freeze_time'] = ''
+        rcrel_info['status'] = 'online'
+        rcrel_info['sync'] = ''
+        rcrel_info['copy_type'] = 'activeactive'
+        rcrel_info['cycling_mode'] = ''
+        rcrel_info['cycle_period_seconds'] = '300'
+        rcrel_info['master_change_vdisk_id'] = ''
+        rcrel_info['master_change_vdisk_name'] = ''
+        rcrel_info['aux_change_vdisk_id'] = ''
+        rcrel_info['aux_change_vdisk_name'] = ''
+
+        self._rcrelationship_list[rcrel_info['name']] = rcrel_info
+        site1_volume_info['RC_name'] = rcrel_info['name']
+        site1_volume_info['RC_id'] = rcrel_info['id']
+        site2_volume_info['RC_name'] = rcrel_info['name']
+        site2_volume_info['RC_id'] = rcrel_info['id']
+        return ('', '')
+
+    def _cmd_rmvolumecopy(self, **kwargs):
+
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5701E']
+        vol_name = kwargs['obj'].strip('\'\"')
+        site1_volume_info = self._volumes_list[vol_name]
+        site2_volume_info = self._volumes_list['site2' + vol_name]
+        site1_volume_fc_info = self._volumes_list['fcsite1' + vol_name]
+        site2_volume_fc_info = self._volumes_list['fcsite2' + vol_name]
+
+        del self._rcrelationship_list[self._volumes_list[vol_name]['RC_name']]
+        site1fcmap = None
+        site2fcmap = None
+        for fcmap in self._fcmappings_list.values():
+            if ((fcmap['source'] == vol_name) and
+                    (fcmap['target'] == 'fcsite1' + vol_name)):
+                site1fcmap = fcmap
+                continue
+            elif ((fcmap['source'] == 'site2' + vol_name) and
+                    (fcmap['target'] == 'fcsite2' + vol_name)):
+                site2fcmap = fcmap
+                continue
+
+        if site1fcmap:
+            del self._fcmappings_list[site1fcmap['id']]
+            del site1_volume_fc_info
+        if site2fcmap:
+            del self._fcmappings_list[site2fcmap['id']]
+            del site2_volume_fc_info
+
+        del site2_volume_info
+        site1_volume_info['RC_name'] = ''
+        site1_volume_info['RC_id'] = ''
+        return ('', '')
+
+    def _cmd_rmvolume(self, **kwargs):
+        removehostmappings = True if 'removehostmappings' in kwargs else False
+
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5701E']
+        vol_name = kwargs['obj'].strip('\'\"')
+
+        if vol_name not in self._volumes_list:
+            return self._errors['CMMVC5753E']
+
+        site1fcmap = None
+        site2fcmap = None
+        for fcmap in self._fcmappings_list.values():
+            if ((fcmap['source'] == vol_name) and
+                    (fcmap['target'] == 'fcsite1' + vol_name)):
+                site1fcmap = fcmap
+                continue
+            elif ((fcmap['source'] == 'site2' + vol_name) and
+                    (fcmap['target'] == 'fcsite2' + vol_name)):
+                site2fcmap = fcmap
+                continue
+        if site1fcmap:
+            del self._fcmappings_list[site1fcmap['id']]
+        if site2fcmap:
+            del self._fcmappings_list[site2fcmap['id']]
+
+        if not removehostmappings:
+            for mapping in self._mappings_list.values():
+                if mapping['vol'] == vol_name:
+                    return self._errors['CMMVC5840E']
+
+        del self._rcrelationship_list[self._volumes_list[vol_name]['RC_name']]
+        del self._volumes_list[vol_name]
+        del self._volumes_list['fcsite1' + vol_name]
+        del self._volumes_list['site2' + vol_name]
+        del self._volumes_list['fcsite2' + vol_name]
+        return ('', '')
+
 
 class StorwizeSVCISCSIFakeDriver(storwize_svc_iscsi.StorwizeSVCISCSIDriver):
     def __init__(self, *args, **kwargs):
@@ -2839,6 +3189,76 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                                   initialize_connection_snapshot,
                                   snapshot,
                                   connector)
+
+    def test_storwize_initialize_iscsi_connection_with_host_site(self):
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        # host_site is None
+        volume0_iSCSI = self._create_volume()
+        vol_type_iSCSI_0 = volume_types.create(self.ctxt, 'iSCSI0', None)
+        volume0_iSCSI['volume_type_id'] = vol_type_iSCSI_0['id']
+        self.iscsi_driver.initialize_connection(volume0_iSCSI, connector)
+
+        # host_site is site1
+        volume_iSCSI = self._create_volume()
+        extra_spec = {'drivers:volume_topology': 'hyperswap',
+                      'peer_pool': 'openstack1',
+                      'host_site': 'site1'}
+        vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
+        volume_iSCSI['volume_type_id'] = vol_type_iSCSI['id']
+        self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
+
+        # host_site is site2, different with site1.
+        volume1_iSCSI = self._create_volume()
+        extra_spec_1 = {'drivers:volume_topology': 'hyperswap',
+                        'peer_pool': 'openstack1',
+                        'host_site': 'site2'}
+        vol_type_iSCSI_1 = volume_types.create(self.ctxt, 'iSCSI1',
+                                               extra_spec_1)
+        volume1_iSCSI['volume_type_id'] = vol_type_iSCSI_1['id']
+        self.assertRaises(exception.VolumeDriverException,
+                          self.iscsi_driver.initialize_connection,
+                          volume1_iSCSI,
+                          connector)
+
+        # host_site is None.
+        volume2_iSCSI = self._create_volume()
+        vol_type_iSCSI_2 = volume_types.create(self.ctxt, 'iSCSI2', None)
+        volume2_iSCSI['volume_type_id'] = vol_type_iSCSI_2['id']
+        self.iscsi_driver.initialize_connection(volume2_iSCSI, connector)
+
+        # create new host with host_site, the host site should be update
+        connector2 = {'host': 'STORWIZE-SVC-HOST',
+                      'wwnns': ['30000090fa17311e', '30000090fa17311f'],
+                      'wwpns': ['ffff000000000000', 'ffff000000000001'],
+                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1bbb'}
+        # attach hyperswap volume without host_site
+        volume3_iSCSI = self._create_volume()
+        extra_spec_3 = {'drivers:volume_topology': 'hyperswap',
+                        'peer_pool': 'openstack1'}
+        vol_type_iSCSI_3 = volume_types.create(self.ctxt, 'iSCSI3',
+                                               extra_spec_3)
+        volume3_iSCSI['volume_type_id'] = vol_type_iSCSI_3['id']
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'is_volume_hyperswap') as hyperswap:
+            hyperswap.return_value = True
+            self.assertRaises(exception.VolumeDriverException,
+                              self.iscsi_driver.initialize_connection,
+                              volume3_iSCSI,
+                              connector2)
+
+        # attach hyperswap volume with host_site
+        volume4_iSCSI = self._create_volume()
+        extra_spec_4 = {'drivers:volume_topology': 'hyperswap',
+                        'peer_pool': 'openstack1',
+                        'host_site': 'site2'}
+        vol_type_iSCSI_4 = volume_types.create(self.ctxt, 'iSCSI4',
+                                               extra_spec_4)
+        volume4_iSCSI['volume_type_id'] = vol_type_iSCSI_4['id']
+        self.iscsi_driver.initialize_connection(volume4_iSCSI, connector2)
 
     @mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                        '_do_terminate_connection')
@@ -3152,10 +3572,13 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
         # Test no preferred node
         if self.USESIM:
-            self.sim.error_injection('lsvdisk', 'no_pref_node')
-            self.assertRaises(exception.VolumeBackendAPIException,
-                              self.iscsi_driver.initialize_connection,
-                              volume1, self._connector)
+            with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                                   'is_volume_hyperswap') as hyperswap:
+                hyperswap.return_value = False
+                self.sim.error_injection('lsvdisk', 'no_pref_node')
+                self.assertRaises(exception.VolumeBackendAPIException,
+                                  self.iscsi_driver.initialize_connection,
+                                  volume1, self._connector)
 
         # Initialize connection from the second volume to the host with no
         # preferred node set if in simulation mode, otherwise, just
@@ -3376,7 +3799,7 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         self.assertIsNotNone(host_name)
 
     def test_storwize_fc_connection_snapshot(self):
-        # create a iSCSI volume
+        # create a fc volume snapshot
         volume_fc = self._create_volume()
         snapshot = self._generate_snap_info(volume_fc.id)
         self.fc_driver.create_snapshot(snapshot)
@@ -3595,6 +4018,73 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
 
         self.fc_driver.initialize_connection(volume_fc, connector)
         self.fc_driver.terminate_connection(volume_fc, connector)
+
+    def test_storwize_initialize_fc_connection_with_host_site(self):
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        # host_site is None
+        volume0_fc = self._create_volume()
+        vol_type_fc_0 = volume_types.create(self.ctxt, 'FC0', None)
+        volume0_fc['volume_type_id'] = vol_type_fc_0['id']
+        self.fc_driver.initialize_connection(volume0_fc, connector)
+
+        # host_site is site1
+        volume_fc = self._create_volume()
+        extra_spec = {'drivers:volume_topology': 'hyperswap',
+                      'peer_pool': 'openstack1',
+                      'host_site': 'site1'}
+        vol_type_fc = volume_types.create(self.ctxt, 'FC', extra_spec)
+        volume_fc['volume_type_id'] = vol_type_fc['id']
+        self.fc_driver.initialize_connection(volume_fc, connector)
+
+        # host_site is site2, different with site1.
+        volume1_fc = self._create_volume()
+        extra_spec_1 = {'drivers:volume_topology': 'hyperswap',
+                        'peer_pool': 'openstack1',
+                        'host_site': 'site2'}
+        vol_type_fc_1 = volume_types.create(self.ctxt, 'FC1', extra_spec_1)
+        volume1_fc['volume_type_id'] = vol_type_fc_1['id']
+        self.assertRaises(exception.VolumeDriverException,
+                          self.fc_driver.initialize_connection,
+                          volume1_fc,
+                          connector)
+
+        # host_site is None.
+        volume2_fc = self._create_volume()
+        vol_type_fc_2 = volume_types.create(self.ctxt, 'FC2', None)
+        volume2_fc['volume_type_id'] = vol_type_fc_2['id']
+        self.fc_driver.initialize_connection(volume2_fc, connector)
+
+        # create new host with host_site
+        connector2 = {'host': 'STORWIZE-SVC-HOST',
+                      'wwnns': ['30000090fa17311e', '30000090fa17311f'],
+                      'wwpns': ['ffff000000000000', 'ffff000000000001'],
+                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1bbb'}
+        # attach hyperswap volume without host_site
+        volume3_fc = self._create_volume()
+        extra_spec_3 = {'drivers:volume_topology': 'hyperswap',
+                        'peer_pool': 'openstack1'}
+        vol_type_fc_3 = volume_types.create(self.ctxt, 'FC3', extra_spec_3)
+        volume3_fc['volume_type_id'] = vol_type_fc_3['id']
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'is_volume_hyperswap') as is_volume_hyperswap:
+            is_volume_hyperswap.return_value = True
+            self.assertRaises(exception.VolumeDriverException,
+                              self.fc_driver.initialize_connection,
+                              volume3_fc,
+                              connector2)
+
+        # attach hyperswap volume with host_site
+        volume4_fc = self._create_volume()
+        extra_spec_4 = {'drivers:volume_topology': 'hyperswap',
+                        'peer_pool': 'openstack1',
+                        'host_site': 'site2'}
+        vol_type_fc_4 = volume_types.create(self.ctxt, 'FC4', extra_spec_4)
+        volume4_fc['volume_type_id'] = vol_type_fc_4['id']
+        self.fc_driver.initialize_connection(volume4_fc, connector2)
 
     @mock.patch.object(storwize_svc_fc.StorwizeSVCFCDriver,
                        '_do_terminate_connection')
@@ -3905,10 +4395,13 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
 
         # Test no preferred node
         if self.USESIM:
-            self.sim.error_injection('lsvdisk', 'no_pref_node')
-            self.assertRaises(exception.VolumeBackendAPIException,
-                              self.fc_driver.initialize_connection,
-                              volume1, self._connector)
+            with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                                   'is_volume_hyperswap') as hyperswap:
+                hyperswap.return_value = False
+                self.sim.error_injection('lsvdisk', 'no_pref_node')
+                self.assertRaises(exception.VolumeBackendAPIException,
+                                  self.fc_driver.initialize_connection,
+                                  volume1, self._connector)
 
         # Initialize connection from the second volume to the host with no
         # preferred node set if in simulation mode, otherwise, just
@@ -4295,6 +4788,25 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         vol_type = objects.VolumeType.get_by_id(self.ctxt, type_ref['id'])
         return vol_type
 
+    def _create_hyperswap_type(self, type_name):
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'hyperswap2',
+                'host_site': 'site1'}
+        hyper_type = self._create_volume_type(spec, type_name)
+        return hyper_type
+
+    def _create_hyperswap_volume(self, hyper_type, **kwargs):
+        pool = 'hyperswap1'
+        prop = {'host': 'openstack@svc#%s' % pool,
+                'size': 1}
+        prop['volume_type_id'] = hyper_type.id
+        for p in prop.keys():
+            if p not in kwargs:
+                kwargs[p] = prop[p]
+        vol = testutils.create_volume(self.ctxt, **kwargs)
+        self.driver.create_volume(vol)
+        return vol
+
     def _generate_vol_info(self, vol_type=None, size=10):
         pool = _get_test_pool()
         prop = {'size': size,
@@ -4402,6 +4914,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                'stretched_cluster': None,
                'nofmtdisk': False,
                'mirror_pool': None,
+               'volume_topology': None,
+               'peer_pool': None,
+               'host_site': None,
                'cycle_period_seconds': 300,
                }
         return opt
@@ -4411,12 +4926,11 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                        '_get_vdisk_params')
     def test_storwize_svc_create_volume_with_qos(self, get_vdisk_params,
                                                  add_vdisk_qos):
-        vol = testutils.create_volume(self.ctxt)
         fake_opts = self._get_default_opts()
         # If the qos is empty, chvdisk should not be called
         # for create_volume.
         get_vdisk_params.return_value = fake_opts
-        self.driver.create_volume(vol)
+        vol = self._create_volume()
         self._assert_vol_exists(vol['name'], True)
         self.assertFalse(add_vdisk_qos.called)
         self.driver.delete_volume(vol)
@@ -5279,7 +5793,14 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                        'update_vdisk_qos')
     def test_storwize_svc_retype_need_copy(self, update_vdisk_qos,
                                            disable_vdisk_qos):
-        self.driver.do_setup(None)
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'standard',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
         loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
                ':openstack')
         cap = {'location_info': loc, 'extent_size': '128'}
@@ -5476,6 +5997,18 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'])
 
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'openstack1'}
+        vol_type_ref = volume_types.create(self.ctxt, 'hypertype', spec)
+        group = testutils.create_group(
+            self.ctxt, name='cggroup',
+            group_type_id=rccg_type.id,
+            volume_type_ids=[vol_type_ref['id']])
+
+        model_update = self.driver.create_group(self.ctxt, group)
+        self.assertEqual(fields.GroupStatus.ERROR,
+                         model_update['status'])
+
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
@@ -5485,7 +6018,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def test_storwize_delete_group(self, _del_rep_grp, is_grp_a_cg_rep_type,
                                    is_grp_a_cg_snapshot_type):
         is_grp_a_cg_snapshot_type.side_effect = [True, True, False, True]
-        is_grp_a_cg_rep_type.side_effect = [False, False]
+        is_grp_a_cg_rep_type.side_effect = [False, False, False, False]
         type_ref = volume_types.create(self.ctxt, 'testtype', None)
         group = testutils.create_group(self.ctxt,
                                        group_type_id=fake.GROUP_TYPE_ID,
@@ -5514,7 +6047,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                    is_grp_a_cg_snapshot_type):
         """Test group update."""
         is_grp_a_cg_snapshot_type.side_effect = [False, True, True, False]
-        is_grp_a_cg_rep_type.side_effect = [False, False, True, True]
+        is_grp_a_cg_rep_type.side_effect = [False, False, False,
+                                            False, True, True]
         group = mock.MagicMock()
         self.assertRaises(NotImplementedError, self.driver.update_group,
                           self.ctxt, group, None, None)
@@ -5611,7 +6145,19 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                           self.driver.create_group_from_src,
                           self.ctxt, group, [vol1])
 
+        hyper_specs = {'hyperswap_group_enabled': '<is> True'}
+        hyper_type_ref = group_types.create(self.ctxt, 'hypergroup',
+                                            hyper_specs)
         group = self._create_group_in_db(volume_type_ids=[type_ref.id],
+                                         group_type_id=hyper_type_ref.id)
+        vol1 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
+                                       group_id=group.id)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_group_from_src,
+                          self.ctxt, group, vol1, None, None,
+                          None, None)
+
+        group = self._create_group_in_db(volume_type_id=type_ref.id,
                                          group_type_id=cg_type_ref.id)
 
         # create volumes in db
@@ -6409,6 +6955,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                           vol1)
         # Create volume with cg_snapshot group id will success.
         vol2 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
+                                       host='openstack@svc#openstack',
                                        group_id=group2.id)
         self.driver.create_volume(vol2)
 
@@ -6422,6 +6969,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         # Create cloned volume with cg_snapshot group id will success.
         vol4 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
                                        group_id=group2.id,
+                                       host='openstack@svc#openstack',
                                        source_volid=vol2.id)
         self.driver.create_cloned_volume(vol4, vol2)
 
@@ -6437,8 +6985,672 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         # Create volume from snapshot with cg_snapshot group id will success.
         vol6 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
                                        group_id=group2.id,
+                                       host='openstack@svc#openstack',
                                        snapshot_id=snapshot.id)
         self.driver.create_volume_from_snapshot(vol6, snapshot)
+
+    @ mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsmdiskgrp')
+    def test_storwize_svc_select_iogrp_with_pool_site(self, lsmdiskgrp):
+        opts = {}
+        state = self.driver._state
+        lsmdiskgrp.side_effect = [{'site_id': ''},
+                                  {'site_id': '1'},
+                                  {'site_id': '2'},
+                                  {'site_id': '2'}]
+        state['storage_nodes']['1']['site_id'] = '1'
+        state['storage_nodes']['1']['IO_group'] = '0'
+        state['storage_nodes']['2']['site_id'] = '1'
+        state['storage_nodes']['2']['IO_group'] = '1'
+
+        pool = 'openstack2'
+        opts['iogrp'] = '0,1'
+        state['available_iogrps'] = [0, 1, 2, 3]
+        iog = self.driver._helpers.select_io_group(state, opts, pool)
+        self.assertEqual(0, iog)
+
+        pool = 'openstack2'
+        opts['iogrp'] = '0,1'
+        state['available_iogrps'] = [0, 1, 2, 3]
+        iog = self.driver._helpers.select_io_group(state, opts, pool)
+        self.assertEqual(0, iog)
+
+        pool = 'openstack3'
+        opts['iogrp'] = '0,1'
+        state['available_iogrps'] = [0, 1, 2, 3]
+        self.assertRaises(exception.InvalidInput,
+                          self.driver._helpers.select_io_group,
+                          state, opts, pool)
+        state['storage_nodes']['2']['site_id'] = '2'
+
+        pool = 'openstack2'
+        opts['iogrp'] = '0,1'
+        state['available_iogrps'] = [0, 1, 2, 3]
+        iog = self.driver._helpers.select_io_group(state, opts, pool)
+        self.assertEqual(1, iog)
+
+    # test hyperswap volume
+    def test_create_hyperswap_volume(self):
+        # create hyperswap volume on code_level less than 7.7.0.0
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'openstack1'}
+        invalid_release_type = self._create_volume_type(
+            spec, 'invalid_release_type')
+        vol = self._generate_vol_info(invalid_release_type)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume, vol)
+
+        # create hyperswap on svc topology not 'hyperswap'
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'standard',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'openstack1'}
+        invalid_topo_type = self._create_volume_type(
+            spec, 'invalid_topo_type')
+        vol = self._generate_vol_info(invalid_topo_type)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume, vol)
+
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'hyperswap',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+        # create hyperswap volume vith invalid pool
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'invalid_pool'}
+        invalid_pool_type = self._create_volume_type(spec,
+                                                     'invalid_pool_type')
+        vol = self._generate_vol_info(invalid_pool_type)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume, vol)
+
+        # create hyperswap volume vith easytier off
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'drivers:easytier': False}
+        easytier_type = self._create_volume_type(spec,
+                                                 'easytier_type')
+        vol = self._generate_vol_info(easytier_type)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume, vol)
+
+        # create hyperswap volume without peer_pool
+        spec = {'drivers:volume_topology': 'hyperswap'}
+        no_peerpool_type = self._create_volume_type(spec,
+                                                    'no_peerpool_type')
+        vol = self._generate_vol_info(no_peerpool_type)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume, vol)
+
+        # Create hyperswap volume, there is no site_id on peer_pool
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'openstack'}
+        same_pool_type = self._create_volume_type(spec,
+                                                  'same_pool_type')
+        vol = self._generate_vol_info(same_pool_type)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume, vol)
+
+        # Create hyperswap volume, pool and peer pool are on the same site
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'hyperswap1'}
+        same_site_type = self._create_volume_type(spec,
+                                                  'same_site_type')
+        vol = testutils.create_volume(self.ctxt,
+                                      host='openstack@svc#hyperswap1',
+                                      volume_type_id=same_site_type.id)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume, vol)
+
+        # create hyperswap volume with strech cluster
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'openstack1',
+                'mirror_pool': 'openstack1'}
+        invalid_vol_type = self._create_volume_type(spec,
+                                                    'invalid_hyperswap_type')
+        vol = self._generate_vol_info(invalid_vol_type)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume, vol)
+
+        # create hyperswap volume with replication
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'openstack1',
+                'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'}
+        invalid_vol_type = self._create_volume_type(spec,
+                                                    'invalid_hyperswap_type_2')
+        vol = self._generate_vol_info(invalid_vol_type)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume, vol)
+
+        hyper_type = self._create_hyperswap_type('test_hyperswap_type')
+        vol = self._create_hyperswap_volume(hyper_type)
+        self._assert_vol_exists(vol.name, True)
+        self._assert_vol_exists('site2' + vol.name, True)
+        self._assert_vol_exists('fcsite1' + vol.name, True)
+        self._assert_vol_exists('fcsite2' + vol.name, True)
+        is_volume_hyperswap = self.driver._helpers.is_volume_hyperswap(
+            vol.name)
+        self.assertEqual(is_volume_hyperswap, True)
+        self.driver.delete_volume(vol)
+        self._assert_vol_exists(vol.name, False)
+        self._assert_vol_exists('site2' + vol.name, False)
+        self._assert_vol_exists('fcsite1' + vol.name, False)
+        self._assert_vol_exists('fcsite2' + vol.name, False)
+
+    def test_create_snapshot_to_hyperswap_volume(self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'hyperswap',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+        hyper_type = self._create_hyperswap_type('test_hyperswap_type')
+        vol = self._create_hyperswap_volume(hyper_type)
+        self._assert_vol_exists(vol.name, True)
+
+        snap = testutils.create_snapshot(self.ctxt, vol.id)
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_snapshot, snap)
+
+        self.driver.delete_volume(vol)
+        self._assert_vol_exists(vol.name, False)
+
+    def test_create_cloned_hyperswap_volume(self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'hyperswap',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+        hyper_type = self._create_hyperswap_type('test_hyperswap_type')
+        vol = self._create_hyperswap_volume(hyper_type)
+        self._assert_vol_exists(vol.name, True)
+
+        vol2 = testutils.create_volume(self.ctxt,
+                                       host = 'openstack@svc#hyperswap1',
+                                       volume_type_id = vol.volume_type_id)
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_vdisk_attributes') as vdisk_attr:
+            vdisk_attr.return_value = None
+            self.assertRaises(exception.VolumeDriverException,
+                              self.driver.create_cloned_volume,
+                              vol2, vol)
+        self.driver.create_cloned_volume(vol2, vol)
+        self._assert_vol_exists(vol2.name, True)
+        self._assert_vol_exists('site2' + vol2.name, True)
+        self._assert_vol_exists('fcsite1' + vol2.name, True)
+        self._assert_vol_exists('fcsite2' + vol2.name, True)
+        is_volume_hyperswap = self.driver._helpers.is_volume_hyperswap(
+            vol2.name)
+        self.assertEqual(is_volume_hyperswap, True)
+
+        self.driver.delete_volume(vol)
+        self._assert_vol_exists(vol.name, False)
+        self.driver.delete_volume(vol2)
+        self._assert_vol_exists(vol2.name, False)
+
+    def test_extend_hyperswap_volume(self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'hyperswap',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+        hyper_type = self._create_hyperswap_type('test_hyperswap_type')
+        vol = self._create_hyperswap_volume(hyper_type)
+        self._assert_vol_exists(vol.name, True)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.extend_volume, vol, '16')
+
+    def test_migrate_hyperswap_volume(self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'hyperswap',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+        hyper_type = self._create_hyperswap_type('test_hyperswap_type')
+        vol = self._create_hyperswap_volume(hyper_type)
+        self._assert_vol_exists(vol.name, True)
+
+        loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
+               ':openstack2')
+        cap = {'location_info': loc, 'extent_size': '256'}
+        host = {'host': 'openstack@svc#openstack2', 'capabilities': cap}
+        ctxt = context.get_admin_context()
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.migrate_volume, ctxt, vol, host)
+        self._delete_volume(vol)
+
+    def test_manage_existing_hyperswap_volume(self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'hyperswap',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+        hyperswap_vol_type = self._create_hyperswap_type('test_hyperswap_type')
+        hyper_volume = self._create_hyperswap_volume(hyperswap_vol_type)
+        self._assert_vol_exists(hyper_volume.name, True)
+
+        spec1 = {}
+        non_hyper_type = self._create_volume_type(spec1, 'non_hyper_type')
+        non_hyper_volume = self._create_volume()
+
+        # test volume is hyperswap volume but volume type is non-hyper type
+        new_volume = self._generate_vol_info()
+
+        ref = {'source-name': hyper_volume['name']}
+        new_volume['volume_type_id'] = non_hyper_type['id']
+        new_volume['volume_type'] = non_hyper_type
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, new_volume, ref)
+
+        # test volume is non hyperswap volume but volum type is hyper type
+        ref = {'source-name': non_hyper_volume['name']}
+        new_volume['volume_type_id'] = hyperswap_vol_type['id']
+        new_volume['volume_type'] = hyperswap_vol_type
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, new_volume, ref)
+
+        # Test hyperswap volume peer_pool and backend peer_pool does not match
+        new_volume = testutils.create_volume(self.ctxt,
+                                             host='openstack@svc#hyperswap1')
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'hyperswap1'}
+        hyper_type_2 = self._create_volume_type(spec, 'hyper_type_2')
+        ref = {'source-name': hyper_volume['name']}
+        new_volume['volume_type_id'] = hyper_type_2['id']
+        new_volume['volume_type'] = hyper_type_2
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, new_volume, ref)
+
+        # test volume type match
+        uid_of_master = self._get_vdisk_uid(hyper_volume.name)
+
+        new_volume = testutils.create_volume(self.ctxt,
+                                             host='openstack@svc#hyperswap1')
+        ref = {'source-name': hyper_volume['name']}
+        new_volume['volume_type_id'] = hyperswap_vol_type['id']
+        new_volume['volume_type'] = hyperswap_vol_type
+        self.driver.manage_existing(new_volume, ref)
+
+    # Check the uid of the volume which has been renamed.
+        uid_of_master_volume = self._get_vdisk_uid(new_volume['name'])
+        self.assertEqual(uid_of_master, uid_of_master_volume)
+
+        self.driver.delete_volume(hyper_volume)
+
+    def test_retype_hyperswap_volume(self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'hyperswap',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+        hyperswap_vol_type = self._create_hyperswap_type('test_hyperswap_type')
+
+        spec1 = {'drivers:iogrp': '0,1'}
+        non_hyper_type = self._create_volume_type(spec1, 'non_hyper_type')
+
+        volume = testutils.create_volume(self.ctxt,
+                                         volume_type_id=non_hyper_type.id,
+                                         host='openstack@svc#hyperswap1')
+        self.driver.create_volume(volume)
+        host = {'host': 'openstack@svc#hyperswap1'}
+
+        # Retype from non hyperswap volume type to
+        # hyperswap volume type without peer_pool
+        spec = {'drivers:volume_topology': 'hyperswap'}
+        hyper_type_no_peer = self._create_volume_type(spec,
+                                                      'hypertypenopeer')
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, non_hyper_type['id'], hyper_type_no_peer['id'])
+        self.assertRaises(exception.InvalidInput, self.driver.retype,
+                          self.ctxt, volume, hyper_type_no_peer, diff, host)
+
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'drivers:easytier': False}
+        easytier_type = self._create_volume_type(spec,
+                                                 'easytier_type')
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, non_hyper_type['id'], easytier_type['id'])
+        self.assertRaises(exception.InvalidInput, self.driver.retype,
+                          self.ctxt, volume, easytier_type, diff, host)
+
+        # retype from normal volume with snapshot to hyperswap volume
+        snap = testutils.create_snapshot(self.ctxt, volume.id)
+        self.driver.create_snapshot(snap)
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, non_hyper_type['id'], hyperswap_vol_type['id'])
+        self.assertRaises(exception.InvalidInput, self.driver.retype,
+                          self.ctxt, volume, hyperswap_vol_type,
+                          diff, host)
+        self.driver.delete_snapshot(snap)
+
+        # Retype from non-hyperswap volume to hyperswap volume
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, non_hyper_type['id'], hyperswap_vol_type['id'])
+        self.driver.retype(
+            self.ctxt, volume, hyperswap_vol_type, diff, host)
+        volume['volume_type_id'] = hyperswap_vol_type['id']
+        volume['volume_type'] = hyperswap_vol_type
+        self._assert_vol_exists(volume.name, True)
+        self._assert_vol_exists('site2' + volume.name, True)
+        self._assert_vol_exists('fcsite1' + volume.name, True)
+        self._assert_vol_exists('fcsite2' + volume.name, True)
+        is_volume_hyperswap = self.driver._helpers.is_volume_hyperswap(
+            volume.name)
+        self.assertEqual(is_volume_hyperswap, True)
+
+        # Retype from hyperswap volume to non hyperswap volume---move site2
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, hyperswap_vol_type['id'], non_hyper_type['id'])
+        self.driver.retype(
+            self.ctxt, volume, non_hyper_type, diff, host)
+        volume['volume_type_id'] = non_hyper_type['id']
+        volume['volume_type'] = non_hyper_type
+        self.driver.delete_volume(volume)
+
+        # Retype from hyperswap volume to non hyperswap volume---move site1
+        host2 = {'host': 'openstack@svc#hyperswap2'}
+        volume = self._create_hyperswap_volume(hyperswap_vol_type)
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, hyperswap_vol_type['id'], non_hyper_type['id'])
+        self.driver.retype(
+            self.ctxt, volume, non_hyper_type, diff, host2)
+        volume['volume_type_id'] = non_hyper_type['id']
+        volume['volume_type'] = non_hyper_type
+        self.driver.delete_volume(volume)
+
+        # Retype a hyperswap volume to hyperswap volume with keys change
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'hyperswap2',
+                'drivers:warning': '50'}
+        warning_type = self._create_volume_type(spec,
+                                                'warning_type')
+        volume = self._create_hyperswap_volume(hyperswap_vol_type)
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, hyperswap_vol_type['id'], warning_type['id'])
+        self.driver.retype(self.ctxt, volume, warning_type, diff, host)
+
+    def test_retype_hyperswap_volume_failure_case(self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'hyperswap',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+        hyperswap_vol_type = self._create_hyperswap_type('test_hyperswap_type')
+        host = {'host': 'openstack@svc#hyperswap1'}
+        # Retype a hyperswap volume to hyperswap volume with peer_pool changes
+        spec = {'drivers:volume_topology': 'hyperswap'}
+        peer_type = self._create_volume_type(spec,
+                                             'peer_type')
+        volume = self._create_hyperswap_volume(hyperswap_vol_type)
+        self._assert_vol_exists(volume.name, True)
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, hyperswap_vol_type['id'], peer_type['id'])
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.retype,
+                          self.ctxt, volume, peer_type, diff,
+                          host)
+
+        # Retype a hyperswap volume to hyperswap volume with iogrp changes
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'drivers:iogrp': '1'}
+        hyperswap_vol_type_2 = self._create_volume_type(spec,
+                                                        'hyperswap_type_2')
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'select_io_group') as select_io_group:
+            select_io_group.return_value = {1}
+            diff, _equal = volume_types.volume_types_diff(
+                self.ctxt, hyperswap_vol_type['id'],
+                hyperswap_vol_type_2['id'])
+
+            self.assertRaises(exception.InvalidInput,
+                              self.driver.retype,
+                              self.ctxt, volume, hyperswap_vol_type_2, diff,
+                              host)
+
+        host2 = {'host': 'openstack@svc#hyperswap2'}
+        # Retype a hyperswap volume to hyperswap volume with pool change
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'drivers:iogrp': '0,1'}
+        hyperswap_type_3 = self._create_volume_type(spec,
+                                                    'hyperswap_type_3')
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, hyperswap_vol_type['id'], hyperswap_type_3['id'])
+        self.assertRaises(exception.InvalidInput, self.driver.retype,
+                          self.ctxt, volume, hyperswap_type_3, diff, host2)
+
+        # Retype a hyperswap volume in-use
+        inuse_type = self._create_hyperswap_type('in-use_type')
+        volume.previous_status = 'in-use'
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, hyperswap_vol_type['id'],
+            inuse_type['id'])
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.retype,
+                          self.ctxt, volume, inuse_type, diff,
+                          host)
+
+        # retype from hyperswap volume to replication volume
+        spec3 = {'replication_enabled': '<is> True',
+                 'replication_type': '<in> metro'}
+        replication_type = self._create_volume_type(spec3,
+                                                    'test_replication_type')
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, hyperswap_vol_type['id'], replication_type['id'])
+        self.assertRaises(exception.InvalidInput, self.driver.retype,
+                          self.ctxt, volume, replication_type, diff, host)
+
+        # retype from hyperswap volume to streched cluster volume
+        spec4 = {'mirror_pool': 'openstack1'}
+        mirror_type = self._create_volume_type(spec4,
+                                               'test_mirror_type')
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, hyperswap_vol_type['id'], mirror_type['id'])
+        self.assertRaises(exception.InvalidInput, self.driver.retype,
+                          self.ctxt, volume, mirror_type, diff, host)
+
+        # retype from streched cluster volume to hyperswap volume
+        host3 = {'host': 'openstack@svc#openstack'}
+        mirror_volume = self._create_volume(volume_type_id=mirror_type.id)
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, mirror_type['id'], hyperswap_vol_type['id'])
+        self.assertRaises(exception.InvalidInput, self.driver.retype,
+                          self.ctxt, mirror_volume, hyperswap_vol_type, diff,
+                          host3)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_storwize_hyperswap_group_create(self, is_grp_a_cg_snapshot_type):
+        """Test group create."""
+        is_grp_a_cg_snapshot_type.side_effect = [False, False, False, False]
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'hyperswap',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+        vol_type_ref = volume_types.create(self.ctxt, 'nonhypertype', None)
+        group_specs = {'hyperswap_group_enabled': '<is> True'}
+        group_type_ref = group_types.create(self.ctxt, 'testgroup',
+                                            group_specs)
+        group = testutils.create_group(self.ctxt,
+                                       group_type_id=group_type_ref['id'],
+                                       volume_type_ids=[vol_type_ref['id']])
+
+        # create hyperswap group with nonhyper volume type
+        model_update = self.driver.create_group(self.ctxt, group)
+        self.assertEqual(fields.GroupStatus.ERROR,
+                         model_update['status'])
+
+        # create hyperswap group with hyper volume type.
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'openstack1'}
+        vol_type_ref = volume_types.create(self.ctxt, 'hypertype', spec)
+        hyper_group = testutils.create_group(
+            self.ctxt, name='hypergroup',
+            group_type_id=group_type_ref['id'],
+            volume_type_ids=[vol_type_ref['id']])
+
+        model_update = self.driver.create_group(self.ctxt, hyper_group)
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update['status'])
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_storwize_hyperswap_group_delete(self, is_grp_a_cg_snapshot_type):
+        """Test group create."""
+        is_grp_a_cg_snapshot_type.side_effect = [False, False, False]
+
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'hyperswap',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+        group_specs = {'hyperswap_group_enabled': '<is> True'}
+        group_type_ref = group_types.create(self.ctxt, 'testgroup',
+                                            group_specs)
+
+        # create hyperswap group with hyper volume type.
+        vol_type_ref = self._create_hyperswap_type(
+            'hyper_type')
+        hyper_group = testutils.create_group(
+            self.ctxt, name='hypergroup',
+            group_type_id=group_type_ref['id'],
+            volume_type_ids=[vol_type_ref['id']])
+
+        model_update = self.driver.create_group(self.ctxt, hyper_group)
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update['status'])
+
+        vol1 = self._create_hyperswap_volume(vol_type_ref)
+        vol2 = self._create_hyperswap_volume(vol_type_ref)
+        ctxt = context.get_admin_context()
+        self.db.volume_update(ctxt, vol1['id'], {'group_id': hyper_group.id})
+        self.db.volume_update(ctxt, vol2['id'], {'group_id': hyper_group.id})
+        volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), hyper_group.id)
+
+        model_update = self.driver.delete_group(self.ctxt, hyper_group,
+                                                volumes)
+        self.assertEqual(fields.GroupStatus.DELETED,
+                         model_update[0]['status'])
+        for volume in model_update[1]:
+            self.assertEqual('deleted', volume['status'])
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_storwize_hyperswap_group_update(self, is_grp_a_cg_snapshot_type):
+        """Test group create."""
+        is_grp_a_cg_snapshot_type.side_effect = [False, False, False,
+                                                 False, False]
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'hyperswap',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+        group_specs = {'hyperswap_group_enabled': '<is> True'}
+        group_type_ref = group_types.create(self.ctxt, 'testgroup',
+                                            group_specs)
+
+        # create hyperswap group with hyper volume type.
+        volume_type_ref = self._create_hyperswap_type(
+            'hyper_type')
+        hyper_group = testutils.create_group(
+            self.ctxt, name='hypergroup',
+            group_type_id=group_type_ref['id'],
+            volume_type_ids=[volume_type_ref['id']])
+
+        model_update = self.driver.create_group(self.ctxt, hyper_group)
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update['status'])
+
+        vol1 = self._create_hyperswap_volume(volume_type_ref)
+        vol2 = self._create_hyperswap_volume(volume_type_ref)
+        ctxt = context.get_admin_context()
+        self.db.volume_update(ctxt, vol1['id'], {'group_id': hyper_group.id})
+        self.db.volume_update(ctxt, vol2['id'], {'group_id': hyper_group.id})
+        add_volumes = [vol1, vol2]
+        del_volumes = []
+
+        # add hyperswap volume
+        (model_update, add_volumes_update,
+         remove_volumes_update) = self.driver.update_group(self.ctxt,
+                                                           hyper_group,
+                                                           add_volumes,
+                                                           del_volumes)
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update['status'])
+        self.assertIsNone(add_volumes_update)
+        self.assertIsNone(remove_volumes_update)
+
+        # del hyperswap volume from volume group
+        add_volumes = []
+        del_volumes = [vol1, vol2]
+        (model_update, add_volumes_update,
+         remove_volumes_update) = self.driver.update_group(self.ctxt,
+                                                           hyper_group,
+                                                           add_volumes,
+                                                           del_volumes)
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update['status'])
+        self.assertIsNone(add_volumes_update)
+        self.assertIsNone(remove_volumes_update)
+
+        # add non-hyper volume
+        non_type_ref = volume_types.create(self.ctxt, 'nonhypertype', None)
+        add_vol3 = self._create_volume(volume_type_id=non_type_ref['id'])
+        (model_update, add_volumes_update,
+         remove_volumes_update) = self.driver.update_group(self.ctxt,
+                                                           hyper_group,
+                                                           [add_vol3], [])
+        self.assertEqual(fields.GroupStatus.ERROR,
+                         model_update['status'])
+        self.assertIsNone(add_volumes_update)
+        self.assertIsNone(remove_volumes_update)
 
 
 class CLIResponseTestCase(test.TestCase):
@@ -6573,14 +7785,16 @@ class StorwizeHelpersTestCase(test.TestCase):
         for i in range(7):
             self.assertTrue(self.storwize_svc_common.replication_licensed())
 
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsmdiskgrp')
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'get_vdisk_count_by_io_group')
-    def test_select_io_group(self, get_vdisk_count_by_io_group):
+    def test_select_io_group(self, get_vdisk_count_by_io_group, lsmdiskgrp):
         # given io groups
         opts = {}
         # system io groups
         state = {}
 
+        lsmdiskgrp.return_value = {}
         fake_iog_vdc1 = {0: 100, 1: 50, 2: 50, 3: 300}
         fake_iog_vdc2 = {0: 2, 1: 1, 2: 200}
         fake_iog_vdc3 = {0: 2, 2: 200}
@@ -6592,31 +7806,32 @@ class StorwizeHelpersTestCase(test.TestCase):
                                                    fake_iog_vdc3,
                                                    fake_iog_vdc4,
                                                    fake_iog_vdc5]
+        pool = _get_test_pool(False)
         opts['iogrp'] = '0,2'
         state['available_iogrps'] = [0, 1, 2, 3]
 
-        iog = self.storwize_svc_common.select_io_group(state, opts)
+        iog = self.storwize_svc_common.select_io_group(state, opts, pool)
         self.assertTrue(iog in state['available_iogrps'])
         self.assertEqual(2, iog)
 
         opts['iogrp'] = '0'
         state['available_iogrps'] = [0, 1, 2]
 
-        iog = self.storwize_svc_common.select_io_group(state, opts)
+        iog = self.storwize_svc_common.select_io_group(state, opts, pool)
         self.assertTrue(iog in state['available_iogrps'])
         self.assertEqual(0, iog)
 
         opts['iogrp'] = '1,2'
         state['available_iogrps'] = [0, 2]
 
-        iog = self.storwize_svc_common.select_io_group(state, opts)
+        iog = self.storwize_svc_common.select_io_group(state, opts, pool)
         self.assertTrue(iog in state['available_iogrps'])
         self.assertEqual(2, iog)
 
         opts['iogrp'] = ' 0, 1, 2 '
         state['available_iogrps'] = [0, 1, 2, 3]
 
-        iog = self.storwize_svc_common.select_io_group(state, opts)
+        iog = self.storwize_svc_common.select_io_group(state, opts, pool)
         self.assertTrue(iog in state['available_iogrps'])
         # since vdisk count in all iogroups is same, it will pick the first
         self.assertEqual(0, iog)
@@ -6624,7 +7839,7 @@ class StorwizeHelpersTestCase(test.TestCase):
         opts['iogrp'] = '0,1,2, 3'
         state['available_iogrps'] = [0, 1, 2, 3]
 
-        iog = self.storwize_svc_common.select_io_group(state, opts)
+        iog = self.storwize_svc_common.select_io_group(state, opts, pool)
         self.assertTrue(iog in state['available_iogrps'])
         self.assertEqual(1, iog)
 
@@ -7650,10 +8865,21 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.delete_volume(gmcv_volume)
         self._validate_replic_vol_deletion(gmcv_volume, True)
 
+        volume, model_update = self._create_test_volume(self.mm_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(volume)
+
         non_replica_vol, model_update = self._create_test_volume(
             self.non_replica_type)
         self.assertEqual(fields.ReplicationStatus.NOT_CAPABLE,
                          model_update['replication_status'])
+
+        gmcv_volume, model_update = self._create_test_volume(
+            self.gmcv_with_cps600_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(gmcv_volume, True)
 
         volumes = [volume, non_replica_vol, gmcv_volume]
         # Delete volume in failover state
