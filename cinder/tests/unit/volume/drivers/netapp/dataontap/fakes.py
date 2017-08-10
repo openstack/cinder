@@ -533,7 +533,9 @@ VG_VOLUME_SNAPSHOT = {
 
 
 class test_volume(object):
-    pass
+
+    def __getitem__(self, key):
+        return getattr(self, key)
 
 test_volume = test_volume()
 test_volume.id = {'vserver': 'openstack', 'name': 'vola'}
@@ -552,6 +554,8 @@ test_volume.state = {
     'junction_active': True,
 }
 test_volume.qos = {'qos_policy_group': None}
+test_volume.host = 'fakehost@backbackend#fakepool'
+test_volume.name = 'fakename'
 
 
 class test_snapshot(object):

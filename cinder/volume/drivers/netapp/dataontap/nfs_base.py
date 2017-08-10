@@ -557,21 +557,23 @@ class NetAppNfsDriver(driver.ManageableVD,
         """Clones a copy from image cache."""
         cloned = False
         LOG.info('Cloning image %s from cache', image_id)
+        path = volume.host.split('#')[1]
         for res in cache_result:
             # Repeat tries in other shares if failed in some
             (share, file_name) = res
-            LOG.debug('Cache share: %s', share)
-            if (share and
-                    self._is_share_clone_compatible(volume, share)):
-                try:
-                    self._do_clone_rel_img_cache(
-                        file_name, volume['name'], share, file_name)
-                    cloned = True
-                    volume['provider_location'] = share
-                    break
-                except Exception:
-                    LOG.warning('Unexpected exception during'
-                                ' image cloning in share %s', share)
+            if path == share:
+                LOG.debug('Cache share: %s', share)
+                if (share and
+                        self._is_share_clone_compatible(volume, share)):
+                    try:
+                        self._do_clone_rel_img_cache(
+                            file_name, volume['name'], share, file_name)
+                        cloned = True
+                        volume['provider_location'] = share
+                        break
+                    except Exception:
+                        LOG.warning('Unexpected exception during'
+                                    ' image cloning in share %s', share)
         return cloned
 
     def _direct_nfs_clone(self, volume, image_location, image_id):
