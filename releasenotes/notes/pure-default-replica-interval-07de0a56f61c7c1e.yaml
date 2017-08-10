@@ -1,0 +1,10 @@
+---
+upgrade:
+  - The default value for pure_replica_interval_default
+    used by Pure Storage volume drivers has changed from
+    900 to 3600 seconds.
+fixes:
+  - Fixes an issue where starting the Pure volume drivers
+    with replication enabled and default values for
+    pure_replica_interval_default would cause an error to
+    be raised from the backend.
