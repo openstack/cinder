@@ -1,6 +1,6 @@
-================================
-Cinder Contributor Documentation
-================================
+=====================================================
+Cinder Contributor Documentation (source/contributor)
+=====================================================
 
 Introduction:
 -------------
