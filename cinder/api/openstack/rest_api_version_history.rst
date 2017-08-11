@@ -365,3 +365,7 @@ user documentation.
 3.43
 ----
   Support backup CRUD with metadata.
+
+3.44
+----
+  Support attachment completion.

@@ -27,6 +27,7 @@ from cinder.volume import api as volume_api
 
 LOG = logging.getLogger(__name__)
 API_VERSION = '3.27'
+ATTACHMENT_COMPLETION_VERSION = '3.44'
 
 
 class AttachmentsController(wsgi.Controller):
@@ -265,6 +266,20 @@ class AttachmentsController(wsgi.Controller):
         attachment = objects.VolumeAttachment.get_by_id(context, id)
         attachments = self.volume_api.attachment_delete(context, attachment)
         return attachment_views.ViewBuilder.list(attachments)
+
+    @wsgi.response(202)
+    @wsgi.Controller.api_version(ATTACHMENT_COMPLETION_VERSION)
+    @wsgi.action('os-complete')
+    def complete(self, req, id, body):
+        """Mark a volume attachment process as completed (in-use)."""
+        context = req.environ['cinder.context']
+        attachment_ref = (
+            objects.VolumeAttachment.get_by_id(context, id))
+        volume_ref = objects.Volume.get_by_id(
+            context,
+            attachment_ref.volume_id)
+        attachment_ref.update({'attach_status': 'attached'})
+        volume_ref.update({'status': 'in-use', 'attach_status': 'attached'})
 
 
 def create_resource(ext_mgr):

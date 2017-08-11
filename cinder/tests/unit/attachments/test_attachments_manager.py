@@ -119,8 +119,8 @@ class AttachmentManagerTestCase(test.TestCase):
             self.assertEqual('rw', new_attachment_ref['attach_mode'])
 
             new_volume_ref = db.volume_get(self.context, vref.id)
-            self.assertEqual('in-use', new_volume_ref.status)
-            self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+            self.assertEqual('attaching', new_volume_ref.status)
+            self.assertEqual(fields.VolumeAttachStatus.ATTACHING,
                              new_volume_ref.attach_status)
 
     def test_attachment_delete(self):

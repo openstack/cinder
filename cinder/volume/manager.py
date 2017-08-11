@@ -4373,13 +4373,13 @@ class VolumeManager(manager.CleanableManager,
                                 attachment_ref.instance_uuid,
                                 connector.get('host', ''),
                                 connector.get('mountpoint', 'na'),
-                                mode)
+                                mode,
+                                False)
         vref.refresh()
+        attachment_ref.refresh()
         self._notify_about_volume_usage(context, vref, "attach.end")
-        LOG.info("Attach volume completed successfully.",
+        LOG.info("attachment_update completed successfully.",
                  resource=vref)
-        attachment_ref = objects.VolumeAttachment.get_by_id(context,
-                                                            attachment_id)
         return connection_info
 
     def _connection_terminate(self, context, volume,

@@ -2793,6 +2793,21 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             manager._set_resource_host(volume)
             save_mock.assert_not_called()
 
+    def test_volume_attach_attaching(self):
+        """Test volume_attach ."""
+
+        instance_uuid = '12345678-1234-5678-1234-567812345678'
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        attachment = db.volume_attach(self.context,
+                                      {'volume_id': volume['id'],
+                                       'attached_host': 'fake-host'})
+        db.volume_attached(self.context, attachment['id'], instance_uuid,
+                           'fake-host', 'vdb', mark_attached=False)
+        volume_api = cinder.volume.api.API()
+        volume = volume_api.get(self.context, volume['id'])
+        self.assertEqual("attaching", volume['status'])
+        self.assertEqual("attaching", volume['attach_status'])
+
 
 class VolumeTestCaseLocks(base.BaseVolumeTestCase):
     MOCK_TOOZ = False

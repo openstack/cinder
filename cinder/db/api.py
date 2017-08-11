@@ -223,10 +223,10 @@ def volume_attach(context, values):
 
 
 def volume_attached(context, volume_id, instance_id, host_name, mountpoint,
-                    attach_mode='rw'):
+                    attach_mode='rw', mark_attached=True):
     """Ensure that a volume is set as attached."""
     return IMPL.volume_attached(context, volume_id, instance_id, host_name,
-                                mountpoint, attach_mode)
+                                mountpoint, attach_mode, mark_attached)
 
 
 def volume_create(context, values):

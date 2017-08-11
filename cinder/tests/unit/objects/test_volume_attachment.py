@@ -92,7 +92,8 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
                                                 fake.INSTANCE_ID,
                                                 'fake_host',
                                                 '/dev/sda',
-                                                'rw')
+                                                'rw',
+                                                True)
         self.assertEqual('/dev/sda', attachment.mountpoint)
         self.assertEqual(fake.INSTANCE_ID, attachment.instance_uuid)
         self.assertEqual(fields.VolumeAttachStatus.ATTACHED,

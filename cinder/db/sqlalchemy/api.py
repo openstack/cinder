@@ -1451,14 +1451,25 @@ def volume_attach(context, values):
 
 @require_admin_context
 def volume_attached(context, attachment_id, instance_uuid, host_name,
-                    mountpoint, attach_mode='rw'):
+                    mountpoint, attach_mode, mark_attached):
     """This method updates a volume attachment entry.
 
     This function saves the information related to a particular
     attachment for a volume.  It also updates the volume record
-    to mark the volume as attached.
+    to mark the volume as attached or attaching.
+
+    The mark_attached argument is a boolean, when set to True,
+    we mark the volume as 'in-use' and the 'attachment' as
+    'attached', if False, we use 'attaching' for both of these
+    status settings.
 
     """
+    attach_status = fields.VolumeAttachStatus.ATTACHED
+    volume_status = 'in-use'
+    if not mark_attached:
+        attach_status = fields.VolumeAttachStatus.ATTACHING
+        volume_status = 'attaching'
+
     if instance_uuid and not uuidutils.is_uuid_like(instance_uuid):
         raise exception.InvalidUUID(uuid=instance_uuid)
 
@@ -1468,7 +1479,7 @@ def volume_attached(context, attachment_id, instance_uuid, host_name,
                                                 session=session)
 
         updated_values = {'mountpoint': mountpoint,
-                          'attach_status': fields.VolumeAttachStatus.ATTACHED,
+                          'attach_status': attach_status,
                           'instance_uuid': instance_uuid,
                           'attached_host': host_name,
                           'attach_time': timeutils.utcnow(),
@@ -1480,8 +1491,8 @@ def volume_attached(context, attachment_id, instance_uuid, host_name,
 
         volume_ref = _volume_get(context, volume_attachment_ref['volume_id'],
                                  session=session)
-        volume_ref['status'] = 'in-use'
-        volume_ref['attach_status'] = fields.VolumeAttachStatus.ATTACHED
+        volume_ref['status'] = volume_status
+        volume_ref['attach_status'] = attach_status
         volume_ref.save(session=session)
         return (volume_ref, updated_values)
 
