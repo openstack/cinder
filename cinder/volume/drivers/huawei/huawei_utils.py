@@ -213,6 +213,9 @@ def get_snapshot_id(client, snapshot):
 def get_host_id(client, host_name):
     encoded_name = encode_host_name(host_name)
     host_id = client.get_host_id_by_name(encoded_name)
+    if encoded_name == host_name:
+        return host_id
+
     if not host_id:
         encoded_name = old_encode_host_name(host_name)
         host_id = client.get_host_id_by_name(encoded_name)
