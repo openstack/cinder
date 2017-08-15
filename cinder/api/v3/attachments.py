@@ -279,7 +279,9 @@ class AttachmentsController(wsgi.Controller):
             context,
             attachment_ref.volume_id)
         attachment_ref.update({'attach_status': 'attached'})
+        attachment_ref.save()
         volume_ref.update({'status': 'in-use', 'attach_status': 'attached'})
+        volume_ref.save()
 
 
 def create_resource(ext_mgr):
