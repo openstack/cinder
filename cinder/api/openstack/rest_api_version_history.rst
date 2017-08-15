@@ -362,8 +362,8 @@ user documentation.
   ``volume:extend_attached_volume`` policy rule.  Extend of a resered
   Volume is NOT allowed.
 
-3.43
-----
+3.43 (Maximum in Pike)
+----------------------
   Support backup CRUD with metadata.
 
 3.44
