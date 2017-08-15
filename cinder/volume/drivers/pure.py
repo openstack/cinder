@@ -61,7 +61,7 @@ PURE_OPTS = [
                      "max_over_subscription_ratio config option."),
     # These are used as default settings.  In future these can be overridden
     # by settings in volume-type.
-    cfg.IntOpt("pure_replica_interval_default", default=900,
+    cfg.IntOpt("pure_replica_interval_default", default=3600,
                help="Snapshot replication interval in seconds."),
     cfg.IntOpt("pure_replica_retention_short_term_default", default=14400,
                help="Retain all snapshots on target for this "
@@ -1719,7 +1719,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
     the underlying storage connectivity with the FlashArray.
     """
 
-    VERSION = "6.0.0"
+    VERSION = "7.0.0"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -1907,7 +1907,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     supports the Cinder Fibre Channel Zone Manager.
     """
 
-    VERSION = "4.0.0"
+    VERSION = "5.0.0"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)

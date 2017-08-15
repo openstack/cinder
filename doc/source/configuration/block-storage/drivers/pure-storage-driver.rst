@@ -10,7 +10,7 @@ Support for iSCSI storage protocol is available with the PureISCSIDriver
 Volume Driver class, and Fibre Channel with PureFCDriver.
 
 All drivers are compatible with Purity FlashArrays that support the REST
-API version 1.2, 1.3, or 1.4 (Purity 4.0.0 and newer).
+API version 1.2, 1.3, 1.4, or 1.5 (Purity 4.0.0 and newer).
 
 Limitations and known issues
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -237,7 +237,7 @@ Option                                               Description   Default
 ``pure_replica_interval_default``                    Snapshot
                                                      replication
                                                      interval in
-                                                     seconds.      ``900``
+                                                     seconds.      ``3600``
 ``pure_replica_retention_short_term_default``        Retain all
                                                      snapshots on
                                                      target for
