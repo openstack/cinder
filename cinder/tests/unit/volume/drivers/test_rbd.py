@@ -1788,6 +1788,33 @@ class RBDTestCase(test.TestCase):
         self.assertEqual(RAISED_EXCEPTIONS,
                          [self.mock_rbd.ImageExists])
 
+    @ddt.data({'image_size': [1, 1], 'total_usage': 2},
+              {'image_size': MockImageNotFoundException, 'total_usage': 0})
+    @ddt.unpack
+    @mock.patch.object(driver, 'RADOSClient')
+    @mock.patch.object(driver, 'RBDVolumeProxy')
+    def test__get_usage_info(self, volume_proxy, mock_rados_client,
+                             image_size, total_usage):
+        class FakeRBDProxy(object):
+            def list(self, ioctx):
+                return ['volume-1', 'volume-2']
+
+        def diff_iterate(offset, length, from_snapshot, iterate_cb):
+            self.driver._iterate_cb(offset, length, True)
+
+        self.driver._total_usage = 0
+        with mock.patch.object(self.driver, 'RBDProxy') as rbd_proxy:
+            with mock.patch.object(self.driver, 'rbd') as mock_rbd:
+                mock_rbd.ImageNotFound = MockImageNotFoundException
+                proxy_list = mock.Mock()
+                proxy_list.side_effect = ['volume-1', 'volume-2']
+                rbd_proxy.return_value = FakeRBDProxy()
+                image = volume_proxy.return_value.__enter__.return_value
+                image.size.side_effect = image_size
+                image.diff_iterate.side_effect = diff_iterate
+                self.driver._get_usage_info()
+                self.assertEqual(total_usage, self.driver._total_usage)
+
 
 class ManagedRBDTestCase(test_driver.BaseDriverTestCase):
     driver_name = "cinder.volume.drivers.rbd.RBDDriver"
