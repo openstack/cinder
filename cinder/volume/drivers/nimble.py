@@ -1663,7 +1663,7 @@ class NimbleRestAPIExecutor(object):
         url = self.uri + api
         r = requests.delete(url, headers=self.headers, verify=self.verify)
         if r.status_code != 201 and r.status_code != 200:
-            msg = _("Failed to execute api %(api) : %(msg)s %(code)s") % {
+            msg = _("Failed to execute api %(api)s : %(msg)s %(code)s") % {
                 'api': api,
                 'msg': r.json()['messages'][1]['text'],
                 'code': r.status_code}
