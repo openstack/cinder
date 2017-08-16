@@ -104,7 +104,7 @@ Request
    - volume_id: volume_id
    - force: force
    - description: description
-   - name: name
+   - name: name_12
    - project_id: project_id_path
    - metadata: metadata_7
 
@@ -122,12 +122,12 @@ Response Parameters
    - status: status_2
    - description: description
    - created_at: created_at
-   - name: name
+   - name: name_12
    - snapshot: snapshot
    - user_id: user_id_2
    - volume_id: volume_id
    - metadata: metadata
-   - id: id
+   - id: id_4
    - size: size
    - updated_at: updated_at
 
