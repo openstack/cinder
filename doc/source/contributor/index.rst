@@ -18,8 +18,9 @@
 Contributor Guide
 =================
 
-In this section you will find information on Cinder's lower level programming
-APIs.
+In this section you will find information on how to contribute to Cinder.
+Content includes architectural overviews, tips and tricks for setting up a
+development environment, and information on Cinder's lower level programming APIs,
 
 
 Programming HowTos and Tutorials
@@ -41,6 +42,13 @@ Programming HowTos and Tutorials
     api.apache
     rolling.upgrades
     groups
+
+Documentation Contribution
+--------------------------
+.. toctree::
+   :maxdepth: 2
+
+   documentation
 
 Background Concepts for Cinder
 ------------------------------
