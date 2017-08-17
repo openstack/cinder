@@ -829,7 +829,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                       'total_volumes': total_volumes,
                       'thick_provisioning_support': False,
                       'provisioned_capacity_gb': provisioned_vol / units.Mi,
-                      'max_oversubscription_ratio': ratio,
+                      'max_over_subscription_ratio': ratio,
                       'kaminario:thin_prov_type': 'dedup/nodedup',
                       'replication_enabled': True,
                       'kaminario:replication': True}
