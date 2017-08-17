@@ -722,7 +722,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
                                  volume_size=src_vref.size,
                                  name='clone-snap-%s' % src_vref.id,
                                  volume_id=src_vref.id,
-                                 volume=volume)
+                                 volume=src_vref)
 
         self._create_snapshot_ploop(temp_snapshot)
         try:
@@ -744,7 +744,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         """Creates a clone of the specified volume."""
         volume_format = self.get_volume_format(src_vref)
         if volume_format == DISK_FORMAT_PLOOP:
-            self._create_cloned_volume(volume, src_vref)
+            return self._create_cloned_volume(volume, src_vref)
         else:
-            super(VZStorageDriver, self)._create_cloned_volume(volume,
-                                                               src_vref)
+            return super(VZStorageDriver, self)._create_cloned_volume(volume,
+                                                                      src_vref)
