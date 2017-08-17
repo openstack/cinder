@@ -1913,6 +1913,42 @@ class XIVProxyTest(test.TestCase):
         ex = getattr(p, "_get_exception")()
         self.assertRaises(ex, p.delete_group, {}, group_obj, [])
 
+    def test_delete_consistencygroup_replicated(self):
+        """test delete cg when CG is not empty and replicated"""
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        p.ibm_storage_cli = mock.MagicMock()
+
+        group_obj = self._create_test_group()
+        group_obj['replication_status'] = fields.ReplicationStatus.ENABLED
+        ex = getattr(p, "_get_exception")()
+        self.assertRaises(ex, p.delete_group, {}, group_obj, [])
+
+    def test_delete_consistencygroup_faildover(self):
+        """test delete cg when CG is faildover"""
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        p.ibm_storage_cli = mock.MagicMock()
+
+        group_obj = self._create_test_group()
+        group_obj['replication_status'] = fields.ReplicationStatus.FAILED_OVER
+        ex = getattr(p, "_get_exception")()
+        self.assertRaises(ex, p.delete_group, {}, group_obj, [])
+
     def test_delete_consistencygroup_is_mirrored(self):
         """test delete_consistenygroup when CG is mirroring"""
         driver = mock.MagicMock()
