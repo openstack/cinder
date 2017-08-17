@@ -150,6 +150,23 @@ class XIVProxyTest(test.TestCase):
             'san_password': REPLICA_PASSWORD,
         }
 
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.pyxcli")
+    def test_wrong_pyxcli(self, mock_pyxcli):
+
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        mock_pyxcli.version = '1.1.4'
+        self.assertRaises(test_mock.cinder.exception.CinderException,
+                          p.setup, {})
+
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage"
                 ".xiv_proxy.socket.getfqdn", new=mock.MagicMock(
                     return_value='test_hostname'))
