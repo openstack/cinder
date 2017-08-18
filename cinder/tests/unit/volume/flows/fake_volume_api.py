@@ -27,8 +27,6 @@ class FakeVolumeAPI(object):
         self.test_inst.assertEqual(request_spec['source_volid'], source_volid)
         self.test_inst.assertEqual(request_spec['snapshot_id'], snapshot_id)
         self.test_inst.assertEqual(request_spec['image_id'], image_id)
-        self.test_inst.assertEqual(request_spec['source_replicaid'],
-                                   source_replicaid)
 
 
 class FakeSchedulerRpcAPI(object):

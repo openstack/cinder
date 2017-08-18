@@ -37,9 +37,6 @@ class ScaleIODriver(driver.ScaleIODriver):
     def promote_replica(self, context, volume):
         pass
 
-    def create_replica_test_volume(self, volume, src_vref):
-        pass
-
     def unmanage(self, volume):
         pass
 

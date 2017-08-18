@@ -2122,9 +2122,6 @@ class VolumeDriver(ManageableVD, CloneableImageVD, ManageableSnapshotsVD,
 
         raise NotImplementedError()
 
-    def create_replica_test_volume(self, volume, src_vref):
-        raise NotImplementedError()
-
     def delete_volume(self, volume):
         raise NotImplementedError()
 

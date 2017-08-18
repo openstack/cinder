@@ -225,6 +225,13 @@ class API(base.Base):
 
         check_policy(context, 'create_from_image' if image_id else 'create')
 
+        # Check up front for legacy replication parameters to quick fail
+        if source_replica:
+            msg = _("Creating a volume from a replica source was part of the "
+                    "replication v1 implementation which is no longer "
+                    "available.")
+            raise exception.InvalidInput(reason=msg)
+
         # NOTE(jdg): we can have a create without size if we're
         # doing a create from snap or volume.  Currently
         # the taskflow api will handle this and pull in the
@@ -276,12 +283,6 @@ class API(base.Base):
                             "or omit type argument).") % volume_type.id
                     raise exception.InvalidInput(reason=msg)
 
-        # When cloning replica (for testing), volume type must be omitted
-        if source_replica and volume_type:
-            msg = _("No volume_type should be provided when creating test "
-                    "replica.")
-            raise exception.InvalidInput(reason=msg)
-
         if snapshot and volume_type:
             if volume_type.id != snapshot.volume_type_id:
                 if not self._retype_is_possible(context,
@@ -315,7 +316,6 @@ class API(base.Base):
             'source_volume': source_volume,
             'scheduler_hints': scheduler_hints,
             'key_manager': self.key_manager,
-            'source_replica': source_replica,
             'optional_args': {'is_quota_committed': False},
             'consistencygroup': consistencygroup,
             'cgsnapshot': cgsnapshot,

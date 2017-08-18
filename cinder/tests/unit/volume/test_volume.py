@@ -1366,32 +1366,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         snapshot_obj.destroy()
         db.volume_destroy(self.context, src_vol_id)
 
-    @mock.patch(
-        'cinder.volume.driver.VolumeDriver.create_replica_test_volume')
-    @mock.patch('cinder.utils.execute')
-    def test_create_volume_from_srcreplica_raise_metadata_copy_failure(
-            self, mock_execute, _create_replica_test):
-        mock_execute.return_value = None
-        _create_replica_test.return_value = None
-        # create source volume
-        src_vol = tests_utils.create_volume(self.context, **self.volume_params)
-        src_vol_id = src_vol['id']
-
-        self.volume.create_volume(self.context, src_vol)
-        # set bootable flag of volume to True
-        db.volume_update(self.context, src_vol['id'], {'bootable': True})
-
-        # create volume from source volume
-        dst_vol = tests_utils.create_volume(self.context,
-                                            source_volid=src_vol_id,
-                                            **self.volume_params)
-        self._raise_metadata_copy_failure(
-            'volume_glance_metadata_copy_from_volume_to_volume',
-            dst_vol)
-
-        # cleanup resource
-        db.volume_destroy(self.context, src_vol_id)
-
     @mock.patch('cinder.utils.execute')
     def test_create_volume_from_snapshot_with_glance_volume_metadata_none(
             self, mock_execute):
@@ -1432,38 +1406,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         snapshot_obj.destroy()
         db.volume_destroy(self.context, src_vol_id)
         db.volume_destroy(self.context, dst_vol['id'])
-
-    @mock.patch(
-        'cinder.volume.driver.VolumeDriver.create_replica_test_volume')
-    def test_create_volume_from_srcreplica_with_glance_volume_metadata_none(
-            self, _create_replica_test):
-        """Test volume can be created from a volume replica."""
-        _create_replica_test.return_value = None
-
-        volume_src = tests_utils.create_volume(self.context,
-                                               **self.volume_params)
-        self.volume.create_volume(self.context, volume_src)
-        db.volume_update(self.context, volume_src['id'], {'bootable': True})
-
-        volume = db.volume_get(self.context, volume_src['id'])
-        volume_dst = tests_utils.create_volume(
-            self.context,
-            **self.volume_params)
-        self.volume.create_volume(self.context, volume_dst,
-                                  {'source_replicaid': volume.id})
-
-        self.assertRaises(exception.GlanceMetadataNotFound,
-                          db.volume_glance_metadata_copy_from_volume_to_volume,
-                          self.context, volume_src['id'], volume_dst['id'])
-
-        self.assertEqual('available',
-                         db.volume_get(self.context,
-                                       volume_dst['id']).status)
-        self.assertTrue(_create_replica_test.called)
-
-        # cleanup resource
-        db.volume_destroy(self.context, volume_dst['id'])
-        db.volume_destroy(self.context, volume_src['id'])
 
     @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
     def test_create_volume_from_snapshot_with_encryption(self):
@@ -2349,27 +2291,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             volumes_reserved = 0
 
         self.assertEqual(100, volumes_reserved)
-
-    @mock.patch(
-        'cinder.volume.driver.VolumeDriver.create_replica_test_volume')
-    def test_create_volume_from_sourcereplica(self, _create_replica_test):
-        """Test volume can be created from a volume replica."""
-        _create_replica_test.return_value = None
-
-        volume_src = tests_utils.create_volume(self.context,
-                                               **self.volume_params)
-        self.volume.create_volume(self.context, volume_src)
-        volume_dst = tests_utils.create_volume(
-            self.context,
-            **self.volume_params)
-        self.volume.create_volume(self.context, volume_dst,
-                                  {'source_replicaid': volume_src.id})
-        self.assertEqual('available',
-                         db.volume_get(context.get_admin_context(),
-                                       volume_dst['id']).status)
-        self.assertTrue(_create_replica_test.called)
-        self.volume.delete_volume(self.context, volume_dst)
-        self.volume.delete_volume(self.context, volume_src)
 
     def test_create_volume_from_sourcevol(self):
         """Test volume can be created from a source volume."""

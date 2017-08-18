@@ -139,7 +139,6 @@ class VolumeApiTest(test.TestCase):
                              availability_zone=DEFAULT_AZ,
                              snapshot_id=None,
                              source_volid=None,
-                             source_replica=None,
                              consistencygroup_id=None,
                              volume_type=None,
                              image_ref=None,
@@ -151,7 +150,6 @@ class VolumeApiTest(test.TestCase):
                "availability_zone": availability_zone,
                "snapshot_id": snapshot_id,
                "source_volid": source_volid,
-               "source_replica": source_replica,
                "consistencygroup_id": consistencygroup_id,
                "volume_type": volume_type,
                "multiattach": multiattach,
@@ -222,7 +220,6 @@ class VolumeApiTest(test.TestCase):
         return {'metadata': None,
                 'snapshot': snapshot,
                 'source_volume': source_volume,
-                'source_replica': None,
                 'group': None,
                 'consistencygroup': None,
                 'availability_zone': availability_zone,
@@ -340,8 +337,6 @@ class VolumeApiTest(test.TestCase):
 
     @ddt.data({'source_volid': 1},
               {'source_volid': []},
-              {'source_replica': 1},
-              {'source_replica': []},
               {'consistencygroup_id': 1},
               {'consistencygroup_id': []})
     def test_volume_creation_fails_with_invalid_uuids(self, updated_uuids):
@@ -352,42 +347,6 @@ class VolumeApiTest(test.TestCase):
         # Raise 400 for resource requested with invalid uuids.
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           req, body)
-
-    @mock.patch.object(volume_api.API, 'get_volume', autospec=True)
-    def test_volume_creation_fails_with_invalid_source_replica(self,
-                                                               get_volume):
-
-        get_volume.side_effect = v2_fakes.fake_volume_get_notfound
-
-        source_replica = fake.VOLUME_ID
-        vol = self._vol_in_request_body(source_replica=source_replica)
-        body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
-        # Raise 404 when source replica cannot be found.
-        self.assertRaises(exception.VolumeNotFound, self.controller.create,
-                          req, body)
-
-        context = req.environ['cinder.context']
-        get_volume.assert_called_once_with(self.controller.volume_api,
-                                           context, source_replica)
-
-    @mock.patch.object(volume_api.API, 'get_volume', autospec=True)
-    def test_volume_creation_fails_with_invalid_source_replication_status(
-            self, get_volume):
-
-        get_volume.side_effect = v2_fakes.fake_volume_get
-
-        source_replica = '2f49aa3a-6aae-488d-8b99-a43271605af6'
-        vol = self._vol_in_request_body(source_replica=source_replica)
-        body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
-        # Raise 400 when replication status is disabled.
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
-                          req, body)
-
-        context = req.environ['cinder.context']
-        get_volume.assert_called_once_with(self.controller.volume_api,
-                                           context, source_replica)
 
     @mock.patch.object(groupAPI.API, 'get', autospec=True)
     def test_volume_creation_fails_with_invalid_consistency_group(self,

@@ -620,7 +620,6 @@ class VolumeManager(manager.CleanableManager,
 
         snapshot_id = request_spec.get('snapshot_id')
         source_volid = request_spec.get('source_volid')
-        source_replicaid = request_spec.get('source_replicaid')
 
         if snapshot_id is not None:
             # Make sure the snapshot is not deleted until we are done with it.
@@ -628,9 +627,6 @@ class VolumeManager(manager.CleanableManager,
         elif source_volid is not None:
             # Make sure the volume is not deleted until we are done with it.
             locked_action = "%s-%s" % (source_volid, 'delete_volume')
-        elif source_replicaid is not None:
-            # Make sure the volume is not deleted until we are done with it.
-            locked_action = "%s-%s" % (source_replicaid, 'delete_volume')
         else:
             locked_action = None
 
