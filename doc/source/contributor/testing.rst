@@ -81,7 +81,7 @@ execution. To ensure the Cinder tests are picked up when running tempest, run::
     tox -e all-plugin
 
 More information about tempest can be found in the `Tempest Documentation
-<http://docs.openstack.org/developer/tempest/overview.html>`_.
+<https://docs.openstack.org/tempest/latest/>`_.
 
 Database Setup
 ~~~~~~~~~~~~~~~
@@ -106,7 +106,7 @@ You may also use regular expressions to run any matching tests::
     tox -epy27 -- -r test_volume
 
 For more information on these options and how to run tests, please see the
-`ostestr documentation <http://docs.openstack.org/developer/os-testr/>`_.
+`ostestr documentation <https://docs.openstack.org/os-testr/latest/>`_.
 
 Gotchas
 -------

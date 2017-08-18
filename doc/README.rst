@@ -6,7 +6,7 @@ Files under this directory tree are used for generating the documentation
 for the Cinder source code.
 
 Developer documentation is built to:
-http://docs.openstack.org/developer/cinder/
+https://docs.openstack.org/cinder/latest/
 
 Tools
 =====

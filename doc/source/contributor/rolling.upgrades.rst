@@ -246,7 +246,7 @@ RPC payload changes (oslo.versionedobjects)
 -------------------------------------------
 
 `oslo.versionedobjects
-<http://docs.openstack.org/developer/oslo.versionedobjects>`_ is a library that
+<https://docs.openstack.org/oslo.versionedobjects/latest/>`_ is a library that
 helps us to maintain compatibility of the payload sent over RPC. As during the
 process of upgrades it is possible that a newer version of the service will
 send an object to an older one, it may happen that newer object is incompatible

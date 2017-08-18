@@ -23,7 +23,7 @@ environment that can be used in developing cinder on Ubuntu, Fedora or
 Mac OS X. These instructions assume you're already familiar with
 git. Refer to GettingTheCode_ for additional information.
 
-.. _GettingTheCode: http://wiki.openstack.org/GettingTheCode
+.. _GettingTheCode: https://wiki.openstack.org/wiki/Getting_The_Code
 
 Following these instructions will allow you to run the cinder unit tests.
 Running cinder is currently only supported on Linux, although you can run the
@@ -148,4 +148,4 @@ Once your work is complete you may wish to contribute it to the project.
 Cinder uses the Gerrit code review system. For information on how to submit
 your branch to Gerrit, see GerritWorkflow_.
 
-.. _GerritWorkflow: http://docs.openstack.org/infra/manual/developers.html#development-workflow
+.. _GerritWorkflow: https://docs.openstack.org/infra/manual/developers.html#development-workflow
