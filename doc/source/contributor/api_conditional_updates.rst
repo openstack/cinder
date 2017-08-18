@@ -53,7 +53,7 @@ Conditional Update
 
 Conditional Update is the mechanism we use in Cinder to prevent races when
 updating the DB.  In essence it is the SQL equivalent of an ``UPDATE ... FROM
-... WHERE;`` clause
+... WHERE;`` clause.
 
 It is implemented as an abstraction layer on top of SQLAlchemy ORM engine in
 our DB api layer and exposed for consumption in Cinder's Persistent Versioned
@@ -65,7 +65,8 @@ Method signature is:
 .. code:: python
 
    def conditional_update(self, values, expected_values=None, filters=(),
-                          save_all=False, session=None, reflect_changes=True):
+                          save_all=False, session=None, reflect_changes=True,
+                          order=None):
 
 :values:
   Dictionary of key-value pairs with changes that we want to make to the
@@ -96,6 +97,9 @@ Method signature is:
   On a successful update we will also update Versioned Object instance to
   reflect these changes, but we can prevent this instance update passing False
   on this argument.
+
+:order:
+  Specific order of fields in which to update the values.
 
 :Return Value:
   We'll return the number of changed rows.  So we'll get a 0 value if the
@@ -364,8 +368,8 @@ The idea is simple, using ``Case`` class we can say which values to set in a
 field based on conditions and also set a default value if none of the
 conditions are True.
 
-Conditions must be SQLAlchemy conditions, so we'll need to use fields from the
- ``model`` attribute.
+Conditions must be SQLAlchemy conditions, so we'll need to use fields from
+the ``model`` attribute.
 
 For example setting the status to "maintenance" during migration if current
 status is "available" and leaving it as it was if it's not can be done using

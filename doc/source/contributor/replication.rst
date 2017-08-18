@@ -119,7 +119,7 @@ Capabilities reporting
 ----------------------
 
 There are 2 new replication stats/capability keys that drivers supporting
-relication v2.1 should be reporting: ``replication_enabled`` and
+replication v2.1 should be reporting: ``replication_enabled`` and
 ``replication_targets``::
 
     stats["replication_enabled"] = True|False
@@ -345,7 +345,7 @@ the manager by default, but it won't create additional DB queries if it is
 returned.  It is however necessary to set it to ``FAILOVER_ERROR`` for those
 volumes that had errors during the failover.
 
-Driver's don't have to worry about snapshots or non replicated volumes, since
+Drivers don't have to worry about snapshots or non replicated volumes, since
 the manager will take care of those in the following manner:
 
 - All non replicated volumes will have their current ``status`` field saved in
@@ -377,7 +377,7 @@ Drivers are not required to support failback, but they are required to raise a
 supported.
 
 The way to request the failback is quite simple, the driver will receive the
-argument ``secondary_id`` with the value of ``default``.  That is why if was
+argument ``secondary_id`` with the value of ``default``.  That is why it was
 forbidden to use the ``default`` on the target configuration in the cinder
 configuration file.
 
