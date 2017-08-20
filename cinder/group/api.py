@@ -153,6 +153,13 @@ class API(base.Base):
                   'volume_type_ids': [t['id'] for t in req_volume_types],
                   'group_type_id': req_group_type['id'],
                   'replication_status': c_fields.ReplicationStatus.DISABLED}
+        try:
+            reservations = GROUP_QUOTAS.reserve(context,
+                                                project_id=context.project_id,
+                                                groups=1)
+        except exception.OverQuota as e:
+            quota_utils.process_reserve_over_quota(context, e,
+                                                   resource='groups')
         group = None
         try:
             group = objects.Group(context=context, **kwargs)
@@ -161,6 +168,7 @@ class API(base.Base):
             with excutils.save_and_reraise_exception():
                 LOG.error("Error occurred when creating group"
                           " %s.", name)
+                GROUP_QUOTAS.rollback(context, reservations)
 
         request_spec_list = []
         filter_properties_list = []
@@ -176,7 +184,7 @@ class API(base.Base):
         group_filter_properties = {}
 
         # Update quota for groups
-        self.update_quota(context, group, 1)
+        GROUP_QUOTAS.commit(context, reservations)
 
         self._cast_create_group(context, group,
                                 group_spec,
@@ -215,7 +223,13 @@ class API(base.Base):
             'volume_type_ids': volume_type_ids,
             'replication_status': c_fields.ReplicationStatus.DISABLED
         }
-
+        try:
+            reservations = GROUP_QUOTAS.reserve(context,
+                                                project_id=context.project_id,
+                                                groups=1)
+        except exception.OverQuota as e:
+            quota_utils.process_reserve_over_quota(context, e,
+                                                   resource='groups')
         group = None
         try:
             group = objects.Group(context=context, **kwargs)
@@ -226,19 +240,22 @@ class API(base.Base):
                 LOG.error("Source Group %(source_group)s not found when "
                           "creating group %(group)s from source.",
                           {'group': name, 'source_group': source_group_id})
+                GROUP_QUOTAS.rollback(context, reservations)
         except exception.GroupSnapshotNotFound:
             with excutils.save_and_reraise_exception():
                 LOG.error("Group snapshot %(group_snap)s not found when "
                           "creating group %(group)s from source.",
                           {'group': name, 'group_snap': group_snapshot_id})
+                GROUP_QUOTAS.rollback(context, reservations)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error("Error occurred when creating group"
                           " %(group)s from group_snapshot %(grp_snap)s.",
                           {'group': name, 'grp_snap': group_snapshot_id})
+                GROUP_QUOTAS.rollback(context, reservations)
 
         # Update quota for groups
-        self.update_quota(context, group, 1)
+        GROUP_QUOTAS.commit(context, reservations)
 
         if not group.host:
             msg = _("No host to create group %s.") % group.id
