@@ -577,7 +577,10 @@ class GroupsAPITestCase(test.TestCase):
         self.assertEqual(fields.GroupStatus.DELETED, group.status)
         self.assertIsNone(group.host)
 
-    def test_create_delete_group_update_quota(self):
+    @mock.patch('cinder.quota.GROUP_QUOTAS.reserve',
+                return_value='reservations')
+    @mock.patch('cinder.quota.GROUP_QUOTAS.commit')
+    def test_create_delete_group_update_quota(self, mock_commit, mock_reserve):
         name = 'mygroup'
         description = 'group 1'
         grp_type = {'id': fake.GROUP_TYPE_ID, 'name': 'group_type'}
@@ -589,12 +592,14 @@ class GroupsAPITestCase(test.TestCase):
         self.mock_object(self.group_api, 'update_quota')
         group = self.group_api.create(self.ctxt, name, description,
                                       grp_type['id'], [fake_type['id']])
-        self.group_api.update_quota.assert_called_once_with(
-            self.ctxt, group, 1)
+        # Verify that quota reservation and commit was called
+        mock_reserve.assert_called_once_with(self.ctxt,
+                                             project_id=self.ctxt.project_id,
+                                             groups=1)
+        mock_commit.assert_called_once_with(self.ctxt, 'reservations')
 
         self.assertEqual(fields.GroupStatus.CREATING, group.status)
         self.assertIsNone(group.host)
-        self.group_api.update_quota.reset_mock()
         group.status = fields.GroupStatus.ERROR
         self.group_api.delete(self.ctxt, group)
 
