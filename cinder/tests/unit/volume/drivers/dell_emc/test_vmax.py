@@ -8281,6 +8281,47 @@ class VMAXMaskingTest(test.TestCase):
                               common.conn, maskingViewDict, extraSpecs)
 
     @mock.patch.object(
+        utils.VMAXUtils,
+        "update_storagegroup_qos")
+    @mock.patch.object(
+        masking.VMAXMasking,
+        "_check_adding_volume_to_storage_group",
+        return_value=None)
+    @mock.patch.object(
+        masking.VMAXMasking,
+        "_validate_masking_view",
+        return_value=("mv_instance", VMAXCommonData.sg_instance_name, None))
+    @mock.patch.object(
+        masking.VMAXMasking,
+        "_get_and_remove_from_storage_group_v3")
+    @mock.patch.object(
+        masking.VMAXMasking,
+        '_check_if_rollback_action_for_masking_required')
+    def test_get_or_create_masking_view_and_map_lun_qos(
+            self, check_rb, rm_sg, validate_mv, check_sg, update_qos):
+        common = self.driver.common
+        common.conn = self.fake_ecom_connection()
+        masking = common.masking
+        connector = self.data.connector
+        extra_specs = self.data.extra_specs
+        extra_specs['qos'] = {'maxIOPS': '6000',
+                              'maxMBPS': '6000',
+                              'DistributionType': 'Always'}
+        volume_instance_name = (
+            common.conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volume_instance = common.conn.GetInstance(volume_instance_name)
+        with mock.patch.object(common, '_find_lun',
+                               return_value=volume_instance):
+            masking_view_dict = common._populate_masking_dict(
+                self.data.test_volume_v3, connector, extra_specs)
+        masking_view_dict['isLiveMigration'] = False
+        with mock.patch.object(masking, "_get_port_group_name_from_mv",
+                               return_value=(self.data.port_group, None)):
+            masking.get_or_create_masking_view_and_map_lun(
+                common.conn, masking_view_dict, extra_specs)
+            update_qos.assert_called()
+
+    @mock.patch.object(
         masking.VMAXMasking,
         '_get_storage_group_from_masking_view_instance',
         return_value=VMAXCommonData.sg_instance_name)

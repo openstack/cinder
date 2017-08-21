@@ -193,6 +193,10 @@ class VMAXMasking(object):
                    'errorMessage': errorMessage})
             LOG.error(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
+        # If qos exists, update storage group to reflect qos parameters
+        if 'qos' in extraSpecs:
+            self.utils.update_storagegroup_qos(
+                conn, storageGroupInstanceName, extraSpecs)
 
         return rollbackDict
 
