@@ -18,7 +18,8 @@
 Storage Volumes, Disks
 ======================
 
-.. todo:: rework after iSCSI merge (see 'Old Docs') (todd or vish)
+.. note::
+   TODO(todd or vish): rework after iSCSI merge (see 'Old Docs') (todd or vish)
 
 
 The :mod:`cinder.volume.manager` Module
