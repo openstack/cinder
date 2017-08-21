@@ -572,18 +572,6 @@ class XIVProxy(proxy.IBMStorageProxy):
 
         return volume_update
 
-    def get_group_specs_by_group_resource(self, context, group):
-        group_type = group.get('group_type_id', None)
-        if group_type is None:
-            msg = ('No group specs inside group type.')
-            return None, msg
-        group_specs = group_types.get_group_type_specs(group_type)
-        keyword = 'consistent_group_replication_enabled'
-        if not group_specs.get(keyword) == '<is> True':
-            msg = ('No cg replication field in group specs.')
-            return None, msg
-        return group_specs, ''
-
     @proxy._trace_time
     def enable_replication(self, context, group, volumes):
         """Enable cg replication"""
@@ -739,9 +727,10 @@ class XIVProxy(proxy.IBMStorageProxy):
             pool_master = self._get_target_params(
                 self.active_backend_id)['san_clustername']
             pool_slave = self.storage_info[storage.FLAG_KEYS['storage_pool']]
-            goal_status = 'available'
+            goal_status = 'enabled'
+            vol_goal_status = 'available'
         else:
-            if self._using_default_backend():
+            if not self._using_default_backend():
                 LOG.info("cg already failed over.")
                 return group_updated, volumes_updated
             # using same api as Cheesecake, we need
@@ -752,39 +741,56 @@ class XIVProxy(proxy.IBMStorageProxy):
             pool_slave = self._get_target_params(
                 secondary_backend_id)['san_clustername']
             goal_status = fields.ReplicationStatus.FAILED_OVER
+            vol_goal_status = fields.ReplicationStatus.FAILED_OVER
         # we should have secondary_backend_id by here.
         self.ibm_storage_remote_cli = self._init_xcli(secondary_backend_id)
 
         # check for split brain in mirrored volumes
         self.check_for_splitbrain(volumes, pool_master, pool_slave)
-        group_specs, msg = self.get_group_specs_by_group_resource(context,
-                                                                  group)
+        group_specs = group_types.get_group_type_specs(group.group_type_id)
         if group_specs is None:
+            msg = "No group specs found. Cannot failover."
             LOG.error(msg)
             raise self.meta['exception'].VolumeBackendAPIException(data=msg)
 
         failback = (secondary_backend_id == strings.PRIMARY_BACKEND_ID)
-
-        result, details = repl.GroupReplication.failover(group, failback)
+        result = False
+        details = ""
+        if utils.is_group_a_cg_snapshot_type(group):
+            result, details = repl.GroupReplication(self).failover(group,
+                                                                   failback)
+        else:
+            replicated_vols = []
+            for volume in volumes:
+                result, details = repl.VolumeReplication(self).failover(
+                    volume, failback)
+                if not result:
+                    break
+                replicated_vols.append(volume)
+            # switch the replicated ones back in case of error
+            if not result:
+                for volume in replicated_vols:
+                    result, details = repl.VolumeReplication(self).failover(
+                        volume, not failback)
 
         if result:
                 status = goal_status
                 group_updated['replication_status'] = status
         else:
             status = 'error'
-        updates = {'status': status}
+        updates = {'status': vol_goal_status}
         if status == 'error':
             group_updated['replication_extended_status'] = details
         # if replication on cg was successful, then all of the volumes
         # have been successfully replicated as well.
         for volume in volumes:
             volumes_updated.append({
-                'volume_id': volume.id,
+                'id': volume.id,
                 'updates': updates
             })
         # replace between active and secondary xcli
         self._replace_xcli_to_remote_xcli()
-
+        self.active_backend_id = secondary_backend_id
         return group_updated, volumes_updated
 
     def _replace_xcli_to_remote_xcli(self):

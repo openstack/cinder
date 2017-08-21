@@ -388,9 +388,6 @@ class XIVProxyTest(test.TestCase):
                 "xiv_replication.GroupReplication.create_replication",
                 mock.MagicMock())
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
-                "xiv_proxy.XIVProxy.get_group_specs_by_group_resource",
-                mock.MagicMock(return_value=(TEST_GROUP_SPECS, '')))
-    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
                 "xiv_proxy.XIVProxy._get_target_params",
                 mock.MagicMock(return_value=REPLICA_PARAMS))
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
@@ -458,9 +455,8 @@ class XIVProxyTest(test.TestCase):
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
                 "xiv_proxy.XIVProxy._init_xcli",
                 mock.MagicMock())
-    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
-                "xiv_proxy.XIVProxy.get_group_specs_by_group_resource",
-                mock.MagicMock(return_value=(TEST_GROUP_SPECS, '')))
+    @mock.patch("cinder.volume.group_types.get_group_type_specs",
+                mock.MagicMock(return_value=TEST_GROUP_SPECS))
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
                 "xiv_replication.GroupReplication.failover",
                 mock.MagicMock(return_value=(True, 'good')))
@@ -479,8 +475,44 @@ class XIVProxyTest(test.TestCase):
         group_update, vol_update = p.failover_replication(self.ctxt, group,
                                                           [vol], 'default')
         updates = {'status': 'available'}
-        self.assertEqual(({'replication_status': 'available'},
-                          [{'volume_id': vol['id'],
+        self.assertEqual(({'replication_status': 'enabled'},
+                          [{'id': vol['id'],
+                            'updates': updates}]), (group_update, vol_update))
+
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.XIVProxy._using_default_backend",
+                mock.MagicMock(return_value=True))
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.XIVProxy._get_target_params",
+                mock.MagicMock(return_value={'san_clustername': "master"}))
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.XIVProxy._init_xcli",
+                mock.MagicMock())
+    @mock.patch("cinder.volume.group_types.get_group_type_specs",
+                mock.MagicMock(return_value=TEST_GROUP_SPECS))
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_replication.GroupReplication.failover",
+                mock.MagicMock(return_value=(True, 'good')))
+    def test_failover_replication(self):
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+        group = self._create_test_group('WTF')
+        failed_over = fields.ReplicationStatus.FAILED_OVER
+        group.replication_status = failed_over
+        vol = testutils.create_volume(self.ctxt)
+        group_update, vol_update = p.failover_replication(self.ctxt, group,
+                                                          [vol],
+                                                          'secondary_id')
+        failed_over = fields.ReplicationStatus.FAILED_OVER
+        updates = {'status': failed_over}
+        self.assertEqual(({'replication_status': failed_over},
+                          [{'id': vol['id'],
                             'updates': updates}]), (group_update, vol_update))
 
     def test_failover_resource_no_mirror(self):

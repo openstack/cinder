@@ -195,6 +195,8 @@ class Replication(object):
             return False, msg
 
         try:
+            if rep_type == 'cg':
+                resource['name'] = self.proxy._cg_name_from_group(resource)
             recovery_mgr.switch_roles(resource_id=resource['name'])
             return True, None
         except Exception as e:
@@ -303,7 +305,7 @@ class GroupReplication(Replication):
             False, self.proxy.ibm_storage_cli)
 
     def get_remote_recovery_mgr(self):
-        return volume_recovery_manager.CGRecoveryManager(
+        return cg_recovery_manager.CGRecoveryManager(
             True, self.proxy.ibm_storage_remote_cli)
 
     def replication_create_mirror(self, resource_name, replication_info,
