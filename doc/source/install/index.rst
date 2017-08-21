@@ -19,6 +19,7 @@ For more information, see the
 
 .. toctree::
 
+   overview
    get-started-block-storage
    index-obs
    index-rdo
