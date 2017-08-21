@@ -398,23 +398,27 @@ class WindowsSmbFsTestCase(test.TestCase):
         self._smbfs_driver.create_volume(self.volume)
         mock_create_volume.assert_called_once_with(self.volume)
 
-    def _test_create_volume(self, volume_exists=False, volume_format='vhdx'):
-        self._smbfs_driver.create_dynamic_vhd = mock.MagicMock()
-        fake_create = self._smbfs_driver._vhdutils.create_dynamic_vhd
+    @mock.patch('os.path.exists')
+    @mock.patch.object(smbfs.WindowsSmbfsDriver, '_get_vhd_type')
+    def _test_create_volume(self, mock_get_vhd_type, mock_exists,
+                            volume_exists=False, volume_format='vhdx'):
+        mock_exists.return_value = volume_exists
+        self._smbfs_driver.create_vhd = mock.MagicMock()
+        fake_create = self._smbfs_driver._vhdutils.create_vhd
         self._smbfs_driver.get_volume_format = mock.Mock(
             return_value=volume_format)
 
-        with mock.patch('os.path.exists', new=lambda x: volume_exists):
-            volume = self._simple_volume()
-            if volume_exists or volume_format not in ('vhd', 'vhdx'):
-                self.assertRaises(exception.InvalidVolume,
-                                  self._smbfs_driver._do_create_volume,
-                                  volume)
-            else:
-                fake_vol_path = self._FAKE_VOLUME_PATH
-                self._smbfs_driver._do_create_volume(volume)
-                fake_create.assert_called_once_with(
-                    fake_vol_path, volume.size << 30)
+        volume = self._simple_volume()
+        if volume_exists or volume_format not in ('vhd', 'vhdx'):
+            self.assertRaises(exception.InvalidVolume,
+                              self._smbfs_driver._do_create_volume,
+                              volume)
+        else:
+            fake_vol_path = self._FAKE_VOLUME_PATH
+            self._smbfs_driver._do_create_volume(volume)
+            fake_create.assert_called_once_with(
+                fake_vol_path, mock_get_vhd_type.return_value,
+                max_internal_size=volume.size << 30)
 
     def test_create_volume(self):
         self._test_create_volume()
@@ -706,7 +710,8 @@ class WindowsSmbFsTestCase(test.TestCase):
                 mock.sentinel.context, mock.sentinel.image_service,
                 fake_image_meta, upload_path, fake_img_format)
 
-    def test_copy_image_to_volume(self):
+    @mock.patch.object(smbfs.WindowsSmbfsDriver, '_get_vhd_type')
+    def test_copy_image_to_volume(self, mock_get_vhd_type):
         drv = self._smbfs_driver
 
         drv.get_volume_format = mock.Mock(
@@ -728,13 +733,15 @@ class WindowsSmbFsTestCase(test.TestCase):
                 mock.sentinel.image_service,
                 mock.sentinel.image_id,
                 self._FAKE_VOLUME_PATH, mock.sentinel.volume_format,
-                mock.sentinel.block_size)
+                mock.sentinel.block_size,
+                mock_get_vhd_type.return_value)
             drv._vhdutils.resize_vhd.assert_called_once_with(
                 self._FAKE_VOLUME_PATH,
                 volume.size * units.Gi,
                 is_file_max_size=False)
 
-    def test_copy_volume_from_snapshot(self):
+    @mock.patch.object(smbfs.WindowsSmbfsDriver, '_get_vhd_type')
+    def test_copy_volume_from_snapshot(self, mock_get_vhd_type):
         drv = self._smbfs_driver
         snapshot = self._simple_snapshot()
         fake_volume_info = {
@@ -760,7 +767,8 @@ class WindowsSmbFsTestCase(test.TestCase):
         drv._delete.assert_called_once_with(mock.sentinel.new_volume_path)
         drv._vhdutils.convert_vhd.assert_called_once_with(
             self._FAKE_VOLUME_PATH,
-            mock.sentinel.new_volume_path)
+            mock.sentinel.new_volume_path,
+            vhd_type=mock_get_vhd_type.return_value)
         drv._vhdutils.resize_vhd.assert_called_once_with(
             mock.sentinel.new_volume_path,
             volume.size * units.Gi,
@@ -802,3 +810,12 @@ class WindowsSmbFsTestCase(test.TestCase):
         self.assertRaises(exception.SmbfsException,
                           self._smbfs_driver._get_share_from_pool_name,
                           mock.sentinel.pool)
+
+    def test_get_vhd_type(self):
+        drv = self._smbfs_driver
+
+        mock_type = drv._get_vhd_type(qemu_subformat=True)
+        self.assertEqual(mock_type, 'dynamic')
+
+        mock_type = drv._get_vhd_type(qemu_subformat=False)
+        self.assertEqual(mock_type, 3)
