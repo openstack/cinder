@@ -667,7 +667,7 @@ class TestCinderManageCmd(test.TestCase):
             object_version = service['object_current_version']
             cluster = service.get('cluster_name', '')
             service_format = format % (service['binary'],
-                                       service['host'].partition('.')[0],
+                                       service['host'],
                                        service['availability_zone'],
                                        'enabled',
                                        ':-)',
