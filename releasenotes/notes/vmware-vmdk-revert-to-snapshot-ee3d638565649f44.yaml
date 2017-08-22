@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added support for revert-to-snapshot in the VMware VMDK driver.
+

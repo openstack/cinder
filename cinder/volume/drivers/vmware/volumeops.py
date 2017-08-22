@@ -1048,6 +1048,20 @@ class VMwareVolumeOps(object):
         LOG.info("Successfully deleted snapshot: %(name)s of backing: "
                  "%(backing)s.", {'backing': backing, 'name': name})
 
+    def revert_to_snapshot(self, backing, name):
+        LOG.debug("Revert to snapshot: %(name)s of backing: %(backing)s.",
+                  {'name': name, 'backing': backing})
+
+        snapshot = self.get_snapshot(backing, name)
+        if not snapshot:
+            raise vmdk_exceptions.SnapshotNotFoundException(
+                name=name)
+
+        task = self._session.invoke_api(self._session.vim,
+                                        'RevertToSnapshot_Task',
+                                        snapshot)
+        self._session.wait_for_task(task)
+
     def _get_folder(self, backing):
         """Get parent folder of the backing.
 
