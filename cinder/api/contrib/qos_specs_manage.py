@@ -98,9 +98,6 @@ class QoSSpecsController(wsgi.Controller):
                                     max_length=255, remove_whitespaces=True)
         name = name.strip()
 
-        # Validate the key-value pairs in the qos spec.
-        utils.validate_dictionary_string_length(specs)
-
         try:
             spec = qos_specs.create(context, name, specs)
             notifier_info = dict(name=name, specs=specs)

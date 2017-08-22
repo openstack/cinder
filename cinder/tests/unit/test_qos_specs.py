@@ -115,7 +115,7 @@ class QoSSpecsTestCase(test.TestCase):
 
         # qos specs must exists
         self.assertRaises(exception.QoSSpecsNotFound,
-                          qos_specs.update, self.ctxt, 'fake_id', qos)
+                          qos_specs.update, self.ctxt, 'fake_id', qos['specs'])
 
         specs_id = self._create_qos_specs('Name',
                                           qos['consumer'],

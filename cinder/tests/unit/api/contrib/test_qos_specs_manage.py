@@ -381,8 +381,7 @@ class QoSSpecManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.qos_specs.create',
                 side_effect=return_qos_specs_create)
-    @mock.patch('cinder.utils.validate_dictionary_string_length')
-    def test_create(self, mock_validate, mock_qos_spec_create):
+    def test_create(self, mock_qos_spec_create):
 
         body = {"qos_specs": {"name": "qos_specs_%s" % fake.QOS_SPEC_ID,
                               "key1": "value1"}}
@@ -395,7 +394,6 @@ class QoSSpecManageApiTest(test.TestCase):
         self.assertEqual(1, self.notifier.get_notification_count())
         self.assertEqual('qos_specs_%s' % fake.QOS_SPEC_ID,
                          res_dict['qos_specs']['name'])
-        self.assertTrue(mock_validate.called)
 
     @mock.patch('cinder.volume.qos_specs.create',
                 side_effect=return_qos_specs_create)
@@ -504,6 +502,18 @@ class QoSSpecManageApiTest(test.TestCase):
         self.assertRaises(exception.InvalidQoSSpecs,
                           self.controller.update,
                           req, fake.INVALID_ID, body)
+        self.assertEqual(1, self.notifier.get_notification_count())
+
+    @ddt.data({'qos_specs': {'key1': ['value1']}},
+              {'qos_specs': {1: 'value1'}}
+              )
+    def test_update_non_string_key_or_value(self, body):
+        req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s' %
+                                      (fake.PROJECT_ID, fake.UUID1),
+                                      use_admin_context=True)
+        self.assertRaises(exception.InvalidQoSSpecs,
+                          self.controller.update,
+                          req, fake.UUID1, body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.update',
