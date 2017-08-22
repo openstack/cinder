@@ -360,7 +360,7 @@ class IBMStorageProxy(object):
         if not self.targets:
             return None
         try:
-            target = self.targets.iterkeys().next()
+            target = self.targets.keys().next()
             return target
         except Exception:
             return None
@@ -393,6 +393,6 @@ class IBMStorageProxy(object):
             else:
                 self.targets[backend_id] = {}
                 device = self.targets[backend_id]
-                for k, v in dev.iteritems():
+                for k, v in dev.items():
                     if k != 'backend_id':
                         device[k] = v
