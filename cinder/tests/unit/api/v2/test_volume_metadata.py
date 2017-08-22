@@ -108,10 +108,10 @@ def return_volume_nonexistent(*args, **kwargs):
     raise exception.VolumeNotFound('bogus test message')
 
 
-class volumeMetaDataTest(test.TestCase):
+class VolumeMetaDataTest(test.TestCase):
 
     def setUp(self):
-        super(volumeMetaDataTest, self).setUp()
+        super(VolumeMetaDataTest, self).setUp()
         self.volume_api = volume_api.API()
         self.mock_object(volume.api.API, 'get', get_volume)
         self.mock_object(db, 'volume_metadata_get',
