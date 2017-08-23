@@ -71,7 +71,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.configuration.append_config_values(
                 options.NEXENTA_ISCSI_OPTIONS)
             self.configuration.append_config_values(
-                options.NEXENTA_VOLUME_OPTIONS)
+                options.NEXENTA_DATASET_OPTIONS)
             self.configuration.append_config_values(
                 options.NEXENTA_RRMGR_OPTIONS)
         self.nms_protocol = self.configuration.nexenta_rest_protocol
@@ -80,9 +80,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.nms_user = self.configuration.nexenta_user
         self.nms_password = self.configuration.nexenta_password
         self.volume = self.configuration.nexenta_volume
-        self.volume_compression = self.configuration.nexenta_volume_compression
-        self.volume_deduplication = self.configuration.nexenta_volume_dedup
-        self.volume_description = self.configuration.nexenta_volume_description
+        self.volume_compression = self.configuration.nexenta_dataset_compression
+        self.volume_deduplication = self.configuration.nexenta_dataset_dedup
+        self.volume_description = self.configuration.nexenta_dataset_description
         self.rrmgr_compression = self.configuration.nexenta_rrmgr_compression
         self.rrmgr_tcp_buf_size = self.configuration.nexenta_rrmgr_tcp_buf_size
         self.rrmgr_connections = self.configuration.nexenta_rrmgr_connections
