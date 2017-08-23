@@ -90,6 +90,17 @@ on the python-cinderclient is in the `python-cinderclient repo`_.
    cli/cli-cinder-quotas
    cli/cli-cinder-scheduling
 
+Man Pages
+~~~~~~~~~
+
+Additional 'man page' style documentation for Cinder may be seen below.
+
+.. toctree::
+   :maxdepth: 2
+
+   man/cinder-manage
+   man/generalized_filters
+
 Drivers
 ~~~~~~~
 
