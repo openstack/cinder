@@ -34,6 +34,7 @@ Volume backups can be created, restored, deleted and listed.
 import os
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 import oslo_messaging as messaging
 from oslo_service import loopingcall
 from oslo_service import periodic_task
@@ -106,6 +107,11 @@ class BackupManager(manager.ThreadPoolManager):
         """Maps services to drivers."""
 
         if service in mapper:
+            msg = ("Using legacy backup service configuration like "
+                   "cinder.backup.services.* is deprecated and "
+                   "will be removed in the 'R' release. Please use "
+                   "the cinder.backup.drivers.* method instead.")
+            versionutils.report_deprecated_feature(LOG, msg)
             return mapper[service]
         return service
 
