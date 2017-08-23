@@ -29,7 +29,7 @@ old orphaned records in that table.
 Graceful service shutdown
 '''''''''''''''''''''''''
 
-Many cinder services are python processes listening for messages on a AMQP
+Many cinder services are python processes listening for messages on an AMQP
 queue. When the operator sends SIGTERM signal to the process, it stops getting
 new work from its queue, completes any outstanding work and then terminates.
 During this process, messages can be left on the queue for when the python

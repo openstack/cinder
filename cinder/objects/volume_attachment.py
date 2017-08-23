@@ -66,7 +66,7 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
         return ['volume']
 
     def obj_make_compatible(self, primitive, target_version):
-        """Make a object representation compatible with target version."""
+        """Make an object representation compatible with target version."""
         super(VolumeAttachment, self).obj_make_compatible(primitive,
                                                           target_version)
         target_version = versionutils.convert_version_to_tuple(target_version)

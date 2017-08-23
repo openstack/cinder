@@ -57,7 +57,7 @@ class LimiterTest(test.TestCase):
 
         This test includes next test cases:
         1) Offset key works with a blank offset;
-        2) Offset key works with a offset out of range;
+        2) Offset key works with an offset out of range;
         3) Offset key works with a BAD offset;
         4) Offset value is negative;
         5) Limit value is bad;

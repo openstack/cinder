@@ -832,7 +832,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                     ctxt.reraise = False
 
         # If volume information was unable to be retrieved we need
-        # to throw a Invalid Reference exception.
+        # to throw an Invalid Reference exception.
         raise exception.ManageExistingInvalidReference(
             existing_ref=existing_ref,
             reason=_("Unable to find Purity ref with name=%s") % ref_vol_name)

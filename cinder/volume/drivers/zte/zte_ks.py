@@ -529,7 +529,7 @@ class ZTEVolumeDriver(driver.VolumeDriver):
         pass
 
     def ensure_export(self, context, volume):
-        """Driver entry point to get the export info for a existing volume."""
+        """Driver entry point to get the export info for an existing volume."""
         pass
 
     def remove_export(self, context, volume_id):

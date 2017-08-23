@@ -150,7 +150,7 @@ class AttachmentsController(wsgi.Controller):
             }
 
         NOTE all that's required for a reserve is volume_uuid
-        and a instance_uuid.
+        and an instance_uuid.
 
         returns: A summary view of the attachment object
         """

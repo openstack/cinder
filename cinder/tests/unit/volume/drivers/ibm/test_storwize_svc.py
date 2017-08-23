@@ -2435,7 +2435,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                        '_do_initialize_connection')
     def test_storwize_do_terminate_iscsi_connection(self, init_conn,
                                                     term_conn):
-        # create a iSCSI volume
+        # create an iSCSI volume
         volume_iSCSI = self._create_volume()
         extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
         vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
@@ -2454,7 +2454,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                        '_do_terminate_connection')
     def test_storwize_initialize_iscsi_connection_failure(self, term_conn):
-        # create a iSCSI volume
+        # create an iSCSI volume
         volume_iSCSI = self._create_volume()
         extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
         vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
@@ -2472,7 +2472,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         term_conn.assert_called_once_with(volume_iSCSI, connector)
 
     def test_storwize_terminate_iscsi_connection_multi_attach(self):
-        # create a iSCSI volume
+        # create an iSCSI volume
         volume_iSCSI = self._create_volume()
         extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
         vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
