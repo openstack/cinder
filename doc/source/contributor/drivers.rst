@@ -111,7 +111,7 @@ in order to be an official Cinder volume driver.
 
 .. automodule:: cinder.interface.volume_driver
   :members:
-
+  :noindex:
 
 Snapshot Interface
 ``````````````````
@@ -124,6 +124,7 @@ interface will be merged with the base driver interface.
 
 .. automodule:: cinder.interface.volume_snapshot_driver
   :members:
+  :noindex:
 
 
 Manage/Unmanage Support
@@ -136,7 +137,7 @@ To support this functionality, volume drivers must implement these methods:
 
 .. automodule:: cinder.interface.volume_management_driver
   :members:
-
+  :noindex:
 
 Manage/Unmanage Snapshot Support
 ````````````````````````````````
@@ -146,7 +147,7 @@ additional methods must be implemented to support these operations.
 
 .. automodule:: cinder.interface.volume_snapshotmanagement_driver
   :members:
-
+  :noindex:
 
 Volume Consistency Groups
 `````````````````````````
@@ -156,7 +157,7 @@ the following interface must be implemented by the driver.
 
 .. automodule:: cinder.interface.volume_consistencygroup_driver
   :members:
-
+  :noindex:
 
 Generic Volume Groups
 `````````````````````
@@ -171,4 +172,5 @@ need the volume consistency groups interface listed above.
 
 .. automodule:: cinder.interface.volume_group_driver
   :members:
+  :noindex:
 
