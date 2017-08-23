@@ -1409,7 +1409,8 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 mock.call.modifyVolume(
                     1, {
                         'isThinProvisioned': False,
-                        'isAdaptiveOptimizationEnabled': True}),
+                        'isAdaptiveOptimizationEnabled': True,
+                        'dataProtectionLevel': 0}),
                 mock.call.logout()]
 
             # validate call chain
@@ -1447,7 +1448,10 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
 
             expected = self.driver_startup_call_stack + [
                 mock.call.getVolumeByName('fakevolume'),
-                mock.call.modifyVolume(1, {'isThinProvisioned': True}),
+                mock.call.modifyVolume(1, {'isThinProvisioned': True,
+                                           'dataProtectionLevel': 0,
+                                           'isAdaptiveOptimizationEnabled':
+                                           True}),
                 mock.call.logout()]
 
             # validate call chain
@@ -1487,7 +1491,50 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 mock.call.getVolumeByName('fakevolume'),
                 mock.call.modifyVolume(
                     1,
-                    {'isAdaptiveOptimizationEnabled': False}),
+                    {'isAdaptiveOptimizationEnabled': False,
+                     'dataProtectionLevel': 0}),
+                mock.call.logout()]
+
+            # validate call chain
+            mock_client.assert_has_calls(expected)
+
+    def test_retype_with_default_extra_spec(self):
+        # setup driver with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
+
+        ctxt = context.get_admin_context()
+
+        host = {'host': self.serverName}
+        key_specs_old = {'hpelh:provisioning': 'full', 'hpelh:ao': 'false'}
+        key_specs_new = {}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        diff, equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                     new_type_ref['id'])
+
+        volume = dict.copy(self.volume)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume['volume_type'] = old_type
+        volume['host'] = host
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            self.driver.retype(ctxt, volume, new_type, diff, host)
+
+            expected = self.driver_startup_call_stack + [
+                mock.call.getVolumeByName('fakevolume'),
+                mock.call.modifyVolume(
+                    1,
+                    {'isAdaptiveOptimizationEnabled': True,
+                     'isThinProvisioned': True,
+                     'dataProtectionLevel': 0}),
                 mock.call.logout()]
 
             # validate call chain
