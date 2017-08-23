@@ -2,7 +2,7 @@ Cinder Style Commandments
 =========================
 
 - Step 1: Read the OpenStack Style Commandments
-  http://docs.openstack.org/developer/hacking/
+  https://docs.openstack.org/developer/hacking/
 - Step 2: Read on
 
 Cinder Specific Commandments
@@ -53,4 +53,4 @@ use mock only.
 
 For more information on creating unit tests and utilizing the testing
 infrastructure in OpenStack Cinder, please see
-http://docs.openstack.org/developer/cinder/devref/testing.html
+https://docs.openstack.org/developer/cinder/devref/testing.html
