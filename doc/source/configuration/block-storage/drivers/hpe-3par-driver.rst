@@ -89,12 +89,15 @@ Supported operations
 
 * Fail-back host volumes.
 
-* Create, delete, update, snapshot, and clone consistency groups.
+* Retype a replicated volume.
 
-* Create and delete consistency group snapshots.
+* Create, delete, update, snapshot, and clone generic volume groups.
 
-* Create a consistency group from a consistency group snapshot or another
-  group.
+* Create and delete generic volume group snapshots.
+
+* Create a generic volume group from a group snapshot or another group.
+
+* Volume Compression.
 
 Volume type support for both HPE 3PAR drivers includes the ability to set the
 following capabilities in the OpenStack Block Storage API
@@ -110,6 +113,8 @@ module:
 * ``hpe3par:vvs``
 
 * ``hpe3par:flash_cache``
+
+* ``hpe3par:compression``
 
 To work with the default filter scheduler, the key values are case sensitive
 and scoped with ``hpe3par:``. For information about how to set the key-value
@@ -224,6 +229,28 @@ Adaptive Flash Cache license installed.
 
 * ``hpe3par:flash_cache`` - The flash-cache policy, which can be turned on and
   off by setting the value to ``true`` or ``false``.
+
+For ``hpe3par:compression`` key, the HPE 3PAR StoreServ Storage array must meet
+the following requirements:
+
+* Firmware version HPE 3PAR OS 3.3.1
+
+* HPE 3PAR Storage system with 8k or 20k series
+
+* Compression license installed
+
+* Supported only on Solid State drives
+
+* The assigned CPG for a compressed volume must be set to device type of "SSD"
+
+Other restrictions and considerations for ``hpe3par:compression``:
+
+   - For a compressed volume, minimum volume size needed is 16 GB; otherwise
+     resulting volume will be created successfully but will not be a compressed volume.
+
+   - A full provisioned volume cannot be compressed,
+     if a compression is enabled and provisioning type requested is full,
+     the resulting volume defaults to thinly provisioned compressed volume.
 
 LDAP and AD authentication is now supported in the HPE 3PAR driver.
 
