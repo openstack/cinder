@@ -522,6 +522,12 @@ backups_number_usage:
   in: body
   required: true
   type: object
+binary:
+  description: |
+    The service binary.
+  in: body
+  required: false
+  type: string
 bootable:
   description: |
     Enables or disables the bootable attribute. You
@@ -803,6 +809,12 @@ detached_at:
   in: body
   required: false
   type: string
+disabled:
+  description: |
+    Filter by disabled status.
+  in: body
+  required: false
+  type: boolean
 disk_format:
   description: |
     Disk format for the new image. Default is raw.
@@ -1151,6 +1163,12 @@ is_public:
 is_public_1:
   description:
     Group type which is accessible to the public.
+  in: body
+  required: false
+  type: boolean
+is_up:
+  description: |
+    Filter by up/down status.
   in: body
   required: false
   type: boolean
@@ -1918,6 +1936,12 @@ resource_filters:
   in: body
   required: true
   type: array
+resource_id:
+  description: |
+    The UUID of a resource to cleanup.
+  in: body
+  required: false
+  type: string
 resource_type:
   description: |
     The resource type corresponding to ``resource_uuid``.
@@ -1949,6 +1973,12 @@ safe_to_manage:
   in: body
   required: true
   type: boolean
+service_id:
+  description: |
+    UUID for the cleanup service.
+  in: body
+  required: false
+  type: string
 service_state:
   description: |
     The state of the service. One of ``available`` or ``unavailable``.

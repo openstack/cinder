@@ -1,0 +1,9 @@
+{
+    "cluster": "test",
+    "disabled": "True",
+    "host": "127.0.0.1",
+    "is_up": "True",
+    "binary": "cinder-volume",
+    "resource_id": "b122f668-d15a-40f8-af21-38d218796ab8",
+    "resource_type": "Volume"
+}

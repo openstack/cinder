@@ -48,3 +48,4 @@ Block Storage API V3 (CURRENT)
    our nice alphabetical ordering
 .. include:: quota-classes.inc
 .. include:: quota-sets.inc
+.. include:: worker-cleanup.inc
