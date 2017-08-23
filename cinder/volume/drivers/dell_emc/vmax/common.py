@@ -57,11 +57,11 @@ vmax_opts = [
                default=CINDER_EMC_CONFIG_FILE,
                help='Use this file for cinder emc plugin '
                     'config data.'),
-    cfg.StrOpt('interval',
+    cfg.IntOpt('interval',
                default=3,
                help='Use this value to specify '
                     'length of the interval in seconds.'),
-    cfg.StrOpt('retries',
+    cfg.IntOpt('retries',
                default=200,
                help='Use this value to specify '
                     'number of retries.'),
