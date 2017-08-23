@@ -2413,16 +2413,31 @@ class VolumeManager(manager.CleanableManager,
 
     def _append_volume_stats(self, vol_stats):
         pools = vol_stats.get('pools', None)
-        if pools and isinstance(pools, list):
-            for pool in pools:
-                pool_name = pool['pool_name']
-                try:
-                    pool_stats = self.stats['pools'][pool_name]
-                except KeyError:
-                    # Pool not found in volume manager
-                    pool_stats = dict(allocated_capacity_gb=0)
+        if pools:
+            if isinstance(pools, list):
+                for pool in pools:
+                    pool_name = pool['pool_name']
+                    try:
+                        pool_stats = self.stats['pools'][pool_name]
+                    except KeyError:
+                        # Pool not found in volume manager
+                        pool_stats = dict(allocated_capacity_gb=0)
 
-                pool.update(pool_stats)
+                    pool.update(pool_stats)
+            else:
+                raise exception.ProgrammingError(
+                    reason='Pools stats reported by the driver are not '
+                           'reported in a list')
+        # For drivers that are not reporting their stats by pool we will use
+        # the data from the special fixed pool created by
+        # _count_allocated_capacity.
+        elif self.stats.get('pools'):
+            vol_stats.update(next(iter(self.stats['pools'].values())))
+        # This is a special subcase of the above no pool case that happens when
+        # we don't have any volumes yet.
+        else:
+            vol_stats.update(self.stats)
+            vol_stats.pop('pools', None)
 
     def _append_filter_goodness_functions(self, volume_stats):
         """Returns volume_stats updated as needed."""
