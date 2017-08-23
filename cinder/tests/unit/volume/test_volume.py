@@ -146,6 +146,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertEqual(opts['backend_availability_zone'],
                          manager.availability_zone)
 
+    @mock.patch('cinder.volume.manager.VolumeManager._append_volume_stats',
+                mock.Mock())
     @mock.patch.object(vol_manager.VolumeManager,
                        'update_service_capabilities')
     def test_report_filter_goodness_function(self, mock_update):
@@ -2792,6 +2794,48 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         with mock.patch.object(volume, 'save') as save_mock:
             manager._set_resource_host(volume)
             save_mock.assert_not_called()
+
+    def test__append_volume_stats_with_pools(self):
+        manager = vol_manager.VolumeManager()
+        manager.stats = {'pools': {'pool1': {'allocated_capacity_gb': 20},
+                                   'pool2': {'allocated_capacity_gb': 10}}}
+        vol_stats = {'vendor_name': 'Open Source', 'pools': [
+            {'pool_name': 'pool1', 'provisioned_capacity_gb': 31},
+            {'pool_name': 'pool2', 'provisioned_capacity_gb': 21}]}
+        manager._append_volume_stats(vol_stats)
+
+        expected = {'provisioned_capacity_gb': 30, 'allocated_capacity_gb': 20}
+        expected = {'vendor_name': 'Open Source', 'pools': [
+            {'pool_name': 'pool1', 'provisioned_capacity_gb': 31,
+             'allocated_capacity_gb': 20},
+            {'pool_name': 'pool2', 'provisioned_capacity_gb': 21,
+             'allocated_capacity_gb': 10}]}
+        self.assertDictEqual(expected, vol_stats)
+
+    def test__append_volume_stats_no_pools(self):
+        manager = vol_manager.VolumeManager()
+        manager.stats = {'pools': {'backend': {'allocated_capacity_gb': 20}}}
+        vol_stats = {'provisioned_capacity_gb': 30}
+        manager._append_volume_stats(vol_stats)
+
+        expected = {'provisioned_capacity_gb': 30, 'allocated_capacity_gb': 20}
+        self.assertDictEqual(expected, vol_stats)
+
+    def test__append_volume_stats_no_pools_no_volumes(self):
+        manager = vol_manager.VolumeManager()
+        # This is what gets set on c-vol manager's init_host method
+        manager.stats = {'pools': {}, 'allocated_capacity_gb': 0}
+        vol_stats = {'provisioned_capacity_gb': 30}
+
+        manager._append_volume_stats(vol_stats)
+
+        expected = {'provisioned_capacity_gb': 30, 'allocated_capacity_gb': 0}
+        self.assertDictEqual(expected, vol_stats)
+
+    def test__append_volume_stats_driver_error(self):
+        manager = vol_manager.VolumeManager()
+        self.assertRaises(exception.ProgrammingError,
+                          manager._append_volume_stats, {'pools': 'bad_data'})
 
 
 class VolumeTestCaseLocks(base.BaseVolumeTestCase):
