@@ -551,7 +551,7 @@ class ServiceCommands(BaseCommand):
             rpc_version = svc.rpc_current_version
             object_version = svc.object_current_version
             cluster = svc.cluster_name or ''
-            print(print_format % (svc.binary, svc.host.partition('.')[0],
+            print(print_format % (svc.binary, svc.host,
                                   svc.availability_zone, status, art,
                                   updated_at, rpc_version, object_version,
                                   cluster))
