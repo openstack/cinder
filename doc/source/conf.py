@@ -63,7 +63,7 @@ extensions = ['sphinx.ext.autodoc',
               ]
 
 config_generator_config_file = (
-    '../../cinder/config/cinder-config-generator.conf')
+    '../../tools/config/cinder-config-generator.conf')
 sample_config_basename = '_static/cinder'
 
 # autodoc generation is a bit aggressive and a nuisance
