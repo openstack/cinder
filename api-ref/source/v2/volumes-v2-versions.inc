@@ -34,7 +34,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/version-v2-show-response.json
+.. literalinclude:: ./samples/version-show-response.json
    :language: javascript
 
 
