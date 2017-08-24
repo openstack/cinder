@@ -502,6 +502,18 @@ backup_gigabytes_usage:
   in: body
   required: true
   type: object
+backup_service:
+  description: |
+    The service used to perform the backup.
+  in: body
+  required: true
+  type: string
+backup_url:
+  description: |
+    The backup encoded metadata.
+  in: body
+  required: true
+  type: string
 backups:
   description: |
     A list of ``backup`` objects.
