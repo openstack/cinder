@@ -1,0 +1,33 @@
+{
+    "services": [{
+        "status": "enabled",
+        "binary": "cinder-scheduler",
+        "zone": "nova",
+        "state": "up",
+        "updated_at": "2017-06-29T05:50:35.000000",
+        "host": "devstack",
+        "disabled_reason": null
+    },
+    {
+        "status": "enabled",
+        "binary": "cinder-backup",
+        "zone": "nova",
+        "state": "up",
+        "updated_at": "2017-06-29T05:50:42.000000",
+        "host": "devstack",
+        "disabled_reason": null
+    },
+    {
+        "status": "enabled",
+        "binary": "cinder-volume",
+        "zone": "nova",
+        "frozen": false,
+        "state": "up",
+        "updated_at": "2017-06-29T05:50:39.000000",
+        "cluster": null,
+        "host": "devstack@lvmdriver-1",
+        "replication_status": "disabled",
+        "active_backend_id": null,
+        "disabled_reason": null
+    }]
+}
