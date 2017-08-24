@@ -28,7 +28,7 @@ There are three things that happen in the workflow for an attach or detach call.
 
 1. Update the status of the volume in the DB (ie attaching/detaching)
 
-- For Attach, this is the cinder.volume.api.reserve method
+- For Attach, this is the cinder.volume.api.reserve_volume method
 - For Detach, the analogous call is cinder.volume.api.begin_detaching
 
 2. Handle the connection operations that need to be done on the Volume
@@ -131,7 +131,7 @@ back up to the API and returned as the response back out to Nova.
 At this point, we return attach info to the caller that provides everything
 needed to make the remote iSCSI connection.
 
-attach(self, context, volume, instance_uuid, host_name, mount_point, mode)
+attach(self, context, volume, instance_uuid, host_name, mountpoint, mode)
 --------------------------------------------------------------------------
 
 This is the last call that *should* be pretty simple.  The intent is that this
