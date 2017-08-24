@@ -71,7 +71,11 @@ Supported operations
 
 * Fail-back host volumes.
 
-* Create, delete, update, and snapshot consistency groups.
+* Create, delete, update, snapshot, and clone generic volume groups.
+
+* Create and delete generic volume group snapshots.
+
+* Create a generic volume group from a group snapshot or another group.
 
 When you use back end assisted volume migration, both source and destination
 clusters must be in the same HPE LeftHand/StoreVirtual management group.
