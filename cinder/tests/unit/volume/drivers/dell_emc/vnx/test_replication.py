@@ -34,9 +34,6 @@ class TestReplicationAdapter(test.TestCase):
         self.configuration.storage_vnx_authentication_type = 'global'
         self.ctxt = context.get_admin_context()
 
-    def tearDown(self):
-        super(TestReplicationAdapter, self).tearDown()
-
     @utils.patch_group_specs({
         'consistent_group_replication_enabled': '<is> True'})
     @res_mock.mock_driver_input

@@ -48,9 +48,6 @@ class TestCommonAdapter(test.TestCase):
         self.configuration.config_group = 'vnx_backend'
         self.ctxt = context.get_admin_context()
 
-    def tearDown(self):
-        super(TestCommonAdapter, self).tearDown()
-
     @res_mock.mock_driver_input
     @res_mock.patch_common_adapter
     def test_create_volume(self, vnx_common, _ignore, mocked_input):

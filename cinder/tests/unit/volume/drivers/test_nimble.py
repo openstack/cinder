@@ -247,9 +247,6 @@ class NimbleDriverBaseTestCase(test.TestCase):
             return inner_clent_mock
         return client_mock_wrapper
 
-    def tearDown(self):
-        super(NimbleDriverBaseTestCase, self).tearDown()
-
 
 class NimbleDriverLoginTestCase(NimbleDriverBaseTestCase):
 

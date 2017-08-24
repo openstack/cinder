@@ -1204,9 +1204,6 @@ class TestZFSSANFSDriver(test.TestCase):
                 stats = self.drv.get_volume_stats(refresh=True)
                 self.assertEqual('mirror3', stats['zfssa_poolprofile'])
 
-    def tearDown(self):
-        super(TestZFSSANFSDriver, self).tearDown()
-
     @mock.patch.object(nfsdriver.NfsDriver, 'delete_volume')
     @mock.patch.object(zfssanfs.ZFSSANFSDriver, '_check_origin')
     def test_delete_volume(self, _check_origin, _delete_vol):
