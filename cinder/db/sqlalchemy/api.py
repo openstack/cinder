@@ -4337,13 +4337,21 @@ def qos_specs_create(context, values):
     """Create a new QoS specs.
 
     :param values dictionary that contains specifications for QoS
-          e.g. {'name': 'Name',
-                'consumer': 'front-end',
-                'specs': {
-                    'total_iops_sec': 1000,
-                    'total_bytes_sec': 1024000
-                    }
-                }
+
+    Expected format of the input parameter:
+
+    .. code-block:: json
+
+        {
+            'name': 'Name',
+            'consumer': 'front-end',
+            'specs':
+            {
+                'total_iops_sec': 1000,
+                'total_bytes_sec': 1024000
+            }
+        }
+
     """
     specs_id = str(uuid.uuid4())
     session = get_session()
