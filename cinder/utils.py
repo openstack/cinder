@@ -1123,7 +1123,7 @@ def set_log_levels(prefix, level_string):
     level = get_log_method(level_string)
     prefix = prefix or ''
 
-    for k, v in logging._loggers.items():
+    for k, v in logging.get_loggers().items():
         if k and k.startswith(prefix):
             v.logger.setLevel(level)
 
@@ -1131,7 +1131,7 @@ def set_log_levels(prefix, level_string):
 def get_log_levels(prefix):
     prefix = prefix or ''
     return {k: logging.logging.getLevelName(v.logger.getEffectiveLevel())
-            for k, v in logging._loggers.items()
+            for k, v in logging.get_loggers().items()
             if k and k.startswith(prefix)}
 
 
