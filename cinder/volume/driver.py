@@ -258,9 +258,10 @@ volume_opts = [
                     'storage back-end.'),
     cfg.BoolOpt('backup_use_temp_snapshot',
                 default=False,
-                help='If this is set to True, the backup_use_temp_snapshot '
-                     'path will be used during the backup. Otherwise, it '
-                     'will use backup_use_temp_volume path.'),
+                help='If this is set to True, a temporary snapshot will '
+                     'be created for performing non-disruptive backups. '
+                     'Otherwise a temporary volume will be cloned '
+                     'in order to perform a backup.'),
     cfg.BoolOpt('enable_unsupported_driver',
                 default=False,
                 help="Set this to True when you want to allow an unsupported "
@@ -1093,7 +1094,14 @@ class BaseVD(object):
         return None, False
 
     def backup_use_temp_snapshot(self):
-        return False
+        """Get the configured setting for backup from snapshot.
+
+        If an inheriting driver does not support this operation,
+        the driver should override this method to return false
+        and log a warning letting the administrator know they
+        have configured something that cannot be done.
+        """
+        return self.configuration.safe_get("backup_use_temp_snapshot")
 
     def snapshot_remote_attachable(self):
         # TODO(lixiaoy1): the method will be deleted later when remote
