@@ -408,7 +408,7 @@ def fetch_to_volume_format(context, image_service,
                 % {'fmt': fmt, 'backing_file': backing_file, })
 
         # NOTE(e0ne): check for free space in destination directory before
-        # image convertion.
+        # image conversion.
         check_available_space(dest, virt_size, image_id)
 
         # NOTE(jdg): I'm using qemu-img convert to write

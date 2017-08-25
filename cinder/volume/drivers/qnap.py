@@ -751,7 +751,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
 
         _metadata = self._get_volume_metadata(new_volume)
 
-        # metadata will not be swap after migration wiht liberty version
+        # metadata will not be swap after migration with liberty version
         # , and the metadata of new volume is diifferent with the metadata
         #  of original volume. Therefore, we need to update the migrated volume
         if not hasattr(new_volume, '_orig_metadata'):

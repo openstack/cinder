@@ -156,7 +156,7 @@ class CapacityFilter(filters.BaseBackendFilter):
                                 "grouping": grouping,
                                 "grouping_name": backend_state.backend_id}
                     LOG.warning("Insufficient free virtual space "
-                                "(%(available)sGB) to accomodate thin "
+                                "(%(available)sGB) to accommodate thin "
                                 "provisioned %(size)sGB volume on %(grouping)s"
                                 " %(grouping_name)s.", msg_args)
                 return res

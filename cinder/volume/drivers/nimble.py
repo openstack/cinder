@@ -1397,7 +1397,7 @@ class NimbleRestAPIExecutor(object):
         filter = {'id': snap_id}
         r = self.get_query(api, filter)
         if not r.json()['data']:
-            raise NimbleAPIException(_("Snapshot: %s doesnt exist") % snap_id)
+            raise NimbleAPIException(_("Snapshot: %s doesn't exist") % snap_id)
         return r.json()['data'][0]
 
     @utils.retry(NimbleAPIException, 2, 3)
