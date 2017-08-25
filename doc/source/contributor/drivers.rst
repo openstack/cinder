@@ -135,7 +135,7 @@ but no longer manage it through Cinder.
 
 To support this functionality, volume drivers must implement these methods:
 
-.. automodule:: cinder.interface.volume_management_driver
+.. automodule:: cinder.interface.volume_manageable_driver
   :members:
   :noindex:
 
