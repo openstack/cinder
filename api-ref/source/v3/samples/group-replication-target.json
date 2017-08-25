@@ -1,0 +1,6 @@
+{
+    "replication_targets": {
+        "backend_id": "vendor-id-1",
+        "unique_key": "value1"
+    }
+}

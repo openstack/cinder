@@ -56,7 +56,7 @@ Response Parameters
    - status: status_7
    - description: description
    - created_at: created_at
-   - group_id: group_id
+   - group_id: group_id_1
    - id: id
    - name: name
 
@@ -100,7 +100,7 @@ Response Parameters
    - status: status_7
    - description: description
    - created_at: created_at
-   - group_id: group_id
+   - group_id: group_id_1
    - id: id
    - name: name
 
@@ -170,7 +170,7 @@ Request
 
    - name: name
    - description: description
-   - group_id: group_id
+   - group_id: group_id_1
    - project_id: project_id_path
 
 Request Example
@@ -187,7 +187,7 @@ Response Parameters
    - status: status_7
    - description: description
    - created_at: created_at
-   - group_id: group_id
+   - group_id: group_id_1
    - id: id
    - name: name
 

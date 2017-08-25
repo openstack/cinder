@@ -119,6 +119,7 @@ Response Parameters
    - volume_types: volume_types
    - id: id
    - name: name
+   - replication_status: group_replication_status
 
 Response Example
 ----------------

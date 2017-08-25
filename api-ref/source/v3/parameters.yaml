@@ -66,7 +66,7 @@ group_id:
   description: |
     The ID of the group.
   in: path
-  required: false
+  required: true
   type: string
 group_snapshot_id:
   description: |
@@ -429,6 +429,12 @@ alias:
   in: body
   required: true
   type: string
+allow_attached_volume:
+  description: |
+    Whether to allow failover if any volumes are 'in-use'.
+  in: body
+  required: true
+  type: boolean
 attach_mode:
   description: |
     The attach mode of attachment, read-only ('ro') or
@@ -505,6 +511,12 @@ backend_id:
     ID of backend to failover to. Default is ``None``.
   in: body
   required: false
+  type: string
+backend_id_target:
+  description: |
+    ID of failover target backend.
+  in: body
+  required: true
   type: string
 backup:
   description: |
@@ -1031,6 +1043,12 @@ gigabytes_usage:
 group_id_1:
   description: |
     The ID of the group.
+  in: body
+  required: false
+  type: string
+group_replication_status:
+  description: |
+    The group replication status. Introduced with API microversion 3.38.
   in: body
   required: false
   type: string
@@ -2025,6 +2043,11 @@ replication_targets:
   in: body
   required: true
   type: list
+replication_targets_unique_key:
+  description: |
+    Vendor specific key-values. Only returned if administrator.
+  in: body
+  type: string
 request_id:
   description: |
     The id of the request during which the message was created.
