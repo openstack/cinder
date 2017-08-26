@@ -42,7 +42,7 @@ import six
 import sqlalchemy
 from sqlalchemy import MetaData
 from sqlalchemy import or_, and_, case
-from sqlalchemy.orm import joinedload, joinedload_all, undefer_group
+from sqlalchemy.orm import joinedload, joinedload_all, undefer_group, load_only
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy import sql
 from sqlalchemy.sql.expression import bindparam
@@ -1106,15 +1106,16 @@ def _reservation_create(context, uuid, usage, project_id, resource, delta,
 # code always acquires the lock on quota_usages before acquiring the lock
 # on reservations.
 
-def _get_quota_usages(context, session, project_id):
+def _get_quota_usages(context, session, project_id, resources=None):
     # Broken out for testability
-    rows = model_query(context, models.QuotaUsage,
-                       read_deleted="no",
-                       session=session).\
-        filter_by(project_id=project_id).\
-        order_by(models.QuotaUsage.id.asc()).\
-        with_lockmode('update').\
-        all()
+    query = model_query(context, models.QuotaUsage,
+                        read_deleted="no",
+                        session=session).filter_by(project_id=project_id)
+    if resources:
+        query = query.filter(models.QuotaUsage.resource.in_(list(resources)))
+    rows = query.order_by(models.QuotaUsage.id.asc()).\
+        with_for_update().all()
+
     return {row.resource: row for row in rows}
 
 
@@ -1124,7 +1125,7 @@ def _get_quota_usages_by_resource(context, session, resource):
                        session=session).\
         filter_by(resource=resource).\
         order_by(models.QuotaUsage.id.asc()).\
-        with_lockmode('update').\
+        with_for_update().\
         all()
     return rows
 
@@ -1152,7 +1153,8 @@ def quota_reserve(context, resources, quotas, deltas, expire,
             project_id = context.project_id
 
         # Get the current usages
-        usages = _get_quota_usages(context, session, project_id)
+        usages = _get_quota_usages(context, session, project_id,
+                                   resources=deltas.keys())
         allocated = quota_allocated_get_all_by_project(context, project_id,
                                                        session=session)
         allocated.pop('project_id')
@@ -1317,6 +1319,18 @@ def _quota_reservations(session, context, reservations):
         all()
 
 
+def _get_reservation_resources(session, context, reservation_ids):
+    """Return the relevant resources by reservations."""
+
+    reservations = model_query(context, models.Reservation,
+                               read_deleted="no",
+                               session=session).\
+        options(load_only('resource')).\
+        filter(models.Reservation.uuid.in_(reservation_ids)).\
+        all()
+    return {r.resource for r in reservations}
+
+
 def _dict_with_usage_id(usages):
     return {row.id: row for row in usages.values()}
 
@@ -1326,7 +1340,10 @@ def _dict_with_usage_id(usages):
 def reservation_commit(context, reservations, project_id=None):
     session = get_session()
     with session.begin():
-        usages = _get_quota_usages(context, session, project_id)
+        usages = _get_quota_usages(
+            context, session, project_id,
+            resources=_get_reservation_resources(session, context,
+                                                 reservations))
         usages = _dict_with_usage_id(usages)
 
         for reservation in _quota_reservations(session, context, reservations):
@@ -1345,7 +1362,10 @@ def reservation_commit(context, reservations, project_id=None):
 def reservation_rollback(context, reservations, project_id=None):
     session = get_session()
     with session.begin():
-        usages = _get_quota_usages(context, session, project_id)
+        usages = _get_quota_usages(
+            context, session, project_id,
+            resources=_get_reservation_resources(session, context,
+                                                 reservations))
         usages = _dict_with_usage_id(usages)
         for reservation in _quota_reservations(session, context, reservations):
             if reservation.allocated_id:

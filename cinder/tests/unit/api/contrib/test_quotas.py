@@ -1035,7 +1035,8 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
                     self.until_refresh = None
                     self.total = self.reserved + self.in_use
 
-        def _fake__get_quota_usages(context, session, project_id):
+        def _fake__get_quota_usages(context, session, project_id,
+                                    resources=None):
             if not project_id:
                 return {}
             return {'volumes': FakeUsage(fake_usages[project_id], 0)}

@@ -2216,6 +2216,13 @@ class DBAPIReservationTestCase(BaseTest):
             'usage': {'id': 1}
         }
 
+    def test__get_reservation_resources(self):
+        reservations = _quota_reserve(self.ctxt, 'project1')
+        expected = ['gigabytes', 'volumes']
+        resources = sqlalchemy_api._get_reservation_resources(
+            sqlalchemy_api.get_session(), self.ctxt, reservations)
+        self.assertEqual(expected, sorted(resources))
+
     def test_reservation_commit(self):
         reservations = _quota_reserve(self.ctxt, 'project1')
         expected = {'project_id': 'project1',
@@ -2425,6 +2432,24 @@ class DBAPIQuotaTestCase(BaseTest):
                           'gigabytes': {'reserved': 2, 'in_use': 0},
                           'volumes': {'reserved': 1, 'in_use': 0}},
                          quota_usage)
+
+    def test__get_quota_usages(self):
+        _quota_reserve(self.ctxt, 'project1')
+        session = sqlalchemy_api.get_session()
+        quota_usage = sqlalchemy_api._get_quota_usages(
+            self.ctxt, session, 'project1')
+
+        self.assertEqual(['gigabytes', 'volumes'],
+                         sorted(quota_usage.keys()))
+
+    def test__get_quota_usages_with_resources(self):
+        _quota_reserve(self.ctxt, 'project1')
+        session = sqlalchemy_api.get_session()
+
+        quota_usage = sqlalchemy_api._get_quota_usages(
+            self.ctxt, session, 'project1', resources=['volumes'])
+
+        self.assertEqual(['volumes'], list(quota_usage.keys()))
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=UTC_NOW)
     def test_quota_destroy(self, utcnow_mock):

@@ -1285,6 +1285,10 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         f_keys = self.get_foreign_key_columns(engine, 'backup_metadata')
         self.assertEqual({'backup_id'}, f_keys)
 
+    def _check_111(self, engine, data):
+        self.assertTrue(db_utils.index_exists_on_columns(
+            engine, 'quota_usages', ['project_id', 'resource']))
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
         self.assert_each_foreign_key_is_part_of_an_index()
