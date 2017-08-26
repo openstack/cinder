@@ -53,4 +53,4 @@ use mock only.
 
 For more information on creating unit tests and utilizing the testing
 infrastructure in OpenStack Cinder, please see
-https://docs.openstack.org/developer/cinder/devref/testing.html
+https://docs.openstack.org/cinder/latest/contributor/testing.html
