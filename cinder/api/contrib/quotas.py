@@ -444,10 +444,17 @@ class QuotaSetsController(wsgi.Controller):
         try:
             resources = QUOTAS.resources
             resources.update(GROUP_QUOTAS.resources)
+            allocated = params.get('fix_allocated_quotas', 'False')
+            try:
+                fix_allocated = strutils.bool_from_string(allocated,
+                                                          strict=True)
+            except ValueError:
+                msg = _("Invalid param 'fix_allocated_quotas':%s") % allocated
+                raise webob.exc.HTTPBadRequest(explanation=msg)
 
             quota_utils.validate_setup_for_nested_quota_use(
                 ctxt, resources, quota.NestedDbQuotaDriver(),
-                fix_allocated_quotas=params.get('fix_allocated_quotas'))
+                fix_allocated_quotas=fix_allocated)
         except exception.InvalidNestedQuotaSetup as e:
             raise webob.exc.HTTPBadRequest(explanation=e.msg)
 
