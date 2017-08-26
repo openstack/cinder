@@ -220,6 +220,14 @@ detail:
   in: query
   required: false
   type: boolean
+fix_allocated_quotas:
+  description: |
+    Whether to fix all the non-leaf projects' ``allocation``
+    attribute or raise 400 error if ``allocation`` doesn't match
+    the current quota usage information. Default is ``false``.
+  in: query
+  required: false
+  type: boolean
 force_3:
   description: |
     To delete a QoS specification even if it is in-
