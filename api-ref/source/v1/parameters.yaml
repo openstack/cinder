@@ -13,12 +13,6 @@ admin_tenant_id:
   in: path
   required: false
   type: string
-snapshot_id_1:
-  description: |
-    The UUID of the snapshot.
-  in: path
-  required: false
-  type: string
 tenant_id:
   description: |
     The UUID of the tenant in a multi-tenancy cloud.
@@ -500,31 +494,12 @@ security_group_rules:
   in: body
   required: false
   type: integer
-security_group_rules_1:
-  description: |
-    A ``security_group_rules`` object.
-  in: body
-  required: true
-  type: string
 security_groups:
   description: |
     The number of security groups that are allowed
     for each tenant.
   in: body
   required: true
-  type: integer
-security_groups_1:
-  description: |
-    A ``security_groups`` object.
-  in: body
-  required: true
-  type: string
-security_groups_2:
-  description: |
-    The number of security groups that are allowed
-    for each tenant.
-  in: body
-  required: false
   type: integer
 size:
   description: |
@@ -546,14 +521,6 @@ snapshot_id:
   in: body
   required: false
   type: string
-snapshot_id_2:
-  description: |
-    The UUID of the source volume snapshot. The API
-    creates a new volume snapshot with the same size as the source
-    volume snapshot.
-  in: body
-  required: true
-  type: string
 source_replica:
   description: |
     The UUID of the replication volume to clone. This was for legacy
@@ -567,12 +534,6 @@ source_volid:
     new volume with the same size as the source volume.
   in: body
   required: false
-  type: string
-source_volid_1:
-  description: |
-    The UUID of the source volume.
-  in: body
-  required: true
   type: string
 status:
   description: |

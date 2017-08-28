@@ -102,12 +102,6 @@ quotas_tenant_id:
   in: path
   required: true
   type: string
-snapshot_id_1:
-  description: |
-    The UUID of the snapshot.
-  in: path
-  required: false
-  type: string
 tenant_id:
   description: |
     The UUID of the tenant in a multi-tenancy cloud.
@@ -204,20 +198,6 @@ marker:
   in: query
   required: false
   type: string
-metadata_query:
-  description: |
-    Filters results by a metadata key and value pair.
-    Default=None.
-  in: query
-  required: true
-  type: object
-migration_status_query:
-  description: |
-    Filters results by a migration status. Default=None.
-    Admin only.
-  in: query
-  required: false
-  type: string
 name_volume:
   description: |
     Filters results by a name. Default=None.
@@ -257,22 +237,6 @@ sort_key:
   in: query
   required: false
   type: string
-sort_key_1:
-  description: |
-    Sorts by an image attribute. A valid value is
-    ``name``, ``status``, ``container_format``, ``disk_format``,
-    ``size``, ``id``, ``created_at``, or ``updated_at``. Default is
-    ``created_at``. The API uses the natural sorting direction of the
-    ``sort_key`` attribute value.
-  in: query
-  required: false
-  type: string
-status_query:
-  description: |
-    Filters results by a status. Default=None.
-  in: query
-  required: false
-  type: boolean
 usage:
   description: |
     Set to ``usage=true`` to show quota usage.
@@ -1527,12 +1491,6 @@ size:
   in: body
   required: true
   type: integer
-size_1:
-  description: |
-    The size of the backup, in GB.
-  in: body
-  required: true
-  type: integer
 snapshot:
   description: |
     A partial representation of a snapshot used in
@@ -1540,12 +1498,6 @@ snapshot:
   in: body
   required: true
   type: string
-snapshot_1:
-  description: |
-    A ``snapshot`` object.
-  in: body
-  required: true
-  type: object
 snapshot_id:
   description: |
     To create a volume from an existing snapshot,
@@ -1557,14 +1509,6 @@ snapshot_id:
 snapshot_id_2:
   description: |
     The UUID of the source volume snapshot.
-  in: body
-  required: true
-  type: string
-snapshot_id_3:
-  description: |
-    The UUID of the source volume snapshot. The API
-    creates a new volume snapshot with the same size as the source
-    volume snapshot.
   in: body
   required: true
   type: string
@@ -1588,30 +1532,12 @@ source_volid:
   in: body
   required: false
   type: string
-source_volid_1:
-  description: |
-    The UUID of the source volume.
-  in: body
-  required: true
-  type: string
 specs:
   description: |
     A ``specs`` object.
   in: body
   required: true
   type: object
-specs_1:
-  description: |
-    Specification key and value pairs.
-  in: body
-  required: true
-  type: object
-specs_2:
-  description: |
-    Specification key and value pairs.
-  in: body
-  required: true
-  type: string
 status:
   description: |
     The ``status`` of the consistency group snapshot.
@@ -1643,20 +1569,6 @@ status_4:
   in: body
   required: true
   type: string
-status_5:
-  description: |
-    The consistency group status. A valid value is
-    ``creating``, ``available``, ``error``, ``deleting``,
-    ``updating``, or ``invalid``.
-  in: body
-  required: true
-  type: string
-status_6:
-  description: |
-    The volume status.
-  in: body
-  required: false
-  type: string
 status_7:
   description: |
     The status for the backup.
@@ -1667,13 +1579,6 @@ storage_protocol:
   description: |
     The storage back end for the back-end volume. For
     example, ``iSCSI`` or ``FC``.
-  in: body
-  required: true
-  type: string
-storage_protocol_1:
-  description: |
-    The storage protocol, such as Fibre Channel,
-    iSCSI, NFS, and so on.
   in: body
   required: true
   type: string

@@ -303,7 +303,6 @@ migration_status_query:
     Admin only.
   in: query
   required: false
-  type: string
 name_volume:
   description: |
     Filters results by a name. Default=None.
@@ -361,16 +360,6 @@ sort_key:
     Sorts by an attribute. A valid value is ``name``,
     ``status``, ``container_format``, ``disk_format``, ``size``,
     ``id``, ``created_at``, or ``updated_at``. Default is
-    ``created_at``. The API uses the natural sorting direction of the
-    ``sort_key`` attribute value.
-  in: query
-  required: false
-  type: string
-sort_key_1:
-  description: |
-    Sorts by an image attribute. A valid value is
-    ``name``, ``status``, ``container_format``, ``disk_format``,
-    ``size``, ``id``, ``created_at``, or ``updated_at``. Default is
     ``created_at``. The API uses the natural sorting direction of the
     ``sort_key`` attribute value.
   in: query
@@ -2312,12 +2301,6 @@ size:
   in: body
   required: true
   type: integer
-size_1:
-  description: |
-    The size of the backup, in GB.
-  in: body
-  required: true
-  type: integer
 skip_validation:
   description: |
     If set to false, the quota value can't be set lower than the in_use quota.
@@ -2434,12 +2417,6 @@ source_volid:
   in: body
   required: false
   type: string
-source_volid_1:
-  description: |
-    The UUID of the source volume.
-  in: body
-  required: true
-  type: string
 spec_value:
   description: |
     The value of the group specification corresponding to the specified key.
@@ -2449,12 +2426,6 @@ spec_value:
 specs:
   description: |
     A ``specs`` object.
-  in: body
-  required: true
-  type: object
-specs_1:
-  description: |
-    Specification key and value pairs.
   in: body
   required: true
   type: object
@@ -2501,20 +2472,6 @@ status_4:
   in: body
   required: true
   type: string
-status_5:
-  description: |
-    The consistency group status. A valid value is
-    ``creating``, ``available``, ``error``, ``deleting``,
-    ``updating``, or ``invalid``.
-  in: body
-  required: true
-  type: string
-status_6:
-  description: |
-    The volume status.
-  in: body
-  required: false
-  type: string
 status_7:
   description: |
     The ``status`` of the generic group snapshot.
@@ -2537,13 +2494,6 @@ storage_protocol:
   description: |
     The storage back end for the back-end volume. For
     example, ``iSCSI`` or ``FC``.
-  in: body
-  required: true
-  type: string
-storage_protocol_1:
-  description: |
-    The storage protocol, such as Fibre Channel,
-    iSCSI, NFS, and so on.
   in: body
   required: true
   type: string
