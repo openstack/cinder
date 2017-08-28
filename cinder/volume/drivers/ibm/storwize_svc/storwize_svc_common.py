@@ -2566,17 +2566,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         self._helpers.delete_vdisk(snapshot['name'], False)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        if snapshot['volume_size'] > volume['size']:
-            msg = (_("create_volume_from_snapshot: snapshot %(snapshot_name)s "
-                     "size is %(snapshot_size)dGB and doesn't fit in target "
-                     "volume %(volume_name)s of size %(volume_size)dGB.") %
-                   {'snapshot_name': snapshot['name'],
-                    'snapshot_size': snapshot['volume_size'],
-                    'volume_name': volume['name'],
-                    'volume_size': volume['size']})
-            LOG.error(msg)
-            raise exception.InvalidInput(message=msg)
-
         opts = self._get_vdisk_params(volume['volume_type_id'],
                                       volume_metadata=
                                       volume.get('volume_metadata'))
@@ -2609,17 +2598,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
     def create_cloned_volume(self, tgt_volume, src_volume):
         """Creates a clone of the specified volume."""
-
-        if src_volume['size'] > tgt_volume['size']:
-            msg = (_("create_cloned_volume: source volume %(src_vol)s "
-                     "size is %(src_size)dGB and doesn't fit in target "
-                     "volume %(tgt_vol)s of size %(tgt_size)dGB.") %
-                   {'src_vol': src_volume['name'],
-                    'src_size': src_volume['size'],
-                    'tgt_vol': tgt_volume['name'],
-                    'tgt_size': tgt_volume['size']})
-            LOG.error(msg)
-            raise exception.InvalidInput(message=msg)
 
         opts = self._get_vdisk_params(tgt_volume['volume_type_id'],
                                       volume_metadata=
