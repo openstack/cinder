@@ -2353,11 +2353,6 @@ class HPE3PARCommon(object):
                    'ss_name': pprint.pformat(snapshot['display_name'])})
 
         model_update = {}
-        if volume['size'] < snapshot['volume_size']:
-            err = ("You cannot reduce size of the volume.  It must "
-                   "be greater than or equal to the snapshot.")
-            LOG.error(err)
-            raise exception.InvalidInput(reason=err)
 
         try:
             if not snap_name:
