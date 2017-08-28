@@ -1,0 +1,6 @@
+{
+    "failover_replication": {
+        "allow_attached_volume": true,
+        "secondary_backend_id": "vendor-id-1"
+    }
+}
