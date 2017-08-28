@@ -24,7 +24,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder import interface
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta.ns5 import zfs_garbage_collector
 from cinder.volume.drivers.nexenta import options
@@ -35,7 +34,6 @@ VERSION = '1.4.0'
 LOG = logging.getLogger(__name__)
 
 
-@interface.volumedriver
 class NexentaNfsDriver(nfs.NfsDriver,
                        zfs_garbage_collector.ZFSGarbageCollectorMixIn):
     """Executes volume driver commands on Nexenta Appliance.
