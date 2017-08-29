@@ -17,21 +17,14 @@ import json
 import requests
 import time
 
-from oslo_log import log as logging
+from cinder.openstack.common import log as logging
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.utils import retry
-from oslo_serialization import jsonutils
 from requests.cookies import extract_cookies_to_jar
-from requests.packages.urllib3 import exceptions
 
 LOG = logging.getLogger(__name__)
 TIMEOUT = 60
-
-requests.packages.urllib3.disable_warnings(exceptions.InsecureRequestWarning)
-requests.packages.urllib3.disable_warnings(
-    exceptions.InsecurePlatformWarning)
 
 
 def check_error(response):
@@ -40,7 +33,7 @@ def check_error(response):
         reason = response.reason
         body = response.content
         try:
-            content = jsonutils.loads(body) if body else None
+            content = json.loads(body) if body else None
         except ValueError:
             raise exception.VolumeBackendAPIException(
                 data=_(
@@ -57,11 +50,6 @@ def check_error(response):
 
 class RESTCaller(object):
 
-    retry_exc_tuple = (
-        requests.exceptions.ConnectionError,
-        requests.exceptions.ConnectTimeout
-    )
-
     def __init__(self, proxy, method):
         self.__proxy = proxy
         self.__method = method
@@ -69,13 +57,12 @@ class RESTCaller(object):
     def get_full_url(self, path):
         return '/'.join((self.__proxy.url, path))
 
-    @retry(retry_exc_tuple, interval=1, retries=6)
     def __call__(self, *args):
         url = self.get_full_url(args[0])
         kwargs = {'timeout': TIMEOUT, 'verify': self.__proxy.verify}
         data = None
         if len(args) > 1:
-            kwargs['json'] = args[1]
+            kwargs['data'] = json.dumps(args[1])
             data = args[1]
 
         LOG.debug('Issuing call to NS: %s %s, data: %s',
@@ -94,8 +81,8 @@ class RESTCaller(object):
         try:
             check_error(response)
         except exception.NexentaException as exc:
-            if (exc.kwargs['message']['source'] == 'zpool' and
-                    exc.kwargs['message']['code'] == 'ENOENT'):
+            if (exc.msg['source'] == 'zpool' and
+                    exc.msg['code'] == 'ENOENT'):
                 self.handle_failover()
                 url = self.get_full_url(args[0])
                 LOG.debug('NexentaException call to NS: %s %s, data: %s',
@@ -191,8 +178,9 @@ class HTTPSAuth(requests.auth.AuthBase):
         url = '/'.join((self.url, 'auth/login'))
         headers = {'Content-Type': 'application/json'}
         data = {'username': self.username, 'password': self.password}
-        response = requests.post(url, json=data, verify=self.verify,
-                                 headers=headers, timeout=TIMEOUT)
+        response = requests.post(
+            url, data=json.dumps(data), verify=self.verify,
+            headers=headers, timeout=TIMEOUT)
         content = json.loads(response.content) if response.content else None
         LOG.debug("NS auth response: %(code)s %(reason)s %(content)s", {
             'code': response.status_code,

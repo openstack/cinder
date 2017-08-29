@@ -457,6 +457,10 @@ class FailedCmdWithDump(VolumeDriverException):
     message = _("Operation failed with status=%(status)s. Full dump: %(data)s")
 
 
+class NexentaException(VolumeDriverException):
+    message = _("Operation failed with status=%(status)s. Full dump: %(data)s")
+
+
 class GlanceMetadataExists(Invalid):
     message = _("Glance metadata cannot be updated, key %(key)s"
                 " exists for volume id %(volume_id)s")

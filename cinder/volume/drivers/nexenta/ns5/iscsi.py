@@ -127,6 +127,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
 
         :raise: :py:exc:`LookupError`
         """
+        url = 'storage/pools/%s' % (self.storage_pool)
+        self.nef.get(url)
         url = 'storage/volumeGroups/%s' % '%2F'.join([
             self.storage_pool, self.volume_group])
         try:

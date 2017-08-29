@@ -44,6 +44,9 @@ NEXENTA_EDGE_OPTIONS = [
 ]
 
 NEXENTA_CONNECTION_OPTIONS = [
+    cfg.BoolOpt('driver_ssl_cert_verify',
+                default=False,
+                help='Set to True to verify SSL certificates.'),
     cfg.StrOpt('nexenta_rest_address',
                default='',
                help='IP address of NexentaEdge management REST API endpoint'),
@@ -93,6 +96,12 @@ NEXENTA_NFS_OPTIONS = [
     cfg.IntOpt('nfs_mount_attempts',
                default=3,
                help='Amount of attemps to mount share'),
+    cfg.StrOpt('nas_host',
+               default='',
+               help='IP for NFS traffic'),
+    cfg.StrOpt('nas_share_path',
+               default='',
+               help='NFS folder path'),
     cfg.StrOpt('nexenta_shares_config',
                default='/etc/cinder/nfs_shares',
                help='File with the list of available nfs shares'),
