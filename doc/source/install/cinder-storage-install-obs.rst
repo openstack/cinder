@@ -15,9 +15,9 @@ storage node, you must prepare the storage device.
 
 #. Install the LVM packages:
 
-  .. code-block:: console
+    .. code-block:: console
 
-     # zypper install lvm2
+      # zypper install lvm2
 
 #. (Optional) If you intend to use non-raw image types such as QCOW2
    and VMDK, install the QEMU package:
@@ -26,9 +26,11 @@ storage node, you must prepare the storage device.
 
       # zypper install qemu
 
-    .. note::
+   .. end
 
-       Some distributions include LVM by default.
+   .. note::
+
+      Some distributions include LVM by default.
 
 #. Create the LVM physical volume ``/dev/sdb``:
 
@@ -192,24 +194,21 @@ Install and configure components
      typically 10.0.0.41 for the first node in the
      :ref:`example architecture <overview-example-architectures>`.
 
+   * In the ``[lvm]`` section, configure the LVM back end with the
+     LVM driver, ``cinder-volumes`` volume group, iSCSI protocol,
+     and appropriate iSCSI service:
 
-* In the ``[lvm]`` section, configure the LVM back end with the
-  LVM driver, ``cinder-volumes`` volume group, iSCSI protocol,
-  and appropriate iSCSI service:
+     .. path /etc/cinder/cinder.conf
+     .. code-block:: ini
 
-  .. path /etc/cinder/cinder.conf
-  .. code-block:: ini
+        [lvm]
+        # ...
+        volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
+        volume_group = cinder-volumes
+        iscsi_protocol = iscsi
+        iscsi_helper = tgtadm
 
-     [lvm]
-     # ...
-     volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
-     volume_group = cinder-volumes
-     iscsi_protocol = iscsi
-     iscsi_helper = tgtadm
-
-  .. end
-
-
+     .. end
 
    * In the ``[DEFAULT]`` section, enable the LVM back end:
 
@@ -251,7 +250,7 @@ Install and configure components
      .. end
 
 
-3. Create the ``/etc/tgt/conf.d/cinder.conf`` file
+#. Create the ``/etc/tgt/conf.d/cinder.conf`` file
    with the following data:
 
    .. code-block:: shell
