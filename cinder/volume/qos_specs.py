@@ -40,13 +40,13 @@ def create(context, name, specs=None):
 
     Expected format of the input parameter:
 
-        .. code-block:: json
+       .. code-block:: python
 
-            {
-                'consumer': 'front-end',
-                'total_iops_sec': 1000,
-                'total_bytes_sec': 1024000
-            }
+          {
+             'consumer': 'front-end',
+             'total_iops_sec': 1000,
+             'total_bytes_sec': 1024000
+          }
 
     """
     # Validate the key-value pairs in the qos spec.
