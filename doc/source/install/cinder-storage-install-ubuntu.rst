@@ -13,15 +13,11 @@ storage node, you must prepare the storage device.
 
 #. Install the supporting utility packages:
 
+   .. code-block:: console
 
+      # apt install lvm2
 
-
-.. code-block:: console
-
-   # apt install lvm2
-
-.. end
-
+   .. end
 
    .. note::
 
@@ -107,9 +103,6 @@ storage node, you must prepare the storage device.
 Install and configure components
 --------------------------------
 
-
-
-
 #. Install the packages:
 
    .. code-block:: console
@@ -119,7 +112,7 @@ Install and configure components
    .. end
 
 
-2. Edit the ``/etc/cinder/cinder.conf`` file
+#. Edit the ``/etc/cinder/cinder.conf`` file
    and complete the following actions:
 
    * In the ``[database]`` section, configure database access:
@@ -200,23 +193,21 @@ Install and configure components
      :ref:`example architecture <overview-example-architectures>`.
 
 
-* In the ``[lvm]`` section, configure the LVM back end with the
-  LVM driver, ``cinder-volumes`` volume group, iSCSI protocol,
-  and appropriate iSCSI service:
+    * In the ``[lvm]`` section, configure the LVM back end with the
+      LVM driver, ``cinder-volumes`` volume group, iSCSI protocol,
+      and appropriate iSCSI service:
 
-  .. path /etc/cinder/cinder.conf
-  .. code-block:: ini
+      .. path /etc/cinder/cinder.conf
+      .. code-block:: ini
 
-     [lvm]
-     # ...
-     volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
-     volume_group = cinder-volumes
-     iscsi_protocol = iscsi
-     iscsi_helper = tgtadm
+         [lvm]
+         # ...
+         volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
+         volume_group = cinder-volumes
+         iscsi_protocol = iscsi
+         iscsi_helper = tgtadm
 
-  .. end
-
-
+      .. end
 
    * In the ``[DEFAULT]`` section, enable the LVM back end:
 
@@ -260,9 +251,6 @@ Install and configure components
 
 Finalize installation
 ---------------------
-
-
-
 
 #. Restart the Block Storage volume service including its dependencies:
 
