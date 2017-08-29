@@ -11,6 +11,7 @@
                 "rel": "bookmark"
             }
         ],
-        "name": "backup001"
+        "name": "backup001",
+        "metadata": {}
     }
 }

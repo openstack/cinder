@@ -239,6 +239,7 @@ Request
    - name: name_optional
    - snapshot_id: snapshot_id_2
    - project_id: project_id_path
+   - metadata: metadata_9
 
 Request Example
 ---------------
@@ -277,7 +278,7 @@ Request
    - backup: backup
    - description: description
    - name: name_optional
-
+   - metadata: metadata_9
 
 Request Example
 ---------------
