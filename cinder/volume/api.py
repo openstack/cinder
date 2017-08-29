@@ -1951,7 +1951,7 @@ class API(base.Base):
         # FIXME(JDG):  We want to be able to do things here like reserve a
         # volume for Nova to do BFV WHILE the volume may be in the process of
         # downloading image, we add downloading here; that's easy enough but
-        # we've got a race inbetween with the attaching/detaching that we do
+        # we've got a race between with the attaching/detaching that we do
         # locally on the Cinder node.  Just come up with an easy way to
         # determine if we're attaching to the Cinder host for some work or if
         # we're being used by the outside world.
