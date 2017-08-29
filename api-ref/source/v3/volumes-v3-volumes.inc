@@ -72,6 +72,7 @@ return bad request.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400)
 
 
@@ -81,8 +82,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - offset: offset
    - marker: marker
@@ -177,21 +177,20 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - volume: volume
    - size: size
-   - description: description
-   - imageRef: imageRef
-   - multiattach: multiattach
    - availability_zone: availability_zone
    - source_volid: source_volid
-   - name: name_13
-   - volume: volume
-   - consistencygroup_id: consistencygroup_id
-   - volume_type: volume_type
+   - description: description
+   - multiattach: multiattach
    - snapshot_id: snapshot_id
-   - OS-SCH-HNT:scheduler_hints: OS-SCH-HNT:scheduler_hints
-   - source_replica: source_replica
+   - name: name_13
+   - imageRef: imageRef
+   - volume_type: volume_type
    - metadata: metadata
-   - project_id: project_id_path
+   - consistencygroup_id: consistencygroup_id
+   - OS-SCH-HNT:scheduler_hints: OS-SCH-HNT:scheduler_hints
 
 Request Example
 ---------------
@@ -247,6 +246,7 @@ filters in the url, API will return bad request.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400)
 
 
@@ -256,8 +256,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - offset: offset
    - marker: marker
@@ -297,7 +296,6 @@ Preconditions
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -363,7 +361,6 @@ Updates a volume.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -371,12 +368,12 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume: volume
-   - description: description
-   - name: name_13
-   - metadata: metadata
    - project_id: project_id_path
    - volume_id: volume_id_path
+   - volume: volume
+   - description: description
+   - name: name_8
+   - metadata: metadata
 
 Request Example
 ---------------
@@ -491,9 +488,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_3
    - project_id: project_id_path
    - volume_id: volume_id_path
+   - metadata: metadata_3
 
 Request Example
 ---------------
@@ -529,7 +526,6 @@ Shows metadata for a volume.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -568,7 +564,6 @@ Replaces all the volume's metadata with the key-value pairs in the request.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -576,9 +571,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_3
    - project_id: project_id_path
    - volume_id: volume_id_path
+   - metadata: metadata_3
 
 Request Example
 ---------------
@@ -710,7 +705,6 @@ Display volumes summary with total number of volumes and total size in GB
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request

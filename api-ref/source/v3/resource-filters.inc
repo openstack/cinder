@@ -15,7 +15,6 @@ List resource filters
 List filters.
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -31,6 +30,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - resource_filters: resource_filters_1
    - filters: resource_filters
    - resource: resource_1
 

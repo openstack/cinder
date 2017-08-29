@@ -15,6 +15,7 @@ Delete group snapshot
 Deletes a group snapshot.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 
@@ -36,6 +37,7 @@ Shows details for a group snapshot.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 
@@ -53,12 +55,13 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_7
-   - description: description
+   - group_snapshot: group_snapshot
    - created_at: created_at
-   - group_id: group_id_1
-   - id: id
-   - name: name
+   - group_id: source_group_id
+   - id: group_snapshot_id_1
+   - name: name_18
+   - status: status_7
+   - description: description_14
 
 Response Example
 ----------------
@@ -72,11 +75,12 @@ List group snapshots with details
 
 .. rest_method::  GET /v3/{project_id}/group_snapshots/detail
 
-Lists all group snapshots with details, since v3.31 if non-admin
+Lists all group snapshots with details. Since v3.31 if non-admin
 users specify invalid filters in the url, API will return bad request.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400)
 
 Request
@@ -97,12 +101,13 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - group_snapshots: group_snapshots
+   - id: group_snapshot_id_1
+   - name: name_18
    - status: status_7
-   - description: description
+   - description: description_14
    - created_at: created_at
    - group_id: group_id_1
-   - id: id
-   - name: name
 
 Response Example
 ----------------
@@ -120,6 +125,7 @@ specify invalid filters in the url, API will return bad request.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400)
 
 
@@ -141,8 +147,9 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id
-   - name: name
+   - group_snapshots: group_snapshots
+   - id: group_snapshot_id_1
+   - name: name_18
 
 
 Response Example
@@ -160,6 +167,7 @@ Create group snapshot
 Creates a group snapshot.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 
@@ -168,10 +176,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - name: name
-   - description: description
-   - group_id: group_id_1
    - project_id: project_id_path
+   - group_snapshot: group_snapshot
+   - name: name_18
+   - description: description_14
+   - group_id: group_id_1
 
 Request Example
 ---------------
@@ -184,12 +193,13 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - group_snapshot: group_snapshot
+   - id: group_snapshot_id_1
+   - name: name_18
    - status: status_7
-   - description: description
+   - description: description_14
    - created_at: created_at
    - group_id: group_id_1
-   - id: id
-   - name: name
 
 Response Example
 ----------------
@@ -206,6 +216,7 @@ Reset group snapshot status
 Resets the status for a group snapshot. Specifies the ``reset_status`` action in the request body.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 
@@ -214,10 +225,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - reset_status: reset_status
-   - status: status
    - project_id: project_id
    - group_snapshot_id: group_snapshot_id
+   - reset_status: reset_status
+   - status: status_7
 
 Request Example
 ---------------

@@ -48,6 +48,7 @@ API will return bad request.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400)
 
 
@@ -57,8 +58,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - offset: offset
    - marker: marker
@@ -69,6 +69,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - backups: backups
    - status: status_4
    - object_count: object_count
    - fail_reason: fail_reason
@@ -81,7 +82,6 @@ Response Parameters
    - has_dependent_backups: has_dependent_backups
    - volume_id: volume_id
    - container: container
-   - backups: backups
    - size: size
    - id: id_1
    - is_incremental: is_incremental
@@ -105,7 +105,6 @@ Shows details for a backup.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -122,6 +121,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - backup: backup
    - status: status_4
    - object_count: object_count
    - container: container
@@ -157,6 +157,7 @@ Delete a backup
 Deletes a backup.
 
 Normal response codes: 202,
+
 Error response codes: Bad Request(400)
 
 Request
@@ -179,6 +180,7 @@ You must specify either the UUID or name of the volume. If you
 specify both the UUID and name, the UUID takes priority.
 
 Normal response codes: 202,
+
 Error response codes: Bad Request(400), Request Entity Too Large(413)
 
 
@@ -187,11 +189,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - restore: restore
-   - name: name_1
-   - volume_id: volume_id
    - project_id: project_id_path
    - backup_id: backup_id
+   - restore: restore
+   - name: name_8
+   - volume_id: volume_id_6
 
 Request Example
 ---------------
@@ -223,6 +225,7 @@ Create a backup
 Creates a Block Storage backup from a volume.
 
 Normal response codes: 202,
+
 Error response codes: Bad Request(400), Internal Server Error(500)
 
 Request
@@ -230,15 +233,15 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - backup: backup
+   - volume_id: volume_id_2
    - container: container
    - description: description
    - incremental: incremental
-   - volume_id: volume_id
    - force: force
-   - backup: backup
    - name: name_optional
-   - snapshot_id: snapshot_id_2
-   - project_id: project_id_path
+   - snapshot_id: snapshot_id_3
    - metadata: metadata_9
 
 Request Example
@@ -265,7 +268,8 @@ Update a backup
 
 Update a Block Storage backup. This API is available since v3.9.
 
-Normal response codes: 202,
+Normal response codes: 202
+
 Error response codes: Bad Request(400)
 
 Request
@@ -313,6 +317,7 @@ since v3.31 if non-admin users specify invalid filters in the
 url, API will return bad request.
 
 Normal response codes: 200
+
 Error response codes: badRequest(400)
 
 Request
@@ -321,8 +326,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - marker: marker
 

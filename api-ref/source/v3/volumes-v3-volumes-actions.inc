@@ -60,21 +60,16 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - os-extend: os-extend
-   - new_size: new_size
    - project_id: project_id_path
    - volume_id: volume_id_path
+   - os-extend: os-extend
+   - new_size: new_size
 
 Request Example
 ---------------
 
 .. literalinclude:: ./samples/volume-extend-request.json
    :language: javascript
-
-
-
-
-
 
 
 Reset a volume's statuses
@@ -93,12 +88,12 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_3
-   - migration_status: migration_status
-   - os-reset_status: os-reset_status
-   - attach_status: attach_status
    - project_id: project_id_path
    - volume_id: volume_id_path
+   - os-reset_status: os-reset_status
+   - status: status_3
+   - migration_status: migration_status_1
+   - attach_status: attach_status
 
 Request Example
 ---------------
@@ -115,6 +110,7 @@ Revert volume to snapshot
 Revert a volume to its latest snapshot, this API only support reverting a detached volume.
 
 Normal response codes: 202
+
 Error response codes: 400, 404
 
 Request
@@ -149,21 +145,16 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - os-set_image_metadata: os-set_image_metadata
-   - metadata: metadata
    - project_id: project_id_path
    - volume_id: volume_id_path
+   - os-set_image_metadata: os-set_image_metadata
+   - metadata: metadata
 
 Request Example
 ---------------
 
 .. literalinclude:: ./samples/volume-image-metadata-set-request.json
    :language: javascript
-
-
-
-
-
 
 
 Remove image metadata from a volume
@@ -181,10 +172,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - os-unset_image_metadata: os-unset_image_metadata
-   - key: key
    - project_id: project_id_path
    - volume_id: volume_id_path
+   - os-unset_image_metadata: os-unset_image_metadata
+   - key: key
 
 Request Example
 ---------------
@@ -256,22 +247,18 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - os-attach: os-attach
    - instance_uuid: instance_uuid
    - mountpoint: mountpoint
    - host_name: host_name
-   - os-attach: os-attach
-   - project_id: project_id_path
-   - volume_id: volume_id_path
 
 Request Example
 ---------------
 
 .. literalinclude:: ./samples/volume-attach-request.json
    :language: javascript
-
-
-
-
 
 
 
@@ -294,10 +281,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - attachment_id: attachment_id
-   - os-detach: os-detach
    - project_id: project_id_path
    - volume_id: volume_id_path
+   - os-detach: os-detach
+   - attachment_id: attachment_id
 
 Request Example
 ---------------
@@ -306,17 +293,14 @@ Request Example
    :language: javascript
 
 
-
-
-
-
-
 Unmanage a volume
 ~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Removes a volume from Block Storage management without removing the back-end storage object that is associated with it. Specify the ``os-unmanage`` action in the request body.
+Removes a volume from Block Storage management without removing the back-end
+storage object that is associated with it. Specify the ``os-unmanage`` action
+in the request body.
 
 Preconditions
 
@@ -330,20 +314,15 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - os-unmanage: os-unmanage
    - project_id: project_id_path
    - volume_id: volume_id_path
+   - os-unmanage: os-unmanage
 
 Request Example
 ---------------
 
 .. literalinclude:: ./samples/volume-unmanage-request.json
    :language: javascript
-
-
-
-
-
 
 
 Force detach a volume
@@ -364,22 +343,17 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - connector: connector
-   - attachment_id: attachment_id
-   - os-force_detach: os-force_detach
    - project_id: project_id_path
    - volume_id: volume_id_path
+   - os-force_detach: os-force_detach
+   - attachment_id: attachment_id
+   - connector: connector
 
 Request Example
 ---------------
 
 .. literalinclude:: ./samples/volume-force-detach-request.json
    :language: javascript
-
-
-
-
-
 
 
 Retype a volume
@@ -404,22 +378,17 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - os-retype: os-retype
    - new_type: new_type
    - migration_policy: migration_policy
-   - os-retype: os-retype
-   - volume_id: volume_id_path
-   - project_id: project_id_path
 
 Request Example
 ---------------
 
 .. literalinclude:: ./samples/volume-os-retype-request.json
    :language: javascript
-
-
-
-
-
 
 
 Force delete a volume
@@ -439,9 +408,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - os-force_delete: os-force_delete
    - project_id: project_id_path
    - volume_id: volume_id_path
+   - os-force_delete: os-force_delete
 
 Request Example
 ---------------
@@ -450,17 +419,13 @@ Request Example
    :language: javascript
 
 
-
-
-
-
-
 Update a volume's bootable status
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Update the bootable status for a volume, mark it as a bootable volume. Specify the ``os-set_bootable`` action in the request body.
+Update the bootable status for a volume, mark it as a bootable volume. Specify
+the ``os-set_bootable`` action in the request body.
 
 Normal response codes: 200
 
@@ -480,10 +445,6 @@ Request Example
 
 .. literalinclude:: ./samples/volume-bootable-status-update-request.json
    :language: javascript
-
-
-
-
 
 
 Upload volume to image

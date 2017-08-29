@@ -21,7 +21,8 @@ for the item is infinite.
 
 
 Normal response codes: 200
-Error response codes:203,
+
+Error response codes: 203
 
 Request
 -------
@@ -35,19 +36,19 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - limits: limits
+   - rate: rate
+   - absolute: absolute
    - totalSnapshotsUsed: totalSnapshotsUsed
    - maxTotalBackups: maxTotalBackups
    - maxTotalVolumeGigabytes: maxTotalVolumeGigabytes
-   - limits: limits
    - maxTotalSnapshots: maxTotalSnapshots
    - maxTotalBackupGigabytes: maxTotalBackupGigabytes
    - totalBackupGigabytesUsed: totalBackupGigabytesUsed
    - maxTotalVolumes: maxTotalVolumes
    - totalVolumesUsed: totalVolumesUsed
-   - rate: rate
    - totalBackupsUsed: totalBackupsUsed
    - totalGigabytesUsed: totalGigabytesUsed
-   - absolute: absolute
 
 Response Example
 ----------------

@@ -23,7 +23,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - cgsnapshot_id: cgsnapshot_id
+   - cgsnapshot_id: cgsnapshot_id_1
 
 
 Show consistency group snapshot detail
@@ -35,7 +35,6 @@ Shows details for a consistency group snapshot.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -44,7 +43,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - cgsnapshot_id: cgsnapshot_id
+   - cgsnapshot_id: cgsnapshot_id_1
 
 
 Response Parameters
@@ -52,12 +51,13 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - cgsnapshot: cgsnapshot
    - status: status
    - description: description
    - created_at: created_at
    - consistencygroup_id: consistencygroup_id
    - id: id
-   - name: name
+   - name: name_2
 
 Response Example
 ----------------
@@ -75,7 +75,6 @@ Lists all consistency group snapshots with details.
 
 
 Normal response codes: 200
-Error response codes:
 
 Request
 -------
@@ -90,12 +89,13 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - cgsnapshots: cgsnapshots
    - status: status
    - description: description
    - created_at: created_at
    - consistencygroup_id: consistencygroup_id
    - id: id
-   - name: name
+   - name: name_2
 
 Response Example
 ----------------
@@ -112,7 +112,6 @@ Lists all consistency group snapshots.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -128,8 +127,9 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - cgsnapshots: cgsnapshots
    - id: id
-   - name: name
+   - name: name_2
 
 
 
@@ -156,8 +156,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - name: name
    - project_id: project_id_path
+   - cgsnapshot: cgsnapshot
+   - name: name_5
+   - consistencygroup_id: consistencygroup_id
+   - description: description
 
 Request Example
 ---------------
@@ -175,4 +178,4 @@ Response Parameters
    - created_at: created_at
    - consistencygroup_id: consistencygroup_id
    - id: id
-   - name: name
+   - name: name_2

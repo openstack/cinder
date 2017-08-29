@@ -14,6 +14,7 @@ Updates a group type.
 To create a generic volume group, you must specify a group type.
 
 Normal response codes: 200
+
 Error response codes: badRequest(400), forbidden(403), itemNotFound(404),
 conflict(409), computeFault(500)
 
@@ -23,9 +24,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - group_type: group_type
-   - group_type_id: group_type_id
    - project_id: project_id_path
+   - group_type_id: group_type_id
+   - group_type: group_type
+   - name: name_16
+   - description: description_12
 
 Request Example
 ---------------
@@ -39,11 +42,12 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - is_public: is_public
-   - group_specs: group_specs
-   - description: description
    - group_type: group_type
-   - name: name
+   - id: group_type_id_2
+   - is_public: is_public_1
+   - group_specs: group_specs
+   - description: description_12
+   - name: name_16
 
 Response Example
 ----------------
@@ -61,6 +65,7 @@ Shows details for a group type.
 
 
 Normal response codes: 200
+
 Error response codes: itemNotFound(404)
 
 Request
@@ -68,8 +73,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - group_type_id: group_type_id
    - project_id: project_id_path
+   - group_type_id: group_type_id
 
 
 Response Parameters
@@ -77,11 +82,12 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - is_public: is_public
-   - group_specs: group_specs
-   - description: description
    - group_type: group_type
-   - name: name
+   - id: group_type_id_2
+   - name: name_16
+   - is_public: is_public_1
+   - group_specs: group_specs
+   - description: description_12
 
 
 Response Example
@@ -99,6 +105,7 @@ Delete group type
 Deletes a group type.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), forbidden(403), itemNotFound(404)
 
 
@@ -120,7 +127,6 @@ Lists group types.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -129,8 +135,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - offset: offset
    - marker: marker
@@ -142,9 +147,9 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - group_types: group_types
-   - group_specs: group_specs
-   - name: name
-   - group_type: group_type
+   - id: group_type_id_2
+   - group_specs: group_specs_2
+   - name: name_16
 
 Response Example
 ----------------
@@ -164,6 +169,7 @@ To create a generic volume group, you must specify a group type.
 
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), forbidden(403), itemNotFound(404),
 conflict(409)
 
@@ -173,8 +179,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - group_type: group_type
    - project_id: project_id_path
+   - group_type: group_type
+   - name: name_16
+   - description: description_12
+   - group_specs: group_specs
 
 Request Example
 ---------------
@@ -188,11 +197,12 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - is_public: is_public
-   - group_specs: group_specs
-   - description: description
    - group_type: group_type
-   - name: name
+   - id: group_type_id_2
+   - is_public: is_public_1
+   - group_specs: group_specs
+   - description: description_12
+   - name: name_16
 
 
 Response Example

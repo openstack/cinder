@@ -13,6 +13,7 @@ this API will update the specification as well.
 
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), forbidden(403), itemNotFound(404)
 
 
@@ -21,9 +22,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - group_specs: group_specs_2
-   - group_type_id: group_type_id_1
    - project_id: project_id_path
+   - group_type_id: group_type_id_1
+   - group_specs: group_specs_2
 
 Request Example
 ---------------
@@ -57,6 +58,7 @@ List all the group specs for a group type,
 
 
 Normal response codes: 200
+
 Error response codes: itemNotFound(404), forbidden(403)
 
 
@@ -65,8 +67,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - group_type_id: group_type_id_1
    - project_id: project_id_path
+   - group_type_id: group_type_id_1
 
 
 Response Parameters
@@ -93,6 +95,7 @@ Show a group spec for a group type,
 
 
 Normal response codes: 200
+
 Error response codes: itemNotFound(404), forbidden(403)
 
 
@@ -101,8 +104,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - group_type_id: group_type_id_1
    - project_id: project_id_path
+   - group_type_id: group_type_id_1
    - spec_id: spec_id
 
 
@@ -129,6 +132,7 @@ Update a group spec for a group type,
 
 
 Normal response codes: 202
+
 Error response codes: itemNotFound(404), forbidden(403)
 
 
@@ -137,8 +141,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - group_type_id: group_type_id_1
    - project_id: project_id_path
+   - group_type_id: group_type_id_1
    - spec_id: spec_id
    - spec: spec_value
 
@@ -166,6 +170,7 @@ Delete a group spec for a group type,
 
 
 Normal response codes: 202
+
 Error response codes: itemNotFound(404), forbidden(403)
 
 
@@ -174,6 +179,6 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - group_type_id: group_type_id_1
    - project_id: project_id_path
+   - group_type_id: group_type_id_1
    - spec_id: spec_id

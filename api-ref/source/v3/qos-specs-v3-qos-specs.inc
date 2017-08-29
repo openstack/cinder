@@ -38,7 +38,6 @@ Unsets keys in a QoS specification.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -46,22 +45,14 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - keys: keys
    - project_id: project_id_path
    - qos_id: qos_id
+   - keys: keys
 
 Request Example
 ---------------
 
 .. literalinclude:: ./samples/qos-unset-request.json
-   :language: javascript
-
-
-
-Response Example
-----------------
-
-.. literalinclude:: ./samples/qos-unset-response.json
    :language: javascript
 
 
@@ -74,7 +65,6 @@ Lists all associations for a QoS specification.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -84,6 +74,19 @@ Request
 
    - project_id: project_id_path
    - qos_id: qos_id
+
+
+Response
+--------
+
+.. rest_parameters:: parameters.yaml
+
+   - qos_specs: qos_specs
+   - specs: specs
+   - consumer: consumer_1
+   - name: name_4
+   - id: id_3
+   - links: links_2
 
 
 Response Example
@@ -110,7 +113,7 @@ Request
 
    - project_id: project_id_path
    - qos_id: qos_id
-   - vol_type_id: vol_type_id
+   - vol_type_id: vol_type_id_query
 
 
 Disassociate QoS specification from a volume type
@@ -130,7 +133,7 @@ Request
 
    - project_id: project_id_path
    - qos_id: qos_id
-   - vol_type_id: vol_type_id
+   - vol_type_id: vol_type_id_query
 
 
 Show a QoS specification details
@@ -142,7 +145,8 @@ Shows details for a QoS specification.
 
 
 Normal response codes: 200
-Error response codes:413,405,404,403,401,400,503,
+
+Error response codes: 413,405,404,403,401,400,503
 
 
 Request
@@ -159,12 +163,12 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - name: name
-   - links: links
-   - id: id
    - qos_specs: qos_specs
-   - consumer: consumer
    - specs: specs
+   - consumer: consumer
+   - name: name_4
+   - id: id_3
+   - links: links_2
 
 
 Response Example
@@ -183,7 +187,6 @@ Sets keys in a QoS specification.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -191,16 +194,22 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - qos_specs: qos_specs
-   - specs: specs
    - project_id: project_id_path
    - qos_id: qos_id
+   - qos_specs: qos_specs
 
 Request Example
 ---------------
 
 .. literalinclude:: ./samples/qos-update-request.json
    :language: javascript
+
+Response
+--------
+
+.. rest_parameters:: parameters.yaml
+
+   - qos_specs: qos_specs
 
 
 Response Example
@@ -227,7 +236,7 @@ Request
 
    - project_id: project_id_path
    - qos_id: qos_id
-   - force: force
+   - force: force_3
 
 
 Create a QoS specification
@@ -247,10 +256,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - qos_specs: qos_specs
-   - consumer: consumer
-   - name: name
    - project_id: project_id_path
+   - qos_specs: qos_specs
+   - name: name_4
 
 Request Example
 ---------------
@@ -265,10 +273,10 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - name: name
-   - links: links
-   - id: id
    - qos_specs: qos_specs
+   - name: name_4
+   - links: links_2
+   - id: id_3
    - consumer: consumer
    - specs: specs
 
@@ -282,7 +290,8 @@ Lists quality of service (QoS) specifications.
 
 
 Normal response codes: 200
-Error response codes:300,
+
+Error response codes: 300
 
 
 Request
@@ -291,8 +300,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - marker: marker
 
@@ -302,11 +310,11 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - specs: specs
    - qos_specs: qos_specs
+   - specs: specs
    - consumer: consumer
-   - id: id
-   - name: name
+   - id: id_3
+   - name: name_4
 
 
 Response Example

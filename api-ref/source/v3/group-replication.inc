@@ -16,6 +16,7 @@ List replication targets
 Lists replication targets for a group.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 
@@ -57,6 +58,7 @@ Enable group replication
 Enable replication for a group.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 Request
@@ -81,6 +83,7 @@ Disable group replication
 Disable replication for a group.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 Request
@@ -105,6 +108,7 @@ Failover replication
 Failover a replicated group.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 Request

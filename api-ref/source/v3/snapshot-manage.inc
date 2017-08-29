@@ -12,7 +12,8 @@ Manage an existing snapshot
 
 .. rest_method::  POST /v3/{project_id}/manageable_snapshots
 
-Creates a snapshot by using existing storage rather than allocating new storage.
+Creates a snapshot by using existing storage rather than allocating new
+storage.
 
 The caller must specify a reference to an existing storage volume
 in the ref parameter in the request. Although each storage driver
@@ -32,12 +33,13 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - snapshot: snapshot_1
    - description: description
-   - name: name
+   - metadata: metadata_7
+   - name: name_5
    - ref: ref
    - volume_id: volume_id
-   - metadata: metadata
-   - project_id: project_id_path
 
 Request Example
 ---------------
@@ -63,12 +65,12 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
    - sort: sort
    - offset: offset
    - limit: limit
    - marker: marker
-   - project_id: project_id_path
-   - host: hostname
+   - host: host_query
 
 
 Response
@@ -108,12 +110,12 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
    - sort: sort
    - offset: offset
    - limit: limit
    - marker: marker
-   - project_id: project_id_path
-   - host: hostname
+   - host: host_query
 
 
 Response

@@ -41,13 +41,13 @@ cgsnapshot_id_1:
   description: |
     The ID of the consistency group snapshot.
   in: path
-  required: false
+  required: true
   type: string
 consistencygroup_id_2:
   description: |
     The ID of the consistency group.
   in: path
-  required: false
+  required: true
   type: string
 encryption_id:
   description: |
@@ -55,13 +55,6 @@ encryption_id:
   in: path
   required: true
   type: string
-force_3:
-  description: |
-    To delete a QoS specification even if it is in-
-    use, set to ``true``. Default is ``false``.
-  in: path
-  required: false
-  type: boolean
 group_id:
   description: |
     The ID of the group.
@@ -72,7 +65,7 @@ group_snapshot_id:
   description: |
     The ID of the group snapshot.
   in: path
-  required: false
+  required: true
   type: string
 group_type_id:
   description: |
@@ -114,6 +107,12 @@ key_3:
   in: path
   required: true
   type: string
+message_id:
+  description: |
+    The UUID of the message.
+  in: path
+  required: true
+  type: string
 project_id_path:
   description: |
     The UUID of the project in a multi-tenancy cloud.
@@ -138,15 +137,15 @@ quotas_project_id:
   in: path
   required: true
   type: string
-resource:
-  description: |
-    Filter filters by resource name.
-  in: path
-  required: false
-  type: string
 snapshot_id_path:
   description: |
     The UUID of the snapshot.
+  in: path
+  required: true
+  type: string
+spec_id:
+  description: |
+    The id (key) of the group specification.
   in: path
   required: true
   type: string
@@ -154,7 +153,7 @@ transfer_id:
   description: |
     The unique identifier for a volume transfer.
   in: path
-  required: false
+  required: true
   type: string
 user_id_1:
   description: |
@@ -185,7 +184,7 @@ volume_type_id:
   description: |
     The UUID for an existing volume type.
   in: path
-  required: false
+  required: true
   type: string
 
 # variables in query
@@ -218,6 +217,13 @@ detail:
     Indicates whether to show pool details or only
     pool names in the response.  Set to ``true`` to show pool details.
     Set to ``false`` to show only pool names. Default is ``false``.
+  in: query
+  required: false
+  type: boolean
+force_3:
+  description: |
+    To delete a QoS specification even if it is in-
+    use, set to ``true``. Default is ``false``.
   in: query
   required: false
   type: boolean
@@ -284,12 +290,6 @@ marker_group_snapshot:
   required: false
   type: string
   min_version: 3.29
-message_id:
-  description: |
-    The UUID of the message.
-  in: query
-  required: true
-  type: string
 metadata_query:
   description: |
     Filters results by a metadata key and value pair.
@@ -325,6 +325,12 @@ offset_group_snapshot:
   required: false
   type: integer
   min_version: 3.29
+resource:
+  description: |
+    Filter for resource name.
+  in: query
+  required: false
+  type: string
 sort:
   description: |
     Comma-separated list of sort keys and optional
@@ -381,12 +387,6 @@ sort_key_group_snapshot:
   required: false
   type: string
   min_version: 3.29
-spec_id:
-  description: |
-    The id (key) of the group specification.
-  in: query
-  required: true
-  type: string
 status_query:
   description: |
     Filters results by a status. Default=None.
@@ -400,6 +400,12 @@ usage:
   in: query
   required: false
   type: boolean
+vol_type_id_query:
+  description: |
+    A volume type ID.
+  in: query
+  required: true
+  type: string
 
 # variables in body
 absolute:
@@ -454,9 +460,15 @@ attached_at:
   in: body
   required: false
   type: string
+attachment:
+  description: |
+    An attachment object.
+  in: body
+  required: true
+  type: object
 attachment_id:
   description: |
-    The interface ID.
+    The ID of the attachment.
   in: body
   required: false
   type: string
@@ -604,12 +616,24 @@ capabilities:
   in: body
   required: true
   type: object
+cgsnapshot:
+  description: |
+    A consistency group snapshot object.
+  in: body
+  required: true
+  type: object
 cgsnapshot_id:
   description: |
     The UUID of the consistency group snapshot.
   in: body
   required: false
   type: string
+cgsnapshots:
+  description: |
+    A collection of ``cgsnapshot`` objects.
+  in: body
+  required: true
+  type: object
 cinder_id:
   description: |
     The UUID of the snapshot in Cinder.
@@ -663,6 +687,18 @@ connector_1:
   in: body
   required: true
   type: object
+consistencygroup:
+  description: |
+    A consistency group.
+  in: body
+  required: true
+  type: object
+consistencygroup-from-src:
+  description: |
+    The consistency group from source object.
+  in: body
+  required: true
+  type: object
 consistencygroup_id:
   description: |
     The UUID of the consistency group.
@@ -675,6 +711,12 @@ consistencygroup_id_1:
   in: body
   required: false
   type: string
+consistencygroups:
+  description: |
+    A list of consistency groups.
+  in: body
+  required: true
+  type: array
 consumer:
   description: |
     The consumer type.
@@ -695,7 +737,7 @@ container:
   type: string
 container_format:
   description: |
-    Container format for the new image. Defualt is bare.
+    Container format for the new image. Default is bare.
   in: body
   required: false
   type: string
@@ -706,6 +748,12 @@ control_location:
   in: body
   required: false
   type: string
+create-from-src:
+  description: |
+    The create from source action.
+  in: body
+  required: true
+  type: object
 created_at:
   description: |
     The date and time when the resource was created.
@@ -739,6 +787,12 @@ data_timestamp:
   in: body
   required: true
   type: string
+delete:
+  description: |
+    The delete action.
+  in: body
+  required: true
+  type: object
 delete-volumes:
   description: |
     If set to ``true``, allows deletion of a
@@ -1052,11 +1106,23 @@ gigabytes_usage:
   in: body
   required: true
   type: object
+group:
+  description: |
+    A group object.
+  in: body
+  required: true
+  type: object
 group_id_1:
   description: |
     The ID of the group.
   in: body
   required: false
+  type: string
+group_name:
+  description: |
+    The group name.
+  in: body
+  required: true
   type: string
 group_replication_status:
   description: |
@@ -1064,12 +1130,24 @@ group_replication_status:
   in: body
   required: false
   type: string
+group_snapshot:
+  description: |
+    The group snapshot.
+  in: body
+  required: true
+  type: object
 group_snapshot_id_1:
   description: |
     The ID of the group snapshot.
   in: body
-  required: false
+  required: true
   type: string
+group_snapshots:
+  description: |
+    A collection of group snapshots.
+  in: body
+  required: true
+  type: array
 group_specs:
   description: |
     A set of key and value pairs that contains the
@@ -1090,9 +1168,21 @@ group_type:
   in: body
   required: true
   type: object
+group_type_id_2:
+  description: |
+    The group type ID.
+  in: body
+  required: true
+  type: string
 group_types:
   description: |
     The list of group types.
+  in: body
+  required: true
+  type: array
+groups:
+  description: |
+    A collections of groups.
   in: body
   required: true
   type: array
@@ -1130,7 +1220,7 @@ host:
     existing volume resides.
   in: body
   required: true
-  type: string
+  type: object
 host_mutex:
   description: |
     The OpenStack Block Storage host where the existing resource resides.
@@ -1162,6 +1252,12 @@ host_service:
   in: body
   required: true
   type: string
+hosts:
+  description: |
+    A OpenStack Block Storage host.
+  in: body
+  required: true
+  type: object
 id:
   description: |
     The UUID of the volume transfer.
@@ -1265,13 +1361,13 @@ is_incremental:
   type: boolean
 is_public:
   description:
-    Volume type which is accessible to the public.
+    Whether the volume type is publicly visible.
   in: body
   required: false
   type: boolean
 is_public_1:
   description:
-    Group type which is accessible to the public.
+    Whether the group is publicly visible.
   in: body
   required: false
   type: boolean
@@ -1921,6 +2017,12 @@ pool_name:
   in: body
   required: true
   type: string
+pools:
+  description: |
+    List of storage pools.
+  in: body
+  required: true
+  type: array
 prefix:
   description: |
     The prefix for the log path we are querying,
@@ -1975,6 +2077,12 @@ provider_optional:
   in: body
   required: false
   type: string
+qos_set_id:
+  description: |
+    The QoS set ID.
+  in: body
+  required: true
+  type: string
 qos_specs:
   description: |
     A ``qos_specs`` object.
@@ -1993,6 +2101,12 @@ quota_class_id:
   in: body
   required: true
   type: string
+quota_class_set:
+  description: |
+    A ``quota_class_set`` object.
+  in: body
+  required: true
+  type: object
 quota_set:
   description: |
     A ``quota_set`` object.
@@ -2020,7 +2134,7 @@ ref:
     structure, see the documentation for the volume driver.
   in: body
   required: true
-  type: string
+  type: object
 ref_1:
   description: |
     A reference to the existing volume. The internal
@@ -2095,6 +2209,12 @@ resource_1:
 resource_filters:
   description: |
     The resource filter array.
+  in: body
+  required: true
+  type: array
+resource_filters_1:
+  description: |
+    A collection of resource filters.
   in: body
   required: true
   type: array
@@ -2230,7 +2350,7 @@ snapshot_id_2:
   description: |
     The UUID of the source volume snapshot.
   in: body
-  required: true
+  required: false
   type: string
 snapshot_id_3:
   description: |
@@ -2292,7 +2412,7 @@ source_group_id:
   description: |
     The UUID of the source group.
   in: body
-  required: false
+  required: true
   type: string
 source_reference:
   description: |
@@ -2485,6 +2605,18 @@ totalVolumesUsed:
   in: body
   required: true
   type: integer
+transfer:
+  description: |
+    The volume transfer object.
+  in: body
+  required: true
+  type: object
+transfers:
+  description: |
+    List of transfer details.
+  in: body
+  required: true
+  type: array
 updated:
   description: |
     The date and time stamp when the extension was
@@ -2537,7 +2669,13 @@ user_message:
   description: |
     The translated readable message corresponding to ``event_id``.
   in: body
-  required: false
+  required: true
+  type: string
+user_messages:
+  description: |
+    A collection of user messages.
+  in: body
+  required: true
   type: string
 vendor_name:
   description: |

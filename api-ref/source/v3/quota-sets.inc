@@ -17,7 +17,6 @@ Shows quotas for a project.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -25,8 +24,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - project_id: quotas_project_id
    - admin_project_id: admin_project_id
+   - project_id: quotas_project_id
    - usage: usage
 
 
@@ -36,7 +35,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: project_id
+   - id: qos_set_id
    - volumes: volumes_number
    - volumes_{volume_type}: volumes_number_for_type
    - snapshots: snapshots_number
@@ -64,7 +63,6 @@ Shows quota usage for a project.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -83,7 +81,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: project_id
+   - id: qos_set_id
    - volumes: volumes_number_usage
    - volumes_{volume_type}: volumes_number_for_type_usage
    - snapshots: snapshots_number_usage
@@ -112,7 +110,6 @@ Updates quotas for a project.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -174,7 +171,6 @@ Deletes quotas for a project so the quotas revert to default values.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -197,7 +193,6 @@ Gets default quotas for a project.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -215,7 +210,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: project_id
+   - id: qos_set_id
    - volumes: volumes_number
    - volumes_{volume_type}: volumes_number_for_type
    - snapshots: snapshots_number

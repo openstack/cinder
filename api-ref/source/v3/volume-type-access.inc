@@ -74,7 +74,6 @@ Lists project IDs that have access to private volume type.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
