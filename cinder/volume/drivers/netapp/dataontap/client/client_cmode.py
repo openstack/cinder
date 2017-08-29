@@ -78,6 +78,9 @@ class Client(client_base.Client):
         self.features.add_feature('CLUSTER_PEER_POLICY', supported=ontapi_1_30)
         self.features.add_feature('FLEXVOL_ENCRYPTION', supported=ontapi_1_1xx)
 
+        LOG.info('Reported ONTAPI Version: %(major)s.%(minor)s',
+                 {'major': ontapi_version[0], 'minor': ontapi_version[1]})
+
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
         server.set_vserver(vserver)
