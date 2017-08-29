@@ -121,12 +121,6 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
                                    loopingcalls.ONE_HOUR,
                                    loopingcalls.ONE_HOUR)
 
-        # Add the task that harvests soft-deleted QoS policy groups.
-        self.loopingcalls.add_task(
-            self.zapi_client.remove_unused_qos_policy_groups,
-            loopingcalls.ONE_MINUTE,
-            loopingcalls.ONE_MINUTE)
-
         self.loopingcalls.add_task(
             self._handle_housekeeping_tasks,
             loopingcalls.TEN_MINUTES,
