@@ -1251,10 +1251,6 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         """Remove an export for a snapshot."""
         pass
 
-    def backup_use_temp_snapshot(self):
-        # This config option has a default to be False, So just return it.
-        return self.configuration.safe_get("backup_use_temp_snapshot")
-
     def _copy_volume(self, volume, copy_name, src_lun, tgt_lun):
         metadata = huawei_utils.get_volume_metadata(volume)
         copyspeed = metadata.get('copyspeed')
