@@ -3386,10 +3386,6 @@ class VMAXCommon(object):
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
-            # If qos exists, update storage group to reflect qos parameters
-            if 'qos' in extraSpecs:
-                self.utils.update_storagegroup_qos(
-                    self.conn, defaultStorageGroupInstanceName, extraSpecs)
 
             self._add_volume_to_default_storage_group_on_create(
                 volumeDict, volumeName, storageConfigService,
@@ -3531,10 +3527,6 @@ class VMAXCommon(object):
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
-        # If qos exists, update storage group to reflect qos parameters
-        if 'qos' in extraSpecs:
-            self.utils.update_storagegroup_qos(
-                self.conn, sgInstanceName, extraSpecs)
 
         return sgInstanceName
 
