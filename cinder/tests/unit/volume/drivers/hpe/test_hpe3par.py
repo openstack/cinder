@@ -3167,12 +3167,6 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-            volume = self.volume.copy()
-            volume['size'] = 1
-            self.assertRaises(exception.InvalidInput,
-                              self.driver.create_volume_from_snapshot,
-                              volume, self.snapshot)
-
     def test_create_volume_from_snapshot_and_extend(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
@@ -3372,12 +3366,6 @@ class HPE3PARBaseDriver(object):
                 self.standard_login +
                 expected +
                 self.standard_logout)
-
-            volume = self.volume.copy()
-            volume['size'] = 1
-            self.assertRaises(exception.InvalidInput,
-                              self.driver.create_volume_from_snapshot,
-                              volume, self.snapshot)
 
     def test_terminate_connection(self):
         # setup_mock_client drive with default configuration
