@@ -122,6 +122,12 @@ extra_specs_value_map = {
         'r-0': 0, 'r-5': 1, 'r-10-2': 2, 'r-10-3': 3, 'r-10-4': 4, 'r-6': 5}
 }
 
+extra_specs_default_key_value_map = {
+    'hpelh:provisioning': 'thin',
+    'hpelh:ao': 'true',
+    'hpelh:data_pl': 'r-0'
+}
+
 
 @interface.volumedriver
 class HPELeftHandISCSIDriver(driver.ISCSIDriver):
@@ -164,9 +170,11 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         2.0.11 - Fix extend volume if larger than snapshot bug #1560654
         2.0.12 - add CG capability to generic volume groups.
         2.0.13 - Fix cloning operation related to provisioning, bug #1688243
+        2.0.14 - Fixed bug #1710072, Volume doesn't show expected parameters
+                 after Retype
     """
 
-    VERSION = "2.0.13"
+    VERSION = "2.0.14"
 
     CI_WIKI_NAME = "HPE_Storage_CI"
 
@@ -1011,6 +1019,19 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
             # pick out the LH extra specs
             new_extra_specs = dict(new_type).get('extra_specs')
+
+            # in the absence of LH capability in diff,
+            # True should be return as retype is not needed
+            if not list(filter((lambda key: extra_specs_key_map.get(key)),
+                               diff['extra_specs'].keys())):
+                return True
+
+            # add capability of LH, which are absent in new type,
+            # so default value gets set for those capability
+            for key, value in extra_specs_default_key_value_map.items():
+                if key not in new_extra_specs.keys():
+                    new_extra_specs[key] = value
+
             lh_extra_specs = self._get_lh_extra_specs(
                 new_extra_specs,
                 extra_specs_key_map.keys())
@@ -1020,8 +1041,11 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             # only set the ones that have changed
             changed_extra_specs = {}
             for key, value in lh_extra_specs.items():
-                (old, new) = diff['extra_specs'][key]
-                if old != new:
+                try:
+                    (old, new) = diff['extra_specs'][key]
+                    if old != new:
+                        changed_extra_specs[key] = value
+                except KeyError:
                     changed_extra_specs[key] = value
 
             # map extra specs to LeftHand options
