@@ -464,7 +464,7 @@ class SnapshotApiTest(test.TestCase):
             links = res['snapshots_links']
 
             # Must be a list of links, even if we only get 1 back
-            self.assertTrue(list, type(links))
+            self.assertIsInstance(links, list)
             next_link = links[0]
 
             # rel entry must be next

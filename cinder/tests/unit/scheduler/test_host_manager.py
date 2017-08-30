@@ -187,7 +187,7 @@ class HostManagerTestCase(test.TestCase):
             self.host_manager.service_states_last_update['host1'])
 
         # notify capab1 to ceilometer by S0
-        self.assertTrue(1, _mock_get_usage_and_notify.call_count)
+        self.assertEqual(1, _mock_get_usage_and_notify.call_count)
 
         # S1: update_service_capabilities()
         self.host_manager_1.update_service_capabilities(service_name, 'host1',
@@ -263,7 +263,7 @@ class HostManagerTestCase(test.TestCase):
             dict(dict(timestamp=31339), **capab1))
 
         # Don't notify capab1 to ceilometer.
-        self.assertTrue(1, _mock_get_usage_and_notify.call_count)
+        self.assertEqual(0, _mock_get_usage_and_notify.call_count)
 
     @mock.patch(
         'cinder.scheduler.host_manager.HostManager.get_usage_and_notify')
@@ -311,7 +311,7 @@ class HostManagerTestCase(test.TestCase):
                              self.host_manager.service_states['host1'])
 
         # Don't notify capab1 to ceilometer.
-        self.assertTrue(1, _mock_get_usage_and_notify.call_count)
+        self.assertEqual(0, _mock_get_usage_and_notify.call_count)
 
         # S0: update_service_capabilities()
         self.host_manager.update_service_capabilities(service_name, 'host1',
@@ -397,7 +397,7 @@ class HostManagerTestCase(test.TestCase):
             self.host_manager_1.service_states_last_update['host1'])
 
         # notify capab2 to ceilometer.
-        self.assertTrue(2, _mock_get_usage_and_notify.call_count)
+        self.assertLess(0, _mock_get_usage_and_notify.call_count)
 
         # S1: update_service_capabilities()
         self.host_manager_1.update_service_capabilities(service_name, 'host1',
@@ -471,7 +471,7 @@ class HostManagerTestCase(test.TestCase):
                              self.host_manager.service_states['host1'])
 
         # S0 notify capab2 to ceilometer.
-        self.assertTrue(3, _mock_get_usage_and_notify.call_count)
+        self.assertLess(0, _mock_get_usage_and_notify.call_count)
 
         # S0: update_service_capabilities()
         self.host_manager.update_service_capabilities(service_name, 'host1',

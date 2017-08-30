@@ -219,7 +219,7 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
     def test_is_replicated_no_specs(self):
         volume_type = fake_volume.fake_volume_type_obj(
             self.context, extra_specs={})
-        self.assertFalse(volume_type.is_replicated())
+        self.assertFalse(bool(volume_type.is_replicated()))
 
     @ddt.data('<is> False', '<is> false', '<is> f', 'baddata', 'bad data')
     def test_is_replicated_specs_false(self, not_enabled):

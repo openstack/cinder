@@ -1726,7 +1726,7 @@ class HPE3PARBaseDriver(object):
 
             retyped = self.driver.retype(
                 self.ctxt, volume, type_ref, None, self.RETYPE_HOST)
-            self.assertTrue(retyped)
+            self.assertTrue(retyped[0])
 
             expected = [
                 mock.call.modifyVolume('osv-0DM4qZEVSKON-AAAAAAAAA',
@@ -1796,7 +1796,7 @@ class HPE3PARBaseDriver(object):
                 self.volume_type_replicated,
                 None,
                 self.RETYPE_HOST)
-            self.assertTrue(retyped)
+            self.assertTrue(retyped[0])
             backend_id = self.replication_targets[0]['backend_id']
             expected = [
                 mock.call.createRemoteCopyGroup(
@@ -1899,7 +1899,7 @@ class HPE3PARBaseDriver(object):
 
             retyped = self.driver.retype(
                 self.ctxt, volume_1, volume_type, None, self.RETYPE_HOST)
-            self.assertTrue(retyped)
+            self.assertTrue(retyped[0])
 
             expected = [
                 mock.call.stopRemoteCopy(self.RCG_3PAR_NAME),
@@ -2000,7 +2000,7 @@ class HPE3PARBaseDriver(object):
             backend_id = self.replication_targets[0]['backend_id']
             retyped = self.driver.retype(
                 self.ctxt, volume_1, volume_type, None, self.RETYPE_HOST)
-            self.assertTrue(retyped)
+            self.assertTrue(retyped[0])
 
             expected = [
                 mock.call.stopRemoteCopy(self.RCG_3PAR_NAME),

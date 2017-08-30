@@ -623,12 +623,12 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assertTrue(result.startswith("really-long-string-that-"))
         self.assertTrue(result.endswith("-cinder"))
         self.assertEqual(63, len(result))
-        self.assertTrue(pure.GENERATED_NAME.match(result))
+        self.assertTrue(bool(pure.GENERATED_NAME.match(result)))
         result = self.driver._generate_purity_host_name("!@#$%^-invalid&*")
         self.assertTrue(result.startswith("invalid---"))
         self.assertTrue(result.endswith("-cinder"))
         self.assertEqual(49, len(result))
-        self.assertTrue(pure.GENERATED_NAME.match(result))
+        self.assertIsNotNone(pure.GENERATED_NAME.match(result))
 
     @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._is_volume_replicated_type", autospec=True)
@@ -2402,7 +2402,7 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
         actual = self.driver._connect(VOLUME, ISCSI_CONNECTOR)
         self.assertEqual(expected, actual)
         self.assertTrue(self.array.connect_host.called)
-        self.assertTrue(self.array.list_volume_private_connections)
+        self.assertTrue(bool(self.array.list_volume_private_connections))
 
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_host", autospec=True)
     def test_connect_already_connected_list_hosts_empty(self, mock_host):
@@ -2416,7 +2416,7 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
         self.assertRaises(exception.PureDriverException, self.driver._connect,
                           VOLUME, ISCSI_CONNECTOR)
         self.assertTrue(self.array.connect_host.called)
-        self.assertTrue(self.array.list_volume_private_connections)
+        self.assertTrue(bool(self.array.list_volume_private_connections))
 
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_host", autospec=True)
     def test_connect_already_connected_list_hosts_exception(self, mock_host):
@@ -2433,7 +2433,7 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
                           self.driver._connect, VOLUME,
                           ISCSI_CONNECTOR)
         self.assertTrue(self.array.connect_host.called)
-        self.assertTrue(self.array.list_volume_private_connections)
+        self.assertTrue(bool(self.array.list_volume_private_connections))
 
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_chap_secret_from_init_data")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_host", autospec=True)
@@ -2607,7 +2607,7 @@ class PureFCDriverTestCase(PureDriverTestCase):
         actual = self.driver._connect(VOLUME, FC_CONNECTOR)
         self.assertEqual(expected, actual)
         self.assertTrue(self.array.connect_host.called)
-        self.assertTrue(self.array.list_volume_private_connections)
+        self.assertTrue(bool(self.array.list_volume_private_connections))
 
     @mock.patch(FC_DRIVER_OBJ + "._get_host", autospec=True)
     def test_connect_already_connected_list_hosts_empty(self, mock_host):
@@ -2621,7 +2621,7 @@ class PureFCDriverTestCase(PureDriverTestCase):
         self.assertRaises(exception.PureDriverException, self.driver._connect,
                           VOLUME, FC_CONNECTOR)
         self.assertTrue(self.array.connect_host.called)
-        self.assertTrue(self.array.list_volume_private_connections)
+        self.assertTrue(bool(self.array.list_volume_private_connections))
 
     @mock.patch(FC_DRIVER_OBJ + "._get_host", autospec=True)
     def test_connect_already_connected_list_hosts_exception(self, mock_host):
@@ -2637,7 +2637,7 @@ class PureFCDriverTestCase(PureDriverTestCase):
         self.assertRaises(self.purestorage_module.PureHTTPError,
                           self.driver._connect, VOLUME, FC_CONNECTOR)
         self.assertTrue(self.array.connect_host.called)
-        self.assertTrue(self.array.list_volume_private_connections)
+        self.assertTrue(bool(self.array.list_volume_private_connections))
 
     @mock.patch(FC_DRIVER_OBJ + "._get_host", autospec=True)
     def test_connect_wwn_already_in_use(self, mock_host):

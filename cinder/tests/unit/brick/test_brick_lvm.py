@@ -393,7 +393,7 @@ class BrickLvmTestCase(test.TestCase):
     def test_lv_get_origin(self):
         self.assertEqual('fake-volume-1',
                          self.vg.lv_get_origin('fake-snapshot'))
-        self.assertFalse(None, self.vg.lv_get_origin('test-volumes'))
+        self.assertIsNone(self.vg.lv_get_origin('test-volumes'))
 
     def test_activate_lv(self):
         with mock.patch.object(self.vg, '_execute'):

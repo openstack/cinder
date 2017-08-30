@@ -136,7 +136,7 @@ class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
                           bad_connector)
 
         connector = {'initiator': 'fake_init'}
-        self.assertTrue(self.target.validate_connector,
+        self.assertTrue(bool(self.target.validate_connector),
                         connector)
 
     def test_show_target_error(self):

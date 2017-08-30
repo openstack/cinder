@@ -1020,7 +1020,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     def test_in_use_with_available_volume(self):
         volume = self._create_volume_dict()
-        self.assertFalse(self._driver._in_use(volume))
+        self.assertIsNone(self._driver._in_use(volume))
 
     @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=True)
     def test_retype_with_in_use_volume(self, in_use):

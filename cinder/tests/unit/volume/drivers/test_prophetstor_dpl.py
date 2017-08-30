@@ -725,7 +725,7 @@ class TestProphetStorDPLDriver(test.TestCase):
             exception.VolumeBackendAPIException,
             self.dpldriver.terminate_connection,
             volume=DATA_IN_VOLUME, connector=DATA_IN_CONNECTOR)
-        self.assertTrue(
+        self.assertIsNotNone(
             re.match(r".*Flexvisor failed", ex.msg))
 
     def test_get_pool_info(self):

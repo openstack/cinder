@@ -150,7 +150,7 @@ class NetAppESeriesDriverTestCase(object):
 
         self.library._client.list_storage_system = mock.Mock(wraps=list_system)
         result = self.library._check_storage_system()
-        self.assertTrue(result)
+        self.assertTrue(bool(result))
 
     def test_create_destroy(self):
         self.mock_object(client.RestClient, 'delete_volume',
