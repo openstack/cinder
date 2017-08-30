@@ -1,8 +1,11 @@
 :tocdepth: 2
 
-=================================
-Block Storage API V1 (DEPRECATED)
-=================================
+=============================
+Block Storage API V1 (LEGACY)
+=============================
+
+The v1 API was removed in the Queens release. API reference is included here
+for historical reference.
 
 .. rest_expand_all::
 

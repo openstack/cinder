@@ -8,7 +8,7 @@
         "id": "2ef47aee-8844-490c-804d-2a8efe561c65",
         "links": [
             {
-                "href": "http://localhost:8776/v1/c95fc3e4afe248a49a28828f286a7b38/backups/2ef47aee-8844-490c-804d-2a8efe561c65",
+                "href": "http://localhost:8776/v2/c95fc3e4afe248a49a28828f286a7b38/backups/2ef47aee-8844-490c-804d-2a8efe561c65",
                 "rel": "self"
             },
             {

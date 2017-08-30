@@ -82,10 +82,6 @@ global_opts = [
                help='http/https timeout value for glance operations. If no '
                     'value (None) is supplied here, the glanceclient default '
                     'value is used.'),
-    cfg.BoolOpt('enable_v1_api',
-                default=False,
-                deprecated_for_removal=True,
-                help="DEPRECATED: Deploy v1 of the Cinder API."),
     cfg.BoolOpt('enable_v2_api',
                 default=True,
                 deprecated_for_removal=True,

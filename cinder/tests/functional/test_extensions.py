@@ -21,7 +21,7 @@ from six.moves import http_client
 import webob
 
 from cinder.api import extensions
-from cinder.api.v1 import router
+from cinder.api.v3 import router
 from cinder.tests.functional import functional_helpers
 
 

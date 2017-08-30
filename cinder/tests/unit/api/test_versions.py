@@ -22,7 +22,7 @@ import webob
 
 from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
-from cinder.api.v1 import router
+from cinder.api.v3 import router
 from cinder.api import versions
 from cinder import exception
 from cinder import test
@@ -59,7 +59,7 @@ class VersionsControllerTestCase(test.TestCase):
                          response.headers[VERSION_HEADER_NAME])
         self.assertEqual(VERSION_HEADER_NAME, response.headers['Vary'])
 
-    @ddt.data('1.0', '2.0', '3.0')
+    @ddt.data('2.0', '3.0')
     def test_versions_root(self, version):
         req = self.build_request(base_url='http://localhost')
 
@@ -69,11 +69,7 @@ class VersionsControllerTestCase(test.TestCase):
         version_list = body['versions']
 
         ids = [v['id'] for v in version_list]
-        self.assertEqual({'v1.0', 'v2.0', 'v3.0'}, set(ids))
-
-        v1 = [v for v in version_list if v['id'] == 'v1.0'][0]
-        self.assertEqual('', v1.get('min_version'))
-        self.assertEqual('', v1.get('version'))
+        self.assertEqual({'v2.0', 'v3.0'}, set(ids))
 
         v2 = [v for v in version_list if v['id'] == 'v2.0'][0]
         self.assertEqual('', v2.get('min_version'))
@@ -85,19 +81,13 @@ class VersionsControllerTestCase(test.TestCase):
         self.assertEqual(api_version_request._MIN_API_VERSION,
                          v3.get('min_version'))
 
-    def test_versions_v1_no_header(self):
-        req = self.build_request(base_url='http://localhost/v1')
-
-        response = req.get_response(router.APIRouter())
-        self.assertEqual(http_client.OK, response.status_int)
-
     def test_versions_v2_no_header(self):
         req = self.build_request(base_url='http://localhost/v2')
 
         response = req.get_response(router.APIRouter())
         self.assertEqual(http_client.OK, response.status_int)
 
-    @ddt.data('1.0', '2.0', '3.0')
+    @ddt.data('2.0', '3.0')
     def test_versions(self, version):
         req = self.build_request(
             base_url='http://localhost/v{}'.format(version[0]),
@@ -140,7 +130,7 @@ class VersionsControllerTestCase(test.TestCase):
 
             self.assertEqual(http_client.BAD_REQUEST, response.status_int)
 
-    @ddt.data('1.0', '2.0', '3.0')
+    @ddt.data('2.0', '3.0')
     def test_versions_response_fault(self, version):
         req = self.build_request(header_version=version)
         req.api_version_request = (
