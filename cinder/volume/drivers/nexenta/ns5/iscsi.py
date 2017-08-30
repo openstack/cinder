@@ -276,7 +276,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                                            snapshot['name']]))
             raise
 
-    def create_export(self, _ctx, volume, connector):
+    def create_export(self, _ctx, volume):
         """Create new export for zfs volume.
 
         :param volume: reference of volume to be exported

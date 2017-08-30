@@ -338,7 +338,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         try:
             self.nef.delete(url)
         except exception.NexentaException as exc:
-            if 'Failed to destroy snap' in exc.kwargs['message']['message']:
+            if 'Failed to destroy snap' in exc.msg['message']:
                 url = 'storage/snapshots?parent=%s' % '%2F'.join(
                     [pool, fs, volume['name']])
                 snap_list = []
@@ -376,7 +376,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         if self.sparsed_volumes:
             self._execute('truncate', '-s', '%sG' % new_size,
                           self.local_path(volume),
-                          run_as_root=self._execute_as_root)
+                          run_as_root=True)
         else:
             block_size_mb = 1
             block_count = ((new_size - volume['size']) * units.Gi //
@@ -468,8 +468,6 @@ class NexentaNfsDriver(nfs.NfsDriver):
         self.create_snapshot(snapshot)
         try:
             pl = self.create_volume_from_snapshot(volume, snapshot)
-            self.mark_as_garbage('{}/{}@{}'.format(
-                self.share, src_vref['name'], snapshot['name']))
             return pl
         except exception.NexentaException:
             LOG.error('Volume creation failed, deleting created snapshot '
