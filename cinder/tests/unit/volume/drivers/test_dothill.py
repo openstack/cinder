@@ -40,6 +40,11 @@ resp_login = '''<RESPONSE><OBJECT basetype="status" name="status" oid="1">
 resp_fw = '''<RESPONSE><PROPERTY name="sc-fw">GLS220R001</PROPERTY>
                        <PROPERTY name="return-code">0</PROPERTY></RESPONSE>'''
 
+resp_system = '''<RESPONSE>
+             <PROPERTY name="midplane-serial-number">00C0FFEEEEEE</PROPERTY>
+             <PROPERTY name="return-code">0</PROPERTY>
+                 </RESPONSE>'''
+
 resp_badlogin = '''<RESPONSE><OBJECT basetype="status" name="status" oid="1">
              <PROPERTY name="response-type">error</PROPERTY>
              <PROPERTY name="response-type-numeric">1</PROPERTY>
@@ -171,7 +176,7 @@ class TestDotHillClient(test.TestCase):
         self.assertRaises(exception.DotHillAuthenticationError,
                           self.client.login)
 
-        m.text.encode.side_effect = [resp_login, resp_fw]
+        m.text.encode.side_effect = [resp_login, resp_fw, resp_system]
         self.client.login()
         self.assertEqual(session_key, self.client._session_key)
 
