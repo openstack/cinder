@@ -211,21 +211,21 @@ from cinder.zonemanager import fc_zone_manager as \
 
 def list_opts():
     return [
-        ('BACKEND',
+        ('backend',
             itertools.chain(
                 [cinder_cmd_volume.host_opt],
             )),
-        ('BRCD_FABRIC_EXAMPLE',
+        ('brcd_fabric_example',
             itertools.chain(
                 cinder_zonemanager_drivers_brocade_brcdfabricopts.
                 brcd_zone_opts,
             )),
-        ('CISCO_FABRIC_EXAMPLE',
+        ('cisco_fabric_example',
             itertools.chain(
                 cinder_zonemanager_drivers_cisco_ciscofabricopts.
                 cisco_zone_opts,
             )),
-        ('COORDINATION',
+        ('coordination',
             itertools.chain(
                 cinder_coordination.coordination_opts,
             )),
@@ -280,17 +280,17 @@ def list_opts():
                 cinder_volume_manager.volume_manager_opts,
                 cinder_wsgi_eventletserver.socket_opts,
             )),
-        ('FC-ZONE-MANAGER',
+        ('fc-zone-manager',
             itertools.chain(
                 cinder_zonemanager_drivers_brocade_brcdfczonedriver.brcd_opts,
                 cinder_zonemanager_drivers_cisco_ciscofczonedriver.cisco_opts,
                 cinder_zonemanager_fczonemanager.zone_manager_opts,
             )),
-        ('KEY_MANAGER',
+        ('key_manager',
             itertools.chain(
                 cinder_keymgr_confkeymgr.key_mgr_opts,
             )),
-        ('NOVA_GROUP',
+        ('nova_group',
             itertools.chain(
                 cinder_compute_nova.nova_opts,
                 cinder_compute_nova.nova_session_opts,
