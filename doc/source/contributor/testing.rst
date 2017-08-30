@@ -160,6 +160,54 @@ To Fix:
 
     sudo dnf install python3-devel
 
+
+**Assertion types in unit tests**
+
+In general, it is best to use the most specific assertion possible in a unit
+test, to have the strongest validation of code behavior.
+
+For example:
+
+.. code-block:: python
+
+    self.assertEqual("in-use", volume.status)
+
+is preferred over
+
+.. code-block:: python
+
+    self.assertIsNotNone(volume.status)
+
+or
+
+Test methods that implement comparison checks are also generally preferred
+over writing code into assertEqual() or assertTrue().
+
+.. code-block:: python
+
+   self.assertGreater(2, volume.size)
+
+is preferred over
+
+.. code-block:: python
+
+   self.assertTrue(2 > volume.size)
+
+However, assertFalse() behavior is not obvious in this regard.  Since
+``None`` evaluates to ``False`` in Python, the following check will pass when
+x is ``False`` or ``None``.
+
+.. code-block:: python
+
+   self.assertFalse(x)
+
+Therefore, it is preferable to use:
+
+.. code-block:: python
+
+   self.assertEqual(x, False)
+
+
 .. rubric:: Footnotes
 
 .. [#f1] See :doc:`jenkins`.

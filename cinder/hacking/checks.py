@@ -58,8 +58,6 @@ no_contextlib_nested = re.compile(r"\s*with (contextlib\.)?nested\(")
 logging_instance = re.compile(
     r"(.)*LOG\.(warning|info|debug|error|exception)\(")
 
-assert_None = re.compile(
-    r".*assertEqual\(None, .*\)")
 assert_True = re.compile(
     r".*assertEqual\(True, .*\)")
 
@@ -447,6 +445,10 @@ def no_test_log(logical_line, filename, noqa):
 
 
 def validate_assertTrue(logical_line):
+    # Note: a comparable check cannot be implemented for
+    # assertFalse(), because assertFalse(None) passes.
+    # Therefore, assertEqual(False, value) is required to
+    # have the strongest test.
     if re.match(assert_True, logical_line):
         msg = ("C313: Unit tests should use assertTrue(value) instead"
                " of using assertEqual(True, value).")
