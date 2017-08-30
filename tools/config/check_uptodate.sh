@@ -7,8 +7,9 @@ if [ ! -e cinder/opts.py ]; then
     exit 1
 else
     mv cinder/opts.py cinder/opts.py.orig
-    tox -e genopts &> /dev/null
+    tox -e genopts &> tox-genops.log
     if [ $? -ne 0 ]; then
+        cat tox-genops.log >&2
         echo -en "\n\n#################################################"
         echo -en "\nERROR: Non-zero exit from generate_cinder_opts.py."
         echo -en "\n       See output above for details.\n"
