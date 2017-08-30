@@ -22,7 +22,7 @@ Cinder Service Configuration
    The examples of common configurations for shared
    service and libraries, such as database connections and
    RPC messaging, can be seen in Cinder's sample configuration
-   file: `cinder.conf.sample <_static/cinder.conf.sample>`_.
+   file: `cinder.conf.sample <../_static/cinder.conf.sample>`_.
 
 The Block Storage service works with many different storage
 drivers that you can configure by using these instructions.
