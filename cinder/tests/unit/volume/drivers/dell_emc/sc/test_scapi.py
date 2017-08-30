@@ -6808,7 +6808,7 @@ class DellSCSanAPITestCase(test.TestCase):
                             'DeleteRestorePoint': True}
         ret = self.scapi.delete_replication(self.VOLUME, destssn)
         mock_delete.assert_any_call(expected, payload=expected_payload,
-                                    async=True)
+                                    async_call=True)
         self.assertTrue(ret)
 
     @mock.patch.object(storagecenter_api.SCApi,
@@ -6845,7 +6845,7 @@ class DellSCSanAPITestCase(test.TestCase):
                             'DeleteRestorePoint': True}
         ret = self.scapi.delete_replication(self.VOLUME, destssn)
         mock_delete.assert_any_call(expected, payload=expected_payload,
-                                    async=True)
+                                    async_call=True)
         self.assertFalse(ret)
 
     @mock.patch.object(storagecenter_api.SCApi,
