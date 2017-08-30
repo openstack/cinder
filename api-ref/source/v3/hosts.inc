@@ -49,7 +49,11 @@ Show Host Details for a project
 
 .. rest_method:: GET /v3/{admin_project_id}/os-hosts/{host_name}
 
-Shows details for a host.
+Shows volume and snapshot details for a cinder-volume host.
+
+*Note:* This API is meant specifically for cinder-volume hosts only.
+It is not valid against other Cinder service hosts or hosts where the
+cinder-volume service has been disabled.
 
 Normal response codes: 200
 
