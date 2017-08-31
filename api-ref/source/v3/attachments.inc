@@ -251,3 +251,29 @@ Response Example
 
 .. literalinclude:: ./samples/attachment-update-response.json
    :language: javascript
+
+
+Complete attachment
+~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v3/{project_id}/attachments/{attachment_id}/action
+
+Complete an attachment for a cinder volume.
+
+Normal response codes: 202
+Error response codes: badRequest(400), itemNotFound(404)
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - attachment_id: attachment_id_1
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/attachment-complete.json
+   :language: javascript
