@@ -1482,19 +1482,6 @@ class VMAXRestTest(test.TestCase):
             self.data.failed_resource)
         self.assertFalse(wl_settings)
 
-    def test_get_headroom_capacity(self):
-        ref_headroom = self.data.headroom['headroom'][0]['headroomCapacity']
-        headroom_cap = self.rest.get_headroom_capacity(
-            self.data.array, self.data.srp,
-            self.data.slo, self.data.workload)
-        self.assertEqual(ref_headroom, headroom_cap)
-
-    def test_get_headroom_capacity_failed(self):
-        headroom_cap = self.rest.get_headroom_capacity(
-            self.data.failed_resource, self.data.srp,
-            self.data.slo, self.data.workload)
-        self.assertIsNone(headroom_cap)
-
     def test_is_compression_capable_true(self):
         compr_capable = self.rest.is_compression_capable('000197800128')
         self.assertTrue(compr_capable)
@@ -2663,31 +2650,14 @@ class VMAXProvisionTest(test.TestCase):
             self.provision.rest.extend_volume.assert_called_once_with(
                 array, device_id, new_size, extra_specs)
 
-    def test_get_srp_pool_stats_no_wlp(self):
+    def test_get_srp_pool_stats(self):
         array = self.data.array
         array_info = self.common.pool_info['arrays_info'][0]
         ref_stats = (self.data.srp_details['total_usable_cap_gb'],
                      float(self.data.srp_details['total_usable_cap_gb']
                            - self.data.srp_details['total_allocated_cap_gb']),
                      self.data.srp_details['total_subscribed_cap_gb'],
-                     self.data.srp_details['reserved_cap_percent'], False)
-        with mock.patch.object(self.provision,
-                               '_get_remaining_slo_capacity_wlp',
-                               return_value=-1):
-            stats = self.provision.get_srp_pool_stats(array, array_info)
-            self.assertEqual(ref_stats, stats)
-
-    def test_get_srp_pool_stats_wlp_enabled(self):
-        array = self.data.array
-        array_info = self.common.pool_info['arrays_info'][0]
-        srp = self.data.srp
-        headroom_capacity = self.provision.rest.get_headroom_capacity(
-            array, srp, array_info['SLO'], array_info['Workload'])
-        ref_stats = (self.data.srp_details['total_usable_cap_gb'],
-                     float(headroom_capacity
-                           - self.data.srp_details['total_allocated_cap_gb']),
-                     self.data.srp_details['total_subscribed_cap_gb'],
-                     self.data.srp_details['reserved_cap_percent'], True)
+                     self.data.srp_details['reserved_cap_percent'])
         stats = self.provision.get_srp_pool_stats(array, array_info)
         self.assertEqual(ref_stats, stats)
 
@@ -2701,40 +2671,9 @@ class VMAXProvisionTest(test.TestCase):
         # cannot report on all stats
         with mock.patch.object(self.provision.rest, 'get_srp_by_name',
                                return_value={'total_usable_cap_gb': 33}):
-            with mock.patch.object(self.provision,
-                                   '_get_remaining_slo_capacity_wlp',
-                                   return_value=(-1)):
-                ref_stats = (33, 0, 0, 0, False)
-                stats = self.provision.get_srp_pool_stats(array, array_info)
-                self.assertEqual(ref_stats, stats)
-
-    def test_get_remaining_slo_capacity_wlp(self):
-        array = self.data.array
-        array_info = self.common.pool_info['arrays_info'][0]
-        srp = self.data.srp
-        ref_capacity = self.provision.rest.get_headroom_capacity(
-            array, srp, array_info['SLO'], array_info['Workload'])
-        remaining_capacity = (
-            self.provision._get_remaining_slo_capacity_wlp(
-                array, srp, array_info))
-        self.assertEqual(ref_capacity, remaining_capacity)
-
-    def test_get_remaining_slo_capacity_no_slo_or_wlp(self):
-        array = self.data.array
-        array_info = self.common.pool_info['arrays_info'][0]
-        srp = self.data.srp
-        ref_capacity = -1
-        with mock.patch.object(self.provision.rest, 'get_headroom_capacity',
-                               return_value=None):
-            remaining_capacity = (
-                self.provision._get_remaining_slo_capacity_wlp(
-                    array, srp, {'SLO': None}))
-            self.assertEqual(ref_capacity, remaining_capacity)
-            self.provision.rest.get_headroom_capacity.assert_not_called()
-            remaining_capacity = (
-                self.provision._get_remaining_slo_capacity_wlp(
-                    array, srp, array_info))
-            self.assertEqual(ref_capacity, remaining_capacity)
+            ref_stats = (33, 0, 0, 0)
+            stats = self.provision.get_srp_pool_stats(array, array_info)
+            self.assertEqual(ref_stats, stats)
 
     def test_verify_slo_workload_true(self):
         # with slo and workload
@@ -3183,7 +3122,7 @@ class VMAXCommonTest(test.TestCase):
     def test_update_volume_stats_no_wlp(self):
         with mock.patch.object(self.common, '_update_srp_stats',
                                return_value=('123s#SRP_1#None#None',
-                                             100, 90, 90, 10, False)):
+                                             100, 90, 90, 10)):
             data = self.common.update_volume_stats()
             self.assertEqual('CommonTests', data['volume_backend_name'])
 
