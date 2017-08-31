@@ -1,0 +1,4 @@
+---
+features:
+  - Dell EMC PS volume driver reports the total number
+    of volumes on the backend in volume stats.

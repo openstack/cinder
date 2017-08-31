@@ -58,7 +58,8 @@ class PSSeriesISCSIDriverTestCase(test.TestCase):
 
         self.driver_stats_output = ['TotalCapacity: 111GB',
                                     'FreeSpace: 11GB',
-                                    'VolumeReserve: 80GB']
+                                    'VolumeReserve: 80GB',
+                                    'TotalVolumes: 100']
         self.cmd = 'this is dummy command'
         self._context = context.get_admin_context()
         self.driver = ps.PSSeriesISCSIDriver(
@@ -410,6 +411,7 @@ class PSSeriesISCSIDriverTestCase(test.TestCase):
             thin_enabled = self.configuration.san_thin_provision
             self.assertEqual(float('111.0'), stats['total_capacity_gb'])
             self.assertEqual(float('11.0'), stats['free_capacity_gb'])
+            self.assertEqual(100, stats['total_volumes'])
 
             if thin_enabled:
                 self.assertEqual(80.0, stats['provisioned_capacity_gb'])
