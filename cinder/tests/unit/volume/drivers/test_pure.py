@@ -514,9 +514,6 @@ class PureBaseSharedDriverTestCase(PureDriverTestCase):
         self.purestorage_module.FlashArray.side_effect = None
         self.array2.get_rest_version.return_value = '1.4'
 
-    def tearDown(self):
-        super(PureBaseSharedDriverTestCase, self).tearDown()
-
 
 @ddt.ddt
 class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):

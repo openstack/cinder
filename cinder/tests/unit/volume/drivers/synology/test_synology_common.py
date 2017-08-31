@@ -234,9 +234,6 @@ class SynoAPIRequestTestCase(test.TestCase):
         self.request._APIRequest__session._sid = 'sid'
         self.request._APIRequest__session.__class__.__del__ = lambda x: x
 
-    def tearDown(self):
-        super(SynoAPIRequestTestCase, self).tearDown()
-
     @mock.patch.object(common, 'Session')
     def test_new_session(self, _mock_session):
         self.device_id = 'did'
