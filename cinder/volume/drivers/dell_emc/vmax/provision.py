@@ -291,14 +291,12 @@ class VMAXProvision(object):
         :returns: remaining_capacity_gb
         :returns: subscribed_capacity_gb
         :returns: array_reserve_percent
-        :returns: wlp_enabled
         """
         total_capacity_gb = 0
         remaining_capacity_gb = 0
         allocated_capacity_gb = None
         subscribed_capacity_gb = 0
         array_reserve_percent = 0
-        wlp_enabled = False
         srp = array_info['srpName']
         LOG.debug(
             "Retrieving capacity for srp %(srpName)s on array %(array)s.",
@@ -320,46 +318,13 @@ class VMAXProvision(object):
         except KeyError:
             pass
 
-        total_slo_capacity = (
-            self._get_remaining_slo_capacity_wlp(
-                array, srp, array_info))
-        if total_slo_capacity != -1 and allocated_capacity_gb:
-            remaining_capacity_gb = float(
-                total_slo_capacity - allocated_capacity_gb)
-            wlp_enabled = True
-        else:
-            LOG.debug(
-                "Remaining capacity %(remaining_capacity_gb)s "
-                "GBs is determined from SRP capacity "
-                "and not the SLO capacity. Performance may "
-                "not be what you expect.",
-                {'remaining_capacity_gb': remaining_capacity_gb})
+        LOG.debug(
+            "Remaining capacity %(remaining_capacity_gb)s "
+            "GBs is determined from SRP capacity ",
+            {'remaining_capacity_gb': remaining_capacity_gb})
 
         return (total_capacity_gb, remaining_capacity_gb,
-                subscribed_capacity_gb, array_reserve_percent, wlp_enabled)
-
-    def _get_remaining_slo_capacity_wlp(self, array, srp, array_info):
-        """Get the remaining capacity of the SLO/ workload combination.
-
-        This is derived from the WLP portion of Unisphere. Please
-        see the UniSphere doc and the readme doc for details.
-        :param array: the array serial number
-        :param srp: the srp name
-        :param array_info: array info dict
-        :returns: remaining_capacity
-        """
-        remaining_capacity = -1
-        if array_info['SLO']:
-            headroom_capacity = self.rest.get_headroom_capacity(
-                array, srp, array_info['SLO'], array_info['Workload'])
-            if headroom_capacity:
-                remaining_capacity = headroom_capacity
-                LOG.debug("Received remaining SLO Capacity %(remaining)s GBs "
-                          "for SLO %(SLO)s and workload %(workload)s.",
-                          {'remaining': remaining_capacity,
-                           'SLO': array_info['SLO'],
-                           'workload': array_info['Workload']})
-        return remaining_capacity
+                subscribed_capacity_gb, array_reserve_percent)
 
     def verify_slo_workload(self, array, slo, workload, srp):
         """Check if SLO and workload values are valid.
