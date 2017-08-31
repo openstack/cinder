@@ -363,13 +363,8 @@ class VolumeManager(manager.CleanableManager,
                         update['id'],
                         {'provider_id': update['provider_id']})
 
-        # NOTE(jdg): snapshots are slighty harder, because
-        # we do not have a host column and of course no get
-        # all by host, so we use a get_all and bounce our
-        # response off of it
         if snapshot_updates:
-            cinder_snaps = self.db.snapshot_get_all(ctxt)
-            for snap in cinder_snaps:
+            for snap in snapshots:
                 # NOTE(jdg): For now we only update those that have no entry
                 if not snap.get('provider_id', None):
                     update = (
