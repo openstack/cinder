@@ -720,6 +720,10 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 # Don't cache encrypted volume.
                 if not cloned and not volume.encryption_key_id:
                     should_create_cache_entry = True
+                    # cleanup consistencygroup field in the volume,
+                    # because when creating cache entry, it will need
+                    # to update volume object.
+                    self._cleanup_cg_in_volume(volume)
 
         # Fall back to default behavior of creating volume,
         # download the image data and copy it into the volume.
