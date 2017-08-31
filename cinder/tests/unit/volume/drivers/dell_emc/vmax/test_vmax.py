@@ -157,9 +157,6 @@ class VMAXCommonData(object):
                         'DeviceID': device_id2,
                         'SystemCreationClassName': u'Symm_StorageSystem'}}
 
-    snap_location = {'snap_name': '12345',
-                     'source_id': device_id}
-
     test_volume_type = fake_volume.fake_volume_type_obj(
         context=ctx
     )
@@ -187,18 +184,29 @@ class VMAXCommonData(object):
         provider_location=six.text_type(provider_location2),
         host=fake_host)
 
+    snapshot_id = '390eeb4d-0f56-4a02-ba14-167167967014'
+    test_snapshot_snap_name = 'OS-' + snapshot_id[:6] + snapshot_id[-9:]
+
+    snap_location = {'snap_name': test_snapshot_snap_name,
+                     'source_id': device_id}
+
     test_snapshot = fake_snapshot.fake_snapshot_obj(
-        context=ctx, id='12345', name='my_snap', size=2,
+        context=ctx, id=snapshot_id,
+        name='my_snap', size=2,
         provider_location=six.text_type(snap_location),
         host=fake_host, volume=test_volume)
 
     test_legacy_snapshot = fake_snapshot.fake_snapshot_obj(
-        context=ctx, id='12345', name='my_snap', size=2,
+        context=ctx, id='8d38ccfc-3d29-454c-858b-8348a8f9cc95',
+        name='my_snap', size=2,
         provider_location=six.text_type(legacy_provider_location),
         host=fake_host, volume=test_volume)
 
     test_failed_snap = fake_snapshot.fake_snapshot_obj(
-        context=ctx, id='12345', name=failed_resource, size=2,
+        context=ctx,
+        id='4732de9b-98a4-4b6d-ae4b-3cafb3d34220',
+        name=failed_resource,
+        size=2,
         provider_location=six.text_type(snap_location),
         host=fake_host, volume=test_volume)
 
@@ -236,15 +244,20 @@ class VMAXCommonData(object):
     rep_extra_specs['srp'] = srp2
 
     test_volume_type_1 = volume_type.VolumeType(
-        id='abc', name='abc',
+        id='2b06255d-f5f0-4520-a953-b029196add6a', name='abc',
         extra_specs=extra_specs
     )
     test_volume_type_list = volume_type.VolumeTypeList(
         objects=[test_volume_type_1])
+
+    test_vol_grp_name_id_only = 'ec870a2f-6bf7-4152-aa41-75aad8e2ea96'
+    test_vol_grp_name = 'Grp_source_sg_%s' % test_vol_grp_name_id_only
+
     test_group_1 = group.Group(
         context=None, name=storagegroup_name_source,
         group_id='abc', size=1,
-        id='12345', status='available',
+        id=test_vol_grp_name_id_only,
+        status='available',
         provider_auth=None, volume_type_ids=['abc'],
         group_type_id='grptypeid',
         volume_types=test_volume_type_list,
@@ -252,8 +265,10 @@ class VMAXCommonData(object):
 
     test_group_failed = group.Group(
         context=None, name=failed_resource,
-        group_id='abc', size=1,
-        id='12345', status='available',
+        group_id='14b8894e-54ec-450a-b168-c172a16ed166',
+        size=1,
+        id='318c721c-51ad-4160-bfe1-ebde2273836f',
+        status='available',
         provider_auth=None, volume_type_ids=['abc'],
         group_type_id='grptypeid',
         volume_types=test_volume_type_list,
@@ -261,25 +276,28 @@ class VMAXCommonData(object):
 
     test_group = fake_group.fake_group_obj(
         context=ctx, name=storagegroup_name_source,
-        id='12345', host=fake_host)
+        id='7634bda4-6950-436f-998c-37c3e01bad30', host=fake_host)
 
     test_group_without_name = fake_group.fake_group_obj(
-        context=ctx, name=None,
-        id='12345', host=fake_host)
-
-    test_vol_grp_name = 'Grp_source_sg_12345'
-    test_vol_grp_name_id_only = '12345'
+        context=ctx,
+        name=None,
+        id=test_vol_grp_name_id_only,
+        host=fake_host)
 
     test_group_snapshot_1 = group_snapshot.GroupSnapshot(
-        context=None, id='123456',
-        group_id='12345', name=group_snapshot_name,
-        group_type_id='grptypeid', status='available',
+        context=None, id='6560405d-b89a-4f79-9e81-ad1752f5a139',
+        group_id='876d9fbb-de48-4948-9f82-15c913ed05e7',
+        name=group_snapshot_name,
+        group_type_id='c6934c26-dde8-4bf8-a765-82b3d0130e9f',
+        status='available',
         group=test_group_1)
 
     test_group_snapshot_failed = group_snapshot.GroupSnapshot(
-        context=None, id='123456',
-        group_id='12345', name=failed_resource,
-        group_type_id='grptypeid', status='available',
+        context=None, id='0819dd5e-9aa1-4ec7-9dda-c78e51b2ad76',
+        group_id='1fc735cb-d36c-4352-8aa6-dc1e16b5a0a7',
+        name=failed_resource,
+        group_type_id='6b70de13-98c5-46b2-8f24-e4e96a8988fa',
+        status='available',
         group=test_group_failed)
 
     # masking view dict
@@ -492,7 +510,7 @@ class VMAXCommonData(object):
                                 "copy": True,
                                 "defined": True,
                                 "linked": True}],
-                           "snapshotName": '12345',
+                           "snapshotName": test_snapshot_snap_name,
                            "state": "Established"}]}
     capabilities = {"symmetrixCapability": [{"rdfCapable": True,
                                              "snapVxCapable": True,
@@ -3424,7 +3442,8 @@ class VMAXCommonTest(test.TestCase):
         snapshot = self.data.test_snapshot
         source_device_id = self.data.device_id
         extra_specs = self.data.extra_specs
-        ref_dict = {'snap_name': '12345', 'source_id': self.data.device_id}
+        ref_dict = {'snap_name': self.data.test_snapshot_snap_name,
+                    'source_id': self.data.device_id}
         snap_dict = self.common._create_snapshot(
             array, snapshot, source_device_id, extra_specs)
         self.assertEqual(ref_dict, snap_dict)
@@ -5809,7 +5828,9 @@ class VMAXCommonReplicationTest(test.TestCase):
                 self.data.test_clone_volume, self.data.test_snapshot)
             volume_dict = self.data.provider_location
             mock_rep.assert_called_once_with(
-                self.data.test_clone_volume, "snapshot-12345", volume_dict,
+                self.data.test_clone_volume,
+                "snapshot-%s" % self.data.snapshot_id,
+                volume_dict,
                 extra_specs)
 
     def test_replicate_volume(self):
