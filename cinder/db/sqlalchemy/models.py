@@ -25,7 +25,7 @@ from oslo_db.sqlalchemy import models
 from oslo_utils import timeutils
 from sqlalchemy import and_, func, select
 from sqlalchemy import bindparam
-from sqlalchemy import Column, Integer, String, Text, schema
+from sqlalchemy import Column, Integer, String, Text, schema, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean, UniqueConstraint
 from sqlalchemy.orm import backref, column_property, relationship, validates
@@ -609,6 +609,8 @@ class QuotaUsage(BASE, CinderBase):
     """Represents the current usage for a given resource."""
 
     __tablename__ = 'quota_usages'
+    __table_args__ = (Index('quota_usage_project_resource_idx', 'project_id',
+                            'resource'), CinderBase.__table_args__)
     id = Column(Integer, primary_key=True)
 
     project_id = Column(String(255), index=True)
