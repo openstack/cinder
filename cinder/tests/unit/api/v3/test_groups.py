@@ -846,6 +846,25 @@ class GroupsAPITestCase(test.TestCase):
         add_volume.destroy()
         add_volume2.destroy()
 
+    @ddt.data(fields.GroupStatus.CREATING, fields.GroupStatus.UPDATING)
+    def test_update_group_any_state(self, status):
+        self.group1.status = status
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/update' %
+                                      (fake.PROJECT_ID, self.group1.id),
+                                      version=GROUP_MICRO_VERSION)
+        body = {"group": {"name": "new name",
+                          "description": "new description",
+                          "add_volumes": None,
+                          "remove_volumes": None, }}
+
+        res_dict = self.controller.update(
+            req, self.group1.id, body)
+        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+
+        group = objects.Group.get_by_id(self.ctxt, self.group1.id)
+        self.assertEqual("new name", group.name)
+        self.assertEqual("new description", group.description)
+
     def test_update_group_add_volume_not_found(self):
         self.group1.status = fields.GroupStatus.AVAILABLE
         self.group1.save()
@@ -959,17 +978,26 @@ class GroupsAPITestCase(test.TestCase):
     @ddt.data(fields.GroupStatus.CREATING, fields.GroupStatus.UPDATING)
     def test_update_group_invalid_state(self, status):
         self.group1.status = status
+        add_volume = utils.create_volume(
+            self.ctxt,
+            volume_type_id=self.volume_type1.id,
+            host=self.group1.host)
         req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/update' %
                                       (fake.PROJECT_ID, self.group1.id),
                                       version=GROUP_MICRO_VERSION)
+
         body = {"group": {"name": "new name",
                           "description": None,
-                          "add_volumes": None,
+                          "add_volumes": add_volume.id,
                           "remove_volumes": None, }}
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update,
                           req, self.group1.id, body)
+
+        vol = objects.Volume.get_by_id(self.ctxt, add_volume.id)
+        self.assertEqual(add_volume.status, vol.status)
+        add_volume.destroy()
 
     @ddt.data(('3.11', 'fake_group_001',
                fields.GroupStatus.AVAILABLE,
