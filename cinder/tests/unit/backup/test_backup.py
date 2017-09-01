@@ -36,7 +36,6 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import test
 from cinder.tests import fake_driver
-from cinder.tests.unit.backup import fake_service_with_verify as fake_service
 from cinder.tests.unit import utils
 from cinder.volume import rpcapi as volume_rpcapi
 
@@ -650,9 +649,9 @@ class BackupTestCase(BaseBackupTest):
         vol_size = 1
         vol_id = self._create_volume_db_entry(size=vol_size)
         backup = self._create_backup_db_entry(volume_id=vol_id,
-                                              parent_id = 'mock')
+                                              parent_id='mock')
 
-        with mock.patch.object(self.backup_mgr.service, 'get_backup_driver') as \
+        with mock.patch.object(self.backup_mgr, 'get_backup_driver') as \
                 mock_get_backup_driver:
             mock_get_backup_driver.return_value.backup.return_value = (
                 {'parent_id': None})
@@ -687,7 +686,7 @@ class BackupTestCase(BaseBackupTest):
         backup = self._create_backup_db_entry(volume_id=vol_id)
         parent_backup = self._create_backup_db_entry(size=vol_size)
 
-        with mock.patch.object(self.backup_mgr.service, 'get_backup_driver') as \
+        with mock.patch.object(self.backup_mgr, 'get_backup_driver') as \
                 mock_get_backup_driver:
             mock_get_backup_driver.return_value.backup.return_value = (
                 {'parent_id': parent_backup.id})
@@ -720,7 +719,7 @@ class BackupTestCase(BaseBackupTest):
         vol_id = self._create_volume_db_entry()
         backup = self._create_backup_db_entry(volume_id=vol_id)
 
-        with mock.patch.object(self.backup_mgr.service, 'get_backup_driver') as \
+        with mock.patch.object(self.backup_mgr, 'get_backup_driver') as \
                 mock_get_backup_driver:
             mock_get_backup_driver.return_value.backup.side_effect = (
                 FakeBackupException('fake'))
@@ -759,7 +758,7 @@ class BackupTestCase(BaseBackupTest):
         backup_service = lambda: None
         backup_service.backup = mock.Mock(
             return_value=mock.sentinel.backup_update)
-        self.backup_mgr.service.get_backup_driver = lambda x: backup_service
+        self.backup_mgr.get_backup_driver = lambda x: backup_service
 
         vol_id = self._create_volume_db_entry()
         backup = self._create_backup_db_entry(volume_id=vol_id)
@@ -1343,7 +1342,7 @@ class BackupTestCase(BaseBackupTest):
         record where the backup driver returns an exception.
         """
         export = self._create_exported_record_entry()
-        backup_driver = self.backup_mgr.service.get_backup_driver(self.ctxt)
+        backup_driver = self.backup_mgr.get_backup_driver(self.ctxt)
         _mock_record_import_class = ('%s.%s.%s' %
                                      (backup_driver.__module__,
                                       backup_driver.__class__.__name__,
@@ -1415,7 +1414,7 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         imported_record = self._create_export_record_db_entry(
             backup_id=backup_id)
         backup_hosts = []
-        backup_driver = self.backup_mgr.service.get_backup_driver(self.ctxt)
+        backup_driver = self.backup_mgr.get_backup_driver(self.ctxt)
         _mock_backup_verify_class = ('%s.%s.%s' %
                                      (backup_driver.__module__,
                                       backup_driver.__class__.__name__,
@@ -1449,7 +1448,7 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         imported_record = self._create_export_record_db_entry(
             backup_id=backup_id)
         backup_hosts = []
-        backup_driver = self.backup_mgr.service.get_backup_driver(self.ctxt)
+        backup_driver = self.backup_mgr.get_backup_driver(self.ctxt)
         _mock_backup_verify_class = ('%s.%s.%s' %
                                      (backup_driver.__module__,
                                       backup_driver.__class__.__name__,
@@ -1481,7 +1480,8 @@ class BackupTestCaseWithVerify(BaseBackupTest):
                                '_map_service_to_driver') as \
                 mock_map_service_to_driver:
             # It should works when the service name is a string
-            mock_map_service_to_driver.return_value = 'swift'
+            backup_driver = 'cinder.tests.unit.backup.fake_service_with_verify'
+            mock_map_service_to_driver.return_value = backup_driver
             self.backup_mgr.reset_status(self.ctxt,
                                          backup,
                                          fields.BackupStatus.AVAILABLE)
@@ -1490,8 +1490,7 @@ class BackupTestCaseWithVerify(BaseBackupTest):
             self.assertEqual(fields.BackupStatus.AVAILABLE,
                              new_backup['status'])
 
-            mock_map_service_to_driver.return_value = \
-                fake_service.get_backup_driver(self.ctxt)
+            mock_map_service_to_driver.return_value = backup_driver
             self.backup_mgr.reset_status(self.ctxt,
                                          backup,
                                          fields.BackupStatus.ERROR)
@@ -1512,7 +1511,7 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         backup = self._create_backup_db_entry(status=fields.BackupStatus.ERROR,
                                               volume_id=volume['id'])
 
-        backup_driver = self.backup_mgr.service.get_backup_driver(self.ctxt)
+        backup_driver = self.backup_mgr.get_backup_driver(self.ctxt)
         _mock_backup_verify_class = ('%s.%s.%s' %
                                      (backup_driver.__module__,
                                       backup_driver.__class__.__name__,
