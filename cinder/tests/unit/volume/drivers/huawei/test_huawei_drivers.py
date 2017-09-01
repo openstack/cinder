@@ -2462,7 +2462,7 @@ class HuaweiTestBase(test.TestCase):
         },
         {
             'volume': fake_volume.fake_volume_obj(
-                admin_contex, id='fake_id'),
+                admin_contex, id='001e7071-413c-4c60-b087-863067ecdd72'),
             'expect': (None, None),
         }
     )
@@ -2491,7 +2491,7 @@ class HuaweiTestBase(test.TestCase):
         },
         {
             'snapshot': fake_snapshot.fake_snapshot_obj(
-                admin_contex, id='fake_id'),
+                admin_contex, id='e9c9ca0f-01e8-4780-9585-369c15026001'),
             'expect': None
         }
     )
