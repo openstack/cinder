@@ -172,9 +172,11 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         2.0.13 - Fix cloning operation related to provisioning, bug #1688243
         2.0.14 - Fixed bug #1710072, Volume doesn't show expected parameters
                  after Retype
+        2.0.15 - Fixed bug #1710098, Managed volume, does not pick up the extra
+                 specs/capabilities of the selected volume type.
     """
 
-    VERSION = "2.0.14"
+    VERSION = "2.0.15"
 
     CI_WIKI_NAME = "HPE_Storage_CI"
 
@@ -1255,11 +1257,15 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             LOG.info("Virtual volume %(disp)s '%(new)s' is being retyped.",
                      {'disp': display_name, 'new': new_vol_name})
 
+            # Creates a diff as it needed for retype operation.
+            diff = {}
+            diff['extra_specs'] = {key: (None, value) for key, value
+                                   in volume_type['extra_specs'].items()}
             try:
                 self.retype(None,
                             volume,
                             volume_type,
-                            volume_type['extra_specs'],
+                            diff,
                             volume['host'])
                 LOG.info("Virtual volume %(disp)s successfully retyped to "
                          "%(new_type)s.",
