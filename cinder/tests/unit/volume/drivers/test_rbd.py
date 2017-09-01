@@ -1572,6 +1572,64 @@ class RBDTestCase(test.TestCase):
 
         self.assertEqual(1, mock_driver._disconnect_from_rados.call_count)
 
+    def test_rbd_volume_proxy_external_conn(self):
+        mock_driver = mock.Mock(name='driver')
+        mock_driver._connect_to_rados.return_value = (None, None)
+        with driver.RBDVolumeProxy(mock_driver, self.volume_a.name,
+                                   client='fake_cl', ioctx='fake_io'):
+
+            mock_driver._connect_to_rados.assert_not_called()
+
+        mock_driver._disconnect_from_rados.assert_not_called()
+
+    def test_rbd_volume_proxy_external_conn_no_iocxt(self):
+        mock_driver = mock.Mock(name='driver')
+        mock_driver._connect_to_rados.return_value = ('fake_cl', 'fake_io')
+        with driver.RBDVolumeProxy(mock_driver, self.volume_a.name,
+                                   client='fake_cl', pool='vol_pool'):
+            mock_driver._connect_to_rados.assert_called_once_with(
+                'vol_pool', None, None)
+
+        mock_driver._disconnect_from_rados.assert_called_once_with(
+            'fake_cl', 'fake_io')
+
+    def test_rbd_volume_proxy_external_conn_error(self):
+        mock_driver = mock.Mock(name='driver')
+        mock_driver._connect_to_rados.return_value = (None, None)
+
+        class RBDError(Exception):
+            pass
+
+        mock_driver.rbd.Error = RBDError
+        mock_driver.rbd.Image.side_effect = RBDError()
+
+        self.assertRaises(RBDError, driver.RBDVolumeProxy,
+                          mock_driver, self.volume_a.name,
+                          client='fake_cl', ioctx='fake_io')
+
+        mock_driver._connect_to_rados.assert_not_called()
+        mock_driver._disconnect_from_rados.assert_not_called()
+
+    def test_rbd_volume_proxy_conn_error(self):
+        mock_driver = mock.Mock(name='driver')
+        mock_driver._connect_to_rados.return_value = (
+            'fake_client', 'fake_ioctx')
+
+        class RBDError(Exception):
+            pass
+
+        mock_driver.rbd.Error = RBDError
+        mock_driver.rbd.Image.side_effect = RBDError()
+
+        self.assertRaises(RBDError, driver.RBDVolumeProxy,
+                          mock_driver, self.volume_a.name,
+                          pool='fake-volumes')
+
+        mock_driver._connect_to_rados.assert_called_once_with(
+            'fake-volumes', None, None)
+        mock_driver._disconnect_from_rados.assert_called_once_with(
+            'fake_client', 'fake_ioctx')
+
     @common_mocks
     def test_connect_to_rados(self):
         # Default
@@ -1859,8 +1917,10 @@ class RBDTestCase(test.TestCase):
 
         rbdproxy_mock.return_value.list.assert_called_once_with(client.ioctx)
         volproxy_mock.assert_has_calls([
-            mock.call(self.driver, volumes[0], read_only=True),
-            mock.call(self.driver, volumes[1], read_only=True),
+            mock.call(self.driver, volumes[0], read_only=True,
+                      client=client.cluster, ioctx=client.ioctx),
+            mock.call(self.driver, volumes[1], read_only=True,
+                      client=client.cluster, ioctx=client.ioctx),
         ])
 
         self.assertEqual(3.00, total_provision)
