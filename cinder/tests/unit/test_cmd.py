@@ -1371,8 +1371,8 @@ class TestCinderRtstoolCmd(test.TestCase):
         mock_os.path.exists.return_value = False
         mock_os.makedirs.side_effect = OSError('error')
 
-        regexp = (u'targetcli not installed and could not create default '
-                  'directory \(dirname\): error$')
+        regexp = (r'targetcli not installed and could not create default '
+                  r'directory \(dirname\): error$')
         self.assertRaisesRegexp(cinder_rtstool.RtstoolError, regexp,
                                 cinder_rtstool.save_to_file, None)
 
@@ -1381,7 +1381,7 @@ class TestCinderRtstoolCmd(test.TestCase):
     def test_save_error_saving(self, mock_rtslib, mock_os):
         save = mock_rtslib.root.RTSRoot.return_value.save_to_file
         save.side_effect = OSError('error')
-        regexp = u'Could not save configuration to myfile: error'
+        regexp = r'Could not save configuration to myfile: error'
         self.assertRaisesRegexp(cinder_rtstool.RtstoolError, regexp,
                                 cinder_rtstool.save_to_file, 'myfile')
 
