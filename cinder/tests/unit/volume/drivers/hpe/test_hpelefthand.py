@@ -2168,6 +2168,14 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 self.driver_startup_call_stack + [
                     mock.call.modifyVolume(self.volume_id,
                                            {'name': 'volume-12345'}),
+                    mock.call.logout()],
+                self.driver_startup_call_stack + [
+                    mock.call.getVolumeByName(self.volume_name),
+                    mock.call.modifyVolume(self.volume_id,
+                                           {'isThinProvisioned': True,
+                                            'dataProtectionLevel': 0,
+                                            'isAdaptiveOptimizationEnabled':
+                                            True}),
                     mock.call.logout()])
             self.assertEqual(expected_obj, obj)
 
