@@ -386,8 +386,8 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
 
         :param is_new_cinder_install: bool indication of new Cinder install
         """
-        doc_html = "http://docs.openstack.org/admin-guide" \
-                   "/blockstorage_nfs_backend.html"
+        doc_html = "https://docs.openstack.org/cinder/latest" \
+                   "/admin/blockstorage-nfs-backend.html"
 
         self._ensure_shares_mounted()
         if not self._mounted_shares:

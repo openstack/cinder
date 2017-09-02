@@ -5,7 +5,7 @@
             "updated": "2014-06-28T12:20:21Z",
             "links": [
                 {
-                    "href": "http://docs.openstack.org/",
+                    "href": "https://docs.openstack.org/",
                     "type": "text/html",
                     "rel": "describedby"
                 },
@@ -29,7 +29,7 @@
             "updated": "2016-02-08T12:20:21Z",
             "links": [
                 {
-                    "href": "http://docs.openstack.org/",
+                    "href": "https://docs.openstack.org/",
                     "type": "text/html",
                     "rel": "describedby"
                 },
