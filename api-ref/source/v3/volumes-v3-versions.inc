@@ -4,9 +4,6 @@ API versions
 ============
 
 
-
-
-
 Show API v3 details
 ~~~~~~~~~~~~~~~~~~~
 
@@ -17,13 +14,11 @@ Shows details for Block Storage API v3.
 
 Normal response codes: 200
 
-Error response codes:203,
+Error response codes: 203
 
 
 Request
 -------
-
-
 
 Response Parameters
 -------------------
@@ -31,8 +26,6 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - location: location
-
-
 
 Response Example
 ----------------

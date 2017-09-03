@@ -16,7 +16,6 @@ Shows quotas for a tenant.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -67,7 +66,6 @@ Updates quotas for a tenant.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -138,7 +136,6 @@ Deletes quotas for a tenant so the quotas revert to default values.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -164,7 +161,6 @@ Gets default quotas for a tenant.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request

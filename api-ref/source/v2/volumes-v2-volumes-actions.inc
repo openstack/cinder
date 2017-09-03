@@ -32,7 +32,7 @@ Troubleshooting
   request. If the request fails again, investigate the storage back
   end.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 
 Request
@@ -64,7 +64,7 @@ Reset volume statuses
 
 Administrator only. Resets the status, attach status, and migration status for a volume. Specify the ``os-reset_status`` action in the request body.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 
 Request
@@ -84,11 +84,6 @@ Request Example
 
 .. literalinclude:: ./samples/volume-status-reset-request.json
    :language: javascript
-
-
-
-
-
 
 
 Set image metadata for volume
@@ -116,11 +111,6 @@ Request Example
 
 .. literalinclude:: ./samples/volume-image-metadata-set-request.json
    :language: javascript
-
-
-
-
-
 
 
 Remove image metadata from volume
@@ -208,7 +198,7 @@ Preconditions
 
 - You should set ``instance_uuid`` or ``host_name``.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 
 Request
@@ -230,11 +220,6 @@ Request Example
    :language: javascript
 
 
-
-
-
-
-
 Detach volume from a server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -246,7 +231,7 @@ Preconditions
 
 - Volume status must be ``in-use``.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 
 Request
@@ -285,7 +270,7 @@ Preconditions
 
 - Volume status must be ``available``.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 
 Request
@@ -319,7 +304,7 @@ Forces a volume to detach. Specify the ``os-force_detach`` action in the request
 Rolls back an unsuccessful detach operation after you disconnect
 the volume.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 
 Request

@@ -23,7 +23,6 @@ Lists consistency groups.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -107,7 +106,6 @@ Show consistency group details
 Shows details for a consistency group.
 
 Normal response codes: 200
-Error response codes:
 
 Request
 -------
@@ -203,7 +201,6 @@ Lists consistency groups with details.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request

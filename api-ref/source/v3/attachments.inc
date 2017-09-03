@@ -268,6 +268,7 @@ Complete attachment
 Complete an attachment for a cinder volume.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 

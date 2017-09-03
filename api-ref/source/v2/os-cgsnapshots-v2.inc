@@ -14,7 +14,7 @@ Delete consistency group snapshot
 
 Deletes a consistency group snapshot.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 
 Request
@@ -35,7 +35,6 @@ Shows details for a consistency group snapshot.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -75,7 +74,6 @@ Lists all consistency group snapshots with details.
 
 
 Normal response codes: 200
-Error response codes:
 
 Request
 -------
@@ -112,7 +110,6 @@ Lists all consistency group snapshots.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -149,7 +146,7 @@ Create consistency group snapshot
 
 Creates a consistency group snapshot.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 Request
 -------

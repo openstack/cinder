@@ -16,7 +16,6 @@ List all hosts
 Lists all hosts summary info that is not disabled.
 
 Normal response codes: 200
-Error response codes:
 
 Request
 -------

@@ -19,6 +19,7 @@ The backup driver returns the ``405`` status code if it does not
 support this operation.
 
 Normal response codes: 202
+
 Error response codes: itemNotFound(404), badMethod(405)
 
 
@@ -47,6 +48,7 @@ Reset backup's status
 Reset a backup's status. Specify the ``os-reset_status`` action in the request body.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 

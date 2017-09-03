@@ -156,7 +156,7 @@ Delete a backup
 
 Deletes a backup.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 Error response codes: Bad Request(400)
 
@@ -179,7 +179,7 @@ Restores a Block Storage backup to an existing or new Block Storage volume.
 You must specify either the UUID or name of the volume. If you
 specify both the UUID and name, the UUID takes priority.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 Error response codes: Bad Request(400), Request Entity Too Large(413)
 
@@ -224,7 +224,7 @@ Create a backup
 
 Creates a Block Storage backup from a volume.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 Error response codes: Bad Request(400), Internal Server Error(500)
 
@@ -356,6 +356,7 @@ Export information about a backup.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 
@@ -392,6 +393,7 @@ Import information about a backup.
 
 
 Normal response codes: 201
+
 Error response codes: badRequest(400), serviceUnavailable(503)
 
 

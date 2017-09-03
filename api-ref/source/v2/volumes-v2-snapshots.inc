@@ -43,7 +43,6 @@ Lists all Block Storage snapshots, with details, that the tenant can access.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -84,7 +83,7 @@ Create snapshot
 
 Creates a volume snapshot, which is a point-in-time, complete copy of a volume. You can create a volume from a snapshot.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 
 Request
@@ -130,7 +129,6 @@ Lists all Block Storage snapshots, with summary information, that the tenant can
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -176,7 +174,6 @@ Shows metadata for a snapshot.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -224,7 +221,6 @@ are not in the request.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -259,7 +255,6 @@ Replaces all the snapshot's metadata with the key-value pairs in the request.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -294,7 +289,6 @@ Shows details for a snapshot.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -339,7 +333,6 @@ Updates a snapshot.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -390,7 +383,7 @@ Delete snapshot
 
 Deletes a snapshot.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 
 Request
