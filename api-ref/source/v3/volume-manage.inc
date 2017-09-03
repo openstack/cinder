@@ -12,7 +12,8 @@ Manage an existing volume
 
 .. rest_method::  POST /v3/{project_id}/manageable_volumes
 
-Creates a Block Storage volume by using existing storage rather than allocating new storage.
+Creates a Block Storage volume by using existing storage rather than allocating
+new storage.
 
 The caller must specify a reference to an existing storage volume
 in the ref parameter in the request. Although each storage driver
@@ -35,17 +36,17 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - volume: volume
    - description: description
    - availability_zone: availability_zone
    - bootable: bootable
    - volume_type: volume_type
-   - name: name
-   - volume: volume
+   - name: volume_name
    - host: host_mutex
    - cluster: cluster_mutex
    - ref: ref
    - metadata: metadata
-   - project_id: project_id_path
 
 Request Example
 ---------------
@@ -73,11 +74,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
    - sort: sort
    - offset: offset
    - limit: limit
    - marker: marker
-   - project_id: project_id_path
    - host: hostname
 
 
@@ -117,12 +118,12 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
    - sort: sort
    - offset: offset
    - limit: limit
    - marker: marker
-   - project_id: project_id_path
-   - host: hostname
+   - host: host_query
 
 
 Response

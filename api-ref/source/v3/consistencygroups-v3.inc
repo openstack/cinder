@@ -23,7 +23,6 @@ Lists consistency groups.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -32,8 +31,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - marker: marker
 
@@ -43,6 +41,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - consistencygroups: consistencygroups
    - id: id
    - name: name
 
@@ -69,16 +68,24 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
+   - consistencygroup: consistencygroup
    - description: description_6
    - availability_zone: availability_zone
    - volume_types: volume_types_2
    - name: name_15
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/consistency-group-create-request.json
+   :language: javascript
 
 Response
 --------
 
 .. rest_parameters:: parameters.yaml
 
+   - consistencygroup: consistencygroup
    - status: status_1
    - description: description_11
    - availability_zone: availability_zone
@@ -86,12 +93,6 @@ Response
    - volume_types: volume_types
    - name: name_15
    - id: consistencygroup_id_1
-
-Request Example
----------------
-
-.. literalinclude:: ./samples/consistency-group-create-request.json
-   :language: javascript
 
 Response Example
 ----------------
@@ -107,7 +108,6 @@ Show a consistency group's details
 Shows details for a consistency group.
 
 Normal response codes: 200
-Error response codes:
 
 Request
 -------
@@ -115,7 +115,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - consistencygroup_id: consistencygroup_id
+   - consistencygroup_id: consistencygroup_id_2
 
 Response Parameters
 -------------------
@@ -152,6 +152,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - consistencygroup-from-src: consistencygroup-from-src
    - status: status_1
    - user_id: user_id
    - description: description
@@ -159,7 +161,6 @@ Request
    - source_cgid: source_cgid
    - project_id: project_id
    - name: name
-   - project_id: project_id_path
 
 Request Example
 ---------------
@@ -183,9 +184,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - force: force
    - project_id: project_id_path
-   - consistencygroup_id: consistencygroup_id
+   - consistencygroup_id: consistencygroup_id_2
+   - consistencygroup: consistencygroup
+   - force: force
 
 Request Example
 ---------------
@@ -203,7 +205,6 @@ Lists consistency groups with details.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -212,8 +213,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - marker: marker
 
@@ -223,6 +223,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - consistencygroups: consistencygroups
    - status: status_1
    - description: description
    - availability_zone: availability_zone
@@ -253,12 +254,13 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - consistencygroup_id: consistencygroup_id_2
+   - consistencygroup: consistencygroup
    - remove_volumes: remove_volumes
    - description: description
    - add_volumes: add_volumes
    - name: name
-   - project_id: project_id_path
-   - consistencygroup_id: consistencygroup_id
 
 Request Example
 ---------------

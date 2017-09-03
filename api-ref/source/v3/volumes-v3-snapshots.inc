@@ -45,6 +45,7 @@ return bad request.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400)
 
 
@@ -54,8 +55,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - offset: offset
    - marker: marker
@@ -90,7 +90,8 @@ Create a snapshot
 
 .. rest_method::  POST /v3/{project_id}/snapshots
 
-Creates a volume snapshot, which is a point-in-time, complete copy of a volume. You can create a volume from a snapshot.
+Creates a volume snapshot, which is a point-in-time, complete copy of a volume.
+You can create a volume from a snapshot.
 
 Normal response codes: 202
 
@@ -100,12 +101,12 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - snapshot: snapshot
-   - volume_id: volume_id
-   - force: force
-   - description: description
-   - name: name_12
    - project_id: project_id_path
+   - snapshot: snapshot_1
+   - volume_id: volume_id
+   - name: name_12
+   - description: description
+   - force: force
    - metadata: metadata_7
 
 Request Example
@@ -123,7 +124,7 @@ Response Parameters
    - description: description
    - created_at: created_at
    - name: name_12
-   - snapshot: snapshot
+   - snapshot: snapshot_1
    - user_id: user_id_2
    - volume_id: volume_id
    - metadata: metadata
@@ -149,6 +150,7 @@ specify invalid filters in the url, API will return bad request.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400)
 
 
@@ -158,8 +160,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - offset: offset
    - marker: marker
@@ -196,7 +197,6 @@ Shows metadata for a snapshot.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -218,7 +218,7 @@ Response Parameters
    - description: description
    - created_at: created_at
    - name: name
-   - snapshot: snapshot
+   - snapshot: snapshot_1
    - volume_id: volume_id
    - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
    - size: size
@@ -244,7 +244,6 @@ are not in the request.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -252,9 +251,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata
    - project_id: project_id_path
    - snapshot_id: snapshot_id_path
+   - metadata: metadata
 
 Request Example
 ---------------
@@ -262,6 +261,12 @@ Request Example
 .. literalinclude:: ./samples/snapshot-metadata-create-request.json
    :language: javascript
 
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - metadata: metadata
 
 Response Example
 ----------------
@@ -278,7 +283,6 @@ Replaces all the snapshot's metadata with the key-value pairs in the request.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -286,9 +290,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata
    - project_id: project_id_path
    - snapshot_id: snapshot_id_path
+   - metadata: metadata
 
 Request Example
 ---------------
@@ -296,6 +300,13 @@ Request Example
 .. literalinclude:: ./samples/snapshot-metadata-update-request.json
    :language: javascript
 
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - metadata: metadata
 
 Response Example
 ----------------
@@ -313,7 +324,6 @@ Shows details for a snapshot.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -335,7 +345,7 @@ Response Parameters
    - description: description
    - created_at: created_at
    - name: name
-   - snapshot: snapshot
+   - snapshot: snapshot_1
    - user_id: user_id_2
    - volume_id: volume_id
    - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
@@ -359,7 +369,6 @@ Updates a snapshot.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -367,11 +376,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - snapshot: snapshot
-   - description: description
-   - name: name
    - project_id: project_id_path
    - snapshot_id: snapshot_id_path
+   - snapshot: snapshot_1
+   - description: description
+   - name: name
 
 Request Example
 ---------------
@@ -390,12 +399,12 @@ Response Parameters
    - description: description
    - created_at: created_at
    - name: name
-   - snapshot: snapshot
-   - user_id: user_id_2
-   - volume_id: volume_id
-   - metadata: metadata
+   - snapshot: snapshot_1
    - id: id
    - size: size
+   - volume_id: volume_id
+   - user_id: user_id_2
+   - metadata: metadata
 
 Response Example
 ----------------
@@ -421,8 +430,6 @@ Request
 
    - project_id: project_id_path
    - snapshot_id: snapshot_id_path
-
-
 
 
 Show a snapshot's metadata for a specific key
@@ -451,8 +458,6 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - meta: meta_1
-
-
 
 Response Example
 ----------------

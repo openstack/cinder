@@ -14,6 +14,7 @@ Delete message
 Deletes a message.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 
@@ -35,6 +36,7 @@ Shows details for a message.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 
@@ -52,6 +54,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - message: user_message
    - request_id: request_id
    - links: links_5
    - message_level: message_level
@@ -80,6 +83,7 @@ specify invalid filters in the url, API will return bad request.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400)
 
 
@@ -89,8 +93,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - offset: offset
    - marker: marker
@@ -100,6 +103,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - messages: user_messages
    - request_id: request_id
    - links: links_5
    - message_level: message_level

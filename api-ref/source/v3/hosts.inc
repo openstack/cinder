@@ -16,7 +16,6 @@ List all hosts for a project
 Lists all hosts summary info that is not disabled.
 
 Normal response codes: 200
-Error response codes:
 
 Request
 -------
@@ -31,6 +30,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - hosts: hosts
    - service-status: service_status
    - service: host_service
    - zone: availability_zone_3
@@ -68,6 +68,7 @@ Response
 
 .. rest_parameters:: parameters.yaml
 
+  - host: host
   - volume_count: total_count
   - total_volume_gb: totalGigabytesUsed
   - total_snapshot_gb: totalSnapshotsUsed
@@ -75,7 +76,8 @@ Response
   - host: host
   - snapshot_count: totalSnapshotsUsed
 
-**Example Show Host Details**
+Response Example
+----------------
 
 .. literalinclude:: ./samples/hosts-get-response.json
    :language: javascript

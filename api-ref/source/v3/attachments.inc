@@ -15,6 +15,7 @@ Delete attachment
 Deletes an attachment.
 
 Normal response codes: 200
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 
@@ -36,6 +37,7 @@ Shows details for an attachment.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 
@@ -74,11 +76,11 @@ List attachments with details
 
 .. rest_method::  GET /v3/{project_id}/attachments/detail
 
-Lists all attachments with details, since v3.31 if non-admin
+Lists all attachments with details. Since v3.31 if non-admin
 users specify invalid filters in the url, API will return bad request.
 
-
 Normal response codes: 200
+
 Error response codes: badRequest(400)
 
 Request
@@ -87,8 +89,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - offset: offset
    - marker: marker
@@ -124,6 +125,7 @@ specify invalid filters in the url, API will return bad request.
 
 
 Normal response codes: 200
+
 Error response codes: badRequest(400)
 
 
@@ -133,8 +135,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - sort: sort
    - limit: limit
    - offset: offset
    - marker: marker
@@ -166,6 +167,7 @@ Create attachment
 Creates an attachment.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 
@@ -175,6 +177,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
+   - attachment: attachment
    - instance_uuid: instance_uuid_1
    - connector: connector
    - volume_uuid: volume_id_7
@@ -190,6 +193,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - attachment: attachment
    - status: status_9
    - detached_at: detached_at
    - connection_info: connection_info
@@ -215,6 +219,7 @@ Update a reserved attachment record with connector information
 and set up the appropriate connection_info from the driver.
 
 Normal response codes: 200
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 Request
@@ -224,6 +229,7 @@ Request
 
    - project_id: project_id_path
    - attachment_id: attachment_id_1
+   - attachement: attachment
    - connector: connector_1
 
 Request Example
@@ -237,6 +243,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - attachment: attachment
    - status: status_9
    - detached_at: detached_at
    - connection_info: connection_info

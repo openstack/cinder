@@ -16,6 +16,7 @@ Shows details for Block Storage API v3.
 
 
 Normal response codes: 200
+
 Error response codes:203,
 
 
