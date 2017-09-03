@@ -26,7 +26,6 @@ from xml.dom import minidom
 
 from cinder import context
 from cinder import exception
-from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.consistencygroup import fake_cgsnapshot
 from cinder.tests.unit.consistencygroup import fake_consistencygroup
@@ -4369,7 +4368,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.assertEqual('available', snapshots[0]['status'])
         self.assertDictEqual({'huawei_snapshot_id': '11'},
                              json.loads(snapshots[0]['provider_location']))
-        self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE, model['status'])
+        self.assertEqual('available', model['status'])
 
     def test_create_cgsnapshot_create_snapshot_fail(self):
         test_snapshots = [self.snapshot]
