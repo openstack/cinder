@@ -26,7 +26,7 @@ class FakeRequest(object):
         self.application_url = application_url
 
 
-URL_BASE = 'http://localhost/'
+URL_BASE = 'http://localhost/volume/'
 FAKE_HREF = URL_BASE + 'v1/'
 
 FAKE_VERSIONS = {
@@ -69,7 +69,7 @@ FAKE_LINKS = [
 class ViewBuilderTestCase(test.TestCase):
 
     def _get_builder(self):
-        request = FakeRequest('fake')
+        request = FakeRequest(URL_BASE)
         return versions.get_view_builder(request)
 
     def test_build_versions(self):
@@ -110,13 +110,9 @@ class ViewBuilderTestCase(test.TestCase):
 
     def test_generate_href_defaults(self):
 
-        self.mock_object(versions.ViewBuilder,
-                         '_get_base_url_without_version',
-                         return_value=URL_BASE)
-
         result = self._get_builder()._generate_href()
 
-        self.assertEqual('http://localhost/v3/', result)
+        self.assertEqual(URL_BASE + 'v3/', result)
 
     @ddt.data(
         ('v2', None, URL_BASE + 'v2/'),
@@ -127,10 +123,6 @@ class ViewBuilderTestCase(test.TestCase):
     @ddt.unpack
     def test_generate_href_no_path(self, version, path, expected):
 
-        self.mock_object(versions.ViewBuilder,
-                         '_get_base_url_without_version',
-                         return_value=URL_BASE)
-
         result = self._get_builder()._generate_href(version=version,
                                                     path=path)
 
@@ -139,7 +131,9 @@ class ViewBuilderTestCase(test.TestCase):
     @ddt.data(
         ('http://1.1.1.1/', 'http://1.1.1.1/'),
         ('http://localhost/', 'http://localhost/'),
+        ('http://localhost/volume/', 'http://localhost/volume/'),
         ('http://1.1.1.1/v1/', 'http://1.1.1.1/'),
+        ('http://1.1.1.1/volume/v1/', 'http://1.1.1.1/volume/'),
         ('http://1.1.1.1/v1', 'http://1.1.1.1/'),
         ('http://1.1.1.1/v11', 'http://1.1.1.1/'),
     )
