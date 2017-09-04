@@ -24,6 +24,7 @@ from oslo_utils import strutils
 import six
 import uuid
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
@@ -398,9 +399,14 @@ class VMAXCommon(object):
         elif not sourcedevice_id or not snap_name:
             LOG.info("No snapshot found on the array")
         else:
-            self.provision.delete_volume_snap_check_for_links(
-                extra_specs[utils.ARRAY], snap_name,
-                sourcedevice_id, extra_specs)
+            @coordination.synchronized("emc-source-{sourcedevice_id}")
+            def do_delete_volume_snap_check_for_links(sourcedevice_id):
+                # Ensure snap has not been recently deleted
+                self.provision.delete_volume_snap_check_for_links(
+                    extra_specs[utils.ARRAY], snap_name,
+                    sourcedevice_id, extra_specs)
+            do_delete_volume_snap_check_for_links(sourcedevice_id)
+
             LOG.info("Leaving delete_snapshot: %(ssname)s.",
                      {'ssname': snap_name})
 
@@ -1705,9 +1711,12 @@ class VMAXCommon(object):
                     # The snapshot name will only have 'temp' (or EMC_SMI for
                     # legacy volumes) if it is a temporary volume.
                     # Only then is it a candidate for deletion.
-                    if 'temp' or 'EMC_SMI' in snap_name:
-                        self.provision.delete_temp_volume_snap(
-                            array, snap_name, source)
+                    if 'temp' in snap_name or 'EMC_SMI' in snap_name:
+                        @coordination.synchronized("emc-source-{source}")
+                        def do_delete_temp_volume_snap(source):
+                            self.provision.delete_temp_volume_snap(
+                                array, snap_name, source)
+                        do_delete_temp_volume_snap(source)
 
     def manage_existing(self, volume, external_ref):
         """Manages an existing VMAX Volume (import to Cinder).
