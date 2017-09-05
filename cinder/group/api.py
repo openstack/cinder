@@ -720,6 +720,13 @@ class API(base.Base):
                         'orig_group': orig_group})
                 raise exception.InvalidVolume(reason=msg)
             if add_vol_ref:
+                if add_vol_ref.project_id != group.project_id:
+                    msg = (_("Cannot add volume %(volume_id)s to group "
+                             "%(group_id)s as they belong to different "
+                             "projects.") %
+                           {'volume_id': add_vol_ref['id'],
+                            'group_id': group.id})
+                    raise exception.InvalidVolume(reason=msg)
                 add_vol_type_id = add_vol_ref.get('volume_type_id', None)
                 if not add_vol_type_id:
                     msg = (_("Cannot add volume %(volume_id)s to group "

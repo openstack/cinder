@@ -232,6 +232,21 @@ class GroupAPITestCase(test.TestCase):
                           availability_zone='nova')
         mock_policy.assert_called_with(self.ctxt, 'create')
 
+    @mock.patch('cinder.objects.Group')
+    @mock.patch('cinder.db.volume_get')
+    def test__validate_add_volumes(self, mock_volume_get, mock_group):
+        grp = utils.create_group(self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+                                 volume_type_ids=[fake.VOLUME_TYPE_ID],
+                                 availability_zone='nova', host=None,
+                                 name="name", description="description",
+                                 status=fields.GroupStatus.CREATING)
+        mock_group.return_value = grp
+        fake_volume_obj = fake_volume.fake_volume_obj(self.ctxt)
+        mock_volume_get.return_value = fake_volume_obj
+        self.assertRaises(exception.InvalidVolume,
+                          self.group_api._validate_add_volumes, self.ctxt,
+                          [], ['123456789'], grp)
+
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.update_group')
     @mock.patch('cinder.db.volume_get_all_by_generic_group')
     @mock.patch('cinder.group.api.API._cast_create_group')
