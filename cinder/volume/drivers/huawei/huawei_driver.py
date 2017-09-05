@@ -382,7 +382,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             smart_qos.remove(qos_id, lun_id)
 
         metadata = huawei_utils.get_lun_metadata(volume)
-        if 'hypermetro_id' in metadata:
+        if metadata.get('hypermetro_id'):
             metro = hypermetro.HuaweiHyperMetro(self.client,
                                                 self.rmt_client,
                                                 self.configuration)
@@ -1895,7 +1895,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
 
         metadata = huawei_utils.get_lun_metadata(volume)
         LOG.info(_LI("initialize_connection, metadata is: %s."), metadata)
-        hypermetro_lun = 'hypermetro_id' in metadata
+        hypermetro_lun = metadata.get('hypermetro_id') is not None
 
         map_info = self.client.do_mapping(lun_id, hostgroup_id,
                                           host_id, portg_id)
@@ -2055,7 +2055,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         metadata = huawei_utils.get_lun_metadata(volume)
         LOG.info(_LI("Detach Volume, metadata is: %s."), metadata)
 
-        if 'hypermetro_id' in metadata:
+        if metadata.get('hypermetro_id'):
             hyperm = hypermetro.HuaweiHyperMetro(self.client,
                                                  self.rmt_client,
                                                  self.configuration)
