@@ -107,6 +107,17 @@ class QuobyteDriverTestCase(test.TestCase):
         mypart.mountpoint = self.TEST_MNT_POINT
         return [mypart]
 
+    def test__create_regular_file(self):
+        with mock.patch.object(self._driver, "_execute") as qb_exec_mock:
+            tmp_path = "/path/for/test"
+            test_size = 1
+
+            self._driver._create_regular_file(tmp_path, test_size)
+
+            qb_exec_mock.assert_called_once_with(
+                'fallocate', '-l', '%sG' % test_size, tmp_path,
+                run_as_root=self._driver._execute_as_root)
+
     def test_local_path(self):
         """local_path common use case."""
         drv = self._driver
@@ -661,6 +672,8 @@ class QuobyteDriverTestCase(test.TestCase):
                                          snapshot['id']: snap_file})
         image_utils.qemu_img_info = mock.Mock(return_value=img_info)
         drv._set_rw_permissions_for_all = mock.Mock()
+        drv._find_share = mock.Mock()
+        drv._find_share.return_value = "/some/arbitrary/path"
 
         drv._copy_volume_from_snapshot(snapshot, dest_volume, size)
 
@@ -716,14 +729,12 @@ class QuobyteDriverTestCase(test.TestCase):
 
         drv._ensure_shares_mounted = mock.Mock()
         drv._find_share = mock.Mock(return_value=self.TEST_QUOBYTE_VOLUME)
-        drv._do_create_volume = mock.Mock()
         drv._copy_volume_from_snapshot = mock.Mock()
 
         drv.create_volume_from_snapshot(new_volume, snap_ref)
 
         drv._ensure_shares_mounted.assert_called_once_with()
         drv._find_share.assert_called_once_with(new_volume)
-        drv._do_create_volume.assert_called_once_with(new_volume)
         (drv._copy_volume_from_snapshot.
          assert_called_once_with(snap_ref, new_volume, new_volume['size']))
 

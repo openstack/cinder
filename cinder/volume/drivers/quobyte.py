@@ -32,7 +32,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.1.5'
+VERSION = '1.1.6'
 
 LOG = logging.getLogger(__name__)
 
@@ -45,8 +45,7 @@ volume_opts = [
     cfg.BoolOpt('quobyte_sparsed_volumes',
                 default=True,
                 help=('Create volumes as sparse files which take no space.'
-                      ' If set to False, volume is created as regular file.'
-                      'In such case volume creation takes a lot of time.')),
+                      ' If set to False, volume is created as regular file.')),
     cfg.BoolOpt('quobyte_qcow2_volumes',
                 default=True,
                 help=('Create volumes as QCOW2 files rather than raw files.')),
@@ -86,6 +85,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.1.3 - Explicitely mounts Quobyte volumes w/o xattrs
         1.1.4 - Fixes capability to configure redundancy in quobyte_volume_url
         1.1.5 - Enables extension of volumes with snapshots
+        1.1.6 - Optimizes volume creation
 
     """
 
@@ -103,6 +103,11 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
 
         # Used to manage snapshots which are currently attached to a VM.
         self._nova = None
+
+    def _create_regular_file(self, path, size):
+        """Creates a regular file of given size in GiB."""
+        self._execute('fallocate', '-l', '%sG' % size,
+                      path, run_as_root=self._execute_as_root)
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
@@ -182,6 +187,31 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         """Creates a clone of the specified volume."""
         return self._create_cloned_volume(volume, src_vref)
 
+    def _create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot.
+
+        Snapshot must not be the active snapshot. (offline)
+        """
+
+        LOG.debug('Creating volume %(vol)s from snapshot %(snap)s',
+                  {'vol': volume.id, 'snap': snapshot.id})
+
+        if snapshot.status != 'available':
+            msg = _('Snapshot status must be "available" to clone. '
+                    'But is: %(status)s') % {'status': snapshot.status}
+
+            raise exception.InvalidSnapshot(msg)
+
+        self._ensure_shares_mounted()
+
+        volume.provider_location = self._find_share(volume)
+
+        self._copy_volume_from_snapshot(snapshot,
+                                        volume,
+                                        volume.size)
+
+        return {'provider_location': volume.provider_location}
+
     @utils.synchronized('quobyte', external=False)
     def create_volume(self, volume):
         return super(QuobyteDriver, self).create_volume(volume)
@@ -208,6 +238,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         forward_file = snap_info[snapshot.id]
         forward_path = os.path.join(vol_path, forward_file)
 
+        self._ensure_shares_mounted()
         # Find the file which backs this file, which represents the point
         # when this snapshot was created.
         img_info = self._qemu_img_info(forward_path,
