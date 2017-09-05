@@ -150,14 +150,27 @@ def convert_to_id(value62):
 class MStorageVolumeCommon(object):
     """M-Series Storage volume common class."""
 
-    VERSION = '1.9.1'
+    VERSION = '1.9.2'
     WIKI_NAME = 'NEC_Cinder_CI'
 
     def do_setup(self, context):
         self._context = context
 
     def check_for_setup_error(self):
-        if len(getattr(self._local_conf, 'nec_pools', [])) == 0:
+        fip = self._configuration.safe_get('nec_ismcli_fip')
+        user = self._configuration.safe_get('nec_ismcli_user')
+        pw = self._configuration.safe_get('nec_ismcli_password')
+        key = self._configuration.safe_get('nec_ismcli_privkey')
+        pools = self._configuration.safe_get('nec_pools')
+
+        if fip is None or fip == '':
+            raise exception.ParameterNotFound(param='nec_ismcli_fip')
+        if user is None or user == '':
+            raise exception.ParameterNotFound(param='nec_ismcli_user')
+        if (pw is None or pw == '') and (key is None or key == ''):
+            msg = _('nec_ismcli_password nor nec_ismcli_privkey')
+            raise exception.ParameterNotFound(param=msg)
+        if pools is None or len(pools) == 0:
             raise exception.ParameterNotFound(param='nec_pools')
 
     def _set_config(self, configuration, host, driver_name):
@@ -170,25 +183,8 @@ class MStorageVolumeCommon(object):
         self._configuration.append_config_values(san.san_opts)
         self._config_group = self._configuration.config_group
 
-        if self._config_group:
-            FLAGS.register_opts(mstorage_opts, group=self._config_group)
-            self._local_conf = FLAGS._get(self._config_group)
-        else:
-            FLAGS.register_opts(mstorage_opts)
-            self._local_conf = FLAGS
-
-        self._check_flags()
         self._properties = self._set_properties()
         self._cli = self._properties['cli']
-
-    def _check_flags(self):
-        for flag in ['nec_ismcli_fip', 'nec_ismcli_user']:
-            if getattr(self._local_conf, flag, '') == '':
-                raise exception.ParameterNotFound(param=flag)
-        if (getattr(self._local_conf, 'nec_ismcli_password', '') == '' and
-                getattr(self._local_conf, 'nec_ismcli_privkey', '') == ''):
-            msg = _('nec_ismcli_password nor nec_ismcli_privkey')
-            raise exception.ParameterNotFound(param=msg)
 
     def _create_ismview_dir(self,
                             ismview_dir,
@@ -219,67 +215,55 @@ class MStorageVolumeCommon(object):
 
         return ismview_path
 
-    def get_conf(self, host):
-        """Get another host group configurations."""
-        hostname = host['host']
-        hostname = hostname[:hostname.rindex('#')]
-        if '@' in hostname:
-            group = hostname.split('@')[1]
-            FLAGS.register_opts(mstorage_opts, group=group)
-            conf = FLAGS._get(group)
-        else:
-            FLAGS.register_opts(mstorage_opts)
-            conf = FLAGS
-        return conf
+    def get_conf_properties(self):
+        confobj = self._configuration
 
-    def get_conf_properties(self, conf=None):
-        if conf is None:
-            return self._properties
         pool_pools = []
-        for pool in getattr(conf, 'nec_pools', []):
+        for pool in confobj.safe_get('nec_pools'):
             if pool.endswith('h'):
                 pool_pools.append(int(pool[:-1], 16))
             else:
                 pool_pools.append(int(pool, 10))
         pool_backup_pools = []
-        for pool in getattr(conf, 'nec_backup_pools', []):
+        for pool in confobj.safe_get('nec_backup_pools'):
             if pool.endswith('h'):
                 pool_backup_pools.append(int(pool[:-1], 16))
             else:
                 pool_backup_pools.append(int(pool, 10))
-        ldset_name = getattr(conf, 'nec_ldset', '')
-        ldset_controller_node_name = getattr(conf,
-                                             'nec_ldset_for_controller_node',
-                                             '')
 
         return {
-            'cli_fip': conf.nec_ismcli_fip,
-            'cli_user': conf.nec_ismcli_user,
-            'cli_password': conf.nec_ismcli_password,
-            'cli_privkey': conf.nec_ismcli_privkey,
+            'cli_fip': confobj.safe_get('nec_ismcli_fip'),
+            'cli_user': confobj.safe_get('nec_ismcli_user'),
+            'cli_password': confobj.safe_get('nec_ismcli_password'),
+            'cli_privkey': confobj.safe_get('nec_ismcli_privkey'),
             'pool_pools': pool_pools,
             'pool_backup_pools': pool_backup_pools,
-            'pool_actual_free_capacity': conf.nec_actual_free_capacity,
-            'ldset_name': ldset_name,
-            'ldset_controller_node_name': ldset_controller_node_name,
-            'ld_name_format': conf.nec_ldname_format,
-            'ld_backupname_format': conf.nec_backup_ldname_format,
-            'ld_backend_max_count': conf.nec_backend_max_ld_count,
-            'thread_timeout': conf.nec_unpairthread_timeout,
-            'ismview_dir': conf.nec_ismview_dir,
-            'ismview_alloptimize': conf.nec_ismview_alloptimize,
-            'ssh_pool_port_number': conf.nec_ssh_pool_port_number,
-            'diskarray_name': conf.nec_diskarray_name,
-            'queryconfig_view': conf.nec_queryconfig_view,
-            'portal_number': conf.nec_iscsi_portals_per_cont
+            'pool_actual_free_capacity':
+                confobj.safe_get('nec_actual_free_capacity'),
+            'ldset_name': confobj.safe_get('nec_ldset'),
+            'ldset_controller_node_name':
+                confobj.safe_get('nec_ldset_for_controller_node'),
+            'ld_name_format': confobj.safe_get('nec_ldname_format'),
+            'ld_backupname_format':
+                confobj.safe_get('nec_backup_ldname_format'),
+            'ld_backend_max_count':
+                confobj.safe_get('nec_backend_max_ld_count'),
+            'thread_timeout': confobj.safe_get('nec_unpairthread_timeout'),
+            'ismview_dir': confobj.safe_get('nec_ismview_dir'),
+            'ismview_alloptimize': confobj.safe_get('nec_ismview_alloptimize'),
+            'ssh_pool_port_number':
+                confobj.safe_get('nec_ssh_pool_port_number'),
+            'diskarray_name': confobj.safe_get('nec_diskarray_name'),
+            'queryconfig_view': confobj.safe_get('nec_queryconfig_view'),
+            'portal_number': confobj.safe_get('nec_iscsi_portals_per_cont')
         }
 
     def _set_properties(self):
-        conf_properties = self.get_conf_properties(self._local_conf)
+        conf_properties = self.get_conf_properties()
 
         ismview_path = self._create_ismview_dir(
-            self._local_conf.nec_ismview_dir,
-            self._local_conf.nec_diskarray_name,
+            conf_properties['ismview_dir'],
+            conf_properties['diskarray_name'],
             self._driver_name,
             self._host)
 
@@ -292,9 +276,6 @@ class MStorageVolumeCommon(object):
         conf_properties['ssh_conn_timeout'] = ssh_timeout
         conf_properties['reserved_percentage'] = reserved_per
         conf_properties['ismview_path'] = ismview_path
-        conf_properties['driver_name'] = self._driver_name
-        conf_properties['config_group'] = self._config_group
-        conf_properties['configuration'] = self._configuration
         conf_properties['vendor_name'] = vendor_name
         conf_properties['products'] = _product_dict
         conf_properties['backend_name'] = backend_name
