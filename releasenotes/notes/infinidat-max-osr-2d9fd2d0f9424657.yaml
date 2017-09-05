@@ -1,0 +1,5 @@
+---
+features:
+  - Added support for oversubscription in thin provisioning in the INFINIDAT
+    InfiniBox driver. To use oversubscription, define
+    ``max_over_subscription_ratio`` in the cinder configuration file.
