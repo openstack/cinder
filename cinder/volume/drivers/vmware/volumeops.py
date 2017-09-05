@@ -306,6 +306,17 @@ class VMwareVolumeOps(object):
 
         LOG.debug("Did not find any backing with name: %s", name)
 
+    def get_backing_by_uuid(self, uuid):
+        result = self._session.invoke_api(
+            self._session.vim,
+            'FindAllByUuid',
+            self._session.vim.service_content.searchIndex,
+            uuid=uuid,
+            vmSearch=True,
+            instanceUuid=True)
+        if result:
+            return result[0]
+
     def delete_backing(self, backing):
         """Delete the backing.
 
@@ -1035,7 +1046,7 @@ class VMwareVolumeOps(object):
 
     def _get_clone_spec(self, datastore, disk_move_type, snapshot, backing,
                         disk_type, host=None, resource_pool=None,
-                        extra_config=None):
+                        extra_config=None, disks_to_clone=None):
         """Get the clone spec.
 
         :param datastore: Reference to datastore
@@ -1047,6 +1058,7 @@ class VMwareVolumeOps(object):
         :param resource_pool: Target resource pool
         :param extra_config: Key-value pairs to be written to backing's
                              extra-config
+        :param disks_to_clone: UUIDs of disks to clone
         :return: Clone spec
         """
         if disk_type is not None:
@@ -1064,20 +1076,37 @@ class VMwareVolumeOps(object):
         clone_spec.template = False
         clone_spec.snapshot = snapshot
 
-        if extra_config:
+        if extra_config or disks_to_clone:
             config_spec = cf.create('ns0:VirtualMachineConfigSpec')
+            clone_spec.config = config_spec
+
+        if extra_config:
             if BACKING_UUID_KEY in extra_config:
                 config_spec.instanceUuid = extra_config.pop(BACKING_UUID_KEY)
             config_spec.extraConfig = self._get_extra_config_option_values(
                 extra_config)
-            clone_spec.config = config_spec
+
+        if disks_to_clone:
+            config_spec.deviceChange = (
+                self._create_device_change_for_disk_removal(
+                    backing, disks_to_clone))
 
         LOG.debug("Spec for cloning the backing: %s.", clone_spec)
         return clone_spec
 
+    def _create_device_change_for_disk_removal(self, backing, disks_to_clone):
+        disk_devices = self._get_disk_devices(backing)
+
+        device_change = []
+        for device in disk_devices:
+            if device.backing.uuid not in disks_to_clone:
+                device_change.append(self._create_spec_for_disk_remove(device))
+
+        return device_change
+
     def clone_backing(self, name, backing, snapshot, clone_type, datastore,
                       disk_type=None, host=None, resource_pool=None,
-                      extra_config=None, folder=None):
+                      extra_config=None, folder=None, disks_to_clone=None):
         """Clone backing.
 
         If the clone_type is 'full', then a full clone of the source volume
@@ -1095,6 +1124,7 @@ class VMwareVolumeOps(object):
         :param extra_config: Key-value pairs to be written to backing's
                              extra-config
         :param folder: The location of the clone
+        :param disks_to_clone: UUIDs of disks to clone
         """
         LOG.debug("Creating a clone of backing: %(back)s, named: %(name)s, "
                   "clone type: %(type)s from snapshot: %(snap)s on "
@@ -1114,7 +1144,9 @@ class VMwareVolumeOps(object):
             disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
         clone_spec = self._get_clone_spec(
             datastore, disk_move_type, snapshot, backing, disk_type, host=host,
-            resource_pool=resource_pool, extra_config=extra_config)
+            resource_pool=resource_pool, extra_config=extra_config,
+            disks_to_clone=disks_to_clone)
+
         task = self._session.invoke_api(self._session.vim, 'CloneVM_Task',
                                         backing, folder=folder, name=name,
                                         spec=clone_spec)

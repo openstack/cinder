@@ -24,11 +24,13 @@ from oslo_utils import versionutils
 from oslo_vmware import api
 from oslo_vmware import exceptions
 from oslo_vmware import image_transfer
+from oslo_vmware import vim_util
 import six
 
 from cinder import context
 from cinder import exception as cinder_exceptions
 from cinder import test
+from cinder.tests.unit import fake_constants
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.volume import configuration
@@ -1780,6 +1782,72 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             volume, backing, snapshot_moref, volumeops.FULL_CLONE_TYPE,
             snapshot['volume_size'])
 
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    def test_get_volume_device_uuid(self, session):
+        dev_uuid = mock.sentinel.dev_uuid
+        opt_val = mock.Mock(value=dev_uuid)
+        session.invoke_api.return_value = opt_val
+
+        instance = mock.sentinel.instance
+        ret = self._driver._get_volume_device_uuid(instance, self.VOL_ID)
+
+        self.assertEqual(dev_uuid, ret)
+        exp_prop = 'config.extraConfig["volume-%s"]' % self.VOL_ID
+        session.invoke_api.assert_called_once_with(
+            vim_util, 'get_object_property', session.vim, instance, exp_prop)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_volume_device_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
+    @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
+    @mock.patch.object(VMDK_DRIVER, '_manage_existing_int')
+    @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
+    def test_clone_attached_volume(
+            self, delete_temp_backing, manage_existing_int,
+            select_ds_for_volume, generate_uuid, get_volume_device_uuid, vops):
+        instance = mock.sentinel.instance
+        vops.get_backing_by_uuid.return_value = instance
+
+        vol_dev_uuid = mock.sentinel.vol_dev_uuid
+        get_volume_device_uuid.return_value = vol_dev_uuid
+
+        tmp_name = mock.sentinel.tmp_name
+        generate_uuid.return_value = tmp_name
+
+        host = mock.sentinel.host
+        rp = mock.sentinel.rp
+        folder = mock.sentinel.folder
+        datastore = mock.sentinel.datastore
+        summary = mock.Mock(datastore=datastore)
+        select_ds_for_volume.return_value = (host, rp, folder, summary)
+
+        tmp_backing = mock.sentinel.tmp_backing
+        vops.clone_backing.return_value = tmp_backing
+
+        disk_device = mock.sentinel.disk_device
+        vops._get_disk_device.return_value = disk_device
+
+        instance_uuid = fake_constants.INSTANCE_ID
+        attachment = fake_volume.fake_db_volume_attachment(
+            instance_uuid=instance_uuid)
+        src_vref = self._create_volume_dict(vol_id=fake_constants.VOLUME_ID,
+                                            attachment=[attachment])
+        volume = self._create_volume_dict()
+        self._driver._clone_attached_volume(src_vref, volume)
+
+        vops.get_backing_by_uuid.assert_called_once_with(instance_uuid)
+        get_volume_device_uuid.assert_called_once_with(instance,
+                                                       src_vref['id'])
+        select_ds_for_volume.assert_called_once_with(volume)
+        vops.clone_backing.assert_called_once_with(
+            tmp_name, instance, None, volumeops.FULL_CLONE_TYPE, datastore,
+            host=host, resource_pool=rp, folder=folder,
+            disks_to_clone=[vol_dev_uuid])
+        vops._get_disk_device.assert_called_once_with(tmp_backing)
+        manage_existing_int.assert_called_once_with(
+            volume, tmp_backing, disk_device)
+        delete_temp_backing.assert_called_once_with(tmp_backing)
+
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_clone_backing')
     def test_create_cloned_volume_without_backing(self, clone_backing, vops):
@@ -1794,8 +1862,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_get_clone_type')
+    @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=False)
     @mock.patch.object(VMDK_DRIVER, '_clone_backing')
-    def test_create_cloned_volume(self, clone_backing, get_clone_type, vops):
+    def test_create_cloned_volume(
+            self, clone_backing, in_use, get_clone_type, vops):
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
 
@@ -1812,9 +1882,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_get_clone_type')
+    @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=False)
     @mock.patch.object(VMDK_DRIVER, '_clone_backing')
     def test_create_cloned_volume_linked(
-            self, clone_backing, get_clone_type, vops):
+            self, clone_backing, in_use, get_clone_type, vops):
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
 
@@ -1856,6 +1927,25 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                           src_vref)
         vops.get_backing.assert_called_once_with(src_vref['name'])
         get_clone_type.assert_called_once_with(volume)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_clone_type')
+    @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=True)
+    @mock.patch.object(VMDK_DRIVER, '_clone_attached_volume')
+    def test_create_cloned_volume_when_attached(
+            self, clone_attached_volume, in_use, get_clone_type, vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        get_clone_type.return_value = volumeops.FULL_CLONE_TYPE
+
+        volume = self._create_volume_dict(status='in-use')
+        src_vref = self._create_volume_dict(vol_id=self.SRC_VOL_ID)
+        self._driver.create_cloned_volume(volume, src_vref)
+
+        vops.get_backing.assert_called_once_with(src_vref['name'])
+        get_clone_type.assert_called_once_with(volume)
+        clone_attached_volume.assert_called_once_with(src_vref, volume)
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.'
                 '_get_volume_type_extra_spec')
@@ -2387,7 +2477,6 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                                                existing_ref))
         get_existing.assert_called_once_with(existing_ref)
 
-    @mock.patch.object(VMDK_DRIVER, '_get_existing')
     @mock.patch.object(VMDK_DRIVER, '_create_backing')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_get_ds_name_folder_path')
@@ -2395,15 +2484,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_disk_type')
     @mock.patch.object(VMDK_DRIVER, '_get_adapter_type')
-    def test_manage_existing(
+    def test_manage_existing_int(
             self, get_adapter_type, get_disk_type, get_storage_profile_id,
-            get_ds_name_folder_path, vops, create_backing, get_existing):
-
-        vm = mock.sentinel.vm
-        src_path = mock.sentinel.src_path
-        disk_backing = mock.Mock(fileName=src_path)
-        disk_device = mock.Mock(backing=disk_backing, capacityInKB=1048576)
-        get_existing.return_value = (vm, disk_device)
+            get_ds_name_folder_path, vops, create_backing):
 
         backing = mock.sentinel.backing
         create_backing.return_value = backing
@@ -2426,10 +2509,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         adapter_type = mock.sentinel.adapter_type
         get_adapter_type.return_value = adapter_type
 
-        existing_ref = mock.sentinel.existing_ref
-        self._driver.manage_existing(volume, existing_ref)
+        vm = mock.sentinel.vm
+        src_path = mock.sentinel.src_path
+        disk_backing = mock.Mock(fileName=src_path)
+        disk_device = mock.Mock(backing=disk_backing, capacityInKB=1048576)
+        self._driver._manage_existing_int(volume, vm, disk_device)
 
-        get_existing.assert_called_once_with(existing_ref)
         create_backing.assert_called_once_with(
             volume, create_params={vmdk.CREATE_PARAM_DISK_LESS: True})
         vops.detach_disk_from_backing.assert_called_once_with(vm, disk_device)
@@ -2443,6 +2528,20 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             adapter_type, profile_id, dest_path)
         vops.update_backing_disk_uuid.assert_called_once_with(backing,
                                                               volume['id'])
+
+    @mock.patch.object(VMDK_DRIVER, '_get_existing')
+    @mock.patch.object(VMDK_DRIVER, '_manage_existing_int')
+    def test_manage_existing(self, manage_existing_int, get_existing):
+        vm = mock.sentinel.vm
+        disk_device = mock.sentinel.disk_device
+        get_existing.return_value = (vm, disk_device)
+
+        volume = mock.sentinel.volume
+        existing_ref = mock.sentinel.existing_ref
+        self._driver.manage_existing(volume, existing_ref)
+
+        get_existing.assert_called_once_with(existing_ref)
+        manage_existing_int.assert_called_once_with(volume, vm, disk_device)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_unmanage(self, vops):
