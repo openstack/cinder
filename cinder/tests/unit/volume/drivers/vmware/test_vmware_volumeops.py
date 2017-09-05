@@ -1689,6 +1689,16 @@ class VolumeOpsTestCase(test.TestCase):
             self.session.vim.service_content.searchIndex,
             inventoryPath=path)
 
+    def test_get_inventory_path(self):
+
+        path = mock.sentinel.path
+        self.session.invoke_api.return_value = path
+
+        entity = mock.sentinel.entity
+        self.assertEqual(path, self.vops.get_inventory_path(entity))
+        self.session.invoke_api.assert_called_once_with(
+            vim_util, 'get_inventory_path', self.session.vim, entity)
+
     def test_get_disk_devices(self):
         disk_device = mock.Mock()
         disk_device.__class__.__name__ = 'VirtualDisk'
@@ -1712,6 +1722,12 @@ class VolumeOpsTestCase(test.TestCase):
         backing.__class__.__name__ = 'VirtualDiskFlatVer2BackingInfo'
         backing.uuid = uuid
         return mock.Mock(backing=backing)
+
+    def test_mark_backing_as_template(self):
+        backing = mock.Mock()
+        self.vops.mark_backing_as_template(backing)
+        self.session.invoke_api.assert_called_once_with(
+            self.session.vim, 'MarkAsTemplate', backing)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 '_get_disk_devices')

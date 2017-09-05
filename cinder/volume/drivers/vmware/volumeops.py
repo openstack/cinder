@@ -1618,6 +1618,10 @@ class VMwareVolumeOps(object):
             self._session.vim.service_content.searchIndex,
             inventoryPath=path)
 
+    def get_inventory_path(self, entity):
+        return self._session.invoke_api(
+            vim_util, 'get_inventory_path', self._session.vim, entity)
+
     def _get_disk_devices(self, vm):
         disk_devices = []
         hardware_devices = self._session.invoke_api(vim_util,
@@ -1649,3 +1653,7 @@ class VMwareVolumeOps(object):
             if (backing.__class__.__name__ == "VirtualDiskFlatVer2BackingInfo"
                     and backing.fileName == vmdk_path):
                 return disk_device
+
+    def mark_backing_as_template(self, backing):
+        LOG.debug("Marking backing: %s as template.", backing)
+        self._session.invoke_api(self._session.vim, 'MarkAsTemplate', backing)
