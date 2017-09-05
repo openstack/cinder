@@ -459,7 +459,7 @@ class LVM(executor.Executor):
                 if not lv['size'][-1].isdigit():
                     lvsize = lvsize[:-1]
                 if lv['name'] == self.vg_thin_pool:
-                    self.vg_thin_pool_size = lvsize
+                    self.vg_thin_pool_size = float(lvsize)
                     tpfs = self._get_thin_pool_free_space(self.vg_name,
                                                           self.vg_thin_pool)
                     self.vg_thin_pool_free_space = tpfs

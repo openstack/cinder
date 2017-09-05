@@ -322,7 +322,7 @@ class BrickLvmTestCase(test.TestCase):
         self.assertEqual(
             "9.5g",
             self.vg.create_thin_pool(name=self.vg.vg_thin_pool))
-        self.assertEqual("9.50", self.vg.vg_thin_pool_size)
+        self.assertEqual(9.50, self.vg.vg_thin_pool_size)
         self.assertEqual(7.6, self.vg.vg_thin_pool_free_space)
         self.assertEqual(3.0, self.vg.vg_provisioned_capacity)
 
@@ -331,7 +331,7 @@ class BrickLvmTestCase(test.TestCase):
         self.assertEqual(
             "9.5g",
             self.vg.create_thin_pool(name=self.vg.vg_thin_pool))
-        self.assertEqual("9.50", self.vg.vg_thin_pool_size)
+        self.assertEqual(9.50, self.vg.vg_thin_pool_size)
         self.assertEqual(7.6, self.vg.vg_thin_pool_free_space)
         self.assertEqual(3.0, self.vg.vg_provisioned_capacity)
 
