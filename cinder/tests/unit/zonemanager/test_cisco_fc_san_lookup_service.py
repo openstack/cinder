@@ -40,7 +40,7 @@ switch_data = ['VSAN 304\n',
 nsshow_data = ['10:00:8c:7c:ff:52:3b:01', '20:24:00:02:ac:00:0a:50']
 
 _device_map_to_verify = {
-    '304': {
+    'CISCO_FAB_2': {
         'initiator_port_wwn_list': ['10008c7cff523b01'],
         'target_port_wwn_list': ['20240002ac000a50']}}
 

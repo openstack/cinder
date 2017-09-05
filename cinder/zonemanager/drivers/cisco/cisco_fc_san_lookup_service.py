@@ -55,7 +55,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
         self.switch_port = ""
         self.switch_pwd = ""
         self.switch_ip = ""
-        self.sshpool = None
+        self.sshpool = {}
 
     def create_configuration(self):
         """Configuration specific to SAN context values."""
@@ -87,7 +87,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
         .. code-block:: python
 
             {
-                <San name>: {
+                <Fabric name>: {
                     'initiator_port_wwn_list':
                     ('200000051e55a100', '200000051e55a121'..)
                     'target_port_wwn_list':
@@ -168,7 +168,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
                 fabric_map = {'initiator_port_wwn_list': visible_initiators,
                               'target_port_wwn_list': visible_targets
                               }
-                device_map[zoning_vsan] = fabric_map
+                device_map[fabric_name] = fabric_map
         LOG.debug("Device map for SAN context: %s", device_map)
         return device_map
 
@@ -232,17 +232,18 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
 
         command = ' '.join(cmd_list)
 
-        if not self.sshpool:
-            self.sshpool = ssh_utils.SSHPool(self.switch_ip,
-                                             self.switch_port,
-                                             None,
-                                             self.switch_user,
-                                             self.switch_pwd,
-                                             min_size=1,
-                                             max_size=5)
+        if self.sshpool.get(self.switch_ip) is None:
+            self.sshpool[self.switch_ip] = ssh_utils.SSHPool(self.switch_ip,
+                                                             self.switch_port,
+                                                             None,
+                                                             self.switch_user,
+                                                             self.switch_pwd,
+                                                             min_size=1,
+                                                             max_size=5)
+
         last_exception = None
         try:
-            with self.sshpool.item() as ssh:
+            with self.sshpool.get(self.switch_ip).item() as ssh:
                 while attempts > 0:
                     attempts -= 1
                     try:
@@ -288,19 +289,20 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
         # Combine into a single command.
         command = ' ; '.join(map(lambda x: ' '.join(x), cmd_list))
 
-        if not self.sshpool:
-            self.sshpool = ssh_utils.SSHPool(self.switch_ip,
-                                             self.switch_port,
-                                             None,
-                                             self.switch_user,
-                                             self.switch_pwd,
-                                             min_size=1,
-                                             max_size=5)
+        if self.sshpool.get(self.switch_ip) is None:
+            self.sshpool[self.switch_ip] = ssh_utils.SSHPool(self.switch_ip,
+                                                             self.switch_port,
+                                                             None,
+                                                             self.switch_user,
+                                                             self.switch_pwd,
+                                                             min_size=1,
+                                                             max_size=5)
+
         stdin, stdout, stderr = None, None, None
         LOG.debug("Executing command via ssh: %s", command)
         last_exception = None
         try:
-            with self.sshpool.item() as ssh:
+            with self.sshpool.get(self.switch_ip).item() as ssh:
                 while attempts > 0:
                     attempts -= 1
                     try:
@@ -355,4 +357,4 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
                 stderr.close()
 
     def cleanup(self):
-        self.sshpool = None
+        self.sshpool = {}
