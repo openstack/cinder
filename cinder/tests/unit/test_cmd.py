@@ -215,7 +215,7 @@ class TestCinderManageCmd(test.TestCase):
 
     @mock.patch("oslo_db.sqlalchemy.migration.db_sync")
     def test_db_commands_script_not_present(self, db_sync):
-        db_sync.side_effect = oslo_exception.DbMigrationError
+        db_sync.side_effect = oslo_exception.DBMigrationError(None)
         db_cmds = cinder_manage.DbCommands()
         exit = self.assertRaises(SystemExit, db_cmds.sync, 101)
         self.assertEqual(1, exit.code)
