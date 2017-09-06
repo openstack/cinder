@@ -36,7 +36,6 @@ Volume drivers
    drivers/ibm-storage-volume-driver.rst
    drivers/ibm-flashsystem-volume-driver.rst
    drivers/infinidat-volume-driver.rst
-   drivers/infortrend-volume-driver.rst
    drivers/itri-disco-driver.rst
    drivers/kaminario-driver.rst
    drivers/lenovo-driver.rst
