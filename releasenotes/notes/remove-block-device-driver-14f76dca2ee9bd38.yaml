@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    BlockDeviceDriver was deprecated in Ocata release and marked as
+    'unsupported'. There is no CI for it too. If you used this driver before
+    you have to migrate your volumes to LVM with LIO target yourself before
+    upgrading to Queens release to get your volumes working.
