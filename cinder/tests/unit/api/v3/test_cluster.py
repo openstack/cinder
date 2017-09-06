@@ -16,7 +16,7 @@
 import datetime
 
 import ddt
-from iso8601 import iso8601
+import iso8601
 import mock
 from oslo_utils import versionutils
 
@@ -92,7 +92,7 @@ class FakeRequest(object):
 
 
 def fake_utcnow(with_timezone=False):
-    tzinfo = iso8601.Utc() if with_timezone else None
+    tzinfo = iso8601.UTC if with_timezone else None
     return datetime.datetime(2016, 6, 1, 2, 46, 30, tzinfo=tzinfo)
 
 

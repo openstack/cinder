@@ -39,7 +39,7 @@
 from __future__ import print_function
 
 import datetime
-from iso8601 import iso8601
+import iso8601
 import sys
 
 from oslo_config import cfg
@@ -81,8 +81,8 @@ def _time_error(LOG, begin, end):
     if CONF.end_time:
         end = datetime.datetime.strptime(CONF.end_time,
                                          "%Y-%m-%d %H:%M:%S")
-    begin = begin.replace(tzinfo=iso8601.Utc())
-    end = end.replace(tzinfo=iso8601.Utc())
+    begin = begin.replace(tzinfo=iso8601.UTC)
+    end = end.replace(tzinfo=iso8601.UTC)
     if not end > begin:
         msg = _("The end time (%(end)s) must be after the start "
                 "time (%(start)s).") % {'start': begin,

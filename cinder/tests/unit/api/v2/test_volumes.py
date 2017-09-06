@@ -185,9 +185,9 @@ class VolumeApiTest(test.TestCase):
                    'bootable': 'false',
                    'consistencygroup_id': consistencygroup_id,
                    'created_at': datetime.datetime(
-                       1900, 1, 1, 1, 1, 1, tzinfo=iso8601.iso8601.Utc()),
+                       1900, 1, 1, 1, 1, 1, tzinfo=iso8601.UTC),
                    'updated_at': datetime.datetime(
-                       1900, 1, 1, 1, 1, 1, tzinfo=iso8601.iso8601.Utc()),
+                       1900, 1, 1, 1, 1, 1, tzinfo=iso8601.UTC),
                    'description': description,
                    'id': v2_fakes.DEFAULT_VOL_ID,
                    'links':
@@ -753,12 +753,12 @@ class VolumeApiTest(test.TestCase):
                           'host_name': None,
                           'device': '/',
                           'attached_at': attach_tmp['attach_time'].replace(
-                              tzinfo=iso8601.iso8601.Utc()),
+                              tzinfo=iso8601.UTC),
                           }],
             metadata={'key': 'value', 'readonly': 'True'},
             with_migration_status=True)
         expected['volume']['updated_at'] = volume_tmp['updated_at'].replace(
-            tzinfo=iso8601.iso8601.Utc())
+            tzinfo=iso8601.UTC)
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
         self.assertTrue(mock_validate.called)
@@ -894,12 +894,12 @@ class VolumeApiTest(test.TestCase):
                           'id': fake.VOLUME_ID,
                           'volume_id': v2_fakes.DEFAULT_VOL_ID,
                           'attached_at': attach_tmp['attach_time'].replace(
-                              tzinfo=iso8601.iso8601.Utc()),
+                              tzinfo=iso8601.UTC),
                           }],
             metadata={'key': 'value', 'readonly': 'True'},
             with_migration_status=True)
         exp_vol['volume']['updated_at'] = volume_tmp['updated_at'].replace(
-            tzinfo=iso8601.iso8601.Utc())
+            tzinfo=iso8601.UTC)
         expected = {'volumes': [exp_vol['volume']]}
         self.assertEqual(expected, res_dict)
 
@@ -1356,12 +1356,12 @@ class VolumeApiTest(test.TestCase):
                           'host_name': None,
                           'device': '/',
                           'attached_at': attach_tmp['attach_time'].replace(
-                              tzinfo=iso8601.iso8601.Utc()),
+                              tzinfo=iso8601.UTC),
                           }],
             metadata={'key': 'value', 'readonly': 'True'},
             with_migration_status=True)
         expected['volume']['updated_at'] = volume_tmp['updated_at'].replace(
-            tzinfo=iso8601.iso8601.Utc())
+            tzinfo=iso8601.UTC)
         self.assertEqual(expected, res_dict)
 
     def test_volume_show_with_encrypted_volume(self):

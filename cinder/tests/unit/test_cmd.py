@@ -11,7 +11,7 @@
 #    under the License.
 
 import datetime
-from iso8601 import iso8601
+import iso8601
 import sys
 import time
 
@@ -1614,15 +1614,15 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         CONF.set_override('send_actions', True)
         CONF.set_override('start_time', '2014-01-01 01:00:00')
         CONF.set_override('end_time', '2014-02-02 02:00:00')
-        begin = datetime.datetime(2014, 1, 1, 1, 0, tzinfo=iso8601.Utc())
-        end = datetime.datetime(2014, 2, 2, 2, 0, tzinfo=iso8601.Utc())
+        begin = datetime.datetime(2014, 1, 1, 1, 0, tzinfo=iso8601.UTC)
+        end = datetime.datetime(2014, 2, 2, 2, 0, tzinfo=iso8601.UTC)
         ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         get_admin_context.return_value = ctxt
         last_completed_audit_period.return_value = (begin, end)
         volume1_created = datetime.datetime(2014, 1, 1, 2, 0,
-                                            tzinfo=iso8601.Utc())
+                                            tzinfo=iso8601.UTC)
         volume1_deleted = datetime.datetime(2014, 1, 1, 3, 0,
-                                            tzinfo=iso8601.Utc())
+                                            tzinfo=iso8601.UTC)
         volume1 = mock.MagicMock(id=fake.VOLUME_ID, project_id=fake.PROJECT_ID,
                                  created_at=volume1_created,
                                  deleted_at=volume1_deleted)
@@ -1680,15 +1680,15 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         CONF.set_override('send_actions', True)
         CONF.set_override('start_time', '2014-01-01 01:00:00')
         CONF.set_override('end_time', '2014-02-02 02:00:00')
-        begin = datetime.datetime(2014, 1, 1, 1, 0, tzinfo=iso8601.Utc())
-        end = datetime.datetime(2014, 2, 2, 2, 0, tzinfo=iso8601.Utc())
+        begin = datetime.datetime(2014, 1, 1, 1, 0, tzinfo=iso8601.UTC)
+        end = datetime.datetime(2014, 2, 2, 2, 0, tzinfo=iso8601.UTC)
         ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         get_admin_context.return_value = ctxt
         last_completed_audit_period.return_value = (begin, end)
         volume1_created = datetime.datetime(2014, 1, 1, 2, 0,
-                                            tzinfo=iso8601.Utc())
+                                            tzinfo=iso8601.UTC)
         volume1_deleted = datetime.datetime(2014, 1, 1, 3, 0,
-                                            tzinfo=iso8601.Utc())
+                                            tzinfo=iso8601.UTC)
         volume1 = mock.MagicMock(id=fake.VOLUME_ID, project_id=fake.PROJECT_ID,
                                  created_at=volume1_created,
                                  deleted_at=volume1_deleted)
@@ -1759,15 +1759,15 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         CONF.set_override('send_actions', True)
         CONF.set_override('start_time', '2014-01-01 01:00:00')
         CONF.set_override('end_time', '2014-02-02 02:00:00')
-        begin = datetime.datetime(2014, 1, 1, 1, 0, tzinfo=iso8601.Utc())
-        end = datetime.datetime(2014, 2, 2, 2, 0, tzinfo=iso8601.Utc())
+        begin = datetime.datetime(2014, 1, 1, 1, 0, tzinfo=iso8601.UTC)
+        end = datetime.datetime(2014, 2, 2, 2, 0, tzinfo=iso8601.UTC)
         ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         get_admin_context.return_value = ctxt
         last_completed_audit_period.return_value = (begin, end)
         snapshot1_created = datetime.datetime(2014, 1, 1, 2, 0,
-                                              tzinfo=iso8601.Utc())
+                                              tzinfo=iso8601.UTC)
         snapshot1_deleted = datetime.datetime(2014, 1, 1, 3, 0,
-                                              tzinfo=iso8601.Utc())
+                                              tzinfo=iso8601.UTC)
         snapshot1 = mock.MagicMock(id=fake.VOLUME_ID,
                                    project_id=fake.PROJECT_ID,
                                    created_at=snapshot1_created,
@@ -1832,15 +1832,15 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         CONF.set_override('send_actions', True)
         CONF.set_override('start_time', '2014-01-01 01:00:00')
         CONF.set_override('end_time', '2014-02-02 02:00:00')
-        begin = datetime.datetime(2014, 1, 1, 1, 0, tzinfo=iso8601.Utc())
-        end = datetime.datetime(2014, 2, 2, 2, 0, tzinfo=iso8601.Utc())
+        begin = datetime.datetime(2014, 1, 1, 1, 0, tzinfo=iso8601.UTC)
+        end = datetime.datetime(2014, 2, 2, 2, 0, tzinfo=iso8601.UTC)
         ctxt = context.RequestContext('fake-user', 'fake-project')
         get_admin_context.return_value = ctxt
         last_completed_audit_period.return_value = (begin, end)
         backup1_created = datetime.datetime(2014, 1, 1, 2, 0,
-                                            tzinfo=iso8601.Utc())
+                                            tzinfo=iso8601.UTC)
         backup1_deleted = datetime.datetime(2014, 1, 1, 3, 0,
-                                            tzinfo=iso8601.Utc())
+                                            tzinfo=iso8601.UTC)
         backup1 = mock.MagicMock(id=fake.BACKUP_ID,
                                  project_id=fake.PROJECT_ID,
                                  created_at=backup1_created,
@@ -1903,16 +1903,16 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         CONF.set_override('send_actions', True)
         CONF.set_override('start_time', '2014-01-01 01:00:00')
         CONF.set_override('end_time', '2014-02-02 02:00:00')
-        begin = datetime.datetime(2014, 1, 1, 1, 0, tzinfo=iso8601.Utc())
-        end = datetime.datetime(2014, 2, 2, 2, 0, tzinfo=iso8601.Utc())
+        begin = datetime.datetime(2014, 1, 1, 1, 0, tzinfo=iso8601.UTC)
+        end = datetime.datetime(2014, 2, 2, 2, 0, tzinfo=iso8601.UTC)
         ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         get_admin_context.return_value = ctxt
         last_completed_audit_period.return_value = (begin, end)
 
         volume1_created = datetime.datetime(2014, 1, 1, 2, 0,
-                                            tzinfo=iso8601.Utc())
+                                            tzinfo=iso8601.UTC)
         volume1_deleted = datetime.datetime(2014, 1, 1, 3, 0,
-                                            tzinfo=iso8601.Utc())
+                                            tzinfo=iso8601.UTC)
         volume1 = mock.MagicMock(id=fake.VOLUME_ID, project_id=fake.PROJECT_ID,
                                  created_at=volume1_created,
                                  deleted_at=volume1_deleted)
@@ -1931,9 +1931,9 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         }
 
         snapshot1_created = datetime.datetime(2014, 1, 1, 2, 0,
-                                              tzinfo=iso8601.Utc())
+                                              tzinfo=iso8601.UTC)
         snapshot1_deleted = datetime.datetime(2014, 1, 1, 3, 0,
-                                              tzinfo=iso8601.Utc())
+                                              tzinfo=iso8601.UTC)
         snapshot1 = mock.MagicMock(id=fake.VOLUME_ID,
                                    project_id=fake.PROJECT_ID,
                                    created_at=snapshot1_created,
@@ -1949,9 +1949,9 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         }
 
         backup1_created = datetime.datetime(2014, 1, 1, 2, 0,
-                                            tzinfo=iso8601.Utc())
+                                            tzinfo=iso8601.UTC)
         backup1_deleted = datetime.datetime(2014, 1, 1, 3, 0,
-                                            tzinfo=iso8601.Utc())
+                                            tzinfo=iso8601.UTC)
         backup1 = mock.MagicMock(id=fake.BACKUP_ID,
                                  project_id=fake.PROJECT_ID,
                                  created_at=backup1_created,
