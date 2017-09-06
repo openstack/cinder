@@ -3098,6 +3098,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                          return_value={'specs': {'maxBandWidth': '100',
                                                  'IOType': '0'},
                                        'consumer': mock_consumer})
+        self.driver.support_func = FAKE_POOLS_SUPPORT_REPORT
         lun_info = self.driver.create_volume(self.volume)
         expect_value = {"huawei_lun_id": "1",
                         "huawei_lun_wwn": "6643e8c1004c5f6723e9f454003"}
