@@ -181,7 +181,6 @@ from cinder.volume.drivers.zfssa import zfssaiscsi as \
     cinder_volume_drivers_zfssa_zfssaiscsi
 from cinder.volume.drivers.zfssa import zfssanfs as \
     cinder_volume_drivers_zfssa_zfssanfs
-from cinder.volume.drivers.zte import zte_ks as cinder_volume_drivers_zte_zteks
 from cinder.volume import manager as cinder_volume_manager
 from cinder.wsgi import eventlet_server as cinder_wsgi_eventletserver
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as \
@@ -372,7 +371,6 @@ def list_opts():
                 cinder_volume_drivers_zadara.zadara_opts,
                 cinder_volume_drivers_zfssa_zfssaiscsi.ZFSSA_OPTS,
                 cinder_volume_drivers_zfssa_zfssanfs.ZFSSA_OPTS,
-                cinder_volume_drivers_zte_zteks.zte_opts,
                 cinder_volume_manager.volume_backend_opts,
             )),
         ('nova',
