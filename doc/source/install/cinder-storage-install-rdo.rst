@@ -13,27 +13,23 @@ storage node, you must prepare the storage device.
 
 #. Install the supporting utility packages:
 
+   * Install the LVM packages:
 
+     .. code-block:: console
 
-* Install the LVM packages:
+        # yum install lvm2
 
-  .. code-block:: console
+     .. end
 
-     # yum install lvm2
+   * Start the LVM metadata service and configure it to start when the
+     system boots:
 
-  .. end
+     .. code-block:: console
 
-* Start the LVM metadata service and configure it to start when the
-  system boots:
+        # systemctl enable lvm2-lvmetad.service
+        # systemctl start lvm2-lvmetad.service
 
-  .. code-block:: console
-
-     # systemctl enable lvm2-lvmetad.service
-     # systemctl start lvm2-lvmetad.service
-
-  .. end
-
-
+     .. end
 
    .. note::
 
@@ -119,8 +115,6 @@ storage node, you must prepare the storage device.
 Install and configure components
 --------------------------------
 
-
-
 #. Install the packages:
 
    .. code-block:: console
@@ -129,9 +123,7 @@ Install and configure components
 
    .. end
 
-
-
-2. Edit the ``/etc/cinder/cinder.conf`` file
+#. Edit the ``/etc/cinder/cinder.conf`` file
    and complete the following actions:
 
    * In the ``[database]`` section, configure database access:
@@ -211,24 +203,21 @@ Install and configure components
      typically 10.0.0.41 for the first node in the
      :ref:`example architecture <overview-example-architectures>`.
 
+   * In the ``[lvm]`` section, configure the LVM back end with the
+     LVM driver, ``cinder-volumes`` volume group, iSCSI protocol,
+     and appropriate iSCSI service. If the ``[lvm]`` section does not exist,
+     create it:
 
+     .. path /etc/cinder/cinder.conf
+     .. code-block:: ini
 
-* In the ``[lvm]`` section, configure the LVM back end with the
-  LVM driver, ``cinder-volumes`` volume group, iSCSI protocol,
-  and appropriate iSCSI service. If the ``[lvm]`` section does not exist,
-  create it:
+        [lvm]
+        volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
+        volume_group = cinder-volumes
+        iscsi_protocol = iscsi
+        iscsi_helper = lioadm
 
-  .. path /etc/cinder/cinder.conf
-  .. code-block:: ini
-
-     [lvm]
-     volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
-     volume_group = cinder-volumes
-     iscsi_protocol = iscsi
-     iscsi_helper = lioadm
-
-  .. end
-
+     .. end
 
    * In the ``[DEFAULT]`` section, enable the LVM back end:
 
@@ -273,8 +262,6 @@ Install and configure components
 Finalize installation
 ---------------------
 
-
-
 * Start the Block Storage volume service including its dependencies
   and configure them to start when the system boots:
 
@@ -284,5 +271,3 @@ Finalize installation
      # systemctl start openstack-cinder-volume.service target.service
 
   .. end
-
-
