@@ -15,7 +15,6 @@ Volume drivers
    drivers/smbfs-volume-driver.rst
    drivers/blockbridge-eps-driver.rst
    drivers/cloudbyte-driver.rst
-   drivers/coho-data-driver.rst
    drivers/coprhd-driver.rst
    drivers/datera-volume-driver.rst
    drivers/dell-emc-scaleio-driver.rst
