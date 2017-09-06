@@ -396,6 +396,8 @@ class DummyVolume(object):
 @ddt.ddt
 class VolumeIDConvertTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                '_create_ismview_dir', new=mock.Mock())
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
                 'view_all', patch_view_all)
     def setUp(self):
@@ -481,6 +483,8 @@ class VolumeIDConvertTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
 class NominatePoolLDTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                '_create_ismview_dir', new=mock.Mock())
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
                 'view_all', patch_view_all)
     def setUp(self):
@@ -640,6 +644,8 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
 class VolumeCreateTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                '_create_ismview_dir', new=mock.Mock())
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
                 'view_all', patch_view_all)
     def setUp(self):
@@ -701,6 +707,8 @@ class VolumeCreateTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
 class BindLDTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                '_create_ismview_dir', new=mock.Mock())
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
                 'view_all', patch_view_all)
     def setUp(self):
@@ -758,6 +766,8 @@ class BindLDTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
 class BindLDTest_Snap(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                '_create_ismview_dir', new=mock.Mock())
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
                 'view_all', patch_view_all)
     def setUp(self):
@@ -811,6 +821,8 @@ class BindLDTest_Snap(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
 class ExportTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                '_create_ismview_dir', new=mock.Mock())
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
                 'view_all', patch_view_all)
     def setUp(self):
@@ -985,6 +997,8 @@ class ExportTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
 class DeleteDSVVolume_test(volume_helper.MStorageDSVDriver,
                            unittest.TestCase):
 
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                '_create_ismview_dir', new=mock.Mock())
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
                 'view_all', patch_view_all)
     def setUp(self):
@@ -1016,6 +1030,8 @@ class DeleteDSVVolume_test(volume_helper.MStorageDSVDriver,
 class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
                                unittest.TestCase):
 
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                '_create_ismview_dir', new=mock.Mock())
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
                 'view_all', patch_view_all)
     def setUp(self):
@@ -1120,6 +1136,8 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
 
 class VolumeStats_test(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                '_create_ismview_dir', new=mock.Mock())
     def setUp(self):
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
         self.do_setup(None)
