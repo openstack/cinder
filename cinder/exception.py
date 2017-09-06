@@ -1377,15 +1377,6 @@ class SynoLUNNotExist(VolumeDriverException):
     message = _("LUN not found by UUID: %(uuid)s.")
 
 
-# Reduxio driver
-class RdxAPICommandException(VolumeDriverException):
-    message = _("Reduxio API Command Exception")
-
-
-class RdxAPIConnectionException(VolumeDriverException):
-    message = _("Reduxio API Connection Exception")
-
-
 class AttachmentSpecsNotFound(NotFound):
     message = _("Attachment %(attachment_id)s has no "
                 "key %(specs_key)s.")
