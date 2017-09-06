@@ -176,7 +176,6 @@ from cinder.volume.drivers.windows import smbfs as \
     cinder_volume_drivers_windows_smbfs
 from cinder.volume.drivers.windows import windows as \
     cinder_volume_drivers_windows_windows
-from cinder.volume.drivers import xio as cinder_volume_drivers_xio
 from cinder.volume.drivers import zadara as cinder_volume_drivers_zadara
 from cinder.volume.drivers.zfssa import zfssaiscsi as \
     cinder_volume_drivers_zfssa_zfssaiscsi
@@ -370,7 +369,6 @@ def list_opts():
                 cinder_volume_drivers_vzstorage.vzstorage_opts,
                 cinder_volume_drivers_windows_smbfs.volume_opts,
                 cinder_volume_drivers_windows_windows.windows_opts,
-                cinder_volume_drivers_xio.XIO_OPTS,
                 cinder_volume_drivers_zadara.zadara_opts,
                 cinder_volume_drivers_zfssa_zfssaiscsi.ZFSSA_OPTS,
                 cinder_volume_drivers_zfssa_zfssanfs.ZFSSA_OPTS,

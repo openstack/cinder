@@ -1193,11 +1193,6 @@ class ISCSITargetHelperCommandFailed(CinderException):
     message = "%(error_message)s"
 
 
-# X-IO driver exception.
-class XIODriverException(VolumeDriverException):
-    message = _("X-IO Volume Driver exception!")
-
-
 class BadHTTPResponseStatus(VolumeDriverException):
     message = _("Bad HTTP response status %(status)s")
 

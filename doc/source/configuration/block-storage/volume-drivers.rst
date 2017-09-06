@@ -55,7 +55,6 @@ Volume drivers
    drivers/vzstorage-driver.rst
    drivers/vmware-vmdk-driver.rst
    drivers/windows-iscsi-volume-driver.rst
-   drivers/xio-volume-driver.rst
    drivers/zadara-volume-driver.rst
    drivers/zfssa-iscsi-driver.rst
    drivers/zfssa-nfs-driver.rst
