@@ -40,7 +40,7 @@ following capabilities in the OpenStack Block Storage API
 The QoS keys above must be created and associated with a volume type.
 For information about how to set the key-value pairs and associate
 them with a volume type, see the `volume qos
-<https://docs.openstack.org/developer/python-openstackclient/command-objects/volume-qos.html>`_
+<https://docs.openstack.org/python-openstackclient/latest/cli/command-objects/volume-qos.html>`_
 section in the OpenStackClient command list.
 
 .. note::
