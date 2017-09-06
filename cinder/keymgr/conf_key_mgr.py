@@ -144,3 +144,19 @@ class ConfKeyManager(key_manager.KeyManager):
                 reason="cannot delete non-existent key")
 
         LOG.warning("Not deleting key %s", managed_object_id)
+
+    def list(self, context, object_type=None, metadata_only=False):
+        """Retrieves a list of managed objects that match the criteria.
+
+        Note: Required abstract method starting with Castellan 0.13.0
+
+        :param context: Contains information of the user and the environment
+                        for the request.
+        :param object_type: The type of object to retrieve.
+        :param metadata_only: Whether secret data should be included.
+        :raises NotAuthorized: If no user context.
+        """
+        if context is None:
+            raise exception.NotAuthorized()
+
+        return []
