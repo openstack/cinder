@@ -5,7 +5,7 @@ Tempest Integration for Cinder
 This directory contains additional Cinder tempest tests.
 
 See the tempest plugin docs for information on using it:
-http://docs.openstack.org/developer/tempest/plugin.html#using-plugins
+https://docs.openstack.org/tempest/latest/plugin.html#using-plugins
 
 To run all tests from this plugin, install cinder into your environment. Then
 from the tempest directory run::
