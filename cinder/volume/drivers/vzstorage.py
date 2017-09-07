@@ -300,13 +300,19 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             raise exception.VzStorageException(msg)
         cluster_name = m.group(2)
 
-        # set up logging to non-default path, so that it will
-        # be possible to mount the same cluster to another mount
-        # point by hand with default options.
-        mnt_flags = ['-l', '/var/log/pstorage/%s-cinder.log.gz' % cluster_name]
-        if self.shares.get(share) is not None:
-            extra_flags = json.loads(self.shares[share])
-            mnt_flags.extend(extra_flags)
+        if share in self.shares:
+            mnt_flags = json.loads(self.shares[share])
+        else:
+            mnt_flags = []
+
+        if '-l' not in mnt_flags:
+            # If logging path is not specified in shares config
+            # set up logging to non-default path, so that it will
+            # be possible to mount the same cluster to another mount
+            # point by hand with default options.
+            mnt_flags.extend([
+                '-l', '/var/log/vstorage/%s/cinder.log.gz' % cluster_name])
+
         self._remotefsclient.mount(share, mnt_flags)
 
     def _find_share(self, volume):

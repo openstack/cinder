@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Logging path can now be configured for vzstorage driver in
+    shares config file (specified by vzstorage_shares_config option).
+    To set custom logging path add `'-l', '<path_to_log_file>'` to
+    mount options array. Otherwise default logging path
+    `/var/log/vstorage/<cluster_name>/cinder.log.gz` will be used.

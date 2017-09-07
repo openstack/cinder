@@ -56,10 +56,6 @@ class VZStorageTestCase(test.TestCase):
     def setUp(self):
         super(VZStorageTestCase, self).setUp()
 
-        self._remotefsclient = mock.patch.object(
-            remotefs, 'VZStorageRemoteFSClient').start()
-        get_mount_point = mock.Mock(return_value=self._FAKE_MNT_POINT)
-        self._remotefsclient.get_mount_point = get_mount_point
         cfg = copy.copy(self._FAKE_VZ_CONFIG)
         self._vz_driver = vzstorage.VZStorageDriver(configuration=cfg)
         self._vz_driver._local_volume_dir = mock.Mock(
@@ -168,11 +164,25 @@ class VZStorageTestCase(test.TestCase):
         self.assertRaises(exception.VzStorageException,
                           self._vz_driver._ensure_share_mounted, ':')
 
-    def test_ensure_share_mounted(self):
+    @mock.patch.object(remotefs.RemoteFsClient, 'mount')
+    def test_ensure_share_mounted(self, mock_mount):
         drv = self._vz_driver
-        share = self._FAKE_SHARE
-        drv.shares = {'1': '["1", "2", "3"]', share: '["some", "options"]'}
+        share = 'test'
+        expected_calls = [
+            mock.call(share, ['-u', 'cinder', '-g', 'root', '-l',
+                              '/var/log/vstorage/%s/cinder.log.gz' % share]),
+            mock.call(share, ['-l', '/var/log/dummy.log'])
+        ]
+
+        share_flags = '["-u", "cinder", "-g", "root"]'
+        drv.shares[share] = share_flags
         drv._ensure_share_mounted(share)
+
+        share_flags = '["-l", "/var/log/dummy.log"]'
+        drv.shares[share] = share_flags
+        drv._ensure_share_mounted(share)
+
+        mock_mount.assert_has_calls(expected_calls)
 
     def test_find_share(self):
         drv = self._vz_driver
