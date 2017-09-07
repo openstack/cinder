@@ -283,10 +283,10 @@ class Request(webob.Request):
 
         Microversions starts with /v3, so if a client sends a request for
         version 1.0 or 2.0 with the /v3 endpoint, throw an exception.
-        Sending a header with any microversion to a /v1 or /v2 endpoint will
+        Sending a header with any microversion to a /v2 endpoint will
         be ignored.
-        Note that a microversion must be set for the legacy endpoints. This
-        will appear as 1.0 and 2.0 for /v1 and /v2.
+        Note that a microversion must be set for the legacy endpoint. This
+        will appear as 2.0 for /v2.
         """
         if API_VERSION_REQUEST_HEADER in self.headers and 'v3' in url:
             hdr_string = self.headers[API_VERSION_REQUEST_HEADER]
@@ -318,9 +318,7 @@ class Request(webob.Request):
                         max_ver=api_version.max_api_version().get_string())
 
         else:
-            if 'v1' in url:
-                self.api_version_request = api_version.legacy_api_version1()
-            elif 'v2' in url:
+            if 'v2' in url:
                 self.api_version_request = api_version.legacy_api_version2()
             else:
                 self.api_version_request = api_version.APIVersionRequest(

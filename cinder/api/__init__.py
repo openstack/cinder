@@ -25,12 +25,19 @@ LOG = logging.getLogger(__name__)
 
 
 def root_app_factory(loader, global_conf, **local_conf):
-    if CONF.enable_v1_api:
-        LOG.warning('The v1 API is deprecated and is not under active '
-                    'development. You should set enable_v1_api=false '
+    # To support upgrades from previous api-paste config files, we need
+    # to check for and remove any legacy references to the v1 API
+    if '/v1' in local_conf:
+        LOG.warning('The v1 API has been removed and is no longer '
+                    'available. Client applications should now be '
+                    'moving to v3. Ensure enable_v3_api=true in your '
+                    'cinder.conf file.')
+        del local_conf['/v1']
+
+    if CONF.enable_v2_api:
+        LOG.warning('The v2 API is deprecated and is not under active '
+                    'development. You should set enable_v2_api=false '
                     'and enable_v3_api=true in your cinder.conf file.')
     else:
-        del local_conf['/v1']
-    if not CONF.enable_v2_api:
         del local_conf['/v2']
     return paste.urlmap.urlmap_factory(loader, global_conf, **local_conf)

@@ -142,7 +142,7 @@
             "links": [],
             "namespace": "http://docs.openstack.org/volume/ext/image-create/api/v1",
             "alias": "os-image-create",
-            "description": "Allow creating a volume from an image in the Create Volume v1 API."
+            "description": "Allow creating a volume from an image in the Create Volume API."
         },
         {
             "updated": "2014-01-10T00:00:00-00:00",

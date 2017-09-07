@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    The Cinder API v1 was deprecated in the Juno release and defaulted to be
+    disabled in the Ocata release. It is now removed completely.
+    If upgrading from a previous version, it is recommended you edit your
+    `/etc/cinder/api-paste.ini` file to remove all references to v1.

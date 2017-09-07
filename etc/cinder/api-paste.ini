@@ -5,15 +5,8 @@
 [composite:osapi_volume]
 use = call:cinder.api:root_app_factory
 /: apiversions
-/v1: openstack_volume_api_v1
 /v2: openstack_volume_api_v2
 /v3: openstack_volume_api_v3
-
-[composite:openstack_volume_api_v1]
-use = call:cinder.api.middleware.auth:pipeline_factory
-noauth = cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv1
-keystone = cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken keystonecontext apiv1
-keystone_nolimit = cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken keystonecontext apiv1
 
 [composite:openstack_volume_api_v2]
 use = call:cinder.api.middleware.auth:pipeline_factory
@@ -48,9 +41,6 @@ paste.filter_factory = cinder.api.middleware.auth:NoAuthMiddleware.factory
 
 [filter:sizelimit]
 paste.filter_factory = oslo_middleware.sizelimit:RequestBodySizeLimiter.factory
-
-[app:apiv1]
-paste.app_factory = cinder.api.v1.router:APIRouter.factory
 
 [app:apiv2]
 paste.app_factory = cinder.api.v2.router:APIRouter.factory

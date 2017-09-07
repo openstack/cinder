@@ -76,5 +76,5 @@ class ViewBuilder(object):
         return href
 
     def _get_base_url_without_version(self):
-        """Get the base URL with out the /v1 suffix."""
+        """Get the base URL with out the /v3 suffix."""
         return re.sub('v[1-9]+/?$', '', self.base_url)
