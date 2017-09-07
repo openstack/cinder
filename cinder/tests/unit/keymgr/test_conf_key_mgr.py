@@ -116,3 +116,11 @@ class ConfKeyManagerTestCase(test.TestCase):
 
     def test_get_unknown_key(self):
         self.assertRaises(KeyError, self.key_mgr.get, self.ctxt, None)
+
+    def test_list(self):
+        keys = self.key_mgr.list(self.ctxt)
+        self.assertEqual(0, len(keys))
+
+    def test_list_null_context(self):
+        self.assertRaises(exception.NotAuthorized,
+                          self.key_mgr.list, None)
