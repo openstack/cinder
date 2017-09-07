@@ -116,20 +116,18 @@ class ViewBuilder(common.ViewBuilder):
         """Retrieve the attachments of the volume object."""
         attachments = []
 
-        if volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED:
-            attaches = volume.volume_attachment
-            for attachment in attaches:
-                if (attachment.get('attach_status') ==
-                        fields.VolumeAttachStatus.ATTACHED):
-                    a = {'id': attachment.get('volume_id'),
-                         'attachment_id': attachment.get('id'),
-                         'volume_id': attachment.get('volume_id'),
-                         'server_id': attachment.get('instance_uuid'),
-                         'host_name': attachment.get('attached_host'),
-                         'device': attachment.get('mountpoint'),
-                         'attached_at': attachment.get('attach_time'),
-                         }
-                    attachments.append(a)
+        for attachment in volume.volume_attachment:
+            if (attachment.get('attach_status') ==
+                    fields.VolumeAttachStatus.ATTACHED):
+                a = {'id': attachment.get('volume_id'),
+                     'attachment_id': attachment.get('id'),
+                     'volume_id': attachment.get('volume_id'),
+                     'server_id': attachment.get('instance_uuid'),
+                     'host_name': attachment.get('attached_host'),
+                     'device': attachment.get('mountpoint'),
+                     'attached_at': attachment.get('attach_time'),
+                     }
+                attachments.append(a)
 
         return attachments
 

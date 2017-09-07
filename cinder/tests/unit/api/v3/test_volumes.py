@@ -20,12 +20,14 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import api_version_request as api_version
+from cinder.api.v2.views.volumes import ViewBuilder
 from cinder.api.v3 import volumes
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.group import api as group_api
 from cinder import objects
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
@@ -572,3 +574,45 @@ class VolumeApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPConflict, self.controller.revert,
                           req, fake_volume['id'], {'revert': {'snapshot_id':
                                                    fake_snapshot['id']}})
+
+    def test_view_get_attachments(self):
+        fake_volume = self._fake_create_volume()
+        fake_volume['attach_status'] = fields.VolumeAttachStatus.ATTACHING
+        att_time = datetime.datetime(2017, 8, 31, 21, 55, 7,
+                                     tzinfo=iso8601.iso8601.Utc())
+        a1 = {
+            'id': fake.UUID1,
+            'volume_id': fake.UUID2,
+            'instance': None,
+            'attached_host': None,
+            'mountpoint': None,
+            'attach_time': None,
+            'attach_status': fields.VolumeAttachStatus.ATTACHING
+        }
+        a2 = {
+            'id': fake.UUID3,
+            'volume_id': fake.UUID4,
+            'instance_uuid': fake.UUID5,
+            'attached_host': 'host1',
+            'mountpoint': 'na',
+            'attach_time': att_time,
+            'attach_status': fields.VolumeAttachStatus.ATTACHED
+        }
+        attachment1 = objects.VolumeAttachment(self.ctxt, **a1)
+        attachment2 = objects.VolumeAttachment(self.ctxt, **a2)
+        atts = {'objects': [attachment1, attachment2]}
+        attachments = objects.VolumeAttachmentList(self.ctxt, **atts)
+
+        fake_volume['volume_attachment'] = attachments
+
+        # get_attachments should only return attachments with the
+        # attached status = ATTACHED
+        attachments = ViewBuilder()._get_attachments(fake_volume)
+
+        self.assertEqual(1, len(attachments))
+        self.assertEqual(fake.UUID3, attachments[0]['attachment_id'])
+        self.assertEqual(fake.UUID4, attachments[0]['volume_id'])
+        self.assertEqual(fake.UUID5, attachments[0]['server_id'])
+        self.assertEqual('host1', attachments[0]['host_name'])
+        self.assertEqual('na', attachments[0]['device'])
+        self.assertEqual(att_time, attachments[0]['attached_at'])
