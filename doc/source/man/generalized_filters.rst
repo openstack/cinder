@@ -58,7 +58,8 @@ valid for first. The supported APIs are marked with "*" below in the table.
 |                 | size, description, replication_status, multiattach                      |
 +-----------------+-------------------------------------------------------------------------+
 |                 | id, volume_id, user_id, project_id, status, volume_size, name,          |
-| list snapshot*  | description, volume_type_id, group_snapshot_id, metadata                |
+| list snapshot*  | description, volume_type_id, group_snapshot_id, metadata,               |
+|                 | availability_zone                                                       |
 +-----------------+-------------------------------------------------------------------------+
 |                 | id, name, status, container, availability_zone, description,            |
 | list backup*    | volume_id, is_incremental, size, host, parent_id                        |
