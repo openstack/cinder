@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import copy
 import errno
 import os
@@ -406,3 +407,78 @@ class VZStorageTestCase(test.TestCase):
         drv._do_create_volume(volume2)
         drv._create_ploop.assert_called_once_with(
             self._FAKE_VOLUME_PATH, 1024)
+
+    @mock.patch('cinder.volume.drivers.remotefs.RemoteFSSnapDriver.'
+                '_create_cloned_volume')
+    @mock.patch.object(vzstorage.VZStorageDriver, 'get_volume_format',
+                       return_value='qcow2')
+    def test_create_cloned_volume_qcow2(self,
+                                        mock_get_volume_format,
+                                        mock_remotefs_create_cloned_volume,
+                                        ):
+        drv = self._vz_driver
+        volume = fake_volume.fake_volume_obj(self.context)
+        src_vref_id = '375e32b2-804a-49f2-b282-85d1d5a5b9e1'
+        src_vref = fake_volume.fake_volume_obj(
+            self.context,
+            id=src_vref_id,
+            name='volume-%s' % src_vref_id,
+            provider_location=self._FAKE_SHARE)
+
+        mock_remotefs_create_cloned_volume.return_value = {
+            'provider_location': self._FAKE_SHARE}
+        ret = drv.create_cloned_volume(volume, src_vref)
+        mock_remotefs_create_cloned_volume.assert_called_once_with(
+            volume, src_vref)
+        self.assertEqual(ret, {'provider_location': self._FAKE_SHARE})
+
+    @mock.patch.object(vzstorage.VZStorageDriver, '_local_path_volume_info')
+    @mock.patch.object(vzstorage.VZStorageDriver, '_create_snapshot_ploop')
+    @mock.patch.object(vzstorage.VZStorageDriver, 'delete_snapshot')
+    @mock.patch.object(vzstorage.VZStorageDriver, '_write_info_file')
+    @mock.patch.object(vzstorage.VZStorageDriver, '_copy_volume_from_snapshot')
+    @mock.patch.object(vzstorage.VZStorageDriver, 'get_volume_format',
+                       return_value='ploop')
+    def test_create_cloned_volume_ploop(self,
+                                        mock_get_volume_format,
+                                        mock_copy_volume_from_snapshot,
+                                        mock_write_info_file,
+                                        mock_delete_snapshot,
+                                        mock_create_snapshot_ploop,
+                                        mock_local_path_volume_info,
+                                        ):
+        drv = self._vz_driver
+        volume = fake_volume.fake_volume_obj(self.context)
+        src_vref_id = '375e32b2-804a-49f2-b282-85d1d5a5b9e1'
+        src_vref = fake_volume.fake_volume_obj(
+            self.context,
+            id=src_vref_id,
+            name='volume-%s' % src_vref_id,
+            provider_location=self._FAKE_SHARE)
+
+        snap_attrs = ['volume_name', 'size', 'volume_size', 'name',
+                      'volume_id', 'id', 'volume']
+        Snapshot = collections.namedtuple('Snapshot', snap_attrs)
+
+        snap_ref = Snapshot(volume_name=volume.name,
+                            name='clone-snap-%s' % src_vref.id,
+                            size=src_vref.size,
+                            volume_size=src_vref.size,
+                            volume_id=src_vref.id,
+                            id=src_vref.id,
+                            volume=src_vref)
+
+        def _check_provider_location(volume):
+            self.assertEqual(volume.provider_location, self._FAKE_SHARE)
+            return mock.sentinel.fake_info_path
+        mock_local_path_volume_info.side_effect = _check_provider_location
+
+        ret = drv.create_cloned_volume(volume, src_vref)
+        self.assertEqual(ret, {'provider_location': self._FAKE_SHARE})
+
+        mock_write_info_file.assert_called_once_with(
+            mock.sentinel.fake_info_path, {'active': 'volume-%s' % volume.id})
+        mock_create_snapshot_ploop.assert_called_once_with(snap_ref)
+        mock_copy_volume_from_snapshot.assert_called_once_with(
+            snap_ref, volume, volume.size)
+        mock_delete_snapshot.assert_called_once_with(snap_ref)
