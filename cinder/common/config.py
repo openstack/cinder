@@ -53,12 +53,6 @@ global_opts = [
                 help='A list of the URLs of glance API servers available to '
                      'cinder ([http[s]://][hostname|ip]:port). If protocol '
                      'is not specified it defaults to http.'),
-    cfg.IntOpt('glance_api_version',
-               default=2,
-               deprecated_for_removal=True,
-               deprecated_since="11.0.0",
-               deprecated_reason='Glance v1 support will be removed in Queens',
-               help='Version of the glance API to use'),
     cfg.IntOpt('glance_num_retries',
                min=0,
                default=0,

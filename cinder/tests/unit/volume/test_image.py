@@ -269,7 +269,6 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
     def _test_copy_volume_to_image_with_image_volume(
             self, mock_copy, mock_create, mock_quota_commit,
             mock_quota_reserve):
-        self.flags(glance_api_version=2)
         self.volume.driver.configuration.image_upload_use_cinder_backend = True
         self.addCleanup(fake_image.FakeImageService_reset)
         image_service = fake_image.FakeImageService()
