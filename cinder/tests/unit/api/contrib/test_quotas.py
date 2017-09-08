@@ -19,8 +19,8 @@ Tests for cinder.api.contrib.quotas.py
 """
 
 
+import ddt
 import mock
-
 import uuid
 import webob.exc
 
@@ -385,6 +385,7 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
         self.controller.show(self.req, self.A.id)
 
 
+@ddt.ddt
 class QuotaSetControllerValidateNestedQuotaSetup(QuotaSetsControllerTestBase):
     """Validates the setup before using NestedQuota driver.
 
@@ -416,6 +417,30 @@ class QuotaSetControllerValidateNestedQuotaSetup(QuotaSetsControllerTestBase):
 
         self.project_by_id.update({self.E.id: self.E, self.F.id: self.F,
                                    self.G.id: self.G})
+
+    @ddt.data({'param': None, 'result': False},
+              {'param': 'true', 'result': True},
+              {'param': 'false', 'result': False})
+    @ddt.unpack
+    def test_validate_setup_for_nested_quota_use_with_param(self, param,
+                                                            result):
+        with mock.patch(
+                'cinder.quota_utils.validate_setup_for_nested_quota_use') as \
+                mock_quota_utils:
+            if param:
+                self.req.params['fix_allocated_quotas'] = param
+            self.controller.validate_setup_for_nested_quota_use(self.req)
+            mock_quota_utils.assert_called_once_with(
+                self.req.environ['cinder.context'],
+                mock.ANY, mock.ANY,
+                fix_allocated_quotas=result)
+
+    def test_validate_setup_for_nested_quota_use_with_invalid_param(self):
+        self.req.params['fix_allocated_quotas'] = 'non_boolean'
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.validate_setup_for_nested_quota_use,
+            self.req)
 
     def test_validate_nested_quotas_no_in_use_vols(self):
         # Update the project A quota.
