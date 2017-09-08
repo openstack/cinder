@@ -596,16 +596,37 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._test_create_volume_from_non_stream_optimized_image(
             image_disk_type=image_disk_type, disk_conversion=True)
 
+    def _test_get_vsphere_url(self, direct_url, exp_vsphere_url=None):
+        image_service = mock.Mock()
+        image_service.get_location.return_value = (direct_url, [])
+
+        context = mock.sentinel.context
+        image_id = mock.sentinel.image_id
+        ret = self._driver._get_vsphere_url(context, image_service, image_id)
+
+        self.assertEqual(exp_vsphere_url, ret)
+        image_service.get_location.assert_called_once_with(context, image_id)
+
+    def test_get_vsphere_url(self):
+        url = "vsphere://foo/folder/glance/img_uuid?dcPath=dc1&dsName=ds1"
+        self._test_get_vsphere_url(url, exp_vsphere_url=url)
+
+    def test_get_vsphere_url_(self):
+        url = "http://foo/folder/glance/img_uuid?dcPath=dc1&dsName=ds1"
+        self._test_get_vsphere_url(url)
+
     @mock.patch.object(VMDK_DRIVER, '_copy_temp_virtual_disk')
     @mock.patch.object(VMDK_DRIVER, '_get_temp_image_folder')
     @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch(
         'cinder.volume.drivers.vmware.volumeops.FlatExtentVirtualDiskPath')
+    @mock.patch.object(VMDK_DRIVER, '_get_vsphere_url')
     @mock.patch.object(VMDK_DRIVER, '_copy_image')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    def test_create_virtual_disk_from_preallocated_image(
-            self, vops, copy_image, flat_extent_path, generate_uuid,
-            get_temp_image_folder, copy_temp_virtual_disk):
+    def _test_create_virtual_disk_from_preallocated_image(
+            self, vops, copy_image, get_vsphere_url, flat_extent_path,
+            generate_uuid, get_temp_image_folder, copy_temp_virtual_disk,
+            vsphere_url=None):
         dc_ref = mock.Mock(value=mock.sentinel.dc_ref)
         ds_name = mock.sentinel.ds_name
         folder_path = mock.sentinel.folder_path
@@ -616,6 +637,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         path = mock.Mock()
         dest_path = mock.Mock()
         flat_extent_path.side_effect = [path, dest_path]
+
+        get_vsphere_url.return_value = vsphere_url
 
         context = mock.sentinel.context
         image_service = mock.sentinel.image_service
@@ -639,22 +662,36 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         create_descriptor.assert_called_once_with(
             dc_ref, path, image_size_in_bytes / units.Ki, adapter_type,
             vmdk.EAGER_ZEROED_THICK_VMDK_TYPE)
-        copy_image.assert_called_once_with(
-            context, dc_ref, image_service, image_id, image_size_in_bytes,
-            ds_name, path.get_flat_extent_file_path())
+        get_vsphere_url.assert_called_once_with(
+            context, image_service, image_id)
+        if vsphere_url:
+            vops.copy_datastore_file.assert_called_once_with(
+                vsphere_url, dc_ref, path.get_flat_extent_ds_file_path())
+        else:
+            copy_image.assert_called_once_with(
+                context, dc_ref, image_service, image_id, image_size_in_bytes,
+                ds_name, path.get_flat_extent_file_path())
         copy_temp_virtual_disk.assert_called_once_with(dc_ref, path,
                                                        dest_dc_ref, dest_path)
         self.assertEqual(dest_path, ret)
+
+    def test_create_virtual_disk_from_preallocated_image(self):
+        self._test_create_virtual_disk_from_preallocated_image()
+
+    def test_create_virtual_disk_from_preallocated_image_on_vsphere(self):
+        self._test_create_virtual_disk_from_preallocated_image(
+            vsphere_url=mock.sentinel.vsphere_url)
 
     @mock.patch.object(VMDK_DRIVER, '_copy_temp_virtual_disk')
     @mock.patch.object(VMDK_DRIVER, '_get_temp_image_folder')
     @mock.patch(
         'cinder.volume.drivers.vmware.volumeops.FlatExtentVirtualDiskPath')
+    @mock.patch.object(VMDK_DRIVER, '_get_vsphere_url', return_value=None)
     @mock.patch.object(VMDK_DRIVER, '_copy_image')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_create_virtual_disk_from_preallocated_image_with_no_disk_copy(
-            self, vops, copy_image, flat_extent_path, get_temp_image_folder,
-            copy_temp_virtual_disk):
+            self, vops, copy_image, get_vsphere_url, flat_extent_path,
+            get_temp_image_folder, copy_temp_virtual_disk):
         dc_ref = mock.Mock(value=mock.sentinel.dc_ref)
         ds_name = mock.sentinel.ds_name
         folder_path = mock.sentinel.folder_path
@@ -693,11 +730,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch(
         'cinder.volume.drivers.vmware.volumeops.FlatExtentVirtualDiskPath')
+    @mock.patch.object(VMDK_DRIVER, '_get_vsphere_url', return_value=None)
     @mock.patch.object(VMDK_DRIVER, '_copy_image')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_create_virtual_disk_from_preallocated_image_with_copy_error(
-            self, vops, copy_image, flat_extent_path, generate_uuid,
-            get_temp_image_folder, copy_temp_virtual_disk):
+            self, vops, copy_image, get_vsphere_url, flat_extent_path,
+            generate_uuid, get_temp_image_folder, copy_temp_virtual_disk):
         dc_ref = mock.Mock(value=mock.sentinel.dc_ref)
         ds_name = mock.sentinel.ds_name
         folder_path = mock.sentinel.folder_path
@@ -737,10 +775,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch(
         'cinder.volume.drivers.vmware.volumeops.FlatExtentVirtualDiskPath')
     @mock.patch.object(VMDK_DRIVER, '_copy_temp_virtual_disk')
+    @mock.patch.object(VMDK_DRIVER, '_get_vsphere_url')
     @mock.patch.object(VMDK_DRIVER, '_copy_image')
-    def test_create_virtual_disk_from_sparse_image(
-            self, copy_image, copy_temp_virtual_disk, flat_extent_path,
-            sparse_path, generate_uuid):
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def _test_create_virtual_disk_from_sparse_image(
+            self, vops, copy_image, get_vsphere_url, copy_temp_virtual_disk,
+            flat_extent_path, sparse_path, generate_uuid, vsphere_url=None):
         uuid = mock.sentinel.uuid
         generate_uuid.return_value = uuid
 
@@ -749,6 +789,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         dest_path = mock.Mock()
         flat_extent_path.return_value = dest_path
+
+        get_vsphere_url.return_value = vsphere_url
 
         context = mock.sentinel.context
         image_service = mock.sentinel.image_service
@@ -764,14 +806,27 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             ds_name, folder_path, disk_name)
 
         sparse_path.assert_called_once_with(ds_name, folder_path, uuid)
-        copy_image.assert_called_once_with(
-            context, dc_ref, image_service, image_id, image_size_in_bytes,
-            ds_name, src_path.get_descriptor_file_path())
+        get_vsphere_url.assert_called_once_with(
+            context, image_service, image_id)
+        if vsphere_url:
+            vops.copy_datastore_file.assert_called_once_with(
+                vsphere_url, dc_ref, src_path.get_descriptor_ds_file_path())
+        else:
+            copy_image.assert_called_once_with(
+                context, dc_ref, image_service, image_id, image_size_in_bytes,
+                ds_name, src_path.get_descriptor_file_path())
         flat_extent_path.assert_called_once_with(
             ds_name, folder_path, disk_name)
         copy_temp_virtual_disk.assert_called_once_with(
             dc_ref, src_path, dc_ref, dest_path)
         self.assertEqual(dest_path, ret)
+
+    def test_create_virtual_disk_from_sparse_image(self):
+        self._test_create_virtual_disk_from_sparse_image()
+
+    def test_create_virtual_disk_from_sparse_image_on_vsphere(self):
+        self._test_create_virtual_disk_from_sparse_image(
+            vsphere_url=mock.sentinel.vsphere_url)
 
     @mock.patch.object(VMDK_DRIVER, '_select_datastore')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')

@@ -1725,6 +1725,28 @@ class VolumeOpsTestCase(test.TestCase):
                          self.vops.get_disk_device(vm, '[ds1] foo/foo_1.vmdk'))
         get_disk_devices.assert_called_once_with(vm)
 
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_entity_by_inventory_path')
+    def test_copy_datastore_file(self, get_entity_by_inventory_path):
+        get_entity_by_inventory_path.return_value = mock.sentinel.src_dc_ref
+        self.session.invoke_api.return_value = mock.sentinel.task
+
+        vsphere_url = "vsphere://hostname/folder/openstack_glance/img_uuid?" \
+                      "dcPath=dc1&dsName=ds1"
+        self.vops.copy_datastore_file(vsphere_url, mock.sentinel.dest_dc_ref,
+                                      mock.sentinel.dest_ds_file_path)
+
+        get_entity_by_inventory_path.assert_called_once_with('dc1')
+        self.session.invoke_api.assert_called_once_with(
+            self.session.vim,
+            'CopyDatastoreFile_Task',
+            self.session.vim.service_content.fileManager,
+            sourceName='[ds1] openstack_glance/img_uuid',
+            sourceDatacenter=mock.sentinel.src_dc_ref,
+            destinationName=mock.sentinel.dest_ds_file_path,
+            destinationDatacenter=mock.sentinel.dest_dc_ref)
+        self.session.wait_for_task.assert_called_once_with(mock.sentinel.task)
+
 
 class VirtualDiskPathTest(test.TestCase):
     """Unit tests for VirtualDiskPath."""
