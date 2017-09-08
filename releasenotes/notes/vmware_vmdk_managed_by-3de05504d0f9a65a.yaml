@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    The volumes created by VMware VMDK driver will be displayed as
+    "managed by OpenStack Cinder" in vCenter server.
+

@@ -1399,18 +1399,71 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                           self._driver._validate_vcenter_version,
                           '5.1')
 
+    @mock.patch('oslo_vmware.vim_util.find_extension')
+    @mock.patch('oslo_vmware.vim_util.register_extension')
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    def _test_register_extension(
+            self, session, register_extension, find_extension,
+            ext_exists=False):
+        if not ext_exists:
+            find_extension.return_value = None
+
+        self._driver._register_extension()
+
+        find_extension.assert_called_once_with(session.vim, vmdk.EXTENSION_KEY)
+        if not ext_exists:
+            register_extension.assert_called_once_with(
+                session.vim, vmdk.EXTENSION_KEY, vmdk.EXTENSION_TYPE,
+                label='OpenStack Cinder')
+
+    def test_register_extension(self):
+        self._test_register_extension()
+
+    def test_register_extension_with_existing_extension(self):
+        self._test_register_extension(ext_exists=True)
+
+    @mock.patch('oslo_vmware.vim_util.find_extension', return_value=None)
+    @mock.patch('oslo_vmware.vim_util.register_extension')
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    def test_concurrent_register_extension(
+            self, session, register_extension, find_extension):
+        register_extension.side_effect = exceptions.VimFaultException(
+            ['InvalidArgument'], 'error')
+        self._driver._register_extension()
+
+        find_extension.assert_called_once_with(session.vim, vmdk.EXTENSION_KEY)
+        register_extension.assert_called_once_with(
+            session.vim, vmdk.EXTENSION_KEY, vmdk.EXTENSION_TYPE,
+            label='OpenStack Cinder')
+
+    @mock.patch('oslo_vmware.vim_util.find_extension', return_value=None)
+    @mock.patch('oslo_vmware.vim_util.register_extension')
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    def test_register_extension_failure(
+            self, session, register_extension, find_extension):
+        register_extension.side_effect = exceptions.VimFaultException(
+            ['RuntimeFault'], 'error')
+
+        self.assertRaises(exceptions.VimFaultException,
+                          self._driver._register_extension)
+        find_extension.assert_called_once_with(session.vim, vmdk.EXTENSION_KEY)
+        register_extension.assert_called_once_with(
+            session.vim, vmdk.EXTENSION_KEY, vmdk.EXTENSION_TYPE,
+            label='OpenStack Cinder')
+
     @mock.patch.object(VMDK_DRIVER, '_validate_params')
     @mock.patch.object(VMDK_DRIVER, '_get_vc_version')
     @mock.patch.object(VMDK_DRIVER, '_validate_vcenter_version')
     @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
+    @mock.patch.object(VMDK_DRIVER, '_register_extension')
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps')
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, 'session')
     def _test_do_setup(
-            self, session, vops, ds_sel_cls, vops_cls, get_pbm_wsdl_loc,
-            validate_vc_version, get_vc_version, validate_params,
-            enable_pbm=True):
+            self, session, vops, ds_sel_cls, vops_cls, register_extension,
+            get_pbm_wsdl_loc, validate_vc_version, get_vc_version,
+            validate_params, enable_pbm=True):
         if enable_pbm:
             ver_str = '5.5'
             pbm_wsdl = mock.sentinel.pbm_wsdl
@@ -1433,8 +1486,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             get_pbm_wsdl_loc.assert_called_once_with(ver_str)
             self.assertEqual(pbm_wsdl, self._driver.pbm_wsdl)
         self.assertEqual(enable_pbm, self._driver._storage_policy_enabled)
+        register_extension.assert_called_once()
         vops_cls.assert_called_once_with(
-            session, self._driver.configuration.vmware_max_objects_retrieval)
+            session, self._driver.configuration.vmware_max_objects_retrieval,
+            vmdk.EXTENSION_KEY, vmdk.EXTENSION_TYPE)
         self.assertEqual(vops_cls.return_value, self._driver._volumeops)
         ds_sel_cls.assert_called_once_with(
             vops,
