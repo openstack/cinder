@@ -42,7 +42,7 @@ def str2size(s, scale=1024):
 
     groups = match.groups()
     value = float(groups[0])
-    suffix = len(groups) > 1 and groups[1].upper() or 'B'
+    suffix = groups[1].upper() or 'B'
 
     types = ('B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y')
     for i, t in enumerate(types):
