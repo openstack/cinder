@@ -114,12 +114,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                                    loopingcalls.ONE_HOUR,
                                    loopingcalls.ONE_HOUR)
 
-        # Add the task that harvests soft-deleted QoS policy groups.
-        self.loopingcalls.add_task(
-            self.zapi_client.remove_unused_qos_policy_groups,
-            loopingcalls.ONE_MINUTE,
-            loopingcalls.ONE_MINUTE)
-
         # Add the task that runs other housekeeping tasks, such as deletion
         # of previously soft-deleted storage artifacts.
         self.loopingcalls.add_task(

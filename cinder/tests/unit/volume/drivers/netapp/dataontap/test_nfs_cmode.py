@@ -968,8 +968,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
     def test_add_looping_tasks(self):
         mock_update_ssc = self.mock_object(self.driver, '_update_ssc')
-        mock_remove_unused_qos_policy_groups = self.mock_object(
-            self.driver.zapi_client, 'remove_unused_qos_policy_groups')
+        mock_handle_housekeeping = self.mock_object(
+            self.driver, '_handle_housekeeping_tasks')
         mock_add_task = self.mock_object(self.driver.loopingcalls, 'add_task')
         mock_super_add_looping_tasks = self.mock_object(
             nfs_base.NetAppNfsDriver, '_add_looping_tasks')
@@ -981,9 +981,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             mock.call(mock_update_ssc,
                       loopingcalls.ONE_HOUR,
                       loopingcalls.ONE_HOUR),
-            mock.call(mock_remove_unused_qos_policy_groups,
-                      loopingcalls.ONE_MINUTE,
-                      loopingcalls.ONE_MINUTE)])
+            mock.call(mock_handle_housekeeping,
+                      loopingcalls.TEN_MINUTES,
+                      0)])
         mock_super_add_looping_tasks.assert_called_once_with()
 
     @ddt.data({'has_space': True, 'type_match': True, 'expected': True},
