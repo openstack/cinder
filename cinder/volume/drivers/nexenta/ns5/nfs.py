@@ -180,6 +180,13 @@ class NexentaNfsDriver(nfs.NfsDriver):
                                 [fs, volume['name']])})
             raise
 
+    def _create_sparsed_file(self, path, size):
+        """Creates file with 0 disk usage."""
+        if self.configuration.nexenta_qcow2_volumes:
+            self._create_qcow2_file(path, size)
+        else:
+            super(NexentaNfsDriver, self)._create_sparsed_file(path, size)
+
     def migrate_volume(self, ctxt, volume, host):
         """Migrate if volume and host are managed by Nexenta appliance.
 
