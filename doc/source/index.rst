@@ -118,6 +118,12 @@ API Extensions
 
 Go to https://developer.openstack.org/api-ref/block-storage/ for information about Cinder API extensions.
 
+:doc:`Block Storage v3 API Microversion History </contributor/api_microversion_history>`:
+The block storage v3 API evolves over time through
+:doc:`API Microversions </contributor/api_microversion_dev/>`. This
+provides the history of all those changes. Consider it a "what's new" in the
+block storage v3 API.
+
 Configuration Reference
 ~~~~~~~~~~~~~~~~~~~~~~~
 
