@@ -1,4 +1,4 @@
-# Copyright (c) 2013 - 2015 EMC Corporation.
+# Copyright (c) 2017 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -21,12 +21,13 @@ import binascii
 from distutils import version
 import json
 import math
+import re
+
 from os_brick.initiator import connector
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_log import versionutils
 from oslo_utils import units
-import re
 import requests
 import six
 from six.moves import http_client
@@ -38,15 +39,16 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder import objects
-from cinder import utils
-
 from cinder.objects import fields
+from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
+from cinder.volume.drivers.dell_emc.scaleio import simplecache
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+
 
 CONF = cfg.CONF
 
@@ -136,13 +138,15 @@ SIO_MAX_OVERSUBSCRIPTION_RATIO = 10.0
 
 @interface.volumedriver
 class ScaleIODriver(driver.VolumeDriver):
-    """Dell EMC ScaleIO Driver."""
+    """Cinder ScaleIO Driver
 
-    VERSION = "2.0.2"
-    # Major changes
-    # 2.0.1: Added support for SIO 1.3x in addition to 2.0.x
-    # 2.0.2: Added consistency group support to generic volume groups
+    ScaleIO Driver version history:
+        2.0.1: Added support for SIO 1.3x in addition to 2.0.x
+        2.0.2: Added consistency group support to generic volume groups
+        2.0.3: Added cache for storage pool and protection domains info
+    """
 
+    VERSION = "2.0.3"
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_ScaleIO_CI"
 
@@ -151,6 +155,12 @@ class ScaleIODriver(driver.VolumeDriver):
 
     def __init__(self, *args, **kwargs):
         super(ScaleIODriver, self).__init__(*args, **kwargs)
+
+        # simple caches for PD and SP properties
+        self.spCache = simplecache.SimpleCache("Storage Pool",
+                                               age_minutes=5)
+        self.pdCache = simplecache.SimpleCache("Protection Domain",
+                                               age_minutes=5)
 
         self.configuration.append_config_values(san.san_opts)
         self.configuration.append_config_values(scaleio_opts)
@@ -215,10 +225,6 @@ class ScaleIODriver(driver.VolumeDriver):
             'iopsLimit': None,
             'bandwidthLimit': None,
         }
-
-        # simple cache for domain and sp ids
-        self.cache_pd = {}
-        self.cache_sp = {}
 
     def check_for_setup_error(self):
         # make sure both domain name and id are not specified
@@ -285,6 +291,34 @@ class ScaleIODriver(driver.VolumeDriver):
             msg = (_("Must specify storage pools. Option: "
                      "sio_storage_pools."))
             raise exception.InvalidInput(reason=msg)
+
+        # validate the storage pools and check if zero padding is enabled
+        for pool in self.storage_pools:
+            try:
+                pd, sp = pool.split(':')
+            except (ValueError, IndexError):
+                msg = (_("Invalid storage pool name. The correct format is: "
+                         "protection_domain:storage_pool. "
+                         "Value supplied was: %(pool)s") %
+                       {'pool': pool})
+                raise exception.InvalidInput(reason=msg)
+
+            try:
+                properties = self._get_storage_pool_properties(pd, sp)
+                padded = properties['zeroPaddingEnabled']
+            except Exception:
+                msg = (_("Unable to retrieve properties for pool, %(pool)s") %
+                       {'pool': pool})
+                raise exception.InvalidInput(reason=msg)
+
+            if not padded:
+                LOG.warning("Zero padding is disabled for pool, %s. "
+                            "This could lead to existing data being "
+                            "accessible on new thick provisioned volumes. "
+                            "Consult the ScaleIO product documentation "
+                            "for information on how to enable zero padding "
+                            "and prevent this from occurring.",
+                            pool)
 
     def _build_storage_pool_list(self):
         """Build storage pool list
@@ -1230,40 +1264,11 @@ class ScaleIODriver(driver.VolumeDriver):
     def _get_protection_domain_id(self, domain_name):
         """"Get the id of the protection domain"""
 
-        if not domain_name:
-            msg = (_("Error getting domain id from None name."))
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+        response = self._get_protection_domain_properties(domain_name)
+        if response is None:
+            return None
 
-        # do we already have the id?
-        if domain_name in self.cache_pd:
-            return self.cache_pd[domain_name]
-
-        encoded_domain_name = urllib.parse.quote(domain_name, '')
-        req_vars = {'server_ip': self.server_ip,
-                    'server_port': self.server_port,
-                    'encoded_domain_name': encoded_domain_name}
-        request = ("https://%(server_ip)s:%(server_port)s"
-                   "/api/types/Domain/instances/getByName::"
-                   "%(encoded_domain_name)s") % req_vars
-
-        r, domain_id = self._execute_scaleio_get_request(request)
-
-        if not domain_id:
-            msg = (_("Domain with name %s wasn't found.")
-                   % domain_name)
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-        if r.status_code != http_client.OK and "errorCode" in domain_id:
-            msg = (_("Error getting domain id from name %(name)s: %(id)s.")
-                   % {'name': domain_name,
-                      'id': domain_id['message']})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        # add it to our cache
-        self.cache_pd[domain_name] = domain_id
-        return domain_id
+        return response['id']
 
     def _get_storage_pool_name(self, pool_id):
         """Get the protection domain:storage pool name
@@ -1317,8 +1322,61 @@ class ScaleIODriver(driver.VolumeDriver):
 
         return domain_name
 
-    def _get_storage_pool_id(self, domain_name, pool_name):
-        """Get the id of the configured storage pool"""
+    def _get_protection_domain_properties(self, domain_name):
+        """Get the props of the configured protection domain"""
+        if not domain_name:
+            msg = _("Error getting domain id from None name.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        cached_val = self.pdCache.get_value(domain_name)
+        if cached_val is not None:
+            return cached_val
+
+        encoded_domain_name = urllib.parse.quote(domain_name, '')
+        req_vars = {'server_ip': self.server_ip,
+                    'server_port': self.server_port,
+                    'encoded_domain_name': encoded_domain_name}
+        request = ("https://%(server_ip)s:%(server_port)s"
+                   "/api/types/Domain/instances/getByName::"
+                   "%(encoded_domain_name)s") % req_vars
+
+        r, domain_id = self._execute_scaleio_get_request(request)
+
+        if not domain_id:
+            msg = (_("Domain with name %s wasn't found.")
+                   % domain_name)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        if r.status_code != http_client.OK and "errorCode" in domain_id:
+            msg = (_("Error getting domain id from name %(name)s: %(id)s.")
+                   % {'name': domain_name,
+                      'id': domain_id['message']})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.info("Domain id is %s.", domain_id)
+
+        req_vars = {'server_ip': self.server_ip,
+                    'server_port': self.server_port,
+                    'domain_id': domain_id}
+        request = ("https://%(server_ip)s:%(server_port)s"
+                   "/api/instances/ProtectionDomain::%(domain_id)s") % req_vars
+        r, response = self._execute_scaleio_get_request(request)
+
+        if r.status_code != http_client.OK:
+            msg = (_("Error getting domain properties from id %(domain_id)s: "
+                     "%(err_msg)s.")
+                   % {'domain_id': domain_id,
+                      'err_msg': response})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        self.pdCache.update(domain_name, response)
+        return response
+
+    def _get_storage_pool_properties(self, domain_name, pool_name):
+        """Get the props of the configured storage pool"""
         if not domain_name or not pool_name:
             msg = (_("Unable to query the storage pool id for "
                      "Pool %(pool_name)s and Domain %(domain_name)s.")
@@ -1328,9 +1386,10 @@ class ScaleIODriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(data=msg)
 
         fullname = "{}:{}".format(domain_name, pool_name)
-        if fullname in self.cache_sp:
 
-            return self.cache_sp[fullname]
+        cached_val = self.spCache.get_value(fullname)
+        if cached_val is not None:
+            return cached_val
 
         domain_id = self._get_protection_domain_id(domain_name)
         encoded_pool_name = urllib.parse.quote(pool_name, '')
@@ -1361,9 +1420,32 @@ class ScaleIODriver(driver.VolumeDriver):
 
         LOG.info("Pool id is %s.", pool_id)
 
-        # add it to ou cache
-        self.cache_sp[fullname] = pool_id
-        return pool_id
+        req_vars = {'server_ip': self.server_ip,
+                    'server_port': self.server_port,
+                    'pool_id': pool_id}
+        request = ("https://%(server_ip)s:%(server_port)s"
+                   "/api/instances/StoragePool::%(pool_id)s") % req_vars
+        r, response = self._execute_scaleio_get_request(request)
+
+        if r.status_code != http_client.OK:
+            msg = (_("Error getting pool properties from id %(pool_id)s: "
+                     "%(err_msg)s.")
+                   % {'pool_id': pool_id,
+                      'err_msg': response})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        self.spCache.update(fullname, response)
+        return response
+
+    def _get_storage_pool_id(self, domain_name, pool_name):
+        """Get the id of the configured storage pool"""
+
+        response = self._get_storage_pool_properties(domain_name, pool_name)
+        if response is None:
+            return None
+
+        return response['id']
 
     def _get_all_scaleio_volumes(self):
         """Gets list of all SIO volumes in PD and SP"""
