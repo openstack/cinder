@@ -355,7 +355,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         if specs is None or specs == {}:
             return ''
 
-        for key, value in specs.items():
+        for key, value in sorted(specs.items()):
             perf_class_name += '_' + key + '_' + value
 
         try:
