@@ -307,9 +307,9 @@ class VolumeApiTest(test.TestCase):
                    'consistencygroup_id': consistencygroup_id,
                    'group_id': group_id,
                    'created_at': datetime.datetime(
-                       1900, 1, 1, 1, 1, 1, tzinfo=iso8601.iso8601.Utc()),
+                       1900, 1, 1, 1, 1, 1, tzinfo=iso8601.UTC),
                    'updated_at': datetime.datetime(
-                       1900, 1, 1, 1, 1, 1, tzinfo=iso8601.iso8601.Utc()),
+                       1900, 1, 1, 1, 1, 1, tzinfo=iso8601.UTC),
                    'description': description,
                    'id': v2_fakes.DEFAULT_VOL_ID,
                    'links':
@@ -579,7 +579,7 @@ class VolumeApiTest(test.TestCase):
         fake_volume = self._fake_create_volume()
         fake_volume['attach_status'] = fields.VolumeAttachStatus.ATTACHING
         att_time = datetime.datetime(2017, 8, 31, 21, 55, 7,
-                                     tzinfo=iso8601.iso8601.Utc())
+                                     tzinfo=iso8601.UTC)
         a1 = {
             'id': fake.UUID1,
             'volume_id': fake.UUID2,

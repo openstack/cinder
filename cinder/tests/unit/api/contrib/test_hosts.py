@@ -15,7 +15,7 @@
 
 import datetime
 
-from iso8601 import iso8601
+import iso8601
 from oslo_utils import timeutils
 import webob.exc
 
@@ -65,7 +65,7 @@ LIST_RESPONSE = [{'service-status': 'available', 'service': 'cinder-volume',
 
 
 def stub_utcnow(with_timezone=False):
-    tzinfo = iso8601.Utc() if with_timezone else None
+    tzinfo = iso8601.UTC if with_timezone else None
     return datetime.datetime(2013, 7, 3, 0, 0, 2, tzinfo=tzinfo)
 
 

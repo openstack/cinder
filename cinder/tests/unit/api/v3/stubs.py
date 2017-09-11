@@ -28,11 +28,11 @@ def stub_message(id, **kwargs):
         'message_level': "ERROR",
         'request_id': FAKE_UUID,
         'updated_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
-                                        tzinfo=iso8601.iso8601.Utc()),
+                                        tzinfo=iso8601.UTC),
         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
-                                        tzinfo=iso8601.iso8601.Utc()),
+                                        tzinfo=iso8601.UTC),
         'expires_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
-                                        tzinfo=iso8601.iso8601.Utc()),
+                                        tzinfo=iso8601.UTC),
     }
 
     message.update(kwargs)

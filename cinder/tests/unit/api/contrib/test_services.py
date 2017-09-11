@@ -17,7 +17,7 @@
 import datetime
 
 import ddt
-from iso8601 import iso8601
+import iso8601
 import mock
 from oslo_config import cfg
 from six.moves import http_client
@@ -179,7 +179,7 @@ def fake_policy_enforce(context, action, target):
 
 
 def fake_utcnow(with_timezone=False):
-    tzinfo = iso8601.Utc() if with_timezone else None
+    tzinfo = iso8601.UTC if with_timezone else None
     return datetime.datetime(2012, 10, 29, 13, 42, 11, tzinfo=tzinfo)
 
 
