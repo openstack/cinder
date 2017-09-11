@@ -15,7 +15,6 @@
 
 import ddt
 import mock
-from six.moves import urllib
 
 from cinder import context
 from cinder import exception
@@ -28,9 +27,9 @@ from cinder.volume import configuration
 
 @ddt.ddt
 class TestMisc(scaleio.TestScaleIODriver):
-    DOMAIN_NAME = 'PD1'
-    POOL_NAME = 'SP1'
-    STORAGE_POOLS = ['{}:{}'.format(DOMAIN_NAME, POOL_NAME)]
+
+    DOMAIN_ID = '1'
+    POOL_ID = '1'
 
     def setUp(self):
         """Set up the test case environment.
@@ -38,8 +37,6 @@ class TestMisc(scaleio.TestScaleIODriver):
         Defines the mock HTTPS responses for the REST API calls.
         """
         super(TestMisc, self).setUp()
-        self.domain_name_enc = urllib.parse.quote(self.DOMAIN_NAME)
-        self.pool_name_enc = urllib.parse.quote(self.POOL_NAME)
         self.ctx = context.RequestContext('fake', 'fake', auth_token=True)
 
         self.volume = fake_volume.fake_volume_obj(
@@ -51,17 +48,15 @@ class TestMisc(scaleio.TestScaleIODriver):
 
         self.HTTPS_MOCK_RESPONSES = {
             self.RESPONSE_MODE.Valid: {
-                'types/Domain/instances/getByName::' +
-                self.domain_name_enc: '"{}"'.format(self.DOMAIN_NAME).encode(
-                    'ascii',
-                    'ignore'
-                ),
+                'types/Domain/instances/getByName::{}'.format(
+                    self.PROT_DOMAIN_NAME
+                ): '"{}"'.format(self.PROT_DOMAIN_ID),
                 'types/Pool/instances/getByName::{},{}'.format(
-                    self.DOMAIN_NAME,
-                    self.POOL_NAME
-                ): '"{}"'.format(self.POOL_NAME).encode('ascii', 'ignore'),
+                    self.PROT_DOMAIN_ID,
+                    self.STORAGE_POOL_NAME
+                ): '"{}"'.format(self.STORAGE_POOL_ID),
                 'types/StoragePool/instances/action/querySelectedStatistics': {
-                    '"{}"'.format(self.POOL_NAME): {
+                    '"{}"'.format(self.STORAGE_POOL_NAME): {
                         'capacityAvailableForVolumeAllocationInKb': 5000000,
                         'capacityLimitInKb': 16000000,
                         'spareCapacityInKb': 6000000,
@@ -77,20 +72,23 @@ class TestMisc(scaleio.TestScaleIODriver):
                         self.volume['provider_id'],
                 'version': '"{}"'.format('2.0.1'),
                 'instances/StoragePool::{}'.format(
-                    "test_pool"
+                    self.STORAGE_POOL_ID
                 ): {
-                    'name': 'test_pool',
-                    'protectionDomainId': 'test_domain',
+                    'name': self.STORAGE_POOL_NAME,
+                    'id': self.STORAGE_POOL_ID,
+                    'protectionDomainId': self.PROT_DOMAIN_ID,
+                    'zeroPaddingEnabled': 'true',
                 },
                 'instances/ProtectionDomain::{}'.format(
-                    "test_domain"
+                    self.PROT_DOMAIN_ID
                 ): {
-                    'name': 'test_domain',
+                    'name': self.PROT_DOMAIN_NAME,
+                    'id': self.PROT_DOMAIN_ID
                 },
             },
             self.RESPONSE_MODE.BadStatus: {
                 'types/Domain/instances/getByName::' +
-                self.domain_name_enc: self.BAD_STATUS_RESPONSE,
+                self.PROT_DOMAIN_NAME: self.BAD_STATUS_RESPONSE,
                 'instances/Volume::{}/action/setVolumeName'.format(
                     self.volume['provider_id']): mocks.MockHTTPSResponse(
                     {
@@ -101,7 +99,7 @@ class TestMisc(scaleio.TestScaleIODriver):
             },
             self.RESPONSE_MODE.Invalid: {
                 'types/Domain/instances/getByName::' +
-                self.domain_name_enc: None,
+                self.PROT_DOMAIN_NAME: None,
                 'instances/Volume::{}/action/setVolumeName'.format(
                     self.volume['provider_id']): mocks.MockHTTPSResponse(
                     {
@@ -120,8 +118,10 @@ class TestMisc(scaleio.TestScaleIODriver):
 
         INVALID
         """
-        self.driver.configuration.sio_storage_pool_id = "test_pool_id"
-        self.driver.configuration.sio_storage_pool_name = "test_pool_name"
+        self.driver.configuration.sio_storage_pool_id = self.STORAGE_POOL_ID
+        self.driver.configuration.sio_storage_pool_name = (
+            self.STORAGE_POOL_NAME
+        )
         self.assertRaises(exception.InvalidInput,
                           self.driver.check_for_setup_error)
 
@@ -140,9 +140,9 @@ class TestMisc(scaleio.TestScaleIODriver):
         INVALID
         """
         self.driver.configuration.sio_protection_domain_name = (
-            "test_domain_name")
+            self.PROT_DOMAIN_NAME)
         self.driver.configuration.sio_protection_domain_id = (
-            "test_domain_id")
+            self.PROT_DOMAIN_ID)
         self.assertRaises(exception.InvalidInput,
                           self.driver.check_for_setup_error)
 
@@ -185,17 +185,29 @@ class TestMisc(scaleio.TestScaleIODriver):
         """
         self.HTTPS_MOCK_RESPONSES = {
             self.RESPONSE_MODE.ValidVariant: {
-                'types/Domain/instances/getByName::' +
-                self.domain_name_enc: '"{}"'.format(self.DOMAIN_NAME).encode(
-                    'ascii',
-                    'ignore'
-                ),
+                'types/Domain/instances/getByName::{}'.format(
+                    self.PROT_DOMAIN_NAME
+                ): '"{}"'.format(self.PROT_DOMAIN_ID),
                 'types/Pool/instances/getByName::{},{}'.format(
-                    self.DOMAIN_NAME,
-                    self.POOL_NAME
-                ): '"{}"'.format(self.POOL_NAME).encode('ascii', 'ignore'),
+                    self.PROT_DOMAIN_ID,
+                    self.STORAGE_POOL_NAME
+                ): '"{}"'.format(self.STORAGE_POOL_ID),
+                'instances/ProtectionDomain::{}'.format(
+                    self.PROT_DOMAIN_ID
+                ): {
+                    'name': self.PROT_DOMAIN_NAME,
+                    'id': self.PROT_DOMAIN_ID
+                },
+                'instances/StoragePool::{}'.format(
+                    self.STORAGE_POOL_ID
+                ): {
+                    'name': self.STORAGE_POOL_NAME,
+                    'id': self.STORAGE_POOL_ID,
+                    'protectionDomainId': self.PROT_DOMAIN_ID,
+                    'zeroPaddingEnabled': 'true',
+                },
                 'types/StoragePool/instances/action/querySelectedStatistics': {
-                    '"{}"'.format(self.POOL_NAME): {
+                    '"{}"'.format(self.STORAGE_POOL_NAME): {
                         'capacityAvailableForVolumeAllocationInKb': 5000000,
                         'capacityLimitInKb': 16000000,
                         'spareCapacityInKb': 6000000,
@@ -210,9 +222,6 @@ class TestMisc(scaleio.TestScaleIODriver):
                     self.new_volume['provider_id']):
                         self.volume['provider_id'],
                 'version': '"{}"'.format('2.0.1'),
-                'instances/StoragePool::{}'.format(
-                    self.STORAGE_POOL_NAME
-                ): '"{}"'.format(self.STORAGE_POOL_ID),
             }
         }
 

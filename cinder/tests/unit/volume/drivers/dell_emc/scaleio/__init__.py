@@ -109,6 +109,8 @@ class TestScaleIODriver(test.TestCase):
     PROT_DOMAIN_ID = six.text_type('1')
     PROT_DOMAIN_NAME = 'PD1'
 
+    STORAGE_POOLS = ['{}:{}'.format(PROT_DOMAIN_NAME, STORAGE_POOL_NAME)]
+
     def setUp(self):
         """Setup a test case environment.
 
@@ -135,13 +137,14 @@ class TestScaleIODriver(test.TestCase):
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('san_password', override='pass',
                              group=conf.SHARED_CONF_GROUP)
-        self.override_config('sio_storage_pool_id', override='test_pool',
+        self.override_config('sio_storage_pool_id',
+                             override=self.STORAGE_POOL_ID,
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('sio_protection_domain_id',
-                             override='test_domain',
+                             override=self.PROT_DOMAIN_ID,
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('sio_storage_pools',
-                             override='test_domain:test_pool',
+                             override='PD1:SP1',
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('max_over_subscription_ratio',
                              override=5.0, group=conf.SHARED_CONF_GROUP)

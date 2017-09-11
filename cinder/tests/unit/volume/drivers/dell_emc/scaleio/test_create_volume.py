@@ -51,6 +51,12 @@ class TestCreateVolume(scaleio.TestScaleIODriver):
                     self.PROT_DOMAIN_ID,
                     self.STORAGE_POOL_NAME
                 ): '"{}"'.format(self.STORAGE_POOL_ID),
+                'instances/ProtectionDomain::{}'.format(
+                    self.PROT_DOMAIN_ID
+                ): {'id': self.PROT_DOMAIN_ID},
+                'instances/StoragePool::{}'.format(
+                    self.STORAGE_POOL_ID
+                ): {'id': self.STORAGE_POOL_ID},
             },
             self.RESPONSE_MODE.Invalid: {
                 'types/Domain/instances/getByName::' +
