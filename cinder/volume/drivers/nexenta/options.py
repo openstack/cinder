@@ -122,6 +122,9 @@ NEXENTA_NFS_OPTS = [
                      'sparsed files that take no space. If disabled '
                      '(False), volume is created as a regular file, '
                      'which takes a long time.'),
+    cfg.BoolOpt('nexenta_qcow2_volumes',
+                default=False,
+                help='Create volumes as QCOW2 files rather than raw files'),
     cfg.BoolOpt('nexenta_nms_cache_volroot',
                 default=True,
                 help=('If set True cache NexentaStor appliance volroot option '
