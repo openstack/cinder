@@ -105,6 +105,8 @@ class TestScaleIODriver(test.TestCase):
     PROT_DOMAIN_ID = six.text_type('1')
     PROT_DOMAIN_NAME = 'PD1'
 
+    STORAGE_POOLS = ['{}:{}'.format(PROT_DOMAIN_NAME, STORAGE_POOL_NAME)]
+
     def setUp(self):
         """Setup a test case environment.
 
