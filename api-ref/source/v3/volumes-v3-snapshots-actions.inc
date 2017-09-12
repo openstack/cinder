@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-====================================
 Snapshot actions (snapshots, action)
 ====================================
 
@@ -8,9 +7,9 @@ Administrator only. Resets status for a snapshot.
 
 
 Reset a snapshot's status
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  POST /v3/{tenant_id}/snapshots/{snapshot_id}/action
+.. rest_method::  POST /v3/{project_id}/snapshots/{snapshot_id}/action
 
 Resets the status. Specify the ``os-reset_status`` action in the request body.
 
@@ -22,10 +21,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_2
+   - project_id: project_id_path
+   - snapshot_id: snapshot_id_path
    - os-reset_status: os-reset_status
-   - tenant_id: tenant_id
-   - snapshot_id: snapshot_id
+   - status: status_2
 
 Request Example
 ---------------
