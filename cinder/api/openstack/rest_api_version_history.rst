@@ -6,8 +6,8 @@ microversion change. The description for each version should be a
 verbose one which has enough information to be suitable for use in
 user documentation.
 
-3.0
----
+3.0 (Maximum in Mitaka)
+-----------------------
   The 3.0 Cinder API includes all v2 core APIs existing prior to
   the introduction of microversions.  The /v3 URL is used to call
   3.0 APIs.
