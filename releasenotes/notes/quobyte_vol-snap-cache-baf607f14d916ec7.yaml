@@ -1,0 +1,9 @@
+---
+
+fixes:
+  - |
+    Added a new optional cache of volumes generated from snapshots for the
+    Quobyte backend. Enabling this cache speeds up creation of multiple
+    volumes from a single snapshot at the cost of a slight increase in
+    creation time for the first volume generated for this given snapshot.
+    The ``quobyte_volume_from_snapshot_cache`` option is off by default.
