@@ -59,11 +59,9 @@ troubleshoot your installation and back up your Compute volumes.
 
    blockstorage-boot-from-volume.rst
    blockstorage-nfs-backend.rst
-   blockstorage-glusterfs-backend.rst
    blockstorage-multi-backend.rst
    blockstorage-backup-disks.rst
    blockstorage-volume-migration.rst
-   blockstorage-glusterfs-removal.rst
    blockstorage-volume-backups.rst
    blockstorage-volume-backups-export-import.rst
    blockstorage-lio-iscsi-support.rst
