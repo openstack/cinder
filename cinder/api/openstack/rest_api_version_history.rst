@@ -287,7 +287,9 @@ user documentation.
 
 3.27 (Maximum in Ocata)
 -----------------------
-  Added new attachment APIs
+  Added new attachment APIs. See the
+  `API reference <https://developer.openstack.org/api-ref/block-storage/v3/index.html#attachments>`__
+  for details.
 
 3.28
 ----
@@ -368,4 +370,6 @@ user documentation.
 
 3.44
 ----
-  Support attachment completion.
+  Support attachment completion. See the
+  `API reference <https://developer.openstack.org/api-ref/block-storage/v3/index.html#complete-attachment>`__
+  for details.
