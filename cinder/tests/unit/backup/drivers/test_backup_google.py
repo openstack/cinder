@@ -555,7 +555,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
         result = service._prepare_output_data(fake_data)
 
         self.assertEqual('zlib', result[0])
-        self.assertGreater(len(fake_data), len(result))
+        self.assertGreater(len(fake_data), len(result[1]))
 
     @gcs_client
     def test_prepare_output_data_no_compression(self):
