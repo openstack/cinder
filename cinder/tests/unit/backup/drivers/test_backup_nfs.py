@@ -22,6 +22,7 @@ import hashlib
 import os
 import shutil
 import tempfile
+import threading
 import zlib
 
 import mock
@@ -677,12 +678,25 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         return fake_data
 
     def test_prepare_output_data_effective_compression(self):
+        """Test compression works on a native thread."""
+        # Use dictionary to share data between threads
+        thread_dict = {}
+        original_compress = zlib.compress
+
+        def my_compress(data, *args, **kwargs):
+            thread_dict['compress'] = threading.current_thread()
+            return original_compress(data)
+
         service = nfs.NFSBackupDriver(self.ctxt)
         fake_data = self.create_buffer(128)
-        result = service._prepare_output_data(fake_data)
+        with mock.patch.object(service.compressor, 'compress',
+                               side_effect=my_compress):
+            result = service._prepare_output_data(fake_data)
 
         self.assertEqual('zlib', result[0])
         self.assertGreater(len(fake_data), len(result[1]))
+        self.assertNotEqual(threading.current_thread(),
+                            thread_dict['compress'])
 
     def test_prepare_output_data_no_compresssion(self):
         self.flags(backup_compression_algorithm='none')
