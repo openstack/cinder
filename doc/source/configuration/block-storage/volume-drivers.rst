@@ -13,7 +13,6 @@ Volume drivers
    drivers/nfs-volume-driver.rst
    drivers/sheepdog-driver.rst
    drivers/smbfs-volume-driver.rst
-   drivers/blockbridge-eps-driver.rst
    drivers/cloudbyte-driver.rst
    drivers/coprhd-driver.rst
    drivers/datera-volume-driver.rst
