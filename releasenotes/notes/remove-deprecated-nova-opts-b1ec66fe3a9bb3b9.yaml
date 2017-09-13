@@ -1,0 +1,10 @@
+---
+upgrade:
+  - Removed the deprecated options for the Nova connection:>
+    os_privileged_user{name, password, tenant, auth_url},
+    nova_catalog_info, nova_catalog_admin_info,
+    nova_endpoint_template, nova_endpoint_admin_template,
+    nova_ca_certificates_file, nova_api_insecure.
+    From Pike, using the [nova] section is preferred to
+    configure compute connection for Guest Assisted Snapshost
+    or the InstanceLocalityFilter.

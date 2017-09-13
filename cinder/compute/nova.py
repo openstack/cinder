@@ -28,27 +28,6 @@ from requests import exceptions as request_exceptions
 from cinder.db import base
 from cinder import exception
 
-old_opts = [
-    cfg.StrOpt('nova_catalog_info',
-               default='compute:Compute Service:publicURL',
-               help='Match this value when searching for nova in the '
-                    'service catalog. Format is: separated values of '
-                    'the form: '
-                    '<service_type>:<service_name>:<endpoint_type>',
-               deprecated_for_removal=True),
-    cfg.StrOpt('nova_catalog_admin_info',
-               default='compute:Compute Service:publicURL',
-               help='Same as nova_catalog_info, but for admin endpoint.',
-               deprecated_for_removal=True),
-    cfg.StrOpt('nova_endpoint_template',
-               help='Override service catalog lookup with template for nova '
-                    'endpoint e.g. http://localhost:8774/v2/%(project_id)s',
-               deprecated_for_removal=True),
-    cfg.StrOpt('nova_endpoint_admin_template',
-               help='Same as nova_endpoint_template, but for admin endpoint.',
-               deprecated_for_removal=True),
-]
-
 nova_opts = [
     cfg.StrOpt('region_name',
                help='Name of nova region to use. Useful if keystone manages '
@@ -70,13 +49,9 @@ nova_opts = [
 NOVA_GROUP = 'nova'
 CONF = cfg.CONF
 
-deprecations = {'cafile': [cfg.DeprecatedOpt('nova_ca_certificates_file')],
-                'insecure': [cfg.DeprecatedOpt('nova_api_insecure')]}
-nova_session_opts = ks_loading.get_session_conf_options(
-    deprecated_opts=deprecations)
+nova_session_opts = ks_loading.get_session_conf_options()
 nova_auth_opts = ks_loading.get_auth_common_conf_options()
 
-CONF.register_opts(old_opts)
 CONF.register_opts(nova_opts, group=NOVA_GROUP)
 CONF.register_opts(nova_session_opts, group=NOVA_GROUP)
 CONF.register_opts(nova_auth_opts, group=NOVA_GROUP)
@@ -121,22 +96,6 @@ def novaclient(context, privileged_user=False, timeout=None, api_version=None):
     if privileged_user and CONF[NOVA_GROUP].auth_type:
         LOG.debug('Creating Keystone auth plugin from conf')
         n_auth = ks_loading.load_auth_from_conf_options(CONF, NOVA_GROUP)
-    elif privileged_user and CONF.os_privileged_user_name:
-        # Fall back to the deprecated os_privileged_xxx settings.
-        # TODO(gyurco): Remove it after Pike.
-        if CONF.os_privileged_user_auth_url:
-            url = CONF.os_privileged_user_auth_url
-        else:
-            url = _get_identity_endpoint_from_sc(context)
-        LOG.debug('Creating Keystone password plugin from legacy settings '
-                  'using URL: %s', url)
-        n_auth = identity.Password(
-            auth_url=url,
-            username=CONF.os_privileged_user_name,
-            password=CONF.os_privileged_user_password,
-            project_name=CONF.os_privileged_user_tenant,
-            project_domain_id=context.project_domain,
-            user_domain_id=context.user_domain)
     else:
         if CONF[NOVA_GROUP].token_auth_url:
             url = CONF[NOVA_GROUP].token_auth_url

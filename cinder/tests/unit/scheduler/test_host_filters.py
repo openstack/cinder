@@ -1012,8 +1012,6 @@ class DriverFilterTestCase(BackendFiltersTestCase):
 class InstanceLocalityFilterTestCase(BackendFiltersTestCase):
     def setUp(self):
         super(InstanceLocalityFilterTestCase, self).setUp()
-        self.override_config('nova_endpoint_template',
-                             'http://novahost:8774/v2/%(project_id)s')
         self.context.service_catalog = \
             [{'type': 'compute', 'name': 'nova', 'endpoints':
               [{'publicURL': 'http://novahost:8774/v2/e3f0833dc08b4cea'}]},
