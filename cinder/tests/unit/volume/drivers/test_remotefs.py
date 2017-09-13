@@ -702,3 +702,94 @@ class RemoteFSPoolMixinTestCase(test.TestCase):
             mock.sentinel.share)
         self._driver.configuration.safe_get.assert_called_once_with(
             'volume_backend_name')
+
+
+@ddt.ddt
+class RevertToSnapshotMixinTestCase(test.TestCase):
+
+    _FAKE_MNT_POINT = '/mnt/fake_hash'
+
+    def setUp(self):
+        super(RevertToSnapshotMixinTestCase, self).setUp()
+        self._driver = remotefs.RevertToSnapshotMixin()
+        self._driver._remotefsclient = mock.Mock()
+        self._driver._execute = mock.Mock()
+        self._driver._delete = mock.Mock()
+
+        self.context = context.get_admin_context()
+
+        self._fake_volume = fake_volume.fake_volume_obj(
+            self.context, provider_location='fake_share')
+        self._fake_volume_path = os.path.join(self._FAKE_MNT_POINT,
+                                              self._fake_volume.name)
+        self._fake_snapshot = fake_snapshot.fake_snapshot_obj(self.context)
+        self._fake_snapshot_path = (self._fake_volume_path + '.' +
+                                    self._fake_snapshot.id)
+        self._fake_snapshot_name = os.path.basename(
+            self._fake_snapshot_path)
+        self._fake_snapshot.volume = self._fake_volume
+
+    @ddt.data(True, False)
+    @mock.patch.object(remotefs.RevertToSnapshotMixin, '_validate_state',
+                       create=True)
+    @mock.patch.object(remotefs.RevertToSnapshotMixin, '_read_info_file',
+                       create=True)
+    @mock.patch.object(remotefs.RevertToSnapshotMixin,
+                       '_local_path_volume_info', create=True)
+    @mock.patch.object(remotefs.RevertToSnapshotMixin, '_qemu_img_info',
+                       create=True)
+    @mock.patch.object(remotefs.RevertToSnapshotMixin, '_do_create_snapshot',
+                       create=True)
+    @mock.patch.object(remotefs.RevertToSnapshotMixin, '_local_volume_dir',
+                       create=True)
+    def test_revert_to_snapshot(self,
+                                is_latest_snapshot,
+                                mock_local_vol_dir,
+                                mock_do_create_snapshot,
+                                mock_qemu_img_info,
+                                mock_local_path_vol_info,
+                                mock_read_info_file,
+                                mock_validate_state):
+
+        active_file = (self._fake_snapshot_name if is_latest_snapshot
+                       else 'fake_latest_snap')
+        fake_snapshot_info = {
+            'active': active_file,
+            self._fake_snapshot.id: self._fake_snapshot_name
+        }
+
+        mock_read_info_file.return_value = fake_snapshot_info
+
+        fake_snap_img_info = mock.Mock()
+        fake_snap_img_info.backing_file = self._fake_volume.name
+
+        mock_qemu_img_info.return_value = fake_snap_img_info
+        mock_local_vol_dir.return_value = self._FAKE_MNT_POINT
+
+        if is_latest_snapshot:
+            self._driver._revert_to_snapshot(self.context, self._fake_volume,
+                                             self._fake_snapshot)
+            self._driver._delete.assert_called_once_with(
+                self._fake_snapshot_path)
+            mock_do_create_snapshot.assert_called_once_with(
+                self._fake_snapshot,
+                fake_snap_img_info.backing_file,
+                self._fake_snapshot_path)
+            mock_qemu_img_info.assert_called_once_with(
+                self._fake_snapshot_path,
+                self._fake_volume.name)
+        elif not is_latest_snapshot:
+            self.assertRaises(exception.InvalidSnapshot,
+                              self._driver._revert_to_snapshot,
+                              self.context, self._fake_volume,
+                              self._fake_snapshot)
+            self._driver._delete.assert_not_called()
+
+        exp_acceptable_states = ['available', 'reverting']
+        mock_validate_state.assert_called_once_with(
+            self._fake_snapshot.volume.status,
+            exp_acceptable_states)
+        mock_local_path_vol_info.assert_called_once_with(
+            self._fake_snapshot.volume)
+        mock_read_info_file.assert_called_once_with(
+            mock_local_path_vol_info.return_value)
