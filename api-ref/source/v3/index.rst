@@ -24,6 +24,7 @@ Block Storage API V3 (CURRENT)
 .. List the other random volume APIs in just alphabetical order.
 .. include:: volume-manage.inc
 .. include:: volumes-v3-snapshots.inc
+.. include:: volumes-v3-snapshots-actions.inc
 .. include:: snapshot-manage.inc
 .. include:: os-vol-transfer-v3.inc
 
