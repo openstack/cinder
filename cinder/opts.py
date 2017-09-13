@@ -72,7 +72,6 @@ from cinder.volume import api as cinder_volume_api
 from cinder.volume import driver as cinder_volume_driver
 from cinder.volume.drivers import blockbridge as \
     cinder_volume_drivers_blockbridge
-from cinder.volume.drivers import coho as cinder_volume_drivers_coho
 from cinder.volume.drivers.coprhd import common as \
     cinder_volume_drivers_coprhd_common
 from cinder.volume.drivers.coprhd import scaleio as \
@@ -299,7 +298,6 @@ def list_opts():
                 cinder_volume_driver.volume_opts,
                 cinder_volume_driver.iser_opts,
                 cinder_volume_drivers_blockbridge.blockbridge_opts,
-                cinder_volume_drivers_coho.coho_opts,
                 cinder_volume_drivers_coprhd_common.volume_opts,
                 cinder_volume_drivers_coprhd_scaleio.scaleio_opts,
                 cinder_volume_drivers_datera_dateraiscsi.d_opts,
