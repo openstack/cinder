@@ -1,0 +1,16 @@
+---
+fixes:
+  - The ONTAP drivers ("7mode" and "cmode") have been fixed to not report
+    consumed space as "provisioned_capacity_gb". They instead rely on
+    the cinder scheduler's calculation of "provisioned_capacity_gb". This
+    fixes the oversubscription miscalculations with the ONTAP drivers. This
+    bugfix affects all three protocols supported by these drivers
+    (iSCSI/FC/NFS).
+upgrade:
+  - If using the NetApp ONTAP drivers (7mode/cmode), the configuration value
+    for "max_over_subscription_ratio" may need to be increased to
+    avoid scheduling problems where storage pools that previously were
+    valid to schedule new volumes suddenly appear to be out of space
+    to the Cinder scheduler. See
+    documentation `here <https://docs.openstack
+    .org/cinder/latest/admin/blockstorage-over-subscription.html>`_.
