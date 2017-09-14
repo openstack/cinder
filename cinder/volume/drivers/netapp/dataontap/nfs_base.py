@@ -885,8 +885,6 @@ class NetAppNfsDriver(driver.ManageableVD,
             total_size / units.Gi)
         capacity['free_capacity_gb'] = na_utils.round_down(
             total_available / units.Gi)
-        capacity['provisioned_capacity_gb'] = (round(
-            capacity['total_capacity_gb'] - capacity['free_capacity_gb'], 2))
 
         return capacity
 

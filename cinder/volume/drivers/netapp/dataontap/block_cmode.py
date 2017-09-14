@@ -311,9 +311,6 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
             size_available_gb = capacity['size-available'] / units.Gi
             pool['free_capacity_gb'] = na_utils.round_down(size_available_gb)
 
-            pool['provisioned_capacity_gb'] = round(
-                pool['total_capacity_gb'] - pool['free_capacity_gb'], 2)
-
             if self.using_cluster_credentials:
                 dedupe_used = self.zapi_client.get_flexvol_dedupe_used_percent(
                     ssc_vol_name)
