@@ -17,6 +17,7 @@ import os
 import subprocess
 import textwrap
 
+from cinder.compute import nova
 from cinder.volume import configuration
 
 OrderedDict = collections.OrderedDict
@@ -215,6 +216,8 @@ if __name__ == "__main__":
                     if (group_name.endswith('SHARED_CONF_GROUP')
                             or group_name.lower() == 'backend_defaults'):
                         group_name = configuration.SHARED_CONF_GROUP
+                    if (group_name == 'NOVA_GROUP'):
+                        group_name = nova.NOVA_GROUP
 
                     if group_name in registered_opts_dict:
                         line = key + "." + formatted_opt
