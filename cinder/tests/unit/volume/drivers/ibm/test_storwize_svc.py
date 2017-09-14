@@ -3032,6 +3032,17 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                          ret['driver_volume_type'])
 
         # Check the multipath host-volume map return value
+        # target_iqns and target_portals have no guaranteed order
+        six.assertCountEqual(self,
+                             exp_m_path['data']['target_iqns'],
+                             ret['data']['target_iqns'])
+        del exp_m_path['data']['target_iqns']
+
+        six.assertCountEqual(self,
+                             exp_m_path['data']['target_portals'],
+                             ret['data']['target_portals'])
+        del exp_m_path['data']['target_portals']
+
         for k, v in exp_m_path['data'].items():
             self.assertEqual(v, ret['data'][k])
 
