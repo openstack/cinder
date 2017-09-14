@@ -399,7 +399,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
                                          self.empty_dict)
         self._check_result(res)
 
-        if (not rl) or (len(rl) == 0):
+        if not rl:
             if empty_ok:
                 LOG.debug("No volume %s found.", v_uuid)
                 return None, None, None, None
@@ -436,7 +436,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
                                          self.empty_dict)
         self._check_result(res)
 
-        if (not rs) or (len(rs) == 0):
+        if not rs:
             if empty_ok:
                 return None
             else:
@@ -597,7 +597,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(data=message)
 
         # Delete resource, if empty
-        if (not rl) or (not rl[0]) or (len(rl[0][2]) == 0):
+        if (not rl) or (not rl[0]) or not rl[0][2]:
             res = self.call_or_reconnect(self.odm.remove_resource,
                                          d_res_name, False)
             self._check_result(res, ignore=[dm_exc.DM_ENOENT])
