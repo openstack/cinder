@@ -412,7 +412,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'multiattach': False,
             'total_capacity_gb': 10.0,
             'free_capacity_gb': 2.0,
-            'provisioned_capacity_gb': 8.0,
             'netapp_dedupe_used_percent': 55.0,
             'netapp_aggregate_used_percent': 45,
             'utilization': 30.0,

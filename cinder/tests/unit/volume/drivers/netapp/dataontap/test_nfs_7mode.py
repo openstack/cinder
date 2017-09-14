@@ -100,13 +100,11 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
             fake.TOTAL_BYTES // units.Gi, '0.01')
         free_capacity_gb = na_utils.round_down(
             fake.AVAILABLE_BYTES // units.Gi, '0.01')
-        provisioned_capacity_gb = total_capacity_gb - free_capacity_gb
         capacity = {
             'reserved_percentage': fake.RESERVED_PERCENTAGE,
             'max_over_subscription_ratio': fake.MAX_OVER_SUBSCRIPTION_RATIO,
             'total_capacity_gb': total_capacity_gb,
             'free_capacity_gb': free_capacity_gb,
-            'provisioned_capacity_gb': provisioned_capacity_gb,
         }
         self.mock_object(self.driver,
                          '_get_share_capacity_info',
@@ -128,7 +126,6 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
                      'reserved_percentage': 7,
                      'max_over_subscription_ratio': 19.0,
                      'multiattach': False,
-                     'provisioned_capacity_gb': 4456.0,
                      'utilization': 30.0,
                      'filter_function': 'filter',
                      'goodness_function': 'goodness'}]
