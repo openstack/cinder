@@ -575,7 +575,6 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
             'QoS_support': False,
             'thin_provisioning_support': not thick,
             'thick_provisioning_support': thick,
-            'provisioned_capacity_gb': 2.94,
             'free_capacity_gb': 1339.27,
             'total_capacity_gb': 1342.21,
             'reserved_percentage': 5,
