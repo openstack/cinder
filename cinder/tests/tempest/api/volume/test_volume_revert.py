@@ -24,7 +24,6 @@ CONF = config.CONF
 
 
 class VolumeRevertTests(volume_base.BaseVolumeTest):
-    min_microversion = '3.40'
 
     @classmethod
     def setup_clients(cls):

@@ -20,6 +20,7 @@ from six.moves import http_client
 from six.moves.urllib.parse import urlencode
 import webob
 
+from cinder.api import microversions as mv
 from cinder.api.v3 import router as router_v3
 from cinder import context
 from cinder import objects
@@ -56,13 +57,13 @@ class VolumeManageTest(test.TestCase):
                                                   fake.PROJECT_ID,
                                                   True)
 
-    def _get_resp_post(self, body, version="3.8"):
+    def _get_resp_post(self, body, version=mv.MANAGE_EXISTING_LIST):
         """Helper to execute a POST manageable_volumes API call."""
         req = webob.Request.blank('/v3/%s/manageable_volumes' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
+        req.headers = mv.get_mv_header(version)
         req.headers['Content-Type'] = 'application/json'
-        req.headers['OpenStack-API-Version'] = 'volume ' + version
         req.environ['cinder.context'] = self._admin_ctxt
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(app())
@@ -88,7 +89,8 @@ class VolumeManageTest(test.TestCase):
         res = self._get_resp_post(body)
         self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
 
-    def _get_resp_get(self, host, detailed, paging, version="3.8", **kwargs):
+    def _get_resp_get(self, host, detailed, paging,
+                      version=mv.MANAGE_EXISTING_LIST, **kwargs):
         """Helper to execute a GET os-volume-manage API call."""
         params = {'host': host} if host else {}
         params.update(kwargs)
@@ -103,8 +105,8 @@ class VolumeManageTest(test.TestCase):
         req = webob.Request.blank('/v3/%s/manageable_volumes%s%s' %
                                   (fake.PROJECT_ID, detail, query_string))
         req.method = 'GET'
+        req.headers = mv.get_mv_header(version)
         req.headers['Content-Type'] = 'application/json'
-        req.headers['OpenStack-API-Version'] = 'volume ' + version
         req.environ['cinder.context'] = self._admin_ctxt
         res = req.get_response(app())
         return res
@@ -122,7 +124,9 @@ class VolumeManageTest(test.TestCase):
         self.assertEqual(http_client.OK, res.status_int)
 
     def test_get_manageable_volumes_previous_version(self):
-        res = self._get_resp_get('fakehost', False, True, version="3.7")
+        res = self._get_resp_get(
+            'fakehost', False, True,
+            version=mv.get_prior_version(mv.MANAGE_EXISTING_LIST))
         self.assertEqual(http_client.NOT_FOUND, res.status_int)
 
     @mock.patch('cinder.volume.api.API.get_manageable_volumes',
@@ -138,7 +142,9 @@ class VolumeManageTest(test.TestCase):
         self.assertEqual(http_client.OK, res.status_int)
 
     def test_get_manageable_volumes_detail_previous_version(self):
-        res = self._get_resp_get('fakehost', True, False, version="3.7")
+        res = self._get_resp_get(
+            'fakehost', True, False,
+            version=mv.get_prior_version(mv.MANAGE_EXISTING_LIST))
         self.assertEqual(http_client.NOT_FOUND, res.status_int)
 
     @ddt.data((True, True, 'detail_list'), (True, False, 'summary_list'),
@@ -152,12 +158,12 @@ class VolumeManageTest(test.TestCase):
         if clustered:
             host = None
             cluster_name = 'mycluster'
-            version = '3.17'
+            version = mv.MANAGE_EXISTING_CLUSTER
             kwargs = {'cluster': cluster_name}
         else:
             host = 'fakehost'
             cluster_name = None
-            version = '3.8'
+            version = mv.MANAGE_EXISTING_LIST
             kwargs = {}
         service = objects.Service(disabled=False, host='fakehost',
                                   cluster_name=cluster_name)
@@ -185,12 +191,13 @@ class VolumeManageTest(test.TestCase):
             mock.ANY, None, host=host, binary='cinder-volume',
             cluster_name=cluster_name)
 
-    @ddt.data('3.8', '3.17')
+    @ddt.data(mv.MANAGE_EXISTING_LIST, mv.MANAGE_EXISTING_CLUSTER)
     def test_get_manageable_missing_host(self, version):
         res = self._get_resp_get(None, True, False, version=version)
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)
 
     def test_get_manageable_both_host_cluster(self):
-        res = self._get_resp_get('host', True, False, version='3.17',
+        res = self._get_resp_get('host', True, False,
+                                 version=mv.MANAGE_EXISTING_CLUSTER,
                                  cluster='cluster')
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)

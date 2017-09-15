@@ -14,6 +14,7 @@
 #    under the License.
 
 from cinder.api import common
+from cinder.api import microversions as mv
 from cinder import utils
 
 
@@ -60,20 +61,21 @@ class ViewBuilder(common.ViewBuilder):
 
         req_version = request.api_version_request
         # Add group_snapshot_id and source_group_id if min version is greater
-        # than or equal to 3.14.
-        if req_version.matches("3.14", None):
+        # than or equal to GROUP_SNAPSHOTS.
+        if req_version.matches(mv.GROUP_SNAPSHOTS, None):
             group_ref['group']['group_snapshot_id'] = group.group_snapshot_id
             group_ref['group']['source_group_id'] = group.source_group_id
 
-        # Add volumes if min version is greater than or equal to 3.25.
-        if req_version.matches("3.25", None):
+        # Add volumes if min version is greater than or equal to
+        # GROUP_VOLUME_LIST.
+        if req_version.matches(mv.GROUP_VOLUME_LIST, None):
             if utils.get_bool_param('list_volume', request.params):
                 group_ref['group']['volumes'] = [volume.id
                                                  for volume in group.volumes]
 
         # Add replication_status if min version is greater than or equal
-        # to 3.38.
-        if req_version.matches("3.38", None):
+        # to GROUP_REPLICATION.
+        if req_version.matches(mv.GROUP_REPLICATION, None):
             group_ref['group']['replication_status'] = group.replication_status
 
         return group_ref

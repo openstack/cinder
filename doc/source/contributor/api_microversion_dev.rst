@@ -278,7 +278,16 @@ necessary to add changes to other places which describe your change:
   be enough information that it could be used by the docs team for
   release notes.
 
+* Constants should be used in the code to minimize errors on microversion
+  merge conflicts. Define a constant for the new microversion in the
+  ``cinder/api/microversions.py`` file and use that in the rest of the code.
+
 * Update the expected versions in affected tests.
+
+* API changes should almost always include a release note announcing the
+  availability of the new API functionality. The description of the API change
+  should indicate which microversion is required for the change, and it should
+  refer to the numerical value of the microversion and not its constant name.
 
 Allocating a microversion
 -------------------------

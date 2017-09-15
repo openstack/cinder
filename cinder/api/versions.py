@@ -51,7 +51,7 @@ _KNOWN_VERSIONS = {
         "status": "CURRENT",
         "version": api_version_request._MAX_API_VERSION,
         "min_version": api_version_request._MIN_API_VERSION,
-        "updated": "2016-02-08T12:20:21Z",
+        "updated": api_version_request.UPDATED,
         "links": _LINKS,
         "media-types": [{
             "base": "application/json",

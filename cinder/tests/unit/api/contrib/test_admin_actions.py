@@ -23,7 +23,7 @@ import webob
 from webob import exc
 
 from cinder.api.contrib import admin_actions
-from cinder.api.openstack import api_version_request as api_version
+from cinder.api import microversions as mv
 from cinder.backup import api as backup_api
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants
@@ -525,18 +525,16 @@ class AdminActionsTest(BaseAdminTest):
                                force_host_copy=False, version=None,
                                cluster=None):
         # build request to migrate to host
-        # req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' % (
-        #     fake.PROJECT_ID, volume['id']))
         req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         body = {'os-migrate_volume': {'host': host,
                                       'force_host_copy': force_host_copy}}
-        version = version or '3.0'
-        req.headers = {'OpenStack-API-Version': 'volume %s' % version}
-        req.api_version_request = api_version.APIVersionRequest(version)
-        if version == '3.16':
+        version = version or mv.BASE_VERSION
+        req.headers = mv.get_mv_header(version)
+        req.api_version_request = mv.get_api_version(version)
+        if version == mv.VOLUME_MIGRATE_CLUSTER:
             body['os-migrate_volume']['cluster'] = cluster
         req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = ctx
@@ -547,7 +545,9 @@ class AdminActionsTest(BaseAdminTest):
         volume = db.volume_get(self.ctx, volume['id'])
         return volume
 
-    @ddt.data('3.0', '3.15', '3.16')
+    @ddt.data(mv.BASE_VERSION,
+              mv.get_prior_version(mv.VOLUME_MIGRATE_CLUSTER),
+              mv.VOLUME_MIGRATE_CLUSTER)
     def test_migrate_volume_success_3(self, version):
         expected_status = http_client.ACCEPTED
         host = 'test2'
@@ -563,7 +563,8 @@ class AdminActionsTest(BaseAdminTest):
         cluster = 'cluster'
         volume = self._migrate_volume_prep()
         volume = self._migrate_volume_3_exec(self.ctx, volume, host,
-                                             expected_status, version='3.16',
+                                             expected_status,
+                                             version=mv.VOLUME_MIGRATE_CLUSTER,
                                              cluster=cluster)
         self.assertEqual('starting', volume['migration_status'])
 
@@ -574,7 +575,8 @@ class AdminActionsTest(BaseAdminTest):
         volume = self._migrate_volume_prep()
         self.assertRaises(exception.InvalidInput,
                           self._migrate_volume_3_exec, self.ctx, volume, host,
-                          None, version='3.16', cluster=cluster)
+                          None, version=mv.VOLUME_MIGRATE_CLUSTER,
+                          cluster=cluster)
 
     def _migrate_volume_exec(self, ctx, volume, host, expected_status,
                              force_host_copy=False):

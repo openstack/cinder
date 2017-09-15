@@ -16,6 +16,7 @@ from oslo_config import cfg
 from oslo_utils import timeutils
 
 from cinder.api import extensions
+from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.v3 import messages
 from cinder import context
@@ -128,8 +129,8 @@ class MessageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
-        req.headers = {version_header_name: 'volume 3.5'}
-        req.api_version_request = api_version.APIVersionRequest('3.30')
+        req.headers = mv.get_mv_header(mv.MESSAGES_PAGINATION)
+        req.api_version_request = mv.get_api_version(mv.RESOURCE_FILTER)
         req.environ['cinder.context'].is_admin = True
 
         res = self.controller.index(req)
@@ -139,8 +140,8 @@ class MessageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
-        req.headers = {version_header_name: 'volume 3.5'}
-        req.api_version_request = api_version.APIVersionRequest('3.30')
+        req.headers = mv.get_mv_header(mv.MESSAGES_PAGINATION)
+        req.api_version_request = mv.get_api_version(mv.RESOURCE_FILTER)
         req.environ['cinder.context'].is_admin = True
 
         res = self.controller.index(req)
@@ -149,12 +150,14 @@ class MessageApiTest(test.TestCase):
     def test_get_all_messages_with_limit_wrong_version(self):
         self.create_message_for_tests()
 
+        PRE_MESSAGES_PAGINATION = mv.get_prior_version(mv.MESSAGES_PAGINATION)
+
         url = '/v3/messages?limit=1'
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
-        req.headers["OpenStack-API-Version"] = "volume 3.3"
-        req.api_version_request = api_version.APIVersionRequest('3.3')
+        req.headers = mv.get_mv_header(PRE_MESSAGES_PAGINATION)
+        req.api_version_request = mv.get_api_version(PRE_MESSAGES_PAGINATION)
         req.environ['cinder.context'].is_admin = True
 
         res = self.controller.index(req)
@@ -167,8 +170,8 @@ class MessageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
-        req.headers["OpenStack-API-Version"] = "volume 3.5"
-        req.api_version_request = api_version.APIVersionRequest('3.5')
+        req.headers = mv.get_mv_header(mv.MESSAGES_PAGINATION)
+        req.api_version_request = mv.get_api_version(mv.MESSAGES_PAGINATION)
         req.environ['cinder.context'].is_admin = True
 
         res = self.controller.index(req)
@@ -181,8 +184,8 @@ class MessageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
-        req.headers["OpenStack-API-Version"] = "volume 3.5"
-        req.api_version_request = api_version.APIVersionRequest('3.5')
+        req.headers = mv.get_mv_header(mv.MESSAGES_PAGINATION)
+        req.api_version_request = mv.get_api_version(mv.MESSAGES_PAGINATION)
         req.environ['cinder.context'].is_admin = True
 
         res = self.controller.index(req)
@@ -196,8 +199,8 @@ class MessageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
-        req.headers["OpenStack-API-Version"] = "volume 3.5"
-        req.api_version_request = api_version.APIVersionRequest('3.5')
+        req.headers = mv.get_mv_header(mv.MESSAGES_PAGINATION)
+        req.api_version_request = mv.get_api_version(mv.MESSAGES_PAGINATION)
         req.environ['cinder.context'].is_admin = True
 
         res = self.controller.index(req)
@@ -210,8 +213,8 @@ class MessageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
-        req.headers["OpenStack-API-Version"] = "volume 3.5"
-        req.api_version_request = api_version.APIVersionRequest('3.5')
+        req.headers = mv.get_mv_header(mv.MESSAGES_PAGINATION)
+        req.api_version_request = mv.get_api_version(mv.MESSAGES_PAGINATION)
         req.environ['cinder.context'].is_admin = True
 
         res = self.controller.index(req)
@@ -242,8 +245,8 @@ class MessageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
-        req.headers = {version_header_name: 'volume 3.5'}
-        req.api_version_request = api_version.APIVersionRequest('3.30')
+        req.headers = mv.get_mv_header(mv.MESSAGES_PAGINATION)
+        req.api_version_request = mv.get_api_version(mv.RESOURCE_FILTER)
         req.environ['cinder.context'].is_admin = True
 
         res = self.controller.index(req)
@@ -263,7 +266,7 @@ class MessageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
-        req.headers = {version_header_name: 'volume 3.5'}
+        req.headers = mv.get_mv_header(mv.MESSAGES_PAGINATION)
         req.api_version_request = api_version.max_api_version()
         req.environ['cinder.context'].is_admin = True
 

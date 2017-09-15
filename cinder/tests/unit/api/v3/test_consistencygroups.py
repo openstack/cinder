@@ -15,6 +15,7 @@ import ddt
 from six.moves import http_client
 import webob
 
+from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.v3 import consistencygroups
 from cinder import context
@@ -72,9 +73,10 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = fakes.HTTPRequest.blank('/v3/%s/consistencygroups/%s/update' %
                                       (fake.PROJECT_ID, consistencygroup.id))
         req.environ['cinder.context'].is_admin = True
+        req.headers = mv.get_mv_header(mv.CG_UPDATE_BLANK_PROPERTIES)
         req.headers['Content-Type'] = 'application/json'
-        req.headers['OpenStack-API-Version'] = 'volume 3.6'
-        req.api_version_request = api_version.APIVersionRequest('3.6')
+        req.api_version_request = mv.get_api_version(
+            mv.CG_UPDATE_BLANK_PROPERTIES)
         body = {"consistencygroup": {"name": "",
                                      "description": "",
                                      "add_volumes": None,
@@ -118,9 +120,10 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = fakes.HTTPRequest.blank('/v3/%s/consistencygroups/%s/update' %
                                       (fake.PROJECT_ID, consistencygroup.id))
         req.environ['cinder.context'].is_admin = True
+        req.headers = mv.get_mv_header(mv.CG_UPDATE_BLANK_PROPERTIES)
         req.headers['Content-Type'] = 'application/json'
-        req.headers['OpenStack-API-Version'] = 'volume 3.6'
-        req.api_version_request = api_version.APIVersionRequest('3.6')
+        req.api_version_request = mv.get_api_version(
+            mv.CG_UPDATE_BLANK_PROPERTIES)
         body = {"consistencygroup": {"name": None,
                                      "description": None,
                                      "add_volumes": None,
@@ -132,16 +135,20 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                 req, consistencygroup.id, body)
         consistencygroup.destroy()
 
-    def test_update_consistencygroup_all_empty_parameters_not_version_36(self):
+    def test_update_consistencygroup_all_empty_parameters_not_version_ok(self):
         consistencygroup = self._create_consistencygroup(
             ctxt=self.ctxt,
             status=fields.ConsistencyGroupStatus.AVAILABLE)
         req = fakes.HTTPRequest.blank('/v3/%s/consistencygroups/%s/update' %
                                       (fake.PROJECT_ID, consistencygroup.id))
         req.environ['cinder.context'].is_admin = True
+
+        non_supported_version = mv.get_prior_version(
+            mv.CG_UPDATE_BLANK_PROPERTIES)
+        req.headers = mv.get_mv_header(non_supported_version)
+        req.api_version_request = mv.get_api_version(non_supported_version)
         req.headers['Content-Type'] = 'application/json'
-        req.headers['OpenStack-API-Version'] = 'volume 3.5'
-        req.api_version_request = api_version.APIVersionRequest('3.5')
+
         body = {"consistencygroup": {"name": None,
                                      "description": None,
                                      "add_volumes": None,
@@ -160,9 +167,13 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = fakes.HTTPRequest.blank('/v3/%s/consistencygroups/%s/update' %
                                       (fake.PROJECT_ID, consistencygroup.id))
         req.environ['cinder.context'].is_admin = True
+
+        non_supported_version = mv.get_prior_version(
+            mv.CG_UPDATE_BLANK_PROPERTIES)
+        req.headers = mv.get_mv_header(non_supported_version)
+        req.api_version_request = mv.get_api_version(non_supported_version)
         req.headers['Content-Type'] = 'application/json'
-        req.headers['OpenStack-API-Version'] = 'volume 3.5'
-        req.api_version_request = api_version.APIVersionRequest('3.5')
+
         body = None
         self.assertRaisesRegexp(webob.exc.HTTPBadRequest,
                                 "Missing request body",
@@ -177,9 +188,13 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = fakes.HTTPRequest.blank('/v3/%s/consistencygroups/%s/update' %
                                       (fake.PROJECT_ID, consistencygroup.id))
         req.environ['cinder.context'].is_admin = True
+
+        non_supported_version = mv.get_prior_version(
+            mv.CG_UPDATE_BLANK_PROPERTIES)
+        req.headers = mv.get_mv_header(non_supported_version)
         req.headers['Content-Type'] = 'application/json'
-        req.headers['OpenStack-API-Version'] = 'volume 3.5'
-        req.api_version_request = api_version.APIVersionRequest('3.5')
+
+        req.api_version_request = mv.get_api_version(non_supported_version)
         body = {"consistencygroup": {"name": "my_fake_cg",
                                      "description": "fake consistency group",
                                      "add_volumes": "volume-uuid-1",

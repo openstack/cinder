@@ -24,6 +24,7 @@ from oslo_log import log as logging
 from six.moves import urllib
 import webob
 
+from cinder.api import microversions as mv
 from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
@@ -66,8 +67,6 @@ CONF.register_opts(api_common_opts)
 
 LOG = logging.getLogger(__name__)
 _FILTERS_COLLECTION = None
-FILTERING_VERSION = '3.31'
-LIKE_FILTER_VERSION = '3.34'
 
 ATTRIBUTE_CONVERTERS = {'name~': 'display_name~',
                         'description~': 'display_description~'}
@@ -492,9 +491,9 @@ def process_general_filtering(resource):
             req_version = kwargs.get('req_version')
             filters = kwargs.get('filters')
             context = kwargs.get('context')
-            if req_version.matches(FILTERING_VERSION):
+            if req_version.matches(mv.RESOURCE_FILTER):
                 support_like = False
-                if req_version.matches(LIKE_FILTER_VERSION):
+                if req_version.matches(mv.LIKE_FILTER):
                     support_like = True
                 reject_invalid_filters(context, filters,
                                        resource, support_like)

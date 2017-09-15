@@ -25,6 +25,7 @@ from six.moves import http_client
 import webob
 
 from cinder.api.contrib import backups
+from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 # needed for stubs to work
 import cinder.backup
@@ -117,8 +118,8 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'GET'
+        req.headers = mv.get_mv_header(mv.BACKUP_METADATA)
         req.headers['Content-Type'] = 'application/json'
-        req.headers['OpenStack-API-Version'] = 'volume 3.43'
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
@@ -131,6 +132,7 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/%s/backups/%s' % (
             fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'GET'
+        req.headers = mv.get_mv_header(mv.BACKUP_METADATA)
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
@@ -330,9 +332,9 @@ class BackupsAPITestCase(test.TestCase):
 
         req = webob.Request.blank('/v3/%s/backups/detail' % fake.PROJECT_ID)
         req.method = 'GET'
+        req.headers = mv.get_mv_header(mv.BACKUP_METADATA)
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
-        req.headers['OpenStack-API-Version'] = 'volume 3.43'
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
@@ -536,8 +538,8 @@ class BackupsAPITestCase(test.TestCase):
                 }
         req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
+        req.headers = mv.get_mv_header(mv.BACKUP_METADATA)
         req.headers['Content-Type'] = 'application/json'
-        req.headers['OpenStack-API-Version'] = 'volume 3.43'
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
@@ -546,8 +548,8 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, res_dict['backup']['id']))
         req.method = 'GET'
+        req.headers = mv.get_mv_header(mv.BACKUP_METADATA)
         req.headers['Content-Type'] = 'application/json'
-        req.headers['OpenStack-API-Version'] = 'volume 3.43'
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)

@@ -17,6 +17,7 @@ import ddt
 import mock
 
 from cinder.api.contrib import used_limits
+from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
 from cinder import exception
@@ -40,8 +41,11 @@ class UsedLimitsTestCase(test.TestCase):
         super(UsedLimitsTestCase, self).setUp()
         self.controller = used_limits.UsedLimitsController()
 
-    @ddt.data(('2.0', False), ('3.38', True), ('3.38', False), ('3.39', True),
-              ('3.39', False))
+    @ddt.data(('2.0', False),
+              (mv.get_prior_version(mv.LIMITS_ADMIN_FILTER), True),
+              (mv.get_prior_version(mv.LIMITS_ADMIN_FILTER), False),
+              (mv.LIMITS_ADMIN_FILTER, True),
+              (mv.LIMITS_ADMIN_FILTER, False))
     @mock.patch('cinder.quota.QUOTAS.get_project_quotas')
     @mock.patch('cinder.policy.enforce')
     def test_used_limits(self, ver_project, _mock_policy_enforce,
@@ -78,9 +82,9 @@ class UsedLimitsTestCase(test.TestCase):
         self.controller.index(fake_req, res)
         abs_limits = res.obj['limits']['absolute']
 
-        # if admin, only 3.39 and req contains project_id filter, cinder
-        # returns the specified project's quota.
-        if version == '3.39' and has_project:
+        # if admin, only LIMITS_ADMIN_FILTER and req contains project_id
+        # filter, cinder returns the specified project's quota.
+        if version == mv.LIMITS_ADMIN_FILTER and has_project:
             self.assertEqual(1, abs_limits['totalGigabytesUsed'])
         else:
             self.assertEqual(2, abs_limits['totalGigabytesUsed'])

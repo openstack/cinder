@@ -19,6 +19,7 @@ import mock
 import webob
 
 from cinder.api.contrib import scheduler_stats
+from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 from cinder import context
 from cinder import exception
@@ -84,7 +85,7 @@ class SchedulerStatsAPITest(test.TestCase):
                                       fake.PROJECT_ID)
         mock_rpcapi.return_value = [dict(name='pool1',
                                          capabilities=dict(foo='bar'))]
-        req.api_version_request = api_version.APIVersionRequest('3.28')
+        req.api_version_request = mv.get_api_version(mv.POOL_FILTER)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.get_pools(req)
 
@@ -106,7 +107,7 @@ class SchedulerStatsAPITest(test.TestCase):
                                       '&foo=bar' % fake.PROJECT_ID)
         mock_rpcapi.return_value = [dict(name='pool1',
                                          capabilities=dict(foo='bar'))]
-        req.api_version_request = api_version.APIVersionRequest('3.28')
+        req.api_version_request = mv.get_api_version(mv.POOL_FILTER)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.get_pools(req)
 
@@ -175,8 +176,8 @@ class SchedulerStatsAPITest(test.TestCase):
                           self.controller.get_pools,
                           req)
 
-    @ddt.data(('3.34', False),
-              ('3.35', True))
+    @ddt.data((mv.get_prior_version(mv.POOL_TYPE_FILTER), False),
+              (mv.POOL_TYPE_FILTER, True))
     @ddt.unpack
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_pools')
     @mock.patch('cinder.api.common.reject_invalid_filters')

@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from cinder.api import microversions as mv
 from cinder.api.views import snapshots as views_v2
 
 
@@ -25,10 +26,10 @@ class ViewBuilder(views_v2.ViewBuilder):
 
         req_version = request.api_version_request
         # Add group_snapshot_id if min version is greater than or equal
-        # to 3.14.
-        if req_version.matches("3.14", None):
+        # to GROUP_SNAPSHOTS.
+        if req_version.matches(mv.GROUP_SNAPSHOTS, None):
             snapshot_ref['snapshot']['group_snapshot_id'] = (
                 snapshot.get('group_snapshot_id'))
-        if req_version.matches("3.41", None):
+        if req_version.matches(mv.SNAPSHOT_LIST_USER_ID, None):
             snapshot_ref['snapshot']['user_id'] = snapshot.get('user_id')
         return snapshot_ref

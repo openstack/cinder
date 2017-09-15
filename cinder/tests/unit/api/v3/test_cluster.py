@@ -21,6 +21,7 @@ import mock
 from oslo_utils import versionutils
 
 from cinder.api import extensions
+from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.v3 import clusters
 from cinder import context
@@ -78,7 +79,7 @@ EXPECTED = [{'created_at': datetime.datetime(2016, 6, 1, 2, 46, 28),
 
 
 class FakeRequest(object):
-    def __init__(self, is_admin=True, version='3.7', **kwargs):
+    def __init__(self, is_admin=True, version=mv.CLUSTER_SUPPORT, **kwargs):
         self.GET = kwargs
         self.headers = {'OpenStack-API-Version': 'volume ' + version}
         self.api_version_request = api_version.APIVersionRequest(version)
@@ -108,8 +109,10 @@ class ClustersTestCase(test.TestCase):
     REPLICATION_FILTERS = ({'replication_status': 'error'}, {'frozen': True},
                            {'active_backend_id': 'replication'})
 
-    def _get_expected(self, version='3.8'):
-        if versionutils.convert_version_to_tuple(version) >= (3, 19):
+    def _get_expected(self,
+                      version=mv.get_prior_version(mv.REPLICATION_CLUSTER)):
+        if (versionutils.convert_version_to_tuple(version) >=
+                versionutils.convert_version_to_tuple(mv.REPLICATION_CLUSTER)):
             return EXPECTED
 
         expect = []
@@ -130,7 +133,7 @@ class ClustersTestCase(test.TestCase):
 
     @mock.patch('cinder.db.cluster_get_all', return_value=CLUSTERS_ORM)
     def _test_list(self, get_all_mock, detailed, filters=None, expected=None,
-                   version='3.8'):
+                   version=mv.get_prior_version(mv.REPLICATION_CLUSTER)):
         filters = filters or {}
         req = FakeRequest(version=version, **filters)
         method = getattr(self.controller, 'detail' if detailed else 'index')
@@ -187,14 +190,13 @@ class ClustersTestCase(test.TestCase):
         """Verify the wrong version so that user can't list clusters."""
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
                           self._test_list, detailed=detailed,
-                          version='3.6')
+                          version=mv.get_prior_version(mv.CLUSTER_SUPPORT))
 
     @ddt.data(*REPLICATION_FILTERS)
     def test_index_detail_replication_new_fields(self, filters):
-        version = '3.26'
-        expected = {'clusters': self._get_expected(version)}
+        expected = {'clusters': self._get_expected(mv.REPLICATION_CLUSTER)}
         self._test_list(detailed=True, filters=filters, expected=expected,
-                        version=version)
+                        version=mv.REPLICATION_CLUSTER)
 
     @ddt.data(*REPLICATION_FILTERS)
     def test_index_summary_replication_new_fields(self, filters):
@@ -209,7 +211,7 @@ class ClustersTestCase(test.TestCase):
                                   'replication_status': 'error',
                                   'status': 'disabled'}]}
         self._test_list(detailed=False, filters=filters, expected=expected,
-                        version='3.26')
+                        version=mv.REPLICATION_CLUSTER)
 
     @mock.patch('cinder.db.sqlalchemy.api.cluster_get',
                 return_value=CLUSTERS_ORM[0])
@@ -232,7 +234,7 @@ class ClustersTestCase(test.TestCase):
                           self.controller.show, req, 'name')
 
     def test_show_wrong_version(self):
-        req = FakeRequest(version='3.5')
+        req = FakeRequest(version=mv.get_prior_version(mv.CLUSTER_SUPPORT))
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
                           self.controller.show, req, 'name')
 
@@ -307,6 +309,6 @@ class ClustersTestCase(test.TestCase):
 
     @ddt.data('enable', 'disable')
     def test_update_wrong_version(self, action):
-        req = FakeRequest(version='3.5')
+        req = FakeRequest(version=mv.get_prior_version(mv.CLUSTER_SUPPORT))
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
                           self.controller.update, req, action, {})

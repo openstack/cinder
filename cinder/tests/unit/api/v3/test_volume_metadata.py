@@ -18,6 +18,7 @@ from oslo_serialization import jsonutils
 import webob
 
 from cinder.api import extensions
+from cinder.api import microversions as mv
 from cinder.api.v3 import volume_metadata
 from cinder.api.v3 import volumes
 from cinder import db
@@ -150,7 +151,7 @@ class VolumeMetaDataTest(test.TestCase):
         self.volume_controller.create(req, body)
 
     def test_index(self):
-        req = fakes.HTTPRequest.blank(self.url, version="3.15")
+        req = fakes.HTTPRequest.blank(self.url, version=mv.ETAGS)
         data = self.controller.index(req, self.req_id)
 
         expected = {
@@ -166,14 +167,14 @@ class VolumeMetaDataTest(test.TestCase):
     def test_index_nonexistent_volume(self):
         self.mock_object(db, 'volume_metadata_get',
                          return_volume_nonexistent)
-        req = fakes.HTTPRequest.blank(self.url, version="3.15")
+        req = fakes.HTTPRequest.blank(self.url, version=mv.ETAGS)
         self.assertRaises(exception.VolumeNotFound,
                           self.controller.index, req, self.url)
 
     def test_index_no_data(self):
         self.mock_object(db, 'volume_metadata_get',
                          return_empty_volume_metadata)
-        req = fakes.HTTPRequest.blank(self.url, version="3.15")
+        req = fakes.HTTPRequest.blank(self.url, version=mv.ETAGS)
         data = self.controller.index(req, self.req_id)
         expected = {'metadata': {}}
         result = jsonutils.loads(data.body)
@@ -182,7 +183,7 @@ class VolumeMetaDataTest(test.TestCase):
     def test_validate_etag_true(self):
         self.mock_object(db, 'volume_metadata_get',
                          return_value={'key1': 'vanue1', 'key2': 'value2'})
-        req = fakes.HTTPRequest.blank(self.url, version="3.15")
+        req = fakes.HTTPRequest.blank(self.url, version=mv.ETAGS)
         req.environ['cinder.context'] = mock.Mock()
         req.if_match.etags = ['d5103bf7b26ff0310200d110da3ed186']
         self.assertTrue(self.controller._validate_etag(req, self.req_id))
@@ -192,7 +193,7 @@ class VolumeMetaDataTest(test.TestCase):
         fake_volume = {'id': self.req_id, 'status': 'available'}
         fake_context = mock.Mock()
         metadata_update.side_effect = return_new_volume_metadata
-        req = fakes.HTTPRequest.blank(self.url, version="3.15")
+        req = fakes.HTTPRequest.blank(self.url, version=mv.ETAGS)
         req.method = 'PUT'
         req.content_type = "application/json"
         expected = {
@@ -217,7 +218,7 @@ class VolumeMetaDataTest(test.TestCase):
         fake_volume = {'id': self.req_id, 'status': 'available'}
         fake_context = mock.Mock()
         metadata_update.side_effect = return_create_volume_metadata
-        req = fakes.HTTPRequest.blank(self.url + '/key1', version="3.15")
+        req = fakes.HTTPRequest.blank(self.url + '/key1', version=mv.ETAGS)
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
         req.body = jsonutils.dump_as_bytes(body)
@@ -235,7 +236,7 @@ class VolumeMetaDataTest(test.TestCase):
     def test_create_metadata_keys_value_none(self):
         self.mock_object(db, 'volume_metadata_update',
                          return_create_volume_metadata)
-        req = fakes.HTTPRequest.blank(self.url, version="3.15")
+        req = fakes.HTTPRequest.blank(self.url, version=mv.ETAGS)
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
         body = {"meta": {"key": None}}
@@ -245,7 +246,7 @@ class VolumeMetaDataTest(test.TestCase):
     def test_update_items_value_none(self):
         self.mock_object(db, 'volume_metadata_update',
                          return_create_volume_metadata)
-        req = fakes.HTTPRequest.blank(self.url + '/key1', version="3.15")
+        req = fakes.HTTPRequest.blank(self.url + '/key1', version=mv.ETAGS)
         req.method = 'PUT'
         body = {"metadata": {"key": None}}
         req.body = jsonutils.dump_as_bytes(body)

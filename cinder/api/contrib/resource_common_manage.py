@@ -15,6 +15,7 @@
 import oslo_messaging as messaging
 
 from cinder.api import common
+from cinder.api import microversions as mv
 from cinder import exception
 from cinder.i18n import _
 
@@ -23,7 +24,8 @@ def get_manageable_resources(req, is_detail, function_get_manageable,
                              view_builder):
     context = req.environ['cinder.context']
     params = req.params.copy()
-    cluster_name, host = common.get_cluster_host(req, params, '3.17')
+    cluster_name, host = common.get_cluster_host(
+        req, params, mv.MANAGE_EXISTING_CLUSTER)
     marker, limit, offset = common.get_pagination_params(params)
     sort_keys, sort_dirs = common.get_sort_params(params,
                                                   default_key='reference')
