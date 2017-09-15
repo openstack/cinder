@@ -2043,19 +2043,37 @@ class API(base.Base):
             self.volume_rpcapi.attachment_delete(ctxt,
                                                  attachment.id,
                                                  volume)
+        status_updates = {'status': 'available',
+                          'attach_status': 'detached'}
         remaining_attachments = AO_LIST.get_all_by_volume_id(ctxt, volume.id)
 
-        # TODO(jdg): Make this check attachments_by_volume_id when we
-        # implement multi-attach for real
-        if len(remaining_attachments) < 1:
-            volume.status = 'available'
-            volume.attach_status = 'detached'
-            volume.save()
+        # NOTE(jdg) Try and figure out the > state we have left and set that
+        # attached > attaching > > detaching > reserved
+        pending_status_list = []
+        for attachment in remaining_attachments:
+            pending_status_list.append(attachment.attach_status)
+        if 'attached' in pending_status_list:
+            status_updates['status'] = 'in-use'
+            status_updates['attach_status'] = 'attached'
+        elif 'attaching' in pending_status_list:
+            status_updates['status'] = 'attaching'
+            status_updates['attach_status'] = 'attaching'
+        elif 'detaching' in pending_status_list:
+            status_updates['status'] = 'detaching'
+            status_updates['attach_status'] = 'detaching'
+        elif 'reserved' in pending_status_list:
+            status_updates['status'] = 'reserved'
+            status_updates['attach_status'] = 'reserved'
+
+        volume.status = status_updates['status']
+        volume.attach_status = status_updates['attach_status']
+        volume.save()
         return remaining_attachments
 
 
 class HostAPI(base.Base):
     """Sub-set of the Volume Manager API for managing host operations."""
+
     def set_host_enabled(self, context, host, enabled):
         """Sets the specified host's ability to accept new volumes."""
         raise NotImplementedError()
