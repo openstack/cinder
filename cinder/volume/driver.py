@@ -1845,21 +1845,6 @@ class BaseVD(object):
         pass
 
 
-class LocalVD(object):
-    """This class has been deprecated and should not be inherited."""
-    pass
-
-
-class SnapshotVD(object):
-    """This class has been deprecated and should not be inherited."""
-    pass
-
-
-class ConsistencyGroupVD(object):
-    """This class has been deprecated and should not be inherited."""
-    pass
-
-
 @six.add_metaclass(abc.ABCMeta)
 class CloneableImageVD(object):
     @abc.abstractmethod
@@ -1906,16 +1891,6 @@ class MigrateVD(object):
                      dictionary of its reported capabilities.
         """
         return (False, None)
-
-
-class ExtendVD(object):
-    """This class has been deprecated and should not be inherited."""
-    pass
-
-
-class TransferVD(object):
-    """This class has been deprecated and should not be inherited."""
-    pass
 
 
 @six.add_metaclass(abc.ABCMeta)
