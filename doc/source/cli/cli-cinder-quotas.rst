@@ -25,13 +25,13 @@ Administrative users can view Block Storage service quotas.
 
    .. code-block:: console
 
-      $ project_id=$(openstack project show -f value -c id PROJECT_NAME)
+      $ PROJECT_ID=$(openstack project show -f value -c id PROJECT_NAME)
 
 #. List the default quotas for a project:
 
    .. code-block:: console
 
-      $ openstack quota show --default $OS_TENANT_ID
+      $ openstack quota show --default $PROJECT_ID
       +-----------------------+-------+
       | Field                 | Value |
       +-----------------------+-------+
@@ -80,15 +80,15 @@ Administrative users can view Block Storage service quotas.
    Listing default quotas with the OpenStack command line client will
    provide all quotas for storage and network services. Previously, the
    :command:`cinder quota-defaults` command would list only storage
-   quotas. You can use `PROJECT_ID` or `$OS_TENANT_NAME` arguments to
-   show Block Storage service quotas. If the `PROJECT_ID` argument returns
-   errors in locating resources, use `$OS_TENANT_NAME`.
+   quotas. You can use `$PROJECT_ID` or `$PROJECT_NAME` arguments to
+   show Block Storage service quotas. If the `$PROJECT_ID` argument returns
+   errors in locating resources, use `$PROJECT_NAME`.
 
 #. View Block Storage service quotas for a project:
 
    .. code-block:: console
 
-      $ openstack quota show $OS_TENANT_ID
+      $ openstack quota show $PROJECT_ID
       +-----------------------+-------+
       | Field                 | Value |
       +-----------------------+-------+
@@ -137,7 +137,7 @@ Administrative users can view Block Storage service quotas.
 
    .. code-block:: console
 
-      $ cinder quota-usage $project_id
+      $ cinder quota-usage $PROJECT_ID
       +-----------------------+--------+----------+-------+
       | Type                  | In_use | Reserved | Limit |
       +-----------------------+--------+----------+-------+
@@ -180,8 +180,8 @@ service quotas.
 
    .. code-block:: console
 
-      $ openstack quota set --volumes 15  $project_id
-      $ openstack quota show $project_id
+      $ openstack quota set --volumes 15 $PROJECT_ID
+      $ openstack quota show $PROJECT_ID
       +-----------------------+----------------------------------+
       | Field                 | Value                            |
       +-----------------------+----------------------------------+
@@ -229,4 +229,4 @@ service quotas.
 
    .. code-block:: console
 
-      $ cinder quota-delete PROJECT_ID
+      $ cinder quota-delete $PROJECT_ID
