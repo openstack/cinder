@@ -1111,16 +1111,23 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
 
     def test_update_consistencygroup_invalid_state(self):
+        volume_type_id = utils.create_volume_type(
+            context.get_admin_context(), self, name='my_vol_type')['id']
         consistencygroup = self._create_consistencygroup(
             status=fields.ConsistencyGroupStatus.CREATING,
+            volume_type_ids=[volume_type_id],
             ctxt=self.ctxt)
+        add_volume_id = utils.create_volume(
+            self.ctxt,
+            testcase_instance=self,
+            volume_type_id=volume_type_id)['id']
         req = webob.Request.blank('/v2/%s/consistencygroups/%s/update' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
         body = {"consistencygroup": {"name": "new name",
                                      "description": None,
-                                     "add_volumes": None,
+                                     "add_volumes": add_volume_id,
                                      "remove_volumes": None, }}
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app(

@@ -516,6 +516,7 @@ class API(base.Base):
 
     @wrap_check_policy
     def delete(self, context, group, delete_volumes=False):
+
         if not group.host:
             self.update_quota(context, group, -1, group.project_id)
 
@@ -540,6 +541,9 @@ class API(base.Base):
                 raise exception.InvalidGroup(
                     reason=_("Group has existing snapshots."))
 
+        # TODO(smcginnis): Add conditional update handling for volumes
+        # Should probably utilize the volume_api.delete code to handle
+        # cascade snapshot deletion and force delete.
         volumes = self.db.volume_get_all_by_generic_group(context.elevated(),
                                                           group.id)
         if volumes and not delete_volumes:
@@ -570,9 +574,31 @@ class API(base.Base):
 
         self.db.volumes_update(context, volumes_model_update)
 
-        group.status = c_fields.GroupStatus.DELETING
-        group.terminated_at = timeutils.utcnow()
-        group.save()
+        if delete_volumes:
+            # We're overloading the term "delete_volumes" somewhat to also
+            # mean to delete the group regardless of the state.
+            expected = {}
+        else:
+            expected = {'status': (c_fields.GroupStatus.AVAILABLE,
+                                   c_fields.GroupStatus.ERROR)}
+        filters = [~db.group_has_group_snapshot_filter(),
+                   ~db.group_has_volumes_filter(
+                       attached_or_with_snapshots=delete_volumes),
+                   ~db.group_creating_from_src(group_id=group.id)]
+        values = {'status': c_fields.GroupStatus.DELETING}
+
+        if not group.conditional_update(values, expected, filters):
+            if delete_volumes:
+                reason = _('Group status must be available or error and must '
+                           'not have dependent group snapshots')
+            else:
+                reason = _('Group must not have attached volumes, volumes '
+                           'with snapshots, or dependent group snapshots')
+            msg = _('Cannot delete group %(id)s. %(reason)s, and '
+                    'it cannot be the source for an ongoing group or group '
+                    'snapshot creation.') % {
+                'id': group.id, 'reason': reason}
+            raise exception.InvalidGroup(reason=msg)
 
         self.volume_rpcapi.delete_group(context, group)
 
@@ -580,10 +606,13 @@ class API(base.Base):
     def update(self, context, group, name, description,
                add_volumes, remove_volumes):
         """Update group."""
-        if group.status != c_fields.GroupStatus.AVAILABLE:
-            msg = _("Group status must be available, "
-                    "but current status is: %s.") % group.status
-            raise exception.InvalidGroup(reason=msg)
+        # Validate name.
+        if name == group.name:
+            name = None
+
+        # Validate description.
+        if description == group.description:
+            description = None
 
         add_volumes_list = []
         remove_volumes_list = []
@@ -605,14 +634,6 @@ class API(base.Base):
 
         volumes = self.db.volume_get_all_by_generic_group(context, group.id)
 
-        # Validate name.
-        if name == group.name:
-            name = None
-
-        # Validate description.
-        if description == group.description:
-            description = None
-
         # Validate volumes in add_volumes and remove_volumes.
         add_volumes_new = ""
         remove_volumes_new = ""
@@ -631,6 +652,7 @@ class API(base.Base):
                    {'group_id': group.id})
             raise exception.InvalidGroup(reason=msg)
 
+        expected = {}
         fields = {'updated_at': timeutils.utcnow()}
 
         # Update name and description in db now. No need to
@@ -643,10 +665,12 @@ class API(base.Base):
             # Only update name or description. Set status to available.
             fields['status'] = c_fields.GroupStatus.AVAILABLE
         else:
+            expected['status'] = c_fields.GroupStatus.AVAILABLE
             fields['status'] = c_fields.GroupStatus.UPDATING
 
-        group.update(fields)
-        group.save()
+        if not group.conditional_update(fields, expected):
+            msg = _("Group status must be available.")
+            raise exception.InvalidGroup(reason=msg)
 
         # Do an RPC call only if the update request includes
         # adding/removing volumes. add_volumes_new and remove_volumes_new

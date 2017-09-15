@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Volume group updates of any kind had previously required the group to be
+    in ``Available`` status. Updates to the group name or
+    description will now work regardless of the volume group status.
