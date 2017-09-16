@@ -115,7 +115,6 @@ REST_API_VERSION_HISTORY = """
 # Explicitly using /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
 _MAX_API_VERSION = "3.44"
-_LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 
 
@@ -128,10 +127,6 @@ def min_api_version():
 
 def max_api_version():
     return APIVersionRequest(_MAX_API_VERSION)
-
-
-def legacy_api_version1():
-    return APIVersionRequest(_LEGACY_API_VERSION1)
 
 
 def legacy_api_version2():
