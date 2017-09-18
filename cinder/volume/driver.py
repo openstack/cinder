@@ -146,12 +146,13 @@ volume_opts = [
     cfg.StrOpt('target_protocol',
                deprecated_name='iscsi_protocol',
                default='iscsi',
-               choices=['iscsi', 'iser'],
-               help='Determines the iSCSI protocol for new iSCSI volumes, '
-                    'created with tgtadm or lioadm target helpers. In '
-                    'order to enable RDMA, this parameter should be set '
+               choices=['iscsi', 'iser', 'nvmet_rdma'],
+               help='Determines the target protocol for new volumes, '
+                    'created with tgtadm, lioadm and nvmet target helpers. '
+                    'In order to enable RDMA, this parameter should be set '
                     'with the value "iser". The supported iSCSI protocol '
-                    'values are "iscsi" and "iser".'),
+                    'values are "iscsi" and "iser", in case of nvmet target '
+                    'set to "nvmet_rdma".'),
     cfg.StrOpt('driver_client_cert_key',
                help='The path to the client certificate key for verification, '
                     'if the driver supports it.'),
@@ -304,12 +305,24 @@ iser_opts = [
                help='The name of the iSER target user-land tool to use'),
 ]
 
+nvmet_opts = [
+    cfg.PortOpt('nvmet_port_id',
+                default=1,
+                help='The port that the NVMe target is listening on.'),
+    cfg.IntOpt('nvmet_ns_id',
+               default=10,
+               help='The namespace id associated with the subsystem '
+                    'that will be created with the path for the LVM volume.'),
+]
+
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(iser_opts, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(nvmet_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(volume_opts)
 CONF.register_opts(iser_opts)
+CONF.register_opts(nvmet_opts)
 CONF.import_opt('backup_use_same_host', 'cinder.backup.api')
 
 
@@ -367,6 +380,7 @@ class BaseVD(object):
         if self.configuration:
             self.configuration.append_config_values(volume_opts)
             self.configuration.append_config_values(iser_opts)
+            self.configuration.append_config_values(nvmet_opts)
             utils.setup_tracing(self.configuration.safe_get('trace_flags'))
 
             # NOTE(geguileo): Don't allow to start if we are enabling
