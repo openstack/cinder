@@ -20,7 +20,6 @@ import json
 import math
 from os import urandom
 from random import randint
-import string
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -28,7 +27,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.ciphers import algorithms
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers import modes
-from cryptography.hazmat.primitives import hashes
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -201,21 +199,12 @@ class Session(object):
         return result["data"]
 
     def _encrypt_RSA(self, modulus, passphrase, text):
-        key = rsa.generate_private_key(
-            key_size = modulus,
-            public_exponent = passphrase,
-            backend = default_backend()
-        )
-        public_key = key.public_key()
-
+        public_numbers = rsa.RSAPublicNumbers(passphrase, modulus)
+        public_key = public_numbers.public_key(default_backend())
         ciphertext = public_key.encrypt(
-            text,
-            padding.PKCS1v15(
-                mgf = padding.PKCS1v15(algorithm = hashes.SHA1()),
-                algorithm = hashes.SHA1()
-            )
+            text.encode('ascii'),
+            padding.PKCS1v15()
         )
-
         return ciphertext
 
     def _encrypt_AES(self, passphrase, text):
@@ -233,15 +222,17 @@ class Session(object):
 
         params[cipher_token] = server_time
 
-        encrypted_passphrase = self._encrypt_RSA(string.atol(public_key, 16),
-                                                 string.atol("10001", 16),
+        encrypted_passphrase = self._encrypt_RSA(int(public_key, 16),
+                                                 int("10001", 16),
                                                  random_passphrase)
 
         encrypted_params = self._encrypt_AES(random_passphrase,
                                              urllib.parse.urlencode(params))
 
-        enc_params = {"rsa": base64.b64encode(encrypted_passphrase),
-                      "aes": base64.b64encode(encrypted_params)}
+        enc_params = {
+            "rsa": base64.b64encode(encrypted_passphrase).decode("ascii"),
+            "aes": base64.b64encode(encrypted_params).decode("ascii")
+        }
 
         return {cipher_key: json.dumps(enc_params)}
 
