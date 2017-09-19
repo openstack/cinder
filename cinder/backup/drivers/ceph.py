@@ -647,12 +647,6 @@ class CephBackupDriver(driver.BackupDriver):
         source_rbd_image = volume_file.rbd_image
         volume_id = backup.volume_id
         updates = {}
-        # Identify our --from-snap point (if one exists)
-        from_snap = self._get_most_recent_snap(source_rbd_image)
-        LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
-                  "volume %(volume)s.",
-                  {'snap': from_snap, 'volume': volume_id})
-
         base_name = self._get_backup_base_name(volume_id, diff_format=True)
         image_created = False
         with rbd_driver.RADOSClient(self, backup.container) as client:
@@ -663,30 +657,34 @@ class CephBackupDriver(driver.BackupDriver):
             # TODO(dosaboy): find a way to repair the broken backup
             #
             if base_name not in self.rbd.RBD().list(ioctx=client.ioctx):
-                # If a from_snap is defined but the base does not exist, we
-                # ignore it since it is stale and waiting to be cleaned up.
-                if from_snap:
-                    LOG.debug("Source snapshot '%(snapshot)s' of volume "
-                              "%(volume)s is stale so deleting.",
-                              {'snapshot': from_snap, 'volume': volume_id})
+                src_vol_snapshots = self.get_backup_snaps(source_rbd_image)
+                if src_vol_snapshots:
+                    # If there are source volume snapshots but base does not
+                    # exist then we delete it and set from_snap to None
+                    LOG.debug("Volume '%(volume)s' has stale source "
+                              "snapshots so deleting them.",
+                              {'volume': volume_id})
+                for snap in src_vol_snapshots:
+                    from_snap = snap['name']
                     source_rbd_image.remove_snap(from_snap)
-                    from_snap = None
+                from_snap = None
 
                 # Create new base image
                 self._create_base_image(base_name, length, client)
                 image_created = True
             else:
-                # If a from_snap is defined but does not exist in the back base
-                # then we cannot proceed (see above)
-                if not self._snap_exists(base_name, from_snap, client):
-                    errmsg = (_("Snapshot='%(snap)s' does not exist in base "
-                                "image='%(base)s' - aborting incremental "
-                                "backup") %
-                              {'snap': from_snap, 'base': base_name})
-                    LOG.info(errmsg)
-                    # Raise this exception so that caller can try another
-                    # approach
-                    raise exception.BackupRBDOperationFailed(errmsg)
+                # If a from_snap is defined and is present in the source volume
+                # image but does not exist in the backup base then we look down
+                # the list of source volume snapshots and find the latest one
+                # for which a backup snapshot exist in the backup base. Until
+                # that snapshot is reached, we delete all the other snapshots
+                # for which backup snapshot does not exist.
+                from_snap = self._get_most_recent_snap(source_rbd_image,
+                                                       base_name, client)
+
+        LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
+                  "volume %(volume)s.",
+                  {'snap': from_snap, 'volume': volume_id})
 
         # Snapshot source volume so that we have a new point-in-time
         new_snap = self._get_new_snap_name(backup.id)
@@ -712,11 +710,6 @@ class CephBackupDriver(driver.BackupDriver):
 
             LOG.debug("Differential backup transfer completed in %.4fs",
                       (time.time() - before))
-
-            # We don't need the previous snapshot (if there was one) anymore so
-            # delete it.
-            if from_snap:
-                source_rbd_image.remove_snap(from_snap)
 
         except exception.BackupRBDOperationFailed:
             with excutils.save_and_reraise_exception():
@@ -851,17 +844,22 @@ class CephBackupDriver(driver.BackupDriver):
         LOG.debug("Found snapshot '%s'", snaps[0])
         return snaps[0]
 
-    def _get_most_recent_snap(self, rbd_image):
+    def _get_most_recent_snap(self, rbd_image, base_name, client):
         """Get the most recent backup snapshot of the provided image.
 
         Returns name of most recent backup snapshot or None if there are no
         backup snapshots.
         """
-        backup_snaps = self.get_backup_snaps(rbd_image, sort=True)
-        if not backup_snaps:
-            return None
+        src_vol_backup_snaps = self.get_backup_snaps(rbd_image, sort=True)
+        from_snap = None
 
-        return backup_snaps[0]['name']
+        for snap in src_vol_backup_snaps:
+            if self._snap_exists(base_name, snap['name'], client):
+                from_snap = snap['name']
+                break
+            rbd_image.remove_snap(snap['name'])
+
+        return from_snap
 
     def _get_volume_size_gb(self, volume):
         """Return the size in gigabytes of the given volume.
