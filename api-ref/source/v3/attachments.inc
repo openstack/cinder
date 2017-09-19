@@ -284,6 +284,7 @@ Complete an attachment for a cinder volume.
 Available starting in the 3.44 microversion.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), itemNotFound(404)
 
 

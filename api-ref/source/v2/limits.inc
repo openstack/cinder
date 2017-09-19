@@ -21,7 +21,8 @@ for the item is infinite.
 
 
 Normal response codes: 200
-Error response codes:203,
+
+Error response codes: 203
 
 Request
 -------

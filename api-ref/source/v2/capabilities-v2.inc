@@ -16,7 +16,6 @@ The ``hostname`` takes the form of ``hostname@volume_backend_name``.
 
 
 Normal response codes: 200
-Error response codes:
 
 Request
 -------

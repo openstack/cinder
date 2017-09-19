@@ -26,7 +26,6 @@ guide/blockstorage_multi_backend.html>`_.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -73,7 +72,6 @@ Updates the extra specifications that are assigned to a volume type.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -122,7 +120,6 @@ Shows details for a volume type.
 
 
 Normal response codes: 200
-Error response codes:
 
 Request
 -------
@@ -159,7 +156,7 @@ Delete volume type
 
 Deletes a volume type.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 
 Request
@@ -180,7 +177,6 @@ Lists volume types.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -235,7 +231,6 @@ guide/blockstorage_multi_backend.html>`_.
 
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -281,7 +276,6 @@ Show an encryption type.
 To show an encryption type for an existing volume type.
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -327,7 +321,6 @@ Delete an encryption type.
 To delete an encryption type for an existing volume type.
 
 Normal response codes: 202
-Error response codes:
 
 
 Request
@@ -349,7 +342,6 @@ Creates an encryption type.
 To create an encryption type for an existing volume type.
 
 Normal response codes: 200
-Error response codes:
 
 
 Request
@@ -402,7 +394,6 @@ Update an encryption type.
 To update an encryption type for an existing volume type.
 
 Normal response codes: 200
-Error response codes:
 
 
 Request

@@ -16,6 +16,7 @@ Shows quota class set for a tenant. If no specific value for the quota class
 resource exists, then the default value will be reported.
 
 Normal response codes: 200
+
 Error response codes: 403, 404
 
 
@@ -58,6 +59,7 @@ Updates quota class set for a tenant. If the ``quota_class_name`` key does not
 exist, then the API will create one.
 
 Normal response codes: 200
+
 Error response codes: 400, 403, 404
 
 

@@ -13,7 +13,7 @@ Reset a snapshot's status
 
 Resets the status. Specify the ``os-reset_status`` action in the request body.
 
-Normal response codes: 202,
+Normal response codes: 202
 
 
 Request

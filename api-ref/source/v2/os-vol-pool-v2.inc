@@ -16,7 +16,6 @@ Lists all back-end storage pools.
 
 
 Normal response codes: 200
-Error response codes:
 
 Request
 -------
