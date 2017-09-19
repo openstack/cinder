@@ -1628,6 +1628,12 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?range=[0-256]&PARENTID=1/GET'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?PARENTTYPE=21&PARENTID=1/GET'] = (
     FAKE_GET_FC_PORT_RESPONSE)
 
+MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator/count/GET'] = '''
+    {"data":{"COUNT":"2"},"error":{"code":0}}'''
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?range=[0-100]/GET'] = (
+    FAKE_FC_INFO_RESPONSE)
+
 MAP_COMMAND_TO_FAKE_RESPONSE['/SMARTCACHEPARTITION/0/GET'] = (
     FAKE_SMARTCACHEPARTITION_RESPONSE)
 
@@ -5340,6 +5346,10 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
     def test_get_online_free_wwns(self, mock_call):
         wwns = self.driver.client.get_online_free_wwns()
         self.assertEqual(['1'], wwns)
+
+    def test_get_fc_initiator_on_array(self):
+        wwns = self.driver.client.get_fc_initiator_on_array()
+        self.assertListEqual(["10000090fa0d6754", "10000090fa0d6755"], wwns)
 
     @mock.patch.object(rest_client.RestClient, 'call',
                        return_value={"data": {"ID": 1}, "error": {"code": 0}})

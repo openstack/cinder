@@ -126,6 +126,9 @@ class HuaweiHyperMetro(object):
         online_wwns_in_host = (
             self.rmt_client.get_host_online_fc_initiators(host_id))
         online_free_wwns = self.rmt_client.get_online_free_wwns()
+        fc_initiators_on_array = self.rmt_client.get_fc_initiator_on_array()
+        wwns = [i for i in wwns if i in fc_initiators_on_array]
+
         for wwn in wwns:
             if (wwn not in online_wwns_in_host
                     and wwn not in online_free_wwns):
