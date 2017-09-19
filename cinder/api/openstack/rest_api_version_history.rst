@@ -373,3 +373,7 @@ user documentation.
   Support attachment completion. See the
   `API reference <https://developer.openstack.org/api-ref/block-storage/v3/index.html#complete-attachment>`__
   for details.
+
+3.45
+----
+  Add ``count`` field to volume, backup and snapshot list and detail APIs.

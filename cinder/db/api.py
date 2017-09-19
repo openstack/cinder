@@ -281,6 +281,10 @@ def volume_get_all(context, marker=None, limit=None, sort_keys=None,
                                offset=offset)
 
 
+def calculate_resource_count(context, resource_type, filters):
+    return IMPL.calculate_resource_count(context, resource_type, filters)
+
+
 def volume_get_all_by_host(context, host, filters=None):
     """Get all volumes belonging to a host."""
     return IMPL.volume_get_all_by_host(context, host, filters=filters)

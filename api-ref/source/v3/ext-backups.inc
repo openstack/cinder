@@ -62,6 +62,7 @@ Request
    - limit: limit
    - offset: offset
    - marker: marker
+   - with_count: with_count
 
 
 Response Parameters
@@ -88,6 +89,7 @@ Response Parameters
    - data_timestamp: data_timestamp
    - snapshot_id: snapshot_id_2
    - os-backup-project-attr:project_id: os-backup-project-attr:project_id
+   - count: count
 
 Response Example
 ----------------
@@ -329,6 +331,7 @@ Request
    - sort: sort
    - limit: limit
    - marker: marker
+   - with_count: with_count
 
 Response Parameters
 -------------------
@@ -339,6 +342,7 @@ Response Parameters
    - id: id_1
    - links: links_1
    - name: name_1
+   - count: count
 
 Response Example
 ----------------

@@ -2364,6 +2364,23 @@ def _generate_paginate_query(context, session, marker, limit, sort_keys,
                                           offset=offset)
 
 
+def calculate_resource_count(context, resource_type, filters):
+    """Calculate total count with filters applied"""
+
+    session = get_session()
+    if resource_type not in CALCULATE_COUNT_HELPERS.keys():
+        raise exception.InvalidInput(
+            reason=_("Model %s doesn't support "
+                     "counting resource.") % resource_type)
+    get_query, process_filters = CALCULATE_COUNT_HELPERS[resource_type]
+    query = get_query(context, session=session)
+    if filters:
+        query = process_filters(query, filters)
+        if query is None:
+            return 0
+    return query.with_entities(func.count()).scalar()
+
+
 @apply_like_filters(model=models.Volume)
 def _process_volume_filters(query, filters):
     """Common filter processing for Volume queries.
@@ -6586,6 +6603,13 @@ PAGINATION_HELPERS = {
     models.VolumeAttachment: (_attachment_get_query,
                               _process_attachment_filters,
                               _attachment_get),
+}
+
+
+CALCULATE_COUNT_HELPERS = {
+    'volume': (_volume_get_query, _process_volume_filters),
+    'snapshot': (_snaps_get_query, _process_snaps_filters),
+    'backup': (_backups_get_query, _process_backups_filters),
 }
 
 

@@ -86,6 +86,7 @@ Request
    - limit: limit
    - offset: offset
    - marker: marker
+   - with_count: with_count
 
 
 Response Parameters
@@ -121,6 +122,7 @@ Response Parameters
    - os-volume-replication:driver_data: os-volume-replication:driver_data
    - volumes: volumes
    - volume_type: volume_type
+   - count: count
 
 
 
@@ -260,6 +262,7 @@ Request
    - limit: limit
    - offset: offset
    - marker: marker
+   - with_count: with_count
 
 
 Response Parameters
@@ -271,6 +274,7 @@ Response Parameters
    - id: id_5
    - links: links_3
    - name: name_13
+   - count: count
 
 
 

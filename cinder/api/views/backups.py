@@ -92,6 +92,9 @@ class ViewBuilder(common.ViewBuilder):
         if backups_links:
             backups_dict['backups_links'] = backups_links
 
+        if backup_count is not None:
+            backups_dict['count'] = backup_count
+
         return backups_dict
 
     def export_summary(self, request, export):

@@ -78,6 +78,12 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
         sort_keys, sort_dirs = common.get_sort_params(search_opts)
         marker, limit, offset = common.get_pagination_params(search_opts)
 
+        req_version = req.api_version_request
+        show_count = False
+        if req_version.matches(mv.SUPPORT_COUNT_INFO):
+            show_count = utils.get_bool_param('with_count', search_opts)
+            search_opts.pop('with_count')
+
         # process filters
         self._process_snapshot_filtering(context=context,
                                          filters=search_opts,
@@ -93,20 +99,27 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
         if 'name' in search_opts:
             search_opts['display_name'] = search_opts.pop('name')
 
-        snapshots = self.volume_api.get_all_snapshots(context,
-                                                      search_opts=search_opts,
-                                                      marker=marker,
-                                                      limit=limit,
-                                                      sort_keys=sort_keys,
-                                                      sort_dirs=sort_dirs,
-                                                      offset=offset)
+        snapshots = self.volume_api.get_all_snapshots(
+            context,
+            search_opts=search_opts.copy(),
+            marker=marker,
+            limit=limit,
+            sort_keys=sort_keys,
+            sort_dirs=sort_dirs,
+            offset=offset)
+        total_count = None
+        if show_count:
+            total_count = self.volume_api.calculate_resource_count(
+                context, 'snapshot', search_opts)
 
         req.cache_db_snapshots(snapshots.objects)
 
         if is_detail:
-            snapshots = self._view_builder.detail_list(req, snapshots.objects)
+            snapshots = self._view_builder.detail_list(req, snapshots.objects,
+                                                       total_count)
         else:
-            snapshots = self._view_builder.summary_list(req, snapshots.objects)
+            snapshots = self._view_builder.summary_list(req, snapshots.objects,
+                                                        total_count)
         return snapshots
 
 

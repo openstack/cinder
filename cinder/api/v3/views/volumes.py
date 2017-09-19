@@ -20,6 +20,8 @@ from cinder.api.v2.views import volumes as views_v2
 class ViewBuilder(views_v2.ViewBuilder):
     """Model a volumes API V3 response as a python dictionary."""
 
+    _collection_name = "volumes"
+
     def quick_summary(self, volume_count, volume_size,
                       all_distinct_metadata=None):
         """View of volumes summary.
@@ -53,3 +55,32 @@ class ViewBuilder(views_v2.ViewBuilder):
             volume_ref['volume']['provider_id'] = volume.get('provider_id')
 
         return volume_ref
+
+    def _list_view(self, func, request, volumes, volume_count,
+                   coll_name=_collection_name):
+        """Provide a view for a list of volumes.
+
+        :param func: Function used to format the volume data
+        :param request: API request
+        :param volumes: List of volumes in dictionary format
+        :param volume_count: Length of the original list of volumes
+        :param coll_name: Name of collection, used to generate the next link
+                          for a pagination query
+        :returns: Volume data in dictionary format
+        """
+        volumes_list = [func(request, volume)['volume'] for volume in volumes]
+        volumes_links = self._get_collection_links(request,
+                                                   volumes,
+                                                   coll_name,
+                                                   volume_count)
+        volumes_dict = {"volumes": volumes_list}
+
+        if volumes_links:
+            volumes_dict['volumes_links'] = volumes_links
+
+        req_version = request.api_version_request
+        if req_version.matches(
+                mv.SUPPORT_COUNT_INFO, None) and volume_count is not None:
+            volumes_dict['count'] = volume_count
+
+        return volumes_dict

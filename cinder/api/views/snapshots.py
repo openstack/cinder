@@ -75,4 +75,7 @@ class ViewBuilder(common.ViewBuilder):
         if snapshots_links:
             snapshots_dict[self._collection_name + '_links'] = snapshots_links
 
+        if snapshot_count is not None:
+            snapshots_dict['count'] = snapshot_count
+
         return snapshots_dict

@@ -16,6 +16,7 @@ import ddt
 import iso8601
 
 import mock
+from oslo_utils import strutils
 import webob
 
 from cinder.api import extensions
@@ -113,6 +114,16 @@ class VolumeApiTest(test.TestCase):
                                             fake.GROUP2_ID})
         return [vol1, vol2]
 
+    def _create_multiple_volumes_with_different_project(self):
+        # Create volumes in project 1
+        db.volume_create(self.ctxt, {'display_name': 'test1',
+                                     'project_id': fake.PROJECT_ID})
+        db.volume_create(self.ctxt, {'display_name': 'test2',
+                                     'project_id': fake.PROJECT_ID})
+        # Create volume in project 2
+        db.volume_create(self.ctxt, {'display_name': 'test3',
+                                     'project_id': fake.PROJECT2_ID})
+
     def test_volume_index_filter_by_glance_metadata(self):
         vols = self._create_volume_with_glance_metadata()
         req = fakes.HTTPRequest.blank("/v3/volumes?glance_metadata="
@@ -148,6 +159,82 @@ class VolumeApiTest(test.TestCase):
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
         self.assertEqual(vols[0].id, volumes[0]['id'])
+
+    @ddt.data('volumes', 'volumes/detail')
+    def test_list_volume_with_count_param_version_not_matched(self, action):
+        self._create_multiple_volumes_with_different_project()
+
+        is_detail = True if 'detail' in action else False
+        req = fakes.HTTPRequest.blank("/v3/%s?with_count=True" % action)
+        req.headers = mv.get_mv_header(
+            mv.get_prior_version(mv.SUPPORT_COUNT_INFO))
+        req.api_version_request = mv.get_api_version(
+            mv.get_prior_version(mv.SUPPORT_COUNT_INFO))
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req.environ['cinder.context'] = ctxt
+        res_dict = self.controller._get_volumes(req, is_detail=is_detail)
+        self.assertNotIn('count', res_dict)
+
+    @ddt.data({'method': 'volumes',
+               'display_param': 'True'},
+              {'method': 'volumes',
+               'display_param': 'False'},
+              {'method': 'volumes',
+               'display_param': '1'},
+              {'method': 'volumes/detail',
+               'display_param': 'True'},
+              {'method': 'volumes/detail',
+               'display_param': 'False'},
+              {'method': 'volumes/detail',
+               'display_param': '1'}
+              )
+    @ddt.unpack
+    def test_list_volume_with_count_param(self, method, display_param):
+        self._create_multiple_volumes_with_different_project()
+
+        is_detail = True if 'detail' in method else False
+        show_count = strutils.bool_from_string(display_param, strict=True)
+        # Request with 'with_count' and 'limit'
+        req = fakes.HTTPRequest.blank(
+            "/v3/%s?with_count=%s&limit=1" % (method, display_param))
+        req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
+        req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        req.environ['cinder.context'] = ctxt
+        res_dict = self.controller._get_volumes(req, is_detail=is_detail)
+        self.assertEqual(1, len(res_dict['volumes']))
+        if show_count:
+            self.assertEqual(2, res_dict['count'])
+        else:
+            self.assertNotIn('count', res_dict)
+
+        # Request with 'with_count'
+        req = fakes.HTTPRequest.blank(
+            "/v3/%s?with_count=%s" % (method, display_param))
+        req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
+        req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        req.environ['cinder.context'] = ctxt
+        res_dict = self.controller._get_volumes(req, is_detail=is_detail)
+        self.assertEqual(2, len(res_dict['volumes']))
+        if show_count:
+            self.assertEqual(2, res_dict['count'])
+        else:
+            self.assertNotIn('count', res_dict)
+
+        # Request with admin context and 'all_tenants'
+        req = fakes.HTTPRequest.blank(
+            "/v3/%s?with_count=%s&all_tenants=1" % (method, display_param))
+        req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
+        req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req.environ['cinder.context'] = ctxt
+        res_dict = self.controller._get_volumes(req, is_detail=is_detail)
+        self.assertEqual(3, len(res_dict['volumes']))
+        if show_count:
+            self.assertEqual(3, res_dict['count'])
+        else:
+            self.assertNotIn('count', res_dict)
 
     def test_volume_index_filter_by_group_id_in_unsupport_version(self):
         self._create_volume_with_group()
