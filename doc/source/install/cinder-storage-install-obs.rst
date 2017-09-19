@@ -192,7 +192,7 @@ Install and configure components
      Replace ``MANAGEMENT_INTERFACE_IP_ADDRESS`` with the IP address
      of the management network interface on your storage node,
      typically 10.0.0.41 for the first node in the
-     :ref:`example architecture <overview-example-architectures>`.
+     `example architecture <https://docs.openstack.org/install-guide/overview.html#example-architecture>`_.
 
    * In the ``[lvm]`` section, configure the LVM back end with the
      LVM driver, ``cinder-volumes`` volume group, iSCSI protocol,
