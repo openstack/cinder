@@ -416,6 +416,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
             if volume['size'] > snapshot['volume_size']:
                 LOG.debug("Resize the new volume to %s.", volume['size'])
                 self.extend_volume(volume, volume['size'])
+            # Some configurations of LVM do not automatically activate
+            # ThinLVM snapshot LVs.
+            self.vg.activate_lv(snapshot['name'], is_snapshot=True)
             self.vg.activate_lv(volume['name'], is_snapshot=True,
                                 permanent=True)
             return
