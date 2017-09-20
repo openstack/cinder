@@ -4948,11 +4948,11 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
 
     @mock.patch.object(rest_client.RestClient, 'rename_lun')
     def test_update_migrated_volume_success(self, mock_rename_lun):
-        model_update = self.driver.update_migrated_volume(None,
-                                                          self.original_volume,
-                                                          self.current_volume,
-                                                          'available')
-        self.assertEqual({'_name_id': None}, model_update)
+        model_update = self.driver.update_migrated_volume(
+            None, self.original_volume, self.current_volume, 'available')
+        self.assertIsNone(model_update['_name_id'])
+        self.assertDictEqual(json.loads(PROVIDER_LOCATION),
+                             json.loads(model_update['provider_location']))
 
     @mock.patch.object(rest_client.RestClient, 'rename_lun')
     def test_update_migrated_volume_fail(self, mock_rename_lun):
@@ -4964,6 +4964,8 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
                                                           'available')
         self.assertEqual(self.current_volume.name_id,
                          model_update['_name_id'])
+        self.assertDictEqual(json.loads(PROVIDER_LOCATION),
+                             json.loads(model_update['provider_location']))
 
     @mock.patch.object(rest_client.RestClient, 'add_lun_to_partition')
     def test_retype_volume_success(self, mock_add_lun_to_partition):
