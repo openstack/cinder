@@ -1,0 +1,13 @@
+---
+upgrade:
+  - |
+    The support for ``cinder.keymgr.barbican.BarbicanKeyManager`` and the
+    ``[keymgr]`` config section has now been removed. All configs should now be
+    switched to use
+    ``castellan.key_manager.barbican_key_manager.BarbicanKeyManager`` and the
+    ``[key_manager]`` config section.
+deprecations:
+  - |
+    The Castellan library used for encryption has deprecated the ``api_class``
+    config option. Configuration files using this should now be updated to use
+    the ``backend`` option instead.

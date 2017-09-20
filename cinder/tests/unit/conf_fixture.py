@@ -26,7 +26,7 @@ CONF.import_opt('policy_file', 'cinder.policy', group='oslo_policy')
 CONF.import_opt('volume_driver', 'cinder.volume.manager',
                 group=configuration.SHARED_CONF_GROUP)
 CONF.import_opt('backup_driver', 'cinder.backup.manager')
-CONF.import_opt('api_class', 'cinder.keymgr', group='key_manager')
+CONF.import_opt('backend', 'cinder.keymgr', group='key_manager')
 CONF.import_opt('fixed_key', 'cinder.keymgr.conf_key_mgr', group='key_manager')
 CONF.import_opt('scheduler_driver', 'cinder.scheduler.manager')
 
@@ -45,7 +45,7 @@ def set_defaults(conf):
     conf.set_default('policy_file', 'cinder.tests.unit/policy.json',
                      group='oslo_policy')
     conf.set_default('backup_driver', 'cinder.tests.unit.backup.fake_service')
-    conf.set_default('api_class',
+    conf.set_default('backend',
                      'cinder.keymgr.conf_key_mgr.ConfKeyManager',
                      group='key_manager')
     conf.set_default('fixed_key', default='0' * 64, group='key_manager')

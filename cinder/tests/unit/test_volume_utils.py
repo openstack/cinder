@@ -991,7 +991,7 @@ class VolumeUtilsTestCase(test.TestCase):
             ctxt, type_ref1['id'], enc_key)
         get_volume_type_encryption.return_value = encryption
         CONF.set_override(
-            'api_class',
+            'backend',
             'cinder.keymgr.conf_key_mgr.ConfKeyManager',
             group='key_manager')
         key_manager = keymgr.API()

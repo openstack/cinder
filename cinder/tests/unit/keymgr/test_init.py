@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import castellan
-from castellan import key_manager
 from castellan import options as castellan_opts
 
 from oslo_config import cfg
@@ -28,7 +26,7 @@ class InitTestCase(test.TestCase):
         super(InitTestCase, self).setUp()
         self.config = cfg.ConfigOpts()
         castellan_opts.set_defaults(self.config)
-        self.config.set_default('api_class',
+        self.config.set_default('backend',
                                 'cinder.keymgr.conf_key_mgr.ConfKeyManager',
                                 group='key_manager')
 
@@ -36,50 +34,10 @@ class InitTestCase(test.TestCase):
         kmgr = keymgr.API(self.config)
         self.assertEqual(type(kmgr), keymgr.conf_key_mgr.ConfKeyManager)
 
-    def test_set_barbican_key_manager(self):
-        self.config.set_override(
-            'api_class',
-            'castellan.key_manager.barbican_key_manager.BarbicanKeyManager',
-            group='key_manager')
-        kmgr = keymgr.API(self.config)
-        self.assertEqual(
-            type(kmgr),
-            key_manager.barbican_key_manager.BarbicanKeyManager)
-
-    def test_set_mock_key_manager(self):
-        self.config.set_override(
-            'api_class',
-            'castellan.tests.unit.key_manager.mock_key_manager.MockKeyManager',
-            group='key_manager')
-        kmgr = keymgr.API(self.config)
-        self.assertEqual(
-            type(kmgr),
-            castellan.tests.unit.key_manager.mock_key_manager.MockKeyManager)
-
     def test_set_conf_key_manager(self):
         self.config.set_override(
-            'api_class',
+            'backend',
             'cinder.keymgr.conf_key_mgr.ConfKeyManager',
             group='key_manager')
         kmgr = keymgr.API(self.config)
         self.assertEqual(type(kmgr), keymgr.conf_key_mgr.ConfKeyManager)
-
-    def test_deprecated_barbican_key_manager(self):
-        self.config.set_override(
-            'api_class',
-            'cinder.keymgr.barbican.BarbicanKeyManager',
-            group='key_manager')
-        kmgr = keymgr.API(self.config)
-        self.assertEqual(
-            type(kmgr),
-            key_manager.barbican_key_manager.BarbicanKeyManager)
-
-    def test_deprecated_mock_key_manager(self):
-        self.config.set_override(
-            'api_class',
-            'cinder.tests.unit.keymgr.mock_key_mgr.MockKeyManager',
-            group='key_manager')
-        kmgr = keymgr.API(self.config)
-        self.assertEqual(
-            type(kmgr),
-            castellan.tests.unit.key_manager.mock_key_manager.MockKeyManager)
