@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    A new target, NVMET, is added for the LVM driver over RDMA,
+    it allows cinder to use nvmetcli in order to create/delete
+    subsystems on attaching/detaching an LVM volume to/from an
+    instance.
