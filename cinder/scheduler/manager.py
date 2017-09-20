@@ -339,7 +339,8 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                       request_spec=None, filter_properties=None):
 
         def _extend_volume_set_error(self, context, ex, request_spec):
-            volume_state = {'volume_state': {'status': 'available'}}
+            volume_state = {'volume_state': {'status': volume.previous_status,
+                                             'previous_status': None}}
             self._set_volume_state_and_notify('extend_volume', volume_state,
                                               context, ex, request_spec)
 

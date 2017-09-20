@@ -19,7 +19,7 @@ Tests For Scheduler
 
 import collections
 from datetime import datetime
-
+import ddt
 import mock
 from oslo_config import cfg
 
@@ -38,6 +38,7 @@ from cinder.tests.unit import utils as tests_utils
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class SchedulerManagerTestCase(test.TestCase):
     """Test case for scheduler manager."""
 
@@ -117,14 +118,18 @@ class SchedulerManagerTestCase(test.TestCase):
         mock_extend.assert_called_once_with(
             self.context, volume, 2, 'fake_reservation')
 
+    @ddt.data('available', 'in-use')
     @mock.patch('cinder.scheduler.driver.Scheduler.backend_passes_filters')
     @mock.patch(
         'cinder.scheduler.host_manager.BackendState.consume_from_volume')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.extend_volume')
     @mock.patch('cinder.quota.QUOTAS.rollback')
-    def test_extend_volume_no_valid_host(self, mock_rollback, mock_extend,
-                                         mock_consume, mock_backend_passes):
-        volume = fake_volume.fake_volume_obj(self.context, **{'size': 1})
+    def test_extend_volume_no_valid_host(self, status, mock_rollback,
+                                         mock_extend, mock_consume,
+                                         mock_backend_passes):
+        volume = fake_volume.fake_volume_obj(self.context,
+                                             **{'size': 1,
+                                                'previous_status': status})
         no_valid_backend = exception.NoValidBackend(reason='')
         mock_backend_passes.side_effect = [no_valid_backend]
 
@@ -133,7 +138,8 @@ class SchedulerManagerTestCase(test.TestCase):
             self.manager.extend_volume(self.context, volume, 2,
                                        'fake_reservation')
             mock_notify.assert_called_once_with(
-                'extend_volume', {'volume_state': {'status': 'available'}},
+                'extend_volume', {'volume_state': {'status': status,
+                                                   'previous_status': None}},
                 self.context, no_valid_backend, None)
             mock_rollback.assert_called_once_with(
                 self.context, 'fake_reservation', project_id=volume.project_id)

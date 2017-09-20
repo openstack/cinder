@@ -2051,10 +2051,12 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           volume, 3, attached=True)
 
         db.volume_update(self.context, volume.id, {'status': 'in-use'})
+        volume.refresh()
         reserve.return_value = ["RESERVATION"]
         volume_api._extend(self.context, volume, 3, attached=True)
         volume.refresh()
         self.assertEqual('extending', volume.status)
+        self.assertEqual('in-use', volume.previous_status)
         reserve.assert_called_once_with(self.context, gigabytes=1,
                                         project_id=volume.project_id)
         limit_check.side_effect = None
@@ -2091,6 +2093,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           3)
 
         db.volume_update(self.context, volume.id, {'status': 'available'})
+        volume.refresh()
         # Extend fails when new_size < orig_size
         self.assertRaises(exception.InvalidInput,
                           volume_api._extend,
@@ -2110,6 +2113,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         volume_api._extend(self.context, volume, 3)
         volume.refresh()
         self.assertEqual('extending', volume.status)
+        self.assertEqual('available', volume.previous_status)
         reserve.assert_called_once_with(self.context, gigabytes=1,
                                         project_id=volume.project_id)
 
