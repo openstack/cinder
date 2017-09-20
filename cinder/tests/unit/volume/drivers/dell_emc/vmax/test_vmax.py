@@ -77,6 +77,7 @@ class VMAXCommonData(object):
     remote_array = '000197800124'
     device_id = '00001'
     device_id2 = '00002'
+    device_id3 = '00003'
     rdf_group_name = '23_24_007'
     rdf_group_no = '70'
     u4v_version = '84'
@@ -197,8 +198,7 @@ class VMAXCommonData(object):
         host=fake_host, volume=test_volume)
 
     test_legacy_snapshot = fake_snapshot.fake_snapshot_obj(
-        context=ctx, id='8d38ccfc-3d29-454c-858b-8348a8f9cc95',
-        name='my_snap', size=2,
+        context=ctx, id=test_volume.id, name='my_snap', size=2,
         provider_location=six.text_type(legacy_provider_location),
         host=fake_host, volume=test_volume)
 
@@ -457,7 +457,7 @@ class VMAXCommonData(object):
     volume_details = [{"cap_gb": 2,
                        "num_of_storage_groups": 1,
                        "volumeId": device_id,
-                       "volume_identifier": "1",
+                       "volume_identifier": "OS-%s" % test_volume.id,
                        "wwn": volume_wwn,
                        "snapvx_target": 'false',
                        "snapvx_source": 'false',
@@ -466,10 +466,15 @@ class VMAXCommonData(object):
                       {"cap_gb": 1,
                        "num_of_storage_groups": 1,
                        "volumeId": device_id2,
-                       "volume_identifier": "OS-2",
+                       "volume_identifier": "OS-%s" % test_volume.id,
                        "wwn": '600012345',
                        "storageGroupId": [defaultstoragegroup_name,
-                                          storagegroup_name_f]}]
+                                          storagegroup_name_f]},
+                      {"cap_gb": 1,
+                       "num_of_storage_groups": 0,
+                       "volumeId": device_id3,
+                       "volume_identifier": '123',
+                       "wwn": '600012345'}]
 
     volume_list = [
         {"resultList": {"result": [{"volumeId": device_id}]}},
@@ -1771,14 +1776,14 @@ class VMAXRestTest(test.TestCase):
 
     def test_delete_volume(self):
         device_id = self.data.device_id
-        with mock.patch.object(self.rest, 'delete_resource'):
-            with mock.patch.object(
-                    self.rest, '_modify_volume',
-                    side_effect=[None, exception.VolumeBackendAPIException]):
+        with mock.patch.object(self.rest, 'delete_resource'),\
+            mock.patch.object(
+                self.rest, '_modify_volume', side_effect=[
+                    None, None, None, exception.VolumeBackendAPIException]):
                 for x in range(0, 2):
                     self.rest.delete_volume(self.data.array, device_id)
                 mod_call_count = self.rest._modify_volume.call_count
-                self.assertEqual(2, mod_call_count)
+                self.assertEqual(4, mod_call_count)
                 self.rest.delete_resource.assert_called_once_with(
                     self.data.array, 'sloprovisioning', 'volume', device_id)
 
@@ -1789,10 +1794,26 @@ class VMAXRestTest(test.TestCase):
                 "volumeIdentifier": {
                     "identifier_name": 'new_name',
                     "volumeIdentifierChoice": "identifier_name"}}}}
-        with mock.patch.object(self.rest, '_modify_volume'):
+        payload2 = {"editVolumeActionParam": {"modifyVolumeIdentifierParam": {
+            "volumeIdentifier": {"volumeIdentifierChoice": "none"}}}}
+        with mock.patch.object(self.rest, '_modify_volume') as mock_mod:
             self.rest.rename_volume(self.data.array, device_id, 'new_name')
-            self.rest._modify_volume.assert_called_once_with(
+            mock_mod.assert_called_once_with(
                 self.data.array, device_id, payload)
+            mock_mod.reset_mock()
+            self.rest.rename_volume(self.data.array, device_id, None)
+            self.rest._modify_volume.assert_called_once_with(
+                self.data.array, device_id, payload2)
+
+    def test_check_volume_device_id(self):
+        element_name = self.utils.get_volume_element_name(
+            self.data.test_volume.id)
+        found_dev_id = self.rest.check_volume_device_id(
+            self.data.array, self.data.device_id, element_name)
+        self.assertEqual(self.data.device_id, found_dev_id)
+        found_dev_id2 = self.rest.check_volume_device_id(
+            self.data.array, self.data.device_id3, element_name)
+        self.assertIsNone(found_dev_id2)
 
     def test_find_mv_connections_for_vol(self):
         device_id = self.data.device_id
@@ -3168,16 +3189,6 @@ class VMAXCommonTest(test.TestCase):
         founddevice_id = self.common._find_device_on_array(volume, extra_specs)
         self.assertEqual(ref_device_id, founddevice_id)
 
-    def test_find_device_on_array_different_device_id(self):
-        volume = self.data.test_volume
-        extra_specs = self.data.extra_specs
-        with mock.patch.object(
-                self.rest, 'find_volume_device_id',
-                return_value='01234'):
-            founddevice_id = self.common._find_device_on_array(
-                volume, extra_specs)
-            self.assertIsNone(founddevice_id)
-
     def test_find_device_on_array_provider_location_not_string(self):
         volume = fake_volume.fake_volume_obj(
             context='cxt', provider_location=None)
@@ -3818,17 +3829,17 @@ class VMAXCommonTest(test.TestCase):
         rest.VMAXRest, 'is_vol_in_rep_session',
         return_value=(False, False, None))
     def test_check_lun_valid_for_cinder_management(self, mock_rep, mock_mv):
-        external_ref = {u'source-name': u'00001'}
+        external_ref = {u'source-name': u'00003'}
         self.common._check_lun_valid_for_cinder_management(
-            self.data.array, '00001',
+            self.data.array, self.data.device_id3,
             self.data.test_volume.id, external_ref)
 
     @mock.patch.object(
         rest.VMAXRest, 'get_volume',
         side_effect=[
             None,
-            VMAXCommonData.volume_details[0],
-            VMAXCommonData.volume_details[0],
+            VMAXCommonData.volume_details[2],
+            VMAXCommonData.volume_details[2],
             VMAXCommonData.volume_details[1]])
     @mock.patch.object(
         rest.VMAXRest, 'get_masking_views_from_storage_group',
@@ -3840,16 +3851,16 @@ class VMAXCommonTest(test.TestCase):
                        side_effect=[(True, False, []), (False, False, None)])
     def test_check_lun_valid_for_cinder_management_exception(
             self, mock_rep, mock_sg, mock_mvs, mock_get_vol):
-        external_ref = {u'source-name': u'00001'}
+        external_ref = {u'source-name': u'00003'}
         for x in range(0, 3):
             self.assertRaises(
                 exception.ManageExistingInvalidReference,
                 self.common._check_lun_valid_for_cinder_management,
-                self.data.array, '00001',
+                self.data.array, self.data.device_id3,
                 self.data.test_volume.id, external_ref)
         self.assertRaises(exception.ManageExistingAlreadyManaged,
                           self.common._check_lun_valid_for_cinder_management,
-                          self.data.array, '00001',
+                          self.data.array, self.data.device_id3,
                           self.data.test_volume.id, external_ref)
 
     def test_manage_existing_get_size(self):
