@@ -879,14 +879,11 @@ class VMAXCommon(object):
                 admin_metadata = volume.admin_metadata
             if 'targetVolumeName' in admin_metadata:
                 target_vol_name = admin_metadata['targetVolumeName']
-                founddevice_id = self.rest.find_volume_device_id(
-                    array, target_vol_name)
+                founddevice_id = self.rest.check_volume_device_id(
+                    array, target_vol_name, device_id)
             else:
-                founddevice_id = self.rest.find_volume_device_id(
-                    array, element_name)
-            # Allow for an external app to delete the volume.
-            if device_id and device_id != founddevice_id:
-                founddevice_id = None
+                founddevice_id = self.rest.check_volume_device_id(
+                    array, device_id, element_name)
 
         if founddevice_id is None:
             LOG.debug("Volume %(volume_name)s not found on the array.",

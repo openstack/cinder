@@ -697,6 +697,26 @@ class VMAXRest(object):
         volume_dict = {'array': array, 'device_id': device_id}
         return volume_dict
 
+    def check_volume_device_id(self, array, device_id, element_name):
+        """Check if the identifiers match for a given volume.
+
+        :param array: the array serial number
+        :param device_id: the device id
+        :param element_name: name associated with cinder, e.g.OS-<cinderUUID>
+        :return: found_device_id
+        """
+        found_device_id = None
+        vol_details = self.get_volume(array, device_id)
+        if vol_details:
+            vol_identifier = vol_details.get('volume_identifier', None)
+            LOG.debug('Element name = %(en)s, Vol identifier = %(vi)s, '
+                      'Device id = %(di)s, vol details = %(vd)s',
+                      {'en': element_name, 'vi': vol_identifier,
+                       'di': device_id, 'vd': vol_details})
+            if vol_identifier == element_name:
+                found_device_id = device_id
+        return found_device_id
+
     def add_vol_to_sg(self, array, storagegroup_name, device_id, extra_specs):
         """Add a volume to a storage group.
 
@@ -988,13 +1008,17 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param device_id: the volume device id
-        :param new_name: the new name for the volume
+        :param new_name: the new name for the volume, can be None
         """
+        if new_name is not None:
+            vol_identifier_dict = {
+                "identifier_name": new_name,
+                "volumeIdentifierChoice": "identifier_name"}
+        else:
+            vol_identifier_dict = {"volumeIdentifierChoice": "none"}
         rename_vol_payload = {"editVolumeActionParam": {
             "modifyVolumeIdentifierParam": {
-                "volumeIdentifier": {
-                    "identifier_name": new_name,
-                    "volumeIdentifierChoice": "identifier_name"}}}}
+                "volumeIdentifier": vol_identifier_dict}}}
         self._modify_volume(array, device_id, rename_vol_payload)
 
     def delete_volume(self, array, device_id):
@@ -1008,6 +1032,8 @@ class VMAXRest(object):
             "freeVolumeParam": {"free_volume": 'true'}}}
         try:
             self._modify_volume(array, device_id, payload)
+            # Rename volume, removing the OS-<cinderUUID>
+            self.rename_volume(array, device_id, None)
         except Exception as e:
             LOG.warning('Deallocate volume failed with %(e)s.'
                         'Attempting delete.', {'e': e})
