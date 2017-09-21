@@ -262,11 +262,13 @@ class HPE3PARCommon(object):
         3.0.35 - Add volume to consistency group if flag enabled. bug #1702317
         3.0.36 - Swap volume name in migration. bug #1699733
         3.0.37 - Fixed image cache enabled capability. bug #1686985
+        3.0.38 - Fixed delete operation of replicated volume which is part
+                 of QOS. bug #1717875
 
 
     """
 
-    VERSION = "3.0.37"
+    VERSION = "3.0.38"
 
     stats = {}
 
@@ -2266,19 +2268,7 @@ class HPE3PARCommon(object):
                 if ex.get_code() == 34:
                     # This is a special case which means the
                     # volume is part of a volume set.
-                    vvset_name = self.client.findVolumeSet(volume_name)
-                    LOG.debug("Returned vvset_name = %s", vvset_name)
-                    if vvset_name is not None and \
-                       vvset_name.startswith('vvs-'):
-                        # We have a single volume per volume set, so
-                        # remove the volume set.
-                        self.client.deleteVolumeSet(
-                            self._get_3par_vvs_name(volume['id']))
-                    elif vvset_name is not None:
-                        # We have a pre-defined volume set just remove the
-                        # volume and leave the volume set.
-                        self.client.removeVolumeFromVolumeSet(vvset_name,
-                                                              volume_name)
+                    self._delete_vvset(volume)
                     self.client.deleteVolume(volume_name)
                 elif ex.get_code() == 151:
                     if self.client.isOnlinePhysicalCopy(volume_name):
@@ -3685,6 +3675,12 @@ class HPE3PARCommon(object):
         try:
             if not retype:
                 self.client.deleteVolume(vol_name)
+        except hpeexceptions.HTTPConflict as ex:
+                if ex.get_code() == 34:
+                    # This is a special case which means the
+                    # volume is part of a volume set.
+                    self._delete_vvset(volume)
+                    self.client.deleteVolume(vol_name)
         except Exception:
             pass
 
@@ -3713,6 +3709,24 @@ class HPE3PARCommon(object):
                 target_name = target['targetName']
                 self.client.toggleRemoteCopyConfigMirror(target_name,
                                                          mirror_config=True)
+
+    def _delete_vvset(self, volume):
+
+        # volume is part of a volume set.
+        volume_name = self._get_3par_vol_name(volume['id'])
+        vvset_name = self.client.findVolumeSet(volume_name)
+        LOG.debug("Returned vvset_name = %s", vvset_name)
+        if vvset_name is not None:
+            if vvset_name.startswith('vvs-'):
+                # We have a single volume per volume set, so
+                # remove the volume set.
+                self.client.deleteVolumeSet(
+                    self._get_3par_vvs_name(volume['id']))
+            else:
+                # We have a pre-defined volume set just remove the
+                # volume and leave the volume set.
+                self.client.removeVolumeFromVolumeSet(vvset_name,
+                                                      volume_name)
 
     class TaskWaiter(object):
         """TaskWaiter waits for task to be not active and returns status."""
