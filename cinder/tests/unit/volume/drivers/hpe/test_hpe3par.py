@@ -2146,7 +2146,10 @@ class HPE3PARBaseDriver(object):
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
-
+        ex = hpeexceptions.HTTPConflict("In use")
+        ex._error_code = 34
+        mock_client.deleteVolume = mock.Mock(side_effect=[ex, 200])
+        mock_client.findVolumeSet.return_value = self.VVS_NAME
         _mock_volume_types.return_value = {
             'name': 'replicated',
             'extra_specs': {
@@ -2170,6 +2173,10 @@ class HPE3PARBaseDriver(object):
                     self.VOLUME_3PAR_NAME,
                     removeFromTarget=True),
                 mock.call.removeRemoteCopyGroup(self.RCG_3PAR_NAME),
+                mock.call.deleteVolume(self.VOLUME_3PAR_NAME),
+                mock.call.findVolumeSet(self.VOLUME_3PAR_NAME),
+                mock.call.removeVolumeFromVolumeSet(self.VVS_NAME,
+                                                    self.VOLUME_3PAR_NAME),
                 mock.call.deleteVolume(self.VOLUME_3PAR_NAME)]
 
             mock_client.assert_has_calls(
