@@ -676,6 +676,15 @@ class HPE3PARFCDriver(driver.ManageableVD,
             self._logout(common)
 
     @utils.trace
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert volume to snapshot."""
+        common = self._login()
+        try:
+            common.revert_to_snapshot(volume, snapshot)
+        finally:
+            self._logout(common)
+
+    @utils.trace
     def migrate_volume(self, context, volume, host):
         if volume['status'] == 'in-use':
             protocol = host['capabilities']['storage_protocol']

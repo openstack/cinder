@@ -264,11 +264,12 @@ class HPE3PARCommon(object):
         3.0.37 - Fixed image cache enabled capability. bug #1686985
         3.0.38 - Fixed delete operation of replicated volume which is part
                  of QOS. bug #1717875
+        3.0.39 - Add support for revert to snapshot.
 
 
     """
 
-    VERSION = "3.0.38"
+    VERSION = "3.0.39"
 
     stats = {}
 
@@ -3067,6 +3068,49 @@ class HPE3PARCommon(object):
             except Exception:
                 msg = _("Volume has a temporary snapshot.")
                 raise exception.VolumeIsBusy(message=msg)
+
+    def revert_to_snapshot(self, volume, snapshot):
+        """Revert volume to snapshot.
+
+        :param volume: A dictionary describing the volume to revert
+        :param snapshot: A dictionary describing the latest snapshot
+        """
+        volume_name = self._get_3par_vol_name(volume['id'])
+        snapshot_name = self._get_3par_snap_name(snapshot['id'])
+        rcg_name = self._get_3par_rcg_name(volume['id'])
+
+        optional = {}
+        replication_flag = self._volume_of_replicated_type(volume)
+        if replication_flag:
+            LOG.debug("Found replicated volume: %(volume)s.",
+                      {'volume': volume_name})
+            optional['allowRemoteCopyParent'] = True
+            try:
+                self.client.stopRemoteCopy(rcg_name)
+            except Exception as ex:
+                msg = (_("There was an error stoping remote copy: %s.") %
+                       six.text_type(ex))
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        if self.client.isOnlinePhysicalCopy(volume_name):
+            LOG.debug("Found an online copy for %(volume)s.",
+                      {'volume': volume_name})
+            optional['online'] = True
+
+        self.client.promoteVirtualCopy(snapshot_name, optional=optional)
+
+        if replication_flag:
+            try:
+                self.client.startRemoteCopy(rcg_name)
+            except Exception as ex:
+                msg = (_("There was an error starting remote copy: %s.") %
+                       six.text_type(ex))
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.info("Volume %(volume)s succesfully reverted to %(snap)s.",
+                 {'volume': volume_name, 'snap': snapshot_name})
 
     def find_existing_vlun(self, volume, host):
         """Finds an existing VLUN for a volume on a host.

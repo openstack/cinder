@@ -1,0 +1,3 @@
+---
+features:
+  - Added revert volume to snapshot in 3par driver.
