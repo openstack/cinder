@@ -1301,7 +1301,8 @@ class API(base.Base):
         return response
 
     def _extend(self, context, volume, new_size, attached=False):
-        value = {'status': 'extending'}
+        value = {'status': 'extending',
+                 'previous_status': volume.status}
         if attached:
             expected = {'status': 'in-use'}
         else:
