@@ -15,6 +15,7 @@
 
 import hashlib
 import os
+import six
 
 from eventlet import greenthread
 from cinder.openstack.common import log as logging
@@ -179,6 +180,50 @@ class NexentaNfsDriver(nfs.NfsDriver):
                             {'vol': pool, 'folder': '/'.join(
                                 [fs, volume['name']])})
             raise
+        finally:
+            self._ensure_share_unmounted('%s:/%s/%s' % (
+                self.nas_host, self.share, volume['name']))
+
+    def _ensure_share_unmounted(self, nfs_share, mount_path=None):
+        """Ensure that NFS share is unmounted on the host.
+        :param nfs_share: NFS share name
+        :param mount_path: mount path on the host
+        """
+
+        num_attempts = max(1, self.configuration.nfs_mount_attempts)
+
+        if mount_path is None:
+            mount_path = self._get_mount_point_for_share(nfs_share)
+
+        if mount_path not in self._remotefsclient._read_mounts():
+            LOG.info('NFS share %(share)s already unmounted from %(path)s.', {
+                     'share': nfs_share,
+                     'path': mount_path})
+            return
+
+        for attempt in range(num_attempts):
+            try:
+                self._execute('umount', mount_path, run_as_root=True)
+                LOG.debug('NFS share %(share)s was successfully unmounted '
+                          'from %(path)s.', {
+                          'share': nfs_share,
+                          'path': mount_path})
+                return
+            except Exception as e:
+                msg = six.text_type(e)
+                if attempt == (num_attempts - 1):
+                    LOG.error('Unmount failure for %(share)s after '
+                              '%(count)d attempts.', {
+                              'share': nfs_share,
+                              'count': num_attempts})
+                    raise exception.NfsException(msg)
+                LOG.warning('Unmount attempt %(attempt)d failed: %(msg)s. '
+                            'Retrying unmount %(share)s from %(path)s.', {
+                            'attempt': attempt,
+                            'msg': msg,
+                            'share': nfs_share,
+                            'path': mount_path})
+                greenthread.sleep(1)
 
     def _create_sparsed_file(self, path, size):
         """Creates file with 0 disk usage."""
@@ -380,6 +425,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
         """
         LOG.info('Extending volume: %(id)s New size: %(size)s GB',
                  {'id': volume.id, 'size': new_size})
+        self._ensure_share_mounted('%s:/%s/%s' % (
+            self.nas_host, self.share, volume['name']))
         if self.sparsed_volumes:
             self._execute('truncate', '-s', '%sG' % new_size,
                           self.local_path(volume),
@@ -395,6 +442,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
                 'bs=%dM' % block_size_mb,
                 'count=%d' % block_count,
                 run_as_root=True)
+        self._ensure_share_unmounted('%s:/%s/%s' % (
+            self.nas_host, self.share, volume['name']))
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
