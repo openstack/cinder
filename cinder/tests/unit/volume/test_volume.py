@@ -20,6 +20,7 @@ import ddt
 import time
 import uuid
 
+from castellan import key_manager
 import enum
 import eventlet
 import mock
@@ -34,7 +35,6 @@ from cinder import context
 from cinder import coordination
 from cinder import db
 from cinder import exception
-from cinder import keymgr as key_manager
 from cinder import objects
 from cinder.objects import fields
 import cinder.policy

@@ -20,6 +20,7 @@ import ast
 import collections
 import datetime
 
+from castellan import key_manager
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -38,7 +39,6 @@ from cinder import flow_utils
 from cinder.i18n import _
 from cinder.image import cache as image_cache
 from cinder.image import glance
-from cinder import keymgr as key_manager
 from cinder import objects
 from cinder.objects import base as objects_base
 from cinder.objects import fields

@@ -27,7 +27,6 @@ CONF.import_opt('volume_driver', 'cinder.volume.manager',
                 group=configuration.SHARED_CONF_GROUP)
 CONF.import_opt('backup_driver', 'cinder.backup.manager')
 CONF.import_opt('backend', 'cinder.keymgr', group='key_manager')
-CONF.import_opt('fixed_key', 'cinder.keymgr.conf_key_mgr', group='key_manager')
 CONF.import_opt('scheduler_driver', 'cinder.scheduler.manager')
 
 def_vol_type = 'fake_vol_type'
@@ -46,9 +45,9 @@ def set_defaults(conf):
                      group='oslo_policy')
     conf.set_default('backup_driver', 'cinder.tests.unit.backup.fake_service')
     conf.set_default('backend',
-                     'cinder.keymgr.conf_key_mgr.ConfKeyManager',
+                     'castellan.tests.unit.key_manager.mock_key_manager.'
+                     'MockKeyManager',
                      group='key_manager')
-    conf.set_default('fixed_key', default='0' * 64, group='key_manager')
     conf.set_default('scheduler_driver',
                      'cinder.scheduler.filter_scheduler.FilterScheduler')
     conf.set_default('state_path', os.path.abspath(
