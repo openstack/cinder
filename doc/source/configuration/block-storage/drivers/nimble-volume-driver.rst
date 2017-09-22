@@ -12,6 +12,9 @@ Volume Driver class and Fibre Channel with NimbleFCDriver.
 Support for the Liberty release and above is available from Nimble OS
 2.3.8 or later.
 
+Nimble Storage Cinder driver does not accept unicode characters in
+the volume name or volume description.
+
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
 
