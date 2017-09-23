@@ -20,6 +20,7 @@ import ast
 from oslo_log import log as logging
 
 from cinder.api import common
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v2 import snapshots as snapshots_v2
 from cinder.api.v3.views import snapshots as snapshot_views
@@ -56,9 +57,10 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
                                     req_version=None):
         """Formats allowed filters"""
 
-        # if the max version is less than or same as 3.21
+        # if the max version is less than SNAPSHOT_LIST_METADATA_FILTER
         # metadata based filtering is not supported
-        if req_version.matches(None, "3.21"):
+        if req_version.matches(
+                None, mv.get_prior_version(mv.SNAPSHOT_LIST_METADATA_FILTER)):
             filters.pop('metadata', None)
 
         # Filter out invalid options
@@ -84,7 +86,7 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
         self._format_snapshot_filter_options(search_opts)
 
         req_version = req.api_version_request
-        if req_version.matches("3.30", None) and 'name' in sort_keys:
+        if req_version.matches(mv.SNAPSHOT_SORT, None) and 'name' in sort_keys:
             sort_keys[sort_keys.index('name')] = 'display_name'
 
         # NOTE(thingee): v3 API allows name instead of display_name

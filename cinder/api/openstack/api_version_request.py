@@ -116,6 +116,7 @@ REST_API_VERSION_HISTORY = """
 _MIN_API_VERSION = "3.0"
 _MAX_API_VERSION = "3.44"
 _LEGACY_API_VERSION2 = "2.0"
+UPDATED = "2017-09-19T20:18:14Z"
 
 
 # NOTE(cyeoh): min and max versions declared as functions so we can

@@ -20,6 +20,7 @@ from webob import exc
 
 from cinder.api import common
 from cinder.api import extensions
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder import backup
 from cinder import db
@@ -245,7 +246,8 @@ class VolumeAdminController(AdminController):
         volume = self._get(context, id)
         params = body['os-migrate_volume']
 
-        cluster_name, host = common.get_cluster_host(req, params, '3.16')
+        cluster_name, host = common.get_cluster_host(req, params,
+                                                     mv.VOLUME_MIGRATE_CLUSTER)
         force_host_copy = utils.get_bool_param('force_host_copy', params)
         lock_volume = utils.get_bool_param('lock_volume', params)
         self.volume_api.migrate_volume(context, volume, host, cluster_name,

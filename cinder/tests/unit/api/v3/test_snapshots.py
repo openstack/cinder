@@ -17,7 +17,7 @@ import ddt
 
 import mock
 
-from cinder.api.openstack import api_version_request as api_version
+from cinder.api import microversions as mv
 from cinder.api.v3 import snapshots
 from cinder import context
 from cinder import exception
@@ -54,9 +54,8 @@ def create_snapshot_query_with_metadata(metadata_query_string,
     """Helper to create metadata querystring with microversion"""
     req = fakes.HTTPRequest.blank('/v3/snapshots?metadata=' +
                                   metadata_query_string)
-    req.headers["OpenStack-API-Version"] = "volume " + api_microversion
-    req.api_version_request = api_version.APIVersionRequest(
-        api_microversion)
+    req.headers = mv.get_mv_header(api_microversion)
+    req.api_version_request = mv.get_api_version(api_microversion)
 
     return req
 
@@ -69,7 +68,9 @@ class SnapshotApiTest(test.TestCase):
         self.controller = snapshots.SnapshotsController()
         self.ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
-    @ddt.data('3.14', '3.13', '3.41')
+    @ddt.data(mv.GROUP_SNAPSHOTS,
+              mv.get_prior_version(mv.GROUP_SNAPSHOTS),
+              mv.SNAPSHOT_LIST_USER_ID)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -91,20 +92,20 @@ class SnapshotApiTest(test.TestCase):
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get_by_id.return_value = fake_volume_obj
         req = fakes.HTTPRequest.blank('/v3/snapshots/%s' % UUID)
-        req.api_version_request = api_version.APIVersionRequest(max_ver)
+        req.api_version_request = mv.get_api_version(max_ver)
         resp_dict = self.controller.show(req, UUID)
 
         self.assertIn('snapshot', resp_dict)
         self.assertEqual(UUID, resp_dict['snapshot']['id'])
         self.assertIn('updated_at', resp_dict['snapshot'])
-        if max_ver == '3.14':
+        if max_ver == mv.SNAPSHOT_LIST_USER_ID:
+            self.assertIn('user_id', resp_dict['snapshot'])
+        elif max_ver == mv.GROUP_SNAPSHOTS:
             self.assertIn('group_snapshot_id', resp_dict['snapshot'])
             self.assertNotIn('user_id', resp_dict['snapshot'])
-        elif max_ver == '3.13':
+        else:
             self.assertNotIn('group_snapshot_id', resp_dict['snapshot'])
             self.assertNotIn('user_id', resp_dict['snapshot'])
-        elif max_ver == '3.41':
-            self.assertIn('user_id', resp_dict['snapshot'])
 
     def test_snapshot_show_invalid_id(self):
         snapshot_id = INVALID_UUID
@@ -144,7 +145,7 @@ class SnapshotApiTest(test.TestCase):
         # Generic filtering is introduced since '3,31' and we add
         # 'availability_zone' support by using generic filtering.
         req = fakes.HTTPRequest.blank(url, use_admin_context=is_admin_user,
-                                      version='3.31')
+                                      version=mv.RESOURCE_FILTER)
         res_dict = self.controller.detail(req)
 
         self.assertEqual(1, len(res_dict['snapshots']))
@@ -154,12 +155,13 @@ class SnapshotApiTest(test.TestCase):
         self._create_snapshot(name='test1')
         self._create_snapshot(name='test2')
 
-        req = fakes.HTTPRequest.blank('/v3/snapshots?sort_key=name',
-                                      version='3.29')
+        req = fakes.HTTPRequest.blank(
+            '/v3/snapshots?sort_key=name',
+            version=mv.get_prior_version(mv.SNAPSHOT_SORT))
         self.assertRaises(exception.InvalidInput, self.controller.detail, req)
 
         req = fakes.HTTPRequest.blank('/v3/snapshots?sort_key=name',
-                                      version='3.30')
+                                      version=mv.SNAPSHOT_SORT)
         res_dict = self.controller.detail(req)
         self.assertEqual(2, len(res_dict['snapshots']))
         self.assertEqual('test2', res_dict['snapshots'][0]['name'])
@@ -171,7 +173,8 @@ class SnapshotApiTest(test.TestCase):
         self._create_snapshot(metadata=metadata)
 
         # Create request with metadata filter key1: value1
-        req = create_snapshot_query_with_metadata('{"key1":"val1"}', '3.22')
+        req = create_snapshot_query_with_metadata(
+            '{"key1":"val1"}', mv.SNAPSHOT_LIST_METADATA_FILTER)
 
         # query controller with above request
         res_dict = self.controller.detail(req)
@@ -184,7 +187,8 @@ class SnapshotApiTest(test.TestCase):
             'metadata'])
 
         # Create request with metadata filter key2: value2
-        req = create_snapshot_query_with_metadata('{"key2":"val2"}', '3.22')
+        req = create_snapshot_query_with_metadata(
+            '{"key2":"val2"}', mv.SNAPSHOT_LIST_METADATA_FILTER)
 
         # query controller with above request
         res_dict = self.controller.detail(req)
@@ -199,7 +203,8 @@ class SnapshotApiTest(test.TestCase):
 
         # Create request with metadata filter key1: value1, key11: value11
         req = create_snapshot_query_with_metadata(
-            '{"key1":"val1", "key11":"val11"}', '3.22')
+            '{"key1":"val1", "key11":"val11"}',
+            mv.SNAPSHOT_LIST_METADATA_FILTER)
 
         # query controller with above request
         res_dict = self.controller.detail(req)
@@ -212,7 +217,8 @@ class SnapshotApiTest(test.TestCase):
             'snapshots'][0]['metadata'])
 
         # Create request with metadata filter key1: value1
-        req = create_snapshot_query_with_metadata('{"key1":"val1"}', '3.22')
+        req = create_snapshot_query_with_metadata(
+            '{"key1":"val1"}', mv.SNAPSHOT_LIST_METADATA_FILTER)
 
         # query controller with above request
         res_dict = self.controller.detail(req)
@@ -224,7 +230,19 @@ class SnapshotApiTest(test.TestCase):
         self.assertDictEqual({"key1": "val1", "key11": "val11"}, res_dict[
             'snapshots'][0]['metadata'])
 
-    @ddt.data('3.30', '3.31', '3.34')
+        # Create request with metadata filter key2: value2
+        req = create_snapshot_query_with_metadata(
+            '{"key2":"val2"}', mv.SNAPSHOT_LIST_METADATA_FILTER)
+
+        # query controller with above request
+        res_dict = self.controller.detail(req)
+
+        # verify no snapshot is returned
+        self.assertEqual(0, len(res_dict['snapshots']))
+
+    @ddt.data(mv.get_prior_version(mv.RESOURCE_FILTER),
+              mv.RESOURCE_FILTER,
+              mv.LIKE_FILTER)
     @mock.patch('cinder.api.common.reject_invalid_filters')
     def test_snapshot_list_with_general_filter(self, version, mock_update):
         url = '/v3/%s/snapshots' % fake.PROJECT_ID
@@ -233,8 +251,8 @@ class SnapshotApiTest(test.TestCase):
                                       use_admin_context=False)
         self.controller.index(req)
 
-        if version != '3.30':
-            support_like = True if version == '3.34' else False
+        if version != mv.get_prior_version(mv.RESOURCE_FILTER):
+            support_like = True if version == mv.LIKE_FILTER else False
             mock_update.assert_called_once_with(req.environ['cinder.context'],
                                                 mock.ANY, 'snapshot',
                                                 support_like)
@@ -245,7 +263,9 @@ class SnapshotApiTest(test.TestCase):
         self._create_snapshot(metadata=metadata)
 
         # Create request with metadata filter key2: value2
-        req = create_snapshot_query_with_metadata('{"key2":"val2"}', '3.21')
+        req = create_snapshot_query_with_metadata(
+            '{"key2":"val2"}',
+            mv.get_prior_version(mv.SNAPSHOT_LIST_METADATA_FILTER))
 
         # query controller with above request
         res_dict = self.controller.detail(req)

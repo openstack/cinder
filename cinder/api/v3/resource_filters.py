@@ -13,11 +13,9 @@
 """The resource filters api."""
 
 from cinder.api import common
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v3.views import resource_filters as filter_views
-
-
-FILTER_API_VERSION = '3.33'
 
 
 class ResourceFiltersController(wsgi.Controller):
@@ -30,7 +28,7 @@ class ResourceFiltersController(wsgi.Controller):
         self.ext_mgr = ext_mgr
         super(ResourceFiltersController, self).__init__()
 
-    @wsgi.Controller.api_version(FILTER_API_VERSION)
+    @wsgi.Controller.api_version(mv.RESOURCE_FILTER_CONFIG)
     def index(self, req):
         """Return a list of resource filters."""
         resource = req.params.get('resource', None)

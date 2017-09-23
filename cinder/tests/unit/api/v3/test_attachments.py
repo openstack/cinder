@@ -21,6 +21,7 @@ import ddt
 import mock
 import webob
 
+from cinder.api import microversions as mv
 from cinder.api.v3 import attachments as v3_attachments
 from cinder import context
 from cinder import exception
@@ -30,8 +31,6 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi as volume_rpcapi
-
-ATTACHMENTS_MICRO_VERSION = '3.27'
 
 
 @ddt.ddt
@@ -81,7 +80,7 @@ class AttachmentsAPITestCase(test.TestCase):
     def test_create_attachment(self):
         req = fakes.HTTPRequest.blank('/v3/%s/attachments' %
                                       fake.PROJECT_ID,
-                                      version=ATTACHMENTS_MICRO_VERSION)
+                                      version=mv.NEW_ATTACH)
         body = {
             "attachment":
                 {
@@ -104,7 +103,7 @@ class AttachmentsAPITestCase(test.TestCase):
         mock_update.return_value = fake_connector
         req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
                                       (fake.PROJECT_ID, self.attachment1.id),
-                                      version=ATTACHMENTS_MICRO_VERSION,
+                                      version=mv.NEW_ATTACH,
                                       use_admin_context=True)
         body = {
             "attachment":
@@ -124,7 +123,7 @@ class AttachmentsAPITestCase(test.TestCase):
         mock_get.return_value = {'project_id': fake.PROJECT2_ID}
         req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
                                       (fake.PROJECT_ID, self.attachment1.id),
-                                      version=ATTACHMENTS_MICRO_VERSION,
+                                      version=mv.NEW_ATTACH,
                                       use_admin_context=False)
         body = {
             "attachment":
@@ -139,7 +138,8 @@ class AttachmentsAPITestCase(test.TestCase):
                           self.controller.delete, req,
                           self.attachment1.id)
 
-    @ddt.data('3.30', '3.31', '3.34')
+    @ddt.data(mv.get_prior_version(mv.RESOURCE_FILTER),
+              mv.RESOURCE_FILTER, mv.LIKE_FILTER)
     @mock.patch('cinder.api.common.reject_invalid_filters')
     def test_attachment_list_with_general_filter(self, version, mock_update):
         url = '/v3/%s/attachments' % fake.PROJECT_ID
@@ -148,8 +148,8 @@ class AttachmentsAPITestCase(test.TestCase):
                                       use_admin_context=False)
         self.controller.index(req)
 
-        if version != '3.30':
-            support_like = True if version == '3.34' else False
+        if version != mv.get_prior_version(mv.RESOURCE_FILTER):
+            support_like = True if version == mv.LIKE_FILTER else False
             mock_update.assert_called_once_with(req.environ['cinder.context'],
                                                 mock.ANY, 'attachment',
                                                 support_like)
@@ -164,7 +164,7 @@ class AttachmentsAPITestCase(test.TestCase):
             attach_status=status)
         req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
                                       (fake.PROJECT_ID, attachment.id),
-                                      version=ATTACHMENTS_MICRO_VERSION,
+                                      version=mv.NEW_ATTACH,
                                       use_admin_context=True)
 
         self.controller.delete(req, attachment.id)
@@ -201,7 +201,7 @@ class AttachmentsAPITestCase(test.TestCase):
     def test_create_attachment_without_resource_uuid(self, resource_uuid):
         req = fakes.HTTPRequest.blank('/v3/%s/attachments' %
                                       fake.PROJECT_ID,
-                                      version=ATTACHMENTS_MICRO_VERSION)
+                                      version=mv.NEW_ATTACH)
         body = {
             "attachment":
                 {
@@ -220,7 +220,7 @@ class AttachmentsAPITestCase(test.TestCase):
         if is_detail:
             url = '/v3/%s/groups/detail' % fake.PROJECT_ID
             list_func = self.controller.detail
-        req = fakes.HTTPRequest.blank(url, version=ATTACHMENTS_MICRO_VERSION,
+        req = fakes.HTTPRequest.blank(url, version=mv.NEW_ATTACH,
                                       use_admin_context=True)
         res_dict = list_func(req)
 
@@ -231,7 +231,7 @@ class AttachmentsAPITestCase(test.TestCase):
 
     def test_list_attachments_with_limit(self):
         url = '/v3/%s/attachments?limit=1' % fake.PROJECT_ID
-        req = fakes.HTTPRequest.blank(url, version=ATTACHMENTS_MICRO_VERSION,
+        req = fakes.HTTPRequest.blank(url, version=mv.NEW_ATTACH,
                                       use_admin_context=True)
         res_dict = self.controller.index(req)
 
@@ -241,7 +241,7 @@ class AttachmentsAPITestCase(test.TestCase):
     def test_list_attachments_with_marker(self):
         url = '/v3/%s/attachments?marker=%s' % (fake.PROJECT_ID,
                                                 self.attachment3.id)
-        req = fakes.HTTPRequest.blank(url, version=ATTACHMENTS_MICRO_VERSION,
+        req = fakes.HTTPRequest.blank(url, version=mv.NEW_ATTACH,
                                       use_admin_context=True)
         res_dict = self.controller.index(req)
 
@@ -254,7 +254,7 @@ class AttachmentsAPITestCase(test.TestCase):
     def test_list_attachments_with_sort(self, sort_dir):
         url = '/v3/%s/attachments?sort_key=id&sort_dir=%s' % (fake.PROJECT_ID,
                                                               sort_dir)
-        req = fakes.HTTPRequest.blank(url, version=ATTACHMENTS_MICRO_VERSION,
+        req = fakes.HTTPRequest.blank(url, version=mv.NEW_ATTACH,
                                       use_admin_context=True)
         res_dict = self.controller.index(req)
 
@@ -280,7 +280,7 @@ class AttachmentsAPITestCase(test.TestCase):
     @ddt.unpack
     def test_list_attachment_with_tenants(self, admin, request_url, count):
         url = '/v3/%s/attachments%s' % (fake.PROJECT_ID, request_url)
-        req = fakes.HTTPRequest.blank(url, version=ATTACHMENTS_MICRO_VERSION,
+        req = fakes.HTTPRequest.blank(url, version=mv.NEW_ATTACH,
                                       use_admin_context=admin)
         res_dict = self.controller.index(req)
 

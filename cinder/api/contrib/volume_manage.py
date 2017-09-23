@@ -18,6 +18,7 @@ from six.moves import http_client
 from cinder.api import common
 from cinder.api.contrib import resource_common_manage
 from cinder.api import extensions
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v2.views import volumes as volume_views
 from cinder.api.views import manageable_volumes as list_manageable_view
@@ -110,7 +111,8 @@ class VolumeManageController(wsgi.Controller):
         if 'ref' not in volume:
             raise exception.MissingRequired(element='ref')
 
-        cluster_name, host = common.get_cluster_host(req, volume, '3.16')
+        cluster_name, host = common.get_cluster_host(
+            req, volume, mv.VOLUME_MIGRATE_CLUSTER)
 
         LOG.debug('Manage volume request body: %s', body)
 

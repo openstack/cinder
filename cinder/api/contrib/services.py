@@ -22,6 +22,7 @@ import webob.exc
 
 from cinder.api import common
 from cinder.api import extensions
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants
@@ -94,8 +95,8 @@ class ServiceController(wsgi.Controller):
                           'status': active, 'state': art,
                           'updated_at': updated_at}
 
-            # On V3.7 we added cluster support
-            if req.api_version_request.matches('3.7'):
+            # On CLUSTER_SUPPORT we added cluster support
+            if req.api_version_request.matches(mv.CLUSTER_SUPPORT):
                 ret_fields['cluster'] = svc.cluster_name
 
             if detailed:
@@ -125,20 +126,23 @@ class ServiceController(wsgi.Controller):
             raise exception.InvalidInput(ex.msg)
 
     def _freeze(self, context, req, body):
-        cluster_name, host = common.get_cluster_host(req, body, '3.26')
+        cluster_name, host = common.get_cluster_host(
+            req, body, mv.REPLICATION_CLUSTER)
         return self._volume_api_proxy(self.volume_api.freeze_host, context,
                                       host, cluster_name)
 
     def _thaw(self, context, req, body):
-        cluster_name, host = common.get_cluster_host(req, body, '3.26')
+        cluster_name, host = common.get_cluster_host(
+            req, body, mv.REPLICATION_CLUSTER)
         return self._volume_api_proxy(self.volume_api.thaw_host, context,
                                       host, cluster_name)
 
     def _failover(self, context, req, body, clustered):
         # We set version to None to always get the cluster name from the body,
-        # to False when we don't want to get it, and '3.26' when we only want
-        # it if the requested version is 3.26 or higher.
-        version = '3.26' if clustered else False
+        # to False when we don't want to get it, and REPLICATION_CLUSTER  when
+        # we only want it if the requested version is REPLICATION_CLUSTER  or
+        # higher.
+        version = mv.REPLICATION_CLUSTER if clustered else False
         cluster_name, host = common.get_cluster_host(req, body, version)
         self._volume_api_proxy(self.volume_api.failover, context, host,
                                cluster_name, body.get('backend_id'))
@@ -221,7 +225,7 @@ class ServiceController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context, action='update')
 
-        support_dynamic_log = req.api_version_request.matches('3.32')
+        support_dynamic_log = req.api_version_request.matches(mv.LOG_LEVEL)
 
         ext_loaded = self.ext_mgr.is_loaded('os-extended-services')
         ret_val = {}
@@ -240,7 +244,8 @@ class ServiceController(wsgi.Controller):
             return self._thaw(context, req, body)
         elif id == "failover_host":
             return self._failover(context, req, body, False)
-        elif req.api_version_request.matches('3.26') and id == 'failover':
+        elif (req.api_version_request.matches(mv.REPLICATION_CLUSTER) and
+              id == 'failover'):
             return self._failover(context, req, body, True)
         elif support_dynamic_log and id == 'set-log':
             return self._set_log(context, body)

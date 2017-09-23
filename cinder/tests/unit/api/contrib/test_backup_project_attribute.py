@@ -17,7 +17,7 @@ import ddt
 from oslo_serialization import jsonutils
 import webob
 
-from cinder.api.openstack import api_version_request as api_version
+from cinder.api import microversions as mv
 from cinder.api.v3 import router as router_v3
 from cinder.backup import api as backup_api
 from cinder import context
@@ -57,7 +57,8 @@ class BackupProjectAttributeTest(test.TestCase):
         self.stubs.Set(backup_api.API, 'get', fake_backup_get)
         self.stubs.Set(backup_api.API, 'get_all', fake_backup_get_all)
 
-    def _send_backup_request(self, ctx, detail=False, version='3.18'):
+    def _send_backup_request(self, ctx, detail=False,
+                             version=mv.BACKUP_PROJECT):
         req = None
         if detail:
             req = webob.Request.blank(('/v3/%s/backups/detail'
@@ -67,8 +68,8 @@ class BackupProjectAttributeTest(test.TestCase):
                                                              fake.BACKUP_ID))
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
-        req.headers['OpenStack-API-Version'] = 'volume ' + version
-        req.api_version_request = api_version.APIVersionRequest(version)
+        req.headers = mv.get_mv_header(version)
+        req.api_version_request = mv.get_api_version(version)
         res = req.get_response(app())
 
         if detail:
@@ -97,5 +98,6 @@ class BackupProjectAttributeTest(test.TestCase):
 
     def test_get_backup_under_allowed_api_version(self):
         ctx = context.RequestContext(fake.USER2_ID, fake.PROJECT_ID, True)
-        bak = self._send_backup_request(ctx, version='3.17')
+        bak = self._send_backup_request(
+            ctx, version=mv.get_prior_version(mv.BACKUP_PROJECT))
         self.assertNotIn('os-backup-project-attr:project_id', bak)

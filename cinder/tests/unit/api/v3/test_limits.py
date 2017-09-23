@@ -16,11 +16,15 @@
 import ddt
 import mock
 
+from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.v3 import limits
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+
+LIMITS_FILTER = mv.LIMITS_ADMIN_FILTER
+PRE_LIMITS_FILTER = mv.get_prior_version(LIMITS_FILTER)
 
 
 @ddt.ddt
@@ -29,7 +33,8 @@ class LimitsControllerTest(test.TestCase):
         super(LimitsControllerTest, self).setUp()
         self.controller = limits.LimitsController()
 
-    @ddt.data(('3.38', True), ('3.38', False), ('3.39', True), ('3.39', False))
+    @ddt.data((PRE_LIMITS_FILTER, True), (PRE_LIMITS_FILTER, False),
+              (LIMITS_FILTER, True), (LIMITS_FILTER, False))
     @mock.patch('cinder.quota.VolumeTypeQuotaEngine.get_project_quotas')
     def test_get_limit_with_project_id(self, ver_project, mock_get_quotas):
         max_ver, has_project = ver_project
@@ -48,9 +53,9 @@ class LimitsControllerTest(test.TestCase):
         mock_get_quotas.side_effect = get_project_quotas
 
         resp_dict = self.controller.index(req)
-        # if admin, only 3.39 and req contains project_id filter, cinder
-        # returns the specified project's quota.
-        if max_ver == '3.39' and has_project:
+        # if admin, only LIMITS_FILTER and req contains project_id filter,
+        # cinder returns the specified project's quota.
+        if max_ver == LIMITS_FILTER and has_project:
             self.assertEqual(
                 5, resp_dict['limits']['absolute']['maxTotalVolumeGigabytes'])
         else:

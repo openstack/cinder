@@ -16,6 +16,7 @@
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v3.views import workers as workers_view
 from cinder import db
@@ -98,7 +99,7 @@ class WorkerController(wsgi.Controller):
 
         return params
 
-    @wsgi.Controller.api_version('3.24')
+    @wsgi.Controller.api_version(mv.WORKERS_CLEANUP)
     @wsgi.response(202)
     def cleanup(self, req, body=None):
         """Do the cleanup on resources from a specific service/host/node."""

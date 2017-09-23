@@ -13,6 +13,7 @@
 #    under the License.
 
 from cinder.api import extensions
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder import quota
 
@@ -32,7 +33,8 @@ class UsedLimitsController(wsgi.Controller):
 
             # TODO(wangxiyuan): Support "tenant_id" here to keep the backwards
             # compatibility. Remove it once we drop all support for "tenant".
-            if req_version.matches(None, "3.38") or not context.is_admin:
+            if (req_version.matches(None, mv.GROUP_REPLICATION) or
+                    not context.is_admin):
                 params.pop('project_id', None)
                 params.pop('tenant_id', None)
             project_id = params.get(

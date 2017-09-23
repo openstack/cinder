@@ -23,6 +23,7 @@ from six.moves.urllib.parse import urlencode
 import webob
 
 from cinder.api.contrib import volume_manage
+from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 from cinder import context
 from cinder import exception
@@ -226,15 +227,15 @@ class VolumeManageTest(test.TestCase):
         self.assertEqual(body['volume']['ref'], args[3])
         self.assertTrue(mock_validate.called)
 
-    def _get_resp_create(self, body, version='3.0'):
+    def _get_resp_create(self, body, version=mv.BASE_VERSION):
         url = '/v3/%s/os-volume-manage' % fake.PROJECT_ID
         req = webob.Request.blank(url, base_url='http://localhost.com' + url)
         req.method = 'POST'
+        req.headers = mv.get_mv_header(version)
         req.headers['Content-Type'] = 'application/json'
         req.environ['cinder.context'] = self._admin_ctxt
         req.body = jsonutils.dump_as_bytes(body)
-        req.headers = {'OpenStack-API-Version': 'volume %s' % version}
-        req.api_version_request = api_version.APIVersionRequest(version)
+        req.api_version_request = mv.get_api_version(version)
         res = self.controller.create(req, body)
         return res
 
@@ -244,7 +245,7 @@ class VolumeManageTest(test.TestCase):
     def test_manage_volume_ok_cluster(self, mock_validate, mock_api_manage):
         body = {'volume': {'cluster': 'cluster',
                            'ref': 'fake_ref'}}
-        res = self._get_resp_create(body, '3.16')
+        res = self._get_resp_create(body, mv.VOLUME_MIGRATE_CLUSTER)
         self.assertEqual(['volume'], list(res.keys()))
 
         # Check that the manage API was called with the correct arguments.
@@ -262,7 +263,8 @@ class VolumeManageTest(test.TestCase):
                            'cluster': 'cluster',
                            'ref': 'fake_ref'}}
         self.assertRaises(exception.InvalidInput,
-                          self._get_resp_create, body, '3.16')
+                          self._get_resp_create, body,
+                          mv.VOLUME_MIGRATE_CLUSTER)
 
     def test_manage_volume_missing_host(self):
         """Test correct failure when host is not specified."""
@@ -485,7 +487,7 @@ class VolumeManageTest(test.TestCase):
         """Test managing volume to return 'creating' status in V3 API."""
         body = {'volume': {'host': 'host_ok',
                            'ref': 'fake_ref'}}
-        res = self._get_resp_post_v3(body, '3.15')
+        res = self._get_resp_post_v3(body, mv.ETAGS)
         self.assertEqual(http_client.ACCEPTED, res.status_int)
         self.assertEqual(1, mock_api_manage.call_count)
         self.assertEqual('creating',

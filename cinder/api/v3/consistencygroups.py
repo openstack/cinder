@@ -19,6 +19,7 @@ import webob
 from webob import exc
 
 from cinder.api.contrib import consistencygroups as cg_v2
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.i18n import _
 
@@ -30,7 +31,8 @@ class ConsistencyGroupsController(cg_v2.ConsistencyGroupsController):
 
     def _check_update_parameters_v3(self, req, name, description, add_volumes,
                                     remove_volumes):
-        allow_empty = req.api_version_request.matches('3.6', None)
+        allow_empty = req.api_version_request.matches(
+            mv.CG_UPDATE_BLANK_PROPERTIES, None)
         if allow_empty:
             if (name is None and description is None
                     and not add_volumes and not remove_volumes):

@@ -22,11 +22,9 @@ import six
 from six.moves import http_client
 import webob
 
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v2 import volume_metadata as volume_meta_v2
-
-
-METADATA_MICRO_VERSION = '3.15'
 
 
 class Controller(volume_meta_v2.Controller):
@@ -46,7 +44,7 @@ class Controller(volume_meta_v2.Controller):
     def index(self, req, volume_id):
         req_version = req.api_version_request
         metadata = super(Controller, self).index(req, volume_id)
-        if req_version.matches(METADATA_MICRO_VERSION):
+        if req_version.matches(mv.ETAGS):
             data = jsonutils.dumps(metadata)
             if six.PY3:
                 data = data.encode('utf-8')
@@ -59,7 +57,7 @@ class Controller(volume_meta_v2.Controller):
     @wsgi.extends
     def update(self, req, volume_id, id, body):
         req_version = req.api_version_request
-        if req_version.matches(METADATA_MICRO_VERSION):
+        if req_version.matches(mv.ETAGS):
             if not self._validate_etag(req, volume_id):
                 return webob.Response(
                     status_int=http_client.PRECONDITION_FAILED)
@@ -69,7 +67,7 @@ class Controller(volume_meta_v2.Controller):
     @wsgi.extends
     def update_all(self, req, volume_id, body):
         req_version = req.api_version_request
-        if req_version.matches(METADATA_MICRO_VERSION):
+        if req_version.matches(mv.ETAGS):
             if not self._validate_etag(req, volume_id):
                 return webob.Response(
                     status_int=http_client.PRECONDITION_FAILED)

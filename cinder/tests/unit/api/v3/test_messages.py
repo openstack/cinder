@@ -15,6 +15,7 @@ import mock
 from six.moves import http_client
 
 from cinder.api import extensions
+from cinder.api import microversions as mv
 from cinder.api.v3 import messages
 from cinder import context
 from cinder import exception
@@ -66,8 +67,7 @@ class MessageApiTest(test.TestCase):
         self.mock_object(message_api.API, 'get', v3_fakes.fake_message_get)
 
         req = fakes.HTTPRequest.blank(
-            '/v3/messages/%s' % fakes.FAKE_UUID,
-            version=messages.MESSAGES_BASE_MICRO_VERSION)
+            '/v3/messages/%s' % fakes.FAKE_UUID, version=mv.MESSAGES)
         req.environ['cinder.context'] = self.ctxt
 
         res_dict = self.controller.show(req, fakes.FAKE_UUID)
@@ -81,8 +81,7 @@ class MessageApiTest(test.TestCase):
                              message_id=fakes.FAKE_UUID))
 
         req = fakes.HTTPRequest.blank(
-            '/v3/messages/%s' % fakes.FAKE_UUID,
-            version=messages.MESSAGES_BASE_MICRO_VERSION)
+            '/v3/messages/%s' % fakes.FAKE_UUID, version=mv.MESSAGES)
         req.environ['cinder.context'] = self.ctxt
 
         self.assertRaises(exception.MessageNotFound, self.controller.show,
@@ -92,7 +91,7 @@ class MessageApiTest(test.TestCase):
         self.mock_object(message_api.API, 'get', v3_fakes.fake_message_get)
 
         req = fakes.HTTPRequest.blank('/v3/messages/%s' % fakes.FAKE_UUID,
-                                      version='3.0')
+                                      version=mv.BASE_VERSION)
         req.environ['cinder.context'] = self.ctxt
 
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
@@ -103,8 +102,7 @@ class MessageApiTest(test.TestCase):
         self.mock_object(message_api.API, 'delete')
 
         req = fakes.HTTPRequest.blank(
-            '/v3/messages/%s' % fakes.FAKE_UUID,
-            version=messages.MESSAGES_BASE_MICRO_VERSION)
+            '/v3/messages/%s' % fakes.FAKE_UUID, version=mv.MESSAGES)
         req.environ['cinder.context'] = self.ctxt
 
         resp = self.controller.delete(req, fakes.FAKE_UUID)
@@ -118,13 +116,13 @@ class MessageApiTest(test.TestCase):
                              message_id=fakes.FAKE_UUID))
 
         req = fakes.HTTPRequest.blank(
-            '/v3/messages/%s' % fakes.FAKE_UUID,
-            version=messages.MESSAGES_BASE_MICRO_VERSION)
+            '/v3/messages/%s' % fakes.FAKE_UUID, version=mv.MESSAGES)
 
         self.assertRaises(exception.MessageNotFound, self.controller.delete,
                           req, fakes.FAKE_UUID)
 
-    @ddt.data('3.30', '3.31', '3.34')
+    @ddt.data(mv.get_prior_version(mv.RESOURCE_FILTER),
+              mv.RESOURCE_FILTER, mv.LIKE_FILTER)
     @mock.patch('cinder.api.common.reject_invalid_filters')
     def test_message_list_with_general_filter(self, version, mock_update):
         url = '/v3/%s/messages' % fakes.FAKE_UUID
@@ -133,8 +131,8 @@ class MessageApiTest(test.TestCase):
                                       use_admin_context=False)
         self.controller.index(req)
 
-        if version != '3.30':
-            support_like = True if version == '3.34' else False
+        if version != mv.get_prior_version(mv.RESOURCE_FILTER):
+            support_like = True if version == mv.LIKE_FILTER else False
             mock_update.assert_called_once_with(req.environ['cinder.context'],
                                                 mock.ANY, 'message',
                                                 support_like)
@@ -143,8 +141,7 @@ class MessageApiTest(test.TestCase):
         self.mock_object(message_api.API, 'get_all',
                          return_value=[v3_fakes.fake_message(fakes.FAKE_UUID)])
         req = fakes.HTTPRequest.blank(
-            '/v3/messages/%s' % fakes.FAKE_UUID,
-            version=messages.MESSAGES_BASE_MICRO_VERSION)
+            '/v3/messages/%s' % fakes.FAKE_UUID, version=mv.MESSAGES)
         req.environ['cinder.context'] = self.ctxt
 
         res_dict = self.controller.index(req)

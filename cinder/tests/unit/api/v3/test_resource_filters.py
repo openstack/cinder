@@ -18,12 +18,11 @@ import ddt
 import mock
 import six
 
+from cinder.api import microversions as mv
 from cinder.api.v3 import resource_filters as v3_filters
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
-
-FILTERS_MICRO_VERSION = '3.33'
 
 
 @ddt.ddt
@@ -53,7 +52,7 @@ class ResourceFiltersAPITestCase(test.TestCase):
         if resource is not None:
             request_url += '?resource=%s' % resource
         req = fakes.HTTPRequest.blank(request_url,
-                                      version=FILTERS_MICRO_VERSION)
+                                      version=mv.RESOURCE_FILTER_CONFIG)
 
         with mock.patch('cinder.api.common._FILTERS_COLLECTION', filters):
             result = self.controller.index(req)

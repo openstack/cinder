@@ -23,6 +23,7 @@ from webob import exc
 
 from cinder.api import common
 from cinder.api import extensions
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.views import backups as backup_views
 from cinder import backup as backupAPI
@@ -151,8 +152,8 @@ class BackupsController(wsgi.Controller):
         incremental = backup.get('incremental', False)
         force = backup.get('force', False)
         snapshot_id = backup.get('snapshot_id', None)
-        metadata = backup.get(
-            'metadata', None) if req_version.matches("3.43") else None
+        metadata = backup.get('metadata', None) if req_version.matches(
+            mv.BACKUP_METADATA) else None
         LOG.info("Creating backup of volume %(volume_id)s in container"
                  " %(container)s",
                  {'volume_id': volume_id, 'container': container},

@@ -19,6 +19,7 @@ import ddt
 import mock
 import webob
 
+from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.v3 import backups
 from cinder.api.views import backups as backup_view
@@ -44,7 +45,7 @@ class BackupsControllerAPITestCase(test.TestCase):
                                            is_admin=True)
         self.controller = backups.BackupsController()
 
-    def _fake_update_request(self, backup_id, version='3.9'):
+    def _fake_update_request(self, backup_id, version=mv.BACKUP_UPDATE):
         req = fakes.HTTPRequest.blank('/v3/%s/backups/%s/update' %
                                       (fake.PROJECT_ID, backup_id))
         req.environ['cinder.context'].is_admin = True
@@ -54,7 +55,8 @@ class BackupsControllerAPITestCase(test.TestCase):
         return req
 
     def test_update_wrong_version(self):
-        req = self._fake_update_request(fake.BACKUP_ID, version='3.6')
+        req = self._fake_update_request(
+            fake.BACKUP_ID, version=mv.get_prior_version(mv.BACKUP_UPDATE))
         body = {"backup": {"name": "Updated Test Name", }}
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
                           self.controller.update, req, fake.BACKUP_ID,
@@ -86,7 +88,9 @@ class BackupsControllerAPITestCase(test.TestCase):
                           self.controller.update,
                           req, fake.BACKUP_ID, body)
 
-    @ddt.data('3.30', '3.31', '3.34')
+    @ddt.data(mv.get_prior_version(mv.RESOURCE_FILTER),
+              mv.RESOURCE_FILTER,
+              mv.LIKE_FILTER)
     @mock.patch('cinder.api.common.reject_invalid_filters')
     def test_backup_list_with_general_filter(self, version, mock_update):
         url = '/v3/%s/backups' % fake.PROJECT_ID
@@ -95,13 +99,14 @@ class BackupsControllerAPITestCase(test.TestCase):
                                       use_admin_context=False)
         self.controller.index(req)
 
-        if version != '3.30':
-            support_like = True if version == '3.34' else False
+        if version != mv.get_prior_version(mv.RESOURCE_FILTER):
+            support_like = True if version == mv.LIKE_FILTER else False
             mock_update.assert_called_once_with(req.environ['cinder.context'],
                                                 mock.ANY, 'backup',
                                                 support_like)
 
-    @ddt.data('3.36', '3.37')
+    @ddt.data(mv.get_prior_version(mv.BACKUP_SORT_NAME),
+              mv.BACKUP_SORT_NAME)
     def test_backup_list_with_name(self, version):
         backup1 = test_utils.create_backup(
             self.ctxt, display_name='b_test_name',
@@ -111,7 +116,7 @@ class BackupsControllerAPITestCase(test.TestCase):
             status=fields.BackupStatus.AVAILABLE)
         url = '/v3/%s/backups?sort_key=name' % fake.PROJECT_ID
         req = fakes.HTTPRequest.blank(url, version=version)
-        if version == '3.36':
+        if version == mv.get_prior_version(mv.BACKUP_SORT_NAME):
             self.assertRaises(exception.InvalidInput,
                               self.controller.index,
                               req)

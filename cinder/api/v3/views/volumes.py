@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from cinder.api import microversions as mv
 from cinder.api.v2.views import volumes as views_v2
 
 
@@ -41,14 +42,14 @@ class ViewBuilder(views_v2.ViewBuilder):
         volume_ref = super(ViewBuilder, self).detail(request, volume)
 
         req_version = request.api_version_request
-        # Add group_id if min version is greater than or equal to 3.13.
-        if req_version.matches("3.13", None):
+        # Add group_id if min version is greater than or equal to GROUP_VOLUME.
+        if req_version.matches(mv.GROUP_VOLUME, None):
             volume_ref['volume']['group_id'] = volume.get('group_id')
 
-        # Add provider_id if min version is greater than or equal to 3.21
-        # for admin.
+        # Add provider_id if min version is greater than or equal to
+        # VOLUME_DETAIL_PROVIDER_ID for admin.
         if (request.environ['cinder.context'].is_admin and
-                req_version.matches("3.21", None)):
+                req_version.matches(mv.VOLUME_DETAIL_PROVIDER_ID, None)):
             volume_ref['volume']['provider_id'] = volume.get('provider_id')
 
         return volume_ref

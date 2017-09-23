@@ -15,6 +15,7 @@
 from six.moves import http_client
 
 from cinder.api.contrib import snapshot_manage as snapshot_manage_v2
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v3 import resource_common_manage as common
 
@@ -27,7 +28,7 @@ class SnapshotManageController(common.ManageResource,
 
     @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
-        self._ensure_min_version(req, "3.8")
+        self._ensure_min_version(req, mv.MANAGE_EXISTING_LIST)
         return super(SnapshotManageController, self).create(req, body)
 
 

@@ -25,7 +25,7 @@ import webob.exc
 
 from cinder.api.contrib import services
 from cinder.api import extensions
-from cinder.api.openstack import api_version_request as api_version
+from cinder.api import microversions as mv
 from cinder import context
 from cinder import exception
 from cinder import objects
@@ -114,10 +114,10 @@ fake_services_list = [
 class FakeRequest(object):
     environ = {"cinder.context": context.get_admin_context()}
 
-    def __init__(self, version='3.0', **kwargs):
+    def __init__(self, version=mv.BASE_VERSION, **kwargs):
         self.GET = kwargs
-        self.headers = {'OpenStack-API-Version': 'volume ' + version}
-        self.api_version_request = api_version.APIVersionRequest(version)
+        self.headers = mv.get_mv_header(version)
+        self.api_version_request = mv.get_api_version(version)
 
 
 class FakeRequestWithBinary(FakeRequest):
@@ -246,19 +246,19 @@ class ServicesTest(test.TestCase):
         self.assertEqual(response, res_dict)
 
     def test_failover_old_version(self):
-        req = FakeRequest(version='3.18')
+        req = FakeRequest(version=mv.BACKUP_PROJECT)
         self.assertRaises(exception.InvalidInput, self.controller.update, req,
                           'failover', {'cluster': 'cluster1'})
 
     def test_failover_no_values(self):
-        req = FakeRequest(version='3.26')
+        req = FakeRequest(version=mv.REPLICATION_CLUSTER)
         self.assertRaises(exception.InvalidInput, self.controller.update, req,
                           'failover', {'backend_id': 'replica1'})
 
     @ddt.data({'host': 'hostname'}, {'cluster': 'mycluster'})
     @mock.patch('cinder.volume.api.API.failover')
     def test_failover(self, body, failover_mock):
-        req = FakeRequest(version='3.26')
+        req = FakeRequest(version=mv.REPLICATION_CLUSTER)
         body['backend_id'] = 'replica1'
         res = self.controller.update(req, 'failover', body)
         self.assertEqual(202, res.status_code)
@@ -269,14 +269,14 @@ class ServicesTest(test.TestCase):
     @ddt.data({}, {'host': 'hostname', 'cluster': 'mycluster'})
     @mock.patch('cinder.volume.api.API.failover')
     def test_failover_invalid_input(self, body, failover_mock):
-        req = FakeRequest(version='3.26')
+        req = FakeRequest(version=mv.REPLICATION_CLUSTER)
         body['backend_id'] = 'replica1'
         self.assertRaises(exception.InvalidInput,
                           self.controller.update, req, 'failover', body)
         failover_mock.assert_not_called()
 
     def test_services_list_with_cluster_name(self):
-        req = FakeRequest(version='3.7')
+        req = FakeRequest(version=mv.CLUSTER_SUPPORT)
         res_dict = self.controller.index(req)
 
         response = {'services': [{'binary': 'cinder-scheduler',
@@ -689,7 +689,7 @@ class ServicesTest(test.TestCase):
     def test_services_action_cluster_not_found(self, method, body,
                                                mock_get_all_services):
         url = '/v3/%s/os-services/%s' % (fake.PROJECT_ID, method)
-        req = fakes.HTTPRequest.blank(url, version='3.26')
+        req = fakes.HTTPRequest.blank(url, version=mv.REPLICATION_CLUSTER)
         mock_get_all_services.return_value = []
         msg = 'No service found with cluster=%s' % mock.sentinel.cluster
         result = self.assertRaises(exception.InvalidInput,
@@ -729,7 +729,7 @@ class ServicesTest(test.TestCase):
     @mock.patch('cinder.api.contrib.services.ServiceController._set_log')
     def test_set_log(self, set_log_mock):
         set_log_mock.return_value = None
-        req = FakeRequest(version='3.32')
+        req = FakeRequest(version=mv.LOG_LEVEL)
         body = mock.sentinel.body
         res = self.controller.update(req, 'set-log', body)
         self.assertEqual(set_log_mock.return_value, res)
@@ -738,7 +738,7 @@ class ServicesTest(test.TestCase):
     @mock.patch('cinder.api.contrib.services.ServiceController._get_log')
     def test_get_log(self, get_log_mock):
         get_log_mock.return_value = None
-        req = FakeRequest(version='3.32')
+        req = FakeRequest(version=mv.LOG_LEVEL)
         body = mock.sentinel.body
         res = self.controller.update(req, 'get-log', body)
         self.assertEqual(get_log_mock.return_value, res)

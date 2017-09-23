@@ -1910,20 +1910,20 @@ class API(base.Base):
     def _check_boolean_filter_value(self, key, val, strict=False):
         """Boolean filter values in Volume GET.
 
-        Before V3.2, all values other than 'False', 'false', 'FALSE' were
-        trated as True for specific boolean filter parameters in Volume
-        GET request.
+        Before VOLUME_LIST_BOOTABLE, all values other than 'False', 'false',
+        'FALSE' were trated as True for specific boolean filter parameters in
+        Volume GET request.
 
-        But V3.2 onwards, only true/True/0/1/False/false parameters are
-        supported.
+        But VOLUME_LIST_BOOTABLE onwards, only true/True/0/1/False/false
+        parameters are supported.
         All other input values to specific boolean filter parameter will
         lead to raising exception.
 
-        This changes API behavior. So, micro version introduced for V3.2
-        onwards.
+        This changes API behavior. So, micro version introduced for
+        VOLUME_LIST_BOOTABLE onwards.
         """
         if strict:
-            # for updated behavior, from V3.2 onwards.
+            # for updated behavior, from VOLUME_LIST_BOOTABLE onwards.
             # To translate any true/false/t/f/0/1 to True/False
             # which is only acceptable format in database queries.
             try:
@@ -1933,7 +1933,7 @@ class API(base.Base):
                                                       'value': val}
                 raise exception.InvalidInput(reason=msg)
         else:
-            # For existing behavior(before version 3.2)
+            # For existing behavior(before version VOLUME_LIST_BOOTABLE)
             accepted_true = ['True', 'true', 'TRUE']
             accepted_false = ['False', 'false', 'FALSE']
 

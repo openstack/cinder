@@ -22,6 +22,7 @@ import webob
 from webob import exc
 
 from cinder.api import common
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v3.views import group_snapshots as group_snapshot_views
 from cinder import exception
@@ -31,8 +32,6 @@ from cinder import rpc
 from cinder.volume import group_types
 
 LOG = logging.getLogger(__name__)
-
-GROUP_SNAPSHOT_API_VERSION = '3.14'
 
 
 class GroupSnapshotsController(wsgi.Controller):
@@ -52,7 +51,7 @@ class GroupSnapshotsController(wsgi.Controller):
                    % {'group_type': group_type_id})
             raise exc.HTTPBadRequest(explanation=msg)
 
-    @wsgi.Controller.api_version(GROUP_SNAPSHOT_API_VERSION)
+    @wsgi.Controller.api_version(mv.GROUP_SNAPSHOTS)
     def show(self, req, id):
         """Return data about the given group_snapshot."""
         LOG.debug('show called for member %s', id)
@@ -66,7 +65,7 @@ class GroupSnapshotsController(wsgi.Controller):
 
         return self._view_builder.detail(req, group_snapshot)
 
-    @wsgi.Controller.api_version(GROUP_SNAPSHOT_API_VERSION)
+    @wsgi.Controller.api_version(mv.GROUP_SNAPSHOTS)
     def delete(self, req, id):
         """Delete a group_snapshot."""
         LOG.debug('delete called for member %s', id)
@@ -93,12 +92,12 @@ class GroupSnapshotsController(wsgi.Controller):
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
-    @wsgi.Controller.api_version(GROUP_SNAPSHOT_API_VERSION)
+    @wsgi.Controller.api_version(mv.GROUP_SNAPSHOTS)
     def index(self, req):
         """Returns a summary list of group_snapshots."""
         return self._get_group_snapshots(req, is_detail=False)
 
-    @wsgi.Controller.api_version(GROUP_SNAPSHOT_API_VERSION)
+    @wsgi.Controller.api_version(mv.GROUP_SNAPSHOTS)
     def detail(self, req):
         """Returns a detailed list of group_snapshots."""
         return self._get_group_snapshots(req, is_detail=True)
@@ -109,14 +108,14 @@ class GroupSnapshotsController(wsgi.Controller):
         context = req.environ['cinder.context']
         req_version = req.api_version_request
         filters = marker = limit = offset = sort_keys = sort_dirs = None
-        if req_version.matches("3.29"):
+        if req_version.matches(mv.GROUP_SNAPSHOT_PAGINATION):
             filters = req.params.copy()
             marker, limit, offset = common.get_pagination_params(filters)
             sort_keys, sort_dirs = common.get_sort_params(filters)
 
-        if req_version.matches(common.FILTERING_VERSION):
+        if req_version.matches(mv.RESOURCE_FILTER):
             support_like = (True if req_version.matches(
-                common.LIKE_FILTER_VERSION) else False)
+                mv.LIKE_FILTER) else False)
             common.reject_invalid_filters(context, filters, 'group_snapshot',
                                           support_like)
 
@@ -145,7 +144,7 @@ class GroupSnapshotsController(wsgi.Controller):
         group_snapshots['group_snapshots'] = new_group_snapshots
         return group_snapshots
 
-    @wsgi.Controller.api_version(GROUP_SNAPSHOT_API_VERSION)
+    @wsgi.Controller.api_version(mv.GROUP_SNAPSHOTS)
     @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Create a new group_snapshot."""
@@ -183,7 +182,7 @@ class GroupSnapshotsController(wsgi.Controller):
 
         return retval
 
-    @wsgi.Controller.api_version('3.19')
+    @wsgi.Controller.api_version(mv.GROUP_SNAPSHOT_RESET_STATUS)
     @wsgi.action("reset_status")
     def reset_status(self, req, id, body):
         return self._reset_status(req, id, body)

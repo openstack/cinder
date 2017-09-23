@@ -16,6 +16,7 @@ from oslo_log import log as logging
 import webob
 
 from cinder.api import common
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v3.views import attachments as attachment_views
 from cinder import exception
@@ -26,8 +27,6 @@ from cinder.volume import api as volume_api
 
 
 LOG = logging.getLogger(__name__)
-API_VERSION = '3.27'
-ATTACHMENT_COMPLETION_VERSION = '3.44'
 
 
 class AttachmentsController(wsgi.Controller):
@@ -43,20 +42,20 @@ class AttachmentsController(wsgi.Controller):
         self.ext_mgr = ext_mgr
         super(AttachmentsController, self).__init__()
 
-    @wsgi.Controller.api_version(API_VERSION)
+    @wsgi.Controller.api_version(mv.NEW_ATTACH)
     def show(self, req, id):
         """Return data about the given attachment."""
         context = req.environ['cinder.context']
         attachment = objects.VolumeAttachment.get_by_id(context, id)
         return attachment_views.ViewBuilder.detail(attachment)
 
-    @wsgi.Controller.api_version(API_VERSION)
+    @wsgi.Controller.api_version(mv.NEW_ATTACH)
     def index(self, req):
         """Return a summary list of attachments."""
         attachments = self._items(req)
         return attachment_views.ViewBuilder.list(attachments)
 
-    @wsgi.Controller.api_version(API_VERSION)
+    @wsgi.Controller.api_version(mv.NEW_ATTACH)
     def detail(self, req):
         """Return a detailed list of attachments."""
         attachments = self._items(req)
@@ -94,7 +93,7 @@ class AttachmentsController(wsgi.Controller):
                 marker=marker, limit=limit, offset=offset, sort_keys=sort_keys,
                 sort_direction=sort_dirs)
 
-    @wsgi.Controller.api_version(API_VERSION)
+    @wsgi.Controller.api_version(mv.NEW_ATTACH)
     @wsgi.response(202)
     def create(self, req, body):
         """Create an attachment.
@@ -192,7 +191,7 @@ class AttachmentsController(wsgi.Controller):
                 raise webob.exc.HTTPInternalServerError(explanation=err_msg)
         return attachment_views.ViewBuilder.detail(attachment_ref)
 
-    @wsgi.Controller.api_version(API_VERSION)
+    @wsgi.Controller.api_version(mv.NEW_ATTACH)
     def update(self, req, id, body):
         """Update an attachment record.
 
@@ -252,7 +251,7 @@ class AttachmentsController(wsgi.Controller):
         # or a dict?
         return attachment_views.ViewBuilder.detail(attachment_ref)
 
-    @wsgi.Controller.api_version(API_VERSION)
+    @wsgi.Controller.api_version(mv.NEW_ATTACH)
     def delete(self, req, id):
         """Delete an attachment.
 
@@ -268,7 +267,7 @@ class AttachmentsController(wsgi.Controller):
         return attachment_views.ViewBuilder.list(attachments)
 
     @wsgi.response(202)
-    @wsgi.Controller.api_version(ATTACHMENT_COMPLETION_VERSION)
+    @wsgi.Controller.api_version(mv.NEW_ATTACH_COMPLETION)
     @wsgi.action('os-complete')
     def complete(self, req, id, body):
         """Mark a volume attachment process as completed (in-use)."""

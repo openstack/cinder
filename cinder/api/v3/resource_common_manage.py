@@ -15,6 +15,7 @@
 
 from cinder.api import common
 from cinder.api import extensions
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder.i18n import _
@@ -41,13 +42,14 @@ class ManageResource(object):
             raise exception.VersionNotFoundForAPIMethod(version=version)
 
     def _get_resources(self, req, is_detail):
-        self._ensure_min_version(req, '3.8')
+        self._ensure_min_version(req, mv.MANAGE_EXISTING_LIST)
 
         context = req.environ['cinder.context']
         self._authorizer(context)
 
         params = req.params.copy()
-        cluster_name, host = common.get_cluster_host(req, params, '3.17')
+        cluster_name, host = common.get_cluster_host(
+            req, params, mv.MANAGE_EXISTING_CLUSTER)
         marker, limit, offset = common.get_pagination_params(params)
         sort_keys, sort_dirs = common.get_sort_params(params,
                                                       default_key='reference')

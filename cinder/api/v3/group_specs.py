@@ -18,6 +18,7 @@ from six.moves import http_client
 import webob
 
 from cinder.api import common
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder import db
 from cinder import exception
@@ -51,7 +52,7 @@ class GroupTypeSpecsController(wsgi.Controller):
         except exception.GroupTypeNotFound as ex:
             raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
-    @wsgi.Controller.api_version('3.11')
+    @wsgi.Controller.api_version(mv.GROUP_TYPE)
     def index(self, req, group_type_id):
         """Returns the list of group specs for a given group type."""
         context = req.environ['cinder.context']
@@ -59,7 +60,7 @@ class GroupTypeSpecsController(wsgi.Controller):
         self._check_type(context, group_type_id)
         return self._get_group_specs(context, group_type_id)
 
-    @wsgi.Controller.api_version('3.11')
+    @wsgi.Controller.api_version(mv.GROUP_TYPE)
     @wsgi.response(http_client.ACCEPTED)
     def create(self, req, group_type_id, body=None):
         context = req.environ['cinder.context']
@@ -80,7 +81,7 @@ class GroupTypeSpecsController(wsgi.Controller):
                       notifier_info)
         return body
 
-    @wsgi.Controller.api_version('3.11')
+    @wsgi.Controller.api_version(mv.GROUP_TYPE)
     def update(self, req, group_type_id, id, body=None):
         context = req.environ['cinder.context']
         self._check_policy(context)
@@ -108,7 +109,7 @@ class GroupTypeSpecsController(wsgi.Controller):
                       notifier_info)
         return body
 
-    @wsgi.Controller.api_version('3.11')
+    @wsgi.Controller.api_version(mv.GROUP_TYPE)
     def show(self, req, group_type_id, id):
         """Return a single extra spec item."""
         context = req.environ['cinder.context']
@@ -123,7 +124,7 @@ class GroupTypeSpecsController(wsgi.Controller):
                     "%(id)s.") % ({'type_id': group_type_id, 'id': id})
             raise webob.exc.HTTPNotFound(explanation=msg)
 
-    @wsgi.Controller.api_version('3.11')
+    @wsgi.Controller.api_version(mv.GROUP_TYPE)
     def delete(self, req, group_type_id, id):
         """Deletes an existing group spec."""
         context = req.environ['cinder.context']

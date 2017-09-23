@@ -13,16 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v3.views import clusters as clusters_view
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder import utils
-
-
-CLUSTER_MICRO_VERSION = '3.7'
-REPLICATION_DATA_MICRO_VERSION = '3.26'
 
 
 class ClusterController(wsgi.Controller):
@@ -33,7 +30,7 @@ class ClusterController(wsgi.Controller):
 
     policy_checker = wsgi.Controller.get_policy_checker('clusters')
 
-    @wsgi.Controller.api_version(CLUSTER_MICRO_VERSION)
+    @wsgi.Controller.api_version(mv.CLUSTER_SUPPORT)
     def show(self, req, id, binary='cinder-volume'):
         """Return data for a given cluster name with optional binary."""
         # Let the wsgi middleware convert NotAuthorized exceptions
@@ -42,10 +39,10 @@ class ClusterController(wsgi.Controller):
         cluster = objects.Cluster.get_by_id(context, None, binary=binary,
                                             name=id, services_summary=True)
         replication_data = req.api_version_request.matches(
-            REPLICATION_DATA_MICRO_VERSION)
+            mv.REPLICATION_CLUSTER)
         return clusters_view.ViewBuilder.detail(cluster, replication_data)
 
-    @wsgi.Controller.api_version(CLUSTER_MICRO_VERSION)
+    @wsgi.Controller.api_version(mv.CLUSTER_SUPPORT)
     def index(self, req):
         """Return a non detailed list of all existing clusters.
 
@@ -53,7 +50,7 @@ class ClusterController(wsgi.Controller):
         """
         return self._get_clusters(req, detail=False)
 
-    @wsgi.Controller.api_version(CLUSTER_MICRO_VERSION)
+    @wsgi.Controller.api_version(mv.CLUSTER_SUPPORT)
     def detail(self, req):
         """Return a detailed list of all existing clusters.
 
@@ -65,7 +62,7 @@ class ClusterController(wsgi.Controller):
         # Let the wsgi middleware convert NotAuthorized exceptions
         context = self.policy_checker(req, 'get_all')
         replication_data = req.api_version_request.matches(
-            REPLICATION_DATA_MICRO_VERSION)
+            mv.REPLICATION_CLUSTER)
         filters = dict(req.GET)
         allowed = self.allowed_list_keys
         if not replication_data:
@@ -89,7 +86,7 @@ class ClusterController(wsgi.Controller):
         return clusters_view.ViewBuilder.list(clusters, detail,
                                               replication_data)
 
-    @wsgi.Controller.api_version(CLUSTER_MICRO_VERSION)
+    @wsgi.Controller.api_version(mv.CLUSTER_SUPPORT)
     def update(self, req, id, body):
         """Enable/Disable scheduling for a cluster."""
         # NOTE(geguileo): This method tries to be consistent with services
@@ -123,7 +120,7 @@ class ClusterController(wsgi.Controller):
 
         # We return summary data plus the disabled reason
         replication_data = req.api_version_request.matches(
-            REPLICATION_DATA_MICRO_VERSION)
+            mv.REPLICATION_CLUSTER)
         ret_val = clusters_view.ViewBuilder.summary(cluster, replication_data)
         ret_val['cluster']['disabled_reason'] = disabled_reason
 
