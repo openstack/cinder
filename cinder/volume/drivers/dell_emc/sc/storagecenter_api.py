@@ -450,6 +450,7 @@ class SCApi(object):
         self.consisgroups = True
         self.protocol = 'Iscsi'
         self.apiversion = apiversion
+        self.legacyfoldernames = True
         # Nothing other than Replication should care if we are direct connect
         # or not.
         self.is_direct_connect = False
@@ -660,7 +661,7 @@ class SCApi(object):
 
                 elif splitver[1] == '1':
                     self.legacypayloadfilters = True
-            return
+            self.legacyfoldernames = (splitver[0] < '4')
 
         except Exception:
             # Good return but not the login response we were expecting.
@@ -812,9 +813,14 @@ class SCApi(object):
         pf.append('scSerialNumber', ssn)
         basename = os.path.basename(foldername)
         pf.append('Name', basename)
+        # save the user from themselves.
+        folderpath = foldername.strip('/')
+        folderpath = os.path.dirname(folderpath)
         # If we have any kind of path we throw it into the filters.
-        folderpath = os.path.dirname(foldername)
         if folderpath != '':
+            # Legacy didn't begin with a slash.
+            if not self.legacyfoldernames:
+                folderpath = '/' + folderpath
             # SC convention is to end with a '/' so make sure we do.
             folderpath += '/'
             pf.append('folderPath', folderpath)
