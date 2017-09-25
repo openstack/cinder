@@ -26,7 +26,7 @@ from stevedore import driver
 from cinder.db.sqlalchemy import api as db_api
 
 
-INIT_VERSION = 72
+INIT_VERSION = 84
 
 _IMPL = None
 _LOCK = threading.Lock()
