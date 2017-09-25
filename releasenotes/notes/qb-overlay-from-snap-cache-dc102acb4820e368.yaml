@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added a new option ``quobyte_overlay_volumes`` for the Quobyte
+    volume driver. This option activates internal snapshots who allow
+    to create volumes from snapshots as overlay files based on the
+    volume from snapshot cache. This significantly speeds up the
+    creation of volumes from large snapshots.

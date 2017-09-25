@@ -23,7 +23,7 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import fileutils
-from oslo_utils import units
+from oslo_utils import fnmatch
 
 from cinder import compute
 from cinder import coordination
@@ -35,7 +35,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.1.9'
+VERSION = '1.1.10'
 
 LOG = logging.getLogger(__name__)
 
@@ -61,7 +61,17 @@ volume_opts = [
                 default=False,
                 help=('Create a cache of volumes from merged snapshots to '
                       'speed up creation of multiple volumes from a single '
-                      'snapshot.'))
+                      'snapshot.')),
+    cfg.BoolOpt('quobyte_overlay_volumes',
+                default=False,
+                help=('Create new volumes from the volume_from_snapshot_cache'
+                      ' by creating overlay files instead of full copies. This'
+                      ' speeds up the creation of volumes from this cache.'
+                      ' This feature requires the options'
+                      ' quobyte_qcow2_volumes and'
+                      ' quobyte_volume_from_snapshot_cache to be set to'
+                      ' True. If one of these is set to False this option is'
+                      ' ignored.'))
 ]
 
 CONF = cfg.CONF
@@ -98,6 +108,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.1.7 - Support fuse subtype based Quobyte mount validation
         1.1.8 - Adds optional snapshot merge caching
         1.1.9 - Support for Qemu >= 2.10.0
+        1.1.10 - Adds overlay based volumes for snapshot merge caching
 
     """
 
@@ -119,9 +130,17 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         self._nova = None
 
     def _create_regular_file(self, path, size):
-        """Creates a regular file of given size in GiB."""
-        self._execute('fallocate', '-l', '%sG' % size,
-                      path, run_as_root=self._execute_as_root)
+        """Creates a regular file of given size in GiB using fallocate."""
+        self._fallocate_file(path, size)
+
+    @coordination.synchronized('{self.driver_prefix}-{snapshot.id}')
+    def _delete_snapshot(self, snapshot):
+        cache_path = self._local_volume_from_snap_cache_path(snapshot)
+        if os.access(cache_path, os.F_OK):
+            self._remove_from_vol_cache(
+                cache_path,
+                ".parent-" + snapshot.id, snapshot.volume)
+        super(QuobyteDriver, self)._delete_snapshot(snapshot)
 
     def _ensure_volume_from_snap_cache(self, mount_path):
         """This expects the Quobyte volume to be mounted & available"""
@@ -141,6 +160,21 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
             raise exception.VolumeDriverException(msg)
         LOG.debug("Quobyte volume from snapshot cache directory validated ok")
 
+    def _fallocate_file(self, path, size):
+        """Calls fallocate on the given path with the given size in GiB."""
+        self._execute('fallocate', '-l', '%sGiB' % size,
+                      path, run_as_root=self._execute_as_root)
+
+    def _get_backing_chain_for_path(self, volume, path):
+        raw_chain = super(QuobyteDriver, self)._get_backing_chain_for_path(
+            volume, path)
+        # NOTE(kaisers): if the last element resides in the cache snip it off,
+        # as the RemoteFS driver cannot handle it.
+        if len(raw_chain) and (self.QUOBYTE_VOLUME_SNAP_CACHE_DIR_NAME in
+                               raw_chain[-1]['filename']):
+            del raw_chain[-1]
+        return raw_chain
+
     def _local_volume_from_snap_cache_path(self, snapshot):
         path_to_disk = os.path.join(
             self._local_volume_dir(snapshot.volume),
@@ -149,6 +183,58 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
 
         return path_to_disk
 
+    def _qemu_img_info_base(self, path, volume_name, basedir,
+                            force_share=True,
+                            run_as_root=False):
+        # NOTE(kaisers): This uses a specialized backing file template in
+        # order to allow for backing files in the volume_from_snapshot_cache.
+        backing_file_template = remotefs_drv.BackingFileTemplate(
+            "(#basedir/[0-9a-f]+/)?("
+            "#volname(.(tmp-snap-)?[0-9a-f-]+)?#valid_ext|"
+            "%(cache)s/(tmp-snap-)?[0-9a-f-]+(.(child-|parent-)"
+            "[0-9a-f-]+)?)$" % {
+                'cache': self.QUOBYTE_VOLUME_SNAP_CACHE_DIR_NAME
+            })
+        return super(QuobyteDriver, self)._qemu_img_info_base(
+            path, volume_name, basedir, ext_bf_template=backing_file_template,
+            force_share=True)
+
+    def _remove_from_vol_cache(self, cache_file_path, ref_suffix, volume):
+        """Removes a reference and possibly volume from the volume cache
+
+        This method removes the ref_id reference (soft link) from the cache.
+        If no other references exist the cached volume itself is removed,
+        too.
+
+        :param cache_file_path file path to the volume in the cache
+        :param ref_suffix The id based suffix of the cache file reference
+        :param volume The volume whose share defines the cache to address
+        """
+        # NOTE(kaisers): As the cache_file_path may be a relative path we use
+        # cache dir and file name to ensure absolute paths in all operations.
+        cache_path = os.path.join(self._local_volume_dir(volume),
+                                  self.QUOBYTE_VOLUME_SNAP_CACHE_DIR_NAME)
+        cache_file_name = os.path.basename(cache_file_path)
+        # delete the reference
+        LOG.debug("Deleting cache reference %(cfp)s%(rs)s",
+                  {"cfp": cache_file_path, "rs": ref_suffix})
+        fileutils.delete_if_exists(os.path.join(cache_path,
+                                                cache_file_name + ref_suffix))
+
+        # If no other reference exists, remove the cache entry.
+        for file in os.listdir(cache_path):
+            if fnmatch.fnmatch(file, cache_file_name + ".*"):
+                # found another reference file, keep cache entry
+                LOG.debug("Cached volume %(file)s still has at least one "
+                          "reference: %(ref)s",
+                          {"file": cache_file_name, "ref": file})
+                return
+        # No other reference found, remove cache entry
+        LOG.debug("Removing cached volume %(cvol)s as no more references for "
+                  "this cached volume exist.",
+                  {"cvol": os.path.join(cache_path, cache_file_name)})
+        fileutils.delete_if_exists(os.path.join(cache_path, cache_file_name))
+
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         super(QuobyteDriver, self).do_setup(context)
@@ -156,6 +242,17 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         self.set_nas_security_options(is_new_cinder_install=False)
         self.shares = {}  # address : options
         self._nova = compute.API()
+        self.base = self.configuration.quobyte_mount_point_base
+        if self.configuration.quobyte_overlay_volumes:
+            if not (self.configuration.quobyte_qcow2_volumes and
+                    self.configuration.quobyte_volume_from_snapshot_cache):
+                self.configuration.quobyte_overlay_volumes = False
+                LOG.warning("Configuration of quobyte_qcow2_volumes and "
+                            "quobyte_volume_from_snapshot_cache is "
+                            "incompatible with "
+                            "quobyte_overlay_volumes=True. "
+                            "quobyte_overlay_volumes "
+                            "setting will be ignored.")
 
     def check_for_setup_error(self):
         if not self.configuration.quobyte_volume_url:
@@ -175,32 +272,6 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
                     'mount.quobyte is not installed')
             else:
                 raise
-
-    def optimize_volume(self, volume):
-        """Optimizes a volume for Quobyte
-
-        This optimization is normally done during creation but volumes created
-        from e.g. snapshots require additional grooming.
-
-        :param volume: volume reference
-        """
-        volume_path = self.local_path(volume)
-        volume_size = volume.size
-        data = image_utils.qemu_img_info(self.local_path(volume),
-                                         run_as_root=self._execute_as_root)
-        if data.disk_size >= (volume_size * units.Gi):
-            LOG.debug("Optimization of volume %(volpath)s is not required, "
-                      "skipping this step.", {'volpath': volume_path})
-            return
-
-        LOG.debug("Optimizing volume %(optpath)s", {'optpath': volume_path})
-
-        if (self.configuration.quobyte_qcow2_volumes or
-                self.configuration.quobyte_sparsed_volumes):
-                self._execute('truncate', '-s', '%sG' % volume_size,
-                              volume_path, run_as_root=self._execute_as_root)
-        else:
-            self._create_regular_file(volume_path, volume_size)
 
     def set_nas_security_options(self, is_new_cinder_install):
         self._execute_as_root = False
@@ -245,7 +316,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
                         "(allowing other/world read & write access).")
 
     def _qemu_img_info(self, path, volume_name, force_share=True):
-        return super(QuobyteDriver, self)._qemu_img_info_base(
+        return self._qemu_img_info_base(
             path, volume_name, self.configuration.quobyte_mount_point_base,
             force_share=True)
 
@@ -254,6 +325,8 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         """Creates a clone of the specified volume."""
         return self._create_cloned_volume(volume, src_vref)
 
+    @coordination.synchronized(
+        '{self.driver_prefix}-{snapshot.id}-{volume.id}')
     def _create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
 
@@ -287,14 +360,14 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
     def create_volume_from_snapshot(self, volume, snapshot):
         return self._create_volume_from_snapshot(volume, snapshot)
 
-    @coordination.synchronized('{self.driver_prefix}-{snapshot.volume.id}')
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
         """Copy data from snapshot to destination volume.
 
         This is done with a qemu-img convert to raw/qcow2 from the snapshot
         qcow2. If the quobyte_volume_from_snapshot_cache is active the result
-        is copied into the cache and all volumes created from this
-        snapshot id are directly copied from the cache.
+        is written into the cache and all volumes created from this
+        snapshot id are created directly from the cache.
         """
 
         LOG.debug("snapshot: %(snap)s, volume: %(vol)s, ",
@@ -310,8 +383,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         self._ensure_shares_mounted()
         # Find the file which backs this file, which represents the point
         # when this snapshot was created.
-        img_info = self._qemu_img_info(forward_path,
-                                       snapshot.volume.name)
+        img_info = self._qemu_img_info(forward_path, snapshot.volume.name)
         path_to_snap_img = os.path.join(vol_path, img_info.backing_file)
 
         path_to_new_vol = self._local_path_volume(volume)
@@ -339,14 +411,48 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
                                           path_to_cached_vol,
                                           out_format,
                                           run_as_root=self._execute_as_root)
-            # Copy volume from cache
-            LOG.debug("Copying volume %(volpath)s from cache",
-                      {'volpath': path_to_new_vol})
-            shutil.copyfile(path_to_cached_vol, path_to_new_vol)
+                if self.configuration.quobyte_overlay_volumes:
+                    # NOTE(kaisers): Create a parent symlink to track the
+                    # existence of the parent
+                    os.symlink(path_to_snap_img, path_to_cached_vol
+                               + '.parent-' + snapshot.id)
+            if self.configuration.quobyte_overlay_volumes:
+                self._create_overlay_volume_from_snapshot(volume,
+                                                          snapshot,
+                                                          volume_size,
+                                                          out_format)
+            else:
+                # Copy volume from cache
+                LOG.debug("Copying volume %(volpath)s from cache",
+                          {'volpath': path_to_new_vol})
+                shutil.copyfile(path_to_cached_vol, path_to_new_vol)
+                # Note(kaisers): As writes beyond EOF are sequentialized with
+                # FUSE we call fallocate here to optimize performance:
+                self._fallocate_file(path_to_new_vol, volume_size)
         self._set_rw_permissions(path_to_new_vol)
-        self.optimize_volume(volume)
 
-    @utils.synchronized('quobyte', external=False)
+    def _create_overlay_volume_from_snapshot(self, volume, snapshot,
+                                             volume_size, out_format):
+        """Creates an overlay volume based on a parent in the cache
+
+        Besides the overlay volume this also creates a softlink in the cache
+        that  links to the child volume file of the cached volume. This can
+        be used to track the cached volumes child volume and marks the fact
+        that this child still exists. The softlink is deleted when
+        the child is deleted.
+        """
+        rel_path = os.path.join(
+            self.QUOBYTE_VOLUME_SNAP_CACHE_DIR_NAME, snapshot.id)
+        command = ['qemu-img', 'create', '-f', 'qcow2', '-o',
+                   'backing_file=%s,backing_fmt=%s' %
+                   (rel_path, out_format), self._local_path_volume(volume),
+                   "%dG" % volume_size]
+        self._execute(*command, run_as_root=self._execute_as_root)
+        os.symlink(self._local_path_volume(volume),
+                   self._local_volume_from_snap_cache_path(snapshot)
+                   + '.child-' + volume.id)
+
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def delete_volume(self, volume):
         """Deletes a logical volume."""
 
@@ -358,8 +464,17 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         self._ensure_share_mounted(volume.provider_location)
 
         volume_dir = self._local_volume_dir(volume)
-        mounted_path = os.path.join(volume_dir,
-                                    self.get_active_image_from_info(volume))
+        active_image = self.get_active_image_from_info(volume)
+        mounted_path = os.path.join(volume_dir, active_image)
+        if os.access(self.local_path(volume), os.F_OK):
+            img_info = self._qemu_img_info(self.local_path(volume),
+                                           volume.name)
+            if (img_info.backing_file and
+                    (self.QUOBYTE_VOLUME_SNAP_CACHE_DIR_NAME in
+                        img_info.backing_file)):
+                # This is an overlay volume, call cache cleanup
+                self._remove_from_vol_cache(img_info.backing_file,
+                                            ".child-" + volume.id, volume)
 
         self._execute('rm', '-f', mounted_path,
                       run_as_root=self._execute_as_root)
@@ -377,14 +492,6 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         """Apply locking to the create snapshot operation."""
 
         return self._create_snapshot(snapshot)
-
-    @utils.synchronized('quobyte', external=False)
-    def delete_snapshot(self, snapshot):
-        """Apply locking to the delete snapshot operation."""
-        self._delete_snapshot(snapshot)
-        if self.configuration.quobyte_volume_from_snapshot_cache:
-            fileutils.delete_if_exists(
-                self._local_volume_from_snap_cache_path(snapshot))
 
     @utils.synchronized('quobyte', external=False)
     def initialize_connection(self, volume, connector):
