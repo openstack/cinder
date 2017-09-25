@@ -30,7 +30,6 @@ work. Update backend information to fit your environment.
     MYSQL_PASSWORD=$ADMIN_PASSWORD
     RABBIT_PASSWORD=$ADMIN_PASSWORD
     SERVICE_PASSWORD=$ADMIN_PASSWORD
-    SCREEN_LOGDIR=/opt/stack/screen-logs
     LOGFILE=$DEST/logs/stack.sh.log
     LOGDAYS=2
     SYSLOG=False
