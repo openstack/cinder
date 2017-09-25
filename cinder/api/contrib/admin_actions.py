@@ -79,10 +79,10 @@ class AdminController(wsgi.Controller):
         return update
 
     def authorize(self, context, action_name):
-        # NOTE(tommylikehu): We have two different ways to authorize during
+        # TODO(tommylike): We have two different ways to authorize during
         # implementing code base policies, the if/else statement can be
         # removed when all resources are upgraded.
-        if self.resource_name in ['snapshot']:
+        if self.resource_name in ['backup', 'snapshot']:
             context.authorize(
                 'volume_extension:%(resource)s_admin_actions:%(action)s' %
                 {'resource': self.resource_name,
