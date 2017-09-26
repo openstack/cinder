@@ -1212,6 +1212,12 @@ host_name:
   in: body
   required: false
   type: string
+host_name_1:
+  description: |
+    The name of the host that hosts the storage backend.
+  in: body
+  required: true
+  type: string
 host_name_body:
   description: |
     The name of the host.
@@ -2029,6 +2035,13 @@ project_id_1:
   in: body
   required: true
   type: string
+project_id_2:
+  description: |
+    The Project ID which the host resource belongs to.
+    In the summary resource, the value is ``(total)``.
+  in: body
+  required: true
+  type: string
 properties:
   description: |
     The backend volume capabilities list, which is
@@ -2262,7 +2275,7 @@ service_key:
   type: string
 service_state:
   description: |
-    The state of the service. One of ``available`` or ``unavailable``.
+    The state of the service. One of ``enabled`` or ``disabled``.
   in: body
   required: true
   type: string
@@ -2274,7 +2287,7 @@ service_state_1:
   type: string
 service_status:
   description: |
-    The status of the service. One of ``enabled`` or ``disabled``.
+    The status of the service. One of ``available`` or ``unavailable``.
   in: body
   required: true
   type: string
