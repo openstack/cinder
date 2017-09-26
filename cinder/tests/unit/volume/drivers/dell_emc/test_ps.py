@@ -58,7 +58,7 @@ class PSSeriesISCSIDriverTestCase(test.TestCase):
 
         self.driver_stats_output = ['TotalCapacity: 111GB',
                                     'FreeSpace: 11GB',
-                                    'VolumeReserve: 80GB']
+                                    'VolumeReportedSpace: 80GB']
         self.cmd = 'this is dummy command'
         self._context = context.get_admin_context()
         self.driver = ps.PSSeriesISCSIDriver(
