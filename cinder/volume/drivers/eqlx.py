@@ -158,10 +158,11 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         1.1.0 - Misc fixes
         1.2.0 - Deprecated eqlx_cli_timeout infavor of ssh_conn_timeout
         1.3.0 - Added support for manage/unmanage volume
+        1.3.0a - Fixed over-subscription ratio calculation
 
     """
 
-    VERSION = "1.3.0"
+    VERSION = "1.3.0a"
 
     # ThirdPartySytems wiki page
     CI_WIKI_NAME = "Dell_Storage_CI"
@@ -357,7 +358,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
             if line.startswith('FreeSpace:'):
                 out_tup = line.rstrip().partition(' ')
                 data['free_capacity_gb'] = self._get_space_in_gb(out_tup[-1])
-            if line.startswith('VolumeReserve:'):
+            if line.startswith('VolumeReportedSpace:'):
                 out_tup = line.rstrip().partition(' ')
                 provisioned_capacity = self._get_space_in_gb(out_tup[-1])
 
