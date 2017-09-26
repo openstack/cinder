@@ -137,10 +137,11 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
         1.4.1 - Rebranded driver to Dell EMC.
         1.4.2 - Enable report discard support.
         1.4.3 - Report total_volumes in volume stats
+        1.4.4 - Fixed over-subscription ratio calculation
 
     """
 
-    VERSION = "1.4.3"
+    VERSION = "1.4.4"
 
     # ThirdPartySytems wiki page
     CI_WIKI_NAME = "Dell_Storage_CI"
@@ -315,7 +316,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
             if line.startswith('FreeSpace:'):
                 out_tup = line.rstrip().partition(' ')
                 data['free_capacity_gb'] = self._get_space_in_gb(out_tup[-1])
-            if line.startswith('VolumeReserve:'):
+            if line.startswith('VolumeReportedSpace:'):
                 out_tup = line.rstrip().partition(' ')
                 provisioned_capacity = self._get_space_in_gb(out_tup[-1])
             if line.startswith('TotalVolumes:'):
