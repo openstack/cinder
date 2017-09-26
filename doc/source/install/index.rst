@@ -17,9 +17,25 @@ on controller nodes, compute nodes, or standalone storage nodes.
 For more information, see the
 `Configuration Reference <https://docs.openstack.org/ocata/config-reference/block-storage/volume-drivers.html>`_.
 
+
+Prerequisites
+~~~~~~~~~~~~~
+
+This documentation specifically covers the installation of the Cinder Block Storage service.  Before following this
+guide you will need to prepare your OpenStack environment using the instructions in the
+`OpenStack Installation Tutorial <https://docs.openstack.org/install-guide/>`_.
+
+Once able to 'Launch an instance' in your OpenStack environment follow the instructions below to add
+Cinder to the base environment.
+
+
+Adding Cinder to your OpenStack Environment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following links describe how to install the Cinder Block Storage Service:
+
 .. toctree::
 
-   overview
    get-started-block-storage
    index-obs
    index-rdo
