@@ -178,3 +178,73 @@ class AttachmentManagerTestCase(test.TestCase):
         vref = objects.Volume.get_by_id(self.context,
                                         vref.id)
         self.assertEqual(2, len(vref.volume_attachment))
+
+    @mock.patch('cinder.volume.api.check_policy')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_update')
+    def test_attachment_create_reserve_delete(
+            self,
+            mock_rpc_attachment_update,
+            mock_policy):
+        volume_params = {'status': 'available'}
+        connector = {
+            "initiator": "iqn.1993-08.org.debian:01:cad181614cec",
+            "ip": "192.168.1.20",
+            "platform": "x86_64",
+            "host": "tempest-1",
+            "os_type": "linux2",
+            "multipath": False}
+
+        connection_info = {'fake_key': 'fake_value',
+                           'fake_key2': ['fake_value1', 'fake_value2']}
+        mock_rpc_attachment_update.return_value = connection_info
+
+        vref = tests_utils.create_volume(self.context, **volume_params)
+        aref = self.volume_api.attachment_create(self.context,
+                                                 vref,
+                                                 fake.UUID2,
+                                                 connector=connector)
+        vref = objects.Volume.get_by_id(self.context,
+                                        vref.id)
+        # Need to set the status here because our mock isn't doing it for us
+        vref.status = 'in-use'
+        vref.save()
+
+        # Now a second attachment acting as a reserve
+        self.volume_api.attachment_create(self.context,
+                                          vref,
+                                          fake.UUID2)
+
+        # We should now be able to delete the original attachment that gave us
+        # 'in-use' status, and in turn we should revert to the outstanding
+        # attachments reserve
+        self.volume_api.attachment_delete(self.context,
+                                          aref)
+        vref = objects.Volume.get_by_id(self.context,
+                                        vref.id)
+        self.assertEqual('reserved', vref.status)
+
+    @mock.patch('cinder.volume.api.check_policy')
+    def test_reserve_reserve_delete(self, mock_policy):
+        """Test that we keep reserved status across multiple reserves."""
+        volume_params = {'status': 'available'}
+
+        vref = tests_utils.create_volume(self.context, **volume_params)
+        aref = self.volume_api.attachment_create(self.context,
+                                                 vref,
+                                                 fake.UUID2)
+        vref = objects.Volume.get_by_id(self.context,
+                                        vref.id)
+        self.assertEqual('reserved', vref.status)
+
+        self.volume_api.attachment_create(self.context,
+                                          vref,
+                                          fake.UUID2)
+        vref = objects.Volume.get_by_id(self.context,
+                                        vref.id)
+        self.assertEqual('reserved', vref.status)
+        self.volume_api.attachment_delete(self.context,
+                                          aref)
+        vref = objects.Volume.get_by_id(self.context,
+                                        vref.id)
+        self.assertEqual('reserved', vref.status)
+        self.assertEqual(1, len(vref.volume_attachment))
