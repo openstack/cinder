@@ -69,6 +69,7 @@ SM_SUBNET_MGMT_PLUS_DATA = 'mgmt-data'
 SM_STATE_MSG = "is already in requested state"
 SM_OBJ_EXIST_MSG = "Object exists"
 SM_OBJ_ENOENT_MSG = "No such object"
+SM_OBJ_HAS_CLONE = "has a clone"
 IOPS_ERR_MSG = "Please set valid IOPS limit in the range"
 LUN_ID = '0'
 WARN_LEVEL = 80
@@ -103,6 +104,10 @@ class NimbleDriverException(exception.VolumeDriverException):
 
 class NimbleAPIException(exception.VolumeBackendAPIException):
     message = _("Unexpected response from Nimble API")
+
+
+class NimbleVolumeBusyException(exception.VolumeIsBusy):
+    message = _("Nimble Cinder Driver: Volume Busy")
 
 
 class NimbleBaseVolumeDriver(san.SanDriver):
@@ -211,7 +216,18 @@ class NimbleBaseVolumeDriver(san.SanDriver):
         eventlet.sleep(DEFAULT_SLEEP)
         self.APIExecutor.online_vol(volume['name'], False)
         LOG.debug("Deleting volume %(vol)s", {'vol': volume['name']})
-        self.APIExecutor.delete_vol(volume['name'])
+        try:
+            self.APIExecutor.delete_vol(volume['name'])
+        except NimbleAPIException as ex:
+            LOG.debug("delete volume exception: %s", ex)
+            if SM_OBJ_HAS_CLONE in six.text_type(ex):
+                LOG.warning('Volume %(vol)s : %(state)s',
+                            {'vol': volume['name'],
+                             'state': SM_OBJ_HAS_CLONE})
+                # set the volume back to be online and raise busy exception
+                self.APIExecutor.online_vol(volume['name'], True)
+                raise exception.VolumeIsBusy(volume_name=volume['name'])
+            raise
         # Nimble backend does not delete the snapshot from the parent volume
         # if there is a dependent clone. So the deletes need to be in reverse
         # order i.e.
@@ -1663,10 +1679,18 @@ class NimbleRestAPIExecutor(object):
         url = self.uri + api
         r = requests.delete(url, headers=self.headers, verify=self.verify)
         if r.status_code != 201 and r.status_code != 200:
-            msg = _("Failed to execute api %(api)s : %(msg)s %(code)s") % {
+            base = "Failed to execute api %(api)s: Error Code: %(code)s" % {
                 'api': api,
-                'msg': r.json()['messages'][1]['text'],
                 'code': r.status_code}
+            LOG.debug("Base error : %(base)s", {'base': base})
+            try:
+                msg = _("%(base)s Message: %(msg)s") % {
+                    'base': base,
+                    'msg': r.json()['messages'][1]['text']}
+            except IndexError:
+                msg = _("%(base)s Message: %(msg)s") % {
+                    'base': base,
+                    'msg': six.text_type(r.json())}
             raise NimbleAPIException(msg)
         return r.json()
 
