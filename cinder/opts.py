@@ -99,26 +99,6 @@ from cinder.volume.drivers.fujitsu import eternus_dx_common as \
 from cinder.volume.drivers.fusionstorage import dsware as \
     cinder_volume_drivers_fusionstorage_dsware
 from cinder.volume.drivers import hgst as cinder_volume_drivers_hgst
-from cinder.volume.drivers.hitachi import hbsd_common as \
-    cinder_volume_drivers_hitachi_hbsdcommon
-from cinder.volume.drivers.hitachi import hbsd_fc as \
-    cinder_volume_drivers_hitachi_hbsdfc
-from cinder.volume.drivers.hitachi import hbsd_horcm as \
-    cinder_volume_drivers_hitachi_hbsdhorcm
-from cinder.volume.drivers.hitachi import hbsd_iscsi as \
-    cinder_volume_drivers_hitachi_hbsdiscsi
-from cinder.volume.drivers.hitachi import hnas_nfs as \
-    cinder_volume_drivers_hitachi_hnasnfs
-from cinder.volume.drivers.hitachi import hnas_utils as \
-    cinder_volume_drivers_hitachi_hnasutils
-from cinder.volume.drivers.hitachi import vsp_common as \
-    cinder_volume_drivers_hitachi_vspcommon
-from cinder.volume.drivers.hitachi import vsp_fc as \
-    cinder_volume_drivers_hitachi_vspfc
-from cinder.volume.drivers.hitachi import vsp_horcm as \
-    cinder_volume_drivers_hitachi_vsphorcm
-from cinder.volume.drivers.hitachi import vsp_iscsi as \
-    cinder_volume_drivers_hitachi_vspiscsi
 from cinder.volume.drivers.hpe import hpe_3par_common as \
     cinder_volume_drivers_hpe_hpe3parcommon
 from cinder.volume.drivers.hpe import hpe_lefthand_iscsi as \
@@ -296,16 +276,6 @@ def list_opts():
                 FJ_ETERNUS_DX_OPT_opts,
                 cinder_volume_drivers_fusionstorage_dsware.volume_opts,
                 cinder_volume_drivers_hgst.hgst_opts,
-                cinder_volume_drivers_hitachi_hbsdcommon.volume_opts,
-                cinder_volume_drivers_hitachi_hbsdfc.volume_opts,
-                cinder_volume_drivers_hitachi_hbsdhorcm.volume_opts,
-                cinder_volume_drivers_hitachi_hbsdiscsi.volume_opts,
-                cinder_volume_drivers_hitachi_hnasnfs.NFS_OPTS,
-                cinder_volume_drivers_hitachi_hnasutils.drivers_common_opts,
-                cinder_volume_drivers_hitachi_vspcommon.common_opts,
-                cinder_volume_drivers_hitachi_vspfc.fc_opts,
-                cinder_volume_drivers_hitachi_vsphorcm.horcm_opts,
-                cinder_volume_drivers_hitachi_vspiscsi.iscsi_opts,
                 cinder_volume_drivers_hpe_hpe3parcommon.hpe3par_opts,
                 cinder_volume_drivers_hpe_hpelefthandiscsi.hpelefthand_opts,
                 cinder_volume_drivers_huawei_huaweidriver.huawei_opts,

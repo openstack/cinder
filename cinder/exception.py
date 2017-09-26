@@ -1128,45 +1128,6 @@ class InvalidGroupSnapshotStatus(Invalid):
     message = _("Invalid GroupSnapshot Status: %(reason)s")
 
 
-# Hitachi Block Storage Driver
-class HBSDError(VolumeDriverException):
-    message = _("HBSD error occurs.")
-
-
-class HBSDCmdError(HBSDError):
-
-    def __init__(self, message=None, ret=None, err=None):
-        self.ret = ret
-        self.stderr = err
-
-        super(HBSDCmdError, self).__init__(message=message)
-
-
-class HBSDBusy(HBSDError):
-    message = "Device or resource is busy."
-
-
-class HBSDNotFound(NotFound):
-    message = _("Storage resource could not be found.")
-
-
-class HBSDVolumeIsBusy(VolumeIsBusy):
-    message = _("Volume %(volume_name)s is busy.")
-
-
-# Hitachi VSP Driver
-class VSPError(VolumeDriverException):
-    message = _("VSP error occurred. %(message)s")
-
-
-class VSPBusy(VSPError):
-    message = _("Device or resource is busy.")
-
-
-class VSPNotSupported(VSPError):
-    message = _("The function on the storage is not supported.")
-
-
 # Datera driver
 class DateraAPIException(VolumeBackendAPIException):
     message = _("Bad response from Datera API")
@@ -1295,11 +1256,6 @@ class MetadataAbsent(CinderException):
 class NotSupportedOperation(Invalid):
     message = _("Operation not supported: %(operation)s.")
     code = 405
-
-
-# Hitachi HNAS drivers
-class HNASConnError(VolumeDriverException):
-    message = "%(message)s"
 
 
 # NexentaStor driver exception

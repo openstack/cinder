@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The Hitachi HNAS, HBSD, and VSP volume drivers were marked as deprecated
+    in the Pike release and have now been removed. Hitachi storage drivers are
+    now only available directly from Hitachi.
