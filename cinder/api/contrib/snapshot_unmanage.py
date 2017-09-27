@@ -20,10 +20,10 @@ from webob import exc
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import exception
+from cinder.policies import manageable_snapshots as policy
 from cinder import volume
 
 LOG = logging.getLogger(__name__)
-authorize = extensions.extension_authorizer('snapshot', 'snapshot_unmanage')
 
 
 class SnapshotUnmanageController(wsgi.Controller):
@@ -46,7 +46,7 @@ class SnapshotUnmanageController(wsgi.Controller):
         A Not Found error is returned if the specified snapshot does not exist.
         """
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.UNMANAGE_POLICY)
 
         LOG.info("Unmanage snapshot with id: %s", id)
 

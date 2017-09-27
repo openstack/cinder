@@ -44,11 +44,9 @@
     "volume:thaw_host": "rule:admin_api",
     "volume:revert_to_snapshot": "",
     "volume_extension:volume_admin_actions:reset_status": "rule:admin_api",
-    "volume_extension:snapshot_admin_actions:reset_status": "rule:admin_api",
     "volume_extension:backup_admin_actions:reset_status": "rule:admin_api",
     "volume_extension:backup_admin_actions:force_delete": "rule:admin_api",
     "volume_extension:volume_admin_actions:force_delete": "rule:admin_api",
-    "volume_extension:snapshot_admin_actions:force_delete": "rule:admin_api",
     "volume_extension:volume_admin_actions:force_detach": "rule:admin_api",
     "volume_extension:volume_admin_actions:migrate_volume": "rule:admin_api",
     "volume_extension:volume_admin_actions:migrate_volume_completion": "rule:admin_api",
@@ -90,11 +88,6 @@
     "volume_extension:capabilities": "rule:admin_api",
 
     "limits_extension:used_limits": "",
-
-    "snapshot_extension:snapshot_actions:update_snapshot_status": "",
-    "snapshot_extension:snapshot_manage": "rule:admin_api",
-    "snapshot_extension:snapshot_unmanage": "rule:admin_api",
-    "snapshot_extension:list_manageable": "rule:admin_api",
 
     "volume:create_transfer": "",
     "volume:accept_transfer": "",

@@ -22,13 +22,10 @@ from cinder.api.openstack import wsgi
 from cinder.api.views import manageable_snapshots as list_manageable_view
 from cinder.api.views import snapshots as snapshot_views
 from cinder.i18n import _
+from cinder.policies import manageable_snapshots as policy
 from cinder import volume as cinder_volume
 
 LOG = logging.getLogger(__name__)
-authorize_manage = extensions.extension_authorizer('snapshot',
-                                                   'snapshot_manage')
-authorize_list_manageable = extensions.extension_authorizer('snapshot',
-                                                            'list_manageable')
 
 
 class SnapshotManageController(wsgi.Controller):
@@ -86,7 +83,7 @@ class SnapshotManageController(wsgi.Controller):
 
         """
         context = req.environ['cinder.context']
-        authorize_manage(context)
+        context.authorize(policy.MANAGE_POLICY)
 
         if not self.is_valid_body(body, 'snapshot'):
             msg = _("Missing required element snapshot in request body.")
@@ -130,7 +127,7 @@ class SnapshotManageController(wsgi.Controller):
     def index(self, req):
         """Returns a summary list of snapshots available to manage."""
         context = req.environ['cinder.context']
-        authorize_list_manageable(context)
+        context.authorize(policy.LIST_MANAGEABLE_POLICY)
         return resource_common_manage.get_manageable_resources(
             req, False, self.volume_api.get_manageable_snapshots,
             self._list_manageable_view)
@@ -139,7 +136,7 @@ class SnapshotManageController(wsgi.Controller):
     def detail(self, req):
         """Returns a detailed list of snapshots available to manage."""
         context = req.environ['cinder.context']
-        authorize_list_manageable(context)
+        context.authorize(policy.LIST_MANAGEABLE_POLICY)
         return resource_common_manage.get_manageable_resources(
             req, True, self.volume_api.get_manageable_snapshots,
             self._list_manageable_view)
