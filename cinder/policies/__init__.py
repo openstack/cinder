@@ -20,6 +20,11 @@ from cinder.policies import backup_actions
 from cinder.policies import backups
 from cinder.policies import base
 from cinder.policies import clusters
+from cinder.policies import group_actions
+from cinder.policies import group_snapshot_actions
+from cinder.policies import group_snapshots
+from cinder.policies import group_types
+from cinder.policies import groups
 from cinder.policies import manageable_snapshots
 from cinder.policies import messages
 from cinder.policies import snapshot_actions
@@ -41,4 +46,9 @@ def list_rules():
         manageable_snapshots.list_rules(),
         backups.list_rules(),
         backup_actions.list_rules(),
+        groups.list_rules(),
+        group_types.list_rules(),
+        group_snapshots.list_rules(),
+        group_snapshot_actions.list_rules(),
+        group_actions.list_rules(),
     )
