@@ -1,7 +1,7 @@
 {
     "encryption":{
         "key_size": 64,
-        "provider": "cinder.keymgr.conf_key_mgr.ConfKeyManager",
+        "provider": "luks",
         "control_location":"back-end"
     }
 }

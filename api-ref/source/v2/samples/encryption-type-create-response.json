@@ -4,7 +4,7 @@
         "control_location": "front-end",
         "encryption_id": "81e069c6-7394-4856-8df7-3b237ca61f74",
         "key_size": 128,
-        "provider": "nova.volume.encryptors.luks.LuksEncryptor",
+        "provider": "luks",
         "cipher": "aes-xts-plain64"
     }
 }
