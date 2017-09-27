@@ -3034,6 +3034,70 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
+    def test_revert_to_snapshot(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        volume = {'name': self.VOLUME_NAME,
+                  'id': self.VOLUME_ID_SNAP,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'host': self.FAKE_CINDER_HOST,
+                  'volume_type': None,
+                  'volume_type_id': None}
+
+        mock_client = self.setup_driver()
+        mock_client.isOnlinePhysicalCopy.return_value = False
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            self.driver.revert_to_snapshot(self.ctxt, volume, self.snapshot)
+
+            expected = [
+                mock.call.isOnlinePhysicalCopy('osv-dh-F5VGRTseuujPjbeRBVg'),
+                mock.call.promoteVirtualCopy('oss-L4I73ONuTci9Fd4ceij-MQ',
+                                             optional={})
+            ]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_revert_to_snapshot_replicated_volume(self, _mock_volume_types):
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'volume_type': self.volume_type_replicated}}
+
+        mock_client = self.setup_driver()
+        mock_client.isOnlinePhysicalCopy.return_value = True
+        mock_client.getStorageSystemInfo.return_value = mock.ANY
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            self.driver.revert_to_snapshot(
+                self.ctxt,
+                self.volume_replicated,
+                self.snapshot)
+            expected = [
+                mock.call.stopRemoteCopy('rcg-0DM4qZEVSKON-DXN-N'),
+                mock.call.isOnlinePhysicalCopy('osv-0DM4qZEVSKON-DXN-NwVpw'),
+                mock.call.promoteVirtualCopy(
+                    'oss-L4I73ONuTci9Fd4ceij-MQ',
+                    optional={'online': True, 'allowRemoteCopyParent': True}),
+                mock.call.startRemoteCopy('rcg-0DM4qZEVSKON-DXN-N')
+            ]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
     def test_delete_snapshot(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
