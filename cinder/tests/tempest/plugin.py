@@ -16,7 +16,7 @@
 import cinder
 import os
 
-from cinder.tests.tempest import config as project_config
+from cinder.tests.tempest import opts as project_opts
 
 from tempest import config
 from tempest.test_discover import plugins
@@ -33,11 +33,11 @@ class CinderTempestPlugin(plugins.TempestPlugin):
     def register_opts(self, conf):
         config.register_opt_group(
             conf, config.volume_feature_group,
-            project_config.cinder_option
+            project_opts.cinder_option
         )
 
     def get_opt_lists(self):
         return [
             (config.volume_feature_group.name,
-             project_config.cinder_option),
+             project_opts.cinder_option),
         ]
