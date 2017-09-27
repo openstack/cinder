@@ -9,7 +9,7 @@ Force-deletes a backup and reset status for a backup.
 Force-delete backup
 ~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  POST /v2/{tenant_id}/backups/{backup_id}/action
+.. rest_method::  POST /v2/{project_id}/backups/{backup_id}/action
 
 Force-deletes a backup. Specify the ``os-force_delete`` action in the request body.
 
@@ -29,7 +29,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - os-force_delete: os-force_delete
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - backup_id: backup_id
 
 Request Example
@@ -43,7 +43,7 @@ Request Example
 Reset backup's status
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  POST /v2/{tenant_id}/backups/{backup_id}/action
+.. rest_method::  POST /v2/{project_id}/backups/{backup_id}/action
 
 Reset a backup's status. Specify the ``os-reset_status`` action in the request body.
 
@@ -59,7 +59,7 @@ Request
 
    - status: status_7
    - os-reset_status: os-reset_status
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - backup_id: backup_id
 
 Request Example

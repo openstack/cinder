@@ -56,7 +56,7 @@ Update quota classes for a project
 
 .. rest_method::  PUT /v3/{admin_project_id}/os-quota-class-sets/{quota_class_name}
 
-Updates quota class set for a tenant. If the ``quota_class_name`` key does not
+Updates quota class set for a project. If the ``quota_class_name`` key does not
 exist, then the API will create one.
 
 Normal response codes: 200

@@ -3,7 +3,7 @@
 Limits (limits)
 ===============
 
-Shows absolute limits for a tenant.
+Shows absolute limits for a project.
 
 An absolute limit value of ``-1`` indicates that the absolute limit
 for the item is infinite.
@@ -12,9 +12,9 @@ for the item is infinite.
 Show absolute limits
 ~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v2/{tenant_id}/limits
+.. rest_method::  GET /v2/{project_id}/limits
 
-Shows absolute limits for a tenant.
+Shows absolute limits for a project.
 
 An absolute limit value of ``-1`` indicates that the absolute limit
 for the item is infinite.
@@ -29,7 +29,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Response Parameters
 -------------------

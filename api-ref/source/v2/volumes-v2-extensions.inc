@@ -9,7 +9,7 @@ API extensions (extensions)
 List API extensions
 ~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v2/{tenant_id}/extensions
+.. rest_method::  GET /v2/{project_id}/extensions
 
 Lists Block Storage API extensions.
 
@@ -22,7 +22,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 
 Response Parameters

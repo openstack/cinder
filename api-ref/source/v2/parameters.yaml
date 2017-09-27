@@ -7,9 +7,9 @@ x-openstack-request-id:
   type: string
 
 # variables in path
-admin_tenant_id:
+admin_project_id:
   description: |
-    The UUID of the administrative tenant.
+    The UUID of the administrative project.
   in: path
   required: true
   type: string
@@ -55,7 +55,7 @@ hostname:
     The name of the host that hosts the storage back
     end.
   in: path
-  required: false
+  required: true
   type: string
 key_1:
   description: |
@@ -96,17 +96,11 @@ quota_class_name:
   in: path
   required: true
   type: string
-quotas_tenant_id:
+quotas_project_id:
   description: |
-    The UUID of the tenant in a multi-tenancy cloud.
+    The UUID of the project in a multi-tenancy cloud.
   in: path
   required: true
-  type: string
-tenant_id:
-  description: |
-    The UUID of the tenant in a multi-tenancy cloud.
-  in: path
-  required: false
   type: string
 transfer_id:
   description: |
@@ -155,7 +149,7 @@ action:
   type: string
 all-tenants:
   description: |
-    Shows details for all tenants. Admin only..
+    Shows details for all projects. Admin only.
   in: query
   required: false
   type: string
@@ -424,7 +418,7 @@ control_location:
 cores:
   description: |
     The number of instance cores that are allowed for
-    each tenant.
+    each project.
   in: body
   required: true
   type: integer
@@ -617,7 +611,7 @@ fail_reason:
 fixed_ips:
   description: |
     The number of fixed IP addresses that are allowed
-    for each tenant. Must be equal to or greater than the number of
+    for each project. Must be equal to or greater than the number of
     allowed instances.
   in: body
   required: true
@@ -625,7 +619,7 @@ fixed_ips:
 floating_ips:
   description: |
     The number of floating IP addresses that are
-    allowed for each tenant.
+    allowed for each project.
   in: body
   required: true
   type: integer
@@ -777,7 +771,7 @@ injected_file_path_bytes:
 injected_files:
   description: |
     The number of injected files that are allowed for
-    each tenant.
+    each project.
   in: body
   required: true
   type: integer
@@ -790,7 +784,7 @@ instance_uuid:
 instances:
   description: |
     The number of instances that are allowed for each
-    tenant.
+    project.
   in: body
   required: true
   type: integer
@@ -1295,7 +1289,7 @@ os-vol-mig-status-attr:name_id:
   type: string
 os-vol-tenant-attr:tenant_id:
   description: |
-    The tenant ID which the volume belongs to.
+    The project ID which the volume belongs to.
   in: body
   required: true
   type: string
@@ -1403,7 +1397,7 @@ quota_set:
 ram:
   description: |
     The amount of instance RAM in megabytes that are
-    allowed for each tenant.
+    allowed for each project.
   in: body
   required: true
   type: integer
@@ -1482,7 +1476,7 @@ security_group_rules:
 security_groups:
   description: |
     The number of security groups that are allowed
-    for each tenant.
+    for each project.
   in: body
   required: true
   type: integer
