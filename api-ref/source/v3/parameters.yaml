@@ -2478,7 +2478,7 @@ status_7:
   description: |
     The ``status`` of the generic group snapshot.
   in: body
-  required: false
+  required: true
   type: string
 status_8:
   description: |
