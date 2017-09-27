@@ -10,7 +10,7 @@ Administrator only. Resets status for a snapshot.
 Reset a snapshot's status
 =========================
 
-.. rest_method::  POST /v2/{tenant_id}/snapshots/{snapshot_id}/action
+.. rest_method::  POST /v2/{project_id}/snapshots/{snapshot_id}/action
 
 Resets the status. Specify the ``os-reset_status`` action in the request body.
 
@@ -24,7 +24,7 @@ Request
 
    - status: status_2
    - os-reset_status: os-reset_status
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - snapshot_id: snapshot_id
 
 Request Example

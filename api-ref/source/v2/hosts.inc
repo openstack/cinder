@@ -11,7 +11,7 @@ Lists, shows hosts.
 List all hosts
 ~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v2/{admin_tenant_id}/os-hosts
+.. rest_method::  GET /v2/{admin_project_id}/os-hosts
 
 Lists all hosts summary info that is not disabled.
 
@@ -24,7 +24,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - admin_tenant_id: admin_tenant_id
+   - admin_project_id: admin_project_id
 
 
 Response Parameters
@@ -48,7 +48,7 @@ Response Example
 Show Host Details
 ~~~~~~~~~~~~~~~~~
 
-.. rest_method:: GET /v2/{admin_tenant_id}/os-hosts/{host_name}
+.. rest_method:: GET /v2/{admin_project_id}/os-hosts/{host_name}
 
 Shows volume and snapshot details for a cinder-volume host.
 
@@ -65,7 +65,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-  - admin_tenant_id: admin_tenant_id
+  - admin_project_id: admin_project_id
   - host_name: hostname
 
 Response

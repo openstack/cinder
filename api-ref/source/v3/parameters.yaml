@@ -133,7 +133,7 @@ quota_class_name:
   type: string
 quotas_project_id:
   description: |
-    The UUID of the tenant in a multi-tenancy cloud.
+    The UUID of the project in a multi-tenancy cloud.
   in: path
   required: true
   type: string
@@ -196,7 +196,7 @@ action:
   type: string
 all-tenants:
   description: |
-    Shows details for all project. Admin only..
+    Shows details for all project. Admin only.
   in: query
   required: false
   type: string
@@ -1944,7 +1944,7 @@ os-vol-mig-status-attr:name_id:
   type: string
 os-vol-tenant-attr:tenant_id:
   description: |
-    The tenant ID which the volume belongs to.
+    The project ID which the volume belongs to.
   in: body
   required: true
   type: string
