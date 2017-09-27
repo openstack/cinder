@@ -4,6 +4,8 @@ Block Storage API
 
 Contents:
 
+API content can be searched using the :ref:`search`.
+
 .. toctree::
     :maxdepth: 2
 
@@ -11,9 +13,3 @@ Contents:
     v2/index
     v1/index
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`search`
