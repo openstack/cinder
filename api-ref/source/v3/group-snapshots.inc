@@ -225,7 +225,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - project_id: project_id
+   - project_id: project_id_path
    - group_snapshot_id: group_snapshot_id
    - reset_status: reset_status
    - status: status_7
