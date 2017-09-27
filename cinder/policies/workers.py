@@ -13,20 +13,27 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import itertools
+from oslo_policy import policy
 
-from cinder.policies import attachments
 from cinder.policies import base
-from cinder.policies import clusters
-from cinder.policies import messages
-from cinder.policies import workers
+
+
+CLEAN_POLICY = 'workers:cleanup'
+
+
+workers_policies = [
+    policy.DocumentedRuleDefault(
+        name=CLEAN_POLICY,
+        check_str=base.RULE_ADMIN_API,
+        description="""Clean up workers.""",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/workers/cleanup'
+            }
+        ])
+]
 
 
 def list_rules():
-    return itertools.chain(
-        base.list_rules(),
-        attachments.list_rules(),
-        messages.list_rules(),
-        clusters.list_rules(),
-        workers.list_rules()
-    )
+    return workers_policies

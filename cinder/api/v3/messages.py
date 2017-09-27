@@ -23,18 +23,7 @@ from cinder.api.v3.views import messages as messages_view
 from cinder.message import api as message_api
 from cinder.message import defined_messages
 from cinder.message import message_field
-import cinder.policy
-
-
-def check_policy(context, action, target_obj=None):
-    target = {
-        'project_id': context.project_id,
-        'user_id': context.user_id,
-    }
-    target.update(target_obj or {})
-
-    _action = 'message:%s' % action
-    cinder.policy.enforce(context, _action, target)
+from cinder.policies import messages as policy
 
 
 class MessagesController(wsgi.Controller):
@@ -68,7 +57,7 @@ class MessagesController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         message = self.message_api.get(context, id)
 
-        check_policy(context, 'get', message)
+        context.authorize(policy.GET_POLICY)
 
         self._build_user_message(message)
         return self._view_builder.detail(req, message)
@@ -80,7 +69,7 @@ class MessagesController(wsgi.Controller):
 
         # Not found exception will be handled at the wsgi level
         message = self.message_api.get(context, id)
-        check_policy(context, 'delete', message)
+        context.authorize(policy.DELETE_POLICY, target_obj=message)
         self.message_api.delete(context, message)
 
         return webob.Response(status_int=http_client.NO_CONTENT)
@@ -90,7 +79,7 @@ class MessagesController(wsgi.Controller):
         """Returns a list of messages, transformed through view builder."""
         context = req.environ['cinder.context']
         api_version = req.api_version_request
-        check_policy(context, 'get_all')
+        context.authorize(policy.GET_ALL_POLICY)
         filters = None
         marker = None
         limit = None
