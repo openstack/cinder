@@ -58,6 +58,10 @@ kaminario_opts = [
                      "FQDN.  When true this will create host entries on K2 "
                      "using the FQDN, when false it will use the reversed "
                      "IQN/WWNN."),
+    cfg.BoolOpt('disable_discovery',
+                default=False,
+                help="Disabling iSCSI discovery (sendtargets) for multipath "
+                     "connections on K2 driver."),
 ]
 
 CONF = cfg.CONF

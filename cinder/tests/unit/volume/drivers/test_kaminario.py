@@ -15,6 +15,7 @@
 """Unit tests for kaminario driver."""
 import re
 
+import ddt
 import mock
 from oslo_utils import units
 import time
@@ -47,12 +48,13 @@ class FakeK2Obj(object):
 
 class FakeSaveObject(FakeK2Obj):
     def __init__(self, *args, **kwargs):
+        item = kwargs.pop('item', 1)
         self.ntype = kwargs.get('ntype')
-        self.ip_address = '10.0.0.1'
+        self.ip_address = '10.0.0.%s' % item
         self.iscsi_qualified_target_name = "xyztlnxyz"
         self.snapshot = FakeK2Obj()
         self.name = 'test'
-        self.pwwn = '50024f4053300300'
+        self.pwwn = '50024f405330030%s' % item
         self.volume_group = self
         self.is_dedup = True
         self.size = units.Mi
@@ -83,8 +85,8 @@ class FakeSaveObjectExp(FakeSaveObject):
 
 
 class FakeSearchObject(object):
-    hits = [FakeSaveObject()]
-    total = 1
+    hits = [FakeSaveObject(item=1), FakeSaveObject(item=2)]
+    total = 2
 
     def __init__(self, *args):
         if args and "mappings" in args[0]:
@@ -119,14 +121,14 @@ class Replication(object):
     rpo = 500
 
 
-class TestKaminarioISCSI(test.TestCase):
+class TestKaminarioCommon(test.TestCase):
     driver = None
     conf = None
 
     def setUp(self):
         self._setup_config()
         self._setup_driver()
-        super(TestKaminarioISCSI, self).setUp()
+        super(TestKaminarioCommon, self).setUp()
         self.context = context.get_admin_context()
         self.vol = fake_volume.fake_volume_obj(self.context)
         self.vol.volume_type = fake_volume.fake_volume_type_obj(self.context)
@@ -140,6 +142,7 @@ class TestKaminarioISCSI(test.TestCase):
         self.conf.kaminario_dedup_type_name = "dedup"
         self.conf.volume_dd_blocksize = 2
         self.conf.unique_fqdn_network = True
+        self.conf.disable_discovery = False
 
     def _setup_driver(self):
         self.driver = (kaminario_iscsi.
@@ -258,23 +261,12 @@ class TestKaminarioISCSI(test.TestCase):
         self.assertRaises(exception.KaminarioCinderDriverException,
                           self.driver.extend_volume, self.vol, new_size)
 
-    def test_initialize_connection(self):
-        """Test initialize_connection."""
-        conn_info = self.driver.initialize_connection(self.vol, CONNECTOR)
-        self.assertIn('data', conn_info)
-        self.assertIn('target_iqn', conn_info['data'])
-
     def test_initialize_connection_with_exception(self):
         """Test initialize_connection_with_exception."""
         self.driver.client = FakeKrestException()
         self.assertRaises(exception.KaminarioCinderDriverException,
                           self.driver.initialize_connection, self.vol,
                           CONNECTOR)
-
-    def test_terminate_connection(self):
-        """Test terminate_connection."""
-        result = self.driver.terminate_connection(self.vol, CONNECTOR)
-        self.assertIsNone(result)
 
     def test_get_lun_number(self):
         """Test _get_lun_number."""
@@ -291,20 +283,15 @@ class TestKaminarioISCSI(test.TestCase):
         """Test _get_host_object."""
         host, host_rs, host_name = self.driver._get_host_object(CONNECTOR)
         self.assertEqual(548, host.id)
-        self.assertEqual(1, host_rs.total)
+        self.assertEqual(2, host_rs.total)
         self.assertEqual('test-k2', host_name)
-
-    def test_get_target_info(self):
-        """Test get_target_info."""
-        iscsi_portal, target_iqn = self.driver.get_target_info(self.vol)
-        self.assertEqual('10.0.0.1:3260', iscsi_portal)
-        self.assertEqual('xyztlnxyz', target_iqn)
 
     def test_k2_initialize_connection(self):
         """Test k2_initialize_connection."""
         result = self.driver.k2_initialize_connection(self.vol, CONNECTOR)
         self.assertEqual(548, result)
 
+    @mock.patch.object(FakeSearchObject, 'total', 1)
     def test_manage_existing(self):
         """Test manage_existing."""
         self.driver._get_replica_status = mock.Mock(return_value=False)
@@ -541,7 +528,64 @@ class TestKaminarioISCSI(test.TestCase):
         self.assertEqual(expected, result)
 
 
-class TestKaminarioFC(TestKaminarioISCSI):
+@ddt.ddt
+class TestKaminarioISCSI(TestKaminarioCommon):
+    def test_get_target_info(self):
+        """Test get_target_info."""
+        iscsi_portals, target_iqns = self.driver.get_target_info(self.vol)
+        self.assertEqual(['10.0.0.1:3260', '10.0.0.2:3260'],
+                         iscsi_portals)
+        self.assertEqual(['xyztlnxyz', 'xyztlnxyz'],
+                         target_iqns)
+
+    @ddt.data(True, False)
+    def test_initialize_connection(self, multipath):
+        """Test initialize_connection."""
+        connector = CONNECTOR.copy()
+        connector['multipath'] = multipath
+        self.driver.configuration.disable_discovery = False
+
+        conn_info = self.driver.initialize_connection(self.vol, CONNECTOR)
+        expected = {
+            'data': {
+                'target_discovered': True,
+                'target_iqn': 'xyztlnxyz',
+                'target_lun': 548,
+                'target_portal': '10.0.0.1:3260',
+            },
+            'driver_volume_type': 'iscsi',
+        }
+        self.assertEqual(expected, conn_info)
+
+    def test_initialize_connection_multipath(self):
+        """Test initialize_connection with multipath."""
+        connector = CONNECTOR.copy()
+        connector['multipath'] = True
+        self.driver.configuration.disable_discovery = True
+
+        conn_info = self.driver.initialize_connection(self.vol, connector)
+
+        expected = {
+            'data': {
+                'target_discovered': True,
+                'target_iqn': 'xyztlnxyz',
+                'target_iqns': ['xyztlnxyz', 'xyztlnxyz'],
+                'target_lun': 548,
+                'target_luns': [548, 548],
+                'target_portal': '10.0.0.1:3260',
+                'target_portals': ['10.0.0.1:3260', '10.0.0.2:3260'],
+            },
+            'driver_volume_type': 'iscsi',
+        }
+        self.assertEqual(expected, conn_info)
+
+    def test_terminate_connection(self):
+        """Test terminate_connection."""
+        result = self.driver.terminate_connection(self.vol, CONNECTOR)
+        self.assertIsNone(result)
+
+
+class TestKaminarioFC(TestKaminarioCommon):
 
     def _setup_driver(self):
         self.driver = (kaminario_fc.
@@ -560,7 +604,8 @@ class TestKaminarioFC(TestKaminarioISCSI):
     def test_get_target_info(self):
         """Test get_target_info."""
         target_wwpn = self.driver.get_target_info(self.vol)
-        self.assertEqual(['50024f4053300300'], target_wwpn)
+        self.assertEqual(['50024f4053300301', '50024f4053300302'],
+                         target_wwpn)
 
     def test_terminate_connection(self):
         """Test terminate_connection."""
