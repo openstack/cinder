@@ -557,6 +557,9 @@ def service_get_all(context, backend_match_level=None, **filters):
 
 @require_admin_context
 def service_create(context, values):
+    if not values.get('uuid'):
+        values['uuid'] = str(uuid.uuid4())
+
     service_ref = models.Service()
     service_ref.update(values)
     if not CONF.enable_new_services:

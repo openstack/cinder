@@ -65,6 +65,7 @@ class Service(BASE, CinderBase):
 
     __tablename__ = 'services'
     id = Column(Integer, primary_key=True)
+    uuid = Column(String(36), nullable=True, index=True)
     cluster_name = Column(String(255), nullable=True)
     host = Column(String(255))  # , ForeignKey('hosts.id'))
     binary = Column(String(255))

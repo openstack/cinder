@@ -1289,6 +1289,11 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertTrue(db_utils.index_exists_on_columns(
             engine, 'quota_usages', ['project_id', 'resource']))
 
+    def _check_112(self, engine, data):
+        services = db_utils.get_table(engine, 'services')
+        self.assertIsInstance(services.c.uuid.type,
+                              self.VARCHAR_TYPE)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
         self.assert_each_foreign_key_is_part_of_an_index()
