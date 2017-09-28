@@ -33,18 +33,6 @@
     "volume_extension:volume_encryption_metadata": "rule:admin_or_owner",
     "volume_extension:volume_image_metadata": "rule:admin_or_owner",
 
-    "volume_extension:qos_specs_manage:create": "rule:admin_api",
-    "volume_extension:qos_specs_manage:get": "rule:admin_api",
-    "volume_extension:qos_specs_manage:get_all": "rule:admin_api",
-    "volume_extension:qos_specs_manage:update": "rule:admin_api",
-    "volume_extension:qos_specs_manage:delete": "rule:admin_api",
-
-    "volume_extension:quotas:show": "",
-    "volume_extension:quotas:update": "rule:admin_api",
-    "volume_extension:quotas:delete": "rule:admin_api",
-    "volume_extension:quota_classes": "rule:admin_api",
-    "volume_extension:quota_classes:validate_setup_for_nested_quota_use": "rule:admin_api",
-
     "volume_extension:volume_admin_actions:reset_status": "rule:admin_api",
     "volume_extension:volume_admin_actions:force_delete": "rule:admin_api",
     "volume_extension:volume_admin_actions:force_detach": "rule:admin_api",
