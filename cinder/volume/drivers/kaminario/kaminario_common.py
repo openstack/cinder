@@ -50,7 +50,12 @@ kaminario_opts = [
     cfg.BoolOpt('auto_calc_max_oversubscription_ratio',
                 default=False,
                 help="K2 driver will calculate max_oversubscription_ratio "
-                     "on setting this option as True.")]
+                     "on setting this option as True."),
+    cfg.BoolOpt('disable_discovery',
+                default=False,
+                help="Disabling iSCSI discovery (sendtargets) for multipath "
+                     "connections on K2 driver."),
+]
 
 CONF = cfg.CONF
 CONF.register_opts(kaminario_opts, group=configuration.SHARED_CONF_GROUP)
