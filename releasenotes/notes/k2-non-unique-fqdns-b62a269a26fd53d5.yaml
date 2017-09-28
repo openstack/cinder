@@ -1,0 +1,6 @@
+---
+issues:
+  - |
+    Kaminario K2 now supports networks with duplicated FQDNs via configuration
+    option `unique_fqdn_network` so attaching in these networks will work
+    (bug #1720147).

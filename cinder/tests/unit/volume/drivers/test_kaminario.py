@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Unit tests for kaminario driver."""
+import re
+
 import ddt
 import mock
 from oslo_utils import units
@@ -140,6 +142,7 @@ class TestKaminarioCommon(test.TestCase):
         self.conf.kaminario_dedup_type_name = "dedup"
         self.conf.volume_dd_blocksize = 2
         self.conf.disable_discovery = False
+        self.conf.unique_fqdn_network = True
 
     def _setup_driver(self):
         self.driver = (kaminario_iscsi.
@@ -516,6 +519,16 @@ class TestKaminarioCommon(test.TestCase):
                                                              'test')
         self.assertIsNone(result)
 
+    def test_get_initiator_host_name(self):
+        result = self.driver.get_initiator_host_name(CONNECTOR)
+        self.assertEqual(CONNECTOR['host'], result)
+
+    def test_get_initiator_host_name_unique(self):
+        self.driver.configuration.unique_fqdn_network = False
+        result = self.driver.get_initiator_host_name(CONNECTOR)
+        expected = re.sub('[:.]', '_', CONNECTOR['initiator'][::-1][:32])
+        self.assertEqual(expected, result)
+
 
 @ddt.ddt
 class TestKaminarioISCSI(TestKaminarioCommon):
@@ -600,3 +613,11 @@ class TestKaminarioFC(TestKaminarioCommon):
         """Test terminate_connection."""
         result = self.driver.terminate_connection(self.vol, CONNECTOR)
         self.assertIn('data', result)
+
+    def test_get_initiator_host_name_unique(self):
+        connector = CONNECTOR.copy()
+        del connector['initiator']
+        self.driver.configuration.unique_fqdn_network = False
+        result = self.driver.get_initiator_host_name(connector)
+        expected = re.sub('[:.]', '_', connector['wwnns'][0][::-1][:32])
+        self.assertEqual(expected, result)
