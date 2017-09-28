@@ -14,7 +14,6 @@
 #    under the License.
 
 from cinder.api import common
-from cinder.api import microversions as mv
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -78,9 +77,7 @@ class ViewBuilder(common.ViewBuilder):
                 'data_timestamp': backup.data_timestamp,
             }
         }
-        req_version = request.api_version_request
-        if req_version.matches(mv.BACKUP_METADATA):
-            backup_dict['backup']['metadata'] = backup.metadata
+
         return backup_dict
 
     def _list_view(self, func, request, backups, backup_count):

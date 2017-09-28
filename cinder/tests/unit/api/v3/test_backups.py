@@ -146,3 +146,18 @@ class BackupsControllerAPITestCase(test.TestCase):
         self.assertEqual(new_name, backup.display_name)
         self.assertEqual(new_description,
                          backup.display_description)
+
+    @ddt.data(mv.get_prior_version(mv.BACKUP_METADATA),
+              mv.BACKUP_METADATA)
+    def test_backup_show_with_metadata(self, version):
+        backup = test_utils.create_backup(
+            self.ctxt, display_name='test_backup_metadata',
+            status=fields.BackupStatus.AVAILABLE)
+        # show backup metadata
+        url = '/v3/%s/backups/%s' % (fake.PROJECT_ID, backup.id)
+        req = fakes.HTTPRequest.blank(url, version=version)
+        backup_get = self.controller.show(req, backup.id)['backup']
+        if version == mv.get_prior_version(mv.BACKUP_METADATA):
+            self.assertNotIn('metadata', backup_get)
+        else:
+            self.assertIn('metadata', backup_get)
