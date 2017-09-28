@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Kaminario K2 iSCSI driver now supports non discovery multipathing (Nova and
+    Cinder won't use iSCSI sendtargets) which can be enabled by setting
+    `disable_discovery` to `true` in the configuration.
