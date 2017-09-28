@@ -14,6 +14,7 @@
 
 import collections
 import copy
+import ddt
 import errno
 import os
 
@@ -34,6 +35,7 @@ from cinder.volume.drivers import vzstorage
 _orig_path_exists = os.path.exists
 
 
+@ddt.ddt
 class VZStorageTestCase(test.TestCase):
 
     _FAKE_SHARE = "10.0.0.1,10.0.0.2:/cluster123:123123"
@@ -45,20 +47,19 @@ class VZStorageTestCase(test.TestCase):
     _FAKE_SNAPSHOT_PATH = (
         _FAKE_VOLUME_PATH + '-snapshot' + _FAKE_SNAPSHOT_ID)
 
-    _FAKE_VZ_CONFIG = mock.MagicMock()
-    _FAKE_VZ_CONFIG.vzstorage_shares_config = '/fake/config/path'
-    _FAKE_VZ_CONFIG.vzstorage_sparsed_volumes = False
-    _FAKE_VZ_CONFIG.vzstorage_used_ratio = 0.7
-    _FAKE_VZ_CONFIG.vzstorage_mount_point_base = _FAKE_MNT_BASE
-    _FAKE_VZ_CONFIG.vzstorage_default_volume_format = 'raw'
-    _FAKE_VZ_CONFIG.nas_secure_file_operations = 'auto'
-    _FAKE_VZ_CONFIG.nas_secure_file_permissions = 'auto'
-
     def setUp(self):
         super(VZStorageTestCase, self).setUp()
 
-        cfg = copy.copy(self._FAKE_VZ_CONFIG)
-        self._vz_driver = vzstorage.VZStorageDriver(configuration=cfg)
+        self._cfg = mock.MagicMock()
+        self._cfg.vzstorage_shares_config = '/fake/config/path'
+        self._cfg.vzstorage_sparsed_volumes = False
+        self._cfg.vzstorage_used_ratio = 0.7
+        self._cfg.vzstorage_mount_point_base = self._FAKE_MNT_BASE
+        self._cfg.vzstorage_default_volume_format = 'raw'
+        self._cfg.nas_secure_file_operations = 'auto'
+        self._cfg.nas_secure_file_permissions = 'auto'
+
+        self._vz_driver = vzstorage.VZStorageDriver(configuration=self._cfg)
         self._vz_driver._local_volume_dir = mock.Mock(
             return_value=self._FAKE_MNT_POINT)
         self._vz_driver._execute = mock.Mock()
@@ -85,7 +86,7 @@ class VZStorageTestCase(test.TestCase):
         self.snap.volume = self.vol
 
     def _path_exists(self, path):
-        if path.startswith(self._FAKE_VZ_CONFIG.vzstorage_shares_config):
+        if path.startswith(self._cfg.vzstorage_shares_config):
             return True
         return _orig_path_exists(path)
 
@@ -125,9 +126,8 @@ class VZStorageTestCase(test.TestCase):
     @mock.patch('os.path.exists')
     def test_setup_invalid_mount_point_base(self, mock_exists):
         mock_exists.side_effect = self._path_exists
-        conf = copy.copy(self._FAKE_VZ_CONFIG)
-        conf.vzstorage_mount_point_base = './tmp'
-        vz_driver = vzstorage.VZStorageDriver(configuration=conf)
+        self._cfg.vzstorage_mount_point_base = './tmp'
+        vz_driver = vzstorage.VZStorageDriver(configuration=self._cfg)
         self.assertRaises(exception.VzStorageException,
                           vz_driver.do_setup,
                           mock.sentinel.context)
@@ -142,13 +142,15 @@ class VZStorageTestCase(test.TestCase):
                           self._vz_driver.do_setup,
                           mock.sentinel.context)
 
-    def test_initialize_connection(self):
+    @ddt.data({'qemu_fmt': 'parallels', 'glance_fmt': 'ploop'},
+              {'qemu_fmt': 'qcow2', 'glance_fmt': 'qcow2'})
+    @ddt.unpack
+    def test_initialize_connection(self, qemu_fmt, glance_fmt):
         drv = self._vz_driver
-        file_format = 'raw'
         info = mock.Mock()
-        info.file_format = file_format
-        snap_info = """{"volume_format": "raw",
-                        "active": "%s"}""" % self.vol.id
+        info.file_format = qemu_fmt
+        snap_info = """{"volume_format": "%s",
+                        "active": "%s"}""" % (qemu_fmt, self.vol.id)
         with mock.patch.object(drv, '_qemu_img_info', return_value=info):
             with mock.patch.object(drv, '_read_file',
                                    return_value=snap_info):
@@ -156,7 +158,7 @@ class VZStorageTestCase(test.TestCase):
         name = drv.get_active_image_from_info(self.vol)
         expected = {'driver_volume_type': 'vzstorage',
                     'data': {'export': self._FAKE_SHARE,
-                             'format': file_format,
+                             'format': glance_fmt,
                              'name': name},
                     'mount_point_base': self._FAKE_MNT_BASE}
         self.assertEqual(expected, ret)
