@@ -1452,6 +1452,7 @@ class NetAppESeriesLibrary(object):
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = self.driver_protocol
         data["pools"] = []
+        storage_volumes = self._client.list_volumes()
 
         for storage_pool in self._get_storage_pools():
             cinder_pool = {}
@@ -1463,7 +1464,15 @@ class NetAppESeriesLibrary(object):
                 self.configuration.max_over_subscription_ratio)
             tot_bytes = int(storage_pool.get("totalRaidedSpace", 0))
             used_bytes = int(storage_pool.get("usedSpace", 0))
-            cinder_pool["provisioned_capacity_gb"] = used_bytes / units.Gi
+
+            provisioned_capacity = 0
+            for volume in storage_volumes:
+                if (volume["volumeGroupRef"] == storage_pool.get('id') and
+                        not volume['label'].startswith('repos_')):
+                    provisioned_capacity += float(volume["capacity"])
+
+            cinder_pool["provisioned_capacity_gb"] = (provisioned_capacity /
+                                                      units.Gi)
             cinder_pool["free_capacity_gb"] = ((tot_bytes - used_bytes) /
                                                units.Gi)
             cinder_pool["total_capacity_gb"] = tot_bytes / units.Gi

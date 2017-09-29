@@ -319,7 +319,7 @@ VOLUMES = [
         },
         "volumeRef": "0200000060080E50002998A00000945355C37C19",
         "status": "optimal",
-        "volumeGroupRef": "0400000060080E50002998A00000945255C37C14",
+        "volumeGroupRef": "fakevolgroupref",
         "currentManager": "070000000000000000000001",
         "preferredManager": "070000000000000000000001",
         "perms": {
