@@ -488,7 +488,22 @@ class XtremIOVolumeDriver(san.SanDriver):
         else:
             snapshot_id = snapshot['id']
 
-        self.client.create_snapshot(snapshot_id, volume['id'])
+        try:
+            self.client.create_snapshot(snapshot_id, volume['id'])
+        except exception.XtremIOSnapshotsLimitExceeded as e:
+            raise exception.CinderException(e.message)
+
+        # extend the snapped volume if requested size is larger then original
+        if volume['size'] > snapshot['volume_size']:
+            try:
+                self.extend_volume(volume, volume['size'])
+            except Exception:
+                LOG.error('failed to extend volume %s, '
+                          'reverting volume from snapshot operation',
+                          volume['id'])
+                # remove the volume in case resize failed
+                self.delete_volume(volume)
+                raise
 
         # add new volume to consistency group
         if (volume.get('consistencygroup_id') and
@@ -516,7 +531,7 @@ class XtremIOVolumeDriver(san.SanDriver):
             try:
                 self.extend_volume(volume, volume['size'])
             except Exception:
-                LOG.error('failes to extend volume %s, '
+                LOG.error('failed to extend volume %s, '
                           'reverting clone operation', volume['id'])
                 # remove the volume in case resize failed
                 self.delete_volume(volume)
@@ -807,7 +822,10 @@ class XtremIOVolumeDriver(san.SanDriver):
             snap_by_anc = self._get_snapset_ancestors(snap_name)
             for volume, snapshot in zip(volumes, snapshots):
                 real_snap = snap_by_anc[snapshot['volume_id']]
-                self.create_volume_from_snapshot(volume, {'id': real_snap})
+                self.create_volume_from_snapshot(
+                    volume,
+                    {'id': real_snap,
+                     'volume_size': snapshot['volume_size']})
 
         elif source_cg:
             data = {'consistency-group-id': source_cg['id'],
