@@ -1,0 +1,5 @@
+---
+fixes:
+  - Dell EMC PS Series Driver code reporting volume stats is now optimized
+    to return the information earlier and accelerate the process. This change
+    fixes bug 1661154.
