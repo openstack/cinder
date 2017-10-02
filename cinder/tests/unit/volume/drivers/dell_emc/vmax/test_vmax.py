@@ -74,7 +74,7 @@ class VMAXCommonData(object):
     failed_resource = 'OS-failed-resource'
     fake_host = 'HostX@Backend#Diamond+DSS+SRP_1+000197800123'
     new_host = 'HostX@Backend#Silver+OLTP+SRP_1+000197800123'
-    version = '3.0.0'
+    version = '3.1.0'
     volume_wwn = '600000345'
     remote_array = '000197800124'
     device_id = '00001'
@@ -846,14 +846,34 @@ class FakeRequestsSession(object):
 class FakeConfiguration(object):
 
     def __init__(self, emc_file=None, volume_backend_name=None,
-                 interval=0, retries=0, replication_device=None):
+                 interval=0, retries=0, replication_device=None, **kwargs):
         self.cinder_dell_emc_config_file = emc_file
         self.interval = interval
         self.retries = retries
         self.volume_backend_name = volume_backend_name
         self.config_group = volume_backend_name
+        self.san_is_local = False
         if replication_device:
             self.replication_device = [replication_device]
+        for key, value in kwargs.items():
+            if key == 'san_login':
+                self.san_login = value
+            elif key == 'san_password':
+                self.san_password = value
+            elif key == 'san_ip':
+                self.san_ip = value
+            elif key == 'san_rest_port':
+                self.san_rest_port = value
+            elif key == 'vmax_srp':
+                self.vmax_srp = value
+            elif key == 'vmax_service_level':
+                self.vmax_service_level = value
+            elif key == 'vmax_workload':
+                self.vmax_workload = value
+            elif key == 'vmax_port_groups':
+                self.vmax_port_groups = value
+            elif key == 'vmax_array':
+                self.vmax_array = value
 
     def safe_get(self, key):
         try:
@@ -4499,6 +4519,29 @@ class VMAXCommonTest(test.TestCase):
                 source_group, source_vols))
         self.assertEqual(ref_model_update, model_update)
 
+    def test_get_attributes_from_cinder_config(self):
+        kwargs_expected = (
+            {'RestServerIp': '1.1.1.1',
+             'RestServerPort': 8443,
+             'RestUserName': 'smc',
+             'RestPassword': 'smc',
+             'SSLCert': None,
+             'SSLVerify': False,
+             'SerialNumber': self.data.array,
+             'srpName': 'SRP_1',
+             'PortGroup': self.data.port_group_name_i})
+        backup_conf = self.common.configuration
+        configuration = FakeConfiguration(
+            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_rest_port=8443, vmax_port_groups=[self.data.port_group_name_i])
+        self.common.configuration = configuration
+        kwargs_returned = self.common.get_attributes_from_cinder_config()
+        self.assertEqual(kwargs_expected, kwargs_returned)
+        self.common.configuration = backup_conf
+        kwargs = self.common.get_attributes_from_cinder_config()
+        self.assertIsNone(kwargs)
+
 
 class VMAXFCTest(test.TestCase):
     def setUp(self):
@@ -5020,9 +5063,9 @@ class VMAXMaskingTest(test.TestCase):
         self._gather_info = common.VMAXCommon._gather_info
         common.VMAXCommon._gather_info = mock.Mock()
         driver = common.VMAXCommon(
-            'iSCSI', common.VMAXCommon.VERSION, configuration=configuration)
+            'iSCSI', self.data.version, configuration=configuration)
         driver_fc = common.VMAXCommon(
-            'FC', common.VMAXCommon.VERSION, configuration=configuration)
+            'FC', self.data.version, configuration=configuration)
         self.driver = driver
         self.driver_fc = driver_fc
         self.mask = self.driver.masking

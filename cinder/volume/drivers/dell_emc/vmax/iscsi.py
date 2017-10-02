@@ -22,14 +22,14 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
-from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.vmax import common
+from cinder.volume.drivers.san import san
 
 LOG = logging.getLogger(__name__)
 
 
 @interface.volumedriver
-class VMAXISCSIDriver(driver.ISCSIDriver):
+class VMAXISCSIDriver(san.SanISCSIDriver):
     """ISCSI Drivers for VMAX using Rest.
 
     Version history:
@@ -88,6 +88,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
               - Support for live migration
               - Support for Generic Volume Group
         3.1.0 - Support for replication groups (Tiramisu)
+              - Deprecate backend xml configuration
     """
 
     VERSION = "3.1.0"

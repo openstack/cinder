@@ -1,0 +1,6 @@
+---
+deprecations:
+  - |
+    The use of xml files for vmax backend configuration is now deprecated and
+    will be removed during the following release. Deployers are encouraged
+    to use the cinder.conf for configuring connections to the vmax.
