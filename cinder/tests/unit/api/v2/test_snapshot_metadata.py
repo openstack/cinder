@@ -28,6 +28,7 @@ from cinder import context
 import cinder.db
 from cinder import exception
 from cinder.objects import fields
+from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -113,6 +114,7 @@ class SnapshotMetaDataTest(test.TestCase):
         super(SnapshotMetaDataTest, self).setUp()
         self.volume_api = cinder.volume.api.API()
         self.mock_object(volume.api.API, 'get', fake_get)
+        self.mock_object(scheduler_rpcapi.SchedulerAPI, 'create_snapshot')
         self.mock_object(cinder.db, 'snapshot_get', return_snapshot)
         self.mock_object(self.volume_api, 'update_snapshot_metadata')
 

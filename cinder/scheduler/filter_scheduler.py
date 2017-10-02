@@ -126,7 +126,7 @@ class FilterScheduler(driver.Scheduler):
         reason_param = {'resource': 'volume',
                         'id': '??id missing??',
                         'backend': backend}
-        for resource in ['volume', 'group']:
+        for resource in ['volume', 'group', 'snapshot']:
             resource_id = request_spec.get('%s_id' % resource, None)
             if resource_id:
                 reason_param.update({'resource': resource, 'id': resource_id})

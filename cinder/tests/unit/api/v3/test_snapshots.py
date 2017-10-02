@@ -22,6 +22,7 @@ from cinder.api.v3 import snapshots
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
+from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -65,6 +66,7 @@ class SnapshotApiTest(test.TestCase):
     def setUp(self):
         super(SnapshotApiTest, self).setUp()
         self.mock_object(volume.api.API, 'get', fake_get)
+        self.mock_object(scheduler_rpcapi.SchedulerAPI, 'create_snapshot')
         self.controller = snapshots.SnapshotsController()
         self.ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 

@@ -34,6 +34,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import quota
 from cinder import quota_utils
+from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 import cinder.tests.unit.image.fake
@@ -265,6 +266,7 @@ class QuotaIntegrationTestCase(test.TestCase):
             vol_ref.destroy()
 
     def test_no_snapshot_gb_quota_flag(self):
+        self.mock_object(scheduler_rpcapi.SchedulerAPI, 'create_snapshot')
         self.flags(quota_volumes=2,
                    quota_snapshots=2,
                    quota_gigabytes=20,

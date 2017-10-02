@@ -69,9 +69,10 @@ class SchedulerAPI(rpc.RPCAPI):
         3.6 - Removed create_consistencygroup method
         3.7 - Adds set_log_levels and get_log_levels
         3.8 - Addds ``valid_host_capacity`` method
+        3.9 - Adds create_snapshot method
     """
 
-    RPC_API_VERSION = '3.8'
+    RPC_API_VERSION = '3.9'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
@@ -108,6 +109,17 @@ class SchedulerAPI(rpc.RPCAPI):
                     'filter_properties': filter_properties, 'backend': backend}
         cctxt = self._get_cctxt()
         return cctxt.call(ctxt, 'validate_host_capacity', **msg_args)
+
+    @rpc.assert_min_rpc_version('3.9')
+    def create_snapshot(self, ctxt, volume, snapshot, backend,
+                        request_spec=None, filter_properties=None):
+        cctxt = self._get_cctxt()
+        msg_args = {'request_spec': request_spec,
+                    'filter_properties': filter_properties,
+                    'volume': volume,
+                    'snapshot': snapshot,
+                    'backend': backend}
+        return cctxt.cast(ctxt, 'create_snapshot', **msg_args)
 
     def migrate_volume(self, ctxt, volume, backend, force_copy=False,
                        request_spec=None, filter_properties=None):

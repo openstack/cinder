@@ -192,6 +192,29 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
             flow_engine.run()
 
+    def create_snapshot(self, ctxt, volume, snapshot, backend,
+                        request_spec=None, filter_properties=None):
+        """Create snapshot for a volume.
+
+        The main purpose of this method is to check if target
+        backend (of volume and snapshot) has sufficient capacity
+        to host to-be-created snapshot.
+        """
+        self._wait_for_scheduler()
+
+        try:
+            tgt_backend = self.driver.backend_passes_filters(
+                ctxt, backend, request_spec, filter_properties)
+            tgt_backend.consume_from_volume(
+                {'size': request_spec['volume_properties']['size']})
+        except exception.NoValidBackend as ex:
+            self._set_snapshot_state_and_notify('create_snapshot',
+                                                snapshot, 'error',
+                                                ctxt, ex, request_spec)
+        else:
+            volume_rpcapi.VolumeAPI().create_snapshot(ctxt, volume,
+                                                      snapshot)
+
     def _do_cleanup(self, ctxt, vo_resource):
         # We can only receive cleanup requests for volumes, but we check anyway
         # We need to cleanup the volume status for cases where the scheduler
@@ -400,6 +423,28 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                        volume_properties=properties,
                        volume_id=volume_id,
                        state=volume_state,
+                       method=method,
+                       reason=ex)
+
+        rpc.get_notifier("scheduler").error(context,
+                                            'scheduler.' + method,
+                                            payload)
+
+    def _set_snapshot_state_and_notify(self, method, snapshot, state,
+                                       context, ex, request_spec,
+                                       msg=None):
+        if not msg:
+            msg = ("Failed to schedule_%(method)s: %(ex)s" %
+                   {'method': method, 'ex': six.text_type(ex)})
+        LOG.error(msg)
+
+        model_update = dict(status=state)
+        snapshot.update(model_update)
+        snapshot.save()
+
+        payload = dict(request_spec=request_spec,
+                       snapshot_id=snapshot.id,
+                       state=state,
                        method=method,
                        reason=ex)
 
