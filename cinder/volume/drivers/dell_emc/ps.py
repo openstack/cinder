@@ -137,9 +137,11 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
         1.4.1 - Rebranded driver to Dell EMC.
         1.4.2 - Enable report discard support.
         1.4.2a - Fixed over-subscription ratio calculation
+        1.4.2b - Optimize volume stats information parsing
+
     """
 
-    VERSION = "1.4.2a"
+    VERSION = "1.4.2b"
 
     # ThirdPartySytems wiki page
     CI_WIKI_NAME = "Dell_Storage_CI"
@@ -299,12 +301,13 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
 
-        data['total_capacity_gb'] = 0
-        data['free_capacity_gb'] = 0
+        data['total_capacity_gb'] = None
+        data['free_capacity_gb'] = None
         data['multiattach'] = False
 
-        provisioned_capacity = 0
+        data['total_volumes'] = None
 
+        provisioned_capacity = None
         for line in self._eql_execute('pool', 'select',
                                       self.configuration.eqlx_pool, 'show'):
             if line.startswith('TotalCapacity:'):
@@ -316,6 +319,13 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
             if line.startswith('VolumeReportedSpace:'):
                 out_tup = line.rstrip().partition(' ')
                 provisioned_capacity = self._get_space_in_gb(out_tup[-1])
+            if line.startswith('TotalVolumes:'):
+                out_tup = line.rstrip().partition(' ')
+                data['total_volumes'] = int(out_tup[-1])
+            # Terminate parsing once this data is found to improve performance
+            if (data['total_capacity_gb'] and data['free_capacity_gb'] and
+               provisioned_capacity and data['total_volumes']):
+                break
 
         global_capacity = data['total_capacity_gb']
         global_free = data['free_capacity_gb']
