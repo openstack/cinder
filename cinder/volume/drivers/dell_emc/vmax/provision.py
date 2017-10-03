@@ -416,13 +416,72 @@ class VMAXProvision(object):
         LOG.info("Splitting rdf pair: source device: %(src)s "
                  "target device: %(tgt)s.",
                  {'src': device_id, 'tgt': target_device})
-        if state == 'Synchronized':
+        state_check = state.lower()
+        if state_check == utils.RDF_SYNC_STATE:
             self.rest.modify_rdf_device_pair(
                 array, device_id, rdf_group, rep_extra_specs, split=True)
+        elif state_check in [utils.RDF_CONSISTENT_STATE,
+                             utils.RDF_SYNCINPROG_STATE]:
+            if state_check == utils.RDF_SYNCINPROG_STATE:
+                self.rest.wait_for_rdf_consistent_state(
+                    array, device_id, target_device,
+                    rep_extra_specs, state)
+            self.rest.modify_rdf_device_pair(
+                array, device_id, rdf_group, rep_extra_specs, suspend=True)
         LOG.info("Deleting rdf pair: source device: %(src)s "
                  "target device: %(tgt)s.",
                  {'src': device_id, 'tgt': target_device})
-        self.rest.delete_rdf_pair(array, device_id, rdf_group)
+        self.delete_rdf_pair(array, device_id, rdf_group, rep_extra_specs)
+
+    def delete_rdf_pair(
+            self, array, device_id, rdf_group, extra_specs):
+        """Delete an rdf pairing.
+
+        If the replication mode is synchronous, only one attempt is required
+        to delete the pair. Otherwise, we need to wait until all the tracks
+        are cleared before the delete will be successful. As there is
+        currently no way to track this information, we keep attempting the
+        operation until it is successful.
+
+        :param array: the array serial number
+        :param device_id: source volume device id
+        :param rdf_group: the rdf group number
+        :param extra_specs: extra specifications
+        """
+        if (extra_specs.get(utils.REP_MODE) and
+                extra_specs.get(utils.REP_MODE) == utils.REP_SYNC):
+            return self.rest.delete_rdf_pair(array, device_id, rdf_group)
+
+        def _delete_pair():
+            """Delete a rdf volume pair.
+
+            Called at an interval until all the tracks are cleared
+            and the operation is successful.
+
+            :raises: loopingcall.LoopingCallDone
+            """
+            retries = kwargs['retries']
+            try:
+                kwargs['retries'] = retries + 1
+                if not kwargs['delete_pair_success']:
+                    self.rest.delete_rdf_pair(
+                        array, device_id, rdf_group)
+                    kwargs['delete_pair_success'] = True
+            except exception.VolumeBackendAPIException:
+                pass
+
+            if kwargs['retries'] > UNLINK_RETRIES:
+                LOG.error("Delete volume pair failed after %(retries)d "
+                          "tries.", {'retries': retries})
+                raise loopingcall.LoopingCallDone(retvalue=30)
+            if kwargs['delete_pair_success']:
+                raise loopingcall.LoopingCallDone()
+
+        kwargs = {'retries': 0,
+                  'delete_pair_success': False}
+        timer = loopingcall.FixedIntervalLoopingCall(_delete_pair)
+        rc = timer.start(interval=UNLINK_INTERVAL).wait()
+        return rc
 
     def failover_volume(self, array, device_id, rdf_group,
                         extra_specs, local_vol_state, failover):

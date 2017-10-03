@@ -897,7 +897,7 @@ class VMAXRest(object):
 
     def get_vmax_default_storage_group(
             self, array, srp, slo, workload,
-            do_disable_compression=False, is_re=False):
+            do_disable_compression=False, is_re=False, rep_mode=None):
         """Get the default storage group.
 
         :param array: the array serial number
@@ -906,10 +906,11 @@ class VMAXRest(object):
         :param workload: the workload
         :param do_disable_compression: flag for disabling compression
         :param is_re: flag for replication
+        :param rep_mode: flag to indicate replication mode
         :returns: the storage group dict (or None), the storage group name
         """
         storagegroup_name = self.utils.get_default_storage_group_name(
-            srp, slo, workload, do_disable_compression, is_re)
+            srp, slo, workload, do_disable_compression, is_re, rep_mode)
         storagegroup = self.get_storage_group(array, storagegroup_name)
         return storagegroup, storagegroup_name
 
@@ -1870,6 +1871,54 @@ class VMAXRest(object):
             LOG.warning("Cannot locate RDF session for volume %s", device_id)
         return paired, local_vol_state, rdf_pair_state
 
+    def wait_for_rdf_consistent_state(
+            self, array, remote_array, device_id, target_device, extra_specs):
+        """Wait for async pair to be in a consistent state before suspending.
+
+        :param array: the array serial number
+        :param remote_array: the remote array serial number
+        :param device_id: the device id
+        :param target_device: the target device id
+        :param extra_specs: the extra specifications
+        """
+        def _wait_for_consistent_state():
+            # Called at an interval until the state of the
+            # rdf pair is 'consistent'.
+            retries = kwargs['retries']
+            try:
+                kwargs['retries'] = retries + 1
+                if not kwargs['consistent_state']:
+                    __, __, state = (
+                        self.are_vols_rdf_paired(
+                            array, remote_array, device_id, target_device))
+                    kwargs['state'] = state
+                    if state.lower() == utils.RDF_CONSISTENT_STATE:
+                        kwargs['consistent_state'] = True
+                        kwargs['rc'] = 0
+            except Exception:
+                exception_message = _("Issue encountered waiting for job.")
+                LOG.exception(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+
+            if retries > int(extra_specs[utils.RETRIES]):
+                LOG.error("_wait_for_consistent_state failed after "
+                          "%(retries)d tries.", {'retries': retries})
+                kwargs['rc'] = -1
+
+                raise loopingcall.LoopingCallDone()
+            if kwargs['consistent_state']:
+                raise loopingcall.LoopingCallDone()
+
+        kwargs = {'retries': 0, 'consistent_state': False,
+                  'rc': 0, 'state': 'syncinprog'}
+
+        timer = loopingcall.FixedIntervalLoopingCall(
+            _wait_for_consistent_state)
+        timer.start(interval=int(extra_specs[utils.INTERVAL])).wait()
+        LOG.debug("Return code is: %(rc)lu. State is %(state)s",
+                  {'rc': kwargs['rc'], 'state': kwargs['state']})
+
     def get_rdf_group_number(self, array, rdf_group_label):
         """Given an rdf_group_label, return the associated group number.
 
@@ -1891,8 +1940,7 @@ class VMAXRest(object):
 
     @coordination.synchronized('emc-rg-{rdf_group_no}')
     def create_rdf_device_pair(self, array, device_id, rdf_group_no,
-                               target_device, remote_array,
-                               target_vol_name, extra_specs):
+                               target_device, remote_array, extra_specs):
         """Create an RDF pairing.
 
         Create a remote replication relationship between source and target
@@ -1902,15 +1950,19 @@ class VMAXRest(object):
         :param rdf_group_no: the rdf group number
         :param target_device: the target device id
         :param remote_array: the remote array serial
-        :param target_vol_name: the name of the target volume
         :param extra_specs: the extra specs
         :returns: rdf_dict
         """
+        rep_mode = (extra_specs[utils.REP_MODE]
+                    if extra_specs.get(utils.REP_MODE) else utils.REP_SYNC)
         payload = ({"deviceNameListSource": [{"name": device_id}],
                     "deviceNameListTarget": [{"name": target_device}],
-                    "replicationMode": "Synchronous",
+                    "replicationMode": rep_mode,
                     "establish": 'true',
                     "rdfType": 'RDF1'})
+        if rep_mode == utils.REP_ASYNC:
+            payload_update = self._get_async_payload_info(array, rdf_group_no)
+            payload.update(payload_update)
         resource_type = ("rdf_group/%(rdf_num)s/volume"
                          % {'rdf_num': rdf_group_no})
         status_code, job = self.create_resource(array, REPLICATION,
@@ -1921,9 +1973,25 @@ class VMAXRest(object):
         rdf_dict = {'array': remote_array, 'device_id': target_device}
         return rdf_dict
 
+    def _get_async_payload_info(self, array, rdf_group_no):
+        """Get the payload details for an async create pair.
+
+        :param array: the array serial number
+        :param rdf_group_no: the rdf group number
+        :return: payload_update
+        """
+        num_vols, payload_update = 0, {}
+        rdfg_details = self.get_rdf_group(array, rdf_group_no)
+        if rdfg_details is not None and rdfg_details.get('numDevices'):
+            num_vols = int(rdfg_details['numDevices'])
+        if num_vols > 0:
+            payload_update = {'consExempt': 'true'}
+        return payload_update
+
     @coordination.synchronized('emc-rg-{rdf_group}')
     def modify_rdf_device_pair(
-            self, array, device_id, rdf_group, extra_specs, split=False):
+            self, array, device_id, rdf_group, extra_specs,
+            split=False, suspend=False):
         """Modify an rdf device pair.
 
         :param array: the array serial number
@@ -1931,6 +1999,7 @@ class VMAXRest(object):
         :param rdf_group: the rdf group
         :param extra_specs: the extra specs
         :param split: flag to indicate "split" action
+        :param suspend: flag to indicate "suspend" action
         """
         common_opts = {"force": 'false',
                        "symForce": 'false',
@@ -1942,6 +2011,12 @@ class VMAXRest(object):
             payload = {"action": "Split",
                        "executionOption": "ASYNCHRONOUS",
                        "split": common_opts}
+
+        elif suspend:
+            common_opts.update({"immediate": 'false', "consExempt": 'true'})
+            payload = {"action": "Suspend",
+                       "executionOption": "ASYNCHRONOUS",
+                       "suspend": common_opts}
 
         else:
             common_opts.update({"establish": 'true',
@@ -2089,7 +2164,7 @@ class VMAXRest(object):
         resource_name = ("storagegroup/%(sg_name)s/rdf_group"
                          % {'sg_name': storagegroup_name})
         payload = {"executionOption": "ASYNCHRONOUS",
-                   "replicationMode": "Synchronous",
+                   "replicationMode": utils.REP_SYNC,
                    "remoteSymmId": remote_array,
                    "remoteStorageGroupName": storagegroup_name,
                    "rdfgNumber": rdf_group_num, "establish": 'true'}
@@ -2113,13 +2188,18 @@ class VMAXRest(object):
             array, storagegroup_name, rdf_group_num)
         if sg_rdf_details:
             state_list = sg_rdf_details['states']
+            LOG.debug("RDF state: %(sl)s; Action required: %(action)s",
+                      {'sl': state_list, 'action': action})
             for state in state_list:
                 if (action.lower() in ["establish", "failback", "resume"] and
-                        state.lower() in ["suspended", "failed over"]):
+                        state.lower() in [utils.RDF_SUSPENDED_STATE,
+                                          utils.RDF_FAILEDOVER_STATE]):
                     mod_rqd = True
                     break
                 elif (action.lower() in ["split", "failover", "suspend"] and
-                      state.lower() in ["synchronized", "syncinprog"]):
+                      state.lower() in [utils.RDF_SYNC_STATE,
+                                        utils.RDF_SYNCINPROG_STATE,
+                                        utils.RDF_CONSISTENT_STATE]):
                     mod_rqd = True
                     break
         return mod_rqd

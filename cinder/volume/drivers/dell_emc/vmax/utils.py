@@ -58,6 +58,14 @@ VOL_NAME = 'volume_name'
 EXTRA_SPECS = 'extra_specs'
 IS_RE = 'replication_enabled'
 DISABLECOMPRESSION = 'storagetype:disablecompression'
+REP_SYNC = 'Synchronous'
+REP_ASYNC = 'Asynchronous'
+REP_MODE = 'rep_mode'
+RDF_SYNC_STATE = 'synchronized'
+RDF_SYNCINPROG_STATE = 'syncinprog'
+RDF_CONSISTENT_STATE = 'consistent'
+RDF_SUSPENDED_STATE = 'suspended'
+RDF_FAILEDOVER_STATE = 'failed over'
 
 # Cinder.conf vmax configuration
 VMAX_SERVER_IP = 'san_ip'
@@ -160,10 +168,9 @@ class VMAXUtils(object):
         delta = end_time - start_time
         return six.text_type(datetime.timedelta(seconds=int(delta)))
 
-    @staticmethod
     def get_default_storage_group_name(
-            srp_name, slo, workload, is_compression_disabled=False,
-            is_re=False):
+            self, srp_name, slo, workload, is_compression_disabled=False,
+            is_re=False, rep_mode=None):
         """Determine default storage group from extra_specs.
 
         :param srp_name: the name of the srp on the array
@@ -171,6 +178,7 @@ class VMAXUtils(object):
         :param workload: the workload string e.g DSS
         :param is_compression_disabled:  flag for disabling compression
         :param is_re: flag for replication
+        :param rep_mode: flag to indicate replication mode
         :returns: storage_group_name
         """
         if slo and workload:
@@ -184,7 +192,7 @@ class VMAXUtils(object):
         else:
             prefix = "OS-no_SLO"
         if is_re:
-            prefix += "-RE"
+            prefix += self.get_replication_prefix(rep_mode)
 
         storage_group_name = ("%(prefix)s-SG" % {'prefix': prefix})
         return storage_group_name
@@ -469,7 +477,8 @@ class VMAXUtils(object):
             replication_enabled = True
         return replication_enabled
 
-    def get_replication_config(self, rep_device_list):
+    @staticmethod
+    def get_replication_config(rep_device_list):
         """Gather necessary replication configuration info.
 
         :param rep_device_list: the replication device list from cinder.conf
@@ -493,14 +502,17 @@ class VMAXUtils(object):
                 LOG.exception(error_message)
                 raise exception.VolumeBackendAPIException(data=error_message)
 
-            try:
-                allow_extend = target['allow_extend']
-                if strutils.bool_from_string(allow_extend):
-                    rep_config['allow_extend'] = True
-                else:
-                    rep_config['allow_extend'] = False
-            except KeyError:
+            allow_extend = target.get('allow_extend', 'false')
+            if strutils.bool_from_string(allow_extend):
+                rep_config['allow_extend'] = True
+            else:
                 rep_config['allow_extend'] = False
+
+            rep_mode = target.get('mode', '')
+            if rep_mode.lower() in ['async', 'asynchronous']:
+                rep_config['mode'] = REP_ASYNC
+            else:
+                rep_config['mode'] = REP_SYNC
 
         return rep_config
 
@@ -693,6 +705,7 @@ class VMAXUtils(object):
         """Check volume type and group type.
 
         This will make sure they do not conflict with each other.
+
         :param volume: volume to be checked
         :param extra_specs: the extra specifications
         :raises: InvalidInput
@@ -717,6 +730,7 @@ class VMAXUtils(object):
 
         Group status must be enabled before proceeding with certain
         operations.
+
         :param group: the group object
         :raises: InvalidInput
         """
@@ -729,3 +743,28 @@ class VMAXUtils(object):
         else:
             LOG.debug('Replication is not enabled on group %s, '
                       'skip status check.', group.id)
+
+    @staticmethod
+    def get_replication_prefix(rep_mode):
+        """Get the replication prefix.
+
+        Replication prefix for storage group naming is based on whether it is
+        synchronous or asynchronous replication mode.
+
+        :param rep_mode: flag to indicate if replication is async
+        :return: prefix
+        """
+        prefix = "-RE" if rep_mode == REP_SYNC else "-RA"
+        return prefix
+
+    @staticmethod
+    def get_async_rdf_managed_grp_name(rep_config):
+        """Get the name of the group used for async replication management.
+
+        :param rep_config: the replication configuration
+        :return: group name
+        """
+        rdf_group_name = rep_config['rdf_group_label']
+        async_grp_name = "OS-%(rdf)s-async-rdf-sg" % {'rdf': rdf_group_name}
+        LOG.debug("The async rdf managed group name is %s", async_grp_name)
+        return async_grp_name

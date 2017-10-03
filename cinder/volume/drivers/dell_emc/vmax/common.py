@@ -442,7 +442,7 @@ class VMAXCommon(object):
                      {'ssname': snap_name})
 
     def _remove_members(self, array, volume, device_id,
-                        extra_specs, connector):
+                        extra_specs, connector, async_grp=None):
         """This method unmaps a volume from a host.
 
         Removes volume from the storage group that belongs to a masking view.
@@ -451,12 +451,13 @@ class VMAXCommon(object):
         :param device_id: the VMAX volume device id
         :param extra_specs: extra specifications
         :param connector: the connector object
+        :param async_grp: the name if the async group, if applicable
         """
         volume_name = volume.name
         LOG.debug("Detaching volume %s.", volume_name)
         return self.masking.remove_and_reset_members(
             array, volume, device_id, volume_name,
-            extra_specs, True, connector)
+            extra_specs, True, connector, async_grp=async_grp)
 
     def _unmap_lun(self, volume, connector):
         """Unmaps a volume from the host.
@@ -469,6 +470,7 @@ class VMAXCommon(object):
             extra_specs = self._get_replication_extra_specs(
                 extra_specs, self.rep_config)
         volume_name = volume.name
+        async_grp = None
         LOG.info("Unmap volume: %(volume)s.",
                  {'volume': volume_name})
         if connector is not None:
@@ -490,6 +492,10 @@ class VMAXCommon(object):
             return
         source_nf_sg = None
         array = extra_specs[utils.ARRAY]
+        if (self.utils.is_replication_enabled(extra_specs) and
+                extra_specs.get(utils.REP_MODE, None) == utils.REP_ASYNC):
+            async_grp = self.utils.get_async_rdf_managed_grp_name(
+                self.rep_config)
         if len(source_storage_group_list) > 1:
             for storage_group in source_storage_group_list:
                 if 'NONFAST' in storage_group:
@@ -502,7 +508,7 @@ class VMAXCommon(object):
                 extra_specs)
         else:
             self._remove_members(array, volume, device_info['device_id'],
-                                 extra_specs, connector)
+                                 extra_specs, connector, async_grp=async_grp)
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns device and connection info.
@@ -890,6 +896,8 @@ class VMAXCommon(object):
             config_group = self.configuration.config_group
             if extra_specs.get('replication_enabled') == '<is> True':
                 extra_specs[utils.IS_RE] = True
+                if self.rep_config and self.rep_config.get('mode'):
+                    extra_specs[utils.REP_MODE] = self.rep_config['mode']
         if register_config_file:
             config_file = self._register_config_file_from_config_group(
                 config_group)
@@ -1152,7 +1160,8 @@ class VMAXCommon(object):
                 % {'shortHostName': short_host_name,
                    'pg': short_pg_name})
         if rep_enabled:
-            child_sg_name += "-RE"
+            rep_mode = extra_specs.get(utils.REP_MODE, None)
+            child_sg_name += self.utils.get_replication_prefix(rep_mode)
             masking_view_dict['replication_enabled'] = True
         mv_prefix = (
             "OS-%(shortHostName)s-%(protocol)s-%(pg)s"
@@ -2183,12 +2192,51 @@ class VMAXCommon(object):
             array, volume, device_id, rdf_group_no, self.rep_config,
             target_name, remote_array, target_device_id, extra_specs)
 
+        rep_mode = extra_specs.get(utils.REP_MODE, None)
+        if rep_mode == utils.REP_ASYNC:
+            self._add_volume_to_async_rdf_managed_grp(
+                array, device_id, source_name, remote_array,
+                target_device_id, extra_specs)
+
         LOG.info('Successfully setup replication for %s.',
                  target_name)
         replication_status = REPLICATION_ENABLED
         replication_driver_data = rdf_dict
 
         return replication_status, replication_driver_data
+
+    def _add_volume_to_async_rdf_managed_grp(
+            self, array, device_id, volume_name, remote_array,
+            target_device_id, extra_specs):
+        """Add an async volume to its rdf management group.
+
+        :param array: the array serial number
+        :param device_id: the device id
+        :param volume_name: the volume name
+        :param remote_array: the remote array
+        :param target_device_id: the target device id
+        :param extra_specs: the extra specifications
+        :raises: VolumeBackendAPIException
+        """
+        group_name = self.utils.get_async_rdf_managed_grp_name(
+            self.rep_config)
+        try:
+            self.provision.get_or_create_group(array, group_name, extra_specs)
+            self.masking.add_volume_to_storage_group(
+                array, device_id, group_name, volume_name, extra_specs)
+            # Add remote volume
+            self.provision.get_or_create_group(
+                remote_array, group_name, extra_specs)
+            self.masking.add_volume_to_storage_group(
+                remote_array, target_device_id,
+                group_name, volume_name, extra_specs)
+        except Exception as e:
+            exception_message = (
+                _('Exception occurred adding volume %(vol)s to its async '
+                  'rdf management group - the exception received was: %(e)s')
+                % {'vol': volume_name, 'e': six.text_type(e)})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
 
     def cleanup_lun_replication(self, volume, volume_name,
                                 device_id, extra_specs):
@@ -2237,6 +2285,16 @@ class VMAXCommon(object):
                                 'replication-enabled volume: %(volume)s',
                                 {'volume': volume_name})
         except Exception as e:
+            if extra_specs.get(utils.REP_MODE, None) == utils.REP_ASYNC:
+                (target_device, remote_array, rdf_group_no,
+                 local_vol_state, pair_state) = (
+                    self.get_remote_target_device(
+                        extra_specs[utils.ARRAY], volume, device_id))
+                if target_device is not None:
+                    # Return devices to their async rdf management groups
+                    self._add_volume_to_async_rdf_managed_grp(
+                        extra_specs[utils.ARRAY], device_id, volume_name,
+                        remote_array, target_device, extra_specs)
             exception_message = (
                 _('Cannot get necessary information to cleanup '
                   'replication target for volume: %(volume)s. '
@@ -2290,6 +2348,8 @@ class VMAXCommon(object):
             "Volume name: %(sourceName)s ",
             {'sourceName': volume_name})
         device_id = volume_dict['device_id']
+        # Check if volume is snap target (e.g. if clone volume)
+        self._sync_check(array, device_id, volume_name, extra_specs)
         # Remove from any storage groups and cleanup replication
         self._remove_vol_and_cleanup_replication(
             array, device_id, volume_name, extra_specs, volume)
@@ -2389,12 +2449,22 @@ class VMAXCommon(object):
                                           'updates': grp_update})
                 volume_update_list += vol_updates
 
+        rep_mode = self.rep_config['mode']
+        if rep_mode == utils.REP_ASYNC:
+            vol_grp_name = self.utils.get_async_rdf_managed_grp_name(
+                self.rep_config)
+            __, volume_update_list = (
+                self._failover_replication(
+                    volumes, None, vol_grp_name,
+                    secondary_backend_id=group_fo, host=True))
+
         for volume in volumes:
             extra_specs = self._initial_setup(volume)
             if self.utils.is_replication_enabled(extra_specs):
-                model_update = self._failover_volume(
-                    volume, self.failover, extra_specs)
-                volume_update_list.append(model_update)
+                if rep_mode == utils.REP_SYNC:
+                    model_update = self._failover_volume(
+                        volume, self.failover, extra_specs)
+                    volume_update_list.append(model_update)
             else:
                 if self.failover:
                     # Since the array has been failed-over,
@@ -2626,7 +2696,7 @@ class VMAXCommon(object):
             # Establish replication relationship
             rdf_dict = self.rest.create_rdf_device_pair(
                 array, device_id, rdf_group_no, target_device, remote_array,
-                target_name, extra_specs)
+                extra_specs)
 
             # Add source and target instances to their replication groups
             LOG.debug("Adding source device to default replication group.")
@@ -2671,12 +2741,13 @@ class VMAXCommon(object):
         """
         do_disable_compression = self.utils.is_compression_disabled(
             extra_specs)
+        rep_mode = extra_specs.get(utils.REP_MODE, None)
         try:
             storagegroup_name = (
                 self.masking.get_or_create_default_storage_group(
                     array, extra_specs[utils.SRP], extra_specs[utils.SLO],
                     extra_specs[utils.WORKLOAD], extra_specs,
-                    do_disable_compression, is_re=True))
+                    do_disable_compression, is_re=True, rep_mode=rep_mode))
         except Exception as e:
             exception_message = (_("Failed to get or create replication"
                                    "group. Exception received: %(e)s")
@@ -2781,11 +2852,17 @@ class VMAXCommon(object):
         :param context: the context
         :param group: the group object to be created
         :returns: dict -- modelUpdate
-        :raises: VolumeBackendAPIException, NotImplementedError
+        :raises: VolumeBackendAPIException, NotImplementedError, InvalidInput
         """
         if (not volume_utils.is_group_a_cg_snapshot_type(group)
                 and not group.is_replicated):
             raise NotImplementedError()
+        if group.is_replicated:
+            if (self.rep_config and self.rep_config.get('mode')
+                    and self.rep_config['mode'] == utils.REP_ASYNC):
+                msg = _('Replication groups are not supported '
+                        'for use with Asynchronous replication.')
+                raise exception.InvalidInput(reason=msg)
 
         model_update = {'status': fields.GroupStatus.AVAILABLE}
 
@@ -3523,11 +3600,24 @@ class VMAXCommon(object):
         :param volumes: the list of volumes
         :param secondary_backend_id: the secondary backend id - default None
         :param host: flag to indicate if whole host is being failed over
-        :returns: model_update, None
+        :returns: model_update, vol_model_updates
         """
-        if not group.is_replicated:
-            raise NotImplementedError()
+        return self._failover_replication(
+            volumes, group, None,
+            secondary_backend_id=secondary_backend_id, host=host)
 
+    def _failover_replication(
+            self, volumes, group, vol_grp_name,
+            secondary_backend_id=None, host=False):
+        """Failover replication for a group.
+
+        :param volumes: the list of volumes
+        :param group: the group object
+        :param vol_grp_name: the group name
+        :param secondary_backend_id: the secondary backend id - default None
+        :param host: flag to indicate if whole host is being failed over
+        :returns: model_update, vol_model_updates
+        """
         model_update = {}
         vol_model_updates = []
         if not volumes:
@@ -3535,15 +3625,15 @@ class VMAXCommon(object):
             return model_update, vol_model_updates
 
         try:
-            vol_grp_name = None
             extra_specs = self._initial_setup(volumes[0])
             array = extra_specs[utils.ARRAY]
-            volume_group = self._find_volume_group(array, group)
-            if volume_group:
-                if 'name' in volume_group:
-                    vol_grp_name = volume_group['name']
-            if vol_grp_name is None:
-                raise exception.GroupNotFound(group_id=group.id)
+            if group:
+                volume_group = self._find_volume_group(array, group)
+                if volume_group:
+                    if 'name' in volume_group:
+                        vol_grp_name = volume_group['name']
+                if vol_grp_name is None:
+                    raise exception.GroupNotFound(group_id=group.id)
 
             rdf_group_no, _ = self.get_rdf_details(array)
             # As we only support a single replication target, ignore
@@ -3567,7 +3657,7 @@ class VMAXCommon(object):
             vol_rep_status = fields.ReplicationStatus.ERROR
             LOG.error("Error failover replication on group %(group)s. "
                       "Exception received: %(e)s.",
-                      {'group': group.id, 'e': e})
+                      {'group': vol_grp_name, 'e': e})
 
         for vol in volumes:
             loc = vol.provider_location
@@ -3583,6 +3673,7 @@ class VMAXCommon(object):
                 update = {'volume_id': vol.id, 'updates': update}
             vol_model_updates.append(update)
 
+        LOG.debug("Volume model updates: %s", vol_model_updates)
         return model_update, vol_model_updates
 
     def get_attributes_from_cinder_config(self):
