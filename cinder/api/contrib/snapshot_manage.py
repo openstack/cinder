@@ -88,9 +88,7 @@ class SnapshotManageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize_manage(context)
 
-        if not self.is_valid_body(body, 'snapshot'):
-            msg = _("Missing required element snapshot in request body.")
-            raise exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'snapshot')
 
         snapshot = body['snapshot']
 

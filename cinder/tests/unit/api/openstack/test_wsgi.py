@@ -829,27 +829,27 @@ class ValidBodyTest(test.TestCase):
         super(ValidBodyTest, self).setUp()
         self.controller = wsgi.Controller()
 
-    def test_is_valid_body(self):
+    def test_assert_valid_body(self):
         body = {'foo': {}}
-        self.assertTrue(self.controller.is_valid_body(body, 'foo'))
+        self.controller.assert_valid_body(body, 'foo')
 
-    def test_is_valid_body_none(self):
-        wsgi.Resource(controller=None)
-        self.assertFalse(self.controller.is_valid_body(None, 'foo'))
+    def test_assert_valid_body_none(self):
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.assert_valid_body(None, 'foo'))
 
-    def test_is_valid_body_empty(self):
-        wsgi.Resource(controller=None)
-        self.assertFalse(self.controller.is_valid_body({}, 'foo'))
+    def test_assert_valid_body_empty(self):
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.assert_valid_body({}, 'foo'))
 
-    def test_is_valid_body_no_entity(self):
-        wsgi.Resource(controller=None)
+    def test_assert_valid_body_no_entity(self):
         body = {'bar': {}}
-        self.assertFalse(self.controller.is_valid_body(body, 'foo'))
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.assert_valid_body(body, 'foo'))
 
-    def test_is_valid_body_malformed_entity(self):
-        wsgi.Resource(controller=None)
+    def test_assert_valid_body_malformed_entity(self):
         body = {'foo': 'bar'}
-        self.assertFalse(self.controller.is_valid_body(body, 'foo'))
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.assert_valid_body(body, 'foo'))
 
     def test_validate_string_length_with_name_too_long(self):
         name = 'a' * 256

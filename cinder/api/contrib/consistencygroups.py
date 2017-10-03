@@ -59,10 +59,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         context = req.environ['cinder.context']
         force = False
         if body:
-            if not self.is_valid_body(body, 'consistencygroup'):
-                msg = _("Missing required element 'consistencygroup' in "
-                        "request body.")
-                raise exc.HTTPBadRequest(explanation=msg)
+            self.assert_valid_body(body, 'consistencygroup')
 
             cg_body = body['consistencygroup']
             try:
