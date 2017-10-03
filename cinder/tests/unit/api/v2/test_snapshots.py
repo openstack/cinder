@@ -13,9 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import datetime
 import ddt
 import mock
 from oslo_config import cfg
+import pytz
 from six.moves import http_client
 from six.moves.urllib import parse as urllib
 import webob
@@ -203,6 +205,7 @@ class SnapshotApiTest(test.TestCase):
             'id': UUID,
             'volume_id': fake.VOLUME_ID,
             'status': fields.SnapshotStatus.AVAILABLE,
+            'created_at': "2014-01-01 00:00:00",
             'volume_size': 100,
             'display_name': 'Default name',
             'display_description': 'Default description',
@@ -226,7 +229,8 @@ class SnapshotApiTest(test.TestCase):
                 'volume_id': fake.VOLUME_ID,
                 'status': fields.SnapshotStatus.AVAILABLE,
                 'size': 100,
-                'created_at': None,
+                'created_at': datetime.datetime(2014, 1, 1, 0, 0, 0,
+                                                tzinfo=pytz.utc),
                 'updated_at': None,
                 'name': u'Updated Test Name',
                 'description': u'Default description',
