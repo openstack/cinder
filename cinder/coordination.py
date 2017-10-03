@@ -33,31 +33,6 @@ coordination_opts = [
     cfg.StrOpt('backend_url',
                default='file://$state_path',
                help='The backend URL to use for distributed coordination.'),
-    cfg.FloatOpt('heartbeat',
-                 default=1.0,
-                 help='Number of seconds between heartbeats for distributed '
-                      'coordination.  No longer used since distributed '
-                      'coordination manages its heartbeat internally.',
-                 deprecated_for_removal=True,
-                 deprecated_reason='This option is no longer used.',
-                 deprecated_since='11.0.0'),
-    cfg.FloatOpt('initial_reconnect_backoff',
-                 default=0.1,
-                 help='Initial number of seconds to wait after failed '
-                      'reconnection.  No longer used since distributed '
-                      'coordination manages its heartbeat internally.',
-                 deprecated_for_removal=True,
-                 deprecated_reason='This option is no longer used.',
-                 deprecated_since='11.0.0'),
-    cfg.FloatOpt('max_reconnect_backoff',
-                 default=60.0,
-                 help='Maximum number of seconds between sequential '
-                      'reconnection retries.  No longer used since '
-                      'distributed coordination manages its heartbeat '
-                      'internally.',
-                 deprecated_for_removal=True,
-                 deprecated_reason='This option is no longer used.',
-                 deprecated_since='11.0.0'),
 ]
 
 CONF = cfg.CONF
