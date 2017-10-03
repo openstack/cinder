@@ -10,10 +10,9 @@ Ceph is a massively scalable, open source, distributed storage system.
 It is comprised of an object store, block store, and a POSIX-compliant
 distributed file system. The platform can auto-scale to the exabyte
 level and beyond. It runs on commodity hardware, is self-healing and
-self-managing, and has no single point of failure. Ceph is in the Linux
-kernel and is integrated with the OpenStack cloud operating system. Due
-to its open-source nature, you can install and use this portable storage
-platform in public or private clouds.
+self-managing, and has no single point of failure. Due to its open-source
+nature, you can install and use this portable storage platform in
+public or private clouds.
 
 .. figure:: ../../figures/ceph-architecture.png
 
@@ -32,9 +31,9 @@ components:
  OSD (physical or logical storage unit for your data).
  You must run this daemon on each server in your cluster. For each
  OSD, you can have an associated hard drive disk. For performance
- purposes, pool your hard drive disk with raid arrays, logical volume
- management (LVM), or B-tree file system (Btrfs) pooling. By default,
- the following pools are created: data, metadata, and RBD.
+ purposes, pool your hard drive disk with raid arrays, or logical volume
+ management (LVM). By default, the following pools are created: data,
+ metadata, and RBD.
 
 *Meta-Data Server (MDS)*
  Stores metadata. MDSs build a POSIX file
@@ -49,19 +48,6 @@ components:
  address of a MON server. It checks the state and the consistency of
  the data. In an ideal setup, you must run at least three ``ceph-mon``
  daemons on separate servers.
-
-Ceph developers recommend XFS for production deployments, Btrfs for
-testing, development, and any non-critical deployments. Btrfs has the
-correct feature set and roadmap to serve Ceph in the long-term, but XFS
-and ext4 provide the necessary stability for today’s deployments.
-
-.. note::
-
-   If using Btrfs, ensure that you use the correct version (see `Ceph
-   Dependencies <http://ceph.com/docs/master/start/os-recommendations/.>`__).
-
-   For more information about usable file systems, see
-   `ceph.com/ceph-storage/file-system/ <http://ceph.com/ceph-storage/file-system/>`__.
 
 Ways to store, use, and expose data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -100,10 +86,5 @@ Driver options
 
 The following table contains the configuration options supported by the
 Ceph RADOS Block Device driver.
-
-.. note::
-
-   The ``volume_tmp_dir`` option has been deprecated and replaced by
-   ``image_conversion_dir``.
 
 .. include:: ../../tables/cinder-storage_ceph.inc
