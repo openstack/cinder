@@ -1,0 +1,13 @@
+---
+upgrade:
+  - |
+    The default value has been removed for the LVM specific
+    `lvm_max_over_subscription_ratio` setting. This changes the behavior so
+    that LVM backends now adhere to the common `max_over_subscription_ratio`
+    setting. The LVM specific config option may still be used, but it is
+    now deprecated and will be removed in a future release.
+deprecations:
+  - |
+    The `lvm_max_overprovision_ratio` config option has been deprecated. It
+    will be removed in a future release. Configurations should move to using
+    the common `max_overprovision_ratio` config option.

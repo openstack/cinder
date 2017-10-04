@@ -65,12 +65,15 @@ volume_opts = [
     cfg.FloatOpt('lvm_max_over_subscription_ratio',
                  # This option exists to provide a default value for the
                  # LVM driver which is different than the global default.
-                 default=1.0,
+                 deprecated_for_removal=True,
+                 deprecated_since="12.0.0",
+                 deprecated_reason='Oversubscription ratio should now be '
+                                   'set using the common max_over_subscription'
+                                   '_ratio config option instead.',
+                 default=None,
                  help='max_over_subscription_ratio setting for the LVM '
-                      'driver. This takes precedence over the general '
-                      'max_over_subscription_ratio by default. If set '
-                      'to None, the general max_over_subscription_ratio '
-                      'is used.'),
+                      'driver. If set to None (the default), the general max_'
+                      'over_subscription_ratio is used.'),
     cfg.BoolOpt('lvm_suppress_fd_warnings',
                 default=False,
                 help='Suppress leaked file descriptor warnings in LVM '
