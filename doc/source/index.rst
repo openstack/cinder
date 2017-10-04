@@ -99,7 +99,6 @@ Additional 'man page' style documentation for Cinder may be seen below.
    :maxdepth: 2
 
    man/cinder-manage
-   man/generalized_filters
 
 Drivers
 ~~~~~~~
