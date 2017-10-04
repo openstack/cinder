@@ -32,7 +32,7 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         cls._api_version = 2
         super(ConsistencyGroupsV2Test, cls).setup_clients()
 
-        manager = cinder_clients.Manager(cls.os_adm)
+        manager = cinder_clients.Manager(cls.os_admin)
         cls.consistencygroups_adm_client = manager.consistencygroups_adm_client
 
     @classmethod
