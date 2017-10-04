@@ -15,6 +15,8 @@
 import datetime
 
 from oslo_config import cfg
+from oslo_utils import timeutils
+from sqlalchemy.dialects import mysql
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index
 from sqlalchemy import Integer, MetaData, String, Table, Text, UniqueConstraint
 
@@ -53,6 +55,7 @@ def define_tables(meta):
         Column('replication_status', String(36), default='not-capable'),
         Column('frozen', Boolean, default=False),
         Column('active_backend_id', String(255)),
+        Column('cluster_name', String(255), nullable=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -74,6 +77,7 @@ def define_tables(meta):
         Column('status', String(255)),
         Column('cgsnapshot_id', String(36)),
         Column('source_cgid', String(36)),
+        Column('cluster_name', String(255), nullable=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -95,6 +99,48 @@ def define_tables(meta):
         Column('status', String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
+    )
+
+    groups = Table(
+        'groups', meta,
+        Column('created_at', DateTime(timezone=False)),
+        Column('updated_at', DateTime(timezone=False)),
+        Column('deleted_at', DateTime(timezone=False)),
+        Column('deleted', Boolean),
+        Column('id', String(36), primary_key=True, nullable=False),
+        Column('user_id', String(length=255)),
+        Column('project_id', String(length=255)),
+        Column('cluster_name', String(255)),
+        Column('host', String(length=255)),
+        Column('availability_zone', String(length=255)),
+        Column('name', String(length=255)),
+        Column('description', String(length=255)),
+        Column('group_type_id', String(length=36)),
+        Column('status', String(length=255)),
+        Column('group_snapshot_id', String(36)),
+        Column('source_group_id', String(36)),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8',
+    )
+
+    group_snapshots = Table(
+        'group_snapshots', meta,
+        Column('created_at', DateTime(timezone=False)),
+        Column('updated_at', DateTime(timezone=False)),
+        Column('deleted_at', DateTime(timezone=False)),
+        Column('deleted', Boolean(create_constraint=True, name=None)),
+        Column('id', String(36), primary_key=True),
+        Column('group_id', String(36),
+               ForeignKey('groups.id'),
+               nullable=False),
+        Column('user_id', String(length=255)),
+        Column('project_id', String(length=255)),
+        Column('name', String(length=255)),
+        Column('description', String(length=255)),
+        Column('status', String(length=255)),
+        Column('group_type_id', String(length=36)),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8',
     )
 
     volumes = Table(
@@ -135,6 +181,8 @@ def define_tables(meta):
         Column('provider_id', String(255)),
         Column('multiattach', Boolean),
         Column('previous_status', String(255)),
+        Column('cluster_name', String(255), nullable=True),
+        Column('group_id', String(36), ForeignKey('groups.id')),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -184,6 +232,8 @@ def define_tables(meta):
                ForeignKey('cgsnapshots.id')),
         Column('provider_id', String(255)),
         Column('provider_auth', String(255)),
+        Column('group_snapshot_id', String(36),
+               ForeignKey('group_snapshots.id')),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -490,8 +540,128 @@ def define_tables(meta):
         mysql_charset='utf8'
     )
 
+    messages = Table(
+        'messages', meta,
+        Column('id', String(36), primary_key=True, nullable=False),
+        Column('project_id', String(36), nullable=False),
+        Column('request_id', String(255), nullable=False),
+        Column('resource_type', String(36)),
+        Column('resource_uuid', String(255), nullable=True),
+        Column('event_id', String(255), nullable=False),
+        Column('message_level', String(255), nullable=False),
+        Column('created_at', DateTime(timezone=False)),
+        Column('updated_at', DateTime(timezone=False)),
+        Column('deleted_at', DateTime(timezone=False)),
+        Column('deleted', Boolean),
+        Column('expires_at', DateTime(timezone=False)),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
+    )
+
+    cluster = Table(
+        'clusters', meta,
+        Column('created_at', DateTime(timezone=False)),
+        Column('updated_at', DateTime(timezone=False)),
+        Column('deleted_at', DateTime(timezone=False)),
+        Column('deleted', Boolean(), default=False),
+        Column('id', Integer, primary_key=True, nullable=False),
+        Column('name', String(255), nullable=False),
+        Column('binary', String(255), nullable=False),
+        Column('disabled', Boolean(), default=False),
+        Column('disabled_reason', String(255)),
+        Column('race_preventer', Integer, nullable=False, default=0),
+        # To remove potential races on creation we have a constraint set on
+        # name and race_preventer fields, and we set value on creation to 0, so
+        # 2 clusters with the same name will fail this constraint.  On deletion
+        # we change this field to the same value as the id which will be unique
+        # and will not conflict with the creation of another cluster with the
+        # same name.
+        UniqueConstraint('name', 'binary', 'race_preventer'),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8',
+    )
+
+    workers = Table(
+        'workers', meta,
+        Column('created_at', DateTime(timezone=False)),
+        Column('updated_at', DateTime(timezone=False)),
+        Column('deleted_at', DateTime(timezone=False)),
+        Column('deleted', Boolean(), default=False),
+        Column('id', Integer, primary_key=True),
+        Column('resource_type', String(40), nullable=False),
+        Column('resource_id', String(36), nullable=False),
+        Column('status', String(255), nullable=False),
+        Column('service_id', Integer, ForeignKey('services.id'),
+               nullable=True),
+        UniqueConstraint('resource_type', 'resource_id'),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8',
+    )
+
+    group_types = Table(
+        'group_types', meta,
+        Column('id', String(36), primary_key=True, nullable=False),
+        Column('name', String(255), nullable=False),
+        Column('description', String(255)),
+        Column('created_at', DateTime(timezone=False)),
+        Column('updated_at', DateTime(timezone=False)),
+        Column('deleted_at', DateTime(timezone=False)),
+        Column('deleted', Boolean),
+        Column('is_public', Boolean),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8',
+    )
+
+    group_type_specs = Table(
+        'group_type_specs', meta,
+        Column('id', Integer, primary_key=True, nullable=False),
+        Column('key', String(255)),
+        Column('value', String(255)),
+        Column('group_type_id', String(36),
+               ForeignKey('group_types.id'),
+               nullable=False),
+        Column('created_at', DateTime(timezone=False)),
+        Column('updated_at', DateTime(timezone=False)),
+        Column('deleted_at', DateTime(timezone=False)),
+        Column('deleted', Boolean),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8',
+    )
+
+    group_type_projects = Table(
+        'group_type_projects', meta,
+        Column('id', Integer, primary_key=True, nullable=False),
+        Column('created_at', DateTime),
+        Column('updated_at', DateTime),
+        Column('deleted_at', DateTime),
+        Column('group_type_id', String(36),
+               ForeignKey('group_types.id')),
+        Column('project_id', String(length=255)),
+        Column('deleted', Boolean(create_constraint=True, name=None)),
+        UniqueConstraint('group_type_id', 'project_id', 'deleted'),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8',
+    )
+
+    grp_vt_mapping = Table(
+        'group_volume_type_mapping', meta,
+        Column('created_at', DateTime),
+        Column('updated_at', DateTime),
+        Column('deleted_at', DateTime),
+        Column('deleted', Boolean),
+        Column('id', Integer, primary_key=True, nullable=False),
+        Column('volume_type_id', String(36), ForeignKey('volume_types.id'),
+               nullable=False),
+        Column('group_id', String(36),
+               ForeignKey('groups.id'), nullable=False),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8',
+    )
+
     return [consistencygroups,
             cgsnapshots,
+            groups,
+            group_snapshots,
             volumes,
             volume_attachment,
             snapshots,
@@ -512,7 +682,14 @@ def define_tables(meta):
             encryption,
             volume_admin_metadata,
             initiator_data,
-            image_volume_cache]
+            image_volume_cache,
+            messages,
+            cluster,
+            workers,
+            group_types,
+            group_type_specs,
+            group_type_projects,
+            grp_vt_mapping]
 
 
 def upgrade(migrate_engine):
@@ -592,3 +769,35 @@ def upgrade(migrate_engine):
                  'resource': 'per_volume_gigabytes',
                  'hard_limit': -1,
                  'deleted': False, })
+    qci.execute({'created_at': CREATED_AT,
+                 'class_name': CLASS_NAME,
+                 'resource': 'groups',
+                 'hard_limit': CONF.quota_groups,
+                 'deleted': False, })
+
+    workers = Table('workers', meta, autoload=True)
+
+    # This is only necessary for mysql, and since the table is not in use this
+    # will only be a schema update.
+    if migrate_engine.name.startswith('mysql'):
+        try:
+            workers.c.updated_at.alter(mysql.DATETIME(fsp=6))
+        except Exception:
+            # MySQL v5.5 or earlier don't support sub-second resolution so we
+            # may have cleanup races in Active-Active configurations, that's
+            # why upgrading is recommended in that case.
+            # Code in Cinder is capable of working with 5.5, so for 5.5 there's
+            # no problem
+            pass
+
+    # TODO(geguileo): Once we remove support for MySQL 5.5 we have to create
+    # an upgrade migration to remove this row.
+    # Set workers table sub-second support sentinel
+    wi = workers.insert()
+    now = timeutils.utcnow().replace(microsecond=123)
+    wi.execute({'created_at': now,
+                'updated_at': now,
+                'deleted': False,
+                'resource_type': 'SENTINEL',
+                'resource_id': 'SUB-SECOND',
+                'status': 'OK'})
