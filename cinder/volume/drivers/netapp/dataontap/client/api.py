@@ -515,7 +515,7 @@ class NaElement(object):
                 if isinstance(data_struct[k], (dict, list, tuple)):
                     child.translate_struct(data_struct[k])
                 else:
-                    if data_struct[k]:
+                    if data_struct[k] is not None:
                         child.set_content(six.text_type(data_struct[k]))
                 self.add_child_elem(child)
         else:
