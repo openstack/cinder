@@ -132,4 +132,4 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidInput,
                           na_common.NetAppDriver.create_driver,
-                          'ontap_7mode', 'carrier_pigeon', **kwargs)
+                          'ontap_cluster', 'carrier_pigeon', **kwargs)

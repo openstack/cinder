@@ -26,8 +26,6 @@
      - (String) This option defines the type of operating system for all initiators that can access a LUN. This information is used when mapping LUNs to individual hosts or groups of hosts.
    * - ``netapp_login`` = ``None``
      - (String) Administrative user account name used to access the storage system or proxy server.
-   * - ``netapp_partner_backend_name`` = ``None``
-     - (String) The name of the config.conf stanza for a Data ONTAP (7-mode) HA partner. This option is only used by the driver when connecting to an instance with a storage family of Data ONTAP operating in 7-Mode, and it is required if the storage protocol selected is FC.
    * - ``netapp_password`` = ``None``
      - (String) Password for the administrative user account specified in the netapp_login option.
    * - ``netapp_pool_name_search_pattern`` = ``(.+)``
@@ -43,7 +41,7 @@
    * - ``netapp_snapmirror_quiesce_timeout`` = ``3600``
      - (Integer) The maximum time in seconds to wait for existing SnapMirror transfers to complete before aborting during a failover.
    * - ``netapp_storage_family`` = ``ontap_cluster``
-     - (String) The storage family type used on the storage system; valid values are ontap_7mode for using Data ONTAP operating in 7-Mode, ontap_cluster for using clustered Data ONTAP, or eseries for using E-Series.
+     - (String) The storage family type used on the storage system; valid values are ontap_cluster for using clustered Data ONTAP, or eseries for using E-Series.
    * - ``netapp_transport_type`` = ``http``
      - (String) The transport protocol used when communicating with the storage system or proxy server.
    * - ``netapp_webservice_path`` = ``/devmgr/v2``

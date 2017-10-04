@@ -183,8 +183,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             mock.call('fake_pool_ems_log_message'),
         ])
         dot_utils.build_ems_log_message_0.assert_called_once_with(
-            self.library.driver_name, self.library.app_version,
-            self.library.driver_mode)
+            self.library.driver_name, self.library.app_version)
         dot_utils.build_ems_log_message_1.assert_called_once_with(
             self.library.driver_name, self.library.app_version,
             self.library.vserver, volume_list, [])

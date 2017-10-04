@@ -108,17 +108,14 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
 @ddt.ddt
 class NetAppDataOntapUtilsTestCase(test.TestCase):
 
-    @ddt.data('cluster', '7mode')
-    def test_build_ems_log_message_0(self, driver_mode):
+    def test_build_ems_log_message_0(self):
 
         self.mock_object(
             socket, 'gethostname', return_value='fake_hostname')
 
         result = utils.build_ems_log_message_0(
-            'fake_driver_name', 'fake_app_version', driver_mode)
+            'fake_driver_name', 'fake_app_version')
 
-        dest = ('cluster node' if driver_mode == 'cluster'
-                else '7 mode controller')
         expected = {
             'computer-name': 'fake_hostname',
             'event-source': 'Cinder driver fake_driver_name',
@@ -127,7 +124,7 @@ class NetAppDataOntapUtilsTestCase(test.TestCase):
             'log-level': '5',
             'auto-support': 'false',
             'event-id': '0',
-            'event-description': 'OpenStack Cinder connected to %s' % dest,
+            'event-description': 'OpenStack Cinder connected to cluster node',
         }
         self.assertEqual(expected, result)
 

@@ -155,7 +155,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         """Log autosupport messages."""
 
         base_ems_message = dot_utils.build_ems_log_message_0(
-            self.driver_name, self.app_version, self.driver_mode)
+            self.driver_name, self.app_version)
         self.zapi_client.send_ems_log_message(base_ems_message)
 
         pool_ems_message = dot_utils.build_ems_log_message_1(

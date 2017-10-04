@@ -455,8 +455,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             mock.call('fake_pool_ems_log_message'),
         ])
         dot_utils.build_ems_log_message_0.assert_called_once_with(
-            self.driver.driver_name, self.driver.app_version,
-            self.driver.driver_mode)
+            self.driver.driver_name, self.driver.app_version)
         dot_utils.build_ems_log_message_1.assert_called_once_with(
             self.driver.driver_name, self.driver.app_version,
             self.driver.vserver, volume_list, [])

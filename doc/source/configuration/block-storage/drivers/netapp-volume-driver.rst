@@ -4,31 +4,18 @@ NetApp unified driver
 
 The NetApp unified driver is a Block Storage driver that supports
 multiple storage families and protocols. A storage family corresponds to
-storage systems built on different NetApp technologies such as clustered
-Data ONTAP, Data ONTAP operating in 7-Mode, and E-Series. The storage
-protocol refers to the protocol used to initiate data storage and access
-operations on those storage systems like iSCSI and NFS. The NetApp
-unified driver can be configured to provision and manage OpenStack
-volumes on a given storage family using a specified storage protocol.
+storage systems built on either clustered Data ONTAP or E-Series. The
+storage protocol refers to the protocol used to initiate data storage and
+access operations on those storage systems like iSCSI and NFS. The NetApp
+unified driver can be configured to provision and manage OpenStack volumes
+on a given storage family using a specified storage protocol.
+
 Also, the NetApp unified driver supports over subscription or over
-provisioning when thin provisioned Block Storage volumes are in use
-on an E-Series backend. The OpenStack volumes can then be used for
+provisioning when thin provisioned Block Storage volumes are in use.
+The OpenStack volumes can then be used for
 accessing and storing data using the storage protocol on the storage
 family system. The NetApp unified driver is an extensible interface
 that can support new storage families and protocols.
-
-.. important::
-
-   The NetApp unified driver in cinder currently provides integration for
-   two major generations of the ONTAP operating system: the current
-   clustered ONTAP and the legacy 7-mode. NetApp’s full support for
-   7-mode ended in August of 2015 and the current limited support period
-   will end in February of 2017.
-
-   The 7-mode components of the cinder NetApp unified driver have now been
-   marked deprecated and will be removed in the Queens release. This will
-   apply to all three protocols currently supported in this driver: iSCSI,
-   FC and NFS.
 
 .. note::
 
@@ -114,9 +101,8 @@ setting the ``volume_driver``, ``netapp_storage_family`` and
 .. tip::
 
    For more information on these options and other deployment and
-   operational scenarios, visit the `NetApp OpenStack Deployment and
-   Operations
-   Guide <http://netapp.github.io/openstack-deploy-ops-guide/>`__.
+   operational scenarios, visit the `NetApp OpenStack website
+   <http://netapp.io/openstack/>`_.
 
 NetApp NFS configuration for clustered Data ONTAP
 -------------------------------------------------
@@ -237,8 +223,8 @@ To use this feature, you must configure the Block Storage service, as follows:
 .. tip::
 
    For more information on these options and other deployment and operational
-   scenarios, visit the `NetApp OpenStack Deployment and Operations Guide
-   <http://netapp.github.io/openstack-deploy-ops-guide/>`__.
+   scenarios, visit the `NetApp OpenStack website
+   <http://netapp.io/openstack/>`_.
 
 NetApp-supported extra specs for clustered Data ONTAP
 -----------------------------------------------------
@@ -263,117 +249,6 @@ type set` command.
 
 .. include:: ../../tables/manual/cinder-netapp_cdot_extraspecs.inc
 
-
-NetApp Data ONTAP operating in 7-Mode storage family
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The NetApp Data ONTAP operating in 7-Mode storage family represents a
-configuration group which provides Compute instances access to 7-Mode
-storage systems. At present it can be configured in Block Storage to
-work with iSCSI and NFS storage protocols.
-
-NetApp iSCSI configuration for Data ONTAP operating in 7-Mode
--------------------------------------------------------------
-
-The NetApp iSCSI configuration for Data ONTAP operating in 7-Mode is an
-interface from OpenStack to Data ONTAP operating in 7-Mode storage systems for
-provisioning and managing the SAN block storage entity, that is, a LUN which
-can be accessed using iSCSI protocol.
-
-The iSCSI configuration for Data ONTAP operating in 7-Mode is a direct
-interface from OpenStack to Data ONTAP operating in 7-Mode storage system and
-it does not require additional management software to achieve the desired
-functionality. It uses NetApp ONTAPI to interact with the Data ONTAP operating
-in 7-Mode storage system.
-
-**Configuration options**
-
-Configure the volume driver, storage family and storage protocol to the NetApp
-unified driver, Data ONTAP operating in 7-Mode, and iSCSI respectively by
-setting the ``volume_driver``, ``netapp_storage_family`` and
-``netapp_storage_protocol`` options in the ``cinder.conf`` file as follows:
-
-.. code-block:: ini
-
-   volume_driver = cinder.volume.drivers.netapp.common.NetAppDriver
-   netapp_storage_family = ontap_7mode
-   netapp_storage_protocol = iscsi
-   netapp_server_hostname = myhostname
-   netapp_server_port = 80
-   netapp_login = username
-   netapp_password = password
-
-.. note::
-
-   To use the iSCSI protocol, you must override the default value of
-   ``netapp_storage_protocol`` with ``iscsi``.
-
-.. include:: ../../tables/cinder-netapp_7mode_iscsi.inc
-
-.. note::
-
-   The driver supports iSCSI CHAP uni-directional authentication.
-   To enable it, set the ``use_chap_auth`` option to ``True``.
-
-.. tip::
-
-   For more information on these options and other deployment and
-   operational scenarios, visit the `NetApp OpenStack Deployment and
-   Operations
-   Guide <http://netapp.github.io/openstack-deploy-ops-guide/>`__.
-
-NetApp NFS configuration for Data ONTAP operating in 7-Mode
------------------------------------------------------------
-
-The NetApp NFS configuration for Data ONTAP operating in 7-Mode is an interface
-from OpenStack to Data ONTAP operating in 7-Mode storage system for
-provisioning and managing OpenStack volumes on NFS exports provided by the Data
-ONTAP operating in 7-Mode storage system which can then be accessed using NFS
-protocol.
-
-The NFS configuration for Data ONTAP operating in 7-Mode is a direct interface
-from Block Storage to the Data ONTAP operating in 7-Mode instance and
-as such does not require any additional management software to achieve the
-desired functionality. It uses NetApp ONTAPI to interact with the Data ONTAP
-operating in 7-Mode storage system.
-
-
-.. important::
-    Support for 7-mode configuration has been deprecated in the Ocata release
-    and will be removed in the Queens release of OpenStack.
-
-**Configuration options**
-
-Configure the volume driver, storage family, and storage protocol to the NetApp
-unified driver, Data ONTAP operating in 7-Mode, and NFS respectively by setting
-the ``volume_driver``, ``netapp_storage_family`` and
-``netapp_storage_protocol`` options in the ``cinder.conf`` file as follows:
-
-.. code-block:: ini
-
-   volume_driver = cinder.volume.drivers.netapp.common.NetAppDriver
-   netapp_storage_family = ontap_7mode
-   netapp_storage_protocol = nfs
-   netapp_server_hostname = myhostname
-   netapp_server_port = 80
-   netapp_login = username
-   netapp_password = password
-   nfs_shares_config = /etc/cinder/nfs_shares
-
-.. include:: ../../tables/cinder-netapp_7mode_nfs.inc
-
-.. note::
-
-   Additional NetApp NFS configuration options are shared with the
-   generic NFS driver. For a description of these, see
-   :ref:`cinder-storage_nfs`.
-
-.. tip::
-
-   For more information on these options and other deployment and
-   operational scenarios, visit the `NetApp OpenStack Deployment and
-   Operations
-   Guide <http://netapp.github.io/openstack-deploy-ops-guide/>`__.
 
 NetApp E-Series storage family
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -442,9 +317,8 @@ NetApp unified driver, E-Series, and iSCSI respectively by setting the
 .. tip::
 
    For more information on these options and other deployment and
-   operational scenarios, visit the `NetApp OpenStack Deployment and
-   Operations
-   Guide <http://netapp.github.io/openstack-deploy-ops-guide/>`__.
+   operational scenarios, visit the `NetApp OpenStack website
+   <http://netapp.io/openstack/>`_.
 
 NetApp-supported extra specs for E-Series
 -----------------------------------------
@@ -476,115 +350,3 @@ type set` command.
      - Boolean
      - Limit the candidate volume list to only the ones that support thin
        provisioning on the storage controller.
-
-Upgrading prior NetApp drivers to the NetApp unified driver
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-NetApp introduced a new unified block storage driver in Havana for configuring
-different storage families and storage protocols. This requires defining an
-upgrade path for NetApp drivers which existed in releases prior to Havana. This
-section covers the upgrade configuration for NetApp drivers to the new unified
-configuration and a list of deprecated NetApp drivers.
-
-Upgraded NetApp drivers
------------------------
-
-This section describes how to update Block Storage configuration from
-a pre-Havana release to the unified driver format.
-
--  NetApp iSCSI direct driver for Clustered Data ONTAP in Grizzly (or earlier):
-
-   .. code-block:: ini
-
-      volume_driver = cinder.volume.drivers.netapp.iscsi.NetAppDirectCmodeISCSIDriver
-
-   NetApp unified driver configuration:
-
-   .. code-block:: ini
-
-      volume_driver = cinder.volume.drivers.netapp.common.NetAppDriver
-      netapp_storage_family = ontap_cluster
-      netapp_storage_protocol = iscsi
-
--  NetApp NFS direct driver for Clustered Data ONTAP in Grizzly (or
-   earlier):
-
-   .. code-block:: ini
-
-      volume_driver = cinder.volume.drivers.netapp.nfs.NetAppDirectCmodeNfsDriver
-
-   NetApp unified driver configuration:
-
-   .. code-block:: ini
-
-      volume_driver = cinder.volume.drivers.netapp.common.NetAppDriver
-      netapp_storage_family = ontap_cluster
-      netapp_storage_protocol = nfs
-
--  NetApp iSCSI direct driver for Data ONTAP operating in 7-Mode storage
-   controller in Grizzly (or earlier):
-
-   .. code-block:: ini
-
-      volume_driver = cinder.volume.drivers.netapp.iscsi.NetAppDirect7modeISCSIDriver
-
-   NetApp unified driver configuration:
-
-   .. code-block:: ini
-
-      volume_driver = cinder.volume.drivers.netapp.common.NetAppDriver
-      netapp_storage_family = ontap_7mode
-      netapp_storage_protocol = iscsi
-
--  NetApp NFS direct driver for Data ONTAP operating in 7-Mode storage
-   controller in Grizzly (or earlier):
-
-   .. code-block:: ini
-
-      volume_driver = cinder.volume.drivers.netapp.nfs.NetAppDirect7modeNfsDriver
-
-   NetApp unified driver configuration:
-
-   .. code-block:: ini
-
-      volume_driver = cinder.volume.drivers.netapp.common.NetAppDriver
-      netapp_storage_family = ontap_7mode
-      netapp_storage_protocol = nfs
-
-Deprecated NetApp drivers
--------------------------
-
-This section lists the NetApp drivers in earlier releases that are
-deprecated in Havana.
-
--  NetApp iSCSI driver for clustered Data ONTAP:
-
-   .. code-block:: ini
-
-      volume_driver = cinder.volume.drivers.netapp.iscsi.NetAppCmodeISCSIDriver
-
--  NetApp NFS driver for clustered Data ONTAP:
-
-   .. code-block:: ini
-
-      volume_driver = cinder.volume.drivers.netapp.nfs.NetAppCmodeNfsDriver
-
--  NetApp iSCSI driver for Data ONTAP operating in 7-Mode storage
-   controller:
-
-   .. code-block:: ini
-
-      volume_driver = cinder.volume.drivers.netapp.iscsi.NetAppISCSIDriver
-
--  NetApp NFS driver for Data ONTAP operating in 7-Mode storage
-   controller:
-
-   .. code-block:: ini
-
-      volume_driver = cinder.volume.drivers.netapp.nfs.NetAppNFSDriver
-
-.. note::
-
-   For support information on deprecated NetApp drivers in the Havana
-   release, visit the `NetApp OpenStack Deployment and Operations
-   Guide <http://netapp.github.io/openstack-deploy-ops-guide/>`__.

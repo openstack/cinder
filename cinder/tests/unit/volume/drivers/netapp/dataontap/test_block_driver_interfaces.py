@@ -17,11 +17,8 @@ Mock unit tests for the NetApp block storage driver interfaces
 
 
 from cinder import test
-from cinder.volume.drivers.netapp.dataontap import block_7mode
 from cinder.volume.drivers.netapp.dataontap import block_cmode
-from cinder.volume.drivers.netapp.dataontap import fc_7mode
 from cinder.volume.drivers.netapp.dataontap import fc_cmode
-from cinder.volume.drivers.netapp.dataontap import iscsi_7mode
 from cinder.volume.drivers.netapp.dataontap import iscsi_cmode
 
 
@@ -33,20 +30,14 @@ class NetAppBlockStorageDriverInterfaceTestCase(test.TestCase):
         self.mock_object(block_cmode.NetAppBlockStorageCmodeLibrary,
                          '__init__',
                          return_value=None)
-        self.mock_object(block_7mode.NetAppBlockStorage7modeLibrary,
-                         '__init__',
-                         return_value=None)
-
-        self.iscsi_7mode_driver = iscsi_7mode.NetApp7modeISCSIDriver()
         self.iscsi_cmode_driver = iscsi_cmode.NetAppCmodeISCSIDriver()
-        self.fc_7mode_driver = fc_7mode.NetApp7modeFibreChannelDriver()
         self.fc_cmode_driver = fc_cmode.NetAppCmodeFibreChannelDriver()
 
     def test_driver_interfaces_match(self):
         """Ensure the NetApp block storage driver interfaces match.
 
-        The four block storage Cinder drivers from NetApp (iSCSI/FC,
-        7-mode/C-mode) are merely passthrough shim layers atop a common
+        The two block storage Cinder drivers from NetApp (iSCSI/FC)
+        are merely passthrough shim layers atop a common
         block storage library. Bugs have been introduced when a Cinder
         method was exposed via a subset of those driver shims.  This test
         ensures they remain in sync and the library features are uniformly

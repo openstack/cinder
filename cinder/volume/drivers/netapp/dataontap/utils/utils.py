@@ -90,14 +90,11 @@ def _build_base_ems_log_message(driver_name, app_version):
     return ems_log
 
 
-def build_ems_log_message_0(driver_name, app_version, driver_mode):
+def build_ems_log_message_0(driver_name, app_version):
     """Construct EMS Autosupport log message with deployment info."""
-
-    dest = 'cluster node' if driver_mode == 'cluster' else '7 mode controller'
-
     ems_log = _build_base_ems_log_message(driver_name, app_version)
     ems_log['event-id'] = '0'
-    ems_log['event-description'] = 'OpenStack Cinder connected to %s' % dest
+    ems_log['event-description'] = 'OpenStack Cinder connected to cluster node'
     return ems_log
 
 

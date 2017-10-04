@@ -277,81 +277,6 @@ SNAPSHOT_INFO_FOR_PRESENT_BUSY_SNAPSHOT_CMODE = etree.XML("""
     'vol_name': fake.SNAPSHOT['volume_id'],
 })
 
-SNAPSHOT_INFO_FOR_PRESENT_NOT_BUSY_SNAPSHOT_7MODE = etree.XML("""
-    <results status="passed">
-    <snapshots>
-      <snapshot-info>
-        <name>%(snapshot_name)s</name>
-        <busy>False</busy>
-        <volume>%(vol_name)s</volume>
-        <snapshot-instance-uuid>abcd-ef01-2345-6789</snapshot-instance-uuid>
-      </snapshot-info>
-    </snapshots>
-    </results>
-""" % {
-    'snapshot_name': fake.SNAPSHOT['name'],
-    'vol_name': fake.SNAPSHOT['volume_id'],
-})
-
-SNAPSHOT_INFO_MARKED_FOR_DELETE_SNAPSHOT_7MODE = etree.XML("""
-    <results status="passed">
-    <snapshots>
-      <snapshot-info>
-        <name>deleted_cinder_%(snapshot_name)s</name>
-        <busy>False</busy>
-        <volume>%(vol_name)s</volume>
-        <snapshot-instance-uuid>abcd-ef01-2345-6789</snapshot-instance-uuid>
-      </snapshot-info>
-    </snapshots>
-    </results>
-""" % {
-    'snapshot_name': fake.SNAPSHOT['name'],
-    'vol_name': fake.SNAPSHOT['volume_id'],
-})
-
-SNAPSHOT_INFO_MARKED_FOR_DELETE_SNAPSHOT_7MODE_BUSY = etree.XML("""
-    <results status="passed">
-    <snapshots>
-      <snapshot-info>
-        <name>deleted_cinder_busy_snapshot</name>
-        <busy>True</busy>
-        <volume>%(vol_name)s</volume>
-        <snapshot-instance-uuid>abcd-ef01-2345-6789</snapshot-instance-uuid>
-      </snapshot-info>
-    </snapshots>
-    </results>
-""" % {
-    'snapshot_name': fake.SNAPSHOT['name'],
-    'vol_name': fake.SNAPSHOT['volume_id'],
-})
-
-SNAPSHOT_INFO_FOR_PRESENT_BUSY_SNAPSHOT_7MODE = etree.XML("""
-    <results status="passed">
-    <snapshots>
-      <snapshot-info>
-        <name>%(snapshot_name)s</name>
-        <busy>True</busy>
-        <volume>%(vol_name)s</volume>
-      </snapshot-info>
-    </snapshots>
-    </results>
-""" % {
-    'snapshot_name': fake.SNAPSHOT['name'],
-    'vol_name': fake.SNAPSHOT['volume_id'],
-})
-
-SNAPSHOT_NOT_PRESENT_7MODE = etree.XML("""
-    <results status="passed">
-    <snapshots>
-      <snapshot-info>
-        <name>NOT_THE_RIGHT_SNAPSHOT</name>
-        <busy>false</busy>
-        <volume>%(vol_name)s</volume>
-      </snapshot-info>
-    </snapshots>
-    </results>
-""" % {'vol_name': fake.SNAPSHOT['volume_id']})
-
 NODE_NAME = 'fake_node1'
 NODE_NAMES = ('fake_node1', 'fake_node2')
 VOLUME_AGGREGATE_NAME = 'fake_aggr1'
@@ -1177,22 +1102,6 @@ PERF_OBJECT_GET_INSTANCES_SYSTEM_RESPONSE_CMODE = etree.XML("""
     <timestamp>1453412013</timestamp>
   </results>
 """ % {'node1': NODE_NAMES[0], 'node2': NODE_NAMES[1]})
-
-PERF_OBJECT_GET_INSTANCES_SYSTEM_RESPONSE_7MODE = etree.XML("""
-  <results status="passed">
-    <timestamp>1454146292</timestamp>
-    <instances>
-      <instance-data>
-        <name>system</name>
-        <counters>
-          <counter-data>
-            <name>avg_processor_busy</name>
-            <value>13215732322</value>
-          </counter-data>
-        </counters>
-      </instance-data>
-    </instances>
-  </results>""")
 
 PERF_OBJECT_INSTANCE_LIST_INFO_ITER_RESPONSE = etree.XML("""
   <results status="passed">

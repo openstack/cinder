@@ -127,12 +127,6 @@ def create_configuration():
     return config
 
 
-def create_configuration_7mode():
-    config = create_configuration()
-    config.append_config_values(na_opts.netapp_7mode_opts)
-    return config
-
-
 def create_configuration_cmode():
     config = create_configuration()
     config.append_config_values(na_opts.netapp_cluster_opts)
