@@ -1066,7 +1066,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
 
         client.RestClient._init_features(self.my_client)
 
-        self.assertTrue(self.my_client.features.AUTOSUPPORT)
+        self.assertTrue(bool(self.my_client.features.AUTOSUPPORT))
 
     @ddt.data('00.00.00.00', '01.52.9000.2', '01.52.9001.2', '01.51.9000.3',
               '01.51.9001.3', '01.51.9010.5', '0.53.9000.3', '0.53.9001.4')
@@ -1078,7 +1078,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
 
         client.RestClient._init_features(self.my_client)
 
-        self.assertFalse(self.my_client.features.CHAP_AUTHENTICATION)
+        self.assertFalse(bool(self.my_client.features.CHAP_AUTHENTICATION))
 
     @ddt.data('01.53.9000.15', '01.53.9000.16', '01.53.8999.15',
               '01.54.8999.16', '01.54.9010.15', '01.54.9090.15',
@@ -1091,7 +1091,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
 
         client.RestClient._init_features(self.my_client)
 
-        self.assertTrue(self.my_client.features.CHAP_AUTHENTICATION)
+        self.assertTrue(bool(self.my_client.features.CHAP_AUTHENTICATION))
 
     @ddt.data('00.00.00.00', '01.52.9000.1', '01.52.9001.2', '00.53.9001.3',
               '01.53.9090.1', '1.53.9010.14', '0.53.9011.15')
@@ -1206,7 +1206,7 @@ class TestWebserviceClientTestCase(test.TestCase):
 
         self.assertRaises(exception.NetAppDriverException,
                           self.webclient.invoke_service)
-        self.assertTrue(self.mock_log.exception.find(log_error))
+        self.assertTrue(bool(self.mock_log.exception.find(log_error)))
 
     def test_invoke_service(self):
         """Tests if invoke_service evaluates the right response"""

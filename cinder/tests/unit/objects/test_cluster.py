@@ -90,7 +90,7 @@ class TestCluster(test_objects.BaseObjectsTestCase):
     def test_is_up_no_last_hearbeat(self):
         cluster = fake_cluster.fake_cluster_ovo(self.context,
                                                 last_heartbeat=None)
-        self.assertFalse(cluster.is_up)
+        self.assertFalse(bool(cluster.is_up))
 
     def test_is_up(self):
         cluster = fake_cluster.fake_cluster_ovo(

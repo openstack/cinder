@@ -1015,7 +1015,7 @@ class VolumeUtilsTestCase(test.TestCase):
     @ddt.data({}, None, {'key': 'value'})
     def test_is_replicated_no_specs(self, extra_specs):
         res = volume_utils.is_replicated_spec(extra_specs)
-        self.assertFalse(res)
+        self.assertFalse(bool(res))
 
     @ddt.data('<is> False', '<is> false', '<is> f', 'baddata', 'bad data')
     def test_is_replicated_spec_false(self, enabled):

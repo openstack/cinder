@@ -3390,7 +3390,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             mock_do_setup.return_value = mock_client
             mock_replication_client.return_value = mock_replicated_client
             self.driver.do_setup(None)
-            self.assertFalse(self.driver._replication_targets)
+            self.assertListEqual([], self.driver._replication_targets)
 
     def test__create_replication_client(self):
         # set up driver with default config

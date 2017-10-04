@@ -913,7 +913,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library.zapi_client.destroy_lun.assert_called_once_with(fake.PATH)
         block_base.LOG.error.assert_not_called()
         block_base.LOG.warning.assert_called_once()
-        self.assertFalse(self.library.lun_table)
+        self.assertEqual({}, self.library.lun_table)
 
     @mock.patch.object(block_base, 'LOG', mock.Mock())
     def test_delete_lun_client_exception(self):

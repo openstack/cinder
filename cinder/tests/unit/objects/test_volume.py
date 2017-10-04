@@ -580,7 +580,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
     def test_is_replicated_no_type(self):
         volume = fake_volume.fake_volume_obj(
             self.context, volume_type_id=None, volume_type=None)
-        self.assertFalse(volume.is_replicated())
+        self.assertFalse(bool(volume.is_replicated()))
 
 
 @ddt.ddt

@@ -433,7 +433,7 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
                                                  mock_commit, mock_rollback):
         vol = tests_utils.create_volume(self.context, **self.volume_params)
         with mock.patch.object(objects, 'Volume', side_effect=ValueError):
-            self.assertFalse(self.volume._clone_image_volume(
+            self.assertIsNone(self.volume._clone_image_volume(
                 self.context, vol, {'id': fake.VOLUME_ID}))
 
         mock_reserve.assert_called_once_with(self.context, volumes=1,

@@ -1498,7 +1498,7 @@ class VMAXRestTest(test.TestCase):
     def test_get_workload_settings_failed(self):
         wl_settings = self.rest.get_workload_settings(
             self.data.failed_resource)
-        self.assertFalse(wl_settings)
+        self.assertEqual([], wl_settings)
 
     def test_get_headroom_capacity(self):
         ref_headroom = self.data.headroom['headroom'][0]['headroomCapacity']
@@ -1540,7 +1540,7 @@ class VMAXRestTest(test.TestCase):
         with mock.patch.object(self.rest, 'get_resource', return_value=None):
             sg_list = self.rest.get_storage_group_list(
                 self.data.array, {})
-            self.assertFalse(sg_list)
+            self.assertEqual([], sg_list)
 
     def test_create_storage_group(self):
         with mock.patch.object(self.rest, 'create_resource'):
@@ -1934,7 +1934,7 @@ class VMAXRestTest(test.TestCase):
         with mock.patch.object(self.rest, 'get_portgroup',
                                return_value=None):
             port_ids = self.rest.get_port_ids(array, pg_name)
-            self.assertFalse(port_ids)
+            self.assertEqual([], port_ids)
 
     def test_get_port(self):
         array = self.data.array
@@ -1975,7 +1975,7 @@ class VMAXRestTest(test.TestCase):
         with mock.patch.object(self.rest, 'get_port',
                                return_value=None):
             target_wwns = self.rest.get_target_wwns(array, pg_name)
-            self.assertFalse(target_wwns)
+            self.assertEqual([], target_wwns)
 
     def test_get_initiator_group(self):
         array = self.data.array
@@ -2002,7 +2002,7 @@ class VMAXRestTest(test.TestCase):
         array = self.data.array
         with mock.patch.object(self.rest, 'get_resource', return_value={}):
             init_list = self.rest.get_initiator_list(array)
-            self.assertFalse(init_list)
+            self.assertEqual([], init_list)
 
     def test_get_in_use_initiator_list_from_array(self):
         ref_list = self.data.initiator_list[2]['initiatorId']
@@ -2015,7 +2015,7 @@ class VMAXRestTest(test.TestCase):
         with mock.patch.object(self.rest, 'get_initiator_list',
                                return_value=[]):
             init_list = self.rest.get_in_use_initiator_list_from_array(array)
-            self.assertFalse(init_list)
+            self.assertEqual([], init_list)
 
     def test_get_initiator_group_from_initiator(self):
         initiator = self.data.wwpn1
@@ -2088,12 +2088,12 @@ class VMAXRestTest(test.TestCase):
                                return_value=None):
             masking_view = self.rest.get_masking_views_by_initiator_group(
                 array, initiatorgroup_name)
-            self.assertFalse(masking_view)
+            self.assertEqual([], masking_view)
         with mock.patch.object(self.rest, 'get_initiator_group',
                                return_value={'name': 'no_mv'}):
             masking_view = self.rest.get_masking_views_by_initiator_group(
                 array, initiatorgroup_name)
-            self.assertFalse(masking_view)
+            self.assertEqual([], masking_view)
 
     def test_get_element_from_masking_view(self):
         array = self.data.array
@@ -2145,7 +2145,7 @@ class VMAXRestTest(test.TestCase):
                                return_value=[]):
             maskingview_list = self.rest.get_common_masking_views(
                 array, portgroup, initiatorgroup)
-            self.assertFalse(maskingview_list)
+            self.assertEqual([], maskingview_list)
 
     def test_create_masking_view(self):
         maskingview_name = self.data.masking_view_name_f
@@ -3293,7 +3293,7 @@ class VMAXCommonTest(test.TestCase):
         host = 'DifferentHost'
         maskingview_list = self.common.get_masking_views_from_volume(
             array, device_id, host)
-        self.assertFalse(maskingview_list)
+        self.assertEqual([], maskingview_list)
 
     def test_find_host_lun_id_no_host_check(self):
         volume = self.data.test_volume
@@ -3645,7 +3645,7 @@ class VMAXCommonTest(test.TestCase):
                                return_value=None):
             target_wwns = self.common.get_target_wwns_from_masking_view(
                 self.data.test_volume, self.data.connector)
-            self.assertFalse(target_wwns)
+            self.assertEqual([], target_wwns)
 
     def test_get_port_group_from_masking_view(self):
         array = self.data.array
@@ -4022,7 +4022,7 @@ class VMAXCommonTest(test.TestCase):
                 migrate_status = self.common._slo_workload_migration(
                     device_id, volume, host, volume_name, new_type,
                     extra_specs)
-                self.assertTrue(migrate_status)
+                self.assertTrue(bool(migrate_status))
                 self.common._migrate_volume.assert_called_once_with(
                     extra_specs[utils.ARRAY], device_id,
                     extra_specs[utils.SRP], self.data.slo,
@@ -4511,7 +4511,7 @@ class VMAXFCTest(test.TestCase):
                                return_value=None):
             zoning_mappings = self.driver._get_zoning_mappings(
                 self.data.test_volume, self.data.connector)
-            self.assertFalse(zoning_mappings)
+            self.assertEqual({}, zoning_mappings)
 
     def test_cleanup_zones_other_vols_mapped(self):
         ref_data = {'driver_volume_type': 'fibre_channel',

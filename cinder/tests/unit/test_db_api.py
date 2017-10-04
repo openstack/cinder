@@ -2684,7 +2684,7 @@ class DBAPIBackupTestCase(BaseTest):
                 {'status': fields.BackupStatus.DELETED, 'deleted': True,
                  'deleted_at': UTC_NOW},
                 db.backup_destroy(self.ctxt, backup['id']))
-        self.assertFalse(db.backup_get_all(self.ctxt))
+        self.assertEqual([], db.backup_get_all(self.ctxt))
 
     def test_backup_not_found(self):
         self.assertRaises(exception.BackupNotFound, db.backup_get, self.ctxt,

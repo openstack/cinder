@@ -4972,7 +4972,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         self.driver.support_func = FAKE_POOLS_SUPPORT_REPORT
         retype = self.driver.retype(None, self.volume,
                                     test_new_type, None, test_host)
-        self.assertTrue(retype)
+        self.assertTrue(retype[0])
 
     @ddt.data(FAKE_POOLS_UNSUPPORT_REPORT, FAKE_POOLS_SUPPORT_REPORT)
     @mock.patch.object(rest_client, 'RestClient')
@@ -4986,7 +4986,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         self.driver.support_func = pool_data
         retype = self.driver.retype(None, self.volume,
                                     test_new_replication_type, None, test_host)
-        self.assertTrue(retype)
+        self.assertTrue(retype[0])
 
     @ddt.data(
         [

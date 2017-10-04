@@ -832,7 +832,7 @@ class BitSetTestCase(test.TestCase):
     def test_is_set(self):
         bitset = na_utils.BitSet(1 << 16)
 
-        self.assertTrue(bitset.is_set(16))
+        self.assertTrue(bool(bitset.is_set(16)))
 
     def test_not_equal(self):
         set1 = na_utils.BitSet(1 << 15)

@@ -731,7 +731,7 @@ class AffinityFilterTestCase(BackendFiltersTestCase):
                              'scheduler_hints': {
             'same_host': vol_id}}
 
-        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
+        self.assertTrue(bool(filt_cls.backend_passes(host, filter_properties)))
 
     def test_same_filter_passes(self):
         filt_cls = self.class_map['SameBackendFilter']()
@@ -743,7 +743,7 @@ class AffinityFilterTestCase(BackendFiltersTestCase):
                              'scheduler_hints': {
             'same_host': [vol_id], }}
 
-        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
+        self.assertTrue(bool(filt_cls.backend_passes(host, filter_properties)))
 
     def test_same_filter_legacy_vol_fails(self):
         filt_cls = self.class_map['SameBackendFilter']()
@@ -755,7 +755,8 @@ class AffinityFilterTestCase(BackendFiltersTestCase):
                              'scheduler_hints': {
             'same_host': [vol_id], }}
 
-        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
+        result = filt_cls.backend_passes(host, filter_properties)
+        self.assertEqual([], result.objects)
 
     def test_same_filter_fails(self):
         filt_cls = self.class_map['SameBackendFilter']()
@@ -767,7 +768,8 @@ class AffinityFilterTestCase(BackendFiltersTestCase):
                              'scheduler_hints': {
             'same_host': [vol_id], }}
 
-        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
+        result = filt_cls.backend_passes(host, filter_properties)
+        self.assertEqual([], result.objects)
 
     def test_same_filter_vol_list_pass(self):
         filt_cls = self.class_map['SameBackendFilter']()
@@ -781,7 +783,7 @@ class AffinityFilterTestCase(BackendFiltersTestCase):
                              'scheduler_hints': {
             'same_host': [vol_id1, vol_id2], }}
 
-        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
+        self.assertTrue(bool(filt_cls.backend_passes(host, filter_properties)))
 
     def test_same_filter_handles_none(self):
         filt_cls = self.class_map['SameBackendFilter']()
@@ -803,7 +805,8 @@ class AffinityFilterTestCase(BackendFiltersTestCase):
                              'scheduler_hints': {
             'same_host': [vol_id], }}
 
-        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
+        result = filt_cls.backend_passes(host, filter_properties)
+        self.assertEqual([], result.objects)
 
     def test_same_filter_fail_nonuuid_hint(self):
         filt_cls = self.class_map['SameBackendFilter']()

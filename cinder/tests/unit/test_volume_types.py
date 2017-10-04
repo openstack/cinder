@@ -94,7 +94,7 @@ class VolumeTypeTestCase(test.TestCase):
         # on destroying the volume type
         vol_type_access = db_api._volume_type_access_query(
             self.ctxt).filter_by(volume_type_id=type_ref['id']).all()
-        self.assertFalse(vol_type_access)
+        self.assertEqual([], vol_type_access)
 
     @mock.patch('cinder.quota.VolumeTypeQuotaEngine.'
                 'update_quota_resource')

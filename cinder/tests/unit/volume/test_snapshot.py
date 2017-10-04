@@ -342,7 +342,7 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
         # get volume's volume_glance_metadata
         ctxt = context.get_admin_context()
         vol_glance_meta = db.volume_glance_metadata_get(ctxt, volume_id)
-        self.assertTrue(vol_glance_meta)
+        self.assertTrue(bool(vol_glance_meta))
 
         # create snapshot from bootable volume
         snap = create_snapshot(volume_id)
@@ -351,7 +351,7 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
         # get snapshot's volume_glance_metadata
         snap_glance_meta = db.volume_snapshot_glance_metadata_get(
             ctxt, snap.id)
-        self.assertTrue(snap_glance_meta)
+        self.assertTrue(bool(snap_glance_meta))
 
         # ensure that volume's glance metadata is copied
         # to snapshot's glance metadata
@@ -387,7 +387,7 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
         # get volume's volume_glance_metadata
         ctxt = context.get_admin_context()
         vol_glance_meta = db.volume_glance_metadata_get(ctxt, volume_id)
-        self.assertTrue(vol_glance_meta)
+        self.assertTrue(bool(vol_glance_meta))
         snap = create_snapshot(volume_id)
         self.assertEqual(36, len(snap.id))  # dynamically-generated UUID
         self.assertEqual('creating', snap.status)
