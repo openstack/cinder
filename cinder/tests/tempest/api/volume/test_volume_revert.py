@@ -18,12 +18,14 @@ from tempest.common import waiters
 from tempest import config
 from tempest.lib import decorators
 
+from cinder.api import microversions
 from cinder.tests.tempest import cinder_clients
 
 CONF = config.CONF
 
 
 class VolumeRevertTests(volume_base.BaseVolumeTest):
+    min_microversion = microversions.VOLUME_REVERT
 
     @classmethod
     def setup_clients(cls):
