@@ -62,7 +62,6 @@ glance_core_properties_opts = [
 CONF = cfg.CONF
 CONF.register_opts(glance_opts)
 CONF.register_opts(glance_core_properties_opts)
-CONF.import_opt('glance_api_version', 'cinder.common.config')
 
 LOG = logging.getLogger(__name__)
 
@@ -82,10 +81,8 @@ def _parse_image_ref(image_href):
     return (image_id, netloc, use_ssl)
 
 
-def _create_glance_client(context, netloc, use_ssl, version=None):
+def _create_glance_client(context, netloc, use_ssl):
     """Instantiate a new glanceclient.Client object."""
-    if version is None:
-        version = CONF.glance_api_version
     params = {}
     if use_ssl:
         scheme = 'https'
@@ -101,7 +98,7 @@ def _create_glance_client(context, netloc, use_ssl, version=None):
         params['timeout'] = CONF.glance_request_timeout
     endpoint = '%s://%s' % (scheme, netloc)
     params['global_request_id'] = context.global_id
-    return glanceclient.Client(str(version), endpoint, **params)
+    return glanceclient.Client('2', endpoint, **params)
 
 
 def get_api_servers(context):
@@ -147,34 +144,31 @@ def get_api_servers(context):
 class GlanceClientWrapper(object):
     """Glance client wrapper class that implements retries."""
 
-    def __init__(self, context=None, netloc=None, use_ssl=False,
-                 version=None):
+    def __init__(self, context=None, netloc=None, use_ssl=False):
         if netloc is not None:
             self.client = self._create_static_client(context,
                                                      netloc,
-                                                     use_ssl, version)
+                                                     use_ssl)
         else:
             self.client = None
         self.api_servers = None
-        self.version = version
 
-    def _create_static_client(self, context, netloc, use_ssl, version):
+    def _create_static_client(self, context, netloc, use_ssl):
         """Create a client that we'll use for every call."""
         self.netloc = netloc
         self.use_ssl = use_ssl
-        self.version = version
         return _create_glance_client(context,
                                      self.netloc,
-                                     self.use_ssl, self.version)
+                                     self.use_ssl)
 
-    def _create_onetime_client(self, context, version):
+    def _create_onetime_client(self, context):
         """Create a client that will be used for one call."""
         if self.api_servers is None:
             self.api_servers = get_api_servers(context)
         self.netloc, self.use_ssl = next(self.api_servers)
         return _create_glance_client(context,
                                      self.netloc,
-                                     self.use_ssl, version)
+                                     self.use_ssl)
 
     def call(self, context, method, *args, **kwargs):
         """Call a glance client method.
@@ -182,7 +176,6 @@ class GlanceClientWrapper(object):
         If we get a connection error,
         retry the request according to CONF.glance_num_retries.
         """
-        version = kwargs.pop('version', self.version)
 
         retry_excs = (glanceclient.exc.ServiceUnavailable,
                       glanceclient.exc.InvalidEndpoint,
@@ -190,8 +183,7 @@ class GlanceClientWrapper(object):
         num_attempts = 1 + CONF.glance_num_retries
 
         for attempt in range(1, num_attempts + 1):
-            client = self.client or self._create_onetime_client(context,
-                                                                version)
+            client = self.client or self._create_onetime_client(context)
             try:
                 controller = getattr(client,
                                      kwargs.pop('controller', 'images'))
@@ -248,16 +240,6 @@ class GlanceImageService(object):
             if param in params:
                 _params[param] = params.get(param)
 
-        # NOTE(geguileo): We set is_public default value for v1 because we want
-        # to retrieve all images by default.  We don't need to send v2
-        # equivalent - "visible" - because its default value when omitted is
-        # "public, private, shared", which will return all.
-        if CONF.glance_api_version <= 1:
-            # ensure filters is a dict
-            _params.setdefault('filters', {})
-            # NOTE(vish): don't filter out private images
-            _params['filters'].setdefault('is_public', 'none')
-
         return _params
 
     def show(self, context, image_id):
@@ -280,12 +262,9 @@ class GlanceImageService(object):
         the backend storage location, or (None, None) if these attributes are
         not shown by Glance.
         """
-        if CONF.glance_api_version == 1:
-            # image location not available in v1
-            return (None, None)
         try:
             # direct_url is returned by v2 api
-            client = GlanceClientWrapper(version=2)
+            client = GlanceClientWrapper()
             image_meta = client.call(context, 'get', image_id)
         except Exception:
             _reraise_translated_image_exception(image_id)
@@ -304,9 +283,7 @@ class GlanceImageService(object):
 
         Returns a dict containing image metadata on success.
         """
-        if CONF.glance_api_version != 2:
-            raise exception.Invalid("Image API version 2 is disabled.")
-        client = GlanceClientWrapper(version=2)
+        client = GlanceClientWrapper()
         try:
             return client.call(context, 'add_location',
                                image_id, url, metadata)
@@ -360,39 +337,30 @@ class GlanceImageService(object):
         # directly. We need the custom properties to identify properties to
         # remove if purge_props is True. Save the custom properties before
         # translate.
-        if CONF.glance_api_version > 1 and purge_props:
+        if purge_props:
             props_to_update = image_meta.get('properties', {}).keys()
 
         image_meta = self._translate_to_glance(image_meta)
-        # NOTE(dosaboy): see comment in bug 1210467
-        if CONF.glance_api_version == 1:
-            image_meta['purge_props'] = purge_props
+
         # NOTE(bcwaldon): id is not an editable field, but it is likely to be
         # passed in by calling code. Let's be nice and ignore it.
         image_meta.pop('id', None)
         try:
-            # NOTE(dosaboy): the v2 api separates update from upload
-            if CONF.glance_api_version > 1:
-                if data:
-                    self._client.call(context, 'upload', image_id, data)
-                if image_meta:
-                    if purge_props:
-                        # Properties to remove are those not specified in
-                        # input properties.
-                        cur_image_meta = self.show(context, image_id)
-                        cur_props = cur_image_meta['properties'].keys()
-                        remove_props = list(set(cur_props) -
-                                            set(props_to_update))
-                        image_meta['remove_props'] = remove_props
-                    image_meta = self._client.call(context, 'update', image_id,
-                                                   **image_meta)
-                else:
-                    image_meta = self._client.call(context, 'get', image_id)
-            else:
-                if data:
-                    image_meta['data'] = data
+            if data:
+                self._client.call(context, 'upload', image_id, data)
+            if image_meta:
+                if purge_props:
+                    # Properties to remove are those not specified in
+                    # input properties.
+                    cur_image_meta = self.show(context, image_id)
+                    cur_props = cur_image_meta['properties'].keys()
+                    remove_props = list(set(cur_props) -
+                                        set(props_to_update))
+                    image_meta['remove_props'] = remove_props
                 image_meta = self._client.call(context, 'update', image_id,
                                                **image_meta)
+            else:
+                image_meta = self._client.call(context, 'get', image_id)
         except Exception:
             _reraise_translated_image_exception(image_id)
         else:
@@ -420,27 +388,23 @@ class GlanceImageService(object):
         :param image: glance image object
         :return: image metadata dictionary
         """
-        if CONF.glance_api_version == 2:
-            if self._image_schema is None:
-                self._image_schema = self._client.call(context, 'get',
-                                                       controller='schemas',
-                                                       schema_name='image',
-                                                       version=2)
-            # NOTE(aarefiev): get base image property, store image 'schema'
-            #                 is redundant, so ignore it.
-            image_meta = {key: getattr(image, key)
-                          for key in image.keys()
-                          if self._image_schema.is_base_property(key) is True
-                          and key != 'schema'}
+        if self._image_schema is None:
+            self._image_schema = self._client.call(context, 'get',
+                                                   controller='schemas',
+                                                   schema_name='image')
+        # NOTE(aarefiev): get base image property, store image 'schema'
+        #                 is redundant, so ignore it.
+        image_meta = {key: getattr(image, key)
+                      for key in image.keys()
+                      if self._image_schema.is_base_property(key) is True
+                      and key != 'schema'}
 
-            # NOTE(aarefiev): nova is expected that all image properties
-            # (custom or defined in schema-image.json) stores in
-            # 'properties' key.
-            image_meta['properties'] = {
-                key: getattr(image, key) for key in image.keys()
-                if self._image_schema.is_base_property(key) is False}
-        else:
-            image_meta = _extract_attributes(image)
+        # NOTE(aarefiev): nova is expected that all image properties
+        # (custom or defined in schema-image.json) stores in
+        # 'properties' key.
+        image_meta['properties'] = {
+            key: getattr(image, key) for key in image.keys()
+            if self._image_schema.is_base_property(key) is False}
 
         image_meta = _convert_timestamps_to_datetimes(image_meta)
         image_meta = _convert_from_string(image_meta)
@@ -453,11 +417,10 @@ class GlanceImageService(object):
 
         # NOTE(tsekiyama): From the Image API v2, custom properties must
         # be stored in image_meta directly, instead of the 'properties' key.
-        if CONF.glance_api_version >= 2:
-            properties = image_meta.get('properties')
-            if properties:
-                image_meta.update(properties)
-                del image_meta['properties']
+        properties = image_meta.get('properties')
+        if properties:
+            image_meta.update(properties)
+            del image_meta['properties']
 
         return image_meta
 
@@ -545,11 +508,8 @@ def _extract_attributes(image):
                         'container_format', 'status', 'id',
                         'name', 'created_at', 'updated_at',
                         'deleted', 'deleted_at', 'checksum',
-                        'min_disk', 'min_ram', 'protected']
-    if CONF.glance_api_version == 2:
-        IMAGE_ATTRIBUTES.append('visibility')
-    else:
-        IMAGE_ATTRIBUTES.append('is_public')
+                        'min_disk', 'min_ram', 'protected',
+                        'visibility']
 
     output = {}
 

@@ -26,8 +26,6 @@
      - (List) A list of the URLs of glance API servers available to cinder ([http[s]://][hostname|ip]:port). If protocol is not specified it defaults to http.
    * - ``glance_api_ssl_compression`` = ``False``
      - (Boolean) Enables or disables negotiation of SSL layer compression. In some cases disabling compression can improve data throughput, such as when high network bandwidth is available and you use compressed image formats like qcow2.
-   * - ``glance_api_version`` = ``1``
-     - (Integer) Version of the glance API to use
    * - ``glance_ca_certificates_file`` = ``None``
      - (String) Location of ca certificates file to use for glance client requests.
    * - ``glance_catalog_info`` = ``image:glance:publicURL``
@@ -41,7 +39,7 @@
    * - ``image_conversion_dir`` = ``$state_path/conversion``
      - (String) Directory used for temporary storage during image conversion
    * - ``image_upload_use_cinder_backend`` = ``False``
-     - (Boolean) If set to True, upload-to-image in raw format will create a cloned volume and register its location to the image service, instead of uploading the volume content. The cinder backend and locations support must be enabled in the image service, and glance_api_version must be set to 2.
+     - (Boolean) If set to True, upload-to-image in raw format will create a cloned volume and register its location to the image service, instead of uploading the volume content. The cinder backend and locations support must be enabled in the image service.
    * - ``image_upload_use_internal_tenant`` = ``False``
      - (Boolean) If set to True, the image volume created by upload-to-image will be placed in the internal tenant. Otherwise, the image volume is created in the current context's tenant.
    * - ``image_volume_cache_enabled`` = ``False``

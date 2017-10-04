@@ -280,12 +280,6 @@ class VolumeActionsController(wsgi.Controller):
             if image_metadata['visibility'] == 'public':
                 authorize(context, 'upload_public')
 
-            if CONF.glance_api_version != 2:
-                # Replace visibility with is_public for Glance V1
-                image_metadata['is_public'] = (
-                    image_metadata['visibility'] == 'public')
-                image_metadata.pop('visibility', None)
-
             image_metadata['protected'] = (
                 utils.get_bool_param('protected', image_metadata))
 

@@ -213,8 +213,6 @@ To use this feature, you must configure the Block Storage service, as follows:
 - Set the ``netapp_copyoffload_tool_path`` configuration option to the path to
   the NetApp Copy Offload binary.
 
-- Set the ``glance_api_version`` configuration option to ``2``.
-
   .. important::
 
      This feature requires that:

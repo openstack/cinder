@@ -1327,8 +1327,6 @@ class VolumeImageActionsTest(test.TestCase):
         mock_copy_volume_to_image.side_effect = \
             self.fake_rpc_copy_volume_to_image
 
-        self.override_config('glance_api_version', 2)
-
         req = fakes.HTTPRequest.blank(
             '/v3/%s/volumes/%s/action' % (fake.PROJECT_ID, volume.id),
             use_admin_context=self.context.is_admin)

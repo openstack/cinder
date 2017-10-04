@@ -225,8 +225,7 @@ volume_opts = [
                      'create a cloned volume and register its location to '
                      'the image service, instead of uploading the volume '
                      'content. The cinder backend and locations support '
-                     'must be enabled in the image service, and '
-                     'glance_api_version must be set to 2.'),
+                     'must be enabled in the image service.'),
     cfg.BoolOpt('image_upload_use_internal_tenant',
                 default=False,
                 help='If set to True, the image volume created by '

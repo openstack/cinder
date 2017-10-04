@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    The Glance v1 API has been deprecated and will soon be removed. Cinder
+    support for using the v1 API was deprecated in the Pike release and
+    is now no longer available. The ``glance_api_version`` configuration
+    option to support version selection has now been removed.

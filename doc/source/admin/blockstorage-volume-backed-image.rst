@@ -38,7 +38,6 @@ Volume, set the following options in the ``DEFAULT`` section of the
 
 .. code-block:: ini
 
-   glance_api_version = 2
    allowed_direct_url_schemes = cinder
 
 To enable the :command:`openstack image create --volume <volume>` command to
