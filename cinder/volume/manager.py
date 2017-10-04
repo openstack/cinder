@@ -1380,7 +1380,7 @@ class VolumeManager(manager.CleanableManager,
 
         try:
             self.create_volume(ctx, image_volume, allow_reschedule=False)
-            image_volume = objects.Volume.get_by_id(ctx, image_volume.id)
+            image_volume.refresh()
             if image_volume.status != 'available':
                 raise exception.InvalidVolume(_('Volume is not available.'))
 
@@ -2028,8 +2028,8 @@ class VolumeManager(manager.CleanableManager,
         # Wait for new_volume to become ready
         starttime = time.time()
         deadline = starttime + CONF.migration_create_volume_timeout_secs
-        # TODO(thangp): Replace get_by_id with refresh when it is available
-        new_volume = objects.Volume.get_by_id(ctxt, new_volume.id)
+
+        new_volume.refresh()
         tries = 0
         while new_volume.status != 'available':
             tries += 1
@@ -2048,9 +2048,7 @@ class VolumeManager(manager.CleanableManager,
                 raise exception.VolumeMigrationFailed(reason=msg)
             else:
                 time.sleep(tries ** 2)
-            # TODO(thangp): Replace get_by_id with refresh when it is
-            # available
-            new_volume = objects.Volume.get_by_id(ctxt, new_volume.id)
+            new_volume.refresh()
 
         # Set skipped value to avoid calling
         # function except for _create_raw_volume
@@ -2927,8 +2925,7 @@ class VolumeManager(manager.CleanableManager,
             if group_snapshot:
                 try:
                     # Check if group_snapshot still exists
-                    group_snapshot = objects.GroupSnapshot.get_by_id(
-                        context, group_snapshot.id)
+                    group_snapshot.refresh()
                 except exception.GroupSnapshotNotFound:
                     LOG.error("Create group from snapshot-%(snap)s failed: "
                               "SnapshotNotFound.",
@@ -2954,8 +2951,7 @@ class VolumeManager(manager.CleanableManager,
 
             if source_group:
                 try:
-                    source_group = objects.Group.get_by_id(
-                        context, source_group.id)
+                    source_group.refresh()
                 except exception.GroupNotFound:
                     LOG.error("Create group "
                               "from source group-%(group)s failed: "
@@ -4780,7 +4776,7 @@ class VolumeManager(manager.CleanableManager,
 
         replication_targets = []
         try:
-            group = objects.Group.get_by_id(ctxt, group.id)
+            group.refresh()
             if self.configuration.replication_device:
                 if ctxt.is_admin:
                     for rep_dev in self.configuration.replication_device:
