@@ -35,10 +35,13 @@ You can also build an image to run LVM (**NOTE**: This is dependent on the base 
 
 ```make lvm```
 
-Finally the last image is a devenv image that will mount the cinder repo you've
-checked out into a container and includes test-requirements:
+To build both the base and lvm enabled image
+```make blockbox```
 
-```make devbox```
+All we're doing here is a ```docker build``` utilizing the loci
+Dockerfile and bindeps.  Currently loci images are not published
+regulary (although they will be in the future) so we require you
+to build images before running docker-compose up.
 
 For more information and options, check out the openstack/loci page
 on [github](https://github.com/openstack/loci).
@@ -48,12 +51,6 @@ continue to be a straight forward light weight method of building container
 Images. The build has been known to now work at times, and if it becomes
 bloated or burdensome it's easy to swap in another image builder (or write your
 own even).
-
-This will result in some base images that we'll use:
-
-1. cinder (openstack/loci image)
-2. cinder-lvm (special cinder image with LVM config)
-3. cinder-devenv (provides a Cinder development env container)
 
 ### cinder
 Creates a base image with cinder installed via source.  This base image is
@@ -70,40 +67,11 @@ base, you'll need to modify the Makefile for this image as well.
 This is a special image that is built from the base cinder image and adds the
 necessary packages for LVM and iSCSI.
 
-### cinder-devenv
-You might want to generate a conf file, or if you're like me, use Docker to do
-some of your Cinder development.  You can run this container which has all of
-the current development packages and python test-requirements for Cinder.
-
-You can pass in your current source directory from your local machine using -v
-in your run command, here's a trivial example that generates a sample config
-file.  Note we don't use tox because we're already in an isolated environment.
-
-```shell
-docker run -it -v /home/jgriffith/src/cinder:/cinder  \
-  cinder-devenv \
-  bash -c "cd cinder && oslo-config-generator \
-  --config-file=cinder/config/cinder-config-generator.conf"
-```
-
-Keep in mind the command will execute and then exit, the result is written to
-the cinder directory specified in the -v argument.  In this example for
-instance the result would be a newly generated cinder.conf.sample file in
-/home/jgriffith/src/cinder/etc/cinder
-
 ## Accessing via cinderclient
 You can of course build a cinderclient container with a `cinder` entrypoint and
 use that for access, but in order to take advantage of things like the
 local-attach extension, you'll need to install the client tools on the host.
 
-The current release version in pypi doesn't include noauth
-support, so you'll need to install from source, but that's not hard:
-
-```shell
-sudo pip install pytz
-sudo pip install git+https://github.com/openstack/python-cinderclient
-sudo pip install git+https://github.com/openstack/python-brick-cinderclient-ext
-```
 Before using, you must specify these env variables at least,
 ``OS_AUTH_TYPE``, ``CINDER_ENDPOINT``, ``OS_PROJECT_ID``, ``OS_USERNAME``.
 You can utilize our sample file ``cinder.rc``, then you can use client
@@ -117,9 +85,11 @@ sudo.  To preserve your env variables don't forget to use `sudo -E cinder xxxxx`
 docker-compose up -d
 
 Don't forget to modify the `etc-cinder/cinder.conf` file as needed for your
-specific driver.  We'll be adding support for the LVM driver and LIO Tgts
-shortly, but for now you won't have much luck without using an external
-device (no worries, there are over 80 to choose from).
+specific driver. The current default setup should give you the ability to
+quickly deploy a fully functional stand-alone cinder deployment with LVM.
+If you'd like to add your own external driver, it's quite simple, and we've
+included an example for adding an additional volume service to the base
+deployment/compose.  See the section below for more details.
 
 **Note**: If you use ``cinder-lvm`` image, you must guarantee the required
 volume group which is specified in the ``cinder.conf`` already exists in
@@ -160,18 +130,6 @@ docker run -it -e OS_AUTH_TYPE=noauth \
   -e OS_VOLUME_API_VERSION=3.27 \
   --network blockbox_default cinderclient list
 ```
-
-# Or without docker-compose
-That's ok, you can always just run the commands yourself using docker run:
-```shell
-
-# We set passwords and db creation in the docker-entrypoint-initdb.d script
-docker run -d -p 3306:3306 \
-  -v ~/block-box/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d \
-  --name mariadb \
-  --hostname mariadb \
-  -e MYSQL_ROOT_PASSWORD=password \
-  mariadb
 
 # Make sure the environment vars match the startup script for your database host
 docker run -d -p 5000:5000 \

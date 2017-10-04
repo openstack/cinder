@@ -5,7 +5,7 @@ services:
         hostname: cinder-volume-sf
         privileged: true
         volumes:
-            - ./etc-cinder:/etc/cinder
+            - ./etc:/etc/cinder
             - /dev/:/dev/
             - /run/:/run/:shared
             - /etc/localtime:/etc/localtime:ro
