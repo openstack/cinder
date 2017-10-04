@@ -7,4 +7,5 @@ upgrade:
       * Block device driver
       * Blockbridge
       * Coho
+      * FalconStor FSS
 
