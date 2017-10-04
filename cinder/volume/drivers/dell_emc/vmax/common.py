@@ -207,7 +207,7 @@ class VMAXCommon(object):
             # Remove 'None' from the list (so a 'None' slo is not combined
             # with a workload, which is not permitted)
             slo_settings = [x for x in slo_settings
-                            if x.lower() not in ['none']]
+                            if x.lower() not in ['none', 'optimized']]
             workload_settings = self.rest.get_workload_settings(array)
             workload_settings.append("None")
             slo_workload_set = set(
@@ -215,6 +215,7 @@ class VMAXCommon(object):
                  for slo in slo_settings for workload in workload_settings])
             # Add back in in the only allowed 'None' slo/ workload combination
             slo_workload_set.add('None:None')
+            slo_workload_set.add('Optimized:None')
 
             finalarrayinfolist = []
             for sloWorkload in slo_workload_set:
@@ -672,9 +673,7 @@ class VMAXCommon(object):
         pools = []
         # Dictionary to hold the arrays for which the SRP details
         # have already been queried.
-        # This only applies to the arrays for which WLP is not enabled
         arrays = {}
-        wlp_enabled = False
         total_capacity_gb = 0
         free_capacity_gb = 0
         provisioned_capacity_gb = 0
@@ -691,14 +690,12 @@ class VMAXCommon(object):
                 array_info = self.get_secondary_stats_info(
                     self.rep_config, array_info)
             # Add both SLO & Workload name in the pool name
-            # Query the SRP only once if WLP is not enabled
             # Only insert the array details in the dict once
             self.rest.set_rest_credentials(array_info)
             if array_info['SerialNumber'] not in arrays:
                 (location_info, total_capacity_gb, free_capacity_gb,
                  provisioned_capacity_gb,
-                 array_reserve_percent,
-                 wlp_enabled) = self._update_srp_stats(array_info)
+                 array_reserve_percent) = self._update_srp_stats(array_info)
             else:
                 already_queried = True
             pool_name = ("%(slo)s+%(workload)s+%(srpName)s+%(array)s"
@@ -706,10 +703,6 @@ class VMAXCommon(object):
                             'workload': array_info['Workload'],
                             'srpName': array_info['srpName'],
                             'array': array_info['SerialNumber']})
-            if wlp_enabled is False:
-                arrays[array_info['SerialNumber']] = (
-                    [total_capacity_gb, free_capacity_gb,
-                     provisioned_capacity_gb, array_reserve_percent])
 
             if already_queried:
                 # The dictionary will only have one key per VMAX
@@ -803,8 +796,7 @@ class VMAXCommon(object):
         :returns: wlpEnabled
         """
         (totalManagedSpaceGbs, remainingManagedSpaceGbs,
-         provisionedManagedSpaceGbs, array_reserve_percent,
-         wlpEnabled) = (
+         provisionedManagedSpaceGbs, array_reserve_percent) = (
             self.provision.get_srp_pool_stats(
                 array_info['SerialNumber'], array_info))
 
@@ -826,7 +818,7 @@ class VMAXCommon(object):
 
         return (location_info, totalManagedSpaceGbs,
                 remainingManagedSpaceGbs, provisionedManagedSpaceGbs,
-                array_reserve_percent, wlpEnabled)
+                array_reserve_percent)
 
     def _set_config_file_and_get_extra_specs(self, volume,
                                              volume_type_id=None):

@@ -450,24 +450,6 @@ class VMAXRest(object):
             workload_setting = wl_details['workloadId']
         return workload_setting
 
-    def get_headroom_capacity(self, array, srp, slo, workload):
-        """Get capacity of the different slo/ workload combinations.
-
-        :param array: the array serial number
-        :param srp: the storage resource srp
-        :param slo: the service level
-        :param workload: the workload
-        :returns: remaining_capacity -- string, or None
-        """
-        params = {'srp': srp, 'slo': slo, 'workloadtype': workload}
-        try:
-            headroom = self.get_resource(array, 'wlp',
-                                         'headroom', params=params)
-            remaining_capacity = headroom['headroom'][0]['headroomCapacity']
-        except (KeyError, TypeError):
-            remaining_capacity = None
-        return remaining_capacity
-
     def is_compression_capable(self, array):
         """Check if array is compression capable.
 
