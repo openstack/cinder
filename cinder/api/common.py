@@ -37,12 +37,6 @@ api_common_opts = [
                default=1000,
                help='The maximum number of items that a collection '
                     'resource returns in a single response'),
-    cfg.StrOpt('osapi_volume_base_URL',
-               help='DEPRECATED: Base URL that will be presented to users in '
-                    'links to the OpenStack Volume API',
-               deprecated_name='osapi_compute_link_prefix',
-               deprecated_since='Pike',
-               deprecated_reason='Duplicate config option.'),
     cfg.StrOpt('resource_query_filters_file',
                default='/etc/cinder/resource_filters.json',
                help="Json file indicating user visible filter "

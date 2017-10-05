@@ -27,8 +27,7 @@ versions_opts = [
                     "is None, which will use the request's host_url "
                     "attribute to populate the URL base. If Cinder is "
                     "operating behind a proxy, you will want to change "
-                    "this to represent the proxy's URL.",
-               deprecated_name='osapi_volume_base_URL'),
+                    "this to represent the proxy's URL."),
 ]
 
 CONF = cfg.CONF

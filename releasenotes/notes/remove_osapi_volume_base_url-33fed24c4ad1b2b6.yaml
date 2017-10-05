@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The `osapi_volume_base_URL` config option was deprecated in Pike and has
+    now been removed. The `public_endpoint` config option should be used
+    instead.
