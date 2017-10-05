@@ -378,7 +378,6 @@ FAKE_7MODE_POOLS = [
         'multiattach': False,
         'thin_provisioning_support': False,
         'thick_provisioning_support': True,
-        'provisioned_capacity_gb': 0.0,
         'utilization': 30.0,
         'filter_function': 'filter',
         'goodness_function': 'goodness',
