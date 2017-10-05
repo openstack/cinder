@@ -448,6 +448,33 @@ class VMAXProvision(object):
         self.rest.modify_rdf_device_pair(
             array, device_id, rdf_group, extra_specs, split=False)
 
+    def get_or_create_volume_group(self, array, group, extra_specs):
+        """Get or create a volume group.
+
+        Sometimes it may be necessary to recreate a volume group on the
+        backend - for example, when the last member volume has been removed
+        from the group, but the cinder group object has not been deleted.
+        :param array: the array serial number
+        :param group: the group object
+        :param extra_specs: the extra specifications
+        :return: group name
+        """
+        vol_grp_name = self.utils.update_volume_group_name(group)
+        return self.get_or_create_group(array, vol_grp_name, extra_specs)
+
+    def get_or_create_group(self, array, group_name, extra_specs):
+        """Get or create a generic volume group.
+
+        :param array: the array serial number
+        :param group_name: the group name
+        :param extra_specs: the extra specifications
+        :return: group name
+        """
+        storage_group = self.rest.get_storage_group(array, group_name)
+        if not storage_group:
+            self.create_volume_group(array, group_name, extra_specs)
+        return group_name
+
     def create_volume_group(self, array, group_name, extra_specs):
         """Create a generic volume group.
 
