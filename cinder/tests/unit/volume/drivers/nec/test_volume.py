@@ -992,6 +992,9 @@ class ExportTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
         self.assertEqual(
             '2A00000991020012',
             info['data']['initiator_target_map']['10000090FAA0786B'][3])
+        info = self._fc_terminate_connection(self.vol, None)
+        self.assertEqual('fibre_channel', info['driver_volume_type'])
+        self.assertEqual({}, info['data'])
 
 
 class DeleteDSVVolume_test(volume_helper.MStorageDSVDriver,

@@ -1396,12 +1396,15 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             for port in hostport:
                 if port['protocol'].lower() == 'fc':
                     fc_ports.append(port)
-        target_wwns, init_targ_map = (
-            self._build_initiator_target_map(connector, fc_ports))
 
         info = {'driver_volume_type': 'fibre_channel',
-                'data': {'target_wwn': target_wwns,
-                         'initiator_target_map': init_targ_map}}
+                'data': {}}
+        if connector is not None:
+            target_wwns, init_targ_map = (
+                self._build_initiator_target_map(connector, fc_ports))
+            info['data'] = {'target_wwn': target_wwns,
+                            'initiator_target_map': init_targ_map}
+
         LOG.debug('_fc_terminate_connection'
                   '(Volume ID = %(id)s, connector = %(connector)s, '
                   'info = %(info)s) End.',
@@ -1429,7 +1432,9 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         for port in fc_ports:
             target_wwns.append(port['wwpn'])
 
-        initiator_wwns = connector['wwpns']
+        initiator_wwns = []
+        if connector is not None:
+            initiator_wwns = connector['wwpns']
 
         init_targ_map = {}
         for initiator in initiator_wwns:
