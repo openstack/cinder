@@ -143,8 +143,6 @@ from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc as \
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_iscsi as \
     cinder_volume_drivers_ibm_storwize_svc_storwizesvciscsi
 from cinder.volume.drivers import infinidat as cinder_volume_drivers_infinidat
-from cinder.volume.drivers.infortrend.raidcmd_cli import common_cli as \
-    cinder_volume_drivers_infortrend_raidcmd_cli_commoncli
 from cinder.volume.drivers.kaminario import kaminario_common as \
     cinder_volume_drivers_kaminario_kaminariocommon
 from cinder.volume.drivers.lenovo import lenovo_common as \
@@ -332,10 +330,6 @@ def list_opts():
                 cinder_volume_drivers_ibm_storwize_svc_storwizesvciscsi.
                 storwize_svc_iscsi_opts,
                 cinder_volume_drivers_infinidat.infinidat_opts,
-                cinder_volume_drivers_infortrend_raidcmd_cli_commoncli.
-                infortrend_esds_opts,
-                cinder_volume_drivers_infortrend_raidcmd_cli_commoncli.
-                infortrend_esds_extra_opts,
                 cinder_volume_drivers_kaminario_kaminariocommon.
                 kaminario_opts,
                 cinder_volume_drivers_lenovo_lenovocommon.common_opts,

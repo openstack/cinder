@@ -1276,12 +1276,6 @@ class XtremIOSnapshotsLimitExceeded(VolumeDriverException):
     message = _("Exceeded the limit of snapshots per volume")
 
 
-# Infortrend EonStor DS Driver
-class InfortrendCliException(VolumeDriverException):
-    message = _("Infortrend CLI exception: %(err)s Param: %(param)s "
-                "(Return Code: %(rc)s) (Output: %(out)s)")
-
-
 # DOTHILL drivers
 class DotHillInvalidBackend(VolumeDriverException):
     message = _("Backend doesn't exist (%(backend)s)")
