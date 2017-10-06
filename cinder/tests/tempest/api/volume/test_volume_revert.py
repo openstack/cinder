@@ -33,7 +33,7 @@ class VolumeRevertTests(volume_base.BaseVolumeTest):
         super(VolumeRevertTests, cls).setup_clients()
 
         manager = cinder_clients.Manager(cls.os_primary)
-        cls.volume_revert_client = manager.volume_revet_client
+        cls.volume_revert_client = manager.volume_revert_client
 
     def setUp(self):
         super(VolumeRevertTests, self).setUp()

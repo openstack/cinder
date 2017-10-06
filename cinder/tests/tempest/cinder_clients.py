@@ -36,5 +36,5 @@ class Manager(object):
         self.consistencygroups_adm_client = (
             consistencygroups_client.ConsistencyGroupsClient(auth_provider,
                                                              **params))
-        self.volume_revet_client = (
+        self.volume_revert_client = (
             volume_revert_client.VolumeRevertClient(auth_provider, **params))
