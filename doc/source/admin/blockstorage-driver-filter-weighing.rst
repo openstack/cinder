@@ -353,7 +353,7 @@ properties:
    volume_group = stack-volumes-lvmdriver-2
    volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
    volume_backend_name = lvmdriver-2
-   filter_function = "volumes.size < 5"
+   filter_function = "volume.size < 5"
    goodness_function = "(capabilities.total_volumes < 8) ? 100 : 50"
 
    [lvm-3]
