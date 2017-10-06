@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Dell EMC PS Driver stats report has been fixed, now reports the
+    `provisioned_capacity_gb` properly. Fixes bug 1719659.
