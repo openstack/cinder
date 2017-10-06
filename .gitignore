@@ -37,3 +37,4 @@ api-ref/build
 
 # Files created by releasenotes build
 releasenotes/build
+contrib/blockbox/.db_data
