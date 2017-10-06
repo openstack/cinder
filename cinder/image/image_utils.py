@@ -61,13 +61,15 @@ QEMU_IMG_LIMITS = processutils.ProcessLimits(
     address_space=1 * units.Gi)
 
 VALID_DISK_FORMATS = ('raw', 'vmdk', 'vdi', 'qcow2',
-                      'vhd', 'vhdx', 'parallels')
+                      'vhd', 'vhdx', 'ploop')
 
 QEMU_IMG_FORMAT_MAP = {
     # Convert formats of Glance images to how they are processed with qemu-img.
     'iso': 'raw',
     'vhd': 'vpc',
+    'ploop': 'parallels',
 }
+QEMU_IMG_FORMAT_MAP_INV = {v: k for k, v in QEMU_IMG_FORMAT_MAP.items()}
 
 
 def validate_disk_format(disk_format):
@@ -78,6 +80,12 @@ def fixup_disk_format(disk_format):
     """Return the format to be provided to qemu-img convert."""
 
     return QEMU_IMG_FORMAT_MAP.get(disk_format, disk_format)
+
+
+def from_qemu_img_disk_format(disk_format):
+    """Return the conventional format derived from qemu-img format."""
+
+    return QEMU_IMG_FORMAT_MAP_INV.get(disk_format, disk_format)
 
 
 def qemu_img_info(path, run_as_root=True):
@@ -467,14 +475,7 @@ def upload_volume(context, image_service, image_meta, volume_path,
                 reason=_("fmt=%(fmt)s backed by:%(backing_file)s")
                 % {'fmt': fmt, 'backing_file': backing_file})
 
-        out_format = image_meta['disk_format']
-        # qemu-img accepts 'vpc' as argument for 'vhd 'format and 'parallels'
-        # as argument for 'ploop'.
-        if out_format == 'vhd':
-            out_format = 'vpc'
-        if out_format == 'ploop':
-            out_format = 'parallels'
-
+        out_format = fixup_disk_format(image_meta['disk_format'])
         convert_image(volume_path, tmp, out_format,
                       run_as_root=run_as_root)
 

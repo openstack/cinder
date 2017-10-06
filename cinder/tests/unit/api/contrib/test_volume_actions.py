@@ -924,12 +924,12 @@ class VolumeImageActionsTest(test.TestCase):
                           body)
 
     @mock.patch.object(volume_api.API, "copy_volume_to_image")
-    def test_copy_volume_to_image_disk_format_parallels(self,
-                                                        mock_copy_to_image):
+    def test_copy_volume_to_image_disk_format_ploop(self,
+                                                    mock_copy_to_image):
         volume = utils.create_volume(self.context, metadata={'test': 'test'})
 
         img = {"container_format": 'bare',
-               "disk_format": 'parallels',
+               "disk_format": 'ploop',
                "image_name": 'image_name'}
         body = {"os-volume_upload_image": img}
         req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
