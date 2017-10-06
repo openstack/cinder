@@ -205,7 +205,10 @@ class HostCommands(object):
 class DbCommands(object):
     """Class for managing the database."""
 
-    online_migrations = ()
+    online_migrations = (
+        # Added in Queens
+        db.service_uuids_online_data_migration,
+    )
 
     def __init__(self):
         pass
@@ -250,13 +253,13 @@ class DbCommands(object):
                     "logs for more details."))
             sys.exit(1)
 
-    def _run_migration(self, ctxt, max_count, ignore_state):
+    def _run_migration(self, ctxt, max_count):
         ran = 0
         migrations = {}
         for migration_meth in self.online_migrations:
             count = max_count - ran
             try:
-                found, done = migration_meth(ctxt, count, ignore_state)
+                found, done = migration_meth(ctxt, count)
             except Exception:
                 print(_("Error attempting to run %(method)s") %
                       {'method': migration_meth.__name__})
@@ -283,11 +286,7 @@ class DbCommands(object):
 
     @args('--max_count', metavar='<number>', dest='max_count', type=int,
           help='Maximum number of objects to consider.')
-    @args('--ignore_state', action='store_true', dest='ignore_state',
-          help='Force records to migrate even if another operation is '
-               'performed on them. This may be dangerous, please refer to '
-               'release notes for more information.')
-    def online_data_migrations(self, max_count=None, ignore_state=False):
+    def online_data_migrations(self, max_count=None):
         """Perform online data migrations for the release in batches."""
         ctxt = context.get_admin_context()
         if max_count is not None:
@@ -303,19 +302,18 @@ class DbCommands(object):
         ran = None
         migration_info = {}
         while ran is None or ran != 0:
-            migrations = self._run_migration(ctxt, max_count, ignore_state)
+            migrations = self._run_migration(ctxt, max_count)
             migration_info.update(migrations)
             ran = sum([done for found, done, remaining in migrations.values()])
             if not unlimited:
                 break
         headers = ["{}".format(_('Migration')),
-                   "{}".format(_('Found')),
-                   "{}".format(_('Done')),
-                   "{}".format(_('Remaining'))]
+                   "{}".format(_('Total Needed')),
+                   "{}".format(_('Completed')), ]
         t = prettytable.PrettyTable(headers)
         for name in sorted(migration_info.keys()):
             info = migration_info[name]
-            t.add_row([name, info[0], info[1], info[2]])
+            t.add_row([name, info[0], info[1]])
         print(t)
 
         sys.exit(1 if ran else 0)

@@ -62,7 +62,8 @@ class TestService(test_objects.BaseObjectsTestCase):
         service = objects.Service(context=self.context)
         service.create()
         self.assertEqual(db_service['id'], service.id)
-        service_create.assert_called_once_with(self.context, {})
+        service_create.assert_called_once_with(self.context,
+                                               {'uuid': mock.ANY})
 
     @mock.patch('cinder.db.service_update')
     def test_save(self, service_update):

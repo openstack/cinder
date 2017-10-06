@@ -43,7 +43,7 @@ object_data = {
     'QualityOfServiceSpecs': '1.0-0b212e0a86ee99092229874e03207fe8',
     'QualityOfServiceSpecsList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'RequestSpec': '1.1-b0bd1a28d191d75648901fa853e8a733',
-    'Service': '1.4-a6727ccda6d4043f5e38e75c7c518c7f',
+    'Service': '1.5-dfa465098dd9017bad825cab55eacc93',
     'ServiceList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'Snapshot': '1.5-ac1cdbd5b89588f6a8f44afdf6b8b201',
     'SnapshotList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',

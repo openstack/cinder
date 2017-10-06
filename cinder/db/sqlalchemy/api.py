@@ -32,6 +32,7 @@ import uuid
 from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_db import options
+from oslo_db.sqlalchemy import enginefacade
 from oslo_db.sqlalchemy import session as db_session
 from oslo_log import log as logging
 from oslo_utils import importutils
@@ -556,6 +557,16 @@ def service_get_all(context, backend_match_level=None, **filters):
 
 
 @require_admin_context
+def service_get_by_uuid(context, service_uuid):
+    query = model_query(context, models.Service).fitler_by(uuid=service_uuid)
+    result = query.first()
+    if not result:
+        raise exception.ServiceNotFound(service_id=service_uuid)
+
+    return result
+
+
+@require_admin_context
 def service_create(context, values):
     if not values.get('uuid'):
         values['uuid'] = str(uuid.uuid4())
@@ -585,6 +596,27 @@ def service_update(context, service_id, values):
         raise exception.ServiceNotFound(service_id=service_id)
 
 
+@enginefacade.writer
+def service_uuids_online_data_migration(context, max_count):
+    from cinder.objects import service
+
+    total = 0
+    updated = 0
+
+    db_services = model_query(context, models.Service).filter_by(
+        uuid=None).limit(max_count)
+    for db_service in db_services:
+        total += 1
+
+        # The conversion in the Service object code
+        # will generate a UUID and save it for us.
+        service_obj = service.Service._from_db_object(
+            context, service.Service(), db_service)
+        if 'uuid' in service_obj:
+            updated += 1
+    return total, updated
+
+
 ###################
 
 
@@ -604,6 +636,7 @@ def is_backend_frozen(context, host, cluster_name):
 
 
 ###################
+
 
 def _cluster_query(context, is_up=None, get_services=False,
                    services_summary=False, read_deleted='no',
