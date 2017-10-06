@@ -15,6 +15,7 @@
 import collections
 import copy
 import os
+import re
 
 import ddt
 import mock
@@ -27,6 +28,7 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder import utils
 from cinder.volume.drivers import remotefs
+from cinder.volume import utils as volume_utils
 
 
 @ddt.ddt
@@ -425,7 +427,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                 expected_basename_calls.append(mock.call(backing_file))
             mock_basename.assert_has_calls(expected_basename_calls)
         else:
-            self.assertRaises(exception.RemoteFSException,
+            self.assertRaises(exception.RemoteFSInvalidBackingFile,
                               self._driver._qemu_img_info_base,
                               mock.sentinel.image_path,
                               fake_vol_name, basedir)
@@ -797,3 +799,332 @@ class RevertToSnapshotMixinTestCase(test.TestCase):
             self._fake_snapshot.volume)
         mock_read_info_file.assert_called_once_with(
             mock_local_path_vol_info.return_value)
+
+
+@ddt.ddt
+class RemoteFSManageableVolumesTestCase(test.TestCase):
+    def setUp(self):
+        super(RemoteFSManageableVolumesTestCase, self).setUp()
+        # We'll instantiate this directly for now.
+        self._driver = remotefs.RemoteFSManageableVolumesMixin()
+
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_mount_point_for_share', create=True)
+    @mock.patch.object(os.path, 'isfile')
+    def test_get_manageable_vol_location_invalid(self, mock_is_file,
+                                                 mock_get_mount_point):
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self._driver._get_manageable_vol_location,
+                          {})
+
+        self._driver._mounted_shares = []
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self._driver._get_manageable_vol_location,
+                          {'source-name': '//hots/share/img'})
+
+        self._driver._mounted_shares = ['//host/share']
+        mock_get_mount_point.return_value = '/fake_mountpoint'
+        mock_is_file.return_value = False
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self._driver._get_manageable_vol_location,
+                          {'source-name': '//host/share/subdir/img'})
+        mock_is_file.assert_any_call(
+            os.path.normpath('/fake_mountpoint/subdir/img'))
+
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_mount_point_for_share', create=True)
+    @mock.patch.object(os.path, 'isfile')
+    def test_get_manageable_vol_location(self, mock_is_file,
+                                         mock_get_mount_point):
+        self._driver._mounted_shares = [
+            '//host/share2/subdir',
+            '//host/share/subdir',
+            'host:/dir/subdir'
+        ]
+
+        mock_get_mount_point.return_value = '/fake_mountpoint'
+        mock_is_file.return_value = True
+
+        location_info = self._driver._get_manageable_vol_location(
+            {'source-name': 'host:/dir/subdir/import/img'})
+
+        exp_location_info = {
+            'share': 'host:/dir/subdir',
+            'mountpoint': mock_get_mount_point.return_value,
+            'vol_local_path': '/fake_mountpoint/import/img',
+            'vol_remote_path': 'host:/dir/subdir/import/img'
+        }
+        self.assertEqual(exp_location_info, location_info)
+
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_mount_point_for_share', create=True)
+    @mock.patch.object(os.path, 'isfile')
+    @mock.patch.object(os.path, 'normpath', lambda x: x.replace('/', '\\'))
+    @mock.patch.object(os.path, 'normcase', lambda x: x.lower())
+    @mock.patch.object(os.path, 'join', lambda *args: '\\'.join(args))
+    @mock.patch.object(os.path, 'sep', '\\')
+    def test_get_manageable_vol_location_win32(self, mock_is_file,
+                                               mock_get_mount_point):
+        self._driver._mounted_shares = [
+            '//host/share2/subdir',
+            '//host/share/subdir',
+            'host:/dir/subdir'
+        ]
+
+        mock_get_mount_point.return_value = r'c:\fake_mountpoint'
+        mock_is_file.return_value = True
+
+        location_info = self._driver._get_manageable_vol_location(
+            {'source-name': '//Host/share/Subdir/import/img'})
+
+        exp_location_info = {
+            'share': '//host/share/subdir',
+            'mountpoint': mock_get_mount_point.return_value,
+            'vol_local_path': r'c:\fake_mountpoint\import\img',
+            'vol_remote_path': r'\\host\share\subdir\import\img'
+        }
+        self.assertEqual(exp_location_info, location_info)
+
+    def test_get_managed_vol_exp_path(self):
+        fake_vol = fake_volume.fake_volume_obj(mock.sentinel.context)
+        vol_location = dict(mountpoint='fake-mountpoint')
+
+        exp_path = os.path.join(vol_location['mountpoint'],
+                                fake_vol.name)
+        ret_val = self._driver._get_managed_vol_expected_path(
+            fake_vol, vol_location)
+        self.assertEqual(exp_path, ret_val)
+
+    @ddt.data(
+        {'already_managed': True},
+        {'qemu_side_eff': exception.RemoteFSInvalidBackingFile},
+        {'qemu_side_eff': Exception},
+        {'qemu_side_eff': [mock.Mock(backing_file=None,
+                                     file_format='fakefmt')]},
+        {'qemu_side_eff': [mock.Mock(backing_file='backing_file',
+                                     file_format='raw')]}
+    )
+    @ddt.unpack
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_qemu_img_info', create=True)
+    def test_check_unmanageable_volume(self, mock_qemu_info,
+                                       qemu_side_eff=None,
+                                       already_managed=False):
+        mock_qemu_info.side_effect = qemu_side_eff
+
+        manageable = self._driver._is_volume_manageable(
+            mock.sentinel.volume_path,
+            already_managed=already_managed)[0]
+        self.assertFalse(manageable)
+
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_qemu_img_info', create=True)
+    def test_check_manageable_volume(self, mock_qemu_info,
+                                     qemu_side_eff=None,
+                                     already_managed=False):
+        mock_qemu_info.return_value = mock.Mock(
+            backing_file=None,
+            file_format='raw')
+
+        manageable = self._driver._is_volume_manageable(
+            mock.sentinel.volume_path)[0]
+        self.assertTrue(manageable)
+
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_manageable_vol_location')
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_is_volume_manageable')
+    def test_manage_existing_unmanageable(self, mock_check_manageable,
+                                          mock_get_location):
+        fake_vol = fake_volume.fake_volume_obj(mock.sentinel.context)
+
+        mock_get_location.return_value = dict(
+            vol_local_path=mock.sentinel.local_path)
+        mock_check_manageable.return_value = False, mock.sentinel.resason
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self._driver.manage_existing,
+                          fake_vol,
+                          mock.sentinel.existing_ref)
+        mock_get_location.assert_called_once_with(mock.sentinel.existing_ref)
+        mock_check_manageable.assert_called_once_with(
+            mock.sentinel.local_path)
+
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_manageable_vol_location')
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_is_volume_manageable')
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_set_rw_permissions', create=True)
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_managed_vol_expected_path')
+    @mock.patch.object(os, 'rename')
+    def test_manage_existing_manageable(self, mock_rename,
+                                        mock_get_exp_path,
+                                        mock_set_perm,
+                                        mock_check_manageable,
+                                        mock_get_location):
+        fake_vol = fake_volume.fake_volume_obj(mock.sentinel.context)
+
+        mock_get_location.return_value = dict(
+            vol_local_path=mock.sentinel.local_path,
+            share=mock.sentinel.share)
+        mock_check_manageable.return_value = True, None
+
+        exp_ret_val = {'provider_location': mock.sentinel.share}
+        ret_val = self._driver.manage_existing(fake_vol,
+                                               mock.sentinel.existing_ref)
+        self.assertEqual(exp_ret_val, ret_val)
+
+        mock_get_exp_path.assert_called_once_with(
+            fake_vol, mock_get_location.return_value)
+        mock_set_perm.assert_called_once_with(mock.sentinel.local_path)
+        mock_rename.assert_called_once_with(mock.sentinel.local_path,
+                                            mock_get_exp_path.return_value)
+
+    @mock.patch.object(image_utils, 'qemu_img_info')
+    def _get_rounded_manageable_image_size(self, mock_qemu_info):
+        mock_qemu_info.return_value.virtual_size = 1 << 30 + 1
+        exp_rounded_size_gb = 2
+
+        size = self._driver._get_rounded_manageable_image_size(
+            mock.sentinel.image_path)
+        self.assertEqual(exp_rounded_size_gb, size)
+
+        mock_qemu_info.assert_called_once_with(mock.sentinel.image_path)
+
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_manageable_vol_location')
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_rounded_manageable_image_size')
+    def test_manage_existing_get_size(self, mock_get_size,
+                                      mock_get_location):
+        mock_get_location.return_value = dict(
+            vol_local_path=mock.sentinel.image_path)
+
+        size = self._driver.manage_existing_get_size(
+            mock.sentinel.volume,
+            mock.sentinel.existing_ref)
+        self.assertEqual(mock_get_size.return_value, size)
+
+        mock_get_location.assert_called_once_with(mock.sentinel.existing_ref)
+        mock_get_size.assert_called_once_with(mock.sentinel.image_path)
+
+    @ddt.data(
+        {},
+        {'managed_volume': mock.Mock(size=mock.sentinel.sz),
+         'exp_size': mock.sentinel.sz,
+         'manageable_check_ret_val': False,
+         'exp_manageable': False},
+        {'exp_size': None,
+         'get_size_side_effect': Exception,
+         'exp_manageable': False})
+    @ddt.unpack
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_is_volume_manageable')
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_rounded_manageable_image_size')
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_mount_point_for_share', create=True)
+    def test_get_manageable_volume(
+            self, mock_get_mount_point,
+            mock_get_size, mock_check_manageable,
+            managed_volume=None,
+            get_size_side_effect=(mock.sentinel.size_gb, ),
+            manageable_check_ret_val=True,
+            exp_size=mock.sentinel.size_gb,
+            exp_manageable=True):
+        share = '//host/share'
+        mountpoint = '/fake-mountpoint'
+        volume_path = '/fake-mountpoint/subdir/vol'
+
+        exp_ret_val = {
+            'reference': {'source-name': '//host/share/subdir/vol'},
+            'size': exp_size,
+            'safe_to_manage': exp_manageable,
+            'reason_not_safe': mock.ANY,
+            'cinder_id': managed_volume.id if managed_volume else None,
+            'extra_info': None,
+        }
+
+        mock_get_size.side_effect = get_size_side_effect
+        mock_check_manageable.return_value = (manageable_check_ret_val,
+                                              mock.sentinel.reason)
+        mock_get_mount_point.return_value = mountpoint
+
+        ret_val = self._driver._get_manageable_volume(
+            share, volume_path, managed_volume)
+        self.assertEqual(exp_ret_val, ret_val)
+
+        mock_check_manageable.assert_called_once_with(
+            volume_path, already_managed=managed_volume is not None)
+        mock_get_mount_point.assert_called_once_with(share)
+        if managed_volume:
+            mock_get_size.assert_not_called()
+        else:
+            mock_get_size.assert_called_once_with(volume_path)
+
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_mount_point_for_share', create=True)
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_manageable_volume')
+    @mock.patch.object(os, 'walk')
+    @mock.patch.object(os.path, 'join', lambda *args: '/'.join(args))
+    def test_get_share_manageable_volumes(
+            self, mock_walk, mock_get_manageable_volume,
+            mock_get_mount_point):
+        mount_path = '/fake-mountpoint'
+        mock_walk.return_value = [
+            [mount_path, ['subdir'], ['volume-1.vhdx']],
+            ['/fake-mountpoint/subdir', [], ['volume-0', 'volume-3.vhdx']]]
+
+        mock_get_manageable_volume.side_effect = [
+            Exception,
+            mock.sentinel.managed_volume]
+
+        self._driver._MANAGEABLE_IMAGE_RE = re.compile('.*\.(?:vhdx)$')
+
+        managed_volumes = {'volume-1': mock.sentinel.vol1}
+
+        exp_manageable = [mock.sentinel.managed_volume]
+        manageable_volumes = self._driver._get_share_manageable_volumes(
+            mock.sentinel.share,
+            managed_volumes)
+
+        self.assertEqual(exp_manageable, manageable_volumes)
+
+        mock_get_manageable_volume.assert_has_calls(
+            [mock.call(mock.sentinel.share,
+                       '/fake-mountpoint/volume-1.vhdx',
+                       mock.sentinel.vol1),
+             mock.call(mock.sentinel.share,
+                       '/fake-mountpoint/subdir/volume-3.vhdx',
+                       None)])
+
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       '_get_share_manageable_volumes')
+    @mock.patch.object(volume_utils, 'paginate_entries_list')
+    def test_get_manageable_volumes(self, mock_paginate, mock_get_share_vols):
+        fake_vol = fake_volume.fake_volume_obj(mock.sentinel.context)
+        self._driver._mounted_shares = [mock.sentinel.share0,
+                                        mock.sentinel.share1]
+
+        mock_get_share_vols.side_effect = [
+            Exception, [mock.sentinel.manageable_vol]]
+
+        pagination_args = [
+            mock.sentinel.marker, mock.sentinel.limit,
+            mock.sentinel.offset, mock.sentinel.sort_keys,
+            mock.sentinel.sort_dirs]
+        ret_val = self._driver.get_manageable_volumes(
+            [fake_vol], *pagination_args)
+
+        self.assertEqual(mock_paginate.return_value, ret_val)
+        mock_paginate.assert_called_once_with(
+            [mock.sentinel.manageable_vol], *pagination_args)
+
+        exp_managed_vols_dict = {fake_vol.name: fake_vol}
+        mock_get_share_vols.assert_has_calls(
+            [mock.call(share, exp_managed_vols_dict)
+             for share in self._driver._mounted_shares])
