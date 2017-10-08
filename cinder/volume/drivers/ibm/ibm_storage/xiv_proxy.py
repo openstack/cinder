@@ -105,7 +105,7 @@ class XIVProxy(proxy.IBMStorageProxy):
 
     Supports IBM XIV, Spectrum Accelerate, A9000, A9000R
     Version: 2.1.0
-    Required pyxcli version: 1.1.4
+    Required pyxcli version: 1.1.5
 
     .. code:: text
 
@@ -600,7 +600,11 @@ class XIVProxy(proxy.IBMStorageProxy):
 
             # mirror entire group
             group_name = self._cg_name_from_group(group)
-            self._create_consistencygroup_on_remote(context, group_name)
+            try:
+                self._create_consistencygroup_on_remote(context, group_name)
+            except errors.CgNameExistsError:
+                LOG.debug("CG name %(cg)s exists, no need to open it on "
+                          "secondary backend.", {'cg': group_name})
             repl.GroupReplication(self).create_replication(group_name,
                                                            replication_info)
 
@@ -652,6 +656,13 @@ class XIVProxy(proxy.IBMStorageProxy):
                 # we need to unlock it for further use.
                 try:
                     self.ibm_storage_cli.cmd.vol_unlock(vol=volume.name)
+                    self.ibm_storage_remote_cli.cmd.vol_unlock(
+                        vol=volume.name)
+                    self.ibm_storage_remote_cli.cmd.cg_remove_vol(
+                        vol=volume.name)
+                except errors.VolumeBadNameError:
+                    LOG.debug("Failed to delete vol %(vol)s - "
+                              "ignoring.", {'vol': volume.name})
                 except errors.XCLIError as e:
                     details = self._get_code_and_status_or_message(e)
                     msg = ('Failed to unlock volumes %(details)s' %
@@ -671,6 +682,17 @@ class XIVProxy(proxy.IBMStorageProxy):
 
             # update status
             for volume in volumes:
+                try:
+                    self.ibm_storage_cli.cmd.vol_unlock(vol=volume.name)
+                    self.ibm_storage_remote_cli.cmd.vol_unlock(
+                        vol=volume.name)
+                except errors.XCLIError as e:
+                    details = self._get_code_and_status_or_message(e)
+                    msg = (_('Failed to unlock volumes %(details)s'),
+                           {'details': details})
+                    LOG.error(msg)
+                    raise self.meta['exception'].VolumeBackendAPIException(
+                        data=msg)
                 updated_volumes.append(
                     {'id': volume['id'],
                      'replication_status': fields.ReplicationStatus.DISABLED})
