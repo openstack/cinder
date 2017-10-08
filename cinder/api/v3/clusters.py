@@ -19,6 +19,7 @@ from cinder.api.v3.views import clusters as clusters_view
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder.policies import clusters as policy
 from cinder import utils
 
 
@@ -28,13 +29,12 @@ class ClusterController(wsgi.Controller):
                          'frozen', 'active_backend_id'}
     replication_fields = {'replication_status', 'frozen', 'active_backend_id'}
 
-    policy_checker = wsgi.Controller.get_policy_checker('clusters')
-
     @wsgi.Controller.api_version(mv.CLUSTER_SUPPORT)
     def show(self, req, id, binary='cinder-volume'):
         """Return data for a given cluster name with optional binary."""
         # Let the wsgi middleware convert NotAuthorized exceptions
-        context = self.policy_checker(req, 'get')
+        context = req.environ['cinder.context']
+        context.authorize(policy.GET_POLICY)
         # Let the wsgi middleware convert NotFound exceptions
         cluster = objects.Cluster.get_by_id(context, None, binary=binary,
                                             name=id, services_summary=True)
@@ -60,7 +60,8 @@ class ClusterController(wsgi.Controller):
 
     def _get_clusters(self, req, detail):
         # Let the wsgi middleware convert NotAuthorized exceptions
-        context = self.policy_checker(req, 'get_all')
+        context = req.environ['cinder.context']
+        context.authorize(policy.GET_ALL_POLICY)
         replication_data = req.api_version_request.matches(
             mv.REPLICATION_CLUSTER)
         filters = dict(req.GET)
@@ -93,7 +94,8 @@ class ClusterController(wsgi.Controller):
         # update endpoint API.
 
         # Let the wsgi middleware convert NotAuthorized exceptions
-        context = self.policy_checker(req, 'update')
+        context = req.environ['cinder.context']
+        context.authorize(policy.UPDATE_POLICY)
 
         if id not in ('enable', 'disable'):
             raise exception.NotFound(message=_("Unknown action"))
