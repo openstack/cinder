@@ -1,5 +1,4 @@
 {
-    "context_is_admin": "role:admin",
     "admin_api": "is_admin:True",
     "admin_or_owner":  "is_admin:True or project_id:%(project_id)s",
 
@@ -113,9 +112,6 @@
     "backup:update": "rule:admin_or_owner",
     "backup:backup_project_attribute": "rule:admin_api",
 
-    "volume:attachment_create": "",
-    "volume:attachment_update": "rule:admin_or_owner",
-    "volume:attachment_delete": "rule:admin_or_owner",
 
     "consistencygroup:create" : "",
     "consistencygroup:delete": "",

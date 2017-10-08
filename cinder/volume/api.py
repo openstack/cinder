@@ -43,6 +43,7 @@ from cinder import keymgr as key_manager
 from cinder import objects
 from cinder.objects import base as objects_base
 from cinder.objects import fields
+from cinder.policies import attachments as attachment_policy
 import cinder.policy
 from cinder import quota
 from cinder import quota_utils
@@ -1986,13 +1987,13 @@ class API(base.Base):
         db_ref = self.db.volume_attach(ctxt.elevated(), values)
         return objects.VolumeAttachment.get_by_id(ctxt, db_ref['id'])
 
-    @wrap_check_policy
     def attachment_create(self,
                           ctxt,
                           volume_ref,
                           instance_uuid,
                           connector=None):
         """Create an attachment record for the specified volume."""
+        ctxt.authorize(attachment_policy.CREATE_POLICY, target_obj=volume_ref)
         connection_info = {}
         attachment_ref = self._attachment_reserve(ctxt,
                                                   volume_ref,
@@ -2007,7 +2008,6 @@ class API(base.Base):
         attachment_ref.save()
         return attachment_ref
 
-    @wrap_check_policy
     def attachment_update(self, ctxt, attachment_ref, connector):
         """Update an existing attachment record."""
         # Valid items to update (connector includes mode and mountpoint):
@@ -2019,6 +2019,8 @@ class API(base.Base):
         # We fetch the volume object and pass it to the rpc call because we
         # need to direct this to the correct host/backend
 
+        ctxt.authorize(attachment_policy.UPDATE_POLICY,
+                       target_obj=attachment_ref)
         volume_ref = objects.Volume.get_by_id(ctxt, attachment_ref.volume_id)
         connection_info = (
             self.volume_rpcapi.attachment_update(ctxt,
@@ -2029,8 +2031,9 @@ class API(base.Base):
         attachment_ref.save()
         return attachment_ref
 
-    @wrap_check_policy
     def attachment_delete(self, ctxt, attachment):
+        ctxt.authorize(attachment_policy.DELETE_POLICY,
+                       target_obj=attachment)
         volume = objects.Volume.get_by_id(ctxt, attachment.volume_id)
         if attachment.attach_status == 'reserved':
             self.db.volume_detached(ctxt.elevated(), attachment.volume_id,
