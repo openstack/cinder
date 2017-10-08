@@ -67,12 +67,13 @@ Response Example
    :language: javascript
 
 
-Update extra specs for volume type
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Create or update extra specs for volume type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  PUT /v3/{project_id}/types/{volume_type_id}
+.. rest_method::  POST /v3/{project_id}/types/{volume_type_id}/extra_specs
 
-Updates the extra specifications that are assigned to a volume type.
+Adds new extra specifications to a volume type, or updates the extra
+specifications that are assigned to a volume type.
 
 
 Normal response codes: 200
@@ -85,13 +86,12 @@ Request
 
    - project_id: project_id_path
    - volume_type_id: volume_type_id
-   - volume_type: volume_type_1
    - extra_specs: extra_specs
 
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-type-update-request.json
+.. literalinclude:: ./samples/volume-type-extra-specs-create-update-request.json
    :language: javascript
 
 
@@ -101,17 +101,13 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type: volume_type_1
-   - is_public: is_public
    - extra_specs: extra_specs
-   - description: description_15
-   - name: name_7
 
 
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-type-show-response.json
+.. literalinclude:: ./samples/volume-type-extra-specs-create-update-response.json
    :language: javascript
 
 
