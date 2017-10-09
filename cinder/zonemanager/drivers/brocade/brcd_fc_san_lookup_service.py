@@ -33,10 +33,11 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
     Version History:
         1.0.0 - Initial version
         1.1 - Add support to use config option for switch southbound protocol
+        1.2 - Fix open sessions issue
 
     """
 
-    VERSION = "1.1"
+    VERSION = "1.2"
 
     def __init__(self, **kwargs):
         """Initializing the client."""
@@ -125,6 +126,9 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
                             ) % {'fabric': fabric_ip, 'err': e}
                     LOG.error(msg)
                     raise exception.FCSanLookupServiceException(message=msg)
+                finally:
+                    if conn:
+                        conn.cleanup()
 
                 LOG.debug("Lookup service:nsinfo-%s", nsinfo)
                 LOG.debug("Lookup service:initiator list from "
