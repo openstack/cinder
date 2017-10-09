@@ -139,10 +139,11 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
         1.4.3 - Report total_volumes in volume stats
         1.4.4 - Fixed over-subscription ratio calculation
         1.4.5 - Optimize volume stats information parsing
+        1.4.6 - Extend volume with no-snap option
 
     """
 
-    VERSION = "1.4.5"
+    VERSION = "1.4.6"
 
     # ThirdPartySytems wiki page
     CI_WIKI_NAME = "Dell_Storage_CI"
@@ -613,7 +614,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
         """Extend the size of the volume."""
         try:
             self._eql_execute('volume', 'select', volume['name'],
-                              'size', "%sG" % new_size)
+                              'size', "%sG" % new_size, 'no-snap')
             LOG.info('Volume %(name)s resized from '
                      '%(current_size)sGB to %(new_size)sGB.',
                      {'name': volume['name'],
