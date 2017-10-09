@@ -73,6 +73,10 @@ class Versions(openstack.APIRouter):
                        action='all')
         mapper.redirect('', '/')
 
+    def _setup_ext_routes(self, mapper, ext_mgr):
+        # NOTE(mriedem): The version router doesn't care about extensions.
+        pass
+
     # NOTE (jose-castro-leon): Avoid to register extensions
     # on the versions router, the versions router does not offer
     # resources to be extended.
