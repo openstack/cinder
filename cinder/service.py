@@ -36,7 +36,6 @@ profiler = importutils.try_import('osprofiler.profiler')
 profiler_opts = importutils.try_import('osprofiler.opts')
 
 
-from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants
 from cinder import context
 from cinder import coordination
@@ -46,9 +45,7 @@ from cinder import objects
 from cinder.objects import base as objects_base
 from cinder.objects import fields
 from cinder import rpc
-from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
-from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as vol_utils
 
 
@@ -157,18 +154,11 @@ class Service(service.Service):
         # result in us using None (if it's the first time the service is run)
         # or an old version (if this is a normal upgrade of a single service).
         ctxt = context.get_admin_context()
-        self.is_upgrading_to_n = self.is_svc_upgrading_to_n(binary)
         try:
             service_ref = objects.Service.get_by_args(ctxt, host, binary)
             service_ref.rpc_current_version = manager_class.RPC_API_VERSION
             obj_version = objects_base.OBJ_VERSIONS.get_current()
             service_ref.object_current_version = obj_version
-            # TODO(geguileo): In O we can remove the service upgrading part on
-            # the next equation, because by then all our services will be
-            # properly setting the cluster during volume migrations since
-            # they'll have the new Volume ORM model.  But until then we can
-            # only set the cluster in the DB and pass added_to_cluster to
-            # init_host when we have completed the rolling upgrade from M to N.
 
             # added_to_cluster attribute marks when we consider that we have
             # just added a host to a cluster so we can include resources into
@@ -177,12 +167,9 @@ class Service(service.Service):
             # configuration has a cluster value.  We don't want to do anything
             # automatic if the cluster is changed, in those cases we'll want
             # to use cinder manage command and to it manually.
-            self.added_to_cluster = (not service_ref.cluster_name and cluster
-                                     and not self.is_upgrading_to_n)
+            self.added_to_cluster = (not service_ref.cluster_name and cluster)
 
-            # TODO(geguileo): In O - Remove self.is_upgrading_to_n part
-            if (service_ref.cluster_name != cluster and
-                    not self.is_upgrading_to_n):
+            if service_ref.cluster_name != cluster:
                 LOG.info('This service has been moved from cluster '
                          '%(cluster_svc)s to %(cluster_cfg)s. Resources '
                          'will %(opt_no)sbe moved to the new cluster',
@@ -201,10 +188,9 @@ class Service(service.Service):
             # We don't want to include cluster information on the service or
             # create the cluster entry if we are upgrading.
             self._create_service_ref(ctxt, manager_class.RPC_API_VERSION)
-            # TODO(geguileo): In O set added_to_cluster to True
             # We don't want to include resources in the cluster during the
             # start while we are still doing the rolling upgrade.
-            self.added_to_cluster = not self.is_upgrading_to_n
+            self.added_to_cluster = True
 
         self.report_interval = report_interval
         self.periodic_interval = periodic_interval
@@ -217,17 +203,6 @@ class Service(service.Service):
         self.rpcserver = None
         self.backend_rpcserver = None
         self.cluster_rpcserver = None
-
-    # TODO(geguileo): Remove method in O since it will no longer be used.
-    @staticmethod
-    def is_svc_upgrading_to_n(binary):
-        """Given an RPC API class determine if the service is upgrading."""
-        rpcapis = {'cinder-scheduler': scheduler_rpcapi.SchedulerAPI,
-                   'cinder-volume': volume_rpcapi.VolumeAPI,
-                   'cinder-backup': backup_rpcapi.BackupAPI}
-        rpc_api = rpcapis[binary]
-        # If we are pinned to 1.3, then we are upgrading from M to N
-        return rpc_api.determine_obj_version_cap() == '1.3'
 
     def start(self):
         version_string = version.version_string()
@@ -268,8 +243,7 @@ class Service(service.Service):
                                                     serializer)
             self.backend_rpcserver.start()
 
-        # TODO(geguileo): In O - Remove the is_svc_upgrading_to_n part
-        if self.cluster and not self.is_svc_upgrading_to_n(self.binary):
+        if self.cluster:
             LOG.info('Starting %(topic)s cluster %(cluster)s (version '
                      '%(version)s)',
                      {'topic': self.topic, 'version': version_string,
@@ -366,19 +340,15 @@ class Service(service.Service):
             'rpc_current_version': rpc_version or self.manager.RPC_API_VERSION,
             'object_current_version': objects_base.OBJ_VERSIONS.get_current(),
         }
-        # TODO(geguileo): In O unconditionally set cluster_name like above
         # If we are upgrading we have to ignore the cluster value
-        if not self.is_upgrading_to_n:
-            kwargs['cluster_name'] = self.cluster
+        kwargs['cluster_name'] = self.cluster
         service_ref = objects.Service(context=context, **kwargs)
         service_ref.create()
         Service.service_id = service_ref.id
-        # TODO(geguileo): In O unconditionally ensure that the cluster exists
-        if not self.is_upgrading_to_n:
-            self._ensure_cluster_exists(context, service_ref)
-            # If we have updated the service_ref with replication data from
-            # the cluster it will be saved.
-            service_ref.save()
+        self._ensure_cluster_exists(context, service_ref)
+        # If we have updated the service_ref with replication data from
+        # the cluster it will be saved.
+        service_ref.save()
 
     def __getattr__(self, key):
         manager = self.__dict__.get('manager', None)
