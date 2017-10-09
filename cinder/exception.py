@@ -1302,11 +1302,6 @@ class HNASConnError(VolumeDriverException):
     message = "%(message)s"
 
 
-# Tegile Storage drivers
-class TegileAPIException(VolumeBackendAPIException):
-    message = _("Unexpected response from Tegile IntelliFlash API")
-
-
 # NexentaStor driver exception
 class NexentaException(VolumeDriverException):
     message = "%(message)s"

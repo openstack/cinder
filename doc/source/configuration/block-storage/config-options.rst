@@ -31,5 +31,4 @@ These options can also be set in the ``cinder.conf`` file.
 .. include:: ../tables/cinder-scheduler.inc
 .. include:: ../tables/cinder-scst.inc
 .. include:: ../tables/cinder-storage.inc
-.. include:: ../tables/cinder-tegile.inc
 .. include:: ../tables/cinder-zones.inc
