@@ -25,7 +25,7 @@ These workflows are possible for a migration:
    .. note::
 
       While most back ends support this function, not all do. See the `driver
-      documentation <https://docs.openstack.org/ocata/config-reference/block-storage/volume-drivers.html>`__
+      documentation <https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-drivers.html>`__
       in the OpenStack Configuration Reference for more details.
 
 #. If the volume is attached to a VM instance, the Block Storage creates a

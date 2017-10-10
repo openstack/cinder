@@ -6,7 +6,7 @@ Install and configure the backup service
 Optionally, install and configure the backup service. For simplicity,
 this configuration uses the Block Storage node and the Object Storage
 (swift) driver, thus depending on the
-`Object Storage service <https://docs.openstack.org/project-install-guide/object-storage/ocata/>`_.
+`Object Storage service <https://docs.openstack.org/swift/latest/install/>`_.
 
 .. note::
 
