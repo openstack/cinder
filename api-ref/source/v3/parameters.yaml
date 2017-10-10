@@ -107,6 +107,12 @@ key_3:
   in: path
   required: true
   type: string
+key_4:
+  description: |
+    The key name for the extra spec that you want to remove.
+  in: path
+  required: true
+  type: string
 message_id:
   description: |
     The UUID of the message.

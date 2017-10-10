@@ -111,6 +111,27 @@ Response Example
    :language: javascript
 
 
+Delete extra spec for volume type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  DELETE /v3/{project_id}/types/{volume_type_id}/extra_specs/{key}
+
+Deletes the specific extra spec that assigned to a volume type.
+
+
+Normal response codes: 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_type_id: volume_type_id
+   - key: key_4
+
+
 Show volume type detail
 ~~~~~~~~~~~~~~~~~~~~~~~
 
