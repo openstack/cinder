@@ -39,9 +39,6 @@
     "volume:update_readonly_flag": "",
     "volume:retype": "",
     "volume:copy_volume_to_image": "",
-    "volume:failover_host": "rule:admin_api",
-    "volume:freeze_host": "rule:admin_api",
-    "volume:thaw_host": "rule:admin_api",
     "volume:revert_to_snapshot": "",
     "volume_extension:volume_admin_actions:reset_status": "rule:admin_api",
     "volume_extension:volume_admin_actions:force_delete": "rule:admin_api",
@@ -68,13 +65,11 @@
     "volume_extension:volume_host_attribute": "rule:admin_api",
     "volume_extension:volume_tenant_attribute": "rule:admin_api",
     "volume_extension:volume_mig_status_attribute": "rule:admin_api",
-    "volume_extension:hosts": "rule:admin_api",
     "volume_extension:services:index": "",
     "volume_extension:services:update" : "rule:admin_api",
     "volume_extension:volume_manage": "rule:admin_api",
     "volume_extension:volume_unmanage": "rule:admin_api",
     "volume_extension:list_manageable": "rule:admin_api",
-    "volume_extension:capabilities": "rule:admin_api",
 
     "limits_extension:used_limits": "",
 
@@ -115,8 +110,6 @@
     "group:enable_replication": "",
     "group:disable_replication": "",
     "group:failover_replication": "",
-    "group:list_replication_targets": "",
-
-    "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api",
+    "group:list_replication_targets": ""
 
 }

@@ -21,11 +21,8 @@ from cinder.api.views import capabilities as capabilities_view
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder.policies import capabilities as policy
 from cinder.volume import rpcapi
-
-
-def authorize(context, action_name):
-    extensions.extension_authorizer('volume', action_name)(context)
 
 
 class CapabilitiesController(wsgi.Controller):
@@ -43,7 +40,7 @@ class CapabilitiesController(wsgi.Controller):
     def show(self, req, id):
         """Return capabilities list of given backend."""
         context = req.environ['cinder.context']
-        authorize(context, 'capabilities')
+        context.authorize(policy.CAPABILITIES_POLICY)
         filters = {'host_or_cluster': id, 'binary': 'cinder-volume'}
         services = objects.ServiceList.get_all(context, filters)
         if not services:

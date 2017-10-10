@@ -47,8 +47,8 @@ class UsedLimitsTestCase(test.TestCase):
               (mv.LIMITS_ADMIN_FILTER, True),
               (mv.LIMITS_ADMIN_FILTER, False))
     @mock.patch('cinder.quota.QUOTAS.get_project_quotas')
-    @mock.patch('cinder.policy.enforce')
-    def test_used_limits(self, ver_project, _mock_policy_enforce,
+    @mock.patch('cinder.policy.authorize')
+    def test_used_limits(self, ver_project, _mock_policy_authorize,
                          _mock_get_project_quotas):
         version, has_project = ver_project
         fake_req = FakeRequest(fakes.FakeRequestContext(fake.USER_ID,
@@ -77,7 +77,7 @@ class UsedLimitsTestCase(test.TestCase):
 
         _mock_get_project_quotas.side_effect = get_project_quotas
         # allow user to access used limits
-        _mock_policy_enforce.return_value = None
+        _mock_policy_authorize.return_value = True
 
         self.controller.index(fake_req, res)
         abs_limits = res.obj['limits']['absolute']
@@ -111,7 +111,7 @@ class UsedLimitsTestCase(test.TestCase):
         res = wsgi.ResponseObject(obj)
 
         # unallow user to access used limits
-        _mock_policy_enforce.side_effect = exception.NotAuthorized
+        _mock_policy_authorize.side_effect = exception.NotAuthorized
 
         self.controller.index(fake_req, res)
         abs_limits = res.obj['limits']['absolute']

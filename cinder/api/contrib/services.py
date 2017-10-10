@@ -29,6 +29,7 @@ from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder.policies import services as policy
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
 from cinder import volume
@@ -38,7 +39,6 @@ from cinder.volume import rpcapi as volume_rpcapi
 CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
-authorize = extensions.extension_authorizer('volume', 'services')
 
 
 class ServiceController(wsgi.Controller):
@@ -61,7 +61,7 @@ class ServiceController(wsgi.Controller):
         Filter by host & service name.
         """
         context = req.environ['cinder.context']
-        authorize(context, action='index')
+        context.authorize(policy.GET_ALL_POLICY)
         detailed = self.ext_mgr.is_loaded('os-extended-services')
         now = timeutils.utcnow(with_timezone=True)
 
@@ -223,7 +223,7 @@ class ServiceController(wsgi.Controller):
         directly in this API layer.
         """
         context = req.environ['cinder.context']
-        authorize(context, action='update')
+        context.authorize(policy.UPDATE_POLICY)
 
         support_dynamic_log = req.api_version_request.matches(mv.LOG_LEVEL)
 
