@@ -719,15 +719,6 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
                           {objects.Backup.model.status: 'available',
                            objects.Snapshot.model.status: 'available'})
 
-    def test_conditional_update_not_multitable(self):
-        volume = self._create_volume()
-        with mock.patch('cinder.db.sqlalchemy.api._create_facade_lazily') as m:
-            res = volume.conditional_update(
-                {objects.Volume.model.status: 'deleting',
-                 objects.Volume.model.size: 12}, reflect_changes=False)
-            self.assertTrue(res)
-            self.assertTrue(m.called)
-
     @ddt.data(('available', 'error', None),
               ('error', 'rolling_back', [{'fake_filter': 'faked'}]))
     @ddt.unpack

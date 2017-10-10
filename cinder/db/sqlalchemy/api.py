@@ -25,7 +25,6 @@ import functools
 import itertools
 import re
 import sys
-import threading
 import time
 import uuid
 
@@ -33,7 +32,6 @@ from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_db import options
 from oslo_db.sqlalchemy import enginefacade
-from oslo_db.sqlalchemy import session as db_session
 from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import timeutils
@@ -69,42 +67,30 @@ LOG = logging.getLogger(__name__)
 
 options.set_defaults(CONF, connection='sqlite:///$state_path/cinder.sqlite')
 
-_LOCK = threading.Lock()
-_FACADE = None
+main_context_manager = enginefacade.transaction_context()
 
 
-def _create_facade_lazily():
-    global _LOCK
-    with _LOCK:
-        global _FACADE
-        if _FACADE is None:
-            _FACADE = db_session.EngineFacade(
-                CONF.database.connection,
-                **dict(CONF.database)
-            )
-
-            # NOTE(geguileo): To avoid a cyclical dependency we import the
-            # group here.  Dependency cycle is objects.base requires db.api,
-            # which requires db.sqlalchemy.api, which requires service which
-            # requires objects.base
-            CONF.import_group("profiler", "cinder.service")
-            if CONF.profiler.enabled:
-                if CONF.profiler.trace_sqlalchemy:
-                    osprofiler_sqlalchemy.add_tracing(sqlalchemy,
-                                                      _FACADE.get_engine(),
-                                                      "db")
-
-        return _FACADE
+def configure(conf):
+    main_context_manager.configure(**dict(conf.database))
+    # NOTE(geguileo): To avoid a cyclical dependency we import the
+    # group here.  Dependency cycle is objects.base requires db.api,
+    # which requires db.sqlalchemy.api, which requires service which
+    # requires objects.base
+    CONF.import_group("profiler", "cinder.service")
+    if CONF.profiler.enabled:
+        if CONF.profiler.trace_sqlalchemy:
+            lambda eng: osprofiler_sqlalchemy.add_tracing(sqlalchemy,
+                                                          eng, "db")
 
 
-def get_engine():
-    facade = _create_facade_lazily()
-    return facade.get_engine()
+def get_engine(use_slave=False):
+    return main_context_manager._factory.get_legacy_facade().get_engine(
+        use_slave=use_slave)
 
 
-def get_session(**kwargs):
-    facade = _create_facade_lazily()
-    return facade.get_session(**kwargs)
+def get_session(use_slave=False, **kwargs):
+    return main_context_manager._factory.get_legacy_facade().get_session(
+        use_slave=use_slave, **kwargs)
 
 
 def dispose_engine():
@@ -275,11 +261,12 @@ def handle_db_data_error(f):
 def model_query(context, model, *args, **kwargs):
     """Query helper that accounts for context's `read_deleted` field.
 
-    :param context: context to query under
-    :param session: if present, the session to use
+    :param context:      context to query under
+    :param model:        Model to query. Must be a subclass of ModelBase.
+    :param args:         Arguments to query. If None - model is used.
     :param read_deleted: if present, overrides context's read_deleted field.
     :param project_only: if present and context is user-type, then restrict
-            query to match the context's project_id.
+                         query to match the context's project_id.
     """
     session = kwargs.get('session') or get_session()
     read_deleted = kwargs.get('read_deleted') or context.read_deleted
