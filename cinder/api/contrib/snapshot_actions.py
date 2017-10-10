@@ -21,13 +21,8 @@ from cinder.api.openstack import wsgi
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
-
+from cinder.policies import snapshot_actions as policy
 LOG = logging.getLogger(__name__)
-
-
-def authorize(context, action_name):
-    action = 'snapshot_actions:%s' % action_name
-    extensions.extension_authorizer('snapshot', action)(context)
 
 
 class SnapshotActionsController(wsgi.Controller):
@@ -45,7 +40,7 @@ class SnapshotActionsController(wsgi.Controller):
         """
 
         context = req.environ['cinder.context']
-        authorize(context, 'update_snapshot_status')
+        context.authorize(policy.UPDATE_STATUS_POLICY)
 
         LOG.debug("body: %s", body)
         try:

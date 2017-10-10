@@ -18,7 +18,11 @@ import itertools
 from cinder.policies import attachments
 from cinder.policies import base
 from cinder.policies import clusters
+from cinder.policies import manageable_snapshots
 from cinder.policies import messages
+from cinder.policies import snapshot_actions
+from cinder.policies import snapshot_metadata
+from cinder.policies import snapshots
 from cinder.policies import workers
 
 
@@ -28,5 +32,9 @@ def list_rules():
         attachments.list_rules(),
         messages.list_rules(),
         clusters.list_rules(),
-        workers.list_rules()
+        workers.list_rules(),
+        snapshot_metadata.list_rules(),
+        snapshots.list_rules(),
+        snapshot_actions.list_rules(),
+        manageable_snapshots.list_rules(),
     )

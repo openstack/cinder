@@ -44,6 +44,8 @@ from cinder import objects
 from cinder.objects import base as objects_base
 from cinder.objects import fields
 from cinder.policies import attachments as attachment_policy
+from cinder.policies import snapshot_metadata as s_meta_policy
+from cinder.policies import snapshots as snapshot_policy
 import cinder.policy
 from cinder import quota
 from cinder import quota_utils
@@ -624,7 +626,7 @@ class API(base.Base):
         return volumes
 
     def get_snapshot(self, context, snapshot_id):
-        check_policy(context, 'get_snapshot')
+        context.authorize(snapshot_policy.GET_POLICY)
         snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
 
         # FIXME(jdg): The objects don't have the db name entries
@@ -643,7 +645,7 @@ class API(base.Base):
     def get_all_snapshots(self, context, search_opts=None, marker=None,
                           limit=None, sort_keys=None, sort_dirs=None,
                           offset=None):
-        check_policy(context, 'get_all_snapshots')
+        context.authorize(snapshot_policy.GET_ALL_POLICY)
 
         search_opts = search_opts or {}
 
@@ -827,7 +829,7 @@ class API(base.Base):
                               cgsnapshot_id,
                               commit_quota=True,
                               group_snapshot_id=None):
-        check_policy(context, 'create_snapshot', volume)
+        context.authorize(snapshot_policy.CREATE_POLICY)
 
         if not volume.host:
             msg = _("The snapshot cannot be created because volume has "
@@ -1031,9 +1033,10 @@ class API(base.Base):
                  resource=result)
         return result
 
-    @wrap_check_policy
     def delete_snapshot(self, context, snapshot, force=False,
                         unmanage_only=False):
+        context.authorize(snapshot_policy.DELETE_POLICY,
+                          target_obj=snapshot)
         if not unmanage_only:
             snapshot.assert_not_frozen()
 
@@ -1061,8 +1064,9 @@ class API(base.Base):
         LOG.info("Snapshot delete request issued successfully.",
                  resource=snapshot)
 
-    @wrap_check_policy
     def update_snapshot(self, context, snapshot, fields):
+        context.authorize(snapshot_policy.UPDATE_POLICY,
+                          target_obj=snapshot)
         snapshot.update(fields)
         snapshot.save()
 
@@ -1153,21 +1157,22 @@ class API(base.Base):
                  resource=volume)
         return db_meta
 
-    @wrap_check_policy
     def get_snapshot_metadata(self, context, snapshot):
         """Get all metadata associated with a snapshot."""
+        context.authorize(s_meta_policy.GET_POLICY,
+                          target_obj=snapshot)
         LOG.info("Get snapshot metadata completed successfully.",
                  resource=snapshot)
         return snapshot.metadata
 
-    @wrap_check_policy
     def delete_snapshot_metadata(self, context, snapshot, key):
         """Delete the given metadata item from a snapshot."""
+        context.authorize(s_meta_policy.DELETE_POLICY,
+                          target_obj=snapshot)
         snapshot.delete_metadata_key(context, key)
         LOG.info("Delete snapshot metadata completed successfully.",
                  resource=snapshot)
 
-    @wrap_check_policy
     def update_snapshot_metadata(self, context,
                                  snapshot, metadata,
                                  delete=False):
@@ -1177,6 +1182,8 @@ class API(base.Base):
         `metadata` argument will be deleted.
 
         """
+        context.authorize(s_meta_policy.UPDATE_POLICY,
+                          target_obj=snapshot)
         if delete:
             _metadata = metadata
         else:

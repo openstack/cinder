@@ -16,11 +16,7 @@
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-
-
-authorize = extensions.soft_extension_authorizer(
-    'volume',
-    'extended_snapshot_attributes')
+from cinder.policies import snapshots as policy
 
 
 class ExtendedSnapshotAttributesController(wsgi.Controller):
@@ -33,7 +29,7 @@ class ExtendedSnapshotAttributesController(wsgi.Controller):
     @wsgi.extends
     def show(self, req, resp_obj, id):
         context = req.environ['cinder.context']
-        if authorize(context):
+        if context.authorize(policy.EXTEND_ATTRIBUTE):
             # Attach our slave template to the response object
             snapshot = resp_obj.obj['snapshot']
             self._extend_snapshot(req, snapshot)
@@ -41,7 +37,7 @@ class ExtendedSnapshotAttributesController(wsgi.Controller):
     @wsgi.extends
     def detail(self, req, resp_obj):
         context = req.environ['cinder.context']
-        if authorize(context):
+        if context.authorize(policy.EXTEND_ATTRIBUTE):
             # Attach our slave template to the response object
             for snapshot in list(resp_obj.obj['snapshots']):
                 self._extend_snapshot(req, snapshot)
