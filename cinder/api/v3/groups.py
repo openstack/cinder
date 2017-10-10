@@ -117,10 +117,7 @@ class GroupsController(wsgi.Controller):
         context = req.environ['cinder.context']
         del_vol = False
         if body:
-            if not self.is_valid_body(body, 'delete'):
-                msg = _("Missing required element 'delete' in "
-                        "request body.")
-                raise exc.HTTPBadRequest(explanation=msg)
+            self.assert_valid_body(body, 'delete')
 
             grp_body = body['delete']
             try:
@@ -376,10 +373,7 @@ class GroupsController(wsgi.Controller):
         """Enables replications for a group."""
         context = req.environ['cinder.context']
         if body:
-            if not self.is_valid_body(body, 'enable_replication'):
-                msg = _("Missing required element 'enable_replication' in "
-                        "request body.")
-                raise exc.HTTPBadRequest(explanation=msg)
+            self.assert_valid_body(body, 'enable_replication')
 
         LOG.info('Enable replication group with id: %s.', id,
                  context=context)
@@ -400,10 +394,7 @@ class GroupsController(wsgi.Controller):
         """Disables replications for a group."""
         context = req.environ['cinder.context']
         if body:
-            if not self.is_valid_body(body, 'disable_replication'):
-                msg = _("Missing required element 'disable_replication' in "
-                        "request body.")
-                raise exc.HTTPBadRequest(explanation=msg)
+            self.assert_valid_body(body, 'disable_replication')
 
         LOG.info('Disable replication group with id: %s.', id,
                  context=context)
@@ -424,10 +415,7 @@ class GroupsController(wsgi.Controller):
         """Fails over replications for a group."""
         context = req.environ['cinder.context']
         if body:
-            if not self.is_valid_body(body, 'failover_replication'):
-                msg = _("Missing required element 'failover_replication' in "
-                        "request body.")
-                raise exc.HTTPBadRequest(explanation=msg)
+            self.assert_valid_body(body, 'failover_replication')
 
             grp_body = body['failover_replication']
             try:
@@ -460,10 +448,7 @@ class GroupsController(wsgi.Controller):
         """List replication targets for a group."""
         context = req.environ['cinder.context']
         if body:
-            if not self.is_valid_body(body, 'list_replication_targets'):
-                msg = _("Missing required element 'list_replication_targets' "
-                        "in request body.")
-                raise exc.HTTPBadRequest(explanation=msg)
+            self.assert_valid_body(body, 'list_replication_targets')
 
         LOG.info('List replication targets for group with id: %s.', id,
                  context=context)

@@ -1233,9 +1233,12 @@ class Controller(object):
         return decorator
 
     @staticmethod
-    def is_valid_body(body, entity_name):
+    def assert_valid_body(body, entity_name):
+        fail_msg = _(
+            "Missing required element '%s' in request body.") % entity_name
+
         if not (body and entity_name in body):
-            return False
+            raise webob.exc.HTTPBadRequest(explanation=fail_msg)
 
         def is_dict(d):
             try:
@@ -1245,22 +1248,7 @@ class Controller(object):
                 return False
 
         if not is_dict(body[entity_name]):
-            return False
-
-        return True
-
-    @staticmethod
-    def assert_valid_body(body, entity_name):
-        # NOTE: After v1 api is deprecated need to merge 'is_valid_body' and
-        #       'assert_valid_body' in to one method. Right now it is not
-        #       possible to modify 'is_valid_body' to raise exception because
-        #       in case of V1 api when 'is_valid_body' return False,
-        #       'HTTPUnprocessableEntity' exception is getting raised and in
-        #       V2 api 'HTTPBadRequest' exception is getting raised.
-        if not Controller.is_valid_body(body, entity_name):
-            raise webob.exc.HTTPBadRequest(
-                explanation=_("Missing required element '%s' in "
-                              "request body.") % entity_name)
+            raise webob.exc.HTTPBadRequest(explanation=fail_msg)
 
     @staticmethod
     def validate_name_and_description(body):

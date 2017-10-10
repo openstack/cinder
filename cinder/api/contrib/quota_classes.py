@@ -19,7 +19,6 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import db
 from cinder import exception
-from cinder.i18n import _
 from cinder import quota
 from cinder import utils
 
@@ -60,10 +59,7 @@ class QuotaClassSetsController(wsgi.Controller):
                                     min_length=1, max_length=255)
 
         quota_class = id
-        if not self.is_valid_body(body, 'quota_class_set'):
-            msg = (_("Missing required element quota_class_set"
-                     " in request body."))
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'quota_class_set')
 
         for key, value in body['quota_class_set'].items():
             if key in QUOTAS or key in GROUP_QUOTAS:
