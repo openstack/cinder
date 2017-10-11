@@ -1028,12 +1028,15 @@ class FlashSystemDriverTestCase(test.TestCase):
         vol2 = self._generate_vol_info(None)
         self.driver.create_cloned_volume(vol2, vol1)
 
-        # case 2: when size does not match
+        # case 2: destination larger than source
         vol1 = self._generate_vol_info(None, vol_size=10)
         vol2 = self._generate_vol_info(None, vol_size=20)
+        self.driver.create_cloned_volume(vol2, vol1)
+
+        # case 3: destination smaller than source
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.create_cloned_volume,
-                          vol2, vol1)
+                          vol1, vol2)
 
     def test_flashsystem_get_volume_stats(self):
         # case 1: good path
