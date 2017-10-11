@@ -632,7 +632,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 return {'source': (src_pid, src_lss)}, (src_lss, tgt_lss)
         raise exception.VolumeDriverException(
             message=(_("Can not find pool for LSSs %s.")
-                     % ','.join(available_lss_pairs)))
+                     % available_lss_pairs))
 
     @proxy.logger
     def _clone_lun(self, src_lun, tgt_lun):
