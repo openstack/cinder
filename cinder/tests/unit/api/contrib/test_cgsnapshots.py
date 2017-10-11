@@ -529,3 +529,34 @@ class CgsnapshotsAPITestCase(test.TestCase):
         cgsnapshot.destroy()
         db.volume_destroy(context.get_admin_context(), volume_id)
         consistencygroup.destroy()
+
+    @mock.patch('cinder.group.API.delete_group_snapshot')
+    def test_delete_cgsnapshot_delete_policy_not_auth(self, mock_delete):
+        vol_type = utils.create_volume_type(context.get_admin_context(),
+                                            self, name='my_vol_type')
+        consistencygroup = utils.create_group(
+            self.context,
+            group_type_id=fake.GROUP_TYPE_ID,
+            volume_type_ids=[vol_type['id']])
+        volume_id = utils.create_volume(self.context,
+                                        volume_type_id=vol_type['id'],
+                                        group_id=
+                                        consistencygroup.id)['id']
+        cgsnapshot = utils.create_group_snapshot(
+            self.context, group_id=consistencygroup.id,
+            group_type_id=fake.GROUP_TYPE_ID,
+            status='available')
+        mock_delete.side_effect = exception.PolicyNotAuthorized(
+            message='PolicyNotAuthorized')
+        req = webob.Request.blank('/v2/%s/cgsnapshots/%s' %
+                                  (fake.PROJECT_ID, cgsnapshot.id))
+        req.method = 'DELETE'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+        res_dict = jsonutils.loads(res.body)
+        self.assertEqual('PolicyNotAuthorized',
+                         res_dict['forbidden']['message'])
+        cgsnapshot.destroy()
+        db.volume_destroy(context.get_admin_context(), volume_id)
+        consistencygroup.destroy()

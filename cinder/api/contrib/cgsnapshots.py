@@ -57,17 +57,17 @@ class CgsnapshotsController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         LOG.info('Delete cgsnapshot with id: %s', id)
-
         try:
             cgsnapshot = self._get_cgsnapshot(context, id)
             self.group_snapshot_api.delete_group_snapshot(context, cgsnapshot)
-        except exception.GroupSnapshotNotFound:
-            # Not found exception will be handled at the wsgi level
-            raise
         except exception.InvalidGroupSnapshot as e:
             raise exc.HTTPBadRequest(explanation=six.text_type(e))
+        except (exception.GroupSnapshotNotFound,
+                exception.PolicyNotAuthorized) as e:
+            # Exceptions will be handled at the wsgi level
+            raise
         except Exception:
-            msg = _("Failed cgsnapshot")
+            msg = _('Failed to delete the cgsnapshot')
             raise exc.HTTPBadRequest(explanation=msg)
 
         return webob.Response(status_int=http_client.ACCEPTED)
