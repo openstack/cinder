@@ -117,17 +117,21 @@ class ScaleIOManageableCase(scaleio.TestScaleIODriver):
 
         self.HTTPS_MOCK_RESPONSES = {
             self.RESPONSE_MODE.Valid: {
-                'instances/StoragePool::test_pool/relationships/Volume':
-                    scaleio_objects,
+                'instances/StoragePool::{}/relationships/Volume'.format(
+                    self.STORAGE_POOL_ID
+                ): scaleio_objects,
                 'types/Pool/instances/getByName::{},{}'.format(
-                    "test_domain",
-                    "test_pool"
-                ): '"{}"'.format("test_pool").encode('ascii', 'ignore'),
+                    self.PROT_DOMAIN_ID,
+                    self.STORAGE_POOL_NAME
+                ): '"{}"'.format(self.STORAGE_POOL_ID),
+                'instances/ProtectionDomain::{}'.format(
+                    self.PROT_DOMAIN_ID
+                ): {'id': self.PROT_DOMAIN_ID},
+                'instances/StoragePool::{}'.format(
+                    self.STORAGE_POOL_ID
+                ): {'id': self.STORAGE_POOL_ID},
                 'types/Domain/instances/getByName::' +
-                "test_domain": '"{}"'.format("test_domain").encode(
-                    'ascii',
-                    'ignore'
-                ),
+                self.PROT_DOMAIN_NAME: '"{}"'.format(self.PROT_DOMAIN_ID),
             },
 
         }
