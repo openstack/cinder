@@ -96,6 +96,8 @@ class FlashSystemDriver(san.SanDriver,
 
     VERSION = "1.0.12"
 
+    MULTI_HOST_MAP_ERRORS = ['CMMVC6045E', 'CMMVC6071E']
+
     def __init__(self, *args, **kwargs):
         super(FlashSystemDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(flashsystem_opts)
@@ -726,6 +728,27 @@ class FlashSystemDriver(san.SanDriver,
                 existing_ref=existing_ref, reason=reason)
         return vdisk
 
+    def _cli_except(self, fun, cmd, out, err, exc_list):
+        """Raise if stderr contains an unexpected error code"""
+        if not err:
+            return None
+        if not isinstance(exc_list, (tuple, list)):
+            exc_list = [exc_list]
+
+        try:
+            err_type = [e for e in exc_list
+                        if err.startswith(e)].pop()
+        except IndexError:
+            msg = _(
+                '%(fun)s: encountered unexpected CLI error, '
+                'expected one of: %(errors)s'
+            ) % {'fun': fun,
+                 'errors': ', '.join(exc_list)}
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        return {'code': err_type, 'message': err.strip(err_type).strip()}
+
     @utils.synchronized('flashsystem-map', external=True)
     def _map_vdisk_to_host(self, vdisk_name, connector):
         """Create a mapping between a vdisk to a host."""
@@ -752,13 +775,18 @@ class FlashSystemDriver(san.SanDriver,
             ssh_cmd = ['svctask', 'mkvdiskhostmap', '-host', host_name,
                        '-scsi', six.text_type(result_lun), vdisk_name]
             out, err = self._ssh(ssh_cmd, check_exit_code=False)
-            if err and err.startswith('CMMVC6071E'):
+            map_error = self._cli_except('_map_vdisk_to_host',
+                                         ssh_cmd,
+                                         out,
+                                         err,
+                                         self.MULTI_HOST_MAP_ERRORS)
+            if map_error:
                 if not self.configuration.flashsystem_multihostmap_enabled:
-                    msg = _('flashsystem_multihostmap_enabled is set '
-                            'to False, not allow multi host mapping. '
-                            'CMMVC6071E The VDisk-to-host mapping '
-                            'was not created because the VDisk is '
-                            'already mapped to a host.')
+                    msg = _(
+                        'flashsystem_multihostmap_enabled is set '
+                        'to False, failing requested multi-host map. '
+                        '(%(code)s %(message)s)'
+                    ) % map_error
                     LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
 
