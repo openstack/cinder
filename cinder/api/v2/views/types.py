@@ -15,6 +15,7 @@
 #    under the License.
 
 from cinder.api import common
+from cinder.policies import volume_type as policy
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -26,13 +27,9 @@ class ViewBuilder(common.ViewBuilder):
                        name=volume_type.get('name'),
                        is_public=volume_type.get('is_public'),
                        description=volume_type.get('description'))
-        if common.validate_policy(
-           context,
-           'volume_extension:access_types_extra_specs'):
+        if context.authorize(policy.EXTRA_SPEC_POLICY, fatal=False):
             trimmed['extra_specs'] = volume_type.get('extra_specs')
-        if common.validate_policy(
-           context,
-           'volume_extension:access_types_qos_specs_id'):
+        if context.authorize(policy.QOS_POLICY, fatal=False):
             trimmed['qos_specs_id'] = volume_type.get('qos_specs_id')
         return trimmed if brief else dict(volume_type=trimmed)
 

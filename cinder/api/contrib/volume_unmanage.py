@@ -18,10 +18,10 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.policies import manageable_volumes as policy
 from cinder import volume
 
 LOG = logging.getLogger(__name__)
-authorize = extensions.extension_authorizer('volume', 'volume_unmanage')
 
 
 class VolumeUnmanageController(wsgi.Controller):
@@ -47,7 +47,7 @@ class VolumeUnmanageController(wsgi.Controller):
         attached to an instance.
         """
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.UNMANAGE_POLICY)
 
         LOG.info("Unmanage volume with id: %s", id)
 

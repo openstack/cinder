@@ -26,7 +26,7 @@ from cinder import flow_utils
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
-from cinder import policy
+from cinder.policies import volumes as policy
 from cinder import quota
 from cinder import quota_utils
 from cinder import utils
@@ -420,7 +420,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
                                       source_volume=source_volume)
-        policy.enforce_action(context, ACTION)
+        context.authorize(policy.CREATE_POLICY)
 
         # TODO(harlowja): what guarantee is there that the snapshot or source
         # volume will remain available after we do this initial verification??

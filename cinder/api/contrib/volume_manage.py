@@ -24,14 +24,12 @@ from cinder.api.v2.views import volumes as volume_views
 from cinder.api.views import manageable_volumes as list_manageable_view
 from cinder import exception
 from cinder.i18n import _
+from cinder.policies import manageable_volumes as policy
 from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
-authorize_manage = extensions.extension_authorizer('volume', 'volume_manage')
-authorize_list_manageable = extensions.extension_authorizer('volume',
-                                                            'list_manageable')
 
 
 class VolumeManageController(wsgi.Controller):
@@ -99,7 +97,7 @@ class VolumeManageController(wsgi.Controller):
 
         """
         context = req.environ['cinder.context']
-        authorize_manage(context)
+        context.authorize(policy.MANAGE_POLICY)
 
         self.assert_valid_body(body, 'volume')
 
@@ -155,7 +153,7 @@ class VolumeManageController(wsgi.Controller):
     def index(self, req):
         """Returns a summary list of volumes available to manage."""
         context = req.environ['cinder.context']
-        authorize_list_manageable(context)
+        context.authorize(policy.LIST_MANAGEABLE_POLICY)
         return resource_common_manage.get_manageable_resources(
             req, False, self.volume_api.get_manageable_volumes,
             self._list_manageable_view)
@@ -164,7 +162,7 @@ class VolumeManageController(wsgi.Controller):
     def detail(self, req):
         """Returns a detailed list of volumes available to manage."""
         context = req.environ['cinder.context']
-        authorize_list_manageable(context)
+        context.authorize(policy.LIST_MANAGEABLE_POLICY)
         return resource_common_manage.get_manageable_resources(
             req, True, self.volume_api.get_manageable_volumes,
             self._list_manageable_view)

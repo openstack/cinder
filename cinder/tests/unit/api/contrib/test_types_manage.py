@@ -183,12 +183,12 @@ class VolumeTypesManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.volume_types.destroy')
     @mock.patch('cinder.volume.volume_types.get_volume_type')
-    @mock.patch('cinder.policy.enforce')
-    def test_volume_types_delete_with_non_admin(self, mock_policy_enforce,
+    @mock.patch('cinder.policy.authorize')
+    def test_volume_types_delete_with_non_admin(self, mock_policy_authorize,
                                                 mock_get, mock_destroy):
 
         # allow policy authorized user to delete type
-        mock_policy_enforce.return_value = None
+        mock_policy_authorize.return_value = None
         mock_get.return_value = \
             {'extra_specs': {"key1": "value1"},
              'id': DEFAULT_VOLUME_TYPE,
@@ -203,7 +203,7 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.controller._delete(req, DEFAULT_VOLUME_TYPE)
         self.assertEqual(1, len(self.notifier.notifications))
         # non policy authorized user fails to delete type
-        mock_policy_enforce.side_effect = (
+        mock_policy_authorize.side_effect = (
             exception.PolicyNotAuthorized(action='type_delete'))
         self.assertRaises(exception.PolicyNotAuthorized,
                           self.controller._delete,
@@ -329,13 +329,13 @@ class VolumeTypesManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.volume_types.create')
     @mock.patch('cinder.volume.volume_types.get_volume_type_by_name')
-    @mock.patch('cinder.policy.enforce')
-    def test_create_with_none_admin(self, mock_policy_enforce,
+    @mock.patch('cinder.policy.authorize')
+    def test_create_with_none_admin(self, mock_policy_authorize,
                                     mock_get_volume_type_by_name,
                                     mock_create_type):
 
         # allow policy authorized user to create type
-        mock_policy_enforce.return_value = None
+        mock_policy_authorize.return_value = None
         mock_get_volume_type_by_name.return_value = \
             {'extra_specs': {"key1": "value1"},
              'id': DEFAULT_VOLUME_TYPE,
@@ -356,7 +356,7 @@ class VolumeTypesManageApiTest(test.TestCase):
             'expected_name': 'vol_type_1', 'expected_desc': 'vol_type_desc_1'})
 
         # non policy authorized user fails to create type
-        mock_policy_enforce.side_effect = (
+        mock_policy_authorize.side_effect = (
             exception.PolicyNotAuthorized(action='type_create'))
         self.assertRaises(exception.PolicyNotAuthorized,
                           self.controller._create,
@@ -651,12 +651,12 @@ class VolumeTypesManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.volume_types.update')
     @mock.patch('cinder.volume.volume_types.get_volume_type')
-    @mock.patch('cinder.policy.enforce')
-    def test_update_with_non_admin(self, mock_policy_enforce, mock_get,
+    @mock.patch('cinder.policy.authorize')
+    def test_update_with_non_admin(self, mock_policy_authorize, mock_get,
                                    mock_update):
 
         # allow policy authorized user to update type
-        mock_policy_enforce.return_value = None
+        mock_policy_authorize.return_value = None
         mock_get.return_value = return_volume_types_get_volume_type_updated(
             DEFAULT_VOLUME_TYPE, is_public=False)
         name = "vol_type_%s" % DEFAULT_VOLUME_TYPE
@@ -681,7 +681,7 @@ class VolumeTypesManageApiTest(test.TestCase):
                                   'is_public': False})
 
         # non policy authorized user fails to update type
-        mock_policy_enforce.side_effect = (
+        mock_policy_authorize.side_effect = (
             exception.PolicyNotAuthorized(action='type_update'))
         self.assertRaises(exception.PolicyNotAuthorized,
                           self.controller._update,

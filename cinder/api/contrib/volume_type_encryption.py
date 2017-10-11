@@ -23,12 +23,11 @@ from cinder.api.openstack import wsgi
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
+from cinder.policies import volume_type as policy
 from cinder import rpc
 from cinder import utils
 from cinder.volume import volume_types
 
-authorize = extensions.extension_authorizer('volume',
-                                            'volume_type_encryption')
 
 CONTROL_LOCATION = ['front-end', 'back-end']
 
@@ -84,14 +83,14 @@ class VolumeTypeEncryptionController(wsgi.Controller):
     def index(self, req, type_id):
         """Returns the encryption specs for a given volume type."""
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.ENCRYPTION_POLICY)
         self._check_type(context, type_id)
         return self._get_volume_type_encryption(context, type_id)
 
     def create(self, req, type_id, body=None):
         """Create encryption specs for an existing volume type."""
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.ENCRYPTION_POLICY)
 
         if self._encrypted_type_in_use(context, type_id):
             expl = _('Cannot create encryption specs. Volume type in use.')
@@ -118,7 +117,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
     def update(self, req, type_id, id, body=None):
         """Update encryption specs for a given volume type."""
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.ENCRYPTION_POLICY)
 
         self.assert_valid_body(body, 'encryption')
 
@@ -145,7 +144,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
     def show(self, req, type_id, id):
         """Return a single encryption item."""
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.ENCRYPTION_POLICY)
 
         self._check_type(context, type_id)
 
@@ -159,7 +158,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
     def delete(self, req, type_id, id):
         """Delete encryption specs for a given volume type."""
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.ENCRYPTION_POLICY)
 
         if self._encrypted_type_in_use(context, type_id):
             expl = _('Cannot delete encryption specs. Volume type in use.')

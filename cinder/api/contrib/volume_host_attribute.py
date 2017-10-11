@@ -14,10 +14,7 @@
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-
-
-authorize = extensions.soft_extension_authorizer('volume',
-                                                 'volume_host_attribute')
+from cinder.policies import volumes as policy
 
 
 class VolumeHostAttributeController(wsgi.Controller):
@@ -29,14 +26,14 @@ class VolumeHostAttributeController(wsgi.Controller):
     @wsgi.extends
     def show(self, req, resp_obj, id):
         context = req.environ['cinder.context']
-        if authorize(context):
+        if context.authorize(policy.HOST_ATTRIBUTE_POLICY, fatal=False):
             volume = resp_obj.obj['volume']
             self._add_volume_host_attribute(req, volume)
 
     @wsgi.extends
     def detail(self, req, resp_obj):
         context = req.environ['cinder.context']
-        if authorize(context):
+        if context.authorize(policy.HOST_ATTRIBUTE_POLICY, fatal=False):
             for vol in list(resp_obj.obj['volumes']):
                 self._add_volume_host_attribute(req, vol)
 

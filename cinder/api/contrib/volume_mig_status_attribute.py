@@ -14,9 +14,7 @@
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-
-authorize = extensions.soft_extension_authorizer('volume',
-                                                 'volume_mig_status_attribute')
+from cinder.policies import volumes as policy
 
 
 class VolumeMigStatusAttributeController(wsgi.Controller):
@@ -30,13 +28,13 @@ class VolumeMigStatusAttributeController(wsgi.Controller):
     @wsgi.extends
     def show(self, req, resp_obj, id):
         context = req.environ['cinder.context']
-        if authorize(context):
+        if context.authorize(policy.MIG_ATTRIBUTE_POLICY, fatal=False):
             self._add_volume_mig_status_attribute(req, resp_obj.obj['volume'])
 
     @wsgi.extends
     def detail(self, req, resp_obj):
         context = req.environ['cinder.context']
-        if authorize(context):
+        if context.authorize(policy.MIG_ATTRIBUTE_POLICY, fatal=False):
             for vol in list(resp_obj.obj['volumes']):
                 self._add_volume_mig_status_attribute(req, vol)
 

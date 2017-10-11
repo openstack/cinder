@@ -79,18 +79,10 @@ class AdminController(wsgi.Controller):
         return update
 
     def authorize(self, context, action_name):
-        # TODO(tommylike): We have two different ways to authorize during
-        # implementing code base policies, the if/else statement can be
-        # removed when all resources are upgraded.
-        if self.resource_name in ['backup', 'snapshot']:
-            context.authorize(
-                'volume_extension:%(resource)s_admin_actions:%(action)s' %
-                {'resource': self.resource_name,
-                 'action': action_name})
-        else:
-            # e.g. "snapshot_admin_actions:reset_status"
-            action = '%s_admin_actions:%s' % (self.resource_name, action_name)
-            extensions.extension_authorizer('volume', action)(context)
+        context.authorize(
+            'volume_extension:%(resource)s_admin_actions:%(action)s' %
+            {'resource': self.resource_name,
+             'action': action_name})
 
     def _remove_worker(self, context, id):
         # Remove the cleanup worker from the DB when we change a resource

@@ -29,21 +29,10 @@ from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _
 from cinder import objects
-import cinder.policy
+from cinder.policies import volumes as policy
 from cinder import utils
 
 LOG = logging.getLogger(__name__)
-
-
-def check_policy(context, action, target_obj=None):
-    target = {
-        'project_id': context.project_id,
-        'user_id': context.user_id
-    }
-    target.update(target_obj or {})
-
-    _action = 'volume:%s' % action
-    cinder.policy.enforce(context, _action, target)
 
 
 class VolumeController(volumes_v2.VolumeController):
@@ -74,7 +63,7 @@ class VolumeController(volumes_v2.VolumeController):
                  {'id': id, 'params': params}, context=context)
 
         if force:
-            check_policy(context, 'force_delete')
+            context.authorize(policy.FORCE_DELETE_POLICY)
 
         volume = self.volume_api.get(context, id)
 

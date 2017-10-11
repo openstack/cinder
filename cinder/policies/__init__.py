@@ -29,6 +29,7 @@ from cinder.policies import groups
 from cinder.policies import hosts
 from cinder.policies import limits
 from cinder.policies import manageable_snapshots
+from cinder.policies import manageable_volumes
 from cinder.policies import messages
 from cinder.policies import qos_specs
 from cinder.policies import quota_class
@@ -38,6 +39,13 @@ from cinder.policies import services
 from cinder.policies import snapshot_actions
 from cinder.policies import snapshot_metadata
 from cinder.policies import snapshots
+from cinder.policies import type_extra_specs
+from cinder.policies import volume_access
+from cinder.policies import volume_actions
+from cinder.policies import volume_metadata
+from cinder.policies import volume_transfer
+from cinder.policies import volume_type
+from cinder.policies import volumes
 from cinder.policies import workers
 
 
@@ -67,4 +75,12 @@ def list_rules():
         scheduler_stats.list_rules(),
         hosts.list_rules(),
         limits.list_rules(),
+        manageable_volumes.list_rules(),
+        volume_type.list_rules(),
+        volume_access.list_rules(),
+        volume_actions.list_rules(),
+        volume_transfer.list_rules(),
+        volume_metadata.list_rules(),
+        type_extra_specs.list_rules(),
+        volumes.list_rules(),
     )

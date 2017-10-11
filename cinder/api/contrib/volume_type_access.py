@@ -22,12 +22,8 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder.i18n import _
+from cinder.policies import volume_access as policy
 from cinder.volume import volume_types
-
-
-soft_authorize = extensions.soft_extension_authorizer('volume',
-                                                      'volume_type_access')
-authorize = extensions.extension_authorizer('volume', 'volume_type_access')
 
 
 def _marshall_volume_type_access(vol_type):
@@ -44,7 +40,7 @@ class VolumeTypeAccessController(object):
 
     def index(self, req, type_id):
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.TYPE_ACCESS_POLICY)
 
         # Not found exception will be handled at the wsgi level
         vol_type = volume_types.get_volume_type(
@@ -77,14 +73,14 @@ class VolumeTypeActionController(wsgi.Controller):
     @wsgi.extends
     def show(self, req, resp_obj, id):
         context = req.environ['cinder.context']
-        if soft_authorize(context):
+        if context.authorize(policy.TYPE_ACCESS_POLICY, fatal=False):
             vol_type = req.cached_resource_by_id(id, name='types')
             self._extend_vol_type(resp_obj.obj['volume_type'], vol_type)
 
     @wsgi.extends
     def index(self, req, resp_obj):
         context = req.environ['cinder.context']
-        if soft_authorize(context):
+        if context.authorize(policy.TYPE_ACCESS_POLICY, fatal=False):
             for vol_type_rval in list(resp_obj.obj['volume_types']):
                 type_id = vol_type_rval['id']
                 vol_type = req.cached_resource_by_id(type_id, name='types')
@@ -93,7 +89,7 @@ class VolumeTypeActionController(wsgi.Controller):
     @wsgi.extends
     def detail(self, req, resp_obj):
         context = req.environ['cinder.context']
-        if soft_authorize(context):
+        if context.authorize(policy.TYPE_ACCESS_POLICY, fatal=False):
             for vol_type_rval in list(resp_obj.obj['volume_types']):
                 type_id = vol_type_rval['id']
                 vol_type = req.cached_resource_by_id(type_id, name='types')
@@ -102,7 +98,7 @@ class VolumeTypeActionController(wsgi.Controller):
     @wsgi.extends(action='create')
     def create(self, req, body, resp_obj):
         context = req.environ['cinder.context']
-        if soft_authorize(context):
+        if context.authorize(policy.TYPE_ACCESS_POLICY, fatal=False):
             type_id = resp_obj.obj['volume_type']['id']
             vol_type = req.cached_resource_by_id(type_id, name='types')
             self._extend_vol_type(resp_obj.obj['volume_type'], vol_type)
@@ -110,7 +106,7 @@ class VolumeTypeActionController(wsgi.Controller):
     @wsgi.action('addProjectAccess')
     def _addProjectAccess(self, req, id, body):
         context = req.environ['cinder.context']
-        authorize(context, action="addProjectAccess")
+        context.authorize(policy.ADD_PROJECT_POLICY)
         self._check_body(body, 'addProjectAccess')
         project = body['addProjectAccess']['project']
 
@@ -124,7 +120,7 @@ class VolumeTypeActionController(wsgi.Controller):
     @wsgi.action('removeProjectAccess')
     def _removeProjectAccess(self, req, id, body):
         context = req.environ['cinder.context']
-        authorize(context, action="removeProjectAccess")
+        context.authorize(policy.REMOVE_PROJECT_POLICY)
         self._check_body(body, 'removeProjectAccess')
         project = body['removeProjectAccess']['project']
 
