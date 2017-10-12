@@ -24,6 +24,8 @@ import webob
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import qos_specs as qos_specs_schema
+from cinder.api import validation
 from cinder.api.views import qos_specs as view_qos_specs
 from cinder import exception
 from cinder.i18n import _
@@ -73,20 +75,13 @@ class QoSSpecsController(wsgi.Controller):
                                         sort_dirs=sort_dirs)
         return self._view_builder.summary_list(req, specs)
 
+    @validation.schema(qos_specs_schema.create)
     def create(self, req, body=None):
         context = req.environ['cinder.context']
         context.authorize(policy.CREATE_POLICY)
 
-        self.assert_valid_body(body, 'qos_specs')
-
         specs = body['qos_specs']
         name = specs.pop('name', None)
-        if name is None:
-            msg = _("Please specify a name for QoS specs.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        self.validate_string_length(name, 'name', min_length=1,
-                                    max_length=255, remove_whitespaces=True)
         name = name.strip()
 
         try:
@@ -119,10 +114,11 @@ class QoSSpecsController(wsgi.Controller):
 
         return self._view_builder.detail(req, spec)
 
+    @validation.schema(qos_specs_schema.set)
     def update(self, req, id, body=None):
         context = req.environ['cinder.context']
         context.authorize(policy.UPDATE_POLICY)
-        self.assert_valid_body(body, 'qos_specs')
+
         specs = body['qos_specs']
         try:
             spec = qos_specs.get_qos_specs(context, id)
@@ -201,14 +197,11 @@ class QoSSpecsController(wsgi.Controller):
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
+    @validation.schema(qos_specs_schema.unset)
     def delete_keys(self, req, id, body):
         """Deletes specified keys in qos specs."""
         context = req.environ['cinder.context']
         context.authorize(policy.DELETE_POLICY)
-
-        if not (body and 'keys' in body
-                and isinstance(body.get('keys'), list)):
-            raise webob.exc.HTTPBadRequest()
 
         keys = body['keys']
         LOG.debug("Delete_key spec: %(id)s, keys: %(keys)s",

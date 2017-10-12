@@ -106,6 +106,22 @@ def _validate_name(param_value):
     return True
 
 
+@jsonschema.FormatChecker.cls_checks('name_skip_leading_trailing_spaces',
+                                     exception.InvalidName)
+def _validate_name_skip_leading_trailing_spaces(param_value):
+    if not param_value:
+        msg = _("The 'name' can not be None.")
+        raise exception.InvalidName(reason=msg)
+    param_value = param_value.strip()
+    if len(param_value) == 0:
+        msg = _("The 'name' can not be empty.")
+        raise exception.InvalidName(reason=msg)
+    elif len(param_value) > 255:
+        msg = _("The 'name' can not be greater than 255 characters.")
+        raise exception.InvalidInput(reason=msg)
+    return True
+
+
 @jsonschema.FormatChecker.cls_checks('uuid')
 def _validate_uuid_format(instance):
     return uuidutils.is_uuid_like(instance)

@@ -345,7 +345,7 @@ class QoSSpecManageApiTest(test.TestCase):
                                       (fake.PROJECT_ID, fake.IN_USE_ID),
                                       use_admin_context=True)
 
-        self.controller.delete_keys(req, fake.IN_USE_ID, body)
+        self.controller.delete_keys(req, fake.IN_USE_ID, body=body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.delete_keys',
@@ -359,8 +359,19 @@ class QoSSpecManageApiTest(test.TestCase):
 
         self.assertRaises(exception.QoSSpecsNotFound,
                           self.controller.delete_keys,
-                          req, fake.WILL_NOT_BE_FOUND_ID, body)
+                          req, fake.WILL_NOT_BE_FOUND_ID, body=body)
         self.assertEqual(1, self.notifier.get_notification_count())
+
+    def test_qos_specs_delete_keys_invalid_key(self):
+        body = {"keys": ['', None]}
+        req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s/delete_keys' %
+                                      (fake.PROJECT_ID,
+                                       fake.IN_USE_ID),
+                                      use_admin_context=True)
+
+        self.assertRaises(exception.ValidationError,
+                          self.controller.delete_keys,
+                          req, fake.IN_USE_ID, body=body)
 
     @mock.patch('cinder.volume.qos_specs.get_qos_specs',
                 side_effect=return_qos_specs_get_qos_specs)
@@ -375,7 +386,7 @@ class QoSSpecManageApiTest(test.TestCase):
 
         self.assertRaises(exception.QoSSpecsKeyNotFound,
                           self.controller.delete_keys,
-                          req, fake.IN_USE_ID, body)
+                          req, fake.IN_USE_ID, body=body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.delete_keys',
@@ -389,7 +400,7 @@ class QoSSpecManageApiTest(test.TestCase):
                                       (fake.PROJECT_ID, fake.IN_USE_ID),
                                       use_admin_context=True)
 
-        self.controller.delete_keys(req, fake.IN_USE_ID, body)
+        self.controller.delete_keys(req, fake.IN_USE_ID, body=body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.create',
@@ -402,7 +413,7 @@ class QoSSpecManageApiTest(test.TestCase):
                                       fake.PROJECT_ID,
                                       use_admin_context=True)
 
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
 
         self.assertEqual(1, self.notifier.get_notification_count())
         self.assertEqual('qos_specs_%s' % fake.QOS_SPEC_ID,
@@ -417,7 +428,7 @@ class QoSSpecManageApiTest(test.TestCase):
                                       use_admin_context=True)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, body)
+                          self.controller.create, req, body=body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.create',
@@ -429,7 +440,7 @@ class QoSSpecManageApiTest(test.TestCase):
                                       use_admin_context=True)
 
         self.assertRaises(webob.exc.HTTPConflict,
-                          self.controller.create, req, body)
+                          self.controller.create, req, body=body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.create',
@@ -441,7 +452,7 @@ class QoSSpecManageApiTest(test.TestCase):
                                       use_admin_context=True)
 
         self.assertRaises(webob.exc.HTTPInternalServerError,
-                          self.controller.create, req, body)
+                          self.controller.create, req, body=body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
     @ddt.data({'foo': {'a': 'b'}},
@@ -452,8 +463,8 @@ class QoSSpecManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs' % fake.PROJECT_ID,
                                       use_admin_context=True)
         req.method = 'POST'
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, body=body)
 
     @ddt.data({'name': 'fake_name', 'a' * 256: 'a'},
               {'name': 'fake_name', 'a': 'a' * 256},
@@ -464,19 +475,20 @@ class QoSSpecManageApiTest(test.TestCase):
                                       use_admin_context=True)
         req.method = 'POST'
         self.assertRaises(exception.InvalidInput,
-                          self.controller.create, req, body)
+                          self.controller.create, req, body=body)
 
-    @ddt.data({'name': None},
-              {'name': 'n' * 256},
-              {'name': ''},
-              {'name': '  '})
-    def test_create_qos_with_invalid_spec_name(self, value):
+    @ddt.data(({'name': None}, exception.ValidationError),
+              ({'name': ''}, exception.ValidationError),
+              ({'name': '  '}, exception.ValidationError),
+              ({'name': 'n' * 256}, exception.InvalidInput))
+    @ddt.unpack
+    def test_create_qos_with_invalid_spec_name(self, value, exception_class):
         body = {'qos_specs': value}
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs' % fake.PROJECT_ID,
                                       use_admin_context=True)
         req.method = 'POST'
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, body)
+        self.assertRaises(exception_class,
+                          self.controller.create, req, body=body)
 
     @mock.patch('cinder.volume.qos_specs.update',
                 side_effect=return_qos_specs_update)
@@ -488,7 +500,7 @@ class QoSSpecManageApiTest(test.TestCase):
                                       use_admin_context=True)
         body = {'qos_specs': {'key1': 'value1',
                               'key2': 'value2'}}
-        res = self.controller.update(req, fake.QOS_SPEC_ID, body)
+        res = self.controller.update(req, fake.QOS_SPEC_ID, body=body)
         self.assertDictEqual(body, res)
         self.assertEqual(1, self.notifier.get_notification_count())
 
@@ -505,7 +517,7 @@ class QoSSpecManageApiTest(test.TestCase):
                               'key2': 'value2'}}
         self.assertRaises(exception.QoSSpecsNotFound,
                           self.controller.update,
-                          req, fake.WILL_NOT_BE_FOUND_ID, body)
+                          req, fake.WILL_NOT_BE_FOUND_ID, body=body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.get_qos_specs',
@@ -520,7 +532,7 @@ class QoSSpecManageApiTest(test.TestCase):
                               'key2': 'value2'}}
         self.assertRaises(exception.InvalidQoSSpecs,
                           self.controller.update,
-                          req, fake.INVALID_ID, body)
+                          req, fake.INVALID_ID, body=body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.get_qos_specs',
@@ -532,10 +544,10 @@ class QoSSpecManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s' %
                                       (fake.PROJECT_ID, fake.UUID1),
                                       use_admin_context=True)
-        self.assertRaises(exception.InvalidQoSSpecs,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update,
-                          req, fake.UUID1, body)
-        self.assertEqual(1, self.notifier.get_notification_count())
+                          req, fake.UUID1, body=body)
+        self.assertEqual(0, self.notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.get_qos_specs',
                 side_effect=return_qos_specs_get_qos_specs)
@@ -550,7 +562,7 @@ class QoSSpecManageApiTest(test.TestCase):
                               'key2': 'value2'}}
         self.assertRaises(webob.exc.HTTPInternalServerError,
                           self.controller.update,
-                          req, fake.UPDATE_FAILED_ID, body)
+                          req, fake.UPDATE_FAILED_ID, body=body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.get_qos_specs',
@@ -769,7 +781,7 @@ class QoSSpecManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs' %
                                       fake.PROJECT_ID, use_admin_context=False)
         self.assertRaises(exception.PolicyNotAuthorized,
-                          self.controller.create, req, body)
+                          self.controller.create, req, body=body)
 
     def test_update_no_admin_user(self):
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s' %
@@ -778,7 +790,8 @@ class QoSSpecManageApiTest(test.TestCase):
         body = {'qos_specs': {'key1': 'value1',
                               'key2': 'value2'}}
         self.assertRaises(exception.PolicyNotAuthorized,
-                          self.controller.update, req, fake.QOS_SPEC_ID, body)
+                          self.controller.update, req, fake.QOS_SPEC_ID,
+                          body=body)
 
     def test_qos_specs_delete_no_admin_user(self):
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s' % (
