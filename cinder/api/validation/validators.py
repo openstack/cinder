@@ -209,7 +209,8 @@ def _validate_base64_format(instance):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('disabled_reason')
+@jsonschema.FormatChecker.cls_checks('disabled_reason',
+                                     exception.InvalidInput)
 def _validate_disabled_reason(param_value):
     _validate_string_length(param_value, 'disabled_reason',
                             mandatory=False, min_length=1, max_length=255,
@@ -286,6 +287,12 @@ def _validate_group_type(param_value):
     _validate_string_length(param_value, 'group_type',
                             mandatory=True, min_length=1, max_length=255,
                             remove_whitespaces=True)
+    return True
+
+
+@jsonschema.FormatChecker.cls_checks('level')
+def _validate_log_level(level):
+    utils.get_log_method(level)
     return True
 
 

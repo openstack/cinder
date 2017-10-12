@@ -249,5 +249,10 @@ quota_class_set = {
         }
     },
     'additionalProperties': False
+}
 
+
+binary = {
+    'type': 'string',
+    'enum': [binary for binary in constants.LOG_BINARIES + ('', '*')]
 }
