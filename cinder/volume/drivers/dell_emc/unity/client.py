@@ -24,10 +24,10 @@ else:
     # Set storops_ex to be None for unit test
     storops_ex = None
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _, _LW
 from cinder.volume.drivers.dell_emc.unity import utils
-
 
 LOG = log.getLogger(__name__)
 
@@ -43,6 +43,7 @@ class UnityClient(object):
         self.username = username
         self.password = password
         self.verify_cert = verify_cert
+        self.host_cache = {}
 
     @property
     def system(self):
@@ -171,28 +172,40 @@ class UnityClient(object):
             LOG.warning(msg, {'name': name, 'err': err})
         return None
 
-    def create_host(self, name, uids):
-        """Creates a host on Unity.
+    @coordination.synchronized('{self.host}-{name}')
+    def create_host(self, name):
+        """Provides existing host if exists else create one."""
+        if name not in self.host_cache:
+            try:
+                host = self.system.get_host(name=name)
+            except storops_ex.UnityResourceNotFoundError:
+                LOG.debug('Host %s not found.  Create a new one.',
+                          name)
+                host = self.system.create_host(name=name)
 
-        Creates a host on Unity which has the uids associated.
+            self.host_cache[name] = host
+        else:
+            host = self.host_cache[name]
+        return host
 
-        :param name: name of the host
-        :param uids: iqns or wwns list
-        :return: UnitHost object
-        """
-
-        try:
-            host = self.system.get_host(name=name)
-        except storops_ex.UnityResourceNotFoundError:
-            LOG.debug('Existing host %s not found.  Create a new one.', name)
-            host = self.system.create_host(name=name)
-
+    def update_host_initiators(self, host, uids):
+        """Updates host with the supplied uids."""
         host_initiators_ids = self.get_host_initiator_ids(host)
         un_registered = [h for h in uids if h not in host_initiators_ids]
-        for uid in un_registered:
-            host.add_initiator(uid, force_create=True)
+        if un_registered:
+            for uid in un_registered:
+                try:
+                    host.add_initiator(uid, force_create=True)
+                except storops_ex.UnityHostInitiatorExistedError:
+                    # This make concurrent modification of
+                    # host initiators safe
+                    LOG.debug(
+                        'The uid(%s) was already in '
+                        '%s.', uid, host.name)
+            host.update()
+            # Update host cached with new initiators.
+            self.host_cache[host.name] = host
 
-        host.update()
         return host
 
     @staticmethod
@@ -225,9 +238,6 @@ class UnityClient(object):
         """
         lun_or_snap.update()
         host.detach(lun_or_snap)
-
-    def get_host(self, name):
-        return self.system.get_host(name=name)
 
     def get_ethernet_ports(self):
         return self.system.get_ethernet_port()

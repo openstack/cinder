@@ -12,16 +12,15 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
 import unittest
 
 from mock import mock
 from oslo_utils import units
 
+from cinder import coordination
 from cinder.tests.unit.volume.drivers.dell_emc.unity \
     import fake_exception as ex
 from cinder.volume.drivers.dell_emc.unity import client
-
 
 ########################
 #
@@ -47,6 +46,8 @@ class MockResource(object):
         self.max_iops = None
         self.max_kbps = None
         self.pool_name = 'Pool0'
+        self._storage_resource = None
+        self.host_cache = []
 
     @property
     def id(self):
@@ -227,6 +228,10 @@ class MockSystem(object):
     def get_host(name):
         if name == 'not_found':
             raise ex.UnityResourceNotFoundError()
+        if name == 'host1':
+            ret = MockResource(name)
+            ret.initiator_id = ['old-iqn']
+            return ret
         return MockResource(name)
 
     @staticmethod
@@ -367,16 +372,18 @@ class ClientTest(unittest.TestCase):
         ret = self.client.get_snap('not_found')
         self.assertIsNone(ret)
 
-    def test_create_host_found(self):
-        iqns = ['iqn.1-1.com.e:c.a.a0']
-        host = self.client.create_host('host1', iqns)
+    @mock.patch.object(coordination.Coordinator, 'get_lock')
+    def test_create_host_found(self, fake_coordination):
+        host = self.client.create_host('host1')
 
         self.assertEqual('host1', host.name)
         self.assertLessEqual(['iqn.1-1.com.e:c.a.a0'], host.initiator_id)
 
-    def test_create_host_not_found(self):
-        host = self.client.create_host('not_found', [])
+    @mock.patch.object(coordination.Coordinator, 'get_lock')
+    def test_create_host_not_found(self, fake):
+        host = self.client.create_host('not_found')
         self.assertEqual('not_found', host.name)
+        self.assertIn('not_found', self.client.host_cache)
 
     def test_attach_lun(self):
         lun = MockResource(_id='lun1', name='l1')
@@ -397,8 +404,20 @@ class ClientTest(unittest.TestCase):
 
         self.assertRaises(ex.DetachIsCalled, f)
 
-    def test_get_host(self):
-        self.assertEqual('host2', self.client.get_host('host2').name)
+    @mock.patch.object(coordination.Coordinator, 'get_lock')
+    def test_create_host(self, fake):
+        self.assertEqual('host2', self.client.create_host('host2').name)
+
+    @mock.patch.object(coordination.Coordinator, 'get_lock')
+    def test_create_host_in_cache(self, fake):
+        self.client.host_cache['already_in'] = MockResource(name='already_in')
+        host = self.client.create_host('already_in')
+        self.assertIn('already_in', self.client.host_cache)
+        self.assertEqual('already_in', host.name)
+
+    def test_update_host_initiators(self):
+        host = MockResource(name='host_init')
+        host = self.client.update_host_initiators(host, 'fake-iqn-1')
 
     def test_get_iscsi_target_info(self):
         ret = self.client.get_iscsi_target_info()

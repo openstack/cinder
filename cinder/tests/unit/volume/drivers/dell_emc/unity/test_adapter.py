@@ -113,11 +113,7 @@ class MockClient(object):
             raise ex.SnapDeleteIsCalled()
 
     @staticmethod
-    def create_host(name, uids):
-        return test_client.MockResource(name=name)
-
-    @staticmethod
-    def get_host(name):
+    def create_host(name):
         return test_client.MockResource(name=name)
 
     @staticmethod
@@ -165,6 +161,14 @@ class MockClient(object):
     @staticmethod
     def get_ethernet_ports():
         return test_client.MockResourceList(ids=['spa_eth0', 'spb_eth0'])
+
+    @staticmethod
+    def update_host_initiators(host, wwns):
+        return None
+
+    @property
+    def system(self):
+        return self._system
 
 
 class MockLookupService(object):
