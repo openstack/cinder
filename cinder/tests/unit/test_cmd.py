@@ -301,10 +301,6 @@ class TestCinderManageCmd(test.TestCase):
             version_cmds.__call__()
             version_string.assert_called_once_with()
 
-    def test_purge_age_in_days_value_equal_to_zero(self):
-        age_in_days = 0
-        self._test_purge_invalid_age_in_days(age_in_days)
-
     def test_purge_with_negative_age_in_days(self):
         age_in_days = -1
         self._test_purge_invalid_age_in_days(age_in_days)

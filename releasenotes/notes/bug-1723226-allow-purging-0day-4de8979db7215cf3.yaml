@@ -1,0 +1,9 @@
+---
+fixes:
+  - Added ability to purge records less than 1 day old, using the
+    cinder-manage db_purge utility.
+
+    This helps especially for those testing scenarios in which a
+    a large number of volumes are created and deleted.
+
+    (bug #1723226)
