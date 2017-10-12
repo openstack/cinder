@@ -2589,27 +2589,28 @@ class XIVProxy(proxy.IBMStorageProxy):
         :returns: array of FC target WWPNs
         """
         target_wwpns = []
+        all_target_ports = []
 
         fc_port_list = self._call_xiv_xcli("fc_port_list")
-        if host is None:
-            target_wwpns += (
-                [t.get('wwpn') for t in
-                 fc_port_list if
-                 t.get('wwpn') != '0000000000000000' and
-                 t.get('role') == 'Target' and
-                 t.get('port_state') == 'Online'])
-        else:
+        all_target_ports += ([t for t in fc_port_list if
+                              t.get('wwpn') != '0000000000000000' and
+                              t.get('role') == 'Target' and
+                              t.get('port_state') == 'Online'])
+
+        if host:
             host_conect_list = self._call_xiv_xcli("host_connectivity_list",
                                                    host=host.get('name'))
             for connection in host_conect_list:
                 fc_port = connection.get('local_fc_port')
                 target_wwpns += (
-                    [t.get('wwpn') for t in
-                     fc_port_list if
-                     t.get('wwpn') != '0000000000000000' and
-                     t.get('role') == 'Target' and
-                     t.get('port_state') == 'Online' and
-                     t.get('component_id') == fc_port])
+                    [target.get('wwpn') for target in all_target_ports if
+                     target.get('component_id') == fc_port])
+
+        if not target_wwpns:
+            LOG.debug('No fc targets found accessible to host: %s. Return list'
+                      ' of all available FC targets', host)
+            target_wwpns = ([target.get('wwpn')
+                             for target in all_target_ports])
 
         fc_targets = list(set(target_wwpns))
         fc_targets.sort(key=self._sort_last_digit)
