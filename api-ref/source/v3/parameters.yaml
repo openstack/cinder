@@ -109,7 +109,7 @@ key_3:
   type: string
 key_4:
   description: |
-    The key name for the extra spec that you want to remove.
+    The key name of the extra spec for a volume type.
   in: path
   required: true
   type: string

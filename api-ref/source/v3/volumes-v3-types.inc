@@ -111,12 +111,73 @@ Response Example
    :language: javascript
 
 
-Delete extra spec for volume type
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Show all extra specifications for volume type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  GET /v3/{project_id}/types/{volume_type_id}/extra_specs
+
+Shows all extra specifications assigned to a volume type.
+
+
+Normal response codes: 200
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_type_id: volume_type_id
+
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - extra_specs: extra_specs
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-type-all-extra-specs-show-response.json
+   :language: javascript
+
+
+Show extra specification for volume type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  GET /v3/{project_id}/types/{volume_type_id}/extra_specs/{key}
+
+Shows the specific extra specification assigned to a volume type.
+
+
+Normal response codes: 200
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_type_id: volume_type_id
+   - key: key_4
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-type-specific-extra-specs-show-response.json
+   :language: javascript
+
+
+Delete extra specification for volume type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v3/{project_id}/types/{volume_type_id}/extra_specs/{key}
 
-Deletes the specific extra spec that assigned to a volume type.
+Deletes the specific extra specification assigned to a volume type.
 
 
 Normal response codes: 202
