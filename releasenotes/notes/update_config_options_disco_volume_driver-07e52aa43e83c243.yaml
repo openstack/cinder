@@ -1,0 +1,13 @@
+---
+upgrade:
+  - |
+    We replaced the config option in the disco volume driver
+    "disco_choice_client" with "disco_client_protocol".
+    We add "san_api_port" as new config option in san driver for accessing
+    the SAN API using this port.
+Deprecations:
+  - |
+    Marked the ITRI DISCO driver option 'disco_rest_api' as deprecated
+    in order to use the config 'san_ip' provided by the generic driver san.
+    Marked the ITRI DISCO driver option 'disco_src_api_port' as deprecated
+    in order to use the config 'san_ssh_port' provided by the generic driver san.

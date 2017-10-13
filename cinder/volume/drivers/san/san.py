@@ -59,6 +59,8 @@ san_opts = [
     cfg.PortOpt('san_ssh_port',
                 default=22,
                 help='SSH port to use with SAN'),
+    cfg.PortOpt('san_api_port',
+                help='Port to use to access the SAN API'),
     cfg.BoolOpt('san_is_local',
                 default=False,
                 help='Execute commands locally instead of over SSH; '

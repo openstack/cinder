@@ -59,6 +59,8 @@ class TestDISCODriver(test.TestCase):
         self.cfg.num_volume_device_scan_tries = 3
         self.cfg.disco_choice_client = 'SOAP'
         self.cfg.disco_rest_ip = '127.0.0.1'
+        self.cfg.san_ip = '127.0.0.1'
+        self.cfg.san_api_port = '8080'
 
         self.FAKE_RESPONSE = {
             'standard': {

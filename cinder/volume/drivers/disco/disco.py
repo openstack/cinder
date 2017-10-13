@@ -35,6 +35,7 @@ from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.disco import disco_api
 from cinder.volume.drivers.disco import disco_attach_detach
+from cinder.volume.drivers.san import san
 
 
 LOG = logging.getLogger(__name__)
@@ -55,6 +56,8 @@ disco_opts = [
                     'to communicate with DISCO request manager'),
     cfg.IPOpt('disco_rest_ip',
               help='The IP address of the REST server',
+              deprecated_for_removal=True,
+              deprecated_reason='Using san_ip later',
               deprecated_name='rest_ip', deprecated_group='DEFAULT'),
     cfg.StrOpt('disco_choice_client',
                help='Use soap client or rest client for communicating '
@@ -63,6 +66,8 @@ disco_opts = [
                deprecated_name='choice_client', deprecated_group='DEFAULT'),
     cfg.PortOpt('disco_src_api_port',
                 default=8080,
+                deprecated_for_removal=True,
+                deprecated_reason='Using san_api_port later',
                 help='The port of DISCO source API',
                 deprecated_group='DEFAULT'),
     cfg.StrOpt('disco_volume_name_prefix',
@@ -124,6 +129,7 @@ class DiscoDriver(driver.VolumeDriver):
         """Init Disco driver : get configuration, create client."""
         super(DiscoDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(disco_opts)
+        self.configuration.append_config_values(san.san_opts)
         self.ctxt = context.get_admin_context()
         self.attach_detach_volume = (
             disco_attach_detach.AttachDetachDiscoVolume(self.configuration))
@@ -131,7 +137,13 @@ class DiscoDriver(driver.VolumeDriver):
     def do_setup(self, context):
         """Create client for DISCO request manager."""
         LOG.debug("Enter in DiscoDriver do_setup.")
-        if self.configuration.disco_choice_client.lower() == "rest":
+        if (self.configuration.disco_choice_client.lower() == "rest" and
+                self.configuration.san_ip):
+            self.client = disco_api.DiscoApi(
+                self.configuration.san_ip,
+                self.configuration.san_api_port)
+        elif (self.configuration.disco_choice_client.lower() == "rest" and
+                self.configuration.disco_rest_ip):
             self.client = disco_api.DiscoApi(
                 self.configuration.disco_rest_ip,
                 self.configuration.disco_src_api_port)
@@ -142,14 +154,15 @@ class DiscoDriver(driver.VolumeDriver):
 
     def check_for_setup_error(self):
         """Make sure we have the pre-requisites."""
-        if (not self.configuration.disco_rest_ip and
-                self.configuration.disco_choice_client.lower() == "rest"):
-            msg = _("Could not find the IP address of the REST server.")
-            raise exception.VolumeBackendAPIException(data=msg)
-        else:
+        if self.configuration.disco_choice_client.lower() == "soap":
             path = self.configuration.disco_wsdl_path
             if not os.path.exists(path):
                 msg = _("Could not find DISCO wsdl file.")
+                raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            if not (self.configuration.disco_rest_ip or
+                    self.configuration.san_ip):
+                msg = _("Could not find the IP address of the REST server.")
                 raise exception.VolumeBackendAPIException(data=msg)
 
     def create_volume(self, volume):
