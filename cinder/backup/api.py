@@ -498,16 +498,18 @@ class API(base.Base):
             'project_id': context.project_id,
             'volume_id': IMPORT_VOLUME_ID,
             'status': fields.BackupStatus.CREATING,
+            'deleted_at': None,
+            'deleted': False,
             'metadata': {}
         }
 
         try:
             # Try to get the backup with that ID in all projects even among
             # deleted entries.
-            backup = objects.BackupImport.get_by_id(context,
-                                                    backup_record['id'],
-                                                    read_deleted='yes',
-                                                    project_only=False)
+            backup = objects.BackupImport.get_by_id(
+                context.elevated(read_deleted='yes'),
+                backup_record['id'],
+                project_only=False)
 
             # If record exists and it's not deleted we cannot proceed with the
             # import
