@@ -36,6 +36,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
+from cinder.policies import backups as policy
 import cinder.policy
 from cinder import quota
 from cinder import quota_utils
@@ -56,15 +57,6 @@ QUOTAS = quota.QUOTAS
 IMPORT_VOLUME_ID = '00000000-0000-0000-0000-000000000000'
 
 
-def check_policy(context, action):
-    target = {
-        'project_id': context.project_id,
-        'user_id': context.user_id,
-    }
-    _action = 'backup:%s' % action
-    cinder.policy.enforce(context, _action, target)
-
-
 class API(base.Base):
     """API for interacting with the volume backup manager."""
 
@@ -74,7 +66,7 @@ class API(base.Base):
         super(API, self).__init__(db)
 
     def get(self, context, backup_id):
-        check_policy(context, 'get')
+        context.authorize(policy.GET_POLICY)
         return objects.Backup.get_by_id(context, backup_id)
 
     def _check_support_to_force_delete(self, context, backup_host):
@@ -93,7 +85,7 @@ class API(base.Base):
         :raises BackupDriverException:
         :raises ServiceNotFound:
         """
-        check_policy(context, 'delete')
+        context.authorize(policy.DELETE_POLICY)
         if not force and backup.status not in [fields.BackupStatus.AVAILABLE,
                                                fields.BackupStatus.ERROR]:
             msg = _('Backup status must be available or error')
@@ -118,7 +110,7 @@ class API(base.Base):
 
     def get_all(self, context, search_opts=None, marker=None, limit=None,
                 offset=None, sort_keys=None, sort_dirs=None):
-        check_policy(context, 'get_all')
+        context.authorize(policy.GET_ALL_POLICY)
 
         search_opts = search_opts or {}
 
@@ -204,7 +196,7 @@ class API(base.Base):
                container, incremental=False, availability_zone=None,
                force=False, snapshot_id=None, metadata=None):
         """Make the RPC call to create a volume backup."""
-        check_policy(context, 'create')
+        context.authorize(policy.CREATE_POLICY)
         utils.check_metadata_properties(metadata)
         volume = self.volume_api.get(context, volume_id)
         snapshot = None
@@ -341,7 +333,7 @@ class API(base.Base):
 
     def restore(self, context, backup_id, volume_id=None, name=None):
         """Make the RPC call to restore a volume backup."""
-        check_policy(context, 'restore')
+        context.authorize(policy.RESTORE_POLICY)
         backup = self.get(context, backup_id)
         if backup['status'] != fields.BackupStatus.AVAILABLE:
             msg = _('Backup status must be available')
@@ -444,7 +436,7 @@ class API(base.Base):
         :returns: contains 'backup_url' and 'backup_service'
         :raises InvalidBackup:
         """
-        check_policy(context, 'backup-export')
+        context.authorize(policy.EXPORT_POLICY)
         backup = self.get(context, backup_id)
         if backup['status'] != fields.BackupStatus.AVAILABLE:
             msg = (_('Backup status must be available and not %s.') %
@@ -537,7 +529,7 @@ class API(base.Base):
         :raises ServiceNotFound:
         :raises InvalidInput:
         """
-        check_policy(context, 'backup-import')
+        context.authorize(policy.IMPORT_POLICY)
 
         # NOTE(ronenkat): since we don't have a backup-scheduler
         # we need to find a host that support the backup service
@@ -563,7 +555,7 @@ class API(base.Base):
         return backup
 
     def update(self, context, backup_id, fields):
-        check_policy(context, 'update')
+        context.authorize(policy.UPDATE_POLICY)
         backup = self.get(context, backup_id)
         backup.update(fields)
         backup.save()

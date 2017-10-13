@@ -44,8 +44,6 @@
     "volume:thaw_host": "rule:admin_api",
     "volume:revert_to_snapshot": "",
     "volume_extension:volume_admin_actions:reset_status": "rule:admin_api",
-    "volume_extension:backup_admin_actions:reset_status": "rule:admin_api",
-    "volume_extension:backup_admin_actions:force_delete": "rule:admin_api",
     "volume_extension:volume_admin_actions:force_delete": "rule:admin_api",
     "volume_extension:volume_admin_actions:force_detach": "rule:admin_api",
     "volume_extension:volume_admin_actions:migrate_volume": "rule:admin_api",
@@ -95,16 +93,10 @@
     "volume:get_transfer": "",
     "volume:get_all_transfers": "",
 
-    "backup:create" : "",
     "backup:delete": "",
     "backup:get": "",
     "backup:get_all": "",
     "backup:restore": "",
-    "backup:backup-import": "rule:admin_api",
-    "backup:backup-export": "rule:admin_api",
-    "backup:update": "rule:admin_or_owner",
-    "backup:backup_project_attribute": "rule:admin_api",
-
 
     "consistencygroup:create" : "",
     "consistencygroup:delete": "",
