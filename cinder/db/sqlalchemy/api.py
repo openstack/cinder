@@ -6738,8 +6738,10 @@ def worker_destroy(context, **filters):
 
 @require_context
 def resource_exists(context, model, resource_id, session=None):
+    conditions = [model.id == resource_id]
     # Match non deleted resources by the id
-    conditions = [model.id == resource_id, ~model.deleted]
+    if 'no' == context.read_deleted:
+        conditions.append(~model.deleted)
     # If the context is not admin we limit it to the context's project
     if is_user_context(context) and hasattr(model, 'project_id'):
         conditions.append(model.project_id == context.project_id)
