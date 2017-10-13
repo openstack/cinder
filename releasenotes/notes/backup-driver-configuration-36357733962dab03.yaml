@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Add ability to specify backup driver via class name.
+upgrade:
+  - |
+    Operators should change backup driver configuration value to use class
+    name to get backup service working in a 'S' release.
+deprecations:
+  - |
+    Backup driver initialization using module name is deprecated.
