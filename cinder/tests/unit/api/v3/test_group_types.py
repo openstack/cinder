@@ -22,7 +22,6 @@ from oslo_utils import timeutils
 import six
 import webob
 
-import cinder.api.common as common
 from cinder.api import microversions as mv
 from cinder.api.v3 import group_specs as v3_group_specs
 from cinder.api.v3 import group_types as v3_group_types
@@ -462,8 +461,8 @@ class GroupTypesApiTest(test.TestCase):
         self.assertDictEqual(expected_group_type, output['group_type'])
 
     def __test_view_builder_show_qos_specs_id_policy(self):
-        with mock.patch.object(common,
-                               'validate_policy',
+        with mock.patch.object(context.RequestContext,
+                               'authorize',
                                side_effect=[False, True]):
             view_builder = views_types.ViewBuilder()
             now = timeutils.utcnow().isoformat()
@@ -492,8 +491,8 @@ class GroupTypesApiTest(test.TestCase):
             self.assertDictEqual(expected_group_type, output['group_type'])
 
     def test_view_builder_show_group_specs_policy(self):
-        with mock.patch.object(common,
-                               'validate_policy',
+        with mock.patch.object(context.RequestContext,
+                               'authorize',
                                side_effect=[True, False]):
             view_builder = views_types.ViewBuilder()
             now = timeutils.utcnow().isoformat()
@@ -524,9 +523,9 @@ class GroupTypesApiTest(test.TestCase):
             self.assertDictEqual(expected_group_type, output['group_type'])
 
     def test_view_builder_show_pass_all_policy(self):
-        with mock.patch.object(common,
-                               'validate_policy',
-                               side_effect=[True, True]):
+        with mock.patch.object(context.RequestContext,
+                               'authorize',
+                               side_effect=[True, False]):
             view_builder = views_types.ViewBuilder()
             now = timeutils.utcnow().isoformat()
             raw_group_type = dict(
@@ -625,16 +624,3 @@ class GroupTypesApiTest(test.TestCase):
             )
             self.assertDictEqual(expected_group_type,
                                  output['group_types'][i])
-
-    def test_check_policy(self):
-        self.controller._check_policy(self.ctxt)
-
-        self.assertRaises(exception.PolicyNotAuthorized,
-                          self.controller._check_policy,
-                          self.user_ctxt)
-
-        self.specs_controller._check_policy(self.ctxt)
-
-        self.assertRaises(exception.PolicyNotAuthorized,
-                          self.specs_controller._check_policy,
-                          self.user_ctxt)

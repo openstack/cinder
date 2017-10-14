@@ -14,6 +14,7 @@
 #    under the License.
 
 from cinder.api import common
+from cinder.policies import group_types as policy
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -25,9 +26,7 @@ class ViewBuilder(common.ViewBuilder):
                        name=group_type.get('name'),
                        description=group_type.get('description'),
                        is_public=group_type.get('is_public'))
-        if common.validate_policy(
-                context,
-                'group:access_group_types_specs'):
+        if context.authorize(policy.SHOW_ACCESS_POLICY, fatal=False):
             trimmed['group_specs'] = group_type.get('group_specs')
         return trimmed if brief else dict(group_type=trimmed)
 

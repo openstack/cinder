@@ -89,30 +89,6 @@
     "consistencygroup:get_cgsnapshot": "group:nobody",
     "consistencygroup:get_all_cgsnapshots": "group:nobody",
 
-    "group:group_types_manage": "rule:admin_api",
-    "group:group_types_specs": "rule:admin_api",
-    "group:access_group_types_specs": "rule:admin_api",
-    "group:group_type_access": "rule:admin_or_owner",
-
-    "group:create" : "",
-    "group:delete": "rule:admin_or_owner",
-    "group:update": "rule:admin_or_owner",
-    "group:get": "rule:admin_or_owner",
-    "group:get_all": "rule:admin_or_owner",
-
-    "group:create_group_snapshot": "",
-    "group:delete_group_snapshot": "rule:admin_or_owner",
-    "group:update_group_snapshot": "rule:admin_or_owner",
-    "group:get_group_snapshot": "rule:admin_or_owner",
-    "group:get_all_group_snapshots": "rule:admin_or_owner",
-    "group:reset_group_snapshot_status":"rule:admin_api",
-    "group:reset_status":"rule:admin_api",
-
-    "group:enable_replication": "rule:admin_or_owner",
-    "group:disable_replication": "rule:admin_or_owner",
-    "group:failover_replication": "rule:admin_or_owner",
-    "group:list_replication_targets": "rule:admin_or_owner",
-
     "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api",
 
 }

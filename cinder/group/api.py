@@ -18,8 +18,6 @@ Handles all requests relating to groups.
 """
 
 
-import functools
-
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -31,9 +29,11 @@ from cinder.db import base
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
-from cinder.objects import base as objects_base
 from cinder.objects import fields as c_fields
-import cinder.policy
+from cinder.policies import group_actions as gp_action_policy
+from cinder.policies import group_snapshot_actions as gsnap_action_policy
+from cinder.policies import group_snapshots as gsnap_policy
+from cinder.policies import groups as group_policy
 from cinder import quota
 from cinder import quota_utils
 from cinder.scheduler import rpcapi as scheduler_rpcapi
@@ -55,37 +55,6 @@ VALID_REMOVE_VOL_FROM_GROUP_STATUS = (
 VALID_ADD_VOL_TO_GROUP_STATUS = (
     'available',
     'in-use')
-
-
-def wrap_check_policy(func):
-    """Check policy corresponding to the wrapped methods prior to execution.
-
-    This decorator requires the first 3 args of the wrapped function
-    to be (self, context, group)
-    """
-    @functools.wraps(func)
-    def wrapped(self, context, target_obj, *args, **kwargs):
-        check_policy(context, func.__name__, target_obj)
-        return func(self, context, target_obj, *args, **kwargs)
-
-    return wrapped
-
-
-def check_policy(context, action, target_obj=None):
-    target = {
-        'project_id': context.project_id,
-        'user_id': context.user_id,
-    }
-
-    if isinstance(target_obj, objects_base.CinderObject):
-        # Turn object into dict so target.update can work
-        target.update(
-            target_obj.obj_to_primitive()['versioned_object.data'] or {})
-    else:
-        target.update(target_obj or {})
-
-    _action = 'group:%s' % action
-    cinder.policy.enforce(context, _action, target)
 
 
 class API(base.Base):
@@ -130,7 +99,7 @@ class API(base.Base):
 
     def create(self, context, name, description, group_type,
                volume_types, availability_zone=None):
-        check_policy(context, 'create')
+        context.authorize(group_policy.CREATE_POLICY)
 
         req_volume_types = []
         # NOTE: Admin context is required to get extra_specs of volume_types.
@@ -196,7 +165,7 @@ class API(base.Base):
 
     def create_from_src(self, context, name, description=None,
                         group_snapshot_id=None, source_group_id=None):
-        check_policy(context, 'create')
+        context.authorize(group_policy.CREATE_POLICY)
 
         # Populate group_type_id and volume_type_ids
         group_type_id = None
@@ -514,9 +483,8 @@ class API(base.Base):
                 finally:
                     LOG.error("Failed to update quota for group %s.", group.id)
 
-    @wrap_check_policy
     def delete(self, context, group, delete_volumes=False):
-
+        context.authorize(gp_action_policy.DELETE_POLICY, target_obj=group)
         if not group.host:
             self.update_quota(context, group, -1, group.project_id)
 
@@ -602,10 +570,10 @@ class API(base.Base):
 
         self.volume_rpcapi.delete_group(context, group)
 
-    @wrap_check_policy
     def update(self, context, group, name, description,
                add_volumes, remove_volumes):
         """Update group."""
+        context.authorize(group_policy.UPDATE_POLICY, target_obj=group)
         # Validate name.
         if name == group.name:
             name = None
@@ -806,12 +774,12 @@ class API(base.Base):
 
     def get(self, context, group_id):
         group = objects.Group.get_by_id(context, group_id)
-        check_policy(context, 'get', group)
+        context.authorize(group_policy.GET_POLICY, target_obj=group)
         return group
 
     def get_all(self, context, filters=None, marker=None, limit=None,
                 offset=None, sort_keys=None, sort_dirs=None):
-        check_policy(context, 'get_all')
+        context.authorize(group_policy.GET_ALL_POLICY)
         if filters is None:
             filters = {}
 
@@ -830,10 +798,9 @@ class API(base.Base):
                 sort_dirs=sort_dirs)
         return groups
 
-    @wrap_check_policy
     def reset_status(self, context, group, status):
         """Reset status of generic group"""
-
+        context.authorize(gp_action_policy.RESET_STATUS, target_obj=group)
         if status not in c_fields.GroupStatus.ALL:
             msg = _("Group status: %(status)s is invalid, valid status "
                     "are: %(valid)s.") % {'status': status,
@@ -844,8 +811,8 @@ class API(base.Base):
         group.update(field)
         group.save()
 
-    @wrap_check_policy
     def create_group_snapshot(self, context, group, name, description):
+        context.authorize(gsnap_policy.CREATE_POLICY, target_obj=group)
         group.assert_not_frozen()
         options = {'group_id': group.id,
                    'user_id': context.user_id,
@@ -884,7 +851,7 @@ class API(base.Base):
         return group_snapshot
 
     def delete_group_snapshot(self, context, group_snapshot, force=False):
-        check_policy(context, 'delete_group_snapshot')
+        context.authorize(gsnap_policy.DELETE_POLICY)
         group_snapshot.assert_not_frozen()
         values = {'status': 'deleting'}
         expected = {'status': ('available', 'error')}
@@ -911,12 +878,12 @@ class API(base.Base):
                                                  group_snapshot)
 
     def update_group_snapshot(self, context, group_snapshot, fields):
-        check_policy(context, 'update_group_snapshot')
+        context.authorize(gsnap_policy.UPDATE_POLICY)
         group_snapshot.update(fields)
         group_snapshot.save()
 
     def get_group_snapshot(self, context, group_snapshot_id):
-        check_policy(context, 'get_group_snapshot')
+        context.authorize(gsnap_policy.GET_POLICY)
         group_snapshots = objects.GroupSnapshot.get_by_id(context,
                                                           group_snapshot_id)
         return group_snapshots
@@ -924,7 +891,7 @@ class API(base.Base):
     def get_all_group_snapshots(self, context, filters=None, marker=None,
                                 limit=None, offset=None, sort_keys=None,
                                 sort_dirs=None):
-        check_policy(context, 'get_all_group_snapshots')
+        context.authorize(gsnap_policy.GET_ALL_POLICY)
         filters = filters or {}
 
         if context.is_admin and 'all_tenants' in filters:
@@ -943,7 +910,7 @@ class API(base.Base):
     def reset_group_snapshot_status(self, context, gsnapshot, status):
         """Reset status of group snapshot"""
 
-        check_policy(context, 'reset_group_snapshot_status')
+        context.authorize(gsnap_action_policy.RESET_STATUS)
         if status not in c_fields.GroupSnapshotStatus.ALL:
             msg = _("Group snapshot status: %(status)s is invalid, "
                     "valid statuses are: "
@@ -969,8 +936,8 @@ class API(base.Base):
                 raise exception.InvalidVolumeType(reason=msg)
 
     # Replication group API (Tiramisu)
-    @wrap_check_policy
     def enable_replication(self, context, group):
+        context.authorize(gp_action_policy.ENABLE_REP, target_obj=group)
         self._check_type(group)
 
         valid_status = [c_fields.GroupStatus.AVAILABLE]
@@ -1030,8 +997,8 @@ class API(base.Base):
 
         self.volume_rpcapi.enable_replication(context, group)
 
-    @wrap_check_policy
     def disable_replication(self, context, group):
+        context.authorize(gp_action_policy.DISABLE_REP, target_obj=group)
         self._check_type(group)
 
         valid_status = [c_fields.GroupStatus.AVAILABLE,
@@ -1080,10 +1047,10 @@ class API(base.Base):
 
         self.volume_rpcapi.disable_replication(context, group)
 
-    @wrap_check_policy
     def failover_replication(self, context, group,
                              allow_attached_volume=False,
                              secondary_backend_id=None):
+        context.authorize(gp_action_policy.FAILOVER_REP, target_obj=group)
         self._check_type(group)
 
         valid_status = [c_fields.GroupStatus.AVAILABLE]
@@ -1148,8 +1115,8 @@ class API(base.Base):
                                                 allow_attached_volume,
                                                 secondary_backend_id)
 
-    @wrap_check_policy
     def list_replication_targets(self, context, group):
+        context.authorize(gp_action_policy.LIST_REP, target_obj=group)
         self._check_type(group)
 
         return self.volume_rpcapi.list_replication_targets(context, group)
