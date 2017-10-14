@@ -28,6 +28,8 @@ supported XtremIO version 2.4 and up
           R/O snapshots, CHAP discovery authentication
   1.0.7 - cache glance images on the array
   1.0.8 - support for volume retype, CG fixes
+  1.0.9 - performance improvements, support force detach, support for X2
+  1.0.10 - option to clean unused IGs
 """
 
 import json
@@ -71,7 +73,16 @@ XTREMIO_OPTS = [
                help='Interval between retries in case array is busy'),
     cfg.IntOpt('xtremio_volumes_per_glance_cache',
                default=100,
-               help='Number of volumes created from each cached glance image')]
+               help='Number of volumes created from each cached glance image'),
+    cfg.BoolOpt('xtremio_clean_unused_ig',
+                default=False,
+                help='Should the driver remove initiator groups with no '
+                     'volumes after the last connection was terminated. '
+                     'Since the behavior till now was to leave '
+                     'the IG be, we default to False (not deleting IGs '
+                     'without connected volumes); setting this parameter '
+                     'to True will remove any IG after terminating its '
+                     'connection to the last volume.')]
 
 CONF.register_opts(XTREMIO_OPTS, group=configuration.SHARED_CONF_GROUP)
 
@@ -396,7 +407,7 @@ class XtremIOClient42(XtremIOClient4):
 class XtremIOVolumeDriver(san.SanDriver):
     """Executes commands relating to Volumes."""
 
-    VERSION = '1.0.9'
+    VERSION = '1.0.10'
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_XIO_CI"
@@ -415,6 +426,8 @@ class XtremIOVolumeDriver(san.SanDriver):
         self.provisioning_factor = (self.configuration.
                                     safe_get('max_over_subscription_ratio')
                                     or DEFAULT_PROVISIONING_FACTOR)
+        self.clean_ig = (self.configuration.safe_get('xtremio_clean_unused_ig')
+                         or False)
         self._stats = {}
         self.client = XtremIOClient3(self.configuration, self.cluster_id)
 
@@ -707,6 +720,18 @@ class XtremIOVolumeDriver(san.SanDriver):
                 self.client.req('lun-maps', 'DELETE', name=lm_name)
             except exception.NotFound:
                 LOG.warning("terminate_connection: lun map not found")
+
+        if self.clean_ig:
+            for idx in ig_indexes:
+                try:
+                    ig = self.client.req('initiator-groups', 'GET',
+                                         {'prop': 'num-of-vols'},
+                                         idx=idx)['content']
+                    if ig['num-of-vols'] == 0:
+                        self.client.req('initiator-groups', 'DELETE', idx=idx)
+                except (exception.NotFound,
+                        exception.VolumeBackendAPIException):
+                    LOG.warning('Failed to clean IG %d without mappings', idx)
 
     def _get_password(self):
         return ''.join(RANDOM.choice
