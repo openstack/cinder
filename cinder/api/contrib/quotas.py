@@ -24,6 +24,7 @@ from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
 from cinder.i18n import _
+from cinder.policies import quotas as policy
 from cinder import quota
 from cinder import quota_utils
 from cinder import utils
@@ -33,10 +34,6 @@ LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
 GROUP_QUOTAS = quota.GROUP_QUOTAS
 NON_QUOTA_KEYS = ['tenant_id', 'id']
-
-authorize_update = extensions.extension_authorizer('volume', 'quotas:update')
-authorize_show = extensions.extension_authorizer('volume', 'quotas:show')
-authorize_delete = extensions.extension_authorizer('volume', 'quotas:delete')
 
 
 class QuotaSetsController(wsgi.Controller):
@@ -169,7 +166,7 @@ class QuotaSetsController(wsgi.Controller):
         :param id: target project id that needs to be shown
         """
         context = req.environ['cinder.context']
-        authorize_show(context)
+        context.authorize(policy.SHOW_POLICY)
         params = req.params
         target_project_id = id
 
@@ -212,7 +209,7 @@ class QuotaSetsController(wsgi.Controller):
                      the resources if the update succeeds
         """
         context = req.environ['cinder.context']
-        authorize_update(context)
+        context.authorize(policy.UPDATE_POLICY)
         self.validate_string_length(id, 'quota_set_name',
                                     min_length=1, max_length=255)
 
@@ -354,7 +351,7 @@ class QuotaSetsController(wsgi.Controller):
 
     def defaults(self, req, id):
         context = req.environ['cinder.context']
-        authorize_show(context)
+        context.authorize(policy.SHOW_POLICY)
         defaults = QUOTAS.get_defaults(context, project_id=id)
         group_defaults = GROUP_QUOTAS.get_defaults(context, project_id=id)
         defaults.update(group_defaults)
@@ -371,7 +368,7 @@ class QuotaSetsController(wsgi.Controller):
         :param id: target project id that needs to be deleted
         """
         context = req.environ['cinder.context']
-        authorize_delete(context)
+        context.authorize(policy.DELETE_POLICY)
 
         if QUOTAS.using_nested_quotas():
             self._delete_nested_quota(context, id)
@@ -440,6 +437,7 @@ class QuotaSetsController(wsgi.Controller):
         no child quota would be larger than it's parent).
         """
         ctxt = req.environ['cinder.context']
+        ctxt.authorize(policy.VALIDATE_NESTED_QUOTA_POLICY)
         params = req.params
         try:
             resources = QUOTAS.resources

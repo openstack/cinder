@@ -19,15 +19,13 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import db
 from cinder import exception
+from cinder.policies import quota_class as policy
 from cinder import quota
 from cinder import utils
 
 
 QUOTAS = quota.QUOTAS
 GROUP_QUOTAS = quota.GROUP_QUOTAS
-
-
-authorize = extensions.extension_authorizer('volume', 'quota_classes')
 
 
 class QuotaClassSetsController(wsgi.Controller):
@@ -41,7 +39,7 @@ class QuotaClassSetsController(wsgi.Controller):
 
     def show(self, req, id):
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.MANAGE_POLICY)
         try:
             db.sqlalchemy.api.authorize_quota_class_context(context, id)
         except exception.NotAuthorized:
@@ -54,7 +52,7 @@ class QuotaClassSetsController(wsgi.Controller):
 
     def update(self, req, id, body):
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.MANAGE_POLICY)
         self.validate_string_length(id, 'quota_class_name',
                                     min_length=1, max_length=255)
 

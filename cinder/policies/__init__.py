@@ -27,6 +27,9 @@ from cinder.policies import group_types
 from cinder.policies import groups
 from cinder.policies import manageable_snapshots
 from cinder.policies import messages
+from cinder.policies import qos_specs
+from cinder.policies import quota_class
+from cinder.policies import quotas
 from cinder.policies import snapshot_actions
 from cinder.policies import snapshot_metadata
 from cinder.policies import snapshots
@@ -51,4 +54,7 @@ def list_rules():
         group_snapshots.list_rules(),
         group_snapshot_actions.list_rules(),
         group_actions.list_rules(),
+        qos_specs.list_rules(),
+        quota_class.list_rules(),
+        quotas.list_rules(),
     )
