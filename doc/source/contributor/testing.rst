@@ -103,10 +103,13 @@ Or all tests in the test_volume.py file::
 
 You may also use regular expressions to run any matching tests::
 
-    tox -epy27 -- -r test_volume
+    tox -epy27 -- test_volume
 
-For more information on these options and how to run tests, please see the
-`ostestr documentation <https://docs.openstack.org/os-testr/latest/>`_.
+Additionally, when running a single test, or test-file, the `-n` argument is no
+longer required, however it may perform faster if included.
+
+For more information on these options and details about stestr, please see the
+`stestr documentation <http://stestr.readthedocs.io/en/latest/MANUAL.html>`_.
 
 Gotchas
 -------
