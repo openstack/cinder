@@ -173,36 +173,6 @@ global_opts = [
     cfg.StrOpt('group_api_class',
                default='cinder.group.api.API',
                help='The full class name of the group API class'),
-    cfg.StrOpt('os_privileged_user_name',
-               help='OpenStack privileged account username. Used for requests '
-                    'to other services (such as Nova) that require an account '
-                    'with special rights.',
-               deprecated_for_removal=True,
-               deprecated_since="11.0.0",
-               deprecated_reason='Use the [nova] section for configuring '
-               'Keystone authentication for a privileged user.'),
-    cfg.StrOpt('os_privileged_user_password',
-               help='Password associated with the OpenStack privileged '
-                    'account.',
-               deprecated_for_removal=True,
-               deprecated_since="11.0.0",
-               deprecated_reason='Use the [nova] section to configure '
-               'Keystone authentication for a privileged user.',
-               secret=True),
-    cfg.StrOpt('os_privileged_user_tenant',
-               help='Tenant name associated with the OpenStack privileged '
-                    'account.',
-               deprecated_for_removal=True,
-               deprecated_since="11.0.0",
-               deprecated_reason='Use the [nova] section to configure '
-               'Keystone authentication for a privileged user.'),
-    cfg.URIOpt('os_privileged_user_auth_url',
-               help='Auth URL associated with the OpenStack privileged '
-                    'account.',
-               deprecated_for_removal=True,
-               deprecated_since="11.0.0",
-               deprecated_reason='Use the [nova] section to configure '
-               'Keystone authentication for a privileged user.')
 ]
 
 CONF.register_opts(core_opts)
