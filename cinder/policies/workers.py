@@ -25,7 +25,7 @@ workers_policies = [
     policy.DocumentedRuleDefault(
         name=CLEAN_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="""Clean up workers.""",
+        description="Clean up workers.",
         operations=[
             {
                 'method': 'POST',

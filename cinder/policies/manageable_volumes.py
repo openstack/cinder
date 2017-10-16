@@ -28,7 +28,7 @@ manageable_volumes_policies = [
         name=LIST_MANAGEABLE_POLICY,
         check_str=base.RULE_ADMIN_API,
         description=
-        """List (in detail) of volumes which are available to manage.""",
+        "List (in detail) of volumes which are available to manage.",
         operations=[
             {
                 'method': 'GET',
@@ -42,7 +42,7 @@ manageable_volumes_policies = [
     policy.DocumentedRuleDefault(
         name=MANAGE_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="""Manage existing volumes.""",
+        description="Manage existing volumes.",
         operations=[
             {
                 'method': 'POST',
@@ -52,7 +52,7 @@ manageable_volumes_policies = [
     policy.DocumentedRuleDefault(
         name=UNMANAGE_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="""Stop managing a volume.""",
+        description="Stop managing a volume.",
         operations=[
             {
                 'method': 'POST',

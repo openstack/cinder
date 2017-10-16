@@ -26,7 +26,7 @@ attachments_policies = [
     policy.DocumentedRuleDefault(
         name=CREATE_POLICY,
         check_str="",
-        description="""Create attachment.""",
+        description="Create attachment.",
         operations=[
             {
                 'method': 'POST',
@@ -36,7 +36,7 @@ attachments_policies = [
     policy.DocumentedRuleDefault(
         name=UPDATE_POLICY,
         check_str=base.RULE_ADMIN_OR_OWNER,
-        description="""Update attachment.""",
+        description="Update attachment.",
         operations=[
             {
                 'method': 'PUT',
@@ -46,7 +46,7 @@ attachments_policies = [
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
         check_str=base.RULE_ADMIN_OR_OWNER,
-        description="""Delete attachment.""",
+        description="Delete attachment.",
         operations=[
             {
                 'method': 'DELETE',
