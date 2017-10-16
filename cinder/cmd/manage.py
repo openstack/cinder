@@ -308,11 +308,11 @@ class DbCommands(object):
             ran = sum([done for found, done, remaining in migrations.values()])
             if not unlimited:
                 break
-
-        t = prettytable.PrettyTable([_('Migration'),
-                                     _('Found'),
-                                     _('Done'),
-                                     _('Remaining')])
+        headers = ["{}".format(_('Migration')),
+                   "{}".format(_('Found')),
+                   "{}".format(_('Done')),
+                   "{}".format(_('Remaining'))]
+        t = prettytable.PrettyTable(headers)
         for name in sorted(migration_info.keys()):
             info = migration_info[name]
             t.add_row([name, info[0], info[1], info[2]])
