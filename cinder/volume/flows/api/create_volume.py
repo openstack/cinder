@@ -14,7 +14,6 @@
 from castellan.common import exception as castellan_exc
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils import timeutils
 from oslo_utils import units
 import six
 import taskflow.engines
@@ -728,28 +727,24 @@ class VolumeCastTask(flow_utils.CinderTask):
         self.db = db
 
     def _cast_create_volume(self, context, request_spec, filter_properties):
-        source_volume_ref = None
         source_volid = request_spec['source_volid']
         volume = request_spec['volume']
         snapshot_id = request_spec['snapshot_id']
         image_id = request_spec['image_id']
         cgroup_id = request_spec['consistencygroup_id']
-        cgsnapshot_id = request_spec['cgsnapshot_id']
         group_id = request_spec['group_id']
         if cgroup_id:
             # If cgroup_id existed, we should cast volume to the scheduler
             # to choose a proper pool whose backend is same as CG's backend.
             cgroup = objects.ConsistencyGroup.get_by_id(context, cgroup_id)
-            request_spec['CG_backend'] = vol_utils.extract_host(cgroup.host)
+            request_spec['resource_backend'] = vol_utils.extract_host(
+                cgroup.host)
         elif group_id:
             # If group_id exists, we should cast volume to the scheduler
             # to choose a proper pool whose backend is same as group's backend.
             group = objects.Group.get_by_id(context, group_id)
-            # FIXME(wanghao): group_backend got added before request_spec was
-            # converted to versioned objects. We should make sure that this
-            # will be handled by object version translations once we add
-            # RequestSpec object.
-            request_spec['group_backend'] = vol_utils.extract_host(group.host)
+            request_spec['resource_backend'] = vol_utils.extract_host(
+                group.host)
         elif snapshot_id and CONF.snapshot_same_host:
             # NOTE(Rongze Zhu): A simple solution for bug 1008866.
             #
@@ -757,35 +752,24 @@ class VolumeCastTask(flow_utils.CinderTask):
             # the call create volume directly to the volume host where the
             # snapshot resides instead of passing it through the scheduler, so
             # snapshot can be copied to the new volume.
+            # NOTE(tommylikehu): In order to check the backend's capacity
+            # before creating volume, we schedule this request to scheduler
+            # service with the desired backend information.
             snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
-            source_volume_ref = snapshot.volume
+            request_spec['resource_backend'] = vol_utils.extract_host(
+                snapshot.volume.host)
         elif source_volid:
             source_volume_ref = objects.Volume.get_by_id(context, source_volid)
+            request_spec['resource_backend'] = vol_utils.extract_host(
+                source_volume_ref.host)
 
-        if not source_volume_ref:
-            # Cast to the scheduler and let it handle whatever is needed
-            # to select the target host for this volume.
-            self.scheduler_rpcapi.create_volume(
-                context,
-                volume,
-                snapshot_id=snapshot_id,
-                image_id=image_id,
-                request_spec=request_spec,
-                filter_properties=filter_properties)
-        else:
-            # Bypass the scheduler and send the request directly to the volume
-            # manager.
-            volume.host = source_volume_ref.host
-            volume.cluster_name = source_volume_ref.cluster_name
-            volume.scheduled_at = timeutils.utcnow()
-            volume.save()
-            if not cgsnapshot_id:
-                self.volume_rpcapi.create_volume(
-                    context,
-                    volume,
-                    request_spec,
-                    filter_properties,
-                    allow_reschedule=False)
+        self.scheduler_rpcapi.create_volume(
+            context,
+            volume,
+            snapshot_id=snapshot_id,
+            image_id=image_id,
+            request_spec=request_spec,
+            filter_properties=filter_properties)
 
     def execute(self, context, **kwargs):
         scheduler_hints = kwargs.pop('scheduler_hints', None)

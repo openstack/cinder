@@ -508,14 +508,15 @@ class FilterScheduler(driver.Scheduler):
         weighed_backends = self._get_weighted_candidates(context, request_spec,
                                                          filter_properties)
         # When we get the weighed_backends, we clear those backends that don't
-        # match the group's backend.
-        group_backend = request_spec.get('group_backend')
-        if weighed_backends and group_backend:
+        # match the resource's backend (it could be assigend from group,
+        # snapshot or volume).
+        resource_backend = request_spec.get('resource_backend')
+        if weighed_backends and resource_backend:
             # Get host name including host@backend#pool info from
             # weighed_backends.
             for backend in weighed_backends[::-1]:
                 backend_id = utils.extract_host(backend.obj.backend_id)
-                if backend_id != group_backend:
+                if backend_id != resource_backend:
                     weighed_backends.remove(backend)
         if not weighed_backends:
             LOG.warning('No weighed backend found for volume '

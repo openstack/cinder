@@ -185,10 +185,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertTrue(_mock_service_get_all.called)
 
     @mock.patch('cinder.db.service_get_all')
-    def test_create_volume_clear_host_different_with_group(
+    def test_create_volume_host_different_with_resource_backend(
             self, _mock_service_get_all):
-        # Ensure we clear those hosts whose backend is not same as
-        # group's backend.
         sched = fakes.FakeFilterScheduler()
         sched.host_manager = fakes.FakeHostManager()
         fakes.mock_host_manager_db_calls(_mock_service_get_all)
@@ -196,12 +194,12 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {'volume_properties': {'project_id': 1,
                                               'size': 1},
                         'volume_type': {'name': 'LVM_iSCSI'},
-                        'group_backend': 'host@lvmdriver'}
+                        'resource_backend': 'host_none'}
         weighed_host = sched._schedule(fake_context, request_spec, {})
         self.assertIsNone(weighed_host)
 
     @mock.patch('cinder.db.service_get_all')
-    def test_create_volume_host_same_as_group(self, _mock_service_get_all):
+    def test_create_volume_host_same_as_resource(self, _mock_service_get_all):
         # Ensure we don't clear the host whose backend is same as
         # group's backend.
         sched = fakes.FakeFilterScheduler()
@@ -211,7 +209,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {'volume_properties': {'project_id': 1,
                                               'size': 1},
                         'volume_type': {'name': 'LVM_iSCSI'},
-                        'group_backend': 'host1'}
+                        'resource_backend': 'host1'}
         weighed_host = sched._schedule(fake_context, request_spec, {})
         self.assertEqual('host1#lvm1', weighed_host.obj.host)
 

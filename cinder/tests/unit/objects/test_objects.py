@@ -42,7 +42,7 @@ object_data = {
     'ManageableVolumeList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'QualityOfServiceSpecs': '1.0-0b212e0a86ee99092229874e03207fe8',
     'QualityOfServiceSpecsList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
-    'RequestSpec': '1.1-b0bd1a28d191d75648901fa853e8a733',
+    'RequestSpec': '1.2-207502df46a50575a818076e1ea119db',
     'Service': '1.6-e881b6b324151dd861e09cdfffcdaccd',
     'ServiceList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'Snapshot': '1.5-ac1cdbd5b89588f6a8f44afdf6b8b201',
