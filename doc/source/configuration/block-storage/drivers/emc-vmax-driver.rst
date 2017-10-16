@@ -17,7 +17,7 @@ System requirements
 
 The Cinder driver supports the VMAX-3 series and VMAX All-Flash arrays.
 
-Solutions Enabler 8.4.0.12 or later, and Unisphere for VMAX 8.4.0.12 or later
+Solutions Enabler 8.4.0.7 or later, and Unisphere for VMAX 8.4.0.15 or later
 are required.
 
 You can download Solutions Enabler and Unisphere from the Dell EMC's support
@@ -92,6 +92,7 @@ VMAX drivers support these operations:
 -  Create generic volume group from source
 -  Live Migration
 -  Volume replication
+-  Quality of service (QoS)
 
 VMAX drivers also support the following features:
 
