@@ -120,14 +120,15 @@ volume_manager_opts = [
                 default=False,
                 help='Offload pending volume delete during '
                      'volume service startup'),
+    cfg.StrOpt('zoning_mode',
+               help="FC Zoning mode configured, only 'fabric' is "
+                    "supported now."),
 ]
 
 volume_backend_opts = [
     cfg.StrOpt('volume_driver',
                default='cinder.volume.drivers.lvm.LVMVolumeDriver',
                help='Driver to use for volume creation'),
-    cfg.StrOpt('zoning_mode',
-               help='FC Zoning mode configured'),
     cfg.StrOpt('extra_capabilities',
                default='{}',
                help='User defined capabilities, a JSON formatted string '
