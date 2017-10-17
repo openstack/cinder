@@ -172,6 +172,40 @@ Response Example
    :language: javascript
 
 
+Update extra specification for volume type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  PUT /v3/{project_id}/types/{volume_type_id}/extra_specs/{key}
+
+Update the specific extra specification assigned to a volume type.
+
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_type_id: volume_type_id
+   - key: key_4
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-type-specific-extra-specs-update-request.json
+   :language: javascript
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-type-specific-extra-specs-update-response.json
+   :language: javascript
+
+
 Delete extra specification for volume type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
