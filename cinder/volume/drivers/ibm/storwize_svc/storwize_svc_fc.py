@@ -33,6 +33,7 @@ localized format.
 are of different sizes, is not supported.
 
 """
+import collections
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -93,6 +94,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         2.2.1 - Add vdisk mirror/stretch cluster support
         2.2.2 - Add npiv support
         2.2.3 - Add replication group support
+        2.2.4 - Add backup snapshots support
     """
 
     VERSION = "2.2.3"
@@ -113,6 +115,21 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
                       'information.')
             raise exception.InvalidConnectorException(
                 missing='wwpns')
+
+    def initialize_connection_snapshot(self, snapshot, connector):
+        """Perform attach snapshot for backup snapshots."""
+        # If the snapshot's source volume is a replication volume and the
+        # replication volume has failed over to aux_backend,
+        # attach the snapshot will be failed.
+        self._check_snapshot_replica_volume_status(snapshot)
+
+        vol_attrs = ['id', 'name', 'display_name']
+        Volume = collections.namedtuple('Volume', vol_attrs)
+        volume = Volume(id=snapshot.id,
+                        name=snapshot.name,
+                        display_name='backup-snapshot')
+
+        return self.initialize_connection(volume, connector)
 
     @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
@@ -136,9 +153,16 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
 
         """
         LOG.debug('enter: initialize_connection: volume %(vol)s with connector'
-                  ' %(conn)s', {'vol': volume['id'], 'conn': connector})
-        volume_name, backend_helper, node_state = self._get_vol_sys_info(
-            volume)
+                  ' %(conn)s', {'vol': volume.id, 'conn': connector})
+        if volume.display_name == 'backup-snapshot':
+            LOG.debug('It is a virtual volume %(vol)s for attach snapshot.',
+                      {'vol': volume.id})
+            volume_name = volume.name
+            backend_helper = self._helpers
+            node_state = self._state
+        else:
+            volume_name, backend_helper, node_state = self._get_vol_sys_info(
+                volume)
 
         # Check if a host object is defined for this host name
         host_name = backend_helper.get_host_from_connector(connector)
@@ -192,7 +216,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             properties = {}
             properties['target_discovered'] = False
             properties['target_lun'] = lun_id
-            properties['volume_id'] = volume['id']
+            properties['volume_id'] = volume.id
 
             conn_wwpns = backend_helper.get_conn_fc_wwpns(host_name)
 
@@ -234,7 +258,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
 
         LOG.debug('leave: initialize_connection:\n volume: %(vol)s\n '
                   'connector %(conn)s\n properties: %(prop)s',
-                  {'vol': volume['id'], 'conn': connector,
+                  {'vol': volume.id, 'conn': connector,
                    'prop': properties})
 
         return {'driver_volume_type': 'fibre_channel', 'data': properties, }
@@ -248,6 +272,16 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
                 i_t_map[i_wwpn].append(t_wwpn)
 
         return i_t_map
+
+    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Perform detach snapshot for backup snapshots."""
+        vol_attrs = ['id', 'name', 'display_name']
+        Volume = collections.namedtuple('Volume', vol_attrs)
+        volume = Volume(id=snapshot.id,
+                        name=snapshot.name,
+                        display_name='backup-snapshot')
+
+        return self.terminate_connection(volume, connector, **kwargs)
 
     @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
@@ -276,8 +310,16 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
            automatically by this driver when mappings are created)
         """
         LOG.debug('enter: terminate_connection: volume %(vol)s with connector'
-                  ' %(conn)s', {'vol': volume['id'], 'conn': connector})
-        vol_name, backend_helper, node_state = self._get_vol_sys_info(volume)
+                  ' %(conn)s', {'vol': volume.id, 'conn': connector})
+        if volume.display_name == 'backup-snapshot':
+            LOG.debug('It is a virtual volume %(vol)s for detach snapshot.',
+                      {'vol': volume.id})
+            vol_name = volume.name
+            backend_helper = self._helpers
+            node_state = self._state
+        else:
+            vol_name, backend_helper, node_state = self._get_vol_sys_info(
+                volume)
 
         info = {}
         if 'host' in connector:
@@ -324,6 +366,6 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
                 backend_helper.delete_host(host_name)
 
         LOG.debug('leave: terminate_connection: volume %(vol)s with '
-                  'connector %(conn)s', {'vol': volume['id'],
+                  'connector %(conn)s', {'vol': volume.id,
                                          'conn': connector})
         return info

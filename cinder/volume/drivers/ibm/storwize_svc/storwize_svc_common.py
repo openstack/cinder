@@ -2578,6 +2578,13 @@ class StorwizeSVCCommonDriver(san.SanDriver,
     def remove_export(self, ctxt, volume):
         pass
 
+    def create_export_snapshot(self, ctxt, snapshot, connector):
+        model_update = None
+        return model_update
+
+    def remove_export_snapshot(self, ctxt, snapshot):
+        pass
+
     def _get_vdisk_params(self, type_id, volume_type=None,
                           volume_metadata=None):
         return self._helpers.get_vdisk_params(self.configuration,
@@ -3859,6 +3866,21 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                            volume.name)
 
         return tgt_vol, backend_helper, node_state
+
+    def _check_snapshot_replica_volume_status(self, snapshot):
+        ctxt = context.get_admin_context()
+        if self._get_volume_replicated_type(ctxt, None,
+                                            snapshot.volume_type_id):
+            LOG.debug('It is a replication volume snapshot for backup.')
+            rep_volume = objects.Volume.get_by_id(ctxt, snapshot.volume_id)
+            volume_name, backend_helper, node_state = self._get_vol_sys_info(
+                rep_volume)
+            if backend_helper != self._helpers or self._active_backend_id:
+                msg = (_('The snapshot of the replication volume %s has '
+                         'failed over to the aux backend. It can not attach'
+                         ' to the aux backend.') % volume_name)
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
 
     def migrate_volume(self, ctxt, volume, host):
         """Migrate directly if source and dest are managed by same storage.

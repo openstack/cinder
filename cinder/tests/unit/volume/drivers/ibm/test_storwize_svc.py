@@ -2758,6 +2758,12 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         vol = testutils.create_volume(self.ctxt, **prop)
         return vol
 
+    def _generate_snap_info(self, vol_id, size=10):
+        prop = {'volume_id': vol_id,
+                'volume_size': size}
+        snap = testutils.create_snapshot(self.ctxt, **prop)
+        return snap
+
     def _assert_vol_exists(self, name, exists):
         is_vol_defined = self.iscsi_driver._helpers.is_vdisk_defined(name)
         self.assertEqual(exists, is_vol_defined)
@@ -2796,6 +2802,43 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
         self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
+
+    def test_storwize_iscsi_connection_snapshot(self):
+        # create a iSCSI volume
+        volume_iSCSI = self._create_volume()
+        snapshot = self._generate_snap_info(volume_iSCSI.id)
+        self.iscsi_driver.create_snapshot(snapshot)
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.iscsi_driver.initialize_connection_snapshot(snapshot, connector)
+        self.iscsi_driver.terminate_connection_snapshot(snapshot, connector)
+
+    def test_storwize_replication_failover_iscsi_connection_snapshot(self):
+        volume_iSCSI = self._create_volume()
+        snapshot = self._generate_snap_info(volume_iSCSI.id)
+        self.iscsi_driver.create_snapshot(snapshot)
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+        # a snapshot of a replication failover volume. attach will be failed
+        with mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                               '_get_volume_replicated_type') as rep_type:
+            rep_type.return_value = True
+            with mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                                   '_get_vol_sys_info') as sys_info:
+                sys_info.return_value = {'volume_name': 'voliscsi',
+                                         'backend_helper':
+                                             'self._aux_backend_helpers',
+                                         'node_state': 'self._state'}
+                self.assertRaises(exception.VolumeDriverException,
+                                  self.iscsi_driver.
+                                  initialize_connection_snapshot,
+                                  snapshot,
+                                  connector)
 
     @mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                        '_do_terminate_connection')
@@ -3298,6 +3341,12 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         vol = testutils.create_volume(self.ctxt, **prop)
         return vol
 
+    def _generate_snap_info(self, vol_id, size=10):
+        prop = {'volume_id': vol_id,
+                'volume_size': size}
+        snap = testutils.create_snapshot(self.ctxt, **prop)
+        return snap
+
     def _assert_vol_exists(self, name, exists):
         is_vol_defined = self.fc_driver._helpers.is_vdisk_defined(name)
         self.assertEqual(exists, is_vol_defined)
@@ -3314,6 +3363,44 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         host_name = helper.get_host_from_connector(self._connector)
 
         self.assertIsNotNone(host_name)
+
+    def test_storwize_fc_connection_snapshot(self):
+        # create a iSCSI volume
+        volume_fc = self._create_volume()
+        snapshot = self._generate_snap_info(volume_fc.id)
+        self.fc_driver.create_snapshot(snapshot)
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.fc_driver.initialize_connection_snapshot(snapshot, connector)
+        self.fc_driver.terminate_connection_snapshot(snapshot, connector)
+
+    def test_storwize_replication_failover_fc_connection_snapshot(self):
+        volume_fc = self._create_volume()
+        volume_fc['replication_status'] = fields.ReplicationStatus.FAILED_OVER
+        snapshot = self._generate_snap_info(volume_fc.id)
+        self.fc_driver.create_snapshot(snapshot)
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+        # a snapshot of a replication failover volume. attach will be failed
+        with mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                               '_get_volume_replicated_type') as rep_type:
+            rep_type.return_value = True
+            with mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                                   '_get_vol_sys_info') as sys_info:
+                sys_info.return_value = {'volume_name': 'volfc',
+                                         'backend_helper':
+                                             'self._aux_backend_helpers',
+                                         'node_state': 'self._state'}
+                self.assertRaises(exception.VolumeDriverException,
+                                  self.fc_driver.
+                                  initialize_connection_snapshot,
+                                  snapshot,
+                                  connector)
 
     def test_storwize_get_host_with_fc_connection_with_volume(self):
         # create a FC volume
