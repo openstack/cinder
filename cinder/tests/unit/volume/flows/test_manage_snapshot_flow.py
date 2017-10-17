@@ -20,6 +20,7 @@ import ddt
 import mock
 
 from cinder import context
+from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
@@ -54,6 +55,23 @@ class ManageSnapshotFlowTestCase(test.TestCase):
         snap_after_manage = result['snapshot']
         #  assure value is equal that size, that we want
         self.assertEqual(real_size, snap_after_manage['volume_size'])
+
+    def test_manage_existing_snapshot_with_wrong_volume(self):
+        """Test that raise an error when get_by_id fail."""
+        mock_db = mock.MagicMock()
+        mock_driver = mock.MagicMock()
+        real_size = 1
+        manage_existing_ref = None
+        fake_snap = fake_snapshot.fake_snapshot_obj(self.ctxt,
+                                                    volume_size=real_size)
+
+        task = manager.ManageExistingTask(mock_db, mock_driver)
+        self.assertRaises(exception.SnapshotNotFound,
+                          task.execute,
+                          self.ctxt,
+                          fake_snap,
+                          manage_existing_ref,
+                          real_size)
 
     @mock.patch('cinder.quota.QuotaEngine.reserve')
     @mock.patch('cinder.db.sqlalchemy.api.volume_type_get')
@@ -119,9 +137,111 @@ class ManageSnapshotFlowTestCase(test.TestCase):
         task = manager.PrepareForQuotaReservationTask(mock_db, mock_driver)
 
         result = task.execute(self.ctxt, fake_snap, mock_manage_existing_ref)
-
         self.assertEqual(fake_snap, result['snapshot_properties'])
         self.assertEqual('5', result['size'])
         mock_get_snapshot_size.assert_called_once_with(
             snapshot=fake_snap,
-            existing_ref=mock_manage_existing_ref)
+            existing_ref=mock_manage_existing_ref
+        )
+
+    @mock.patch('cinder.quota.QuotaEngine.rollback')
+    def test_quota_reservation_revert_task(self, mock_quota_rollback):
+        """Test checks that we can rollback the snapshot."""
+        mock_result = mock.MagicMock()
+        optional_args = {}
+        optional_args['is_quota_committed'] = False
+
+        task = manager.QuotaReserveTask()
+        task.revert(self.ctxt, mock_result, optional_args)
+        mock_quota_rollback.assert_called_once_with(self.ctxt,
+                                                    mock_result['reservations']
+                                                    )
+
+    @mock.patch('cinder.volume.flows.manager.manage_existing_snapshot.'
+                'QuotaReserveTask.revert')
+    def test_quota_reservation_revert_already_been_committed(self,
+                                                             mock_quota_revert
+                                                             ):
+        """Test reservations can not be rolled back."""
+        mock_result = mock.MagicMock()
+        optional_args = {}
+        optional_args['is_quota_committed'] = True
+
+        task = manager.QuotaReserveTask()
+        task.revert(self.ctxt, mock_result, optional_args)
+        mock_quota_revert.assert_called_once_with(self.ctxt, mock_result,
+                                                  optional_args)
+
+    @mock.patch('cinder.quota.QuotaEngine.commit')
+    def test_quota_commit_task(self, mock_quota_commit):
+        """Test checks commits the reservation."""
+        mock_reservations = mock.MagicMock()
+        mock_snapshot_properties = mock.MagicMock()
+        mock_optional_args = mock.MagicMock()
+
+        task = manager.QuotaCommitTask()
+        task.execute(self.ctxt, mock_reservations, mock_snapshot_properties,
+                     mock_optional_args)
+        mock_quota_commit.assert_called_once_with(self.ctxt, mock_reservations)
+
+    @mock.patch('cinder.quota.QuotaEngine.reserve')
+    def test_quota_commit_revert_task(self, mock_quota_reserve):
+        """Test checks commits the reservation."""
+        mock_result = mock.MagicMock()
+        expected_snapshot = mock_result['snapshot_properties']
+        expected_gigabyte = -expected_snapshot['volume_size']
+
+        task = manager.QuotaCommitTask()
+        task.revert(self.ctxt, mock_result)
+        mock_quota_reserve.assert_called_once_with(self.ctxt,
+                                                   gigabytes=expected_gigabyte,
+                                                   project_id=None,
+                                                   snapshots=-1)
+
+    @mock.patch('cinder.volume.flows.manager.manage_existing_snapshot.'
+                'CreateSnapshotOnFinishTask.execute')
+    def test_create_snap_on_finish_task(self, mock_snap_create):
+        """Test to create snapshot on finish."""
+        mock_status = mock.MagicMock()
+        mock_db = mock.MagicMock()
+        mock_event_suffix = mock.MagicMock()
+        mock_host = mock.MagicMock()
+
+        task = manager.CreateSnapshotOnFinishTask(mock_db, mock_event_suffix,
+                                                  mock_host)
+        task.execute(self.ctxt, fake_snapshot, mock_status)
+        mock_snap_create.assert_called_once_with(self.ctxt, fake_snapshot,
+                                                 mock_status)
+
+    @mock.patch('cinder.volume.flows.manager.manage_existing_snapshot.'
+                'taskflow.engines.load')
+    @mock.patch('cinder.volume.flows.manager.manage_existing_snapshot.'
+                'linear_flow.Flow')
+    def test_get_flow(self, mock_linear_flow, mock_taskflow_engine):
+        mock_db = mock.MagicMock()
+        mock_driver = mock.MagicMock()
+        mock_host = mock.MagicMock()
+        mock_snapshot_id = mock.MagicMock()
+        mock_ref = mock.MagicMock()
+        ctxt = context.get_admin_context()
+
+        mock_snapshot_flow = mock.Mock()
+        mock_linear_flow.return_value = mock_snapshot_flow
+
+        expected_store = {
+            'context': ctxt,
+            'snapshot_id': mock_snapshot_id,
+            'manage_existing_ref': mock_ref,
+            'optional_args': {
+                'is_quota_committed': False,
+                'update_size': True
+            },
+        }
+
+        manager.get_flow(ctxt, mock_db, mock_driver, mock_host,
+                         mock_snapshot_id, mock_ref)
+
+        mock_linear_flow.assert_called_once_with(
+            'snapshot_manage_existing_manager')
+        mock_taskflow_engine.assert_called_once_with(mock_snapshot_flow,
+                                                     store=expected_store)
