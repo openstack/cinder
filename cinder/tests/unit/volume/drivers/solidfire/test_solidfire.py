@@ -15,6 +15,7 @@
 #    under the License.
 
 import datetime
+import six
 
 import ddt
 import mock
@@ -2021,6 +2022,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         def _fake_retrieve_rep(vol):
             raise exception.SolidFireAPIException
 
+        fake_type = {'extra_specs': {}}
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         with mock.patch.object(sfv,
                                '_get_create_account',
@@ -2031,9 +2033,23 @@ class SolidFireVolumeTestCase(test.TestCase):
                 mock.patch.object(sfv,
                                   '_do_volume_create',
                                   return_value={'provider_id': '1 2 xxxx'}),\
+                mock.patch.object(volume_types,
+                                  'get_volume_type',
+                                  return_value=fake_type), \
                 mock.patch.object(sfv,
                                   '_retrieve_replication_settings',
                                   side_effect=_fake_retrieve_rep):
             self.assertRaises(exception.SolidFireAPIException,
                               sfv.create_volume,
                               self.mock_volume)
+
+    def test_extract_sf_attributes_from_extra_specs(self):
+        type_id = '290edb2a-f5ea-11e5-9ce9-5e5517507c66'
+        fake_type = {'extra_specs': {'SFAttribute:foo': 'bar',
+                                     'SFAttribute:biz': 'baz'}}
+        expected = [{'foo': 'bar'}, {'biz': 'baz'}]
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        with mock.patch.object(volume_types, 'get_volume_type',
+                               return_value=fake_type):
+            res = sfv._extract_sf_attributes_from_extra_specs(type_id)
+            six.assertCountEqual(self, expected, res)
