@@ -19,17 +19,22 @@ from cinder.policies import attachments
 from cinder.policies import backup_actions
 from cinder.policies import backups
 from cinder.policies import base
+from cinder.policies import capabilities
 from cinder.policies import clusters
 from cinder.policies import group_actions
 from cinder.policies import group_snapshot_actions
 from cinder.policies import group_snapshots
 from cinder.policies import group_types
 from cinder.policies import groups
+from cinder.policies import hosts
+from cinder.policies import limits
 from cinder.policies import manageable_snapshots
 from cinder.policies import messages
 from cinder.policies import qos_specs
 from cinder.policies import quota_class
 from cinder.policies import quotas
+from cinder.policies import scheduler_stats
+from cinder.policies import services
 from cinder.policies import snapshot_actions
 from cinder.policies import snapshot_metadata
 from cinder.policies import snapshots
@@ -57,4 +62,9 @@ def list_rules():
         qos_specs.list_rules(),
         quota_class.list_rules(),
         quotas.list_rules(),
+        capabilities.list_rules(),
+        services.list_rules(),
+        scheduler_stats.list_rules(),
+        hosts.list_rules(),
+        limits.list_rules(),
     )

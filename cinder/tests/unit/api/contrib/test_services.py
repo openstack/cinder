@@ -174,7 +174,7 @@ def fake_service_update(context, service_id, values):
          'disabled': values['disabled']}
 
 
-def fake_policy_enforce(context, action, target):
+def fake_policy_authorize(context, action, target):
     pass
 
 
@@ -188,7 +188,7 @@ def fake_utcnow(with_timezone=False):
 @mock.patch('cinder.db.service_get', fake_service_get)
 @mock.patch('oslo_utils.timeutils.utcnow', fake_utcnow)
 @mock.patch('cinder.db.sqlalchemy.api.service_update', fake_service_update)
-@mock.patch('cinder.policy.enforce', fake_policy_enforce)
+@mock.patch('cinder.policy.authorize', fake_policy_authorize)
 class ServicesTest(test.TestCase):
 
     def setUp(self):

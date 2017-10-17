@@ -44,6 +44,7 @@ from cinder import objects
 from cinder.objects import base as objects_base
 from cinder.objects import fields
 from cinder.policies import attachments as attachment_policy
+from cinder.policies import services as svr_policy
 from cinder.policies import snapshot_metadata as s_meta_policy
 from cinder.policies import snapshots as snapshot_policy
 import cinder.policy
@@ -1843,7 +1844,7 @@ class API(base.Base):
         return cluster, services
 
     def failover(self, ctxt, host, cluster_name, secondary_id=None):
-        check_policy(ctxt, 'failover_host')
+        ctxt.authorize(svr_policy.FAILOVER_POLICY)
         ctxt = ctxt if ctxt.is_admin else ctxt.elevated()
 
         # TODO(geguileo): In P - Remove this version check
@@ -1864,7 +1865,7 @@ class API(base.Base):
         self.volume_rpcapi.failover(ctxt, services[0], secondary_id)
 
     def freeze_host(self, ctxt, host, cluster_name):
-        check_policy(ctxt, 'freeze_host')
+        ctxt.authorize(svr_policy.FREEZE_POLICY)
         ctxt = ctxt if ctxt.is_admin else ctxt.elevated()
 
         expected = False
@@ -1879,7 +1880,7 @@ class API(base.Base):
         self.volume_rpcapi.freeze_host(ctxt, services[0])
 
     def thaw_host(self, ctxt, host, cluster_name):
-        check_policy(ctxt, 'thaw_host')
+        ctxt.authorize(svr_policy.THAW_POLICY)
         ctxt = ctxt if ctxt.is_admin else ctxt.elevated()
 
         expected = True

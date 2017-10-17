@@ -19,13 +19,9 @@ from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.views import scheduler_stats as scheduler_stats_view
+from cinder.policies import scheduler_stats as policy
 from cinder.scheduler import rpcapi
 from cinder import utils
-
-
-def authorize(context, action_name):
-    action = 'scheduler_stats:%s' % action_name
-    extensions.extension_authorizer('scheduler', action)(context)
 
 
 class SchedulerStatsController(wsgi.Controller):
@@ -46,7 +42,7 @@ class SchedulerStatsController(wsgi.Controller):
     def get_pools(self, req):
         """List all active pools in scheduler."""
         context = req.environ['cinder.context']
-        authorize(context, 'get_pools')
+        context.authorize(policy.GET_POOL_POLICY)
 
         detail = utils.get_bool_param('detail', req.params)
 

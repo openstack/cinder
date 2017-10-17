@@ -27,13 +27,13 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder.policies import hosts as policy
 from cinder.volume import api as volume_api
 
 
 CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
-authorize = extensions.extension_authorizer('volume', 'hosts')
 
 
 def _list_hosts(req, service=None):
@@ -91,12 +91,14 @@ class HostController(wsgi.Controller):
         super(HostController, self).__init__()
 
     def index(self, req):
-        authorize(req.environ['cinder.context'])
+        context = req.environ['cinder.context']
+        context.authorize(policy.MANAGE_POLICY)
         return {'hosts': _list_hosts(req)}
 
     @check_host
     def update(self, req, id, body):
-        authorize(req.environ['cinder.context'])
+        context = req.environ['cinder.context']
+        context.authorize(policy.MANAGE_POLICY)
         update_values = {}
         for raw_key, raw_val in body.items():
             key = raw_key.lower().strip()

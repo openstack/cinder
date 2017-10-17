@@ -46,25 +46,16 @@
     "volume_extension:volume_host_attribute": "rule:admin_api",
     "volume_extension:volume_tenant_attribute": "rule:admin_or_owner",
     "volume_extension:volume_mig_status_attribute": "rule:admin_api",
-    "volume_extension:hosts": "rule:admin_api",
-    "volume_extension:services:index": "rule:admin_api",
-    "volume_extension:services:update" : "rule:admin_api",
 
     "volume_extension:volume_manage": "rule:admin_api",
     "volume_extension:volume_unmanage": "rule:admin_api",
     "volume_extension:list_manageable": "rule:admin_api",
-
-    "volume_extension:capabilities": "rule:admin_api",
 
     "volume:create_transfer": "rule:admin_or_owner",
     "volume:accept_transfer": "",
     "volume:delete_transfer": "rule:admin_or_owner",
     "volume:get_transfer": "rule:admin_or_owner",
     "volume:get_all_transfers": "rule:admin_or_owner",
-
-    "volume:failover_host": "rule:admin_api",
-    "volume:freeze_host": "rule:admin_api",
-    "volume:thaw_host": "rule:admin_api",
 
     "consistencygroup:create" : "group:nobody",
     "consistencygroup:delete": "group:nobody",
@@ -76,7 +67,5 @@
     "consistencygroup:delete_cgsnapshot": "group:nobody",
     "consistencygroup:get_cgsnapshot": "group:nobody",
     "consistencygroup:get_all_cgsnapshots": "group:nobody",
-
-    "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api",
 
 }
