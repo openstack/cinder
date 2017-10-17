@@ -27,7 +27,7 @@ from oslo_utils import importutils
 from oslo_utils import units
 import six
 
-from cinder.brick.local_dev import lvm as lvm
+from cinder.brick.local_dev import lvm
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
