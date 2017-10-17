@@ -25,6 +25,7 @@ from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v2 import volumes as volumes_v2
 from cinder.api.v3.views import volumes as volume_views_v3
+from cinder.backup import api as backup_api
 from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _
@@ -43,6 +44,7 @@ class VolumeController(volumes_v2.VolumeController):
 
     def __init__(self, ext_mgr):
         self.group_api = group_api.API()
+        self.backup_api = backup_api.API()
         super(VolumeController, self).__init__(ext_mgr)
 
     def delete(self, req, id):
@@ -334,11 +336,26 @@ class VolumeController(volumes_v2.VolumeController):
                 else:
                     kwargs['image_id'] = image_uuid
 
+        # Add backup if min version is greater than or equal
+        # to VOLUME_CREATE_FROM_BACKUP.
+        if req_version.matches(mv.VOLUME_CREATE_FROM_BACKUP, None):
+            backup_id = volume.get('backup_id')
+            if backup_id:
+                if not uuidutils.is_uuid_like(backup_id):
+                    msg = _("Backup ID must be in UUID form.")
+                    raise exc.HTTPBadRequest(explanation=msg)
+                kwargs['backup'] = self.backup_api.get(context,
+                                                       backup_id=backup_id)
+            else:
+                kwargs['backup'] = None
+
         size = volume.get('size', None)
         if size is None and kwargs['snapshot'] is not None:
             size = kwargs['snapshot']['volume_size']
         elif size is None and kwargs['source_volume'] is not None:
             size = kwargs['source_volume']['size']
+        elif size is None and kwargs.get('backup') is not None:
+            size = kwargs['backup']['size']
 
         LOG.info("Create volume of %s GB", size)
 

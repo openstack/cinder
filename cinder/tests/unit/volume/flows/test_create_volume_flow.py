@@ -27,6 +27,7 @@ from cinder import context
 from cinder import exception
 from cinder.message import message_field
 from cinder import test
+from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_constants as fakes
 from cinder.tests.unit import fake_snapshot
@@ -75,7 +76,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'image_id': 4,
                 'consistencygroup_id': None,
                 'cgsnapshot_id': None,
-                'group_id': None, }
+                'group_id': None,
+                'backup_id': None, }
 
         # Fake objects assert specs
         task = create_volume.VolumeCastTask(
@@ -97,7 +99,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'image_id': 4,
                 'consistencygroup_id': None,
                 'cgsnapshot_id': None,
-                'group_id': None, }
+                'group_id': None,
+                'backup_id': None, }
 
         # Fake objects assert specs
         task = create_volume.VolumeCastTask(
@@ -131,7 +134,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'image_id': None,
                 'consistencygroup_id': None,
                 'cgsnapshot_id': None,
-                'group_id': None, }
+                'group_id': None,
+                'backup_id': None, }
 
         # Fake objects assert specs
         task = create_volume.VolumeCastTask(
@@ -148,7 +152,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'image_id': 4,
                 'consistencygroup_id': 5,
                 'cgsnapshot_id': None,
-                'group_id': None, }
+                'group_id': None,
+                'backup_id': None, }
 
         # Fake objects assert specs
         task = create_volume.VolumeCastTask(
@@ -192,7 +197,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None,
-                              group_snapshot=None)
+                              group_snapshot=None,
+                              backup=None)
         self.assertEqual(replication_status, result['replication_status'],
                          extra_specs)
 
@@ -238,7 +244,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                      consistencygroup=None,
                      cgsnapshot=None,
                      group=None,
-                     group_snapshot=None)
+                     group_snapshot=None,
+                     backup=None)
         fake_get_encryption_key.assert_called_once_with(
             fake_key_manager, self.ctxt, fakes.VOLUME_TYPE_ID,
             None, None, image_meta)
@@ -283,7 +290,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None,
-                              group_snapshot=None)
+                              group_snapshot=None,
+                              backup=None)
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
@@ -296,7 +304,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'cgsnapshot_id': None,
                            'group_id': None,
                            'refresh_az': False,
-                           'replication_status': 'disabled'}
+                           'replication_status': 'disabled',
+                           'backup_id': None}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')
@@ -340,7 +349,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                           consistencygroup=None,
                           cgsnapshot=None,
                           group=None,
-                          group_snapshot=None)
+                          group_snapshot=None,
+                          backup=None)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')
     @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
@@ -384,7 +394,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None,
-                              group_snapshot=None)
+                              group_snapshot=None,
+                              backup=None)
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
@@ -397,7 +408,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'cgsnapshot_id': None,
                            'group_id': None,
                            'refresh_az': True,
-                           'replication_status': 'disabled'}
+                           'replication_status': 'disabled',
+                           'backup_id': None}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted',
@@ -448,7 +460,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                                   consistencygroup=None,
                                   cgsnapshot=None,
                                   group=None,
-                                  group_snapshot=None)
+                                  group_snapshot=None,
+                                  backup=None)
 
         mock_is_encrypted.assert_called_once_with(self.ctxt, 1)
         mock_get_volume_type_encryption.assert_called_once_with(self.ctxt, 1)
@@ -492,7 +505,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None,
-                              group_snapshot=None)
+                              group_snapshot=None,
+                              backup=None)
         expected_result = {'size': (sys.maxsize + 1),
                            'snapshot_id': None,
                            'source_volid': None,
@@ -505,7 +519,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'refresh_az': False,
-                           'group_id': None, }
+                           'group_id': None,
+                           'backup_id': None}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')
@@ -549,7 +564,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None,
-                              group_snapshot=None)
+                              group_snapshot=None,
+                              backup=None)
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
@@ -562,7 +578,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'cgsnapshot_id': None,
                            'group_id': None,
                            'refresh_az': False,
-                           'replication_status': 'disabled'}
+                           'replication_status': 'disabled',
+                           'backup_id': None}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')
@@ -613,7 +630,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None,
-                              group_snapshot=None)
+                              group_snapshot=None,
+                              backup=None)
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
@@ -626,7 +644,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'cgsnapshot_id': None,
                            'group_id': None,
                            'refresh_az': False,
-                           'replication_status': 'disabled'}
+                           'replication_status': 'disabled',
+                           'backup_id': None}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.db.volume_type_get_by_name')
@@ -678,7 +697,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None,
-                              group_snapshot=None)
+                              group_snapshot=None,
+                              backup=None)
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
@@ -691,7 +711,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'cgsnapshot_id': None,
                            'group_id': None,
                            'refresh_az': False,
-                           'replication_status': 'disabled'}
+                           'replication_status': 'disabled',
+                           'backup_id': None}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.db.volume_type_get_by_name')
@@ -742,7 +763,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None,
-                              group_snapshot=None)
+                              group_snapshot=None,
+                              backup=None)
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
@@ -755,7 +777,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'cgsnapshot_id': None,
                            'group_id': None,
                            'refresh_az': False,
-                           'replication_status': 'disabled'}
+                           'replication_status': 'disabled',
+                           'backup_id': None}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.db.volume_type_get_by_name')
@@ -804,7 +827,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                           consistencygroup=None,
                           cgsnapshot=None,
                           group=None,
-                          group_snapshot=None)
+                          group_snapshot=None,
+                          backup=None)
 
 
 @ddt.ddt
@@ -985,6 +1009,67 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
         else:
             fake_driver.copy_image_to_volume.assert_called_once_with(
                 self.ctxt, volume, fake_image_service, image_id)
+
+    @ddt.data({'driver_error': True},
+              {'driver_error': False})
+    @mock.patch('cinder.backup.api.API.get_available_backup_service_host')
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.restore_backup')
+    @mock.patch('oslo_service.loopingcall.'
+                'FixedIntervalWithTimeoutLoopingCall')
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.'
+                '_create_raw_volume')
+    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.backup_update')
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch('cinder.objects.Backup.get_by_id')
+    @ddt.unpack
+    def test_create_from_backup(self,
+                                backup_get_by_id,
+                                volume_get_by_id,
+                                mock_backup_update,
+                                mock_volume_update,
+                                mock_create_volume,
+                                mock_fixed_looping_call,
+                                mock_restore_backup,
+                                mock_get_backup_host,
+                                driver_error):
+        fake_db = mock.MagicMock()
+        fake_driver = mock.MagicMock()
+        fake_volume_manager = mock.MagicMock()
+        backup_host = 'host@backend#pool'
+        fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
+            fake_volume_manager, fake_db, fake_driver)
+
+        volume_obj = fake_volume.fake_volume_obj(self.ctxt)
+        backup_obj = fake_backup.fake_backup_obj(self.ctxt,
+                                                 **{'status': 'available',
+                                                    'host': backup_host})
+        backup_get_by_id.return_value = backup_obj
+        volume_get_by_id.return_value = volume_obj
+
+        mock_create_volume.return_value = {}
+        mock_get_backup_host.return_value = backup_host
+        mock_fixed_looping_call.return_value = mock.MagicMock()
+
+        if driver_error:
+            fake_driver.create_volume_from_backup.side_effect = [
+                NotImplementedError]
+        fake_manager._create_from_backup(self.ctxt, volume_obj,
+                                         backup_obj.id)
+        fake_driver.create_volume_from_backup.assert_called_once_with(
+            volume_obj, backup_obj)
+        if driver_error:
+            mock_create_volume.assert_called_once_with(volume_obj)
+            mock_get_backup_host.assert_called_once_with(
+                backup_obj.host, backup_obj.availability_zone)
+            mock_restore_backup.assert_called_once_with(self.ctxt,
+                                                        backup_host,
+                                                        backup_obj,
+                                                        volume_obj['id'])
+        else:
+            fake_driver.create_volume_from_backup.assert_called_once_with(
+                volume_obj, backup_obj)
 
 
 class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):

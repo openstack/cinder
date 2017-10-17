@@ -6,6 +6,7 @@
         "description": null,
         "multiattach ": false,
         "snapshot_id": null,
+        "backup_id": null,
         "name": null,
         "imageRef": null,
         "volume_type": null,

@@ -1852,6 +1852,19 @@ class BaseVD(object):
     def accept_transfer(self, context, volume, new_user, new_project):
         pass
 
+    def create_volume_from_backup(self, volume, backup):
+        """Creates a volume from a backup.
+
+        Can optionally return a Dictionary of changes to the volume object to
+        be persisted.
+
+        :param volume: the volume object to be created.
+        :param backup: the backup object as source.
+        :returns: volume_model_update
+        """
+
+        raise NotImplementedError()
+
 
 @six.add_metaclass(abc.ABCMeta)
 class CloneableImageVD(object):

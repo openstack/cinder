@@ -62,7 +62,10 @@ class SchedulerRPCAPITestCase(test.RPCAPITestCase):
                            timestamp='123')
         can_send_version.assert_called_once_with('3.3')
 
-    def test_create_volume(self):
+    @ddt.data('3.0', '3.10')
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_create_volume(self, version, can_send_version):
+        can_send_version.side_effect = lambda x: x == version
         create_worker_mock = self.mock_object(self.fake_volume,
                                               'create_worker')
         self._test_rpc_api('create_volume',
@@ -70,9 +73,11 @@ class SchedulerRPCAPITestCase(test.RPCAPITestCase):
                            volume=self.fake_volume,
                            snapshot_id=fake_constants.SNAPSHOT_ID,
                            image_id=fake_constants.IMAGE_ID,
+                           backup_id=fake_constants.BACKUP_ID,
                            request_spec=self.fake_rs_obj,
                            filter_properties=self.fake_fp_dict)
         create_worker_mock.assert_called_once()
+        can_send_version.assert_called_once_with('3.10')
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version',
                 return_value=True)

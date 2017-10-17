@@ -35,7 +35,8 @@ class FakeSchedulerRpcAPI(object):
         self.test_inst = test_inst
 
     def create_volume(self, ctxt, volume, snapshot_id=None, image_id=None,
-                      request_spec=None, filter_properties=None):
+                      request_spec=None, filter_properties=None,
+                      backup_id=None):
 
         self.test_inst.assertEqual(self.expected_spec, request_spec)
 

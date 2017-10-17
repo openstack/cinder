@@ -21,8 +21,11 @@ from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.v3 import volume_metadata
 from cinder.api.v3 import volumes
+from cinder.backup import rpcapi as backup_rpcapi
 from cinder import db
 from cinder import exception
+from cinder.objects import base as obj_base
+from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
@@ -135,6 +138,19 @@ class VolumeMetaDataTest(test.TestCase):
 
         self.ext_mgr = extensions.ExtensionManager()
         self.ext_mgr.extensions = {}
+        self.patch(
+            'cinder.objects.Service.get_minimum_obj_version',
+            return_value=obj_base.OBJ_VERSIONS.get_current())
+
+        def _get_minimum_rpc_version_mock(ctxt, binary):
+            binary_map = {
+                'cinder-backup': backup_rpcapi.BackupAPI,
+                'cinder-scheduler': scheduler_rpcapi.SchedulerAPI,
+            }
+            return binary_map[binary].RPC_API_VERSION
+
+        self.patch('cinder.objects.Service.get_minimum_rpc_version',
+                   side_effect=_get_minimum_rpc_version_mock)
         self.volume_controller = volumes.VolumeController(self.ext_mgr)
         self.controller = volume_metadata.Controller()
         self.req_id = str(uuid.uuid4())
@@ -261,6 +277,19 @@ class VolumeMetaDataTestNoMicroversion(v2_test.VolumeMetaDataTest):
 
     def setUp(self):
         super(VolumeMetaDataTestNoMicroversion, self).setUp()
+        self.patch(
+            'cinder.objects.Service.get_minimum_obj_version',
+            return_value=obj_base.OBJ_VERSIONS.get_current())
+
+        def _get_minimum_rpc_version_mock(ctxt, binary):
+            binary_map = {
+                'cinder-backup': backup_rpcapi.BackupAPI,
+                'cinder-scheduler': scheduler_rpcapi.SchedulerAPI,
+            }
+            return binary_map[binary].RPC_API_VERSION
+
+        self.patch('cinder.objects.Service.get_minimum_rpc_version',
+                   side_effect=_get_minimum_rpc_version_mock)
         self.volume_controller = volumes.VolumeController(self.ext_mgr)
         self.controller = volume_metadata.Controller()
         self.url = '/v3/%s/volumes/%s/metadata' % (

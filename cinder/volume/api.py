@@ -197,7 +197,8 @@ class API(base.Base):
                scheduler_hints=None,
                source_replica=None, consistencygroup=None,
                cgsnapshot=None, multiattach=False, source_cg=None,
-               group=None, group_snapshot=None, source_group=None):
+               group=None, group_snapshot=None, source_group=None,
+               backup=None):
 
         context.authorize(vol_policy.CREATE_FROM_IMAGE_POLICY)
 
@@ -299,6 +300,7 @@ class API(base.Base):
             'group': group,
             'group_snapshot': group_snapshot,
             'source_group': source_group,
+            'backup': backup,
         }
         try:
             sched_rpcapi = (self.scheduler_rpcapi if (

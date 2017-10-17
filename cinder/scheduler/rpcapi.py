@@ -70,9 +70,10 @@ class SchedulerAPI(rpc.RPCAPI):
         3.7 - Adds set_log_levels and get_log_levels
         3.8 - Addds ``valid_host_capacity`` method
         3.9 - Adds create_snapshot method
+        3.10 - Adds backup_id to create_volume method.
     """
 
-    RPC_API_VERSION = '3.9'
+    RPC_API_VERSION = '3.10'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
@@ -94,12 +95,16 @@ class SchedulerAPI(rpc.RPCAPI):
         cctxt.cast(ctxt, 'create_group', **msg_args)
 
     def create_volume(self, ctxt, volume, snapshot_id=None, image_id=None,
-                      request_spec=None, filter_properties=None):
+                      request_spec=None, filter_properties=None,
+                      backup_id=None):
         volume.create_worker()
         cctxt = self._get_cctxt()
         msg_args = {'snapshot_id': snapshot_id, 'image_id': image_id,
                     'request_spec': request_spec,
-                    'filter_properties': filter_properties, 'volume': volume}
+                    'filter_properties': filter_properties,
+                    'volume': volume, 'backup_id': backup_id}
+        if not self.client.can_send_version('3.10'):
+            msg_args.pop('backup_id')
         return cctxt.cast(ctxt, 'create_volume', **msg_args)
 
     @rpc.assert_min_rpc_version('3.8')

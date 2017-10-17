@@ -49,6 +49,7 @@ REPLICA_PROCEED_STATUS = ('active', 'active-stopped',)
 CG_PROCEED_STATUS = ('available', 'creating',)
 CGSNAPSHOT_PROCEED_STATUS = ('available',)
 GROUP_PROCEED_STATUS = ('available', 'creating',)
+BACKUP_PROCEED_STATUS = (fields.BackupStatus.AVAILABLE,)
 
 
 class ExtractVolumeRequestTask(flow_utils.CinderTask):
@@ -69,7 +70,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                             'source_volid', 'volume_type', 'volume_type_id',
                             'encryption_key_id', 'consistencygroup_id',
                             'cgsnapshot_id', 'qos_specs', 'group_id',
-                            'refresh_az'])
+                            'refresh_az', 'backup_id'])
 
     def __init__(self, image_service, availability_zones, **kwargs):
         super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION],
@@ -135,8 +136,13 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         return self._extract_resource(source_volume, (SRC_VOL_PROCEED_STATUS,),
                                       exception.InvalidVolume, 'source volume')
 
+    def _extract_backup(self, backup):
+        return self._extract_resource(backup, (BACKUP_PROCEED_STATUS,),
+                                      exception.InvalidBackup,
+                                      'backup')
+
     @staticmethod
-    def _extract_size(size, source_volume, snapshot):
+    def _extract_size(size, source_volume, snapshot, backup):
         """Extracts and validates the volume size.
 
         This function will validate or when not provided fill in the provided
@@ -162,6 +168,15 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                              'source_size': source_volume['size']}
                 raise exception.InvalidInput(reason=msg)
 
+        def validate_backup_size(size):
+            if backup and size < backup['size']:
+                msg = _("Volume size %(size)sGB cannot be smaller than "
+                        "the backup size %(backup_size)sGB. "
+                        "It must be >= backup size.")
+                msg = msg % {'size': size,
+                             'backup_size': backup['size']}
+                raise exception.InvalidInput(reason=msg)
+
         def validate_int(size):
             if not isinstance(size, six.integer_types) or size <= 0:
                 msg = _("Volume size '%(size)s' must be an integer and"
@@ -175,12 +190,16 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             validator_functors.append(validate_source_size)
         elif snapshot:
             validator_functors.append(validate_snap_size)
+        elif backup:
+            validator_functors.append(validate_backup_size)
 
         # If the size is not provided then try to provide it.
         if not size and source_volume:
             size = source_volume['size']
         elif not size and snapshot:
             size = snapshot.volume_size
+        elif not size and backup:
+            size = backup['size']
 
         size = utils.as_int(size)
         LOG.debug("Validating volume size '%(size)s' using %(functors)s",
@@ -414,18 +433,20 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
     def execute(self, context, size, snapshot, image_id, source_volume,
                 availability_zone, volume_type, metadata, key_manager,
-                consistencygroup, cgsnapshot, group, group_snapshot):
+                consistencygroup, cgsnapshot, group, group_snapshot, backup):
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
-                                      source_volume=source_volume)
+                                      source_volume=source_volume,
+                                      backup=backup)
         context.authorize(policy.CREATE_POLICY)
 
         # TODO(harlowja): what guarantee is there that the snapshot or source
         # volume will remain available after we do this initial verification??
         snapshot_id = self._extract_snapshot(snapshot)
         source_volid = self._extract_source_volume(source_volume)
-        size = self._extract_size(size, source_volume, snapshot)
+        backup_id = self._extract_backup(backup)
+        size = self._extract_size(size, source_volume, snapshot, backup)
         consistencygroup_id = self._extract_consistencygroup(consistencygroup)
         cgsnapshot_id = self._extract_cgsnapshot(cgsnapshot)
         group_id = self._extract_group(group)
@@ -491,7 +512,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             'cgsnapshot_id': cgsnapshot_id,
             'group_id': group_id,
             'replication_status': replication_status,
-            'refresh_az': refresh_az
+            'refresh_az': refresh_az,
+            'backup_id': backup_id,
         }
 
 
@@ -726,7 +748,7 @@ class VolumeCastTask(flow_utils.CinderTask):
         requires = ['image_id', 'scheduler_hints', 'snapshot_id',
                     'source_volid', 'volume_id', 'volume', 'volume_type',
                     'volume_properties', 'consistencygroup_id',
-                    'cgsnapshot_id', 'group_id', ]
+                    'cgsnapshot_id', 'group_id', 'backup_id', ]
         super(VolumeCastTask, self).__init__(addons=[ACTION],
                                              requires=requires)
         self.volume_rpcapi = volume_rpcapi
@@ -740,6 +762,7 @@ class VolumeCastTask(flow_utils.CinderTask):
         image_id = request_spec['image_id']
         cgroup_id = request_spec['consistencygroup_id']
         group_id = request_spec['group_id']
+        backup_id = request_spec['backup_id']
         if cgroup_id:
             # If cgroup_id existed, we should cast volume to the scheduler
             # to choose a proper pool whose backend is same as CG's backend.
@@ -776,7 +799,8 @@ class VolumeCastTask(flow_utils.CinderTask):
             snapshot_id=snapshot_id,
             image_id=image_id,
             request_spec=request_spec,
-            filter_properties=filter_properties)
+            filter_properties=filter_properties,
+            backup_id=backup_id)
 
     def execute(self, context, **kwargs):
         scheduler_hints = kwargs.pop('scheduler_hints', None)

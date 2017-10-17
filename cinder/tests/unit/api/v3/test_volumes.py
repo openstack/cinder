@@ -23,6 +23,7 @@ from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.v2.views.volumes import ViewBuilder
 from cinder.api.v3 import volumes
+from cinder.backup import api as backup_api
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -393,7 +394,8 @@ class VolumeApiTest(test.TestCase):
                              volume_type=None,
                              image_ref=None,
                              image_id=None,
-                             group_id=None):
+                             group_id=None,
+                             backup_id=None):
         vol = {"size": size,
                "name": name,
                "description": description,
@@ -409,6 +411,8 @@ class VolumeApiTest(test.TestCase):
             vol['image_id'] = image_id
         elif image_ref is not None:
             vol['imageRef'] = image_ref
+        elif backup_id is not None:
+            vol['backup_id'] = backup_id
 
         return vol
 
@@ -554,6 +558,42 @@ class VolumeApiTest(test.TestCase):
             req_version=req.api_version_request)
         create.assert_called_once_with(self.controller.volume_api, context,
                                        vol['size'], v2_fakes.DEFAULT_VOL_NAME,
+                                       v2_fakes.DEFAULT_VOL_DESCRIPTION,
+                                       **kwargs)
+
+    @ddt.data(mv.VOLUME_CREATE_FROM_BACKUP,
+              mv.get_prior_version(mv.VOLUME_CREATE_FROM_BACKUP))
+    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
+                       autospec=True)
+    @mock.patch.object(backup_api.API, 'get', autospec=True)
+    @mock.patch.object(volume_api.API, 'create', autospec=True)
+    def test_volume_creation_from_backup(self, max_ver, create, get_backup,
+                                         volume_type_get):
+        create.side_effect = v2_fakes.fake_volume_api_create
+        get_backup.side_effect = v2_fakes.fake_backup_get
+        volume_type_get.side_effect = v2_fakes.fake_volume_type_get
+
+        backup_id = fake.BACKUP_ID
+        vol = self._vol_in_request_body(backup_id=backup_id)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v3/volumes')
+        req.api_version_request = mv.get_api_version(max_ver)
+        res_dict = self.controller.create(req, body)
+        ex = self._expected_vol_from_controller(
+            req_version=req.api_version_request)
+        self.assertEqual(ex, res_dict)
+
+        context = req.environ['cinder.context']
+        kwargs = self._expected_volume_api_create_kwargs(
+            req_version=req.api_version_request)
+        if max_ver >= mv.VOLUME_CREATE_FROM_BACKUP:
+            get_backup.assert_called_once_with(self.controller.backup_api,
+                                               context, backup_id)
+            kwargs.update({'backup': v2_fakes.fake_backup_get(None, context,
+                                                              backup_id)})
+        create.assert_called_once_with(self.controller.volume_api, context,
+                                       vol['size'],
+                                       v2_fakes.DEFAULT_VOL_NAME,
                                        v2_fakes.DEFAULT_VOL_DESCRIPTION,
                                        **kwargs)
 

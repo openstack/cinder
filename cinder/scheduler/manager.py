@@ -173,7 +173,8 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
 
     @objects.Volume.set_workers
     def create_volume(self, context, volume, snapshot_id=None, image_id=None,
-                      request_spec=None, filter_properties=None):
+                      request_spec=None, filter_properties=None,
+                      backup_id=None):
         self._wait_for_scheduler()
 
         try:
@@ -183,7 +184,8 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                                                  filter_properties,
                                                  volume,
                                                  snapshot_id,
-                                                 image_id)
+                                                 image_id,
+                                                 backup_id)
         except Exception:
             msg = _("Failed to create scheduler manager volume flow")
             LOG.exception(msg)

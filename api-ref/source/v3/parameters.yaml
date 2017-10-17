@@ -555,6 +555,13 @@ backup_gigabytes_usage:
   in: body
   required: true
   type: object
+backup_id_1:
+  description: |
+    The UUID of the backup.
+  in: body
+  required: false
+  type: string
+  min_version: 3.46
 backup_service:
   description: |
     The service used to perform the backup.

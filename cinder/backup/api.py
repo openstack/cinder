@@ -165,6 +165,9 @@ class API(base.Base):
             idx = idx + 1
         return None
 
+    def get_available_backup_service_host(self, host, az):
+        return self._get_available_backup_service_host(host, az)
+
     def _get_available_backup_service_host(self, host, az):
         """Return an appropriate backup service host."""
         backup_host = None

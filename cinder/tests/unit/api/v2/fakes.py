@@ -205,6 +205,26 @@ def fake_snapshot(id, **kwargs):
     return snapshot
 
 
+def fake_backup(id, **kwargs):
+    backup = {'id': fake.BACKUP_ID,
+              'volume_id': fake.VOLUME_ID,
+              'status': fields.BackupStatus.CREATING,
+              'size': 1,
+              'display_name': 'fake_name',
+              'display_description': 'fake_description',
+              'user_id': fake.USER_ID,
+              'project_id': fake.PROJECT_ID,
+              'temp_volume_id': None,
+              'temp_snapshot_id': None,
+              'snapshot_id': None,
+              'data_timestamp': None,
+              'restore_volume_id': None,
+              'backup_metadata': {}}
+
+    backup.update(kwargs)
+    return backup
+
+
 def fake_snapshot_get_all(context, filters=None, marker=None, limit=None,
                           sort_keys=None, sort_dirs=None, offset=None):
     return [fake_snapshot(fake.VOLUME_ID, project_id=fake.PROJECT_ID),
@@ -237,6 +257,13 @@ def fake_snapshot_get(self, context, snapshot_id):
         raise exc.SnapshotNotFound(snapshot_id=snapshot_id)
 
     return fake_snapshot(snapshot_id)
+
+
+def fake_backup_get(self, context, backup_id):
+    if backup_id == fake.WILL_NOT_BE_FOUND_ID:
+        raise exc.BackupNotFound(backup_id=backup_id)
+
+    return fake_backup(backup_id)
 
 
 def fake_consistencygroup_get_notfound(self, context, cg_id):
