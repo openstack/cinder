@@ -1,6 +1,6 @@
-===================================================================
-Cinder Installation Tutorial for openSUSE and SUSE Linux Enterprise
-===================================================================
+================================================================
+Cinder Installation Guide for openSUSE and SUSE Linux Enterprise
+================================================================
 
 This section describes how to install and configure storage nodes
 for the Block Storage service. For simplicity, this configuration
