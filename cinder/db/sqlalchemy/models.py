@@ -636,6 +636,8 @@ class Reservation(BASE, CinderBase):
     __tablename__ = 'reservations'
     __table_args__ = (Index('reservations_deleted_expire_idx',
                             'deleted', 'expire'),
+                      Index('reservations_deleted_uuid_idx',
+                            'deleted', 'uuid'),
                       CinderBase.__table_args__)
 
     id = Column(Integer, primary_key=True)

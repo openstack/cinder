@@ -360,6 +360,18 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(services.c.uuid.type,
                               self.VARCHAR_TYPE)
 
+    def _check_113(self, engine, data):
+        """Test that adding reservations index works correctly."""
+        reservations = db_utils.get_table(engine, 'reservations')
+        index_columns = []
+        for idx in reservations.indexes:
+            if idx.name == 'reservations_deleted_uuid_idx':
+                index_columns = idx.columns.keys()
+                break
+
+        self.assertEqual(sorted(['deleted', 'uuid']),
+                         sorted(index_columns))
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
         self.assert_each_foreign_key_is_part_of_an_index()
