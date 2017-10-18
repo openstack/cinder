@@ -31,8 +31,6 @@ Request Example
 .. literalinclude:: ./samples/volume-transfer-accept-request.json
    :language: javascript
 
-
-
 Response Parameters
 -------------------
 
@@ -42,6 +40,12 @@ Response Parameters
    - id: id
    - links: links
    - name: name
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-transfer-accept-response.json
+   :language: javascript
 
 
 Create volume transfer
@@ -81,6 +85,12 @@ Response Parameters
    - volume_id: volume_id
    - id: id
    - name: name
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-transfer-create-response.json
+   :language: javascript
 
 
 List volume transfers
