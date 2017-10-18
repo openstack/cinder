@@ -1265,7 +1265,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         attributes = {'uuid': volume['id'],
                       'is_clone': 'False',
                       'created_at': create_time}
-
+        attributes['cinder-name'] = volume.get('display_name', "")
         vname = '%s%s' % (self.configuration.sf_volume_prefix, volume['id'])
         params = {'name': vname,
                   'accountID': sf_account['accountID'],
