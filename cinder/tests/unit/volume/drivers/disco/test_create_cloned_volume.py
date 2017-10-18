@@ -22,7 +22,7 @@ import time
 
 from cinder import exception
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit import utils as utils
+from cinder.tests.unit import utils
 from cinder.tests.unit.volume.drivers import disco
 
 
