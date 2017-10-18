@@ -31,6 +31,7 @@ from cinder.volume import throttling
 
 
 class TestQemuImgInfo(test.TestCase):
+    @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
     def test_qemu_img_info(self, mock_exec, mock_info):
@@ -45,6 +46,7 @@ class TestQemuImgInfo(test.TestCase):
                                           prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
 
+    @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
     def test_qemu_img_info_not_root(self, mock_exec, mock_info):
@@ -1474,6 +1476,9 @@ class TestVhdUtils(test.TestCase):
                      mock.sentinel.third,
                      mock.sentinel.fourth,
                      mock.sentinel.fifth)
+
+        # os.path.join does not work with MagicMock objects on Windows.
+        mock_temp.return_value.__enter__.return_value = 'fake_temp_dir'
 
         output = image_utils.coalesce_chain(vhd_chain)
 
