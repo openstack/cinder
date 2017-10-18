@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The SMBFS volume driver now supports reverting volumes to the latest
+    snapshot.
