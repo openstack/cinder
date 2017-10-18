@@ -1,6 +1,6 @@
-=======================================
-Cinder Installation Tutorial for Ubuntu
-=======================================
+====================================
+Cinder Installation Guide for Ubuntu
+====================================
 
 This section describes how to install and configure storage nodes
 for the Block Storage service. For simplicity, this configuration

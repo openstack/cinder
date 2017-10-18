@@ -1,5 +1,5 @@
 ======================================================================
-Cinder Installation Tutorial for Red Hat Enterprise Linux and CentOS
+Cinder Installation Guide for Red Hat Enterprise Linux and CentOS
 ======================================================================
 
 This section describes how to install and configure storage nodes
