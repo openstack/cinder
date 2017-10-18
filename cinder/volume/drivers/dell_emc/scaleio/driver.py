@@ -863,30 +863,44 @@ class ScaleIODriver(driver.VolumeDriver):
         return self._delete_volume(snap_id)
 
     def initialize_connection(self, volume, connector, **kwargs):
-        """Initializes the connection and returns connection info.
+        return self._initialize_connection(volume, connector, volume.size)
+
+    def _initialize_connection(self, vol_or_snap, connector, vol_size):
+        """Initializes a connection and returns connection info.
 
         The scaleio driver returns a driver_volume_type of 'scaleio'.
         """
 
-        LOG.debug("Connector is %s.", connector)
+        try:
+            ip = connector['ip']
+        except Exception:
+            ip = 'unknown'
+
+        LOG.debug("Initializing connection for %(vol)s, "
+                  "to SDC at %(sdc)s",
+                  {'vol': vol_or_snap.id,
+                   'sdc': ip})
+
         connection_properties = dict(self.connection_properties)
 
-        volname = self._id_to_base64(volume.id)
+        volname = self._id_to_base64(vol_or_snap.id)
         connection_properties['scaleIO_volname'] = volname
-        connection_properties['scaleIO_volume_id'] = volume.provider_id
-        extra_specs = self._get_volumetype_extraspecs(volume)
-        qos_specs = self._get_volumetype_qos(volume)
-        storage_type = extra_specs.copy()
-        storage_type.update(qos_specs)
-        LOG.info("Volume type is %s.", storage_type)
-        round_volume_size = self._round_to_num_gran(volume.size)
-        iops_limit = self._get_iops_limit(round_volume_size, storage_type)
-        bandwidth_limit = self._get_bandwidth_limit(round_volume_size,
-                                                    storage_type)
-        LOG.info("iops limit is %s", iops_limit)
-        LOG.info("bandwidth limit is %s", bandwidth_limit)
-        connection_properties['iopsLimit'] = iops_limit
-        connection_properties['bandwidthLimit'] = bandwidth_limit
+        connection_properties['scaleIO_volume_id'] = vol_or_snap.provider_id
+
+        if vol_size is not None:
+            extra_specs = self._get_volumetype_extraspecs(vol_or_snap)
+            qos_specs = self._get_volumetype_qos(vol_or_snap)
+            storage_type = extra_specs.copy()
+            storage_type.update(qos_specs)
+            round_volume_size = self._round_to_num_gran(vol_size)
+            iops_limit = self._get_iops_limit(round_volume_size, storage_type)
+            bandwidth_limit = self._get_bandwidth_limit(round_volume_size,
+                                                        storage_type)
+            LOG.info("iops limit is %s", iops_limit)
+            LOG.info("bandwidth limit is %s", bandwidth_limit)
+            connection_properties['iopsLimit'] = iops_limit
+            connection_properties['bandwidthLimit'] = bandwidth_limit
+
         return {'driver_volume_type': 'scaleio',
                 'data': connection_properties}
 
@@ -940,7 +954,22 @@ class ScaleIODriver(driver.VolumeDriver):
             raise exception.InvalidInput(reason=msg)
 
     def terminate_connection(self, volume, connector, **kwargs):
-        LOG.debug("scaleio driver terminate connection.")
+        self._terminate_connection(volume, connector)
+
+    def _terminate_connection(self, volume_or_snap, connector):
+        """Terminate connection to a volume or snapshot
+
+        With ScaleIO, snaps and volumes are terminated identically
+        """
+        try:
+            ip = connector['ip']
+        except Exception:
+            ip = 'unknown'
+
+        LOG.debug("Terminating connection for %(vol)s, "
+                  "to SDC at %(sdc)s",
+                  {'vol': volume_or_snap.id,
+                   'sdc': ip})
 
     def _update_volume_stats(self):
         stats = {}
@@ -1812,3 +1841,28 @@ class ScaleIODriver(driver.VolumeDriver):
     def check_for_export(self, context, volume_id):
         """Make sure volume is exported."""
         pass
+
+    def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
+        # return self._initialize_connection(snapshot, connector)
+        """Initializes a connection and returns connection info."""
+        try:
+            vol_size = snapshot['volume_size']
+        except Exception:
+            vol_size = None
+
+        return self._initialize_connection(snapshot, connector, vol_size)
+
+    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Terminates a connection to a snapshot."""
+        return self._terminate_connection(snapshot, connector)
+
+    def create_export_snapshot(self, context, volume, connector):
+        """Driver entry point to get the export info for a snapshot."""
+        pass
+
+    def remove_export_snapshot(self, context, volume):
+        """Driver entry point to remove an export for a snapshot."""
+        pass
+
+    def backup_use_temp_snapshot(self):
+        return True

@@ -1,0 +1,4 @@
+---
+features:
+  - Add support to backup volume using snapshot in the Unity driver,
+    which enables backing up of volumes that are in-use.
