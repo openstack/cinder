@@ -94,8 +94,6 @@ class LVM(executor.Executor):
         LVM.LVM_CMD_PREFIX = _lvm_cmd_prefix
 
         if create_vg and physical_volumes is not None:
-            self.pv_list = physical_volumes
-
             try:
                 self._create_vg(physical_volumes)
             except putils.ProcessExecutionError as err:
