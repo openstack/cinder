@@ -1693,11 +1693,16 @@ class API(base.Base):
         if availability_zone is None:
             availability_zone = service.availability_zone
 
+        if not cluster_name and bool(volume_utils.extract_host(host, 'pool')):
+            manage_host = host
+        else:
+            manage_host = service.host
+
         manage_what = {
             'context': context,
             'name': name,
             'description': description,
-            'host': service.host,
+            'host': manage_host,
             'cluster_name': service.cluster_name,
             'ref': ref,
             'volume_type': volume_type,
