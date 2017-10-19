@@ -329,17 +329,5 @@ def extension_authorizer(api_name, extension_name):
             act = '%s_extension:%s' % (api_name, extension_name)
         else:
             act = '%s_extension:%s:%s' % (api_name, extension_name, action)
-        cinder.policy.enforce(context, act, target)
-    return authorize
-
-
-def soft_extension_authorizer(api_name, extension_name):
-    hard_authorize = extension_authorizer(api_name, extension_name)
-
-    def authorize(context):
-        try:
-            hard_authorize(context)
-            return True
-        except exception.NotAuthorized:
-            return False
+        cinder.policy.authorize(context, act, target)
     return authorize

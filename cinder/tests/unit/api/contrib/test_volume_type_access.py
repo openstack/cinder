@@ -12,6 +12,7 @@
 #    under the License.
 
 import datetime
+import mock
 
 from six.moves import http_client
 import webob
@@ -153,11 +154,11 @@ class VolumeTypeAccessTest(test.TestCase):
 
         def fake_authorize(context, target=None, action=None):
             raise exception.PolicyNotAuthorized(action='index')
-        self.mock_object(type_access, 'authorize', fake_authorize)
-
-        self.assertRaises(exception.PolicyNotAuthorized,
-                          self.type_access_controller.index,
-                          req, fake.PROJECT_ID)
+        with mock.patch('cinder.context.RequestContext.authorize',
+                        fake_authorize):
+            self.assertRaises(exception.PolicyNotAuthorized,
+                              self.type_access_controller.index,
+                              req, fake.PROJECT_ID)
 
     def test_list_type_with_admin_default_proj1(self):
         expected = {'volume_types': [{'id': fake.VOLUME_TYPE_ID},

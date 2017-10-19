@@ -39,8 +39,7 @@ class AttachmentManagerTestCase(test.TestCase):
         self.context.project_id = self.project_id
         self.volume_api = volume_api.API()
 
-    @mock.patch('cinder.volume.api.check_policy')
-    def test_attachment_create_no_connector(self, mock_policy):
+    def test_attachment_create_no_connector(self):
         """Test attachment_create no connector."""
         volume_params = {'status': 'available'}
 
@@ -55,11 +54,9 @@ class AttachmentManagerTestCase(test.TestCase):
         self.assertEqual(vref.id, aref.volume_id)
         self.assertEqual({}, aref.connection_info)
 
-    @mock.patch('cinder.volume.api.check_policy')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_update')
     def test_attachment_create_with_connector(self,
-                                              mock_rpc_attachment_update,
-                                              mock_policy):
+                                              mock_rpc_attachment_update):
         """Test attachment_create with connector."""
         volume_params = {'status': 'available'}
         connection_info = {'fake_key': 'fake_value',
@@ -80,11 +77,9 @@ class AttachmentManagerTestCase(test.TestCase):
                                                             attachment.id)
         self.assertEqual(connection_info, new_attachment.connection_info)
 
-    @mock.patch('cinder.volume.api.check_policy')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_delete')
     def test_attachment_delete_reserved(self,
-                                        mock_rpc_attachment_delete,
-                                        mock_policy):
+                                        mock_rpc_attachment_delete):
         """Test attachment_delete with reserved."""
         volume_params = {'status': 'available'}
 
@@ -103,14 +98,12 @@ class AttachmentManagerTestCase(test.TestCase):
         # rpc call
         mock_rpc_attachment_delete.assert_not_called()
 
-    @mock.patch('cinder.volume.api.check_policy')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_delete')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_update')
     def test_attachment_create_update_and_delete(
             self,
             mock_rpc_attachment_update,
-            mock_rpc_attachment_delete,
-            mock_policy):
+            mock_rpc_attachment_delete):
         """Test attachment_delete."""
         volume_params = {'status': 'available'}
         connection_info = {'fake_key': 'fake_value',
@@ -151,8 +144,7 @@ class AttachmentManagerTestCase(test.TestCase):
                                                            aref.id,
                                                            mock.ANY)
 
-    @mock.patch('cinder.volume.api.check_policy')
-    def test_additional_attachment_create_no_connector(self, mock_policy):
+    def test_additional_attachment_create_no_connector(self):
         """Test attachment_create no connector."""
         volume_params = {'status': 'available'}
 
@@ -179,12 +171,10 @@ class AttachmentManagerTestCase(test.TestCase):
                                         vref.id)
         self.assertEqual(2, len(vref.volume_attachment))
 
-    @mock.patch('cinder.volume.api.check_policy')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_update')
     def test_attachment_create_reserve_delete(
             self,
-            mock_rpc_attachment_update,
-            mock_policy):
+            mock_rpc_attachment_update):
         volume_params = {'status': 'available'}
         connector = {
             "initiator": "iqn.1993-08.org.debian:01:cad181614cec",
@@ -223,8 +213,7 @@ class AttachmentManagerTestCase(test.TestCase):
                                         vref.id)
         self.assertEqual('reserved', vref.status)
 
-    @mock.patch('cinder.volume.api.check_policy')
-    def test_reserve_reserve_delete(self, mock_policy):
+    def test_reserve_reserve_delete(self):
         """Test that we keep reserved status across multiple reserves."""
         volume_params = {'status': 'available'}
 

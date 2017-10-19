@@ -24,12 +24,10 @@ from cinder.api.openstack import wsgi
 from cinder.api.views import types as views_types
 from cinder import exception
 from cinder.i18n import _
+from cinder.policies import volume_type as policy
 from cinder import rpc
 from cinder import utils
 from cinder.volume import volume_types
-
-
-authorize = extensions.extension_authorizer('volume', 'types_manage')
 
 
 class VolumeTypesManageController(wsgi.Controller):
@@ -53,7 +51,7 @@ class VolumeTypesManageController(wsgi.Controller):
     def _create(self, req, body):
         """Creates a new volume type."""
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.MANAGE_POLICY)
 
         self.assert_valid_body(body, 'volume_type')
 
@@ -103,7 +101,7 @@ class VolumeTypesManageController(wsgi.Controller):
     def _update(self, req, id, body):
         # Update description for a given volume type.
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.MANAGE_POLICY)
 
         self.assert_valid_body(body, 'volume_type')
 
@@ -164,7 +162,7 @@ class VolumeTypesManageController(wsgi.Controller):
     def _delete(self, req, id):
         """Deletes an existing volume type."""
         context = req.environ['cinder.context']
-        authorize(context)
+        context.authorize(policy.MANAGE_POLICY)
 
         try:
             vol_type = volume_types.get_volume_type(context, id)

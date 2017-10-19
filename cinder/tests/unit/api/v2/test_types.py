@@ -20,7 +20,6 @@ from oslo_utils import timeutils
 import six
 import webob
 
-import cinder.api.common as common
 from cinder.api.v2 import types
 from cinder.api.v2.views import types as views_types
 from cinder import context
@@ -334,9 +333,8 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertDictEqual(expected_volume_type, output['volume_type'])
 
     def test_view_builder_show_qos_specs_id_policy(self):
-        with mock.patch.object(common,
-                               'validate_policy',
-                               side_effect=[False, True]):
+        with mock.patch('cinder.context.RequestContext.authorize',
+                        side_effect=[False, True]):
             view_builder = views_types.ViewBuilder()
             now = timeutils.utcnow().isoformat()
             raw_volume_type = dict(
@@ -366,9 +364,8 @@ class VolumeTypesApiTest(test.TestCase):
             self.assertDictEqual(expected_volume_type, output['volume_type'])
 
     def test_view_builder_show_extra_specs_policy(self):
-        with mock.patch.object(common,
-                               'validate_policy',
-                               side_effect=[True, False]):
+        with mock.patch('cinder.context.RequestContext.authorize',
+                        side_effect=[True, False]):
             view_builder = views_types.ViewBuilder()
             now = timeutils.utcnow().isoformat()
             raw_volume_type = dict(
@@ -397,9 +394,8 @@ class VolumeTypesApiTest(test.TestCase):
             )
             self.assertDictEqual(expected_volume_type, output['volume_type'])
 
-        with mock.patch.object(common,
-                               'validate_policy',
-                               side_effect=[False, False]):
+        with mock.patch('cinder.context.RequestContext.authorize',
+                        side_effect=[False, False]):
             view_builder = views_types.ViewBuilder()
             now = timeutils.utcnow().isoformat()
             raw_volume_type = dict(
@@ -428,9 +424,8 @@ class VolumeTypesApiTest(test.TestCase):
             self.assertDictEqual(expected_volume_type, output['volume_type'])
 
     def test_view_builder_show_pass_all_policy(self):
-        with mock.patch.object(common,
-                               'validate_policy',
-                               side_effect=[True, True]):
+        with mock.patch('cinder.context.RequestContext.authorize',
+                        side_effect=[True, True]):
             view_builder = views_types.ViewBuilder()
             now = timeutils.utcnow().isoformat()
             raw_volume_type = dict(

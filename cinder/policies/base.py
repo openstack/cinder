@@ -23,8 +23,6 @@ rules = [
     policy.RuleDefault('admin_or_owner',
                        'is_admin:True or (role:admin and '
                        'is_admin_project:True) or  project_id:%(project_id)s'),
-    policy.RuleDefault('default',
-                       'rule:admin_or_owner'),
     policy.RuleDefault('admin_api',
                        'is_admin:True or (role:admin and '
                        'is_admin_project:True)'),

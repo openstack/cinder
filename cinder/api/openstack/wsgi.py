@@ -37,7 +37,6 @@ from cinder import i18n
 i18n.enable_lazy()
 
 from cinder.i18n import _
-from cinder import policy
 from cinder import utils
 from cinder.wsgi import common as wsgi
 
@@ -1284,23 +1283,6 @@ class Controller(object):
                                       max_length=max_length)
         except exception.InvalidInput as error:
             raise webob.exc.HTTPBadRequest(explanation=error.msg)
-
-    @staticmethod
-    def get_policy_checker(prefix):
-        @staticmethod
-        def policy_checker(req, action, resource=None):
-            ctxt = req.environ['cinder.context']
-            target = {
-                'project_id': ctxt.project_id,
-                'user_id': ctxt.user_id,
-            }
-            if resource:
-                target.update(resource)
-
-            _action = '%s:%s' % (prefix, action)
-            policy.enforce(ctxt, _action, target)
-            return ctxt
-        return policy_checker
 
 
 class Fault(webob.exc.HTTPException):

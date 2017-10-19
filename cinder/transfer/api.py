@@ -31,6 +31,7 @@ from cinder.db import base
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder.policies import volume_transfer as policy
 from cinder import quota
 from cinder import quota_utils
 from cinder.volume import api as volume_api
@@ -59,13 +60,13 @@ class API(base.Base):
         super(API, self).__init__(db_driver)
 
     def get(self, context, transfer_id):
-        volume_api.check_policy(context, 'get_transfer')
+        context.authorize(policy.GET_POLICY)
         rv = self.db.transfer_get(context, transfer_id)
         return dict(rv)
 
     def delete(self, context, transfer_id):
         """Make the RPC call to delete a volume transfer."""
-        volume_api.check_policy(context, 'delete_transfer')
+        context.authorize(policy.DELETE_POLICY)
         transfer = self.db.transfer_get(context, transfer_id)
 
         volume_ref = self.db.volume_get(context, transfer.volume_id)
@@ -79,7 +80,7 @@ class API(base.Base):
 
     def get_all(self, context, filters=None):
         filters = filters or {}
-        volume_api.check_policy(context, 'get_all_transfers')
+        context.authorize(policy.GET_ALL_POLICY)
         if context.is_admin and 'all_tenants' in filters:
             transfers = self.db.transfer_get_all(context)
         else:
@@ -114,7 +115,7 @@ class API(base.Base):
 
     def create(self, context, volume_id, display_name):
         """Creates an entry in the transfers table."""
-        volume_api.check_policy(context, 'create_transfer')
+        context.authorize(policy.CREATE_POLICY)
         LOG.info("Generating transfer record for volume %s", volume_id)
         volume_ref = self.db.volume_get(context, volume_id)
         if volume_ref['status'] != "available":
@@ -151,7 +152,7 @@ class API(base.Base):
         """Accept a volume that has been offered for transfer."""
         # We must use an elevated context to see the volume that is still
         # owned by the donor.
-        volume_api.check_policy(context, 'accept_transfer')
+        context.authorize(policy.ACCEPT_POLICY)
         transfer = self.db.transfer_get(context.elevated(), transfer_id)
 
         crypt_hash = self._get_crypt_hash(transfer['salt'], auth_key)

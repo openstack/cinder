@@ -28,16 +28,12 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import keymgr
+from cinder.policies import volume_actions as policy
 from cinder import utils
 from cinder import volume
 
 
 CONF = cfg.CONF
-
-
-def authorize(context, action_name):
-    action = 'volume_actions:%s' % action_name
-    extensions.extension_authorizer('volume', action)(context)
 
 
 class VolumeActionsController(wsgi.Controller):
@@ -239,7 +235,7 @@ class VolumeActionsController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
 
-        authorize(context, "upload_image")
+        context.authorize(policy.UPLOAD_IMAGE_POLICY)
         # check for valid disk-format
         disk_format = params.get("disk_format", "raw")
         if not image_utils.validate_disk_format(disk_format):
@@ -278,7 +274,7 @@ class VolumeActionsController(wsgi.Controller):
             image_metadata['protected'] = params.get('protected', 'False')
 
             if image_metadata['visibility'] == 'public':
-                authorize(context, 'upload_public')
+                context.authorize(policy.UPLOAD_PUBLIC_POLICY)
 
             image_metadata['protected'] = (
                 utils.get_bool_param('protected', image_metadata))

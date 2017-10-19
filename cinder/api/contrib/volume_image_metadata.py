@@ -23,13 +23,11 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder.i18n import _
+from cinder.policies import volume_metadata as policy
 from cinder import volume
 
 
 LOG = logging.getLogger(__name__)
-
-authorize = extensions.soft_extension_authorizer('volume',
-                                                 'volume_image_metadata')
 
 
 class VolumeImageMetadataController(wsgi.Controller):
@@ -72,13 +70,13 @@ class VolumeImageMetadataController(wsgi.Controller):
     @wsgi.extends
     def show(self, req, resp_obj, id):
         context = req.environ['cinder.context']
-        if authorize(context):
+        if context.authorize(policy.IMAGE_METADATA_POLICY, fatal=False):
             self._add_image_metadata(context, [resp_obj.obj['volume']])
 
     @wsgi.extends
     def detail(self, req, resp_obj):
         context = req.environ['cinder.context']
-        if authorize(context):
+        if context.authorize(policy.IMAGE_METADATA_POLICY, fatal=False):
             # Just get the image metadata of those volumes in response.
             volumes = list(resp_obj.obj.get('volumes', []))
             if volumes:
@@ -87,7 +85,7 @@ class VolumeImageMetadataController(wsgi.Controller):
     @wsgi.action("os-set_image_metadata")
     def create(self, req, id, body):
         context = req.environ['cinder.context']
-        if authorize(context):
+        if context.authorize(policy.IMAGE_METADATA_POLICY, fatal=False):
             try:
                 metadata = body['os-set_image_metadata']['metadata']
             except (KeyError, TypeError):
@@ -130,7 +128,7 @@ class VolumeImageMetadataController(wsgi.Controller):
     def delete(self, req, id, body):
         """Deletes an existing image metadata."""
         context = req.environ['cinder.context']
-        if authorize(context):
+        if context.authorize(policy.IMAGE_METADATA_POLICY, fatal=False):
             try:
                 key = body['os-unset_image_metadata']['key']
             except (KeyError, TypeError):
