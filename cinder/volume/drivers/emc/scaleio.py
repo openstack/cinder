@@ -926,6 +926,7 @@ class ScaleIODriver(driver.VolumeDriver):
             params = {'ids': [pool_id], 'properties': [
                 "capacityAvailableForVolumeAllocationInKb",
                 "capacityLimitInKb", "spareCapacityInKb",
+                "snapCapacityInUseInKb",
                 "thickCapacityInUseInKb", "thinCapacityAllocatedInKm"]}
             r = requests.post(
                 request,
@@ -950,9 +951,11 @@ class ScaleIODriver(driver.VolumeDriver):
                 # Divide by two because ScaleIO creates a copy for each volume
                 provisioned_capacity = (
                     ((res['thickCapacityInUseInKb'] +
-                     res['thinCapacityAllocatedInKm']) / 2) / units.Mi)
+                      res['snapCapacityInUseInKb'] +
+                      res['thinCapacityAllocatedInKm']) / 2) / units.Mi)
+
                 LOG.info(_LI(
-                         "free capacity of pool %(pool)s is: %(free)s, "
+                         "Free capacity of pool %(pool)s is: %(free)s, "
                          "total capacity: %(total)s, "
                          "provisioned capacity: %(prov)s"),
                          {'pool': pool_name,
