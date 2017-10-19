@@ -162,7 +162,7 @@ class NotifyUsageTestCase(test.TestCase):
             'volume_size': 1,
             'snapshot_id': fake.SNAPSHOT_ID,
             'display_name': '11',
-            'created_at': mock.ANY,
+            'created_at': '2014-12-11T10:10:00+00:00',
             'status': fields.SnapshotStatus.ERROR,
             'deleted': '',
             'metadata': six.text_type({'fake_snap_meta_key':
@@ -371,8 +371,7 @@ class NotifyUsageTestCase(test.TestCase):
         expected_backup = raw_backup.copy()
         expected_backup['tenant_id'] = expected_backup.pop('project_id')
         expected_backup['backup_id'] = expected_backup.pop('id')
-        expected_backup['created_at'] = (
-            six.text_type(expected_backup['created_at']) + '+00:00')
+        expected_backup['created_at'] = '2015-01-01T01:01:01+00:00'
 
         usage_info = volume_utils._usage_from_backup(backup_obj)
         self.assertDictEqual(expected_backup, usage_info)
