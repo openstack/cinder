@@ -92,9 +92,10 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         2.2 - Add CG capability to generic volume groups
         2.2.1 - Add vdisk mirror/stretch cluster support
         2.2.2 - Add npiv support
+        2.2.3 - Add replication group support
     """
 
-    VERSION = "2.2.2"
+    VERSION = "2.2.3"
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_STORAGE_CI"
@@ -136,15 +137,16 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         """
         LOG.debug('enter: initialize_connection: volume %(vol)s with connector'
                   ' %(conn)s', {'vol': volume['id'], 'conn': connector})
-        volume_name = self._get_target_vol(volume)
+        volume_name, backend_helper, node_state = self._get_vol_sys_info(
+            volume)
 
         # Check if a host object is defined for this host name
-        host_name = self._helpers.get_host_from_connector(connector)
+        host_name = backend_helper.get_host_from_connector(connector)
         if host_name is None:
             # Host does not exist - add a new host to Storwize/SVC
-            host_name = self._helpers.create_host(connector)
+            host_name = backend_helper.create_host(connector)
 
-        volume_attributes = self._helpers.get_vdisk_attributes(volume_name)
+        volume_attributes = backend_helper.get_vdisk_attributes(volume_name)
         if volume_attributes is None:
             msg = (_('initialize_connection: Failed to get attributes'
                      ' for volume %s.') % volume_name)
@@ -152,8 +154,8 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             raise exception.VolumeDriverException(message=msg)
 
         multihostmap = self.configuration.storwize_svc_multihostmap_enabled
-        lun_id = self._helpers.map_vol_to_host(volume_name, host_name,
-                                               multihostmap)
+        lun_id = backend_helper.map_vol_to_host(volume_name, host_name,
+                                                multihostmap)
         try:
             preferred_node = volume_attributes['preferred_node_id']
             IO_group = volume_attributes['IO_group_id']
@@ -168,7 +170,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             # Get preferred node and other nodes in I/O group
             preferred_node_entry = None
             io_group_nodes = []
-            for node in self._state['storage_nodes'].values():
+            for node in node_state['storage_nodes'].values():
                 if node['id'] == preferred_node:
                     preferred_node_entry = node
                 if node['IO_group'] == IO_group:
@@ -192,19 +194,19 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             properties['target_lun'] = lun_id
             properties['volume_id'] = volume['id']
 
-            conn_wwpns = self._helpers.get_conn_fc_wwpns(host_name)
+            conn_wwpns = backend_helper.get_conn_fc_wwpns(host_name)
 
             # If conn_wwpns is empty, then that means that there were
             # no target ports with visibility to any of the initiators
             # so we return all target ports.
             if len(conn_wwpns) == 0:
-                for node in self._state['storage_nodes'].values():
+                for node in node_state['storage_nodes'].values():
                     # The Storwize/svc release 7.7.0.0 introduced NPIV feature,
                     # Different commands be used to get the wwpns for host I/O
-                    if self._state['code_level'] < (7, 7, 0, 0):
+                    if node_state['code_level'] < (7, 7, 0, 0):
                         conn_wwpns.extend(node['WWPN'])
                     else:
-                        npiv_wwpns = self._helpers.get_npiv_wwpns(
+                        npiv_wwpns = backend_helper.get_npiv_wwpns(
                             node_id=node['id'],
                             host_io="yes")
                         conn_wwpns.extend(npiv_wwpns)
@@ -218,8 +220,11 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             # specific for z/VM, refer to cinder bug 1323993
             if "zvm_fcp" in connector:
                 properties['zvm_fcp'] = connector['zvm_fcp']
-        except Exception:
+        except Exception as ex:
             with excutils.save_and_reraise_exception():
+                LOG.error('initialize_connection: Failed to export volume '
+                          '%(vol)s due to %(ex)s.', {'vol': volume.name,
+                                                     'ex': ex})
                 self._do_terminate_connection(volume, connector)
                 LOG.error('initialize_connection: Failed '
                           'to collect return '
@@ -272,7 +277,8 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         """
         LOG.debug('enter: terminate_connection: volume %(vol)s with connector'
                   ' %(conn)s', {'vol': volume['id'], 'conn': connector})
-        vol_name = self._get_target_vol(volume)
+        vol_name, backend_helper, node_state = self._get_vol_sys_info(volume)
+
         info = {}
         if 'host' in connector:
             # get host according to FC protocol
@@ -282,7 +288,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             info = {'driver_volume_type': 'fibre_channel',
                     'data': {}}
 
-            host_name = self._helpers.get_host_from_connector(
+            host_name = backend_helper.get_host_from_connector(
                 connector, volume_name=vol_name)
             if host_name is None:
                 msg = (_('terminate_connection: Failed to get host name from'
@@ -294,11 +300,11 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             host_name = None
 
         # Unmap volumes, if hostname is None, need to get value from vdiskmap
-        host_name = self._helpers.unmap_vol_from_host(vol_name, host_name)
+        host_name = backend_helper.unmap_vol_from_host(vol_name, host_name)
 
         # Host_name could be none
         if host_name:
-            resp = self._helpers.check_host_mapped_vols(host_name)
+            resp = backend_helper.check_host_mapped_vols(host_name)
             if not len(resp):
                 LOG.info("Need to remove FC Zone, building initiator "
                          "target map.")
@@ -308,14 +314,14 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
                     # Returning all target_wwpns in storage_nodes, since
                     # we cannot determine which wwpns are logged in during
                     # a VM deletion.
-                    for node in self._state['storage_nodes'].values():
+                    for node in node_state['storage_nodes'].values():
                         target_wwpns.extend(node['WWPN'])
                     init_targ_map = (self._make_initiator_target_map
                                      (connector['wwpns'],
                                       target_wwpns))
                     info['data'] = {'initiator_target_map': init_targ_map}
                 # No volume mapped to the host, delete host from array
-                self._helpers.delete_host(host_name)
+                backend_helper.delete_host(host_name)
 
         LOG.debug('leave: terminate_connection: volume %(vol)s with '
                   'connector %(conn)s', {'vol': volume['id'],

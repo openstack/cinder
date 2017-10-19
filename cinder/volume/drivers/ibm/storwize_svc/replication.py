@@ -24,7 +24,6 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.objects import fields
 from cinder import ssh_utils
 from cinder import utils
 from cinder.volume.drivers.ibm.storwize_svc import storwize_const
@@ -101,8 +100,7 @@ class StorwizeSVCReplicationGlobalMirror(StorwizeSVCReplication):
             rel_info = self.target_helpers.get_relationship_info(target_vol)
             # Reverse the role of the primary and secondary volumes
             self.target_helpers.switch_relationship(rel_info['name'])
-            return {'replication_status':
-                    fields.ReplicationStatus.FAILED_OVER}
+            return
         except Exception as e:
             LOG.exception('Unable to fail-over the volume %(id)s to the '
                           'secondary back-end by switchrcrelationship '
@@ -113,8 +111,13 @@ class StorwizeSVCReplicationGlobalMirror(StorwizeSVCReplication):
             try:
                 self.target_helpers.stop_relationship(target_vol,
                                                       access=True)
-                return {'replication_status':
-                        fields.ReplicationStatus.FAILED_OVER}
+                try:
+                    self.target_helpers.start_relationship(target_vol, 'aux')
+                except exception.VolumeBackendAPIException as e:
+                    LOG.error(
+                        'Error running startrcrelationship due to %(err)s.',
+                        {'err': e})
+                return
             except Exception as e:
                 msg = (_('Unable to fail-over the volume %(id)s to the '
                          'secondary back-end, error: %(error)s') %
@@ -129,9 +132,7 @@ class StorwizeSVCReplicationGlobalMirror(StorwizeSVCReplication):
             try:
                 self.target_helpers.switch_relationship(rel_info['name'],
                                                         aux=False)
-                return {'replication_status':
-                        fields.ReplicationStatus.ENABLED,
-                        'status': 'available'}
+                return
             except Exception as e:
                 msg = (_('Unable to fail-back the volume:%(vol)s to the '
                          'master back-end, error:%(error)s') %
@@ -253,11 +254,14 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
                   {'vref': vref['name']})
         # Make the aux volume writeable.
         try:
-            self.target_helpers.stop_relationship(
-                storwize_const.REPLICA_AUX_VOL_PREFIX + vref['name'],
-                access=True)
-            return {'replication_status':
-                    fields.ReplicationStatus.FAILED_OVER}
+            tgt_volume = storwize_const.REPLICA_AUX_VOL_PREFIX + vref.name
+            self.target_helpers.stop_relationship(tgt_volume, access=True)
+            try:
+                self.target_helpers.start_relationship(tgt_volume, 'aux')
+            except exception.VolumeBackendAPIException as e:
+                LOG.error('Error running startrcrelationship due to %(err)s.',
+                          {'err': e})
+            return
         except Exception as e:
             msg = (_('Unable to fail-over the volume %(id)s to the '
                    'secondary back-end, error: %(error)s') %
@@ -274,9 +278,7 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
             try:
                 self.target_helpers.stop_relationship(tgt_volume, access=True)
                 self.target_helpers.start_relationship(tgt_volume, 'master')
-                return {'replication_status':
-                        fields.ReplicationStatus.ENABLED,
-                        'status': 'available'}
+                return
             except Exception as e:
                 msg = (_('Unable to fail-back the volume:%(vol)s to the '
                          'master back-end, error:%(error)s') %
