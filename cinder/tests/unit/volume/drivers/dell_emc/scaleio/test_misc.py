@@ -67,6 +67,7 @@ class TestMisc(scaleio.TestScaleIODriver):
                         'spareCapacityInKb': 6000000,
                         'thickCapacityInUseInKb': 266,
                         'thinCapacityAllocatedInKm': 0,
+                        'snapCapacityInUseInKb': 266,
                     },
                 },
                 'instances/Volume::{}/action/setVolumeName'.format(
@@ -200,6 +201,7 @@ class TestMisc(scaleio.TestScaleIODriver):
                         'capacityLimitInKb': 16000000,
                         'spareCapacityInKb': 6000000,
                         'thickCapacityInUseInKb': 266,
+                        'snapCapacityInUseInKb': 266,
                         property: 0,
                     },
                 },
