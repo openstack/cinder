@@ -2,68 +2,71 @@
 Volume drivers
 ==============
 
+To use different volume drivers for the cinder-volume service, use the
+parameters described in these sections.
+
+These volume drivers are included in the `Block Storage repository
+<https://git.openstack.org/cgit/openstack/cinder/>`_. To set a volume
+driver, use the ``volume_driver`` flag.
+
+The default is:
+
+.. code-block:: ini
+
+    volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
+
+Note that some third party storage systems may maintain more detailed
+configuration documentation elsewhere. Contact your vendor for more information
+if needed.
+
+Driver Configuration Reference
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. sort by the drivers by open source software
 .. and the drivers for proprietary components
 
 .. toctree::
    :maxdepth: 1
 
-   drivers/ceph-rbd-volume-driver.rst
-   drivers/lvm-volume-driver.rst
-   drivers/nfs-volume-driver.rst
-   drivers/sheepdog-driver.rst
-   drivers/smbfs-volume-driver.rst
-   drivers/cloudbyte-driver.rst
-   drivers/coprhd-driver.rst
-   drivers/datera-volume-driver.rst
-   drivers/dell-emc-scaleio-driver.rst
-   drivers/dell-emc-unity-driver.rst
-   drivers/dell-equallogic-driver.rst
-   drivers/dell-storagecenter-driver.rst
-   drivers/dothill-driver.rst
-   drivers/emc-vmax-driver.rst
-   drivers/emc-vnx-driver.rst
-   drivers/emc-xtremio-driver.rst
-   drivers/fujitsu-eternus-dx-driver.rst
-   drivers/hpe-3par-driver.rst
-   drivers/hpe-lefthand-driver.rst
-   drivers/hp-msa-driver.rst
-   drivers/huawei-storage-driver.rst
-   drivers/ibm-gpfs-volume-driver.rst
-   drivers/ibm-storwize-svc-driver.rst
-   drivers/ibm-storage-volume-driver.rst
-   drivers/ibm-flashsystem-volume-driver.rst
-   drivers/infinidat-volume-driver.rst
-   drivers/itri-disco-driver.rst
-   drivers/kaminario-driver.rst
-   drivers/lenovo-driver.rst
-   drivers/nec-storage-m-series-driver.rst
-   drivers/netapp-volume-driver.rst
-   drivers/nimble-volume-driver.rst
-   drivers/nexentastor4-driver.rst
-   drivers/nexentastor5-driver.rst
-   drivers/nexentaedge-driver.rst
-   drivers/prophetstor-dpl-driver.rst
-   drivers/pure-storage-driver.rst
-   drivers/quobyte-driver.rst
-   drivers/scality-sofs-driver.rst
-   drivers/solidfire-volume-driver.rst
-   drivers/synology-dsm-driver.rst
-   drivers/tintri-volume-driver.rst
-   drivers/vzstorage-driver.rst
-   drivers/vmware-vmdk-driver.rst
-   drivers/windows-iscsi-volume-driver.rst
-   drivers/zadara-volume-driver.rst
-   drivers/zfssa-iscsi-driver.rst
-   drivers/zfssa-nfs-driver.rst
-
-To use different volume drivers for the cinder-volume service, use the
-parameters described in these sections.
-
-The volume drivers are included in the `Block Storage repository
-<https://git.openstack.org/cgit/openstack/cinder/>`_. To set a volume
-driver, use the ``volume_driver`` flag. The default is:
-
-.. code-block:: ini
-
-    volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
+   drivers/ceph-rbd-volume-driver
+   drivers/lvm-volume-driver
+   drivers/nfs-volume-driver
+   drivers/sheepdog-driver
+   drivers/coprhd-driver
+   drivers/datera-volume-driver
+   drivers/dell-equallogic-driver
+   drivers/dell-emc-scaleio-driver
+   drivers/dell-storagecenter-driver
+   drivers/dell-emc-unity-driver
+   drivers/emc-vmax-driver
+   drivers/emc-vnx-driver
+   drivers/emc-xtremio-driver
+   drivers/fujitsu-eternus-dx-driver
+   drivers/hpe-3par-driver
+   drivers/hpe-lefthand-driver
+   drivers/hp-msa-driver
+   drivers/huawei-storage-driver
+   drivers/ibm-flashsystem-volume-driver
+   drivers/ibm-gpfs-volume-driver
+   drivers/ibm-storage-volume-driver
+   drivers/ibm-storwize-svc-driver
+   drivers/infinidat-volume-driver
+   drivers/itri-disco-driver
+   drivers/kaminario-driver
+   drivers/lenovo-driver
+   drivers/nec-storage-m-series-driver
+   drivers/netapp-volume-driver
+   drivers/nimble-volume-driver
+   drivers/nexentastor4-driver
+   drivers/nexentastor5-driver
+   drivers/prophetstor-dpl-driver
+   drivers/pure-storage-driver
+   drivers/quobyte-driver
+   drivers/solidfire-volume-driver
+   drivers/synology-dsm-driver
+   drivers/tintri-volume-driver
+   drivers/vzstorage-driver
+   drivers/vmware-vmdk-driver
+   drivers/windows-iscsi-volume-driver
+   drivers/zadara-volume-driver
+   drivers/zfssa-iscsi-driver
+   drivers/zfssa-nfs-driver

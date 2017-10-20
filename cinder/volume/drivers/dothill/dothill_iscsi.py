@@ -19,7 +19,6 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _
-from cinder import interface
 import cinder.volume.driver
 from cinder.volume.drivers.dothill import dothill_common as dothillcommon
 from cinder.volume.drivers.san import san
@@ -32,7 +31,6 @@ LOG = logging.getLogger(__name__)
 # As of Pike, the DotHill driver is no longer considered supported,
 # but the code remains as it is still subclassed by other drivers.
 # The __init__() function prevents any direct instantiation.
-@interface.volumedriver
 class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
     """OpenStack iSCSI cinder drivers for DotHill Arrays.
 

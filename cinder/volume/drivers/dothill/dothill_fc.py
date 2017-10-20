@@ -16,7 +16,6 @@
 #
 
 from cinder import exception
-from cinder import interface
 import cinder.volume.driver
 from cinder.volume.drivers.dothill import dothill_common
 from cinder.volume.drivers.san import san
@@ -26,7 +25,6 @@ from cinder.zonemanager import utils as fczm_utils
 # As of Pike, the DotHill driver is no longer considered supported,
 # but the code remains as it is still subclassed by other drivers.
 # The __init__() function prevents any direct instantiation.
-@interface.volumedriver
 class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
     """OpenStack Fibre Channel cinder drivers for DotHill Arrays.
 

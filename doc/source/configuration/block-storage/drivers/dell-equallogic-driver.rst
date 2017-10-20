@@ -1,6 +1,6 @@
-=============================
-Dell EqualLogic volume driver
-=============================
+=================================
+Dell EMC EqualLogic volume driver
+=================================
 
 The Dell EqualLogic volume driver interacts with configured EqualLogic
 arrays and supports various operations.
