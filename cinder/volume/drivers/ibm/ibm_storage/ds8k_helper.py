@@ -481,36 +481,49 @@ class DS8KCommonHelper(object):
         return lss_ids
 
     def wait_flashcopy_finished(self, src_luns, tgt_luns):
-        finished = False
-        try:
-            fc_state = [False] * len(tgt_luns)
-            while True:
-                eventlet.sleep(5)
-                for i in range(len(tgt_luns)):
-                    if not fc_state[i]:
-                        fcs = self.get_flashcopy(tgt_luns[i].ds_id)
+        valid_fc_states = ('valid', 'validation_required')
+        for tgt_lun in tgt_luns:
+            tgt_lun.status = 'checking'
+        while True:
+            eventlet.sleep(5)
+            for src_lun, tgt_lun in zip(src_luns, tgt_luns):
+                if tgt_lun.status == 'checking':
+                    try:
+                        fcs = self.get_flashcopy(tgt_lun.ds_id)
                         if not fcs:
-                            fc_state[i] = True
-                            continue
-                        if fcs[0]['state'] not in ('valid',
-                                                   'validation_required'):
-                            raise restclient.APIException(
-                                data=(_('Flashcopy ended up in bad state %s. '
-                                        'Rolling back.') % fcs[0]['state']))
-                if fc_state.count(False) == 0:
-                    break
-            finished = True
-        finally:
-            if not finished:
-                for src_lun, tgt_lun in zip(src_luns, tgt_luns):
-                    self.delete_flashcopy(src_lun.ds_id, tgt_lun.ds_id)
-        return finished
+                            tgt_lun.status = 'available'
+                        elif fcs[0]['state'] not in valid_fc_states:
+                            LOG.error('Flashcopy %(src)s:%(tgt)s ended '
+                                      'up in bad state %(state)s.',
+                                      {'src': src_lun.ds_id,
+                                       'tgt': tgt_lun.ds_id,
+                                       'state': fcs[0]['state']})
+                            tgt_lun.status = 'error'
+                    except restclient.APIException:
+                        LOG.error('Can not get flashcopy relationship '
+                                  '%(src)s:%(tgt)s',
+                                  {'src': src_lun.ds_id,
+                                   'tgt': tgt_lun.ds_id})
+                        tgt_lun.status = 'error'
+            if not [lun for lun in tgt_luns if lun.status == 'checking']:
+                break
+        # cleanup error flashcopy relationship.
+        for src_lun, tgt_lun in zip(src_luns, tgt_luns):
+            if tgt_lun.status == 'error':
+                self.delete_flashcopy(src_lun.ds_id, tgt_lun.ds_id)
 
     def wait_pprc_copy_finished(self, vol_ids, state, delete=True):
         LOG.info("Wait for PPRC pair to enter into state %s", state)
         vol_ids = sorted(vol_ids)
         min_vol_id = min(vol_ids)
         max_vol_id = max(vol_ids)
+        invalid_states = ('target_suspended',
+                          'invalid',
+                          'volume_inaccessible')
+        if state == 'full_duplex':
+            invalid_states += ('suspended',)
+        elif state == 'suspended':
+            invalid_states += ('valid',)
         try:
             finished = False
             while True:
@@ -522,17 +535,6 @@ class DS8KCommonHelper(object):
                 if len(finished_pairs) == len(pairs):
                     finished = True
                     break
-
-                invalid_states = [
-                    'target_suspended',
-                    'invalid',
-                    'volume_inaccessible'
-                ]
-                if state == 'full_duplex':
-                    invalid_states.append('suspended')
-                elif state == 'suspended':
-                    invalid_states.append('valid')
-
                 unfinished_pairs = [p for p in pairs if p['state'] != state]
                 for p in unfinished_pairs:
                     if p['state'] in invalid_states:

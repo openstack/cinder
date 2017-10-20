@@ -94,7 +94,7 @@ class IBMStorageFakeProxyDriver(object):
     """
 
     def __init__(self, ibm_storage_info, logger, expt,
-                 driver=None, active_backend_id=None):
+                 driver=None, active_backend_id=None, host=None):
         """Initialize Proxy."""
 
         self.ibm_storage_info = ibm_storage_info

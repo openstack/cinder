@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added support for cloning volume asynchronously, it can be enabled by
+    option async_clone set to true in parameter metadata when creating
+    volume from volume or snapshot.
