@@ -46,7 +46,7 @@ STATUS_201 = 201
 STATUS_202 = 202
 STATUS_204 = 204
 # Job constants
-INCOMPLETE_LIST = ['created', 'scheduled', 'running',
+INCOMPLETE_LIST = ['created', 'unscheduled', 'scheduled', 'running',
                    'validating', 'validated']
 CREATED = 'created'
 SUCCEEDED = 'succeeded'
