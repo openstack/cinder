@@ -1,0 +1,5 @@
+---
+fixes:
+  - The NetApp cDOT driver operating with NFS protocol has been fixed to
+    manage volumes correctly when ``nas_secure_file_operations`` option has
+    been set to False.

@@ -149,6 +149,7 @@ blockdev: CommandFilter, blockdev, root
 
 # cinder/volume/drivers/ibm/gpfs.py
 # cinder/volume/drivers/tintri.py
+# cinder/volume/drivers/netapp/dataontap/nfs_base.py
 mv: CommandFilter, mv, root
 
 # cinder/volume/drivers/ibm/gpfs.py
