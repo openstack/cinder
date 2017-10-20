@@ -446,40 +446,6 @@ class VolumeIDConvertTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
                          "ID:%(volid)s should be change to %(ldname)s" %
                          {'volid': volid, 'ldname': ldname})
 
-    @ddt.data(("AAAAAAAA", "LX:3R9ZwR", "target:BBBBBBBB"))
-    @ddt.unpack
-    def test_migrate_volumeid_should_change_62scale_andpostfix(self,
-                                                               volid,
-                                                               ldname,
-                                                               status):
-        self.vol.id = volid
-        self.vol.migration_status = status
-        actual = self._convert_id2name_in_migrate(self.vol)
-        self.assertEqual(ldname, actual,
-                         "ID:%(volid)s/%(status)s should be "
-                         "change to %(ldname)s" %
-                         {'volid': volid,
-                          'status': status,
-                          'ldname': ldname})
-
-    @ddt.data(("AAAAAAAA", "LX:37mA82", "deleting:BBBBBBBB"),
-              ("AAAAAAAA", "LX:37mA82", ""),
-              ("AAAAAAAA", "LX:37mA82", "success"))
-    @ddt.unpack
-    def test_NOTmigrate_volumeid_should_change_62scale(self,
-                                                       volid,
-                                                       ldname,
-                                                       status):
-        self.vol.id = volid
-        self.vol.migration_status = status
-        actual = self._convert_id2name_in_migrate(self.vol)
-        self.assertEqual(ldname, actual,
-                         "ID:%(volid)s/%(status)s should be "
-                         "change to %(ldname)s" %
-                         {'volid': volid,
-                          'status': status,
-                          'ldname': ldname})
-
 
 class NominatePoolLDTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
@@ -735,7 +701,7 @@ class BindLDTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
         self.create_volume(self.vol)
         self._bind_ld.assert_called_once_with(
             self.vol, self.vol.size, None,
-            self._convert_id2name_in_migrate,
+            self._convert_id2name,
             self._select_leastused_poolnumber)
 
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
@@ -892,12 +858,6 @@ class ExportTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
             self._cli.delldsetld = mock_del
             self._cli.delldsetld.return_value = False, 'iSM31064'
             self.remove_export(context, self.vol)
-
-        self.vol.status = None
-        migstat = 'target:1febb976-86d0-42ed-9bc0-4aa3e158f27d'
-        self.vol.migration_status = migstat
-        ret = self.remove_export(context, self.vol)
-        self.assertIsNone(ret)
 
     def test_iscsi_initialize_connection(self):
         self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
@@ -1155,3 +1115,26 @@ class VolumeStats_test(volume_helper.MStorageDSVDriver, unittest.TestCase):
         self.assertEqual(self.VERSION, stats.get('driver_version'))
         self.assertEqual('10.0.0.1', stats.get('location_info').split(':')[0])
         self.assertEqual('0,1', stats.get('location_info').split(':')[1])
+
+
+class Migrate_test(volume_helper.MStorageDSVDriver, unittest.TestCase):
+
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                '_create_ismview_dir', new=mock.Mock())
+    def setUp(self):
+        self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.do_setup(None)
+        self.newvol = DummyVolume()
+        self.newvol.id = "46045673-41e7-44a7-9333-02f07feab04b"
+        self.sourcevol = DummyVolume()
+        self.sourcevol.id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
+
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
+                'view_all', patch_view_all)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
+                patch_execute)
+    def test_update_migrate_volume(self):
+        update_data = self.update_migrated_volume(None, self.sourcevol,
+                                                  self.newvol, 'available')
+        self.assertIsNone(update_data['_name_id'])
+        self.assertIsNone(update_data['provider_location'])

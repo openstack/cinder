@@ -49,23 +49,6 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         ldname = ldname + '_m'
         return ldname
 
-    def _convert_id2name_in_migrate(self, volume):
-        """If LD has migrate_status, get LD name from source LD UUID."""
-        LOG.debug('migration_status:%s', volume.migration_status)
-        migstat = volume.migration_status
-        if migstat is not None and 'target:' in migstat:
-            index = migstat.find('target:')
-            if index != -1:
-                migstat = migstat[len('target:'):]
-            ldname = (self.get_ldname(migstat,
-                                      self._properties['ld_name_format']))
-        else:
-            ldname = (self.get_ldname(volume.id,
-                                      self._properties['ld_name_format']))
-
-        LOG.debug('ldname=%s.', ldname)
-        return ldname
-
     def _select_ldnumber(self, used_ldns, max_ld_count):
         """Pick up unused LDN."""
         for ldn in range(0, max_ld_count + 1):
@@ -308,7 +291,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
          selected_pool) = self._bind_ld(volume,
                                         volume.size,
                                         None,
-                                        self._convert_id2name_in_migrate,
+                                        self._convert_id2name,
                                         self._select_leastused_poolnumber)
 
         # check io limit.
@@ -632,6 +615,48 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
 
         return (True, [])
 
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Updates metadata after host-assisted migration.
+
+        This method should rename the back-end volume name(id) on the
+        destination host back to its original name(id) on the source host.
+
+        :param ctxt: The context used to run the method update_migrated_volume
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
+        :returns: model_update to update DB with any needed changes
+        """
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+
+        name_id = None
+        provider_location = None
+        if original_volume_status == 'available':
+            original_name = self._convert_id2name(volume)
+            temp_name = self._convert_id2name(new_volume)
+            try:
+                if original_name in lds:
+                    self._cli.unbind(original_name)
+                self._cli.changeldname(None, original_name, temp_name)
+            except exception.CinderException as e:
+                LOG.warning('Unable to rename the logical volume '
+                            '(Volume ID = %(id)s), (%(exception)s)',
+                            {'id': volume.id, 'exception': e})
+                # If the rename fails, _name_id should be set to the new
+                # volume id and provider_location should be set to the
+                # one from the new volume as well.
+                name_id = new_volume._name_id or new_volume.id
+                provider_location = new_volume.provider_location
+        else:
+            # The back-end will not be renamed.
+            name_id = new_volume._name_id or new_volume.id
+            provider_location = new_volume.provider_location
+        return {'_name_id': name_id, 'provider_location': provider_location}
+
     def check_for_export(self, context, volume_id):
         pass
 
@@ -684,21 +709,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             ldset = self._validate_iscsildset_exist(
                 ldsets, connector, metadata)
 
-            if (hasattr(volume, 'migration_status') and
-                    volume.migration_status is not None and
-                    'target:' in volume.migration_status):
-                LOG.debug('migration_status:%s', volume.migration_status)
-                migstat = volume.migration_status
-                index = migstat.find('target:')
-                if index != -1:
-                    migstat = migstat[len('target:'):]
-                ldname = (
-                    self.get_ldname(
-                        migstat, self._properties['ld_name_format']))
-            else:
-                ldname = (
-                    self.get_ldname(
-                        volume.id, self._properties['ld_name_format']))
+            ldname = self.get_ldname(
+                volume.id, self._properties['ld_name_format'])
 
             # add LD to LD set.
             if ldname not in lds:
@@ -802,23 +814,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                     break
                 target_lun += 1
 
-            if (hasattr(volume, 'migration_status') and
-                    volume.migration_status is not None and
-                    'target:' in volume.migration_status):
-                LOG.debug('migration_status:%s', volume.migration_status)
-                migstat = volume.migration_status
-                index = migstat.find('target:')
-                if index != -1:
-                    migstat = migstat[len('target:'):]
-                ldname = (
-                    self.get_ldname(
-                        migstat,
-                        self._properties['ld_name_format']))
-            else:
-                ldname = (
-                    self.get_ldname(
-                        volume.id,
-                        self._properties['ld_name_format']))
+            ldname = self.get_ldname(
+                volume.id, self._properties['ld_name_format'])
 
             # add LD to LD set.
             if ldname not in lds:
@@ -1013,24 +1010,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                 LOG.debug('migrate:%s', volume.migration_status)
 
             ldset = self.get_ldset(ldsets, metadata)
-
-            if (hasattr(volume, 'migration_status') and
-                    volume.migration_status is not None and
-                    'target:' in volume.migration_status):
-                LOG.debug('migration_status:%s', volume.migration_status)
-                migstat = volume.migration_status
-                index = migstat.find('target:')
-                if index != -1:
-                    migstat = migstat[len('target:'):]
-                ldname = (
-                    self.get_ldname(
-                        migstat,
-                        self._properties['ld_name_format']))
-            else:
-                ldname = (
-                    self.get_ldname(
-                        volume.id,
-                        self._properties['ld_name_format']))
+            ldname = self.get_ldname(
+                volume.id, self._properties['ld_name_format'])
 
             if ldname not in lds:
                 LOG.debug('LD `%s` already unbound?', ldname)
@@ -1303,21 +1284,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         target_wwns, init_targ_map = (
             self._build_initiator_target_map(connector, fc_ports))
 
-        if (hasattr(volume, 'migration_status') and
-                volume.migration_status is not None and
-                'target:' in volume.migration_status):
-            LOG.debug('migration_status:%s', volume.migration_status)
-            migstat = volume.migration_status
-            index = migstat.find('target:')
-            if index != -1:
-                migstat = migstat[len('target:'):]
-            ldname = (
-                self.get_ldname(migstat,
-                                self._properties['ld_name_format']))
-        else:
-            ldname = (
-                self.get_ldname(volume.id,
-                                self._properties['ld_name_format']))
+        ldname = self.get_ldname(
+            volume.id, self._properties['ld_name_format'])
 
         # get lun.
         if ldname not in lds:
