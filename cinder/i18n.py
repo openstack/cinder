@@ -14,7 +14,7 @@
 
 """oslo.i18n integration module.
 
-See http://docs.openstack.org/oslo.i18n/latest/user/index.html .
+See https://docs.openstack.org/oslo.i18n/latest/user/index.html .
 
 """
 

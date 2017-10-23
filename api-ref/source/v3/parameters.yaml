@@ -2756,8 +2756,8 @@ volume_type_2:
     volume type.  Default is ``None``.  For information about how to
     use volume types to create multiple- storage back ends, see
     `Configure multiple-storage back ends
-    <http://docs.openstack.org/admin-
-    guide/blockstorage_multi_backend.html>`_.
+    <https://docs.openstack.org/cinder/latest
+    /admin/blockstorage-multi-backend.html>`_.
   in: body
   required: false
   type: string
@@ -2767,8 +2767,8 @@ volume_type_3:
     storage back ends, the scheduler determines where to send the
     volume based on the volume type.  For information about how to use
     volume types to create multiple- storage back ends, see `Configure
-    multiple-storage back ends <http://docs.openstack.org/admin-
-    guide/blockstorage_multi_backend.html>`_.
+    multiple-storage back ends <https://docs.openstack.org/cinder/latest
+    /admin/blockstorage-multi-backend.html>`_.
   in: body
   required: true
   type: string
@@ -2803,8 +2803,8 @@ volume_types:
     the volume based on the volume type.  For information about how to
     use volume types to create multiple- storage back ends, see
     `Configure multiple-storage back ends
-    <http://docs.openstack.org/admin-
-    guide/blockstorage_multi_backend.html>`_.
+    <https://docs.openstack.org/cinder/latest
+    /admin/blockstorage-multi-backend.html>`_.
   in: body
   required: true
   type: array
@@ -2815,8 +2815,8 @@ volume_types_2:
     the volume based on the volume type.  For information about how to
     use volume types to create multiple-storage back ends, see
     `Configure multiple-storage back ends
-    <http://docs.openstack.org/admin-
-    guide/blockstorage_multi_backend.html>`_.
+    <https://docs.openstack.org/cinder/latest
+    /admin/blockstorage-multi-backend.html>`_.
   in: body
   required: true
   type: string

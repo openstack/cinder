@@ -21,8 +21,8 @@ volume type to handle the request.
 
 For information about how to use volume types to create multiple-
 storage back ends, see `Configure multiple-storage back ends
-<http://docs.openstack.org/admin-
-guide/blockstorage_multi_backend.html>`_.
+<https://docs.openstack.org/cinder/latest/admin/
+blockstorage-multi-backend.html>`_.
 
 
 Normal response codes: 200
@@ -226,8 +226,8 @@ based on the volume type.
 
 For information about how to use volume types to create multiple-
 storage back ends, see `Configure multiple-storage back ends
-<http://docs.openstack.org/admin-
-guide/blockstorage_multi_backend.html>`_.
+<https://docs.openstack.org/cinder/latest/admin/
+blockstorage-multi-backend.html>`_.
 
 
 Normal response codes: 200

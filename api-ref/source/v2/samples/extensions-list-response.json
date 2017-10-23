@@ -4,7 +4,7 @@
             "updated": "2013-04-18T00:00:00+00:00",
             "name": "SchedulerHints",
             "links": [],
-            "namespace": "http://docs.openstack.org/block-service/ext/scheduler-hints/api/v2",
+            "namespace": "https://docs.openstack.org/block-service/ext/scheduler-hints/api/v2",
             "alias": "OS-SCH-HNT",
             "description": "Pass arbitrary key/value pairs to the scheduler."
         },
@@ -12,7 +12,7 @@
             "updated": "2011-06-29T00:00:00+00:00",
             "name": "Hosts",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/hosts/api/v1.1",
+            "namespace": "https://docs.openstack.org/volume/ext/hosts/api/v1.1",
             "alias": "os-hosts",
             "description": "Admin-only host administration."
         },
@@ -20,7 +20,7 @@
             "updated": "2011-11-03T00:00:00+00:00",
             "name": "VolumeTenantAttribute",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/volume_tenant_attribute/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/volume_tenant_attribute/api/v1",
             "alias": "os-vol-tenant-attr",
             "description": "Expose the internal project_id as an attribute of a volume."
         },
@@ -28,7 +28,7 @@
             "updated": "2011-08-08T00:00:00+00:00",
             "name": "Quotas",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/quotas-sets/api/v1.1",
+            "namespace": "https://docs.openstack.org/volume/ext/quotas-sets/api/v1.1",
             "alias": "os-quota-sets",
             "description": "Quota management support."
         },
@@ -36,7 +36,7 @@
             "updated": "2011-08-24T00:00:00+00:00",
             "name": "TypesManage",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/types-manage/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/types-manage/api/v1",
             "alias": "os-types-manage",
             "description": "Types manage support."
         },
@@ -44,7 +44,7 @@
             "updated": "2013-07-10T00:00:00+00:00",
             "name": "VolumeEncryptionMetadata",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/os-volume-encryption-metadata/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/os-volume-encryption-metadata/api/v1",
             "alias": "os-volume-encryption-metadata",
             "description": "Volume encryption metadata retrieval support."
         },
@@ -52,7 +52,7 @@
             "updated": "2012-12-12T00:00:00+00:00",
             "name": "Backups",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/backups/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/backups/api/v1",
             "alias": "backups",
             "description": "Backups support."
         },
@@ -60,7 +60,7 @@
             "updated": "2013-07-16T00:00:00+00:00",
             "name": "SnapshotActions",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/snapshot-actions/api/v1.1",
+            "namespace": "https://docs.openstack.org/volume/ext/snapshot-actions/api/v1.1",
             "alias": "os-snapshot-actions",
             "description": "Enable snapshot manager actions."
         },
@@ -68,7 +68,7 @@
             "updated": "2012-05-31T00:00:00+00:00",
             "name": "VolumeActions",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/volume-actions/api/v1.1",
+            "namespace": "https://docs.openstack.org/volume/ext/volume-actions/api/v1.1",
             "alias": "os-volume-actions",
             "description": "Enable volume actions\n    "
         },
@@ -76,7 +76,7 @@
             "updated": "2013-10-03T00:00:00+00:00",
             "name": "UsedLimits",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/used-limits/api/v1.1",
+            "namespace": "https://docs.openstack.org/volume/ext/used-limits/api/v1.1",
             "alias": "os-used-limits",
             "description": "Provide data on limited resources that are being used."
         },
@@ -84,7 +84,7 @@
             "updated": "2012-05-31T00:00:00+00:00",
             "name": "VolumeUnmanage",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/volume-unmanage/api/v1.1",
+            "namespace": "https://docs.openstack.org/volume/ext/volume-unmanage/api/v1.1",
             "alias": "os-volume-unmanage",
             "description": "Enable volume unmanage operation."
         },
@@ -92,7 +92,7 @@
             "updated": "2011-11-03T00:00:00+00:00",
             "name": "VolumeHostAttribute",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/volume_host_attribute/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/volume_host_attribute/api/v1",
             "alias": "os-vol-host-attr",
             "description": "Expose host as an attribute of a volume."
         },
@@ -100,7 +100,7 @@
             "updated": "2013-07-01T00:00:00+00:00",
             "name": "VolumeTypeEncryption",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/volume-type-encryption/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/volume-type-encryption/api/v1",
             "alias": "encryption",
             "description": "Encryption support for volume types."
         },
@@ -108,7 +108,7 @@
             "updated": "2013-06-27T00:00:00+00:00",
             "name": "AvailabilityZones",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/os-availability-zone/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/os-availability-zone/api/v1",
             "alias": "os-availability-zone",
             "description": "Describe Availability Zones."
         },
@@ -116,7 +116,7 @@
             "updated": "2013-08-02T00:00:00+00:00",
             "name": "Qos_specs_manage",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/qos-specs/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/qos-specs/api/v1",
             "alias": "qos-specs",
             "description": "QoS specs support."
         },
@@ -124,7 +124,7 @@
             "updated": "2011-08-24T00:00:00+00:00",
             "name": "TypesExtraSpecs",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/types-extra-specs/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/types-extra-specs/api/v1",
             "alias": "os-types-extra-specs",
             "description": "Type extra specs support."
         },
@@ -132,7 +132,7 @@
             "updated": "2013-08-08T00:00:00+00:00",
             "name": "VolumeMigStatusAttribute",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/volume_mig_status_attribute/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/volume_mig_status_attribute/api/v1",
             "alias": "os-vol-mig-status-attr",
             "description": "Expose migration_status as an attribute of a volume."
         },
@@ -140,7 +140,7 @@
             "updated": "2012-08-13T00:00:00+00:00",
             "name": "CreateVolumeExtension",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/image-create/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/image-create/api/v1",
             "alias": "os-image-create",
             "description": "Allow creating a volume from an image in the Create Volume API."
         },
@@ -148,7 +148,7 @@
             "updated": "2014-01-10T00:00:00-00:00",
             "name": "ExtendedServices",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/extended_services/api/v2",
+            "namespace": "https://docs.openstack.org/volume/ext/extended_services/api/v2",
             "alias": "os-extended-services",
             "description": "Extended services support."
         },
@@ -156,7 +156,7 @@
             "updated": "2012-06-19T00:00:00+00:00",
             "name": "ExtendedSnapshotAttributes",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/extended_snapshot_attributes/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/extended_snapshot_attributes/api/v1",
             "alias": "os-extended-snapshot-attributes",
             "description": "Extended SnapshotAttributes support."
         },
@@ -164,7 +164,7 @@
             "updated": "2012-12-07T00:00:00+00:00",
             "name": "VolumeImageMetadata",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/volume_image_metadata/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/volume_image_metadata/api/v1",
             "alias": "os-vol-image-meta",
             "description": "Show image metadata associated with the volume."
         },
@@ -172,7 +172,7 @@
             "updated": "2012-03-12T00:00:00+00:00",
             "name": "QuotaClasses",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/quota-classes-sets/api/v1.1",
+            "namespace": "https://docs.openstack.org/volume/ext/quota-classes-sets/api/v1.1",
             "alias": "os-quota-class-sets",
             "description": "Quota classes management support."
         },
@@ -180,7 +180,7 @@
             "updated": "2013-05-29T00:00:00+00:00",
             "name": "VolumeTransfer",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/volume-transfer/api/v1.1",
+            "namespace": "https://docs.openstack.org/volume/ext/volume-transfer/api/v1.1",
             "alias": "os-volume-transfer",
             "description": "Volume transfer management support."
         },
@@ -188,7 +188,7 @@
             "updated": "2014-02-10T00:00:00+00:00",
             "name": "VolumeManage",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/os-volume-manage/api/v1",
+            "namespace": "https://docs.openstack.org/volume/ext/os-volume-manage/api/v1",
             "alias": "os-volume-manage",
             "description": "Allows existing backend storage to be 'managed' by Cinder."
         },
@@ -196,7 +196,7 @@
             "updated": "2012-08-25T00:00:00+00:00",
             "name": "AdminActions",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/admin-actions/api/v1.1",
+            "namespace": "https://docs.openstack.org/volume/ext/admin-actions/api/v1.1",
             "alias": "os-admin-actions",
             "description": "Enable admin actions."
         },
@@ -204,7 +204,7 @@
             "updated": "2012-10-28T00:00:00-00:00",
             "name": "Services",
             "links": [],
-            "namespace": "http://docs.openstack.org/volume/ext/services/api/v2",
+            "namespace": "https://docs.openstack.org/volume/ext/services/api/v2",
             "alias": "os-services",
             "description": "Services support."
         }

@@ -29,7 +29,7 @@ from cinder.api.views import versions as views_versions
 _LINKS = [{
     "rel": "describedby",
     "type": "text/html",
-    "href": "http://docs.openstack.org/",
+    "href": "https://docs.openstack.org/",
 }]
 
 
