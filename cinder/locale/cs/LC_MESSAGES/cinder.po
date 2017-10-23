@@ -8,18 +8,18 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev202\n"
+"Project-Id-Version: cinder 11.0.0.0rc2.dev468\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-10-07 03:25+0000\n"
+"POT-Creation-Date: 2017-10-23 05:32+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-02-22 01:35+0000\n"
-"Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
+"PO-Revision-Date: 2016-04-12 06:05+0000\n"
+"Last-Translator: Copied by Zanata <copied-by-zanata@zanata.org>\n"
 "Language: cs\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
 "Generated-By: Babel 2.0\n"
-"X-Generator: Zanata 3.7.3\n"
+"X-Generator: Zanata 3.9.6\n"
 "Language-Team: Czech\n"
 
 #, python-format
@@ -38,10 +38,6 @@ msgstr ""
 msgid " but size is now %d"
 msgstr "ale velikost je nyní %d"
 
-#, python-format
-msgid " but size is now %d."
-msgstr "ale velikost je nyní %d."
-
 msgid " or "
 msgstr "nebo"
 
@@ -54,10 +50,6 @@ msgstr ""
 "importem ho prosím odpojte od existujících hostitelů."
 
 #, python-format
-msgid "%(err)s"
-msgstr "%(err)s"
-
-#, python-format
 msgid ""
 "%(err)s\n"
 "result: %(res)s."
@@ -66,16 +58,8 @@ msgstr ""
 "výsledek: %(res)s."
 
 #, python-format
-msgid "%(error_message)s"
-msgstr "%(error_message)s"
-
-#, python-format
 msgid "%(exception)s: %(explanation)s"
 msgstr "%(exception)s: %(explanation)s"
-
-#, python-format
-msgid "%(file)s: Permission denied."
-msgstr "%(file)s: Oprávnění zamítnuto."
 
 #, python-format
 msgid ""
@@ -98,10 +82,6 @@ msgid "%(host)-25s\t%(zone)-15s"
 msgstr "%(host)-25s\t%(zone)-15s"
 
 #, python-format
-msgid "%(message)s"
-msgstr "%(message)s"
-
-#, python-format
 msgid ""
 "%(message)s\n"
 "Status Code: %(_status)s\n"
@@ -110,10 +90,6 @@ msgstr ""
 "%(message)s\n"
 "Kód stavu: %(_status)s\n"
 "Tělo: %(_body)s"
-
-#, python-format
-msgid "%(message)s, subjectAltName: %(sanList)s."
-msgstr "%(message)s, alternativní název subjektu: %(sanList)s."
 
 #, python-format
 msgid ""
@@ -252,77 +228,11 @@ msgstr ""
 "(Příkaz: %(cmd)s) (Návratový kód: %(exit_code)s) (Standardní výstup: "
 "%(stdout)s) (Chybový výstup: %(stderr)s)"
 
-#, python-format
-msgid "A LUN (HLUN) was not found. (LDEV: %(ldev)s)"
-msgstr " LUN (HLUN) nebyl nalezen. (Logické zařízení: %(ldev)s)"
-
-#, python-format
-msgid ""
-"A free LUN (HLUN) was not found. Add a different host group. (LDEV: %(ldev)s)"
-msgstr ""
-"Volný LUN (HLUN) nebyl nalezen. Přidejte jinou skupinu hostitele. (Logické "
-"zařízení: %(ldev)s)"
-
-#, python-format
-msgid "A host group could not be added. (port: %(port)s, name: %(name)s)"
-msgstr ""
-"Skupina hostitele nemohla být smazána. (Port: %(port)s název: %(name)s)"
-
-#, python-format
-msgid ""
-"A host group could not be deleted. (port: %(port)s, gid: %(gid)s, name: "
-"%(name)s)"
-msgstr ""
-"Skupina hostitele nemohla být smazána. (Port: %(port)s, gid: %(gid)s, název: "
-"%(name)s)"
-
-#, python-format
-msgid "A host group is invalid. (host group: %(gid)s)"
-msgstr "Skupina hostitele je neplatná. (Skupina hostitele: %(gid)s)"
-
-#, python-format
-msgid "A pair cannot be deleted. (P-VOL: %(pvol)s, S-VOL: %(svol)s)"
-msgstr ""
-"Pár nemůže být smazán. (primární svazek: %(pvol)s, sekundární svazek: "
-"%(svol)s)"
-
-#, python-format
-msgid ""
-"A pair could not be created. The maximum number of pair is exceeded. (copy "
-"method: %(copy_method)s, P-VOL: %(pvol)s)"
-msgstr ""
-"Pár nemohl být vytvořen. Překročen maximální počet párů. (Metoda kopírování: "
-"%(copy_method)s, primární svazek: %(pvol)s)"
-
-#, python-format
-msgid "A parameter is invalid. (%(param)s)"
-msgstr "Parametr je neplatný. (%(param)s)"
-
-#, python-format
-msgid "A parameter value is invalid. (%(meta)s)"
-msgstr "Hodnota parametru je neplatná. (%(meta)s)"
-
-#, python-format
-msgid "A pool could not be found. (pool id: %(pool_id)s)"
-msgstr "Zásoba nemohla být nalezena. (Id zásoby: %(pool_id)s)"
-
-#, python-format
-msgid "A snapshot status is invalid. (status: %(status)s)"
-msgstr "Stav snímku je neplatný. (Stav: %(status)s)"
-
 msgid "A valid secondary target MUST be specified in order to failover."
 msgstr "Pro zavedení záložního systému MUSÍ být zadán platný druhotní cíl."
 
 msgid "A volume ID or share was not specified."
 msgstr "Nezadáno ID svazku nebo sdílení."
-
-#, python-format
-msgid "A volume status is invalid. (status: %(status)s)"
-msgstr "Stav svazku je neplatný. (Stav: %(status)s)"
-
-#, python-format
-msgid "API %(name)s failed with error string %(err)s"
-msgstr "API %(name)s selhalo s chybovým řetězcem %(err)s"
 
 #, python-format
 msgid ""
@@ -331,9 +241,6 @@ msgid ""
 msgstr ""
 "Řetězec verze API %(version)s je v neplatném formátu- Musí být ve formátu "
 "Hlavní číslo verze a Vedlejší číslo verze"
-
-msgid "API key is missing for CloudByte driver."
-msgstr "Ovladači CloudByte chybí klíč API."
 
 #, python-format
 msgid "API response: %s"
@@ -411,30 +318,6 @@ msgstr "Při čtení svazku \"%s\" nastal problém."
 msgid "An error occurred while writing to volume \"%s\"."
 msgstr "Při zápisu do svazku \"%s\" nastal problém."
 
-#, python-format
-msgid "An iSCSI CHAP user could not be added. (username: %(user)s)"
-msgstr "CHAP uživatel iSCSI nemohl být přidán. (Jméno uživatele: %(user)s)"
-
-#, python-format
-msgid "An iSCSI CHAP user could not be deleted. (username: %(user)s)"
-msgstr "CHAP uživatel iSCSI nemohl být smazán. (uživatelské jméno: %(user)s)"
-
-#, python-format
-msgid ""
-"An iSCSI target could not be added. (port: %(port)s, alias: %(alias)s, "
-"reason: %(reason)s)"
-msgstr ""
-"Cíl iSCSI nemohl být přidán. (Port: %(port)s, přezdívka: %(alias)s, důvod: "
-"%(reason)s)"
-
-#, python-format
-msgid ""
-"An iSCSI target could not be deleted. (port: %(port)s, tno: %(tno)s, alias: "
-"%(alias)s)"
-msgstr ""
-"Cíl iSCSI nemohl být smazán. (Port: %(port)s, tno: %(tno)s, přezdívka: "
-"%(alias)s)"
-
 msgid "An unknown exception occurred."
 msgstr "Vyskytla se neočekávaná výjimka."
 
@@ -475,13 +358,6 @@ msgid "Attempt to transfer %s with invalid auth key."
 msgstr "Pokus o přenos %s s neplatným ověřovacím klíčem."
 
 #, python-format
-msgid "Auth group [%s] details not found in CloudByte storage."
-msgstr "Údaje ověřovací skupiny [%s] nebyly nalezeny v úložišti CloudByte."
-
-msgid "Auth user details not found in CloudByte storage."
-msgstr "Přihlašovací údaje uživatele nebyly nalezeny v úložišti CloudByte."
-
-#, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
 msgstr "Zóna dostupnosti '%(s_az)s' je neplatná."
 
@@ -498,22 +374,6 @@ msgstr ""
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr "Podpůrná vrstva neexistuje (%(backend)s)"
-
-#, python-format
-msgid "Backend reports: %(message)s"
-msgstr "Podpůrná vrstva hlásí: %(message)s"
-
-msgid "Backend reports: item already exists"
-msgstr "Podpůrná vrstva hlásí: Položka již existuje"
-
-msgid "Backend reports: item not found"
-msgstr "Podpůrná vrstva hlásí: Položka nenalezena"
-
-#, python-format
-msgid "Backend service retry timeout hit: %(timeout)s sec"
-msgstr ""
-"Služba podpůrné vrstvy dosáhla časového limitu na nový pokus: %(timeout)s "
-"vteřin"
 
 msgid "Backend storage did not configure fiber channel target."
 msgstr "Úložiště podpůrné vrstvy nenastavilo cíl fiber channel."
@@ -537,18 +397,6 @@ msgstr "Záložní ovladač nahlásil chybu: %(message)s"
 
 msgid "Backup id required"
 msgstr "ID zálohy je vyžadováno"
-
-msgid "Backup is not supported for GlusterFS volumes with snapshots."
-msgstr "Záloha není podporována svazky GlusterFS se snímky."
-
-msgid "Backup is only supported for SOFS volumes without backing file."
-msgstr "Zálohy jsou podporovány pouze u svazků SOFS bez záložního souboru."
-
-msgid "Backup is only supported for raw-formatted GlusterFS volumes."
-msgstr "Záloha je podporována pouze u prostě-formátovaných svazků GlusterFS."
-
-msgid "Backup is only supported for raw-formatted SOFS volumes."
-msgstr "Zálohy jsou podporovány pouze v prostě-formátovaných svazcích SOFS."
 
 msgid "Backup operation of an encrypted volume failed."
 msgstr "Záložní operace zašifrovaného svazku selhala."
@@ -587,10 +435,6 @@ msgid "Backup to be restored has invalid size"
 msgstr "Obnovovaná záloha má neplatnou velikost"
 
 #, python-format
-msgid "Bad Status line returned: %(arg)s."
-msgstr "Vrácen špatný stav řádku: %(arg)s."
-
-#, python-format
 msgid "Bad key(s) in quota set: %s"
 msgstr "Špatné klíče v sadě kvót: %s"
 
@@ -620,32 +464,6 @@ msgstr "Binární soubor"
 
 msgid "Blank components"
 msgstr "Prázdné součásti"
-
-msgid "Blockbridge api host not configured"
-msgstr "Hostitel API Blockbridge není nastaven"
-
-#, python-format
-msgid "Blockbridge configured with invalid auth scheme '%(auth_scheme)s'"
-msgstr "Blockbridge je nastaven s neplatným způsobem ověření '%(auth_scheme)s'"
-
-msgid "Blockbridge default pool does not exist"
-msgstr "Výchozí zásoba Blockbridge neexistuje"
-
-msgid ""
-"Blockbridge password not configured (required for auth scheme 'password')"
-msgstr ""
-"Heslo Blockbridge není nastaven (vyžadováno pro způsob ověření 'password')"
-
-msgid "Blockbridge pools not configured"
-msgstr "Zásoby Blockbridge nejsou nastaveny"
-
-msgid "Blockbridge token not configured (required for auth scheme 'token')"
-msgstr ""
-"Příznak Blockbridge není nastaven (vyžadováno pro způsob ověření 'token')"
-
-msgid "Blockbridge user not configured (required for auth scheme 'password')"
-msgstr ""
-"Uživatel Blockbridge není nastaven (vyžadováno pro způsob ověření 'password')"
 
 #, python-format
 msgid "Brocade Fibre Channel Zoning CLI error: %(reason)s"
@@ -691,9 +509,6 @@ msgstr ""
 "disk k hostiteli již je namapován.\n"
 "\""
 
-msgid "CONCERTO version is not supported"
-msgstr "Verze CONCERTO není podporována"
-
 #, python-format
 msgid "CPG (%s) doesn't exist on array"
 msgstr "Společná skupiny poskytování (%s) neexistuje v poli"
@@ -721,10 +536,6 @@ msgstr "Nelze najít id oddílu podle názvu %(name)s."
 msgid "Can not translate %s to integer."
 msgstr "Nelze převést %s na celé číslo."
 
-#, python-format
-msgid "Can't access 'scality_sofs_config': %s"
-msgstr "Nelze získat přístup k 'scality_sofs_config': %s"
-
 msgid "Can't decode backup record."
 msgstr "Nelze rozšifrovat záznam zálohy."
 
@@ -748,78 +559,11 @@ msgstr "Nelze zpracovat záznam zálohy."
 
 #, python-format
 msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because it "
-"has no volume type."
-msgstr ""
-"Nelze přidat svazek %(volume_id)s do skupiny jednotnosti %(group_id)s "
-"protože nemá žádný typ svazku."
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because it "
-"is already in consistency group %(orig_group)s."
-msgstr ""
-"Nelze přidat svazek %(volume_id)s do skupiny jednotnosti %(group_id)s "
-"protože již je ve skupině %(orig_group)s.."
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
-"volume cannot be found."
-msgstr ""
-"Nelze přidat svazek %(volume_id)s do skupiny jednotnosti %(group_id)s "
-"protože svazek nelze nalézt."
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
-"volume does not exist."
-msgstr ""
-"Nelze přidat svazek %(volume_id)s do skupiny jednotnosti %(group_id)s "
-"protože svazek neexistuje."
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
-"volume is in an invalid state: %(status)s. Valid states are: %(valid)s."
-msgstr ""
-"Nelze přidat svazek %(volume_id)s do skupiny jednotnosti %(group_id)s "
-"protože svazek je v neplatném stavu: %(status)s. Platné stavy jsou %(valid)s."
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
-"volume type %(volume_type)s is not supported by the group."
-msgstr ""
-"Nelze přidat svazek %(volume_id)s do skupiny jednotnosti %(group_id)s "
-"protože typ svazku %(volume_type)s tato skupina nepodporuje."
-
-#, python-format
-msgid ""
 "Cannot attach already attached volume %s; multiattach is disabled via the "
 "'netapp_enable_multiattach' configuration option."
 msgstr ""
 "Nelze připojit již připojený svazek %s; vícenásobné připojení je zakázáno "
 "přes volbu nastavení 'netapp_enable_multiattach'."
-
-msgid "Cannot connect to ECOM server."
-msgstr "Nelze se připojit k serveru ECOM."
-
-#, python-format
-msgid ""
-"Cannot create consistency group %(group)s because snapshot %(snap)s is not "
-"in a valid state. Valid states are: %(valid)s."
-msgstr ""
-"Nelze vytvořit skupinu jednotnosti %(group)s protože snímek %(snap)s není v "
-"platném stavu. Platné stavy jsou: %(valid)s."
-
-#, python-format
-msgid ""
-"Cannot create consistency group %(group)s because source volume "
-"%(source_vol)s is not in a valid state. Valid states are: %(valid)s."
-msgstr ""
-"Nelze vytvořit skupinu jednotnosti %(group)s protože zdrojový svazek "
-"%(source_vol)s není v platném stavu. Platné stavy jsou: %(valid)s."
 
 #, python-format
 msgid "Cannot create directory %s."
@@ -835,20 +579,12 @@ msgstr ""
 "Nelze vytvořit obraz formátu disku: %s. Je přijímán pouze formát disku vmdk."
 
 #, python-format
-msgid "Cannot create masking view: %(maskingViewName)s. "
-msgstr "Nelze vytvořit zamaskování: %(maskingViewName)s. "
-
-#, python-format
 msgid ""
 "Cannot create more than %(req)s volumes on the ESeries array when "
 "'netapp_enable_multiattach' is set to true."
 msgstr ""
 "Při nastavení 'netapp_enable_multiattach' na true nelze v poli ESeries "
 "vytvořit více jak %(req)s svazků."
-
-#, python-format
-msgid "Cannot create or find an storage group with name %(sgGroupName)s."
-msgstr "Nelze vytvořit nebo najít skupinu úložiště s názvem %(sgGroupName)s."
 
 #, python-format
 msgid "Cannot create volume of size %s: not multiple of 8GB."
@@ -858,10 +594,6 @@ msgstr "Nelze vytvořit svazek o velikosti %s: není násobkem 8GB."
 msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s"
 msgstr ""
 "Nelze vytvořit typ svazku s názvem %(name)s a specifikacemi %(extra_specs)s"
-
-#, python-format
-msgid "Cannot delete LUN %s while snapshots exist."
-msgstr "LUN %s nelze smazat, pokud existují snímky."
 
 #, python-format
 msgid ""
@@ -882,116 +614,11 @@ msgstr ""
 msgid "Cannot delete encryption specs. Volume type in use."
 msgstr "Nelze smazat specifikace šifrování. Typ svazku se používá."
 
-msgid "Cannot determine storage pool settings."
-msgstr "Nelze zjistit typ nastavení zásoby úložiště."
-
-msgid "Cannot execute /sbin/mount.sofs"
-msgstr "Nelze spustit /sbin/mount.sofs"
-
-#, python-format
-msgid "Cannot find CG group %s."
-msgstr "Nelze najít skupinu CG %s."
-
-#, python-format
-msgid ""
-"Cannot find Controller Configuration Service for storage system "
-"%(storage_system)s."
-msgstr ""
-"Nelze najít službu konfigurace kontroléru pro systém úložiště "
-"%(storage_system)s."
-
-#, python-format
-msgid "Cannot find Replication Service to create volume for snapshot %s."
-msgstr "Nelze najít službu replikace pro vytvoření svazku pro snímek %s."
-
-#, python-format
-msgid "Cannot find Replication Service to delete snapshot %s."
-msgstr "Nelze najít službu repliakce pro smazání svazku %s."
-
-#, python-format
-msgid "Cannot find Replication service on system %s."
-msgstr "Nelze najít službu replikace na systému %s."
-
-#, python-format
-msgid "Cannot find Volume: %(id)s. unmanage operation.  Exiting..."
-msgstr "Nelze najít svazek: %(id)s, operace zrušení správy. Ukončování..."
-
-#, python-format
-msgid "Cannot find Volume: %(volumename)s. Extend operation.  Exiting...."
-msgstr "Nelze najít svazek: %(volumename)s. Operace rozšíření. Ukončování..."
-
-#, python-format
-msgid "Cannot find device number for volume %(volumeName)s."
-msgstr "Nelze najít číslo zařízení pro svazek %(volumeName)s."
-
 msgid "Cannot find migration task."
 msgstr "Nelze najít úkol pro přesun."
 
-#, python-format
-msgid "Cannot find replication service on system %s."
-msgstr "Nelze najít službu replikace v systému %s."
-
-#, python-format
-msgid "Cannot find source CG instance. consistencygroup_id: %s."
-msgstr ""
-"Nelze najít zdrojovou instanci skupiny jednotnosti. ID skupiny jednotnosti: "
-"%s."
-
-#, python-format
-msgid "Cannot get mcs_id by channel id: %(channel_id)s."
-msgstr "Nelze získat id mcs podle id kanálu: %(channel_id)s."
-
-msgid "Cannot get necessary pool or storage system information."
-msgstr "Nelze získat potřebné informace o systému zásoby nebo úložiště."
-
-#, python-format
-msgid ""
-"Cannot get or create a storage group: %(sgGroupName)s for volume "
-"%(volumeName)s "
-msgstr ""
-"Nelze získat nebo vytvořit skupinu úložiště: %(sgGroupName)s pro svazek "
-"%(volumeName)s"
-
-#, python-format
-msgid "Cannot get or create initiator group: %(igGroupName)s. "
-msgstr "Nelze získat nebo vytvořit skupinu zavaděče: %(igGroupName)s. "
-
-#, python-format
-msgid "Cannot get port group: %(pgGroupName)s. "
-msgstr "Nelze získat skupinu portu: %(pgGroupName)s. "
-
-#, python-format
-msgid ""
-"Cannot get storage group: %(sgGroupName)s from masking view "
-"%(maskingViewInstanceName)s. "
-msgstr ""
-"Nelze získat skupinu úložiště: %(sgGroupName)s pro zamaskování "
-"%(maskingViewInstanceName)s. "
-
-#, python-format
-msgid ""
-"Cannot get supported size range for %(sps)s Return code: %(rc)lu. Error: "
-"%(error)s."
-msgstr ""
-"Nelze získat podporovaný rozsah velikosti pro %(sps)s. Návratový kód: "
-"%(rc)lu. Chyba: %(error)s."
-
-#, python-format
-msgid ""
-"Cannot get the default storage group for FAST policy: %(fastPolicyName)s."
-msgstr ""
-"Nelze získat výchozí skupiny úložiště pro zásadu FAST: %(fastPolicyName)s."
-
-msgid "Cannot mount Scality SOFS, check syslog for errors"
-msgstr ""
-"Nelze připojit Scality SOFS, zkontrolujte záznam systému pro možné chyby"
-
 msgid "Cannot ping DRBDmanage backend"
 msgstr "Nelze zjistit spojení s podpůrnou vrstvou DRBDmanage"
-
-#, python-format
-msgid "Cannot place volume %(id)s on %(host)s"
-msgstr "Nelze umístit svazek %(id)s na %(host)s"
 
 #, python-format
 msgid ""
@@ -1006,24 +633,6 @@ msgstr "Nelze registrovat zdroj"
 
 msgid "Cannot register resources"
 msgstr "Nelze registrovat zdroje"
-
-#, python-format
-msgid ""
-"Cannot remove volume %(volume_id)s from consistency group %(group_id)s "
-"because it is not in the group."
-msgstr ""
-"Nelze odstranit svazek %(volume_id)s ze skupiny jednotnosti %(group_id)s "
-"protože není ve skupině."
-
-#, python-format
-msgid ""
-"Cannot remove volume %(volume_id)s from consistency group %(group_id)s "
-"because volume is in an invalid state: %(status)s. Valid states are: "
-"%(valid)s."
-msgstr ""
-"Nelze odstranit svazek %(volume_id)s ze skupiny jednotnosti %(group_id)s "
-"protože svazek je v neplatném stavu: %(status)s. Platné stavy jsou: "
-"%(valid)s."
 
 #, python-format
 msgid "Cannot retype from HPE3PARDriver to %s."
@@ -1045,22 +654,11 @@ msgstr ""
 "Nelze spustit příkaz vgc-cluster, ujistěte se prosím, že je software "
 "nainstalován a máte správně nastavená oprávnění."
 
-msgid "Cannot set both hitachi_serial_number and hitachi_unit_name."
-msgstr "Nelze nastavit sériové číslo a název jednotky hitachi najednou."
-
 msgid "Cannot specify both protection domain name and protection domain id."
 msgstr "Nelze zadat název a id ochranné domény najednou."
 
 msgid "Cannot specify both storage pool name and storage pool id."
 msgstr "Nelze zadat název a id zásoby úložiště najednou."
-
-#, python-format
-msgid ""
-"Cannot update consistency group %(group_id)s because no valid name, "
-"description, add_volumes, or remove_volumes were provided."
-msgstr ""
-"Nelze aktualizovat skupinu jednotnosti %(group_id)s protože nebylo zadán "
-"platný název, popis, či přidání/odstranění svazku."
 
 msgid "Cannot update encryption specs. Volume type in use."
 msgstr "Nelze aktualizovat specifikace šifrování. Typ svazku se používá."
@@ -1070,15 +668,8 @@ msgid "Cannot update volume_type %(id)s"
 msgstr "Nelze aktualizovat typ svazku %(id)s"
 
 #, python-format
-msgid "Cannot verify the existence of object:%(instanceName)s."
-msgstr "Nelze ověřit existenci objektu: %(instanceName)s."
-
-#, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr "Snímek skupiny jednotnosti %(cgsnapshot_id)s nemohl být nalezen."
-
-msgid "Cgsnahost is empty. No consistency group will be created."
-msgstr "Snímek skupiny jednotnosti je prázdný. Žádná skupina nebude vytvořena."
 
 msgid "Change hostlun id error."
 msgstr "Chyba při změně id hostitele lun."
@@ -1132,10 +723,6 @@ msgid "Cisco Fibre Channel Zoning CLI error: %(reason)s"
 msgstr "Chyba vyhrazování CLI Cisco Fibre Channel: %(reason)s"
 
 #, python-format
-msgid "Clone feature is not licensed on %(storageSystem)s."
-msgstr "Funkce klonování není licencována na %(storageSystem)s."
-
-#, python-format
 msgid ""
 "Clone type '%(clone_type)s' is invalid; valid values are: '%(full_clone)s' "
 "and '%(linked_clone)s'."
@@ -1148,13 +735,6 @@ msgid ""
 msgstr ""
 "Cluster není zformátován. Pravděpodobně byste měli provést příkaz \"dog "
 "cluster format\"."
-
-#, python-format
-msgid "Coho Data Cinder driver failure: %(message)s"
-msgstr "Selhání ovladače Cinder Coho Data: %(message)s"
-
-msgid "Coho rpc port is not configured"
-msgstr "RPC port Coho není nastaven"
 
 #, python-format
 msgid "Command %(cmd)s blocked in the CLI and was cancelled"
@@ -1210,11 +790,6 @@ msgstr "Konektor nepodporuje: %s"
 msgid "Connector doesn't have required information: %(missing)s"
 msgstr "Konektor nemá požadované informace: %(missing)s"
 
-msgid "Consistency group is empty. No cgsnapshot will be created."
-msgstr ""
-"Skupina jednotnosti je prázdná. Nebude vytvořen žádný snímek skupiny "
-"jednotnosti."
-
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
 msgstr "Skupina jednotnosti %(consistencygroup_id)s nemohla být nalezena."
@@ -1227,10 +802,6 @@ msgstr "Velikost kontejneru je menší než požadovaná velikost souboru."
 
 msgid "Content type not supported."
 msgstr "Typ obsahu není podporován."
-
-#, python-format
-msgid "Controller Configuration Service not found on %(storageSystemName)s."
-msgstr "Služba nastavení kontroléru nebyla nalezena v %(storageSystemName)s."
 
 #, python-format
 msgid "Controller IP '%(host)s' could not be resolved: %(e)s."
@@ -1300,10 +871,6 @@ msgid "Could not find iSCSI export for volume %s"
 msgstr "Nelze najít export iSCSI pro svazek %s"
 
 #, python-format
-msgid "Could not find iSCSI target for volume: %(volume_id)s."
-msgstr "Nelze najít cílové iSCSI pro svazek %(volume_id)s."
-
-#, python-format
 msgid "Could not find key in output of command %(cmd)s: %(out)s."
 msgstr "Ve výstupu příkazu %(cmd)s nelze najít klíč: %(out)s."
 
@@ -1317,10 +884,6 @@ msgstr "Nelze najít cíl %s"
 
 msgid "Could not get system name."
 msgstr "Nelze získat název systému."
-
-#, python-format
-msgid "Could not load paste app '%(name)s' from %(path)s"
-msgstr "Nelze načíst aplikaci vložení '%(name)s' z %(path)s"
 
 #, python-format
 msgid "Could not save configuration to %(file_path)s: %(exc)s"
@@ -1344,9 +907,6 @@ msgid ""
 msgstr ""
 "Vytvoření zálohy zrušeno, očekávaný stav svazku je %(expected_status)s ale "
 "zjištěný stav je %(actual_status)s."
-
-msgid "Create export for volume failed."
-msgstr "Vytvoření exportu pro svazek selhalo."
 
 msgid "Create hostgroup error."
 msgstr "Chyba při vytváření skupiny hostitele."
@@ -1377,10 +937,6 @@ msgstr "Chyba při vytváření svazku: Protože %s."
 msgid "Create volume failed."
 msgstr "Vytvoření svazku selhalo."
 
-msgid "Creating a consistency group from a source is not currently supported."
-msgstr ""
-"Vytváření skupiny jednotnosti ze zdroje není v současnosti podporováno."
-
 #, python-format
 msgid ""
 "Creating and activating zone set failed: (Zone set=%(cfg_name)s error="
@@ -1397,20 +953,8 @@ msgstr ""
 "Vytvoření a aktivování sady zóny selhalo: (Sada zóny=%(zoneset)s chyba="
 "%(err)s)."
 
-#, python-format
-msgid "Creating usages for %(begin_period)s until %(end_period)s"
-msgstr "Vytváření využití pro období od %(begin_period)s do %(end_period)s"
-
 msgid "Current host isn't part of HGST domain."
 msgstr "Současný hostitel není součástí domény HGST."
-
-#, python-format
-msgid ""
-"Current host not valid for volume %(id)s with type %(type)s, migration not "
-"allowed"
-msgstr ""
-"Současný hostitel není platný pro svazek %(id)s s typem %(type)s, přesun "
-"není povolen"
 
 #, python-format
 msgid ""
@@ -1437,9 +981,6 @@ msgstr "Nelze zjistit verzi API Data ONTAP."
 msgid "Data ONTAP operating in 7-Mode does not support QoS policy groups."
 msgstr "Data ONTAP pracuje v režimu 7, který nepodporuje skupiny zásad QoS."
 
-msgid "Database schema downgrade is not allowed."
-msgstr "Snížení verze schématu databáze na nižší verzi není povoleno."
-
 #, python-format
 msgid ""
 "Dedup is a valid provisioning type, but requires WSAPI version "
@@ -1447,9 +988,6 @@ msgid ""
 msgstr ""
 "Dedup je platný typ poskytování, ale vyžaduje WSAPI verze "
 "'%(dedup_version)s', je nainstalována verze '%(version)s'."
-
-msgid "Dedup luns cannot be extended"
-msgstr "Deduplikované lun nemohou být rozšířeny"
 
 #, python-format
 msgid ""
@@ -1482,9 +1020,6 @@ msgstr ""
 "Smazání zálohy zrušeno, v současnosti nastavená služba záloh "
 "[%(configured_service)s] není stejnou službou použitou k vytvoření této "
 "zálohy [%(backup_service)s]."
-
-msgid "Delete consistency group failed."
-msgstr "Smazání skupiny jednotnosti selhalo."
 
 msgid "Delete hostgroup error."
 msgstr "Chyba při mazání skupiny hostitele."
@@ -1614,13 +1149,6 @@ msgstr ""
 "Výjimka CLI ovladače EMC VNX Cinder: %(cmd)s (Návratový kód: %(rc)s) "
 "(Výstup: %(out)s)."
 
-msgid ""
-"EcomServerIp, EcomServerPort, EcomUserName, EcomPassword must have valid "
-"values."
-msgstr ""
-"EcomServerIp, EcomServerPort, EcomUserName, EcomPassword musí mít platné "
-"hodnoty."
-
 #, python-format
 msgid ""
 "Either 'cgsnapshot_id' or 'source_cgid' must be provided to create "
@@ -1636,13 +1164,6 @@ msgid ""
 msgstr ""
 "SLO: %(slo)s nebo vytížení %(workload)s jsou neplatné. Prozkoumejte "
 "předchozí chybový výpis pro platné hodnoty."
-
-msgid "Either hitachi_serial_number or hitachi_unit_name is required."
-msgstr "Je vyžadováno buď hitachi_serial_number nebo hitachi_unit_name."
-
-#, python-format
-msgid "Element Composition Service not found on %(storageSystemName)s."
-msgstr "Služba složení prvku nebyla nalezena v %(storageSystemName)s."
 
 msgid "Enables QoS."
 msgstr "Povolí QoS."
@@ -1685,59 +1206,6 @@ msgstr ""
 "Chyba při klonování snímku: %(snapshot)s ve svazku %(lun)s ze zásoby "
 "%(pool)s, projekt %(project)s, klon projektu: %(clone_proj)s, návratový kód: "
 "%(ret.status)d, zpráva: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Create Cloned Volume: %(cloneName)s Return code: %(rc)lu. Error: "
-"%(error)s."
-msgstr ""
-"Chyba při vytváření klonovaného svazku: %(cloneName)s. Návratový kód: "
-"%(rc)lu. Chyba: %(error)s."
-
-#, python-format
-msgid ""
-"Error Create Cloned Volume: Volume: %(cloneName)s  Source Volume:"
-"%(sourceName)s.  Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Chyba při vytváření klonovaného svazku: Svazek: %(cloneName)s, zdrojový "
-"svazek %(sourceName)s. Návratový kód: %(rc)lu. Chyba: %(error)s."
-
-#, python-format
-msgid ""
-"Error Create Group: %(groupName)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Chyba při vyváření skupiny: %(groupName)s. Návratový kód: %(rc)lu. Chyba: "
-"%(error)s."
-
-#, python-format
-msgid ""
-"Error Create Masking View: %(groupName)s. Return code: %(rc)lu. Error: "
-"%(error)s."
-msgstr ""
-"Chyba při vytváření maskování: %(groupName)s. Návratový kód: %(rc)lu. Chyba: "
-"%(error)s."
-
-#, python-format
-msgid ""
-"Error Create Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Chyba při vytváření svazku: %(volumeName)s. Návratový kód: %(rc)lu. Chyba: "
-"%(error)s."
-
-#, python-format
-msgid ""
-"Error Create Volume: %(volumename)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Chyba při vytváření svazku: %(volumename)s. Návratový kód: %(rc)lu. Chyba: "
-"%(error)s."
-
-#, python-format
-msgid ""
-"Error CreateGroupReplica: source: %(source)s target: %(target)s. Return "
-"code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Chyba při vytváření skupiny repliky: zdroj: %(source)s cíl: %(target)s. "
-"Návratový kód: %(rc)lu. Chyba: %(error)s."
 
 #, python-format
 msgid ""
@@ -1815,13 +1283,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Error Creating new composite Volume Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Chyba při vytváření nového složeného svazku. Návratový kód: %(rc)lu. Chyba: "
-"%(error)s."
-
-#, python-format
-msgid ""
 "Error Creating replication action on: pool: %(pool)s Project: %(proj)s "
 "volume: %(vol)s for target: %(tgt)s and pool: %(tgt_pool)sReturn code: "
 "%(ret.status)d Message: %(ret.data)s ."
@@ -1829,19 +1290,6 @@ msgstr ""
 "Chyba při provádění replikace na: zásobu: %(pool)s, projekt %(proj)s, "
 "svazek: %(vol)s pro cíl %(tgt)s a zásobu: %(tgt_pool)s. Návratový kód: "
 "%(ret.status)d, zpráva: %(ret.data)s."
-
-msgid "Error Creating unbound volume on an Extend operation."
-msgstr "Chyba při vytváření nesvázaného svazku v operaci rozšíření."
-
-msgid "Error Creating unbound volume."
-msgstr "Chyba při vytváření nesvázaného svazku."
-
-#, python-format
-msgid ""
-"Error Delete Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Chyba při mazání svazku: %(volumeName)s. Návratový kód: %(rc)lu. Chyba: "
-"%(error)s."
 
 #, python-format
 msgid ""
@@ -1935,35 +1383,12 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Error Migrating volume from one pool to another. Return code: %(rc)lu.  "
-"Error: %(error)s."
-msgstr ""
-"Chyba při přesunu svazku z jedné zásoby do druhé. Návratový kód: %(rc)lu. "
-"Chyba: %(error)s."
-
-#, python-format
-msgid ""
-"Error Modifying masking view : %(groupName)s. Return code: %(rc)lu.  Error: "
-"%(error)s."
-msgstr ""
-"Chyba při úpravě maskování : %(groupName)s. Návratový kód: %(rc)lu. Chyba: "
-"%(error)s."
-
-#, python-format
-msgid ""
 "Error Setting props Props: %(props)s on Volume: %(lun)s of Pool: %(pool)s "
 "Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
 "Chyba při nastavování vlastností: %(props)s ve svazku %(lun)s v zásobě "
 "%(pool)s, projekt %(project)s, návratový kód: %(ret.status)d, zpráva: "
 "%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Terminating migrate session. Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Chyba při ukončování sezení přesunu. Návratový kód: %(rc)lu. Chyba: "
-"%(error)s."
 
 #, python-format
 msgid ""
@@ -2013,47 +1438,6 @@ msgstr ""
 "Chyba při ověřování sdílení: %(share)s v projektu %(project)s a zásobě "
 "%(pool)s. Návratový kód: %(ret.status)d, zpráva: %(ret.data)s."
 
-#, python-format
-msgid ""
-"Error adding Volume: %(volumeName)s with instance path: "
-"%(volumeInstancePath)s."
-msgstr ""
-"Chyba při přidávání svazku: %(volumeName)s mající cestu instance: "
-"%(volumeInstancePath)s."
-
-#, python-format
-msgid ""
-"Error adding initiator to group : %(groupName)s. Return code: %(rc)lu.  "
-"Error: %(error)s."
-msgstr ""
-"Chyba při přidávání zavaděče do skupiny : %(groupName)s. Návratový kód: "
-"%(rc)lu. Chyba: %(error)s."
-
-#, python-format
-msgid "Error adding volume to composite volume. Error is: %(error)s."
-msgstr "Chyba při přidávání svazku do složeného svazku. Chyba byla: %(error)s."
-
-#, python-format
-msgid "Error appending volume %(volumename)s to target base volume."
-msgstr ""
-"Chyba při připojování svazku %(volumename)s do cílového základního svazku."
-
-#, python-format
-msgid ""
-"Error associating storage group : %(storageGroupName)s. To fast Policy: "
-"%(fastPolicyName)s with error description: %(errordesc)s."
-msgstr ""
-"Chyba při přidružování skupiny úložiště: %(storageGroupName)s k zásadě FAST: "
-"%(fastPolicyName)s. Popis chyby: %(errordesc)s."
-
-#, python-format
-msgid ""
-"Error break clone relationship: Sync Name: %(syncName)s Return code: "
-"%(rc)lu.  Error: %(error)s."
-msgstr ""
-"Chyba při rušení vztahu klona. Synchronizovaný název: %(syncName)s. "
-"Návratový kód: %(rc)lu. Chyba: %(error)s."
-
 msgid "Error connecting to ceph cluster."
 msgstr "Chyba při připojování ke clusteru ceph."
 
@@ -2097,13 +1481,6 @@ msgid "Error encountered during cleanup of a failed attach: %(ex)s"
 msgstr "Během čištění selhaného připojení se vyskytla chyba: %(ex)s"
 
 #, python-format
-msgid "Error executing CloudByte API [%(cmd)s], Error: %(err)s."
-msgstr "Chyba při provádění [%(cmd)s] CloudByte API, chyba: %(err)s."
-
-msgid "Error executing EQL command"
-msgstr "Chyba při provádění příkazu EQL"
-
-#, python-format
 msgid "Error executing command via ssh: %s"
 msgstr "Chyba při provádění příkazu pomocí ssh: %s"
 
@@ -2119,10 +1496,6 @@ msgstr "Chyba při rozšiřování svazku: %(reason)s"
 msgid "Error finding %(name)s."
 msgstr "Chyba při hledání %(name)s."
 
-#, python-format
-msgid "Error finding %s."
-msgstr "Chyba při hledání %s."
-
 msgid ""
 "Error getting appliance version details. Return code: %(ret.status)d "
 "Message: %(ret.data)s ."
@@ -2131,19 +1504,11 @@ msgstr ""
 "status)d, zpráva: %(ret.data)s."
 
 #, python-format
-msgid "Error getting domain id from name %(name)s: %(err)s."
-msgstr "Chyba při získávání id domény z názvu %(name)s: %(err)s."
-
-#, python-format
 msgid "Error getting domain id from name %(name)s: %(id)s."
 msgstr "Chyba při získávání id domény z názvu %(name)s: %(id)s."
 
 msgid "Error getting initiator groups."
 msgstr "Chyba při získávání skupin zavaděče."
-
-#, python-format
-msgid "Error getting pool id from name %(pool)s: %(err)s."
-msgstr "Chyba při získávání id zásoby s názvem %(pool)s: %(err)s."
 
 #, python-format
 msgid "Error getting pool id from name %(pool_name)s: %(err_msg)s."
@@ -2180,14 +1545,6 @@ msgstr ""
 "zpráva: %(ret.data)s."
 
 #, python-format
-msgid ""
-"Error in Operation [%(operation)s] for volume [%(cb_volume)s] in CloudByte "
-"storage: [%(cb_error)s], error code: [%(error_code)s]."
-msgstr ""
-"Chyba v operaci [%(operation)s] pro svazek [%(cb_volume)s] v úložišti "
-"CloudByte: [%(cb_error)s], kód chyby: [%(error_code)s]"
-
-#, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
 msgstr "Chyba v odpovědi SolidFire API: data=%(data)s"
 
@@ -2198,14 +1555,6 @@ msgstr "Chyba při vytváření prostoru pro %(space)s s velikostí %(size)d GB"
 #, python-format
 msgid "Error in space-extend for volume %(space)s with %(size)d additional GB"
 msgstr "Chyba při rozšiřování prostoru svazku %(space)s o dalších %(size)d GB"
-
-#, python-format
-msgid ""
-"Error modify replica synchronization: %(sv)s operation: %(operation)s. "
-"Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Chyba při změně synchronizace repliky: %(sv)s, operace: %(operation)s. "
-"Návratový kód: %(rc)lu. Chyba: %(error)s."
 
 #, python-format
 msgid ""
@@ -2230,24 +1579,8 @@ msgid "Error not a TypeError."
 msgstr "Chyba není chyba typu."
 
 #, python-format
-msgid "Error occurred when creating cgsnapshot %s."
-msgstr "Při vytváření snímku skupiny jednotnosti %s nastala chyba."
-
-#, python-format
-msgid "Error occurred when deleting cgsnapshot %s."
-msgstr "Při mazání snímku skupiny jednotnosti %s nastala chyba."
-
-#, python-format
-msgid "Error occurred when updating consistency group %s."
-msgstr "Při aktualizaci skupiny jednotnosti %s nastala chyba."
-
-#, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "Chyba při přejmenování svazku %(vol)s: %(err)s."
-
-#, python-format
-msgid "Error response: %s"
-msgstr "Chybová odpověď: %s"
 
 msgid "Error retrieving volume size"
 msgstr "Chyba při získávání velikosti svazku"
@@ -2284,10 +1617,6 @@ msgstr ""
 "%(ret.status)d, zpráva: %(ret.data)s."
 
 #, python-format
-msgid "Error unbinding volume %(vol)s from pool. %(error)s."
-msgstr "Chyba při rozvazování svazku %(vol)s ze zásoby. %(error)s."
-
-#, python-format
 msgid "Error while checking transaction status: %s"
 msgstr "Chyba při kontrole stavu přenosu: %s"
 
@@ -2315,30 +1644,12 @@ msgid "Exceeded the limit of snapshots per volume"
 msgstr "Překročeno omezení snímků na svazek"
 
 #, python-format
-msgid "Exception appending meta volume to target volume %(volumename)s."
-msgstr ""
-"Při připojování meta svazku do cílového svazku %(volumename)s se objevila "
-"výjimka."
-
-#, python-format
-msgid ""
-"Exception during create element replica. Clone name: %(cloneName)s Source "
-"name: %(sourceName)s Extra specs: %(extraSpecs)s "
-msgstr ""
-"Při vytváření repliky prvku nastala výjimka. Název klonu: %(cloneName)s, "
-"zdrojový název: %(sourceName)s, dodatečné specifikace: %(extraSpecs)s"
-
-#, python-format
 msgid "Exception in _select_ds_for_volume: %s."
 msgstr "Výjimka ve výběru diskového prostoru pro svazek: %s."
 
 #, python-format
 msgid "Exception: %s"
 msgstr "Výjimka: %s"
-
-#, python-format
-msgid "Expected a uuid but received %(uuid)s."
-msgstr "Očekáváno uuid ale obdrženo %(uuid)s."
 
 #, python-format
 msgid "Expected integer for node_count, svcinfo lsiogrp returned: %(node)s."
@@ -2392,9 +1703,6 @@ msgstr ""
 msgid "Extend volume not implemented"
 msgstr "Rozšíření svazku není zavedeno"
 
-msgid "FAST is not supported on this array."
-msgstr "FAST není podporován v tomto poli."
-
 msgid "FC is the protocol but wwpns are not supplied by OpenStack."
 msgstr "FC je protokol, ale OpenStack nedodává wwpn."
 
@@ -2440,33 +1748,8 @@ msgstr "Nelze získat přístup k aktivním nastavení zónování."
 msgid "Failed to access zoneset status:%s"
 msgstr "Nelze získat přístup ke stavu sady zóny: %s"
 
-#, python-format
-msgid ""
-"Failed to acquire a resource lock. (serial: %(serial)s, inst: %(inst)s, ret: "
-"%(ret)s, stderr: %(err)s)"
-msgstr ""
-"Nelze získat zámek zdroje. (Sériová konzole: %(serial)s, inst: %(inst)s, "
-"ret: %(ret)s, chybový výstup: %(err)s)"
-
-msgid "Failed to add the logical device."
-msgstr "Nelze přidat logické zařízení."
-
-#, python-format
-msgid ""
-"Failed to add volume %(volumeName)s to consistency group %(cgName)s. Return "
-"code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Nelze přidat svazek %(volumeName)s do skupiny jednotnosti %(cgName)s. "
-"Návratový kód: %(rc)lu. Chyba: %(error)s."
-
 msgid "Failed to add zoning configuration."
 msgstr "Nelze přidat nastavení zónování."
-
-#, python-format
-msgid ""
-"Failed to assign the iSCSI initiator IQN. (port: %(port)s, reason: "
-"%(reason)s)"
-msgstr "Nelze přidělit zavaděč iSCSI IQN. (Port: %(port)s, důvod: %(reason)s)"
 
 #, python-format
 msgid "Failed to associate qos_specs: %(specs_id)s with type %(type_id)s."
@@ -2496,9 +1779,6 @@ msgstr "Nelze klonovat svazek ze snímku %s."
 msgid "Failed to connect to %(vendor_name)s Array %(host)s: %(err)s"
 msgstr "Nelze se připojit k %(vendor_name)s Pole %(host)s: %(err)s"
 
-msgid "Failed to connect to array"
-msgstr "Nelze se připojit k poli"
-
 #, python-format
 msgid "Failed to connect to sheep daemon. addr: %(addr)s, port: %(port)s"
 msgstr "Nelze se připojit k daemonu sheep. Adresa: %(addr)s, port: %(port)s"
@@ -2518,28 +1798,12 @@ msgid "Failed to copy volume, source device unavailable."
 msgstr "Nelze zkopírovat svazek, zdrojové zařízení je nedostupné."
 
 #, python-format
-msgid "Failed to create CG %(cgName)s from snapshot %(cgSnapshot)s."
-msgstr ""
-"Nelze vytvořit skupinu jednotnosti %(cgName)s ze snímku %(cgSnapshot)s."
-
-#, python-format
 msgid "Failed to create IG, %s"
 msgstr "Nelze vytvořit IG, %s"
 
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr "Nelze vytvořit skupinu svazku: %(vg_name)s"
-
-#, python-format
-msgid ""
-"Failed to create a file. (file: %(file)s, ret: %(ret)s, stderr: %(err)s)"
-msgstr ""
-"Nelze vytvořit soubor. (Soubor: %(file)s, ret: %(ret)s, chybový výstup: "
-"%(err)s)"
-
-#, python-format
-msgid "Failed to create a temporary snapshot for volume %s."
-msgstr "Nelze vytvořit dočasný snímek pro svazek %s."
 
 msgid "Failed to create api volume flow."
 msgstr "Nelze vytvořit postup api svazku."
@@ -2558,32 +1822,8 @@ msgid "Failed to create consistency group %(id)s:%(ret)s."
 msgstr "Nelze vytvořit skupinu jednotnosti %(id)s:%(ret)s."
 
 #, python-format
-msgid ""
-"Failed to create consistency group %s because VNX consistency group cannot "
-"accept compressed LUNs as members."
-msgstr ""
-"Nelze vytvořit skupinu jednotnosti %s protože skupina jednotnosti VNX nemůže "
-"přijmout komprimované LUN jako členy."
-
-#, python-format
-msgid "Failed to create consistency group: %(cgName)s."
-msgstr "Nelze vytvořit skupinu jednotnosti: %(cgName)s."
-
-#, python-format
 msgid "Failed to create consistency group: %(cgid)s. Error: %(excmsg)s."
 msgstr "Nelze vytvořit skupinu jednotnosti: %(cgid)s. Chyba: %(excmsg)s."
-
-#, python-format
-msgid ""
-"Failed to create consistency group: %(consistencyGroupName)s  Return code: "
-"%(rc)lu.  Error: %(error)s."
-msgstr ""
-"Nelze vytvořit skupinu jednotnosti: %(consistencyGroupName)s. Návratový kód: "
-"%(rc)lu. Chyba: %(error)s."
-
-#, python-format
-msgid "Failed to create hardware id(s) on %(storageSystemName)s."
-msgstr "Nelze vytvořit id hardwaru v %(storageSystemName)s."
 
 #, python-format
 msgid ""
@@ -2595,9 +1835,6 @@ msgid "Failed to create hostgroup: %(name)s. Check if it exists on the array."
 msgstr ""
 "Nelze vytvořit skupinu hostitele: %(name)s. Zkontrolujte zda existuje v poli."
 
-msgid "Failed to create iqn."
-msgstr "Nelze vytvořit iqn."
-
 #, python-format
 msgid "Failed to create iscsi target for volume %(volume_id)s."
 msgstr "Nelze vytvořit cílové iscsi pro svazek %(volume_id)s."
@@ -2608,26 +1845,14 @@ msgstr "Nelze vytvořit správu existujícího postupu."
 msgid "Failed to create manage_existing flow."
 msgstr "Nelze vytvořit postup pro správu existujících."
 
-msgid "Failed to create map on mcs, no channel can map."
-msgstr "Nelze vytvořit mapu na mcs, žádný kanál nemůže mapovat."
-
-msgid "Failed to create map."
-msgstr "Nelze vytvořit mapu."
-
 #, python-format
 msgid "Failed to create metadata for volume: %(reason)s"
 msgstr "Nelze vytvořit popisná data pro svazek: %(reason)s"
-
-msgid "Failed to create partition."
-msgstr "Nelze vytvořit oddíl."
 
 #, python-format
 msgid "Failed to create qos_specs: %(name)s with specs %(qos_specs)s."
 msgstr ""
 "Nelze vytvořit specifikace qos: %(name)s se specifikacemi %(qos_specs)s."
-
-msgid "Failed to create replica."
-msgstr "Nelze vytvořit repliku."
 
 msgid "Failed to create scheduler manager volume flow"
 msgstr "Nelze vytvořit postup správce plánovače svazku"
@@ -2637,31 +1862,8 @@ msgid "Failed to create snapshot %s"
 msgstr "Nelze vytvořit snímek %s"
 
 #, python-format
-msgid "Failed to create snapshot for cg: %(cgName)s."
-msgstr "Nelze vytvořit snímek pro skupinu jednotnosti: %(cgName)s."
-
-#, python-format
 msgid "Failed to create snapshot for volume %s."
 msgstr "Nelze vytvořit snímek pro svazek %s."
-
-#, python-format
-msgid "Failed to create snapshot policy on volume %(vol)s: %(res)s."
-msgstr "Nelze vytvořit zásadu snímku ve svazku %(vol)s: %(res)s."
-
-#, python-format
-msgid "Failed to create snapshot resource area on volume %(vol)s: %(res)s."
-msgstr "Nelze vytvořit oblast zdrojů snímku ve svazku %(vol)s: %(res)s."
-
-msgid "Failed to create snapshot."
-msgstr "Nelze vytvořit snímek."
-
-#, python-format
-msgid ""
-"Failed to create snapshot. CloudByte volume information not found for "
-"OpenStack volume [%s]."
-msgstr ""
-"Nelze vytvořit snímek. Informace o svazku CloudByte nenalezeny ve svazku "
-"Openstack [%s]."
 
 #, python-format
 msgid "Failed to create thin pool, error message was: %s"
@@ -2672,17 +1874,6 @@ msgid "Failed to create volume %s"
 msgstr "Nelze vytvořit svazek %s"
 
 #, python-format
-msgid "Failed to delete SI for volume_id: %(volume_id)s because it has pair."
-msgstr ""
-"Nelze smazat SI svazku s id: %(volume_id)s protože existují dva s tímto id."
-
-#, python-format
-msgid "Failed to delete a logical device. (LDEV: %(ldev)s, reason: %(reason)s)"
-msgstr ""
-"Nelze smazat logické zařízení. (Logické zařízení: %(ldev)s, důvod: "
-"%(reason)s)"
-
-#, python-format
 msgid "Failed to delete cgsnapshot %(id)s due to %(reason)s."
 msgstr "Smazání snímku skupiny jednotnosti %(id)s selhalo z důvodu %(reason)s."
 
@@ -2691,71 +1882,19 @@ msgid "Failed to delete consistency group %(id)s due to %(reason)s."
 msgstr "Smazání skupiny jednotnosti %(id)s selhalo z důvodu %(reason)s."
 
 #, python-format
-msgid "Failed to delete consistency group: %(cgName)s."
-msgstr "Nelze smazat skupinu jednotnosti: %(cgName)s."
-
-#, python-format
-msgid ""
-"Failed to delete consistency group: %(consistencyGroupName)s Return code: "
-"%(rc)lu. Error: %(error)s."
-msgstr ""
-"Nelze smazat skupinu jednotnosti. %(consistencyGroupName)s. Návratový kód: "
-"%(rc)lu. Chyba: %(error)s."
-
-msgid "Failed to delete device."
-msgstr "Smazání zařízení selhalo."
-
-#, python-format
 msgid ""
 "Failed to delete fileset for consistency group %(cgname)s. Error: %(excmsg)s."
 msgstr ""
 "Nelze smazat sadu souborů ze skupinu jednotnosti %(cgname)s. Chyba: "
 "%(excmsg)s."
 
-msgid "Failed to delete iqn."
-msgstr "Nelze smazat iqn."
-
-msgid "Failed to delete map."
-msgstr "Nelze smazat mapu."
-
-msgid "Failed to delete partition."
-msgstr "Nelze smazat oddíl."
-
-msgid "Failed to delete replica."
-msgstr "Nelze smazat repliku."
-
 #, python-format
 msgid "Failed to delete snapshot %s"
 msgstr "Nelze smazat snímek %s"
 
 #, python-format
-msgid "Failed to delete snapshot for cg: %(cgId)s."
-msgstr "Nelze smazat snímek pro skupinu jednotnosti: %(cgId)s."
-
-#, python-format
-msgid "Failed to delete snapshot for snapshot_id: %s because it has pair."
-msgstr "Nelze smazat snímek s id %s protože existují dva s tímto id."
-
-msgid "Failed to delete snapshot."
-msgstr "Nelze smazat snímek."
-
-#, python-format
-msgid "Failed to delete volume %(volumeName)s."
-msgstr "Nelze smazat svazek %(volumeName)s."
-
-#, python-format
-msgid ""
-"Failed to delete volume for volume_id: %(volume_id)s because it has pair."
-msgstr ""
-"Nelze smazat svazek pro svazek s id: %(volume_id)s protože existují dva s "
-"tímto id."
-
-#, python-format
 msgid "Failed to detach iSCSI target for volume %(volume_id)s."
 msgstr "Nelze odpojit cílové iSCSI pro svazek %(volume_id)s."
-
-msgid "Failed to determine blockbridge API configuration"
-msgstr "Nelze zjistit nastavení blockbridge API"
 
 msgid "Failed to disassociate qos specs."
 msgstr "Nelze odloučit specifikace qos."
@@ -2763,25 +1902,6 @@ msgstr "Nelze odloučit specifikace qos."
 #, python-format
 msgid "Failed to disassociate qos_specs: %(specs_id)s with type %(type_id)s."
 msgstr "Nelze odloučit specifikace qos: %(specs_id)s s typem %(type_id)s."
-
-#, python-format
-msgid ""
-"Failed to ensure snapshot resource area, could not locate volume for id %s"
-msgstr "Nelze zajistit oblast zdrojů snímku, nelze nalézt svazek s id %s"
-
-msgid "Failed to establish connection with Coho cluster"
-msgstr "Zavedení připojení s clusterem Coho selhalo"
-
-#, python-format
-msgid ""
-"Failed to execute CloudByte API [%(cmd)s]. Http status: %(status)s, Error: "
-"%(error)s."
-msgstr ""
-"Nelze provést [%(cmd)s] CloudByte API. Stav http: %(status)s, chyba: "
-"%(error)s."
-
-msgid "Failed to execute common command."
-msgstr "Nelze provést běžný příkaz."
 
 #, python-format
 msgid "Failed to export for volume: %(reason)s"
@@ -2806,10 +1926,6 @@ msgid "Failed to find host %s."
 msgstr "Nelze najít hostitele %s."
 
 #, python-format
-msgid "Failed to get CloudByte account details for account [%s]."
-msgstr "Nelze získat údaje účtu CloudByte [%s]."
-
-#, python-format
 msgid "Failed to get LUN target details for the LUN %s"
 msgstr "Nelze získat podrobnosti cíle LUN pro LUN %s"
 
@@ -2822,38 +1938,12 @@ msgid "Failed to get LUN target list for the LUN %s"
 msgstr "Nelze získat seznam cílů LUN pro LUN %s"
 
 #, python-format
-msgid "Failed to get Partition ID for volume %(volume_id)s."
-msgstr "Nelze získat ID oddílu pro svazek %(volume_id)s."
-
-#, python-format
-msgid "Failed to get Raid Snapshot ID from Snapshot %(snapshot_id)s."
-msgstr "Nelze získat ID Raid snímku %(snapshot_id)s."
-
-#, python-format
-msgid "Failed to get Raid Snapshot ID from snapshot: %(snapshot_id)s."
-msgstr "Nelze získat ID Raid snímku %(snapshot_id)s."
-
-#, python-format
-msgid ""
-"Failed to get a storage resource. The system will attempt to get the storage "
-"resource again. (resource: %(resource)s)"
-msgstr ""
-"Nelze získat zdroj úložiště. Systém se ho pokusí získat znovu. (Zdroj: "
-"%(resource)s)"
-
-#, python-format
 msgid "Failed to get all associations of qos specs %s"
 msgstr "Nelze získat všechna přidružení specifikací qos %s"
-
-msgid "Failed to get channel info."
-msgstr "Nelze získat informace o kanálu."
 
 #, python-format
 msgid "Failed to get code level (%s)."
 msgstr "Nelze získat úroveň kódu (%s)."
-
-msgid "Failed to get device info."
-msgstr "Nelze získat informace o zařízení."
 
 #, python-format
 msgid "Failed to get domain because CPG (%s) doesn't exist on array."
@@ -2861,44 +1951,11 @@ msgstr ""
 "Nelze získat doménu protože společná skupiny poskytování (%s) neexistuje v "
 "poli."
 
-#, python-format
-msgid "Failed to get ip on Channel %(channel_id)s with volume: %(volume_id)s."
-msgstr "Nelze získat ip na kanálu %(channel_id)s se svazkem: %(volume_id)s."
-
-msgid "Failed to get iqn info."
-msgstr "Nelze získat informace o iqn."
-
-msgid "Failed to get license info."
-msgstr "Nelze získat informace o licenci."
-
-msgid "Failed to get lv info."
-msgstr "Nelze získat informace o lv."
-
-msgid "Failed to get map info."
-msgstr "Nelze získat informace o mapě."
-
 msgid "Failed to get model update from clone"
 msgstr "Nelze získat aktualizaci modelu z klona"
 
 msgid "Failed to get name server info."
 msgstr "Nelze získat informace o jmenném serveru."
-
-msgid "Failed to get network info."
-msgstr "Nelze získat informace o síti."
-
-#, python-format
-msgid "Failed to get new part id in new pool: %(pool_id)s."
-msgstr "Nelze získat nové id části v nové zásobě: %(pool_id)s."
-
-msgid "Failed to get partition info."
-msgstr "Nelze získat informace o oddílu."
-
-#, python-format
-msgid "Failed to get pool id with volume %(volume_id)s."
-msgstr "Nelze získat zásobu svazku s id %(volume_id)s."
-
-msgid "Failed to get replica info."
-msgstr "Nelze získat informace o replice."
 
 msgid "Failed to get show fcns database info."
 msgstr "Nelze získat zobrazení informací o databázi fcns."
@@ -2911,9 +1968,6 @@ msgstr "Nelze získat velikost svazku %s"
 msgid "Failed to get snapshot for volume %s."
 msgstr "Nelze získat snímek pro svazek %s."
 
-msgid "Failed to get snapshot info."
-msgstr "Nelze získat informace o snímku."
-
 #, python-format
 msgid "Failed to get target IQN for the LUN %s"
 msgstr "Nelze získat cílové IQN pro LUN %s"
@@ -2924,17 +1978,6 @@ msgstr "Nelze získat cílový portál LUN pro LUN %s"
 
 msgid "Failed to get targets"
 msgstr "Nelze získat cíle"
-
-msgid "Failed to get wwn info."
-msgstr "Nelze získat informace o wwn."
-
-#, python-format
-msgid ""
-"Failed to get, create or add volume %(volumeName)s to masking view "
-"%(maskingViewName)s. The error message received was %(errorMessage)s."
-msgstr ""
-"Nelze získat, vytvořit, nebo přidat svazek %(volumeName)s pro zamaskování "
-"%(maskingViewName)s. Obdržená chybová zpráva byla %(errorMessage)s."
 
 msgid "Failed to identify volume backend."
 msgstr "Nelze zjistit podpůrnou vrstvu svazku."
@@ -3001,32 +2044,12 @@ msgid "Failed to manage volume %s."
 msgstr "Nelze spravovat svazek %s."
 
 #, python-format
-msgid ""
-"Failed to map a logical device. (LDEV: %(ldev)s, LUN: %(lun)s, port: "
-"%(port)s, id: %(id)s)"
-msgstr ""
-"Nelze mapovat logické zařízení. (Logické zařízení: %(ldev)s, LUN: %(lun)s, "
-"port: %(port)s, id: %(id)s)"
-
-msgid "Failed to migrate volume for the first time."
-msgstr "Nelze přesunout svazek poprvé."
-
-msgid "Failed to migrate volume for the second time."
-msgstr "Nelze přesunout svazek podruhé."
-
-#, python-format
 msgid "Failed to move LUN mapping.  Return code: %s"
 msgstr "Nelze přesunout mapování LUN. Návratový kód: %s"
 
 #, python-format
 msgid "Failed to move volume %s."
 msgstr "Nelze přesunout svazek %s."
-
-#, python-format
-msgid "Failed to open a file. (file: %(file)s, ret: %(ret)s, stderr: %(err)s)"
-msgstr ""
-"Nelze otevřít soubor. (Soubor: %(file)s, ret: %(ret)s, chybový výstup: "
-"%(err)s)"
 
 #, python-format
 msgid ""
@@ -3055,46 +2078,12 @@ msgstr ""
 "<typ služby>:<název služby>:<typ koncového bodu>"
 
 #, python-format
-msgid ""
-"Failed to perform a zero-page reclamation. (LDEV: %(ldev)s, reason: "
-"%(reason)s)"
-msgstr ""
-"Nelze provést reklamaci nulté stránky. (Logické zařízení: %(ldev)s, důvod: "
-"%(reason)s)"
-
-#, python-format
 msgid "Failed to remove export for volume %(volume)s: %(reason)s"
 msgstr "Nelze odstranit exportování svazku %(volume)s: %(reason)s"
 
 #, python-format
 msgid "Failed to remove iscsi target for volume %(volume_id)s."
 msgstr "Nelze odstranit cílové iscsi pro svazek %(volume_id)s."
-
-#, python-format
-msgid ""
-"Failed to remove volume %(volumeName)s from consistency group %(cgName)s. "
-"Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Nelze odstranit svazek %(volumeName)s ze skupiny jednotnosti %(cgName)s. "
-"Návratový kód: %(rc)lu. Chyba: %(error)s."
-
-#, python-format
-msgid "Failed to remove volume %(volumeName)s from default SG."
-msgstr "Nelze odstranit svazek %(volumeName)s z výchozí skupiny úložiště."
-
-#, python-format
-msgid "Failed to remove volume %(volumeName)s from default SG: %(volumeName)s."
-msgstr ""
-"Nelze odstranit svazek %(volumeName)s z výchozí skupiny úložiště: "
-"%(volumeName)s."
-
-#, python-format
-msgid ""
-"Failed to remove: %(volumename)s. from the default storage group for FAST "
-"policy %(fastPolicyName)s."
-msgstr ""
-"Nelze odstranit: %(volumename)s. z výchozí skupiny úložiště pro zásadu FAST "
-"%(fastPolicyName)s."
 
 #, python-format
 msgid ""
@@ -3114,9 +2103,6 @@ msgstr ""
 msgid "Failed to set attribute 'Incoming user' for SCST target."
 msgstr "Nelze nastavit vlastnost 'Incoming user' pro cíl SCST."
 
-msgid "Failed to set partition."
-msgstr "Nelze nastavit oddíl."
-
 #, python-format
 msgid ""
 "Failed to set permissions for the consistency group %(cgname)s. Error: "
@@ -3127,41 +2113,10 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Failed to specify a logical device for the volume %(volume_id)s to be "
-"unmapped."
-msgstr ""
-"Nelze zadat logické zařízení pro svazek %(volume_id)s pro zrušení namapování."
-
-#, python-format
-msgid ""
-"Failed to specify a logical device to be deleted. (method: %(method)s, id: "
-"%(id)s)"
-msgstr ""
-"Nelze zadat logické zařízení ke smazání. (Metoda: %(method)s, id: %(id)s)"
-
-msgid "Failed to terminate migrate session."
-msgstr "Nelze ukončit sezení přesunu."
-
-#, python-format
-msgid "Failed to unbind volume %(volume)s"
-msgstr "Nelze rozvázat svazek %(volume)s"
-
-#, python-format
-msgid ""
 "Failed to unlink fileset for consistency group %(cgname)s. Error: %(excmsg)s."
 msgstr ""
 "Nelze odpojit sadu souborů pro skupinu jednotnosti %(cgname)s. Chyba: "
 "%(excmsg)s."
-
-#, python-format
-msgid "Failed to unmap a logical device. (LDEV: %(ldev)s, reason: %(reason)s)"
-msgstr ""
-"Nelze zrušit mapování logického zařízení. (Logické zařízení: %(ldev)s, "
-"důvod: %(reason)s)"
-
-#, python-format
-msgid "Failed to update consistency group: %(cgName)s."
-msgstr "Nelze aktualizovat skupinu jednotnosti: %(cgName)s."
 
 #, python-format
 msgid "Failed to update metadata for volume: %(reason)s"
@@ -3444,9 +2399,6 @@ msgstr "Svazek Flexvisor %(id)s nemohl být připojen ke skupině %(vgid)s."
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS neběží, stav: %s."
 
-msgid "Gateway VIP is not set"
-msgstr "Brána VIP není nastavena"
-
 msgid "Get FC ports from array error."
 msgstr "Chyba při získávání portů FC z pole."
 
@@ -3533,10 +2485,6 @@ msgid "Glance metadata for volume/snapshot %(id)s cannot be found."
 msgstr "Popisná data Glance pro svazek/snímek %(id)s nemohla být nalezena."
 
 #, python-format
-msgid "Gluster config file at %(config)s doesn't exist"
-msgstr "Konfigurační soubor Gluster v %(config)s neexistuje."
-
-#, python-format
 msgid "Google Cloud Storage api failure: %(reason)s"
 msgstr "Selhání api úložiště Google Cloud: %(reason)s"
 
@@ -3552,9 +2500,6 @@ msgstr "Chyba v ověření oauth2 v úložišti Google Cloud: %(reason)s"
 msgid "Got bad path information from DRBDmanage! (%s)"
 msgstr "Získány špatné informace o cestě z DRBDmanage! (%s)"
 
-msgid "HBSD error occurs."
-msgstr "Objevena chyba HBSD."
-
 msgid "HPELeftHand url not found"
 msgstr "HPELeftHand URL nenalezena"
 
@@ -3568,10 +2513,6 @@ msgstr ""
 "součtu: %(old)s. Proveďte úplnou zálohu."
 
 #, python-format
-msgid "Have not created %(tier_levels)s tier(s)."
-msgstr "Vrstvy %(tier_levels)s nebyly vytvořeny."
-
-#, python-format
 msgid "Hint \"%s\" not supported."
 msgstr "Nápověda \"%s\" není podporována."
 
@@ -3581,14 +2522,6 @@ msgstr "Hostitel"
 #, python-format
 msgid "Host %(host)s could not be found."
 msgstr "Hostitel %(host)s nemohl být nalezen."
-
-#, python-format
-msgid ""
-"Host %(host)s does not match x509 certificate contents: CommonName "
-"%(commonName)s."
-msgstr ""
-"Hostitel %(host)s neodpovídá obsahu certifikátu x509: Běžný název: "
-"%(commonName)s."
 
 #, python-format
 msgid "Host %s has no FC initiators"
@@ -3613,11 +2546,6 @@ msgstr "Hostitel typu %s není podporován."
 #, python-format
 msgid "Host with ports %(ports)s not found."
 msgstr "Hostitel s porty %(ports)s nenalezen."
-
-#, python-format
-msgid "I/O group %(iogrp)d is not valid; available I/O groups are %(avail)s."
-msgstr ""
-"Skupina vstupu/výstupu %(iogrp)d není platná; platné skupiny jsou %(avail)s."
 
 msgid "ID"
 msgstr "ID"
@@ -3690,14 +2618,6 @@ msgstr ""
 "způsobeno připojením od klienta, které bylo přerušeno a, pokud tomu tak je, "
 "může být vyřešeno novým pokus o smazání po vypršení 30 vteřin."
 
-#, python-format
-msgid ""
-"Import record failed, cannot find backup service to perform the import. "
-"Request service %(service)s"
-msgstr ""
-"Importování záznamu selhalo, nelze najít zálohovací službu pro provedení "
-"importu. Požadovaná služba %(service)s"
-
 msgid "Incorrect request body format"
 msgstr "Nesprávný formát těla požadavku"
 
@@ -3706,14 +2626,6 @@ msgstr "Nesprávný formát těla požadavku."
 
 msgid "Incremental backups exist for this backup."
 msgstr "Pro tuto zálohu existují přírůstkové zálohy."
-
-#, python-format
-msgid ""
-"Infortrend CLI exception: %(err)s Param: %(param)s (Return Code: %(rc)s) "
-"(Output: %(out)s)"
-msgstr ""
-"Výjimka CLI Infortrend: %(err)s, parametr: %(param)s (Návratový kód: %(rc)s) "
-"(Výstup: %(out)s)"
 
 msgid "Input volumes or snapshots are invalid."
 msgstr "Vstupní svazky nebo snímky jsou neplatné."
@@ -3724,12 +2636,6 @@ msgstr "Vstupní nebo zdrojové svazky jsou neplatné."
 #, python-format
 msgid "Instance %(uuid)s could not be found."
 msgstr "Instance %(uuid)s nemohla být nalezena."
-
-msgid "Insufficient free space available to extend volume."
-msgstr "Pro rozšíření svazku není dostatek volného místa."
-
-msgid "Insufficient privileges"
-msgstr "Nedostatečná oprávnění"
 
 #, python-format
 msgid "Invalid 3PAR Domain: %(err)s"
@@ -3748,11 +2654,6 @@ msgstr "Neplatný snímek skupiny jednotnosti: %(reason)s"
 #, python-format
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "Neplatná skupina jednotnosti: %(reason)s"
-
-msgid "Invalid ConsistencyGroup: No host to create consistency group"
-msgstr ""
-"Neplatná skupina jednotnosti: Žádný hostitel pro vytvoření skupiny "
-"jednotnosti."
 
 #, python-format
 msgid ""
@@ -3784,15 +2685,8 @@ msgstr ""
 msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr "Neplatná verze XtremIO %(cur)s, je vyžadována verze %(min)s nebo vyšší"
 
-msgid "Invalid argument"
-msgstr "Neplatný argument"
-
 msgid "Invalid argument - negative seek offset."
 msgstr "Neplatný argument - záporná odchylka hledání."
-
-#, python-format
-msgid "Invalid argument - whence=%s not supported"
-msgstr "Neplatný argument - whence=%s není podporováno"
 
 #, python-format
 msgid "Invalid argument - whence=%s not supported."
@@ -3810,10 +2704,6 @@ msgstr "Neplatný ověřovací klíč: %(reason)s"
 msgid "Invalid backup: %(reason)s"
 msgstr "Neplatná záloha: %(reason)s"
 
-msgid "Invalid chap user details found in CloudByte storage."
-msgstr ""
-"V úložišti CloudByte nalezeny neplatné přihlašovací údaje CHAP pro uživatele."
-
 #, python-format
 msgid "Invalid connection initialization response of volume %(name)s"
 msgstr "Neplatná odpověď zavedení připojení od svazku %(name)s"
@@ -3826,9 +2716,6 @@ msgstr "Neplatná odpověď zavedení připojení od svazku %(name)s: %(output)s
 #, python-format
 msgid "Invalid content type %(content_type)s."
 msgstr "Neplatný typ obsahu %(content_type)s."
-
-msgid "Invalid credentials"
-msgstr "Neplatné přihlašovací údaje"
 
 #, python-format
 msgid "Invalid directory: %s"
@@ -3920,10 +2807,6 @@ msgstr ""
 "Nový název='%s'."
 
 #, python-format
-msgid "Invalid port number %(config)s for Coho rpc port"
-msgstr "Neplatné číslo portu %(config)s pro port RPC Coho"
-
-#, python-format
 msgid "Invalid qos specs: %(reason)s"
 msgstr "Neplatné specifikace qos: %(reason)s"
 
@@ -3940,9 +2823,6 @@ msgstr ""
 #, python-format
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "Neplatné vypršení rezervace %(expire)s."
-
-msgid "Invalid response header from RPC server"
-msgstr "Neplatná hlavička odpovědi od serveru RPC"
 
 msgid "Invalid service catalog json."
 msgstr "Neplatný json katalog služeb"
@@ -3976,14 +2856,6 @@ msgstr "Neplatné nastavení aktualizace: '%s'"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "Neplatná hodnota '%s' pro vynucení."
-
-#, python-format
-msgid "Invalid value '%s' for force. "
-msgstr "Neplatná hodnota '%s' pro force."
-
-#, python-format
-msgid "Invalid value '%s' for is_public. Accepted values: True or False."
-msgstr "Neplatná hodnota '%s' pro is_public. Patné hodnoty: True nebo False. "
 
 #, python-format
 msgid "Invalid value '%s' for skip_validation."
@@ -4032,41 +2904,6 @@ msgid "Invalid volume: %(reason)s"
 msgstr "Neplatný svazek: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid volume: Cannot add volume %(volume_id)s to consistency group "
-"%(group_id)s because volume is in an invalid state: %(status)s. Valid states "
-"are: ('available', 'in-use')."
-msgstr ""
-"Neplatný svazek: Nelze přidat svazek %(volume_id)s do skupiny jednotnosti "
-"%(group_id)s protože svazek je v neplatném stavu: %(status)s. Platné stavy "
-"jsou: ('available', 'in-use')."
-
-#, python-format
-msgid ""
-"Invalid volume: Cannot add volume %(volume_id)s to consistency group "
-"%(group_id)s because volume type %(volume_type)s is not supported by the "
-"group."
-msgstr ""
-"Neplatný svazek. Nelze přidat svazek %(volume_id)s do skupiny jednotnosti "
-"%(group_id)s protože typ svazku %(volume_type)s tato skupina nepodporuje."
-
-#, python-format
-msgid ""
-"Invalid volume: Cannot add volume fake-volume-uuid to consistency group "
-"%(group_id)s because volume cannot be found."
-msgstr ""
-"Neplatný svazek: Nelze přidat svazek valešné-uuid-svazku do skupiny "
-"jednotnosti %(group_id)s protože svazek nelze nalézt."
-
-#, python-format
-msgid ""
-"Invalid volume: Cannot remove volume fake-volume-uuid from consistency group "
-"%(group_id)s because it is not in the group."
-msgstr ""
-"Neplatný svazek: Nelze odstranit svazek falešné-uuid-svazku ze skupiny "
-"jednotnosti %(group_id)s protože není ve skupině."
-
-#, python-format
 msgid "Invalid volume_type passed: %s."
 msgstr "Předán neplatný typ svazku: %s."
 
@@ -4113,14 +2950,6 @@ msgstr ""
 "Vyvolání zavedení záložního systému, protože replikace není správně "
 "nastavena."
 
-#, python-format
-msgid "Job id not found in CloudByte's create volume [%s] response."
-msgstr "Úkol nebyl nalezen v CloudByte odpovědi pro vytvoření svazku [%s]."
-
-#, python-format
-msgid "Job id not found in CloudByte's delete volume [%s] response."
-msgstr "Úkol nebyl nalezen v CloudByte odpovědi pro smazání svazku [%s]."
-
 msgid ""
 "Key names can only contain alphanumeric characters, underscores, periods, "
 "colons and hyphens."
@@ -4132,19 +2961,9 @@ msgstr ""
 msgid "KeyError: %s"
 msgstr "Chyba klíče: %s"
 
-msgid "LUN export failed!"
-msgstr "Export LUN selhal!"
-
-msgid "LUN map overflow on every channel."
-msgstr "Přetečení LUN mapy ve všech kanálech."
-
 #, python-format
 msgid "LUN not found with given ref %s."
 msgstr "LUN nenalezena pomocí zadaného odkazu %s."
-
-#, python-format
-msgid "LUN number is out of bound on channel id: %(ch_id)s."
-msgstr "Číslo LUN je mimo rozsah v kanálu s id: %(ch_id)s."
 
 #, python-format
 msgid "Last %s cinder syslog entries:-"
@@ -4156,9 +2975,6 @@ msgstr "Cluster LeftHand nebyl nalezen"
 #, python-format
 msgid "Line %(dis)d : %(line)s"
 msgstr "Řádek %(dis)d : %(line)s"
-
-msgid "Link path already exists and its not a symlink"
-msgstr "Cesta odkazu již existuje a není to symbolický odkaz."
 
 #, python-format
 msgid "Linked clone of source volume not supported in state: %s."
@@ -4179,18 +2995,6 @@ msgstr ""
 
 msgid "Lun migration error."
 msgstr "Chyba při přesunu Lun."
-
-#, python-format
-msgid "MSG_DENIED: %r"
-msgstr "Zpráva zamítnuta: %r"
-
-#, python-format
-msgid "MSG_DENIED: AUTH_ERROR: %r"
-msgstr "Zpráva zamítnuta: Chyba při ověření: %r"
-
-#, python-format
-msgid "MSG_DENIED: RPC_MISMATCH: %r"
-msgstr "Zpráva zamítnuta: Neshoda vzdáleného volání procedur: %r"
 
 #, python-format
 msgid "Malformed fcns output string: %s"
@@ -4264,23 +3068,11 @@ msgstr "Správa existujícího svazku vyžaduje 'source-id'."
 
 #, python-format
 msgid ""
-"Manage volume is not supported if FAST is enable. FAST policy: "
-"%(fastPolicyName)s."
-msgstr ""
-"Správa svazku není podporována, pokud je FAST povoleno. Zásada FAST: "
-"%(fastPolicyName)s."
-
-#, python-format
-msgid ""
 "Mapping %(id)s prepare failed to complete within theallotted %(to)d seconds "
 "timeout. Terminating."
 msgstr ""
 "Připravení mapování %(id)s nemohlo být dokončeno v rámci přiděleného "
 "časového limitu %(to)d vteřin. Ukončování."
-
-#, python-format
-msgid "Masking view %(maskingViewName)s was not deleted successfully"
-msgstr "Maskování %(maskingViewName)s nebylo úspěšně smazáno"
 
 #, python-format
 msgid "Maximum number of backups allowed (%(allowed)d) exceeded"
@@ -4307,9 +3099,6 @@ msgstr "Záloha popisných dat je pro tento svazek již vytvořena"
 #, python-format
 msgid "Metadata backup object '%s' already exists"
 msgstr "Object zálohy popisných dat '%s' již existuje"
-
-msgid "Metadata property key blank."
-msgstr "Klíč vlastnosti popisných dat je prázdný."
 
 msgid "Metadata restore failed due to incompatible version"
 msgstr "Obnovení popisných dat selhalo kvůli nekompatibilní verzi"
@@ -4341,22 +3130,6 @@ msgstr "V těle žádosti chybí povinný prvek '%s'"
 msgid "Missing required element '%s' in request body."
 msgstr "V těle žádosti chybí povinný prvek '%s'."
 
-msgid "Missing required element 'consistencygroup' in request body."
-msgstr "V těle žádosti chybí povinný prvek 'consistencygroup'."
-
-msgid "Missing required element quota_class_set in request body."
-msgstr "V těle žádosti chybí povinný prvek quota_class_set."
-
-msgid "Missing required element snapshot in request body."
-msgstr "V těle žádosti chybí požadovaný prvek snapshot."
-
-msgid ""
-"Multiple SerialNumbers found, when only one was expected for this operation. "
-"Please change your EMC config file."
-msgstr ""
-"Nalezeno mnoho sériových čísel, ale pro tuto operaci bylo očekáváno pouze "
-"jedno. Prosím upravte váš soubor s nastavením EMC."
-
 #, python-format
 msgid "Multiple copies of volume %s found."
 msgstr "Nalezeno mnoho kopií svazku %s."
@@ -4371,15 +3144,6 @@ msgstr "Nalezeno mnoho profilů."
 msgid "Must implement a fallback schedule"
 msgstr "Je nutné zavést záložní plán"
 
-msgid "Must implement find_retype_host"
-msgstr "Je nutné zavést find_retype_host"
-
-msgid "Must implement host_passes_filters"
-msgstr "Je nutné zavést host_passes_filters"
-
-msgid "Must implement schedule_create_consistencygroup"
-msgstr "Je nutné zavést schedule_create_consistencygroup"
-
 msgid "Must implement schedule_create_volume"
 msgstr "Je nutné zavést schedule_create_volume"
 
@@ -4391,12 +3155,6 @@ msgstr "lsfabric je nutné předat wwpn nebo host."
 
 msgid "Must specify 'connector'"
 msgstr "Musíte zadat 'connector'"
-
-msgid "Must specify 'connector'."
-msgstr "Musíte zadat 'connector'."
-
-msgid "Must specify 'host'."
-msgstr "Musíte zadat 'host'."
 
 msgid "Must specify 'new_volume'"
 msgstr "Musíte zadat 'new_volume'"
@@ -4438,14 +3196,8 @@ msgstr "Musí být určena třída ExtensionManager"
 msgid "Must specify bootable in request."
 msgstr "V žádosti musíte zadat bootable."
 
-msgid "Must specify protection domain name or protection domain id."
-msgstr "Musíte zadat název nebo id ochranné domény."
-
 msgid "Must specify readonly in request."
 msgstr "V žádosti musíte zadat readonly."
-
-msgid "Must specify storage pool name or id."
-msgstr "Název nebo id zásoby úložiště musí být zadáno."
 
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr "Musíte zadat zásoby úložiště. Volba: sio_storage_pools."
@@ -4487,10 +3239,6 @@ msgstr ""
 msgid "Need non-zero volume size"
 msgstr "Je třeba zadat nenulovou velikost svazku"
 
-#, python-format
-msgid "Neither MSG_DENIED nor MSG_ACCEPTED: %r"
-msgstr "Zpráva nebyla zamítnuta ani přijata: %r"
-
 msgid "NetApp Cinder Driver exception."
 msgstr "Výjimka ovladače NetApp Cinder."
 
@@ -4514,32 +3262,11 @@ msgstr "Nový typ svazku nebyl zadán ve specifikaci žádosti."
 msgid "Nimble Cinder Driver exception"
 msgstr "Výjimka ovladače Nimble Cinder"
 
-msgid "No FCP targets found"
-msgstr "Žádné cíle FCP nenalezeny"
-
-msgid "No Port Group elements found in config file."
-msgstr "V souboru nastavení nenalezeny žádné prvky skupiny portu."
-
 msgid "No active iSCSI portals with supplied iSCSI IPs"
 msgstr "Žádné aktivní portály iSCSI zadané pomocí IP iSCSI"
 
-#, python-format
-msgid "No available service named %s"
-msgstr "Žádná dostupná služba nazvaná %s"
-
-#, python-format
-msgid "No backup with id %s"
-msgstr "Žádná záloha s id %s"
-
 msgid "No backups available to do an incremental backup."
 msgstr "Žádná záloha pro provedení přírůstkové zálohy."
-
-msgid "No big enough free disk"
-msgstr "Žádný dostatečně velký volný disk"
-
-#, python-format
-msgid "No cgsnapshot with id %s"
-msgstr "Žádný snímek jednotnosti s id %s"
 
 msgid "No cinder entries in syslog!"
 msgstr "Žádné položky cinder v záznamu systému!"
@@ -4550,10 +3277,6 @@ msgstr "Ve správci souborů nebyl nalezen klonovaný LUN s názvem %s"
 
 msgid "No config node found."
 msgstr "Nenalezen žádný uzel nastavení."
-
-#, python-format
-msgid "No consistency group with id %s"
-msgstr "Žádná skupina jednotnosti s id %s"
 
 #, python-format
 msgid "No element by given name %s."
@@ -4574,9 +3297,6 @@ msgstr ""
 "Žádné další volné ID LUN. Byl překročen maximální počet svazků, které lze "
 "připojit k hostiteli (%s)."
 
-msgid "No free disk"
-msgstr "Žádný volný disk"
-
 #, python-format
 msgid "No good iscsi portal found in supplied list for %s."
 msgstr "Pro %s nebyly v zadaném seznamu nalezeny žádné vhodné portály iscsi."
@@ -4584,10 +3304,6 @@ msgstr "Pro %s nebyly v zadaném seznamu nalezeny žádné vhodné portály iscs
 #, python-format
 msgid "No good iscsi portals found for %s."
 msgstr "Pro %s nenalezeny žádné vhodné portály iscsi."
-
-#, python-format
-msgid "No host to create consistency group %s."
-msgstr "Žádný hostitel pro vytvoření skupiny jednotnosti %s."
 
 msgid "No iSCSI-enabled ports on target array."
 msgstr "V cílovém poli není žádný port umožňující iSCSI."
@@ -4599,35 +3315,12 @@ msgstr "V žádosti nebyl zadán název obrazu."
 msgid "No initiator group found for initiator %s"
 msgstr "Pro zavaděče %s nebyla nalezena žádná skupina zavaděče"
 
-msgid "No initiators found, cannot proceed"
-msgstr "Nebyly nalezeny žádné zavaděče, nelze pokračovat"
-
 #, python-format
 msgid "No interface found on cluster for ip %s"
 msgstr "V clusteru s ip adresou %s nenalezeno žádné rozhraní."
 
 msgid "No ip address found."
 msgstr "Žádná ip adresa nenalezena."
-
-msgid "No iscsi auth groups were found in CloudByte."
-msgstr "V CloudByte nebyly nalezeny žádné ověřovací skupiny iscsi."
-
-msgid "No iscsi initiators were found in CloudByte."
-msgstr "V CloudByte nebyly nalezeny žádné zavaděče iscsi."
-
-#, python-format
-msgid "No iscsi service found for CloudByte volume [%s]."
-msgstr "Ve svazku Cloudbyte [%s] nebyly nalezeny žádné služby iscsi."
-
-msgid "No iscsi services found in CloudByte storage."
-msgstr "V úložišti Cloudbyte nebyly nalezeny žádné služby iscsi."
-
-#, python-format
-msgid "No key file specified and unable to load key from %(cert)s %(e)s."
-msgstr "Nezadán žádný klíč a nelze ho načíst z %(cert)s %(e)s."
-
-msgid "No mounted Gluster shares found"
-msgstr "Nenalezena žádné připojená sdílení Gluster"
 
 msgid "No mounted NFS shares found"
 msgstr "Nenalezena žádná připojená sdílení NFS"
@@ -4653,22 +3346,6 @@ msgstr ""
 "Pro poskytující svazky nejsou dostupné žádné zásoby. Ujistěte se, že volba "
 "netapp_pool_name_search_pattern je nastavena správně."
 
-msgid ""
-"No response was received from CloudByte storage list iSCSI auth user API "
-"call."
-msgstr ""
-"Žádná odpověď při výpisu volání API přihlašovacích údajů uživatele iSCSI "
-"úložiště CloudByte."
-
-msgid "No response was received from CloudByte storage list tsm API call."
-msgstr "Žádná odpověď od výpisu volání api tsm úložiště CloudByte."
-
-msgid "No response was received from CloudByte's list filesystem api call."
-msgstr "Žádná odpověď od výpisu volání api souborového systému CloudByte."
-
-msgid "No service VIP configured and no nexenta_client_address"
-msgstr "Nenastavena žádné VIP pro službu a nejsou žádné adresy klienta nexenta"
-
 #, python-format
 msgid "No snap found with %s as backing file."
 msgstr "Nenalezen žádný snímek kde %s je záložní soubor."
@@ -4676,11 +3353,6 @@ msgstr "Nenalezen žádný snímek kde %s je záložní soubor."
 #, python-format
 msgid "No snapshot image found in snapshot group %s."
 msgstr "Obraz snímku nebyl nalezen ve skupině snímku %s."
-
-#, python-format
-msgid "No source snapshots provided to create consistency group %s."
-msgstr ""
-"Nebyly zadány žádné zdrojové snímky pro vytvoření skupiny jednotnosti %s."
 
 #, python-format
 msgid "No storage path found for export path %s"
@@ -4709,14 +3381,6 @@ msgstr ""
 "povoleno, což vyžaduje jedinečné ID LUN napříč celou skupinou hostitele."
 
 #, python-format
-msgid "No valid host was found. %(reason)s"
-msgstr "Nebyl nalezen žádný platný hostitel. %(reason)s"
-
-#, python-format
-msgid "No valid hosts for volume %(id)s with type %(type)s"
-msgstr "Žádný platní hostitelé pro svazek %(id)s s typem %(type)s"
-
-#, python-format
 msgid ""
 "No volume on cluster with vserver %(vserver)s and junction path %(junction)s "
 msgstr ""
@@ -4726,28 +3390,8 @@ msgstr ""
 msgid "No volume service(s) started successfully, terminating."
 msgstr "Žádné služby svazku nebyly úspěšně spuštěny, ukončování."
 
-msgid "No volume was found at CloudByte storage."
-msgstr "V úložišti CloudByte nebyl nalezen žádný svazek."
-
-msgid "No volume_type should be provided when creating test replica."
-msgstr "Při vytváření zkušební repliky by neměl být zadán žádný typ svazku."
-
-msgid "No volumes found in CloudByte storage."
-msgstr "V úložišti Cloudbyte nebyly nalezeny žádné svazky."
-
-msgid "No weighed hosts available"
-msgstr "Žádní vážení hostitelé nejsou dostupní"
-
-#, python-format
-msgid "Not a valid string: %s"
-msgstr "%s není platný řetězec."
-
 msgid "Not a valid value for NaElement."
 msgstr "Neplatná hodnota pro NaElement."
-
-#, python-format
-msgid "Not able to find a suitable datastore for the volume: %s."
-msgstr "Nelze nalézt vhodné datové úložiště pro svazek: %s."
 
 msgid "Not an rbd snapshot"
 msgstr "Není snímkem rbd"
@@ -4773,49 +3417,11 @@ msgstr "Neuloženo v rbd"
 msgid "Nova returned \"error\" status while creating snapshot."
 msgstr "Při vytváření snímku Nova vrátila stav \"error\"."
 
-msgid "Null response received from CloudByte's list filesystem."
-msgstr "Při výpisu souborového sytému CloudByte byla obdržena nulová odpověď."
-
-msgid "Null response received from CloudByte's list iscsi auth groups."
-msgstr "Obdržena prázdná odpověď od výpisu ověřovacích skupin iscsi CloudByte."
-
-msgid "Null response received from CloudByte's list iscsi initiators."
-msgstr "Od výpisu zavaděčů iscsi CloudByte byla obdržena prázdná odpověď."
-
-msgid "Null response received from CloudByte's list volume iscsi service."
-msgstr "Od výpisu služeb iscsi svazku CloudByte byla obdržena prázdná odpověď."
-
-#, python-format
-msgid "Null response received while creating volume [%s] at CloudByte storage."
-msgstr ""
-"Při vytváření svazku [%s] v úložišti CloudByte byla obdržena prázdná odpověď."
-
-#, python-format
-msgid "Null response received while deleting volume [%s] at CloudByte storage."
-msgstr ""
-"Při mazání svazku [%s] v úložišti CloudByte byla obdržena prázdná odpověď."
-
-#, python-format
-msgid ""
-"Null response received while querying for [%(operation)s] based job "
-"[%(job)s] at CloudByte storage."
-msgstr ""
-"Při dotazování úkolu [%(job)s] využívající [%(operation)s] v úložišti "
-"CloudByte byla obdržena prázdná odpověď."
-
 msgid "Object Count"
 msgstr "Počet objektů"
 
 msgid "Object is not a NetApp LUN."
 msgstr "Objekt není NetApp LUN."
-
-#, python-format
-msgid ""
-"On an Extend Operation, error adding volume to composite volume: "
-"%(volumename)s."
-msgstr ""
-"Chyba při přidávání svazku do složeného svazku během operace rozšíření: "
-"%(volumename)s."
 
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr ""
@@ -4853,9 +3459,6 @@ msgstr "Operace není podporována: %(operation)s."
 msgid "Option gpfs_images_dir is not set correctly."
 msgstr "Volba gpfs_images_dir není správně nastavena."
 
-msgid "Option gpfs_images_share_mode is not set correctly."
-msgstr "Volba gpfs_images_share_mode není správně nastavena."
-
 msgid "Option gpfs_mount_point_base is not set correctly."
 msgstr "Volba gpfs_mount_point_base není správně nastavena."
 
@@ -4881,32 +3484,12 @@ msgstr ""
 msgid "Path to REST server's certificate must be specified."
 msgstr "Cesta k certifikátu serveru REST musí být zadána."
 
-#, python-format
-msgid "Please create %(pool_list)s pool in advance!"
-msgstr "Prosím předem vytvořte zásobu %(pool_list)s!"
-
-#, python-format
-msgid "Please create %(tier_levels)s tier in pool %(pool)s in advance!"
-msgstr "Prosím předem vytvořte vrstvu %(tier_levels)s v zásobě %(pool)s!"
-
 msgid "Please specify a name for QoS specs."
 msgstr "Prosím zadejte název pro specifikaci QoS."
 
 #, python-format
 msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "Zásada nedovoluje, aby bylo %(action)s provedeno."
-
-#, python-format
-msgid "Pool %(poolNameInStr)s is not found."
-msgstr "Zásoba %(poolNameInStr)s nebyla nalezena."
-
-#, python-format
-msgid "Pool from volume['host'] %(host)s not found."
-msgstr "Zásoba ze svazku['hostitel] %(host)s nebyla nalezena."
-
-#, python-format
-msgid "Pool from volume['host'] failed with: %(ex)s."
-msgstr "Zásoba ze svazku['hostitel] selhala: %(ex)s."
 
 msgid "Pool is not available in the volume host field."
 msgstr "Zásoba není dostupná v poli hostitel svazku."
@@ -4915,35 +3498,12 @@ msgid "Pool is not available in the volume host fields."
 msgstr "Zásoba není dostupná v polích hostitele svazku."
 
 #, python-format
-msgid "Pool with name %(pool)s wasn't found in domain %(domain)s."
-msgstr "Zásoba s názvem %(pool)s nebyla nalezena v doméně %(domain)s."
-
-#, python-format
 msgid "Pool with name %(pool_name)s wasn't found in domain %(domain_id)s."
 msgstr "Zásoba s názvem %(pool_name)s nebyla nalezena v doméně %(domain_id)s."
 
 #, python-format
-msgid ""
-"Pool: %(poolName)s. is not associated to storage tier for fast policy "
-"%(fastPolicy)s."
-msgstr ""
-"Zásoba: %(poolName)s. není přidružena k vrstvě úložiště pro zásadu fast "
-"%(fastPolicy)s."
-
-#, python-format
-msgid "PoolName must be in the file %(fileName)s."
-msgstr "Název zásoby musí být v souboru %(fileName)s."
-
-#, python-format
 msgid "Pools %s does not exist"
 msgstr "Zásoby %s neexistují"
-
-msgid "Pools name is not set."
-msgstr "Název zásoby není nastaven."
-
-#, python-format
-msgid "Primary copy status: %(status)s and synchronized: %(sync)s."
-msgstr "Stav hlavní kopie: %(status)s a synchronizováný: %(sync)s."
 
 msgid "Project ID"
 msgstr "ID projektu"
@@ -4972,14 +3532,6 @@ msgstr ""
 "%(current)s."
 
 #, python-format
-msgid ""
-"Provider information w.r.t CloudByte storage was not found for OpenStack "
-"volume [%s]."
-msgstr ""
-"Informace poskytovatele s ohledem na úložiště Cloudbyte nebyly nalezeny pro "
-"svazek OpenStack [%s]."
-
-#, python-format
 msgid "Pure Storage Cinder driver failure: %(reason)s"
 msgstr "Selhání ovladače Pure Storage Cinder: %(reason)s"
 
@@ -5003,19 +3555,8 @@ msgstr ""
 msgid "Qos specs still in use."
 msgstr "Specifikace QoS se stále používá."
 
-msgid ""
-"Query by service parameter is deprecated. Please use binary parameter "
-"instead."
-msgstr ""
-"Parametr dotazů podle služby je zastaralý. Místo toho použijte binární "
-"parametr."
-
 msgid "Query resource pool error."
 msgstr "Chyba při dotazování zásoby zdroje."
-
-#, python-format
-msgid "Quota %s limit must be equal or greater than existing resources."
-msgstr "Limit kvóty %s musí být větší nebo rovno existujícím zdrojům."
 
 #, python-format
 msgid "Quota class %(class_name)s could not be found."
@@ -5060,21 +3601,6 @@ msgstr ""
 #, python-format
 msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
 msgstr "REST %(proxy_ver)s, hpelefthandclient %(rest_ver)s"
-
-msgid "REST server IP must by specified."
-msgstr "IP serveru REST musí být zadáno."
-
-msgid "REST server password must by specified."
-msgstr "Heslo serveru REST musí být zadáno."
-
-msgid "REST server username must by specified."
-msgstr "Uživatelské jméno serveru REST musí být zadáno."
-
-msgid "RPC server response is incomplete"
-msgstr "Odpověď serveru RPC je nedokončená"
-
-msgid "Raid did not have MCS Channel."
-msgstr "RAID neměl kanál MCS."
 
 #, python-format
 msgid "Received error string: %s"
@@ -5142,14 +3668,6 @@ msgstr "Odstranění exportu svazku selhalo."
 msgid "Rename lun on array error."
 msgstr "Chyba při přejmenování lun v poli."
 
-#, python-format
-msgid "Replication Service Capability not found on %(storageSystemName)s."
-msgstr "Schopnost služby replikace nebyla nalezena v %(storageSystemName)s."
-
-#, python-format
-msgid "Replication Service not found on %(storageSystemName)s."
-msgstr "Služba replikace nebyla nalezena v %(storageSystemName)s."
-
 msgid "Request body and URI mismatch"
 msgstr "Neshoda s tělem požadavku a URI"
 
@@ -5184,20 +3702,8 @@ msgstr ""
 "Požadováno %(requested)sG, kvóta je %(quota)sG a bylo spotřebováno "
 "%(consumed)sG."
 
-#, python-format
-msgid ""
-"Requested volume size %(size)d is larger than maximum allowed limit "
-"%(limit)d."
-msgstr ""
-"Požadovaná velikost svazku %(size)d je větší než maximální povolený limit "
-"%(limit)d."
-
 msgid "Required configuration not found"
 msgstr "Požadované nastavení nenalezeno."
-
-#, python-format
-msgid "Required flag %s is not set"
-msgstr "Požádovaný příznak %s není nastaven"
 
 #, python-format
 msgid ""
@@ -5270,23 +3776,10 @@ msgid "Retype requires migration but is not allowed."
 msgstr "Přetypování vyžaduje přesun ale ten není povolen."
 
 #, python-format
-msgid "Rolling back %(volumeName)s by deleting it."
-msgstr "Vrácení %(volumeName)s zpět jeho vymazáním."
-
-#, python-format
 msgid ""
 "Running Cinder with a VMware vCenter version less than %s is not allowed."
 msgstr ""
 "Spouštět Cinder pomocí VMware vCenter s verzí starší než %s není povoleno."
-
-#, python-format
-msgid "SMBFS config 'smbfs_oversub_ratio' invalid.  Must be > 0: %s"
-msgstr "Nastavení SMBFS 'smbfs_oversub_ratio' je neplatné. Musí být > 0: %s"
-
-#, python-format
-msgid "SMBFS config 'smbfs_used_ratio' invalid.  Must be > 0 and <= 1.0: %s"
-msgstr ""
-"Nastavení SMBFS 'smbfs_used_ratio' je neplatné. Musí být > 0 a <= 1.0: %s"
 
 #, python-format
 msgid "SMBFS config file at %(config)s doesn't exist."
@@ -5308,32 +3801,12 @@ msgid "SSH connection failed for %(fabric)s with error: %(err)s"
 msgstr "SSH připojení selhalo v %(fabric)s s chybou: %(err)s"
 
 #, python-format
-msgid "SSL Certificate expired on %s."
-msgstr "Certifikát SSL vypršel %s."
-
-#, python-format
-msgid "SSL error: %(arg)s."
-msgstr "Chyba SSL: %(arg)s."
-
-#, python-format
 msgid "Scheduler Host Filter %(filter_name)s could not be found."
 msgstr "Filtr hostitelů plánovače %(filter_name)s nemohl být nalezen."
 
 #, python-format
 msgid "Scheduler Host Weigher %(weigher_name)s could not be found."
 msgstr "Váha plánovače hostitele %(weigher_name)s nemohla být nalezena."
-
-#, python-format
-msgid ""
-"Secondary copy status: %(status)s and synchronized: %(sync)s, sync progress "
-"is: %(progress)s%%."
-msgstr ""
-"Stav druhé kopie: %(status)s a synchronizováný: %(sync)s, postup "
-"synchronizace je: %(progress)s%%."
-
-#, python-format
-msgid "SerialNumber must be in the file %(fileName)s."
-msgstr "Sériové číslo musí být v souboru %(fileName)s."
 
 #, python-format
 msgid "Service %(service)s on host %(host)s removed."
@@ -5418,14 +3891,6 @@ msgstr ""
 msgid "Snapshot '%s' doesn't exist on array."
 msgstr "Snímek '%s' neexistuje v poli."
 
-#, python-format
-msgid ""
-"Snapshot cannot be created because volume %(vol_id)s is not available, "
-"current volume status: %(vol_status)s."
-msgstr ""
-"Snímek nelze vytvořit protože svazek %(vol_id)s není dostupný, současný stav "
-"svazku: %(vol_status)s."
-
 msgid "Snapshot cannot be created while volume is migrating."
 msgstr "Snímek nemůže být vytvořen při přesunu svazku."
 
@@ -5444,39 +3909,16 @@ msgstr "Zdroj snímku \"%s\" který není nikde zaveden?"
 msgid "Snapshot status %(cur)s not allowed for update_snapshot_status"
 msgstr "Stav snímku %(cur)s není povolen při aktualizaci stavu snímku"
 
-msgid "Snapshot status must be \"available\" to clone."
-msgstr "Stav snímku musí být pro klonování \"available\"."
-
 #, python-format
 msgid ""
 "Snapshot to be backed up must be available, but the current status is \"%s\"."
 msgstr "Zálohovaný snímek musí být dostupný, ale jeho stav je nyní \"%s\"."
-
-#, python-format
-msgid ""
-"Snapshot='%(snap)s' does not exist in base image='%(base)s' - aborting "
-"incremental backup"
-msgstr ""
-"Snímek='%(snap)s' neexistuje v základním obrazu='%(base)s' - rušení "
-"přírůstkové zálohy"
-
-#, python-format
-msgid "Snapshots are not supported for this volume format: %s"
-msgstr "Snímky nejsou podporovány pro tento formát snímku: %s"
-
-#, python-format
-msgid "Socket error: %(arg)s."
-msgstr "Chyba soketu: %(arg)s."
 
 msgid "SolidFire Cinder Driver exception"
 msgstr "Výjimka ovladače SolidFire Cinder"
 
 msgid "Sort direction array size exceeds sort key array size."
 msgstr "Pole směru řazení překračuje velikost pole klíče řazení."
-
-msgid "Source CG is empty. No consistency group will be created."
-msgstr ""
-"Zdrojová skupina jednotnosti je prázdná. Žádná skupina nebude vytvořena."
 
 msgid "Source host details not found."
 msgstr "Podrobnosti zdrojového hostitele nenalezeny."
@@ -5497,9 +3939,6 @@ msgid ""
 msgstr ""
 "Zadaný hostitel pro namapování ke svazku %(vol)s je v nepodporované skupině "
 "hostitele s %(group)s."
-
-msgid "Specified logical volume does not exist."
-msgstr "Zadaný logický svazek neexistuje."
 
 msgid "Specify a password or private_key"
 msgstr "Zadejte heslo nebo soukromý klíč"
@@ -5524,30 +3963,8 @@ msgid "Stop snapshot error."
 msgstr "Chyba při zastavování snímku."
 
 #, python-format
-msgid "Storage Configuration Service not found on %(storageSystemName)s."
-msgstr "Služba nastavení úložiště nebyla nalezena v %(storageSystemName)s."
-
-#, python-format
-msgid "Storage HardwareId mgmt Service not found on %(storageSystemName)s."
-msgstr ""
-"Služba správy id hardwaru úložiště nebyla nalezena v %(storageSystemName)s."
-
-#, python-format
-msgid "Storage Profile %s not found."
-msgstr "Profil úložiště %s nenalezen."
-
-#, python-format
-msgid "Storage Relocation Service not found on %(storageSystemName)s."
-msgstr ""
-"Služba změny umístění úložiště nebyla nalezena v %(storageSystemName)s."
-
-#, python-format
 msgid "Storage family %s is not supported."
 msgstr "Druhy úložiště %s nejsou podporovány."
-
-#, python-format
-msgid "Storage group %(storageGroupName)s was not deleted successfully"
-msgstr "Skupina úložiště %(storageGroupName)s nebyla úspěšně smazána"
 
 #, python-format
 msgid "Storage host %(svr)s not detected, verify name"
@@ -5557,19 +3974,8 @@ msgstr "Hostitel úložiště %(svr)s nebyl zjištěn, ověřte název"
 msgid "Storage profile: %(storage_profile)s not found."
 msgstr "Profil úložiště: %(storage_profile)s nenalezen."
 
-msgid "Storage resource could not be found."
-msgstr "Zdroj úložiště nemohl být nalezen."
-
 msgid "Storage system id not set."
 msgstr "ID úložného systému nebylo nastaveno."
-
-#, python-format
-msgid "Storage system not found for pool %(poolNameInStr)s."
-msgstr "Systém úložiště nebyl nalezen pro zásobu %(poolNameInStr)s."
-
-#, python-format
-msgid "StorageSystem %(array)s is not found."
-msgstr "Systém úložiště %(array)s nebyl nalezen."
 
 #, python-format
 msgid "System %(id)s found with bad password status - %(pass_status)s."
@@ -5585,12 +3991,6 @@ msgstr "Systém nepodporuje kompresi."
 msgid "System is busy, retry operation."
 msgstr "Systém je zaneprázdněn, zopakujte operaci."
 
-#, python-format
-msgid ""
-"TSM [%(tsm)s] was not found in CloudByte storage for account [%(account)s]."
-msgstr ""
-"TSM [%(tsm)s] nebylo v úložišti CloudByte nalezeno pro účet [%(account)s]."
-
 msgid "Target volume type is still in use."
 msgstr "Cílový typ svazku se stále používá."
 
@@ -5604,19 +4004,12 @@ msgstr "Nelze se připojit k podpůrné vrstvě pro ukončení připojení."
 msgid "Terminate volume connection failed: %(err)s"
 msgstr "Ukončení připojení svazku selhalo: %(err)s"
 
-#, python-format
-msgid "The %(type)s %(id)s source to be replicated was not found."
-msgstr "Zdroj %(type)s %(id)s pro replikování nebyl nalezen."
-
 msgid ""
 "The 'sort_key' and 'sort_dir' parameters are deprecated and cannot be used "
 "with the 'sort' parameter."
 msgstr ""
 "Parametry 'sort_key' a 'sort_dir' jsou zastaralé a nemohou být použity s "
 "parametrem 'sort'."
-
-msgid "The EQL array has closed the connection."
-msgstr "Pole EQL uzavřelo připojení."
 
 #, python-format
 msgid ""
@@ -5625,9 +4018,6 @@ msgid ""
 msgstr ""
 "Systém souborů GPFS %(fs)s není na požadované úrovni vydání. Současná úroveň "
 "je %(cur)s, musí být alespoň %(min)s."
-
-msgid "The IP Address was not found."
-msgstr "IP adresa nebyla nalezena."
 
 #, python-format
 msgid ""
@@ -5646,30 +4036,8 @@ msgstr ""
 "Prosím vytvořte ji pomocí 'cinder-manage db sync' před zadáním tohoto "
 "příkazu."
 
-#, python-format
-msgid ""
-"The array does not support the storage pool setting for SLO %(slo)s and "
-"workload %(workload)s.  Please check the array for valid SLOs and workloads."
-msgstr ""
-"Pole nepodporuje nastavení zásoby úložiště pro SLO %(slo)s a zatížení "
-"%(workload)s. Prosím zkontrolujte pole pro platné SLO a zatížení."
-
-#, python-format
-msgid ""
-"The command %(cmd)s failed. (ret: %(ret)s, stdout: %(out)s, stderr: %(err)s)"
-msgstr ""
-"Příkaz %(cmd)s selhal.  (ret: %(ret)s, standardní výstup: %(out)s, chybový "
-"výstup: %(err)s."
-
 msgid "The copy should be primary or secondary"
 msgstr "Kopie by měla být primární nebo sekundární"
-
-#, python-format
-msgid ""
-"The creation of a logical device could not be completed. (LDEV: %(ldev)s)"
-msgstr ""
-"Vytvoření logického zařízení nemohlo být dokončeno. (Logické zařízení: "
-"%(ldev)s)"
 
 msgid "The decorated method must accept either a volume or a snapshot object"
 msgstr "Dekorovaná metoda musí přijímat buď objekt svazku nebo objekt snímku "
@@ -5683,10 +4051,6 @@ msgid "The end time (%(end)s) must be after the start time (%(start)s)."
 msgstr "Doba konce (%(end)s) musí být po době začátku (%(start)s)."
 
 #, python-format
-msgid "The extraspec: %(extraspec)s is not valid."
-msgstr "Dodatečná specifikace: %(extraspec)s není platná."
-
-#, python-format
 msgid "The failed-over volume could not be deleted: %s"
 msgstr "Záložní svazek nelze smazat: %s."
 
@@ -5694,39 +4058,11 @@ msgstr "Záložní svazek nelze smazat: %s."
 msgid "The following elements are required: %s"
 msgstr "Jsou vyžadovány následující prvky: %s"
 
-msgid "The host group or iSCSI target could not be added."
-msgstr "Skupina hostitele nebo cíl iSCSI nemohly být přidány."
-
-msgid "The host group or iSCSI target was not found."
-msgstr "Skupina hostitele nebo cíl iSCSI nebyly nalezeny."
-
-#, python-format
-msgid "The iSCSI CHAP user %(user)s does not exist."
-msgstr "CHAP uživatel iSCSI %(user)s neexistuje."
-
 msgid "The key cannot be None."
 msgstr "Klíč nemůže být None."
 
-#, python-format
-msgid "The logical device for specified %(type)s %(id)s was already deleted."
-msgstr "Logické zařízení pro zadané %(type)s %(id)s již je smazáno."
-
-#, python-format
-msgid "The method %(method)s is timed out. (timeout value: %(timeout)s)"
-msgstr "Metodě %(method)s vypršel časový limit. (Hodnota limitu: %(timeout)s)"
-
 msgid "The method update_migrated_volume is not implemented."
 msgstr "Metoda update_migrated_volume není zavedena."
-
-#, python-format
-msgid ""
-"The mount %(mount_path)s is not a valid Quobyte USP volume. Error: %(exc)s"
-msgstr "Připojení %(mount_path)s není platný svazek Quobyte USP. Chyba %(exc)s"
-
-#, python-format
-msgid "The parameter of the storage backend. (config_group: %(config_group)s)"
-msgstr ""
-"Parametr podpůrné vrstvy úložiště. (Skupina nastavení: %(config_group)s)"
 
 msgid "The parent backup must be available for incremental backup."
 msgstr "Pro provedení přírůstkové zálohy musí být dostupná nadřazená záloha."
@@ -5736,13 +4072,6 @@ msgid "The provided snapshot '%s' is not a snapshot of the provided volume."
 msgstr "Zadaný snímek '%s' není snímek zadaného svazku."
 
 msgid ""
-"The reference to the volume in the backend should have the format "
-"file_system/volume_name (volume_name cannot contain '/')"
-msgstr ""
-"Odkaz na svazek v podpůrné vrstvě by měl být ve formátu souborový systém/"
-"název svazku (název svazku nemůže obsahovat '/')"
-
-msgid ""
 "The replication mode was not configured correctly in the volume type "
 "extra_specs. If replication:mode is periodic, replication:sync_period must "
 "also be specified and be between 300 and 31622400 seconds."
@@ -5750,18 +4079,6 @@ msgstr ""
 "Režim replikace nebyl v dodatečných specifikacích svazku správně nastaven. "
 "Pokud je režim periodic, musí být také zadáno replication:sync_period a mít "
 "zvolen interval mající hodnotu od 300 až 31622400 vteřin."
-
-#, python-format
-msgid ""
-"The requested size : %(requestedSize)s is not the same as resulting size: "
-"%(resultSize)s."
-msgstr ""
-"Požadovaná velikost : %(requestedSize)s není stejná jako výsledná velikost: "
-"%(resultSize)s."
-
-#, python-format
-msgid "The resource %(resource)s was not found."
-msgstr "Zdroj %(resource)s nebyl nalezen."
 
 msgid "The results are invalid."
 msgstr "Výsledky jsou neplatné."
@@ -5782,55 +4099,8 @@ msgstr "Typ zdrojového svazku '%(src)s' je jiný než cílový typ '%(dest)s'."
 msgid "The source volume type '%s' is not available."
 msgstr "Typ zdrojového svazku '%s' není dostupný."
 
-#, python-format
-msgid "The specified %(desc)s is busy."
-msgstr "Zadané %(desc)s je zaneprázdněno."
-
-#, python-format
-msgid ""
-"The specified ldev %(ldev)s could not be managed. The ldev must not be "
-"mapping."
-msgstr ""
-"Zadané logické zařízení %(ldev)s nemůže být spravováno. Zařízení nesmí být "
-"mapováno."
-
-#, python-format
-msgid ""
-"The specified ldev %(ldev)s could not be managed. The ldev must not be "
-"paired."
-msgstr ""
-"Zadané logické zařízení %(ldev)s nemůže být spravováno. Zařízení nesmí být "
-"spárováno."
-
-#, python-format
-msgid ""
-"The specified ldev %(ldev)s could not be managed. The ldev size must be in "
-"multiples of gigabyte."
-msgstr ""
-"Zadané logické zařízení %(ldev)s nemůže být spravováno. Velikost zařízení "
-"musí být v násobcích gigabajtu."
-
-#, python-format
-msgid ""
-"The specified ldev %(ldev)s could not be managed. The volume type must be DP-"
-"VOL."
-msgstr ""
-"Zadané logické zařízení %(ldev)s nemůže být spravováno. Typ svazku musí být "
-"DP-VOL."
-
-#, python-format
-msgid ""
-"The specified operation is not supported. The volume size must be the same "
-"as the source %(type)s. (volume: %(volume_id)s)"
-msgstr ""
-"Zadaná operace není podporována. Velikost svazku musí být stejná jako zdroj "
-"%(type)s. (svazek: %(volume_id)s)"
-
 msgid "The specified vdisk is mapped to a host."
 msgstr "Zadaný virtuální disk je mapován k hostiteli."
-
-msgid "The specified volume is mapped to a host."
-msgstr "Zadaný svazek je namapován k hostiteli."
 
 #, python-format
 msgid ""
@@ -5840,56 +4110,11 @@ msgstr ""
 "Heslo pole úložiště pro %s není správné, prosím aktualizujte nastavené heslo."
 
 #, python-format
-msgid "The storage backend can be used. (config_group: %(config_group)s)"
-msgstr ""
-"Podpůrná vrstva úložiště může být použita. (Skupina nastavení: "
-"%(config_group)s)"
-
-#, python-format
-msgid ""
-"The striped meta count of %(memberCount)s is too small for volume: "
-"%(volumeName)s, with size %(volumeSize)s."
-msgstr ""
-"Odebraný počet popisných dat z %(memberCount)s je příliš malý pro svazek: "
-"%(volumeName)s, s velikostí %(volumeSize)s."
-
-#, python-format
 msgid ""
 "The type of metadata: %(metadata_type)s for volume/snapshot %(id)s is "
 "invalid."
 msgstr ""
 "Typ popisných dat: %(metadata_type)s pro svazek/snímek %(id)s je neplatný."
-
-#, python-format
-msgid ""
-"The volume %(volume_id)s could not be extended. The volume type must be "
-"Normal."
-msgstr ""
-"Svazek %(volume_id)s nemohl být rozšířen. Typ svazku musí být Normální."
-
-#, python-format
-msgid ""
-"The volume %(volume_id)s could not be unmanaged. The volume type must be "
-"%(volume_type)s."
-msgstr ""
-"Nelze zrušit správu svazku %(volume_id)s. Typ svazku musí být "
-"%(volume_type)s."
-
-#, python-format
-msgid "The volume %(volume_id)s is managed successfully. (LDEV: %(ldev)s)"
-msgstr ""
-"Svazek %(volume_id)s byl úspěšně zařazen pod správu. (Logické zařízení: "
-"%(ldev)s)"
-
-#, python-format
-msgid "The volume %(volume_id)s is unmanaged successfully. (LDEV: %(ldev)s)"
-msgstr ""
-"Svazek %(volume_id)s byl úspěšně odstraněn ze správy. (Logické zařízení: "
-"%(ldev)s)"
-
-#, python-format
-msgid "The volume %(volume_id)s to be mapped was not found."
-msgstr "Svazek %(volume_id)s pro mapování nemohl být nalezen."
 
 msgid "The volume cannot accept transfer in maintenance mode."
 msgstr "Svazek nemůže v režimu údržby přijímat přenosy v režimu údržby."
@@ -5919,30 +4144,11 @@ msgstr ""
 msgid "The volume label is required as input."
 msgstr "Jmenovka svazku je vyžadována jako vstup."
 
-#, python-format
-msgid "There are no resources available for use. (resource: %(resource)s)"
-msgstr "Žádné dostupné zdroje k použití. (Zdroj: %(resource)s)"
-
 msgid "There are no valid ESX hosts."
 msgstr "Žádní platní hostitelé ESX."
 
 msgid "There are no valid datastores."
 msgstr "Žádná platná datová úložiště."
-
-#, python-format
-msgid ""
-"There is no designation of the %(param)s. The specified storage is essential "
-"to manage the volume."
-msgstr ""
-"Neexistuje označení pro %(param)s. Zadané úložiště je pro správu svazku "
-"nezbytné."
-
-msgid ""
-"There is no designation of the ldev. The specified ldev is essential to "
-"manage the volume."
-msgstr ""
-"Neexistuje označení pro logické zařízení. Zadané logické zařízení je "
-"nezbytné pro správu svazku."
 
 msgid "There is no metadata in DB object."
 msgstr "V objektu DB nejsou žádná popisná data."
@@ -5994,10 +4200,6 @@ msgid "There was an error starting remote copy: %s."
 msgstr "Při spouštění vzdálené kopie se vyskytla chyba: %s"
 
 #, python-format
-msgid "There's no Gluster config file configured (%s)"
-msgstr "Není nastaven žádný konfigurační soubor Gluster (%s)"
-
-#, python-format
 msgid "There's no NFS config file configured (%s)"
 msgstr "Není zadán žádný soubor s nastavením NFS (%s)"
 
@@ -6012,12 +4214,6 @@ msgstr ""
 msgid "Thin provisioning not supported on this version of LVM."
 msgstr "Mělké poskytování není podporováno v této verzi LVM."
 
-msgid "This driver does not support deleting in-use snapshots."
-msgstr "Tento ovladač nepodporuje mazání právě používaných snímků."
-
-msgid "This driver does not support snapshotting in-use volumes."
-msgstr "Tento ovladač nepodporuje vytváření snímků u právě používaných svazků."
-
 msgid "This request was rate-limited."
 msgstr "Tento požadavek má omezené množství."
 
@@ -6028,10 +4224,6 @@ msgid ""
 msgstr ""
 "Tato systémová platforma (%s) není podporována. Tento ovladač podporuje "
 "pouze platformy Win32."
-
-#, python-format
-msgid "Tier Policy Service not found for %(storageSystemName)s."
-msgstr "Služba zásad nebyla nalezena v %(storageSystemName)s."
 
 #, python-format
 msgid "Timed out while waiting for Nova update for creation of snapshot %s."
@@ -6050,14 +4242,6 @@ msgstr "Při žádání o API %(service)s vypršel časový limit."
 #, python-format
 msgid "Transfer %(transfer_id)s could not be found."
 msgstr "Přenos %(transfer_id)s nemohl být nalezen."
-
-#, python-format
-msgid ""
-"Transfer %(transfer_id)s: Volume id %(volume_id)s in unexpected state "
-"%(status)s, expected awaiting-transfer"
-msgstr ""
-"Přenos %(transfer_id)s: Svazek s ID %(volume_id)s je v neočekávaném stavu "
-"%(status)s, předpokládáno čekání na přenos"
 
 #, python-format
 msgid ""
@@ -6111,36 +4295,12 @@ msgstr ""
 msgid "Unable to connect or find connection to host"
 msgstr "Nelze se připojit nebo nalézt připojení k hostiteli"
 
-#, python-format
-msgid "Unable to create consistency group %s"
-msgstr "Nelze vytvořit skupinu jednotnosti %s"
-
 msgid "Unable to create lock. Coordination backend not started."
 msgstr "Nelze vytvořit zámek. Podpůrná vrstva koordinátora nebyla spuštěna."
 
 #, python-format
-msgid ""
-"Unable to create or get default storage group for FAST policy: "
-"%(fastPolicyName)s."
-msgstr ""
-"Nelze vytvořit nebo získat výchozí skupinu úložiště pro zásadu FAST: "
-"%(fastPolicyName)s."
-
-#, python-format
-msgid "Unable to create replica clone for volume %s."
-msgstr "Nelze vytvořit klon repliky svazku %s."
-
-#, python-format
-msgid "Unable to delete Consistency Group snapshot %s"
-msgstr "Nelze smazat snímek skupiny jednotnosti %s"
-
-#, python-format
 msgid "Unable to delete snapshot %(id)s, status: %(status)s."
 msgstr "Nelze smazat snímek %(id)s, stav: %(status)s."
-
-#, python-format
-msgid "Unable to delete snapshot policy on volume %s."
-msgstr "Nelze smazat zásadu snímku ve svazku %s."
 
 msgid ""
 "Unable to detach volume. Volume status must be 'in-use' and attach_status "
@@ -6212,9 +4372,6 @@ msgstr ""
 "Nelze získat informace o nastavení potřebné k vytvoření svazku: "
 "%(errorMessage)s."
 
-msgid "Unable to get corresponding record for pool."
-msgstr "Nelze získat odpovídající záznam pro zásobu"
-
 #, python-format
 msgid ""
 "Unable to get information on space %(space)s, please verify that the cluster "
@@ -6246,47 +4403,6 @@ msgid "Unable to get stats for backend_name: %s"
 msgstr "Nelze získat statistiky s podpůrné vrstvy s názvem: %s"
 
 #, python-format
-msgid "Unable to get target endpoints for hardwareId %(hardwareIdInstance)s."
-msgstr ""
-"Nelze získat cílové koncové body pro hardware s ID %(hardwareIdInstance)s."
-
-#, python-format
-msgid ""
-"Unable to import volume %(deviceId)s to cinder. It is the source volume of "
-"replication session %(sync)s."
-msgstr ""
-"Nelze importovat svazek %(deviceId)s do cinder. Je to zdrojový svazek sezení "
-"replikace %(sync)s."
-
-#, python-format
-msgid ""
-"Unable to import volume %(deviceId)s to cinder. The external volume is not "
-"in the pool managed by current cinder host."
-msgstr ""
-"Nelze importovat svazek %(deviceId)s do cinder. Vnější svazek není v zásobě "
-"spravované současným hostitelem cinder."
-
-#, python-format
-msgid ""
-"Unable to import volume %(deviceId)s to cinder. Volume is in masking view "
-"%(mv)s."
-msgstr ""
-"Nelze importovat svazek %(deviceId)s do cinder. Zobrazení svazku je "
-"maskováno %(mv)s."
-
-#, python-format
-msgid "Unable to load CA from %(cert)s %(e)s."
-msgstr "Nelze načíst certifikační autoritu z %(cert)s %(e)s."
-
-#, python-format
-msgid "Unable to load cert from %(cert)s %(e)s."
-msgstr "Nelze načíst certifikát z %(cert)s %(e)s."
-
-#, python-format
-msgid "Unable to load key from %(cert)s %(e)s."
-msgstr "Nelze načíst klíč z %(cert)s %(e)s."
-
-#, python-format
 msgid "Unable to locate account %(account_name)s on Solidfire device"
 msgstr "Nelze nalézt účet %(account_name)s na zařízení Solidfire"
 
@@ -6313,12 +4429,6 @@ msgstr "Nelze mapovat svazek."
 msgid "Unable to parse attributes."
 msgstr "Nelze zpracovat vlastnosti."
 
-#, python-format
-msgid ""
-"Unable to promote replica to primary for volume %s. No secondary copy "
-"available."
-msgstr "Nelze povýšit repliku na hlavní pro svazek %s. Druhá kopie neexistuje."
-
 msgid ""
 "Unable to re-use a host that is not managed by Cinder with "
 "use_chap_auth=True,"
@@ -6343,36 +4453,12 @@ msgstr ""
 "Nezle přetypovat: Kopie svazku %s již existuje, Přetypování by překročilo "
 "omezení 2 kopií."
 
-#, python-format
-msgid ""
-"Unable to retype: Current action needs volume-copy, it is not allowed when "
-"new type is replication. Volume = %s"
-msgstr ""
-"Nezle přetypovat: Současná činnost vyžaduje kopii svazku, není povoleno, "
-"pokud je nový typ replikace. Svazek = %s"
-
-#, python-format
-msgid "Unable to snap Consistency Group %s"
-msgstr "Nelze vytvořit snímek skupiny jednotnosti %s"
-
 msgid "Unable to terminate volume connection from backend."
 msgstr "Nelze ukončit připojení svazku v podpůrné vrstvě."
 
 #, python-format
 msgid "Unable to terminate volume connection: %(err)s"
 msgstr "Nelze ukončit připojení k ovladači: %(err)s"
-
-#, python-format
-msgid "Unable to update consistency group %s"
-msgstr "Nelze aktualizovat skupinu jednotnosti %s"
-
-#, python-format
-msgid ""
-"Unable to verify initiator group: %(igGroupName)s in masking view "
-"%(maskingViewName)s. "
-msgstr ""
-"Nelze ověřit skupinu zavaděče: %(igGroupName)s por zamaskování "
-"%(maskingViewName)s. "
 
 msgid "Unacceptable parameters."
 msgstr "Nepřijatelné parametry."
@@ -6399,14 +4485,8 @@ msgstr "Neočekávaný stav mapování %(status)s pro %(id)s. Vlastnosti: %(attr
 msgid "Unexpected response from Nimble API"
 msgstr "Neočekávaná odpověď od Nimble API"
 
-msgid "Unexpected response from Tegile IntelliFlash API"
-msgstr "Neočekávaná odpověď od Tegile IntelliFlash API"
-
 msgid "Unexpected status code"
 msgstr "Neočekávaný kód stavu"
-
-msgid "Unknown Gluster exception"
-msgstr "Neznámá výjimka Gluster"
 
 msgid "Unknown NFS exception"
 msgstr "Neznámá výjimka NFS"
@@ -6426,10 +4506,6 @@ msgstr "Neznámá činnost"
 #, python-format
 msgid "Unknown or unsupported command %(cmd)s"
 msgstr "Neznámý nebo nepodporovaný příkaz %(cmd)s"
-
-#, python-format
-msgid "Unknown protocol: %(protocol)s."
-msgstr "Neznámý protokol: %(protocol)s."
 
 #, python-format
 msgid "Unknown quota resources %(unknown)s."
@@ -6528,12 +4604,6 @@ msgstr "Uživatel nemá správcovská oprávnění"
 msgid "User not authorized to perform WebDAV operations."
 msgstr "Uživatel nemá oprávnění provádět operace WebDAV."
 
-msgid "V2 rollback, volume is not in any storage group."
-msgstr "Zpětné vrácení V2, svazek není v žádné skupině úložiště."
-
-msgid "V3 rollback"
-msgstr "Zpětné vrácení V3"
-
 #, python-format
 msgid "VV Set %s does not exist."
 msgstr "Sada virtuálních svazků %s neexistuje."
@@ -6554,13 +4624,6 @@ msgstr "Ověření připojení svazku selhalo (chyba: %(err)s)."
 msgid ""
 "Value \"%(value)s\" is not valid for configuration option \"%(option)s\""
 msgstr "Hodnota \"%(value)s\" není platná pro volbu nastavení \"%(option)s\""
-
-#, python-format
-msgid "Value %(param)s for %(param_string)s is not a boolean."
-msgstr "Hodnota %(param)s pro %(param_string)s není boolean."
-
-msgid "Value required for 'scality_sofs_config'"
-msgstr "Je třeba zadat hodnotu pro 'scality_sofs_config'"
 
 #, python-format
 msgid "ValueError: %s"
@@ -6597,14 +4660,6 @@ msgstr "Úkol kopírování svazku do cíle %s selhal."
 #, python-format
 msgid "Volume %(deviceID)s not found."
 msgstr "Svazek %(deviceID)s nenalezen."
-
-#, python-format
-msgid ""
-"Volume %(name)s not found on the array. Cannot determine if there are "
-"volumes mapped."
-msgstr ""
-"Svazek %(name)s nebyl nalezen v poli. Nelze zjistit zda jsou svazky "
-"namapovány."
 
 #, python-format
 msgid "Volume %(name)s was created in VNX, but in %(state)s state."
@@ -6666,10 +4721,6 @@ msgid "Volume %(volume_id)s replication error: %(reason)s"
 msgstr "Chyba replikace svazku %(volume_id)s: %(reason)s"
 
 #, python-format
-msgid "Volume %(volume_name)s is busy."
-msgstr "Svazek %(volume_name)s je zaneprázdněn."
-
-#, python-format
 msgid "Volume %s could not be created from source volume."
 msgstr "Svazek %s nemohl být vytvořen ze zdrojového svazku."
 
@@ -6688,10 +4739,6 @@ msgstr "Svazek %s nemá zadáno umístění poskytovatele, je přeskočen."
 #, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "Svazek %s neexistuje v poli."
-
-#, python-format
-msgid "Volume %s is already managed by OpenStack."
-msgstr "Svazek %s již je spravován OpenStack."
 
 #, python-format
 msgid ""
@@ -6746,31 +4793,8 @@ msgstr ""
 msgid "Volume Type id must not be None."
 msgstr "ID typu svazku nesmí být None."
 
-#, python-format
-msgid ""
-"Volume [%(cb_vol)s] was not found at CloudByte storage corresponding to "
-"OpenStack volume [%(ops_vol)s]."
-msgstr ""
-"Svazek  [%(cb_vol)s] nebyl nalezen v úložišti CloudByte odpovídající svazku "
-"Openstack [%(ops_vol)s]."
-
-#, python-format
-msgid "Volume [%s] not found in CloudByte storage."
-msgstr "Svazek [%s] nebyl nalezen v úložišti CloudByte."
-
-#, python-format
-msgid "Volume attachment could not be found with filter: %(filter)s ."
-msgstr "Připojení svazku nebylo nalezen ve filtru: %(filter)s ."
-
-#, python-format
-msgid "Volume backend config is invalid: %(reason)s"
-msgstr "Nastavení podpůrné vrstvy svazku je neplatné: %(reason)s"
-
 msgid "Volume by this name already exists"
 msgstr "Svazek s tímto názvem již existuje"
-
-msgid "Volume cannot be restored since it contains snapshots."
-msgstr "Svazek nemůže být obnoven protože obsahuje snímky."
 
 msgid "Volume create failed while extracting volume ref."
 msgstr "Vytvoření svazku selhalo při extrahování odkazu svazku."
@@ -6804,9 +4828,6 @@ msgstr "Svazek se používá."
 msgid "Volume is not available."
 msgstr "Svazek není dostupný."
 
-msgid "Volume is not local to this node"
-msgstr "Svazek není pro tento uzel místním"
-
 msgid "Volume is not local to this node."
 msgstr "Svazek není pro tento uzel místním."
 
@@ -6820,9 +4841,6 @@ msgstr ""
 #, python-format
 msgid "Volume migration failed: %(reason)s"
 msgstr "Přesunutí svazku selhalo: %(reason)s"
-
-msgid "Volume must be available"
-msgstr "Svazek musí být dostupný"
 
 msgid "Volume must be in the same availability zone as the snapshot"
 msgstr "Svazek musí být ve stejné zóně dostupnosti jako snímek"
@@ -6842,14 +4860,6 @@ msgstr "Svazek není nalezen v instanci %(instance_id)s."
 
 msgid "Volume not found on configured storage backend."
 msgstr "Svazek nebyl nalezen na nastavené podpůrné vrstvě úložiště."
-
-msgid ""
-"Volume not found on configured storage backend. If your volume name contains "
-"\"/\", please rename it and try to manage again."
-msgstr ""
-"Svazek nebyl nalezen na nastavené podpůrné vrstvě úložiště. Pokud obsah "
-"vašeho svazku obsahuje \"/\", je třeba ho přejmenovat a pak se pokus znovu o "
-"správu."
 
 msgid "Volume not found on configured storage pools."
 msgstr "Svazek nebyl nalezen v nastavených zásobách úložiště."
@@ -6907,19 +4917,6 @@ msgstr "Velikost svazku se od poslední zálohy zvýšila. Proveďte úplnou zá
 
 msgid "Volume size must multiple of 1 GB."
 msgstr "Velikost svazku musí být násobkem 1GB."
-
-#, python-format
-msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
-msgstr ""
-"Stav svazku musí být pro vytvoření snímku \"available\" nebo \"in-use\". "
-"(nyní je %s)"
-
-msgid "Volume status must be \"available\" or \"in-use\"."
-msgstr "Stav svazku musí být \"available\" nebo \"in-use\"."
-
-#, python-format
-msgid "Volume status must be %s to reserve."
-msgstr "Stav svazku musí být pro rezervaci %s."
 
 msgid "Volume status must be 'available'."
 msgstr "Stav svazku musí být 'available'."
@@ -6979,14 +4976,6 @@ msgstr "Typ svazku s názvem %(volume_type_name)s nemohl být nalezen."
 
 #, python-format
 msgid ""
-"Volume: %(volumeName)s is not a concatenated volume. You can only perform "
-"extend on concatenated volume. Exiting..."
-msgstr ""
-"Svazek: %(volumeName)s není zřetězený svazek. Rozšíření lze provádět pouze "
-"na zřetězeném svazku. Ukončování..."
-
-#, python-format
-msgid ""
 "VzStorage config 'vzstorage_used_ratio' invalid. Must be > 0 and <= 1.0: %s."
 msgstr ""
 "Nastavení VzStorage 'vzstorage_used_ratio' je neplatné. Musí být > 0 a <= "
@@ -6996,17 +4985,11 @@ msgstr ""
 msgid "VzStorage config file at %(config)s doesn't exist."
 msgstr "Soubor s nastavením VzStorage %(config)s nebyl nalezen."
 
-msgid "Wait replica complete timeout."
-msgstr "Vypršel časový limit čekání na dokončení replikace."
-
 msgid ""
 "Waiting for all nodes to join cluster. Ensure all sheep daemons are running."
 msgstr ""
 "Čekání na připojení uzlů ke clusteru. Ujistěte se, že všichni daemoni sheep "
 "jsou spuštěni."
-
-msgid "X-IO Volume Driver exception!"
-msgstr "Výjimka ovladače svazku X-IO!"
 
 msgid "XtremIO not configured correctly, no iscsi portals found"
 msgstr "XtremIO není správně nastaveno, nenalezeny žádné portály iscsi"
@@ -7023,17 +5006,6 @@ msgid ""
 msgstr ""
 "Před použitím ovladačů 3PAR musíte nainstalovat hpe3parclient. Spusťte \"pip "
 "install python-3parclient\" pro instalaci klienta."
-
-msgid "You must supply an array in your EMC configuration file."
-msgstr "Ve vašem souboru s nastavením musíte zadat pole EMC."
-
-#, python-format
-msgid ""
-"Your original size: %(originalVolumeSize)s GB is greater than: %(newSize)s "
-"GB. Only Extend is supported. Exiting..."
-msgstr ""
-"Vaše původní velikost: %(originalVolumeSize)s GB je větší než: %(newSize)s "
-"GB. Podporováno je pouze rozšíření. Uknčování..."
 
 #, python-format
 msgid "ZeroDivisionError: %s"
@@ -7131,9 +5103,6 @@ msgstr "již vytvořeno"
 msgid "already_created"
 msgstr "již vytvořeno"
 
-msgid "attach snapshot from remote node"
-msgstr "připojit snímek ke vzdálenému uzlu"
-
 #, python-format
 msgid "attribute %s not lazy-loadable"
 msgstr "vlastnost %s nelze líně načíst"
@@ -7208,23 +5177,6 @@ msgid "being attached by different mode"
 msgstr "je připojen v jiném režimu"
 
 #, python-format
-msgid "call failed: %r"
-msgstr "Volání selhalo: %r"
-
-msgid "call failed: GARBAGE_ARGS"
-msgstr "Volání selhalo: Zbytečné argumenty"
-
-msgid "call failed: PROC_UNAVAIL"
-msgstr "Volání selhalo: Proces je nedostupný"
-
-#, python-format
-msgid "call failed: PROG_MISMATCH: %r"
-msgstr "Volání selhalo: Neshoda programu: %r"
-
-msgid "call failed: PROG_UNAVAIL"
-msgstr "Volání selhalo: Program je nedostupný"
-
-#, python-format
 msgid "can't find lun-map, ig:%(ig)s vol:%(vol)s"
 msgstr "nelze najít lun-map, ig:%(ig)s svazek:%(vol)s"
 
@@ -7236,10 +5188,6 @@ msgstr "v žádosti nelze zpracovat jak název tak index najednou"
 
 msgid "cannot understand JSON"
 msgstr "JSON nelze porozumět"
-
-#, python-format
-msgid "cg-%s"
-msgstr "skupinajednotnosti-%s"
 
 msgid "cgsnapshot assigned"
 msgstr "snímek skupiny jednotnosti přidělen"
@@ -7296,9 +5244,6 @@ msgstr "Vytvoření kopie: Zdrojový virtuální disk %(src)s neexistuje."
 
 msgid "create_host: Host name is not unicode or string."
 msgstr "Vytvoření hostitele: Název není unicode nebo řetězec."
-
-msgid "create_host: No initiators or wwpns supplied."
-msgstr "Vytvoření hostitele: Nepředány žádné zavaděče nebo wwpns."
 
 msgid "create_hypermetro_pair error."
 msgstr "Chyba při vytváření páru hypermetro."
@@ -7366,9 +5311,6 @@ msgstr "mazání snímku %(snapshot_name)s který má nezávislé svazky"
 msgid "deleting volume %(volume_name)s that has snapshot"
 msgstr "mazání svazku %(volume_name)s který má snímek"
 
-msgid "detach snapshot from remote node"
-msgstr "odpojit snímek ze vzdáleného uzle"
-
 msgid "do_setup: No configured nodes."
 msgstr "Zavedení: Nenastaveny žádné uzly."
 
@@ -7380,21 +5322,11 @@ msgstr ""
 "chyba při zápisu objektu do swift, MD5 objektu ve swift %(etag)s se liší od "
 "MD5 objektu odeslaného do swift %(md5)s"
 
-msgid "failed to create new_volume on destination host"
-msgstr "nelze vytvořit nový svazek na cílovém hostiteli"
-
 msgid "fake"
 msgstr "falešný"
 
-#, python-format
-msgid "file already exists at %s"
-msgstr "soubor již existuje v %s"
-
 msgid "fileno is not supported by SheepdogIOWrapper"
 msgstr "fileno nepodporuje SheepdogIOWrapper"
-
-msgid "fileno() not supported by RBD()"
-msgstr "fileno() není podporován RBD()"
 
 msgid ""
 "flashsystem_multihostmap_enabled is set to False, not allow multi host "
@@ -7404,9 +5336,6 @@ msgstr ""
 "flashsystem_multihostmap_enabled je nastaven na False, neumožňující mapování "
 "více hostitelů. CMMVC6071E, mapování virtuálního disku na hostitele nebylo "
 "vytvořeno protože disk k hostiteli již je namapován."
-
-msgid "flush() not supported in this version of librbd"
-msgstr "flush() není podporován touto verzí librbd"
 
 #, python-format
 msgid "fmt=%(fmt)s backed by: %(backing_file)s"
@@ -7543,10 +5472,6 @@ msgstr ""
 "manage_existing vyžaduje klíč 'name' pro identifikaci existujícího svazku."
 
 #, python-format
-msgid "marker [%s] not found"
-msgstr "značka [%s] nenalezena"
-
-#, python-format
 msgid "mdiskgrp missing quotes %s"
 msgstr "mdiskgrp chybí uvozovky %s"
 
@@ -7561,9 +5486,6 @@ msgstr "mkfs selhalo u svazku %(vol)s, chybová zpráva byla: %(err)s."
 msgid "mock"
 msgstr "nepravý"
 
-msgid "mount.glusterfs is not installed"
-msgstr "mount.glusterfs není nainstalováno"
-
 #, python-format
 msgid "multiple resources with name %s found by drbdmanage"
 msgstr "drbdmanage nalezl mnoho zdrojů s názvem %s"
@@ -7574,10 +5496,6 @@ msgstr "nalezeno mnoho zdrojů mající ID snímku %s"
 
 msgid "name cannot be None"
 msgstr "název nemůže být Žádný"
-
-#, python-format
-msgid "no REPLY but %r"
-msgstr "Žádná odpověď ale %r"
 
 #, python-format
 msgid "no snapshot with id %s found in drbdmanage"
@@ -7678,9 +5596,6 @@ msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
 msgstr ""
 "rtslib_fb chybí člen %s: Možná budete potřebovat novější python-rtslib-fb."
 
-msgid "san_ip is not set."
-msgstr "san_ip není nastaveno."
-
 msgid "san_ip must be set"
 msgstr "san_ip musí být nastaveno"
 
@@ -7704,10 +5619,6 @@ msgstr "snímky přiděleny"
 msgid "snapshots changed"
 msgstr "snímek změněn"
 
-#, python-format
-msgid "source volume id:%s is not replicated"
-msgstr "id zdrojového svazku:%s není replikováno"
-
 msgid "status must be available"
 msgstr "stav musí být dostupný"
 
@@ -7728,25 +5639,8 @@ msgstr ""
 msgid "terminate_connection: Failed to get host name from connector."
 msgstr "Ukončení spojení: Nelze získat název hostitele z konektoru."
 
-msgid "timeout creating new_volume on destination host"
-msgstr "při vytváření nového svazku na cílovém hostiteli vypršel časový limit"
-
 msgid "too many body keys"
 msgstr "příliš mnoho klíčů těla"
-
-#, python-format
-msgid "umount: %s: not mounted"
-msgstr "odpojení: %s: není připojeno"
-
-#, python-format
-msgid "umount: %s: target is busy"
-msgstr "odpojení: %s: cíl je zaneprázdněn"
-
-msgid "umount: <mnt_path>: some other error"
-msgstr "odpojení: <cesta_připojení>: nějaká jiná chyba"
-
-msgid "umount: <mnt_path>: target is busy"
-msgstr "odpojení: <cesta_připojení>: zařízení je zaneprázdněno"
 
 #, python-format
 msgid "unrecognized argument %s"
@@ -7763,9 +5657,6 @@ msgstr "Pro zobrazení cíle je třeba platné iqn"
 msgid "vdisk %s is not defined."
 msgstr "virtuální disk %s není určen."
 
-msgid "vmemclient python library not found"
-msgstr "Python knihovna vmemclient nebyla nalezena"
-
 #, python-format
 msgid "volume %s not found in drbdmanage"
 msgstr "svazek %s není nalezen v drbdmanage"
@@ -7778,9 +5669,6 @@ msgstr "svazek změněn"
 
 msgid "volume is already attached"
 msgstr "svazek již je připojen"
-
-msgid "volume is not local to this node"
-msgstr "svazek není pro tento uzel místním"
 
 #, python-format
 msgid ""
@@ -7804,10 +5692,6 @@ msgstr "volume_type_id nemůže být None"
 msgid "volume_types must be provided to create consistency group %(name)s."
 msgstr ""
 "pro vytvoření skupiny jednotnosti %(name)s musí být zadány typy svazků."
-
-#, python-format
-msgid "volume_types must be provided to create consistency group %s."
-msgstr "pro vytvoření skupiny jednotnosti %s musí být zadány typy svazků."
 
 msgid "volumes assigned"
 msgstr "svazky přiděleny"

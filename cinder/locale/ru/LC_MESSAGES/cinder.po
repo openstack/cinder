@@ -8,20 +8,20 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev202\n"
+"Project-Id-Version: cinder 11.0.0.0rc2.dev468\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-10-07 03:25+0000\n"
+"POT-Creation-Date: 2017-10-23 05:32+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-21 02:35+0000\n"
-"Last-Translator: Grigory Mokhin <mokhin@gmail.com>\n"
+"PO-Revision-Date: 2016-04-12 04:59+0000\n"
+"Last-Translator: Copied by Zanata <copied-by-zanata@zanata.org>\n"
 "Language: ru\n"
 "Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
 "%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n"
 "%100>=11 && n%100<=14)? 2 : 3);\n"
 "Generated-By: Babel 2.0\n"
-"X-Generator: Zanata 3.7.3\n"
+"X-Generator: Zanata 3.9.6\n"
 "Language-Team: Russian\n"
 
 #, python-format
@@ -40,16 +40,8 @@ msgstr ""
 msgid " but size is now %d"
 msgstr " но сейчас размер: %d"
 
-#, python-format
-msgid " but size is now %d."
-msgstr " но сейчас размер %d."
-
 msgid " or "
 msgstr "или "
-
-#, python-format
-msgid "%(attr)s is not set."
-msgstr "%(attr)s не задан."
 
 #, python-format
 msgid ""
@@ -60,10 +52,6 @@ msgstr ""
 "хостам. Отключите том от существующих хостов перед импортом"
 
 #, python-format
-msgid "%(err)s"
-msgstr "%(err)s"
-
-#, python-format
 msgid ""
 "%(err)s\n"
 "result: %(res)s."
@@ -72,16 +60,8 @@ msgstr ""
 "Результат: %(res)s."
 
 #, python-format
-msgid "%(error_message)s"
-msgstr "%(error_message)s"
-
-#, python-format
 msgid "%(exception)s: %(explanation)s"
 msgstr "%(exception)s: %(explanation)s"
-
-#, python-format
-msgid "%(file)s: Permission denied."
-msgstr "%(file)s: доступ запрещен."
 
 #, python-format
 msgid ""
@@ -104,10 +84,6 @@ msgid "%(host)-25s\t%(zone)-15s"
 msgstr "%(host)-25s\t%(zone)-15s"
 
 #, python-format
-msgid "%(message)s"
-msgstr "%(message)s"
-
-#, python-format
 msgid ""
 "%(message)s\n"
 "Status Code: %(_status)s\n"
@@ -116,10 +92,6 @@ msgstr ""
 "%(message)s\n"
 "Код состояния: %(_status)s\n"
 "Тело: %(_body)s"
-
-#, python-format
-msgid "%(message)s, subjectAltName: %(sanList)s."
-msgstr "%(message)s, subjectAltName: %(sanList)s."
 
 #, python-format
 msgid ""
@@ -273,63 +245,8 @@ msgstr ""
 "(Команда: %(cmd)s) (Код возврата: %(exit_code)s) (stdout: %(stdout)s) "
 "(stderr: %(stderr)s)"
 
-#, python-format
-msgid "A LUN (HLUN) was not found. (LDEV: %(ldev)s)"
-msgstr "LUN (HLUN) не найден. (LDEV: %(ldev)s)"
-
 msgid "A concurrent, possibly contradictory, request has been made."
 msgstr "Параллельно выполняется другой, вероятно, конфликтующий запрос."
-
-#, python-format
-msgid ""
-"A free LUN (HLUN) was not found. Add a different host group. (LDEV: %(ldev)s)"
-msgstr ""
-"Не найден свободный LUN (HLUN). Добавьте другую группу хостов. (LDEV: "
-"%(ldev)s)"
-
-#, python-format
-msgid "A host group could not be added. (port: %(port)s, name: %(name)s)"
-msgstr "Не удалось добавить группу хостов. (порт: %(port)s, имя: %(name)s)"
-
-#, python-format
-msgid ""
-"A host group could not be deleted. (port: %(port)s, gid: %(gid)s, name: "
-"%(name)s)"
-msgstr ""
-"Не удалось удалить группу хостов. (порт: %(port)s, ИД группы: %(gid)s, имя: "
-"%(name)s)"
-
-#, python-format
-msgid "A host group is invalid. (host group: %(gid)s)"
-msgstr "Недопустимая группа хостов. (группа хостов: %(gid)s)"
-
-#, python-format
-msgid "A pair cannot be deleted. (P-VOL: %(pvol)s, S-VOL: %(svol)s)"
-msgstr "Не удалось удалить пару. (P-VOL: %(pvol)s, S-VOL: %(svol)s)"
-
-#, python-format
-msgid ""
-"A pair could not be created. The maximum number of pair is exceeded. (copy "
-"method: %(copy_method)s, P-VOL: %(pvol)s)"
-msgstr ""
-"Не удалось создать пару. Превышено максимальное число пар. (метод "
-"копирования: %(copy_method)s, P-VOL: %(pvol)s)"
-
-#, python-format
-msgid "A parameter is invalid. (%(param)s)"
-msgstr "Недопустимый параметр. (%(param)s)"
-
-#, python-format
-msgid "A parameter value is invalid. (%(meta)s)"
-msgstr "Недопустимое значение параметра. (%(meta)s)"
-
-#, python-format
-msgid "A pool could not be found. (pool id: %(pool_id)s)"
-msgstr "Не найден пул. (ИД пул: %(pool_id)s)"
-
-#, python-format
-msgid "A snapshot status is invalid. (status: %(status)s)"
-msgstr "Недопустимое состояние моментальной копии. (состояние: %(status)s)"
 
 msgid "A valid secondary target MUST be specified in order to failover."
 msgstr ""
@@ -340,27 +257,12 @@ msgid "A volume ID or share was not specified."
 msgstr "Не указан ИД тома или общий ресурс."
 
 #, python-format
-msgid "A volume status is invalid. (status: %(status)s)"
-msgstr "Недопустимое состояние тома. (состояние: %(status)s)"
-
-#, python-format
-msgid "API %(name)s failed with error string %(err)s"
-msgstr "Сбой API %(name)s, строка ошибки %(err)s"
-
-#, python-format
 msgid ""
 "API Version String %(version)s is of invalid format. Must be of format "
 "MajorNum.MinorNum."
 msgstr ""
 "Недопустимый формат строки версии API %(version)s. Требуется формат: "
 "MajorNum.MinorNum."
-
-msgid "API key is missing for CloudByte driver."
-msgstr "Отсутствует ключ API для драйвера CloudByte."
-
-#, python-format
-msgid "API response: %(response)s"
-msgstr "Ответ API: %(response)s"
 
 #, python-format
 msgid "API response: %s"
@@ -443,32 +345,6 @@ msgstr "Возникла ошибка при чтении тома \"%s\"."
 msgid "An error occurred while writing to volume \"%s\"."
 msgstr "Возникла ошибка при записи на том \"%s\"."
 
-#, python-format
-msgid "An iSCSI CHAP user could not be added. (username: %(user)s)"
-msgstr ""
-"Не удалось добавить пользователя CHAP iSCSI. (имя пользователя: %(user)s)"
-
-#, python-format
-msgid "An iSCSI CHAP user could not be deleted. (username: %(user)s)"
-msgstr ""
-"Не удалось удалить пользователя CHAP iSCSI. (имя пользователя: %(user)s)"
-
-#, python-format
-msgid ""
-"An iSCSI target could not be added. (port: %(port)s, alias: %(alias)s, "
-"reason: %(reason)s)"
-msgstr ""
-"Не удалось добавить целевое расположение iSCSI. (порт: %(port)s, псевдоним: "
-"%(alias)s, причина: %(reason)s)"
-
-#, python-format
-msgid ""
-"An iSCSI target could not be deleted. (port: %(port)s, tno: %(tno)s, alias: "
-"%(alias)s)"
-msgstr ""
-"Не удалось удалить целевое расположение iSCSI. (порт: %(port)s, номер "
-"целевого расположения: %(tno)s, псевдоним: %(alias)s)"
-
 msgid "An unknown exception occurred."
 msgstr "Обнаружено неизвестное исключение."
 
@@ -523,14 +399,6 @@ msgid "Attempt to transfer %s with invalid auth key."
 msgstr "Попытка передачи %s с недопустимым ключом авторизации."
 
 #, python-format
-msgid "Auth group [%s] details not found in CloudByte storage."
-msgstr "Не найдена информация группы идентификации [%s] в хранилище CloudByte."
-
-msgid "Auth user details not found in CloudByte storage."
-msgstr ""
-"В хранилище CloudByte не найдена информация о пользователе для идентификации."
-
-#, python-format
 msgid "Authentication failed, verify the switch credentials, error code %s."
 msgstr ""
 "Ошибка идентификации. Проверьте идентификационные данные. Код ошибки %s."
@@ -552,20 +420,6 @@ msgstr ""
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr "Базовый сервер не существует (%(backend)s)"
-
-#, python-format
-msgid "Backend reports: %(message)s"
-msgstr "Отчеты базовой программы: %(message)s"
-
-msgid "Backend reports: item already exists"
-msgstr "Отчеты базовой программы: элемент уже существует"
-
-msgid "Backend reports: item not found"
-msgstr "Отчеты базовой программы: элемент не найден"
-
-#, python-format
-msgid "Backend service retry timeout hit: %(timeout)s sec"
-msgstr "Тайм-аут повторов службы базовой программы: %(timeout)s с"
 
 msgid "Backend storage did not configure fiber channel target."
 msgstr "Память базовой системы не настроила цель оптоволоконного канала."
@@ -591,26 +445,6 @@ msgstr "Драйвер резервного копирования выдал о
 
 msgid "Backup id required"
 msgstr "Требуется ИД резервной копии"
-
-msgid "Backup is not supported for GlusterFS volumes with snapshots."
-msgstr ""
-"Резервное копирование не поддерживается для томов GlusterFS с моментальными "
-"копиями."
-
-msgid "Backup is only supported for SOFS volumes without backing file."
-msgstr ""
-"Резервное копирование поддерживается только для томов SOFS с форматированием "
-"raw без базового файла."
-
-msgid "Backup is only supported for raw-formatted GlusterFS volumes."
-msgstr ""
-"Резервное копирование поддерживается только для томов GlusterFS с "
-"форматированием raw."
-
-msgid "Backup is only supported for raw-formatted SOFS volumes."
-msgstr ""
-"Резервное копирование поддерживается только для томов SOFS с форматированием "
-"raw."
 
 msgid "Backup operation of an encrypted volume failed."
 msgstr "Операция резервного копирования зашифрованного тома не выполнена."
@@ -650,10 +484,6 @@ msgid "Backup to be restored has invalid size"
 msgstr "Резервная копия для восстановления имеет недопустимый размер"
 
 #, python-format
-msgid "Bad Status line returned: %(arg)s."
-msgstr "Возвращена неверная строка состояния: %(arg)s."
-
-#, python-format
 msgid "Bad key(s) in quota set: %s"
 msgstr "Неверные ключи в наборе квот: %s"
 
@@ -683,34 +513,6 @@ msgstr "Двоичный"
 
 msgid "Blank components"
 msgstr "Пустые компоненты"
-
-msgid "Blockbridge api host not configured"
-msgstr "Не настроен хост API Blockbridge"
-
-#, python-format
-msgid "Blockbridge configured with invalid auth scheme '%(auth_scheme)s'"
-msgstr ""
-"Blockbridge настроен с недопустимой схемой идентификации '%(auth_scheme)s'"
-
-msgid "Blockbridge default pool does not exist"
-msgstr "Пул Blockbridge по умолчанию не существует"
-
-msgid ""
-"Blockbridge password not configured (required for auth scheme 'password')"
-msgstr ""
-"Не настроен пароль Blockbridge (требуется для схемы идентификации 'password')"
-
-msgid "Blockbridge pools not configured"
-msgstr "Пулы Blockbridge не настроены"
-
-msgid "Blockbridge token not configured (required for auth scheme 'token')"
-msgstr ""
-"Не настроен маркер Blockbridge (требуется для схемы идентификации 'token')"
-
-msgid "Blockbridge user not configured (required for auth scheme 'password')"
-msgstr ""
-"Не настроен пользователь Blockbridge (требуется для схемы идентификации "
-"'password')"
 
 #, python-format
 msgid "Brocade Fibre Channel Zoning CLI error: %(reason)s"
@@ -756,9 +558,6 @@ msgstr ""
 "хостом.\n"
 "\""
 
-msgid "CONCERTO version is not supported"
-msgstr "Версия CONCERTO не поддерживается"
-
 #, python-format
 msgid "CPG (%s) doesn't exist on array"
 msgstr "CPG (%s) не существует в массиве"
@@ -792,10 +591,6 @@ msgstr "Не удаётся получить информацию о пуле: %
 msgid "Can not translate %s to integer."
 msgstr "Невозможно преобразовать %s в целое число."
 
-#, python-format
-msgid "Can't access 'scality_sofs_config': %s"
-msgstr "Нет доступа к scality_sofs_config: %s"
-
 msgid "Can't decode backup record."
 msgstr "Не удалось декодировать запись резервной копии."
 
@@ -810,11 +605,6 @@ msgstr ""
 #, python-format
 msgid "Can't find cache name on the array, cache name is: %(name)s."
 msgstr "Не найдено имя кэша в массиве. Имя кэша: %(name)s."
-
-#, python-format
-msgid "Can't find lun info on the array. volume: %(id)s, lun name: %(name)s."
-msgstr ""
-"Не удалось найти информацию о lun в массиве. Том: %(id)s, имя lun: %(name)s."
 
 #, python-format
 msgid "Can't find partition name on the array, partition name is: %(name)s."
@@ -911,55 +701,6 @@ msgstr "Не удалось проанализировать запись рез
 
 #, python-format
 msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because it "
-"has no volume type."
-msgstr ""
-"Не удалось добавить том %(volume_id)s в группу согласования %(group_id)s: "
-"том не имеет типа тома."
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because it "
-"is already in consistency group %(orig_group)s."
-msgstr ""
-"Не удалось добавить том %(volume_id)s в группу согласования %(group_id)s: он "
-"уже есть в группе согласования %(orig_group)s."
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
-"volume cannot be found."
-msgstr ""
-"Не удалось добавить том %(volume_id)s в группу согласования %(group_id)s: "
-"том не найден."
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
-"volume does not exist."
-msgstr ""
-"Не удалось добавить том %(volume_id)s в группу согласования %(group_id)s: "
-"том не существует."
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
-"volume is in an invalid state: %(status)s. Valid states are: %(valid)s."
-msgstr ""
-"Не удалось добавить том %(volume_id)s в группу согласования %(group_id)s: "
-"том находится в недопустимом состоянии %(status)s. Допустимые состояния: "
-"%(valid)s."
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
-"volume type %(volume_type)s is not supported by the group."
-msgstr ""
-"Не удалось добавить том %(volume_id)s в группу согласования %(group_id)s: "
-"тип тома %(volume_type)s не поддерживается группой."
-
-#, python-format
-msgid ""
 "Cannot attach already attached volume %s; multiattach is disabled via the "
 "'netapp_enable_multiattach' configuration option."
 msgstr ""
@@ -977,26 +718,6 @@ msgstr ""
 "Не удаётся изменить контекст VF, данный VF недоступен в списке управляемых "
 "VF %(vf_list)s."
 
-msgid "Cannot connect to ECOM server."
-msgstr "Не удалось подключиться к серверу ECOM."
-
-#, python-format
-msgid ""
-"Cannot create consistency group %(group)s because snapshot %(snap)s is not "
-"in a valid state. Valid states are: %(valid)s."
-msgstr ""
-"Не удалось создать группу согласования %(group)s, поскольку моментальная "
-"копия %(snap)s не находится в допустимом состоянии. Допустимые состояния: "
-"%(valid)s."
-
-#, python-format
-msgid ""
-"Cannot create consistency group %(group)s because source volume "
-"%(source_vol)s is not in a valid state. Valid states are: %(valid)s."
-msgstr ""
-"Не удалось создать группу согласования %(group)s, поскольку исходный том "
-"%(source_vol)s не в допустимом состоянии. Допустимые состояния: %(valid)s."
-
 #, python-format
 msgid "Cannot create directory %s."
 msgstr "Не удалось создать каталог %s."
@@ -1012,21 +733,12 @@ msgstr ""
 "vmdk."
 
 #, python-format
-msgid "Cannot create masking view: %(maskingViewName)s. "
-msgstr "Создать маскирующее представление %(maskingViewName)s невозможно. "
-
-#, python-format
 msgid ""
 "Cannot create more than %(req)s volumes on the ESeries array when "
 "'netapp_enable_multiattach' is set to true."
 msgstr ""
 "Нельзя создать больше %(req)s томов в массиве ESeries, когда параметр "
 "'netapp_enable_multiattach' равен true."
-
-#, python-format
-msgid "Cannot create or find an storage group with name %(sgGroupName)s."
-msgstr ""
-"Не удалось создать или найти группу носителей с именем %(sgGroupName)s."
 
 #, python-format
 msgid "Cannot create volume of size %s: not multiple of 8GB."
@@ -1037,10 +749,6 @@ msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s"
 msgstr ""
 "Невозможно создать volume_type с именем %(name)s и спецификациями "
 "%(extra_specs)s"
-
-#, python-format
-msgid "Cannot delete LUN %s while snapshots exist."
-msgstr "Нельзя удалить LUN %s, когда есть моментальные копии."
 
 #, python-format
 msgid ""
@@ -1061,122 +769,11 @@ msgstr ""
 msgid "Cannot delete encryption specs. Volume type in use."
 msgstr "Невозможно удалить спецификацию шифрования. Тип тома используется."
 
-msgid "Cannot determine storage pool settings."
-msgstr "Не удается определить параметры пула памяти."
-
-msgid "Cannot execute /sbin/mount.sofs"
-msgstr "Не удалось выполнить /sbin/mount.sofs"
-
-#, python-format
-msgid "Cannot find CG group %s."
-msgstr "Не найдена группа согласования %s."
-
-#, python-format
-msgid ""
-"Cannot find Controller Configuration Service for storage system "
-"%(storage_system)s."
-msgstr ""
-"Не удалось найти службу конфигурации контроллеров для системы хранения "
-"%(storage_system)s."
-
-#, python-format
-msgid "Cannot find Replication Service to create volume for snapshot %s."
-msgstr ""
-"Не найдена служба репликации для создания тома для моментальной копии %s."
-
-#, python-format
-msgid "Cannot find Replication Service to delete snapshot %s."
-msgstr "Не найдена служба репликации для удаления моментальной копии %s."
-
-#, python-format
-msgid "Cannot find Replication service on system %s."
-msgstr "Не найдена служба репликации в системе %s."
-
-#, python-format
-msgid "Cannot find Volume: %(id)s. unmanage operation.  Exiting..."
-msgstr "Не найден том %(id)s. Операция удаления из управления. Выход..."
-
-#, python-format
-msgid "Cannot find Volume: %(volumename)s. Extend operation.  Exiting...."
-msgstr "Том %(volumename)s не найден. Операция Extend. Выполняется выход..."
-
-#, python-format
-msgid "Cannot find device number for volume %(volumeName)s."
-msgstr "Не найден номер устройства для тома %(volumeName)s."
-
 msgid "Cannot find migration task."
 msgstr "Не найдена задача переноса."
 
-#, python-format
-msgid "Cannot find replication service on system %s."
-msgstr "Не найдена служба репликации в системе %s."
-
-#, python-format
-msgid "Cannot find source CG instance. consistencygroup_id: %s."
-msgstr ""
-"Не найден исходный экземпляр группы согласования. consistencygroup_id: %s."
-
-#, python-format
-msgid "Cannot get mcs_id by channel id: %(channel_id)s."
-msgstr "Не удалось получить mcs_id по ИД канала: %(channel_id)s."
-
-msgid "Cannot get necessary pool or storage system information."
-msgstr ""
-"Не удалось получить необходимую информацию о пуле или системе хранения."
-
-#, python-format
-msgid ""
-"Cannot get or create a storage group: %(sgGroupName)s for volume "
-"%(volumeName)s "
-msgstr ""
-"Получить или создать группу носителей %(sgGroupName)s для тома "
-"%(volumeName)s невозможно"
-
-#, python-format
-msgid "Cannot get or create initiator group: %(igGroupName)s. "
-msgstr "Cannot get or create initiator group: %(igGroupName)s. "
-
-#, python-format
-msgid "Cannot get port group: %(pgGroupName)s. "
-msgstr "Получить группу портов %(pgGroupName)s невозможно. "
-
-#, python-format
-msgid ""
-"Cannot get storage group: %(sgGroupName)s from masking view "
-"%(maskingViewInstanceName)s. "
-msgstr ""
-"Не удалось получить группу носителей %(sgGroupName)s от маскирующего "
-"представления %(maskingViewInstanceName)s. "
-
-#, python-format
-msgid ""
-"Cannot get supported size range for %(sps)s Return code: %(rc)lu. Error: "
-"%(error)s."
-msgstr ""
-"Не удалось получить диапазон поддерживаемых размеров для %(sps)s. Код "
-"возврата: %(rc)lu. Ошибка: %(error)s."
-
-#, python-format
-msgid ""
-"Cannot get the default storage group for FAST policy: %(fastPolicyName)s."
-msgstr ""
-"Не удалось получить группу носителей по умолчанию для стратегии FAST "
-"%(fastPolicyName)s."
-
-msgid "Cannot get the portgroup from the masking view."
-msgstr "Не удается получить группу портов из маскирующего представления."
-
-msgid "Cannot mount Scality SOFS, check syslog for errors"
-msgstr ""
-"Не удалось смонтировать Scality SOFS. Проверьте системный протокол на "
-"наличие ошибок"
-
 msgid "Cannot ping DRBDmanage backend"
 msgstr "Не удалось проверить связь с базовой программой DRBDmanage"
-
-#, python-format
-msgid "Cannot place volume %(id)s on %(host)s"
-msgstr "Не удалось поместить том %(id)s на %(host)s"
 
 #, python-format
 msgid ""
@@ -1191,24 +788,6 @@ msgstr "Не удалось зарегистрировать ресурс"
 
 msgid "Cannot register resources"
 msgstr "Не удалось зарегистрировать ресурсы"
-
-#, python-format
-msgid ""
-"Cannot remove volume %(volume_id)s from consistency group %(group_id)s "
-"because it is not in the group."
-msgstr ""
-"Не удалось удалить том %(volume_id)s из группы согласования %(group_id)s: он "
-"не находится в группе."
-
-#, python-format
-msgid ""
-"Cannot remove volume %(volume_id)s from consistency group %(group_id)s "
-"because volume is in an invalid state: %(status)s. Valid states are: "
-"%(valid)s."
-msgstr ""
-"Не удалось удалить том %(volume_id)s из группы согласования %(group_id)s: "
-"том находится в недопустимом состоянии %(status)s. Допустимые состояния: "
-"%(valid)s."
 
 #, python-format
 msgid "Cannot retype from HPE3PARDriver to %s."
@@ -1230,23 +809,11 @@ msgstr ""
 "Не удалось выполнить команду vgc-cluster. Убедитесь, что программное "
 "обеспечение установлено и права доступа настроены правильно."
 
-msgid "Cannot set both hitachi_serial_number and hitachi_unit_name."
-msgstr ""
-"hitachi_serial_number и hitachi_unit_name нельзя указывать одновременно."
-
 msgid "Cannot specify both protection domain name and protection domain id."
 msgstr "Нельзя одновременно указывать имя домена защиты и ИД домена защиты."
 
 msgid "Cannot specify both storage pool name and storage pool id."
 msgstr "Нельзя одновременно указывать имя пула памяти и ИД пула памяти."
-
-#, python-format
-msgid ""
-"Cannot update consistency group %(group_id)s because no valid name, "
-"description, add_volumes, or remove_volumes were provided."
-msgstr ""
-"Не удалось обновить группу согласования %(group_id)s: недопустимое значение "
-"параметра name, description, add_volumes или remove_volumes."
 
 msgid "Cannot update encryption specs. Volume type in use."
 msgstr "Невозможно обновить спецификацию шифрования. Тип тома используется."
@@ -1256,15 +823,8 @@ msgid "Cannot update volume_type %(id)s"
 msgstr "Не удалось обновить volume_type %(id)s"
 
 #, python-format
-msgid "Cannot verify the existence of object:%(instanceName)s."
-msgstr "Не удается проверить существование объекта %(instanceName)s."
-
-#, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr "Моментальная копия группы согласования %(cgsnapshot_id)s не найдена."
-
-msgid "Cgsnahost is empty. No consistency group will be created."
-msgstr "Пустой cgsnahost. Группа согласования создана не будет."
 
 msgid "Change hostlun id error."
 msgstr "Ошибка изменения ИД lun хоста."
@@ -1315,10 +875,6 @@ msgid "Cisco Fibre Channel Zoning CLI error: %(reason)s"
 msgstr "Ошибка CLI зонирования Cisco Fibre Channel: %(reason)s"
 
 #, python-format
-msgid "Clone feature is not licensed on %(storageSystem)s."
-msgstr "Функция создания копии не лицензирована в %(storageSystem)s."
-
-#, python-format
 msgid ""
 "Clone type '%(clone_type)s' is invalid; valid values are: '%(full_clone)s' "
 "and '%(linked_clone)s'."
@@ -1331,13 +887,6 @@ msgid ""
 msgstr ""
 "Кластер не отформатирован. Необходимо выполнить команду \"dog cluster format"
 "\"."
-
-#, python-format
-msgid "Coho Data Cinder driver failure: %(message)s"
-msgstr "Ошибка драйвера Coho Data Cinder: %(message)s"
-
-msgid "Coho rpc port is not configured"
-msgstr "Не настроен порт RPC Coho"
 
 #, python-format
 msgid "Command %(cmd)s blocked in the CLI and was cancelled"
@@ -1403,11 +952,6 @@ msgstr "Не передан коннектор: %s"
 msgid "Connector doesn't have required information: %(missing)s"
 msgstr "Коннектор не содержит требуемую информацию: %(missing)s"
 
-msgid "Consistency group is empty. No cgsnapshot will be created."
-msgstr ""
-"Группа согласования пустая. Моментальные копии группы согласования "
-"создаваться не будут."
-
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
 msgstr "Группа согласования %(consistencygroup_id)s не найдена."
@@ -1420,10 +964,6 @@ msgstr "Размер контейнера меньше размера требу
 
 msgid "Content type not supported."
 msgstr "Тип содержимого не поддерживается."
-
-#, python-format
-msgid "Controller Configuration Service not found on %(storageSystemName)s."
-msgstr "Служба конфигурации контроллеров не найдена в %(storageSystemName)s."
 
 #, python-format
 msgid "Controller IP '%(host)s' could not be resolved: %(e)s."
@@ -1506,10 +1046,6 @@ msgid "Could not find iSCSI export for volume %s"
 msgstr "Не удалось найти экспорт iSCSI для тома %s"
 
 #, python-format
-msgid "Could not find iSCSI target for volume: %(volume_id)s."
-msgstr "Не найден целевой объект iSCSI для тома %(volume_id)s."
-
-#, python-format
 msgid "Could not find key in output of command %(cmd)s: %(out)s."
 msgstr "Не найден ключ в выводе команды %(cmd)s: %(out)s."
 
@@ -1531,10 +1067,6 @@ msgstr "Не найдена уникальная моментальная коп
 
 msgid "Could not get system name."
 msgstr "Не удалось получить имя системы."
-
-#, python-format
-msgid "Could not load paste app '%(name)s' from %(path)s"
-msgstr "Невозможно загрузить приложение '%(name)s' из %(path)s"
 
 #, python-format
 msgid ""
@@ -1580,9 +1112,6 @@ msgstr ""
 "Создание резервной копии прервано: ожидалось состояние тома "
 "%(expected_status)s, получено %(actual_status)s."
 
-msgid "Create export for volume failed."
-msgstr "Не удалось создать экспорт для тома."
-
 msgid "Create hostgroup error."
 msgstr "Ошибка создания группы хостов."
 
@@ -1625,9 +1154,6 @@ msgstr "Ошибка создания тома. Причина: %s."
 msgid "Create volume failed."
 msgstr "Сбой создания тома."
 
-msgid "Creating a consistency group from a source is not currently supported."
-msgstr "Создание группы согласования из источника пока не поддерживается."
-
 #, python-format
 msgid ""
 "Creating and activating zone set failed: (Zone set=%(cfg_name)s error="
@@ -1644,20 +1170,8 @@ msgstr ""
 "Не удалось создать и активировать набор зон: (набор зон=%(zoneset)s ошибка="
 "%(err)s)."
 
-#, python-format
-msgid "Creating usages for %(begin_period)s until %(end_period)s"
-msgstr ""
-"Создаются сведения об использовании с %(begin_period)s по %(end_period)s"
-
 msgid "Current host isn't part of HGST domain."
 msgstr "Текущий хост не является частью домена HGST."
-
-#, python-format
-msgid ""
-"Current host not valid for volume %(id)s with type %(type)s, migration not "
-"allowed"
-msgstr ""
-"Текущий хост недопустим для тома %(id)s с типом %(type)s. Перенос запрещен"
 
 #, python-format
 msgid ""
@@ -1725,9 +1239,6 @@ msgid "Data ONTAP operating in 7-Mode does not support QoS policy groups."
 msgstr ""
 "ONTAP данных, работающий в режиме 7, не поддерживает группы стратегий QoS."
 
-msgid "Database schema downgrade is not allowed."
-msgstr "Понижение версии схемы базы данных не разрешено."
-
 #, python-format
 msgid "Dataset %s is not shared in Nexenta Store appliance"
 msgstr "Набор данных %s не является общим в устройстве Nexenta Store"
@@ -1743,9 +1254,6 @@ msgid ""
 msgstr ""
 "Дедупликация - допустимый тип предоставления ресурсов, но требуется, чтобы "
 "версия WSAPI %(dedup_version)s %(version)s была установлена."
-
-msgid "Dedup luns cannot be extended"
-msgstr "LUN с дедупликацией нельзя расширять"
 
 #, python-format
 msgid ""
@@ -1779,9 +1287,6 @@ msgstr ""
 "резервного копирования [%(configured_service)s] не является службой "
 "резервного копирования, которая использовалась для создания этой резервной "
 "копии [%(backup_service)s]."
-
-msgid "Delete consistency group failed."
-msgstr "Не удалось удалить группу согласования."
 
 msgid "Delete hostgroup error."
 msgstr "Ошибка удаления группы хостов."
@@ -1935,13 +1440,6 @@ msgstr ""
 "Драйвер EMC VNX Cinder, SPUnavailableException: %(cmd)s (код возврата: "
 "%(rc)s) (вывод: %(out)s)."
 
-msgid ""
-"EcomServerIp, EcomServerPort, EcomUserName, EcomPassword must have valid "
-"values."
-msgstr ""
-"EcomServerIp, EcomServerPort, EcomUserName, EcomPassword должны иметь "
-"допустимые значения."
-
 #, python-format
 msgid ""
 "Either 'cgsnapshot_id' or 'source_cgid' must be provided to create "
@@ -1957,13 +1455,6 @@ msgid ""
 msgstr ""
 "SLO %(slo)s или рабочая схема %(workload)s недопустимы. См. предыдущее "
 "сообщение об ошибке. Там указаны допустимые значения."
-
-msgid "Either hitachi_serial_number or hitachi_unit_name is required."
-msgstr "Необходимо указать либо hitachi_serial_number, либо hitachi_unit_name."
-
-#, python-format
-msgid "Element Composition Service not found on %(storageSystemName)s."
-msgstr "Служба составления элементов не найдена в %(storageSystemName)s."
 
 msgid "Enables QoS."
 msgstr "Включает QoS."
@@ -2006,59 +1497,6 @@ msgstr ""
 "Ошибка при дублировании моментальной копии %(snapshot)s, том: %(lun)s, пул: "
 "%(pool)s, проект: %(project)s, дубликат проекта: %(clone_proj)s, код "
 "возврата: %(ret.status)d, сообщение: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Create Cloned Volume: %(cloneName)s Return code: %(rc)lu. Error: "
-"%(error)s."
-msgstr ""
-"Ошибка создания копии тома %(cloneName)s. Код возврата: %(rc)lu. Ошибка: "
-"%(error)s."
-
-#, python-format
-msgid ""
-"Error Create Cloned Volume: Volume: %(cloneName)s  Source Volume:"
-"%(sourceName)s.  Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Ошибка при создании копии тома. Копия: %(cloneName)s Исходный том: "
-"%(sourceName)s. Код возврата: %(rc)lu. Ошибка: %(error)s."
-
-#, python-format
-msgid ""
-"Error Create Group: %(groupName)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Ошибка при создании группы: %(groupName)s. Код возврата: %(rc)lu. Ошибка: "
-"%(error)s."
-
-#, python-format
-msgid ""
-"Error Create Masking View: %(groupName)s. Return code: %(rc)lu. Error: "
-"%(error)s."
-msgstr ""
-"Ошибка при создании маскирующего представления: %(groupName)s.  Код "
-"возврата: %(rc)lu.  Ошибка: %(error)s."
-
-#, python-format
-msgid ""
-"Error Create Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Ошибка при создании тома: %(volumeName)s.  Код возврата: %(rc)lu.  Ошибка: "
-"%(error)s."
-
-#, python-format
-msgid ""
-"Error Create Volume: %(volumename)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Ошибка при создании тома: %(volumename)s.  Код возврата: %(rc)lu.  Ошибка: "
-"%(error)s."
-
-#, python-format
-msgid ""
-"Error CreateGroupReplica: source: %(source)s target: %(target)s. Return "
-"code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Ошибка функции CreateGroupReplica. Исходная группа: %(source)s. Целевая "
-"группа: %(target)s. Код возврата: %(rc)lu. Ошибка: %(error)s."
 
 #, python-format
 msgid ""
@@ -2136,13 +1574,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Error Creating new composite Volume Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Ошибка при создании нового составного тома. Код возврата: %(rc)lu. Ошибка: "
-"%(error)s."
-
-#, python-format
-msgid ""
 "Error Creating replication action on: pool: %(pool)s Project: %(proj)s "
 "volume: %(vol)s for target: %(tgt)s and pool: %(tgt_pool)sReturn code: "
 "%(ret.status)d Message: %(ret.data)s ."
@@ -2150,35 +1581,6 @@ msgstr ""
 "Ошибка действия создания репликации в пуле %(pool)s, проект: %(proj)s, том: "
 "%(vol)s, для целевого объекта %(tgt)s и пула %(tgt_pool)s. Код возврата: "
 "%(ret.status)d, сообщение: %(ret.data)s."
-
-msgid "Error Creating unbound volume on an Extend operation."
-msgstr "Ошибка при создании несвязанного тома в операции Extend."
-
-msgid "Error Creating unbound volume."
-msgstr "Ошибка создания несвязанного тома."
-
-#, python-format
-msgid ""
-"Error Delete Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Ошибка удаления тома: %(volumeName)s.  Код возврата: %(rc)lu.  Ошибка: "
-"%(error)s."
-
-#, python-format
-msgid ""
-"Error Deleting Group: %(storageGroupName)s. Return code: %(rc)lu. Error: "
-"%(error)s"
-msgstr ""
-"Ошибка удаления группы %(storageGroupName)s. Код возврата: %(rc)lu.  Ошибка: "
-"%(error)s"
-
-#, python-format
-msgid ""
-"Error Deleting Initiator Group: %(initiatorGroupName)s. Return code: "
-"%(rc)lu. Error: %(error)s"
-msgstr ""
-"Ошибка удаления группы инициатора: %(initiatorGroupName)s. Код возврата: "
-"%(rc)lu.  Ошибка: %(error)s"
 
 #, python-format
 msgid ""
@@ -2221,13 +1623,6 @@ msgid ""
 msgstr ""
 "Ошибка действия удаления репликации %(id)s. Код возврата: %(ret.status)d "
 "Сообщение: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Extend Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Ошибка расширения тома: %(volumeName)s.  Код возврата: %(rc)lu.  Ошибка: "
-"%(error)s."
 
 #, python-format
 msgid ""
@@ -2287,22 +1682,6 @@ msgstr ""
 "возврата: %(ret.status)d, сообщение: %(ret.data)s."
 
 #, python-format
-msgid ""
-"Error Migrating volume from one pool to another. Return code: %(rc)lu.  "
-"Error: %(error)s."
-msgstr ""
-"Ошибка при переносе тома из одного пула в другой. Код возврата: %(rc)lu.  "
-"Ошибка: %(error)s."
-
-#, python-format
-msgid ""
-"Error Modifying masking view : %(groupName)s. Return code: %(rc)lu.  Error: "
-"%(error)s."
-msgstr ""
-"Ошибка при модификации маскирующего представления: %(groupName)s. Код "
-"возврата: %(rc)lu.  Ошибка: %(error)s."
-
-#, python-format
 msgid "Error Pool ownership: Pool %(pool)s is not owned by %(host)s."
 msgstr "Ошибка принадлежности пула: пул %(pool)s не принадлежит %(host)s."
 
@@ -2313,13 +1692,6 @@ msgid ""
 msgstr ""
 "Ошибка при задании свойств %(props)s, том: %(lun)s, пул: %(pool)s, проект: "
 "%(project)s, код возврата: %(ret.status)d, сообщение: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Terminating migrate session. Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Ошибка при завершении сеанса переноса. Код возврата: %(rc)lu. Ошибка: "
-"%(error)s."
 
 #, python-format
 msgid ""
@@ -2369,46 +1741,6 @@ msgstr ""
 "Ошибка при проверке общего ресурса %(share)s в проекте %(project)s и пуле "
 "%(pool)s, код возврата: %(ret.status)d, сообщение: %(ret.data)s."
 
-#, python-format
-msgid ""
-"Error adding Volume: %(volumeName)s with instance path: "
-"%(volumeInstancePath)s."
-msgstr ""
-"Ошибка при добавлении тома %(volumeName)s с путем к экземпляру "
-"%(volumeInstancePath)s."
-
-#, python-format
-msgid ""
-"Error adding initiator to group : %(groupName)s. Return code: %(rc)lu.  "
-"Error: %(error)s."
-msgstr ""
-"Ошибка при добавлении инициатора в группу: %(groupName)s. Код возврата: "
-"%(rc)lu.  Ошибка: %(error)s."
-
-#, python-format
-msgid "Error adding volume to composite volume. Error is: %(error)s."
-msgstr "Ошибка при добавлении тома в составной том. Ошибка: %(error)s."
-
-#, python-format
-msgid "Error appending volume %(volumename)s to target base volume."
-msgstr "Ошибка при добавлении тома %(volumename)s в целевой базовый том."
-
-#, python-format
-msgid ""
-"Error associating storage group : %(storageGroupName)s. To fast Policy: "
-"%(fastPolicyName)s with error description: %(errordesc)s."
-msgstr ""
-"Ошибка при связывании группы носителей %(storageGroupName)s со стратегией "
-"FAST %(fastPolicyName)s, описание ошибки: %(errordesc)s."
-
-#, python-format
-msgid ""
-"Error break clone relationship: Sync Name: %(syncName)s Return code: "
-"%(rc)lu.  Error: %(error)s."
-msgstr ""
-"Ошибка разрыва взаимосвязи копии. Имя синхронизации: %(syncName)s Код "
-"возврата: %(rc)lu. Ошибка: %(error)s."
-
 msgid "Error connecting to ceph cluster."
 msgstr "Ошибка подключения к кластеру ceph."
 
@@ -2456,13 +1788,6 @@ msgid "Error encountered during cleanup of a failed attach: %(ex)s"
 msgstr "Ошибка очистки после сбоя подключения: %(ex)s"
 
 #, python-format
-msgid "Error executing CloudByte API [%(cmd)s], Error: %(err)s."
-msgstr "Ошибка выполнения API CloudByte [%(cmd)s], ошибка: %(err)s."
-
-msgid "Error executing EQL command"
-msgstr "Ошибка выполнения команды EQL"
-
-#, python-format
 msgid "Error executing command via ssh: %s"
 msgstr "Ошибка выполнения команды через ssh: %s"
 
@@ -2478,17 +1803,6 @@ msgstr "Ошибка расширения тома: %(reason)s"
 msgid "Error finding %(name)s."
 msgstr "Ошибка при поиске %(name)s."
 
-#, python-format
-msgid "Error finding %s."
-msgstr "Ошибка при поиске %s."
-
-#, python-format
-msgid ""
-"Error getting ReplicationSettingData. Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Ошибка получения ReplicationSettingData.  Код возврата: %(rc)lu.  Ошибка: "
-"%(error)s."
-
 msgid ""
 "Error getting appliance version details. Return code: %(ret.status)d "
 "Message: %(ret.data)s ."
@@ -2497,19 +1811,11 @@ msgstr ""
 "Сообщение: %(ret.data)s."
 
 #, python-format
-msgid "Error getting domain id from name %(name)s: %(err)s."
-msgstr "Ошибка получения ИД домена из имени %(name)s: %(err)s."
-
-#, python-format
 msgid "Error getting domain id from name %(name)s: %(id)s."
 msgstr "Ошибка получения ИД домена из имени %(name)s: %(id)s."
 
 msgid "Error getting initiator groups."
 msgstr "Ошибка при получении групп инициаторов."
-
-#, python-format
-msgid "Error getting pool id from name %(pool)s: %(err)s."
-msgstr "Ошибка получения ИД пула из имени %(pool)s: %(err)s."
 
 #, python-format
 msgid "Error getting pool id from name %(pool_name)s: %(err_msg)s."
@@ -2546,14 +1852,6 @@ msgstr ""
 "Сообщение: %(ret.data)s."
 
 #, python-format
-msgid ""
-"Error in Operation [%(operation)s] for volume [%(cb_volume)s] in CloudByte "
-"storage: [%(cb_error)s], error code: [%(error_code)s]."
-msgstr ""
-"Ошибка операции [%(operation)s] для тома [%(cb_volume)s] в хранилище "
-"CloudByte: [%(cb_error)s], код ошибки: [%(error_code)s]."
-
-#, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
 msgstr "Ошибка в ответе API SolidFire: data=%(data)s"
 
@@ -2570,14 +1868,6 @@ msgstr ""
 #, python-format
 msgid "Error managing volume: %s."
 msgstr "Ошибка управления томом: %s."
-
-#, python-format
-msgid ""
-"Error modify replica synchronization: %(sv)s operation: %(operation)s. "
-"Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"Ошибка изменения синхронизации копии %(sv)s, операция: %(operation)s. Код "
-"возврата: %(rc)lu. Ошибка: %(error)s."
 
 #, python-format
 msgid ""
@@ -2602,24 +1892,8 @@ msgid "Error not a TypeError."
 msgstr "Тип ошибки отличается от TypeError."
 
 #, python-format
-msgid "Error occurred when creating cgsnapshot %s."
-msgstr "Ошибка создания моментальной копии группы согласования %s."
-
-#, python-format
-msgid "Error occurred when deleting cgsnapshot %s."
-msgstr "Ошибка удаления моментальной копии группы согласования %s."
-
-#, python-format
-msgid "Error occurred when updating consistency group %s."
-msgstr "Ошибка изменения группы согласования %s."
-
-#, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "Ошибка переименования тома %(vol)s: %(err)s."
-
-#, python-format
-msgid "Error response: %s"
-msgstr "Сообщение об ошибке: %s"
 
 msgid "Error retrieving volume size"
 msgstr "Ошибка получения размера тома"
@@ -2654,10 +1928,6 @@ msgid ""
 msgstr ""
 "Ошибка преобразования пакета %(package)s из источника %(src)s в локальный "
 "пакет. Код возврата: %(ret.status)d, сообщение: %(ret.data)s."
-
-#, python-format
-msgid "Error unbinding volume %(vol)s from pool. %(error)s."
-msgstr "Ошибка удаления привязки тома %(vol)s к пулу: %(error)s."
 
 #, python-format
 msgid "Error while authenticating with switch: %s."
@@ -2798,21 +2068,6 @@ msgid "Exceeded the limit of snapshots per volume"
 msgstr "Превышено максимально допустимое число моментальных копий тома"
 
 #, python-format
-msgid "Exception appending meta volume to target volume %(volumename)s."
-msgstr ""
-"Возникла исключительная ситуация при добавлении тома метаданных к целевому "
-"тому %(volumename)s."
-
-#, python-format
-msgid ""
-"Exception during create element replica. Clone name: %(cloneName)s Source "
-"name: %(sourceName)s Extra specs: %(extraSpecs)s "
-msgstr ""
-"Возникла исключительная ситуация при создании реплики элемента. Имя "
-"дубликата %(cloneName)s Исходное имя: %(sourceName)s Дополнительные "
-"спецификации: %(extraSpecs)s "
-
-#, python-format
 msgid "Exception in _select_ds_for_volume: %s."
 msgstr "Исключительная ситуация в _select_ds_for_volume: %s."
 
@@ -2823,10 +2078,6 @@ msgstr "Исключительная ситуация при формирова�
 #, python-format
 msgid "Exception: %s"
 msgstr "Исключительная ситуация: %s"
-
-#, python-format
-msgid "Expected a uuid but received %(uuid)s."
-msgstr "Ожидался uuid, а получен %(uuid)s."
 
 #, python-format
 msgid "Expected exactly one node called \"%s\""
@@ -2887,9 +2138,6 @@ msgstr ""
 msgid "Extend volume not implemented"
 msgstr "Том расширения не реализован"
 
-msgid "FAST is not supported on this array."
-msgstr "FAST не поддерживается в этом массиве."
-
 msgid "FC is the protocol but wwpns are not supplied by OpenStack."
 msgstr "Протокол - FC, но не получены WWPN от OpenStack."
 
@@ -2948,35 +2196,8 @@ msgstr "Нет доступа к активной конфигурации ра�
 msgid "Failed to access zoneset status:%s"
 msgstr "Не удалось получить доступ к состоянию набора областей: %s"
 
-#, python-format
-msgid ""
-"Failed to acquire a resource lock. (serial: %(serial)s, inst: %(inst)s, ret: "
-"%(ret)s, stderr: %(err)s)"
-msgstr ""
-"Не удалось получить блокировку ресурса. (порядковый номер: %(serial)s, "
-"экземпляр: %(inst)s, код возврата: %(ret)s, stderr: %(err)s)"
-
-msgid "Failed to add the logical device."
-msgstr "Не удалось добавить логическое устройство."
-
-#, python-format
-msgid ""
-"Failed to add volume %(volumeName)s to consistency group %(cgName)s. Return "
-"code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Не удалось добавить том %(volumeName)s в группу согласования %(cgName)s. Код "
-"возврата: %(rc)lu. Ошибка: %(error)s."
-
 msgid "Failed to add zoning configuration."
 msgstr "Не удалось добавить конфигурацию распределения по зонам."
-
-#, python-format
-msgid ""
-"Failed to assign the iSCSI initiator IQN. (port: %(port)s, reason: "
-"%(reason)s)"
-msgstr ""
-"Не удалось присвоить IQN инициатора iSCSI. (порт: %(port)s, причина: "
-"%(reason)s)"
 
 #, python-format
 msgid "Failed to associate qos_specs: %(specs_id)s with type %(type_id)s."
@@ -3009,9 +2230,6 @@ msgstr "Не удалось подключиться к %(vendor_name)s Масс
 msgid "Failed to connect to Dell REST API"
 msgstr "Не удается подключиться к API REST Dell"
 
-msgid "Failed to connect to array"
-msgstr "Не удалось подключиться к массиву"
-
 #, python-format
 msgid "Failed to connect to sheep daemon. addr: %(addr)s, port: %(port)s"
 msgstr ""
@@ -3032,29 +2250,12 @@ msgid "Failed to copy volume, source device unavailable."
 msgstr "Не удалось скопировать том: недоступно исходное устройство."
 
 #, python-format
-msgid "Failed to create CG %(cgName)s from snapshot %(cgSnapshot)s."
-msgstr ""
-"Не удалось создать группу согласования %(cgName)s из моментальной копии "
-"%(cgSnapshot)s."
-
-#, python-format
 msgid "Failed to create IG, %s"
 msgstr "Не удалось создать группу инициаторов, %s"
 
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr "Не удалось создать группу тома %(vg_name)s"
-
-#, python-format
-msgid ""
-"Failed to create a file. (file: %(file)s, ret: %(ret)s, stderr: %(err)s)"
-msgstr ""
-"Не удалось создать файл. (файл: %(file)s, код возврата: %(ret)s, stderr: "
-"%(err)s)"
-
-#, python-format
-msgid "Failed to create a temporary snapshot for volume %s."
-msgstr "Не удалось создать временную моментальную копию для тома %s."
 
 msgid "Failed to create api volume flow."
 msgstr "Не удалось создать поток тома api."
@@ -3072,32 +2273,8 @@ msgid "Failed to create consistency group %(id)s:%(ret)s."
 msgstr "Не удалось создать группу согласования %(id)s:%(ret)s."
 
 #, python-format
-msgid ""
-"Failed to create consistency group %s because VNX consistency group cannot "
-"accept compressed LUNs as members."
-msgstr ""
-"Не удалось создать группу согласования %s, поскольку группа согласования VNX "
-"не принимает сжатые LUN в качестве своих элементов."
-
-#, python-format
-msgid "Failed to create consistency group: %(cgName)s."
-msgstr "Не удалось создать группу согласования: %(cgName)s."
-
-#, python-format
 msgid "Failed to create consistency group: %(cgid)s. Error: %(excmsg)s."
 msgstr "Не удалось создать группу согласования %(cgid)s. Ошибка: %(excmsg)s."
-
-#, python-format
-msgid ""
-"Failed to create consistency group: %(consistencyGroupName)s  Return code: "
-"%(rc)lu.  Error: %(error)s."
-msgstr ""
-"Не удалось создать группу согласования %(consistencyGroupName)s Код "
-"возврата: %(rc)lu. Ошибка: %(error)s."
-
-#, python-format
-msgid "Failed to create hardware id(s) on %(storageSystemName)s."
-msgstr "Не удалось создать ИД аппаратного обеспечения в %(storageSystemName)s."
 
 #, python-format
 msgid ""
@@ -3109,9 +2286,6 @@ msgid "Failed to create hostgroup: %(name)s. Check if it exists on the array."
 msgstr ""
 "Не удалось создать группу хостов: %(name)s. Проверьте, есть ли она в массиве."
 
-msgid "Failed to create iqn."
-msgstr "Не удалось создать iqn."
-
 #, python-format
 msgid "Failed to create iscsi target for volume %(volume_id)s."
 msgstr "Не удалось создать iscsi target для тома %(volume_id)s."
@@ -3122,27 +2296,13 @@ msgstr "Не удалось создать управление существу
 msgid "Failed to create manage_existing flow."
 msgstr "Не удалось создать поток manage_existing."
 
-msgid "Failed to create map on mcs, no channel can map."
-msgstr ""
-"Не удалось создать карту связей в mcs: нет канала поддерживающего карты "
-"связей."
-
-msgid "Failed to create map."
-msgstr "Не удалось создать карту."
-
 #, python-format
 msgid "Failed to create metadata for volume: %(reason)s"
 msgstr "Не удалось создать метаданные для тома: %(reason)s"
 
-msgid "Failed to create partition."
-msgstr "Не удалось создать раздел."
-
 #, python-format
 msgid "Failed to create qos_specs: %(name)s with specs %(qos_specs)s."
 msgstr "Не удалось создать qos_specs %(name)s со спецификацией %(qos_specs)s."
-
-msgid "Failed to create replica."
-msgstr "Не удалось создать реплику."
 
 msgid "Failed to create scheduler manager volume flow"
 msgstr "Не удалось создать поток тома администратора планировщика"
@@ -3152,39 +2312,8 @@ msgid "Failed to create snapshot %s"
 msgstr "Не удалось создать моментальную копию %s"
 
 #, python-format
-msgid "Failed to create snapshot for cg: %(cgName)s."
-msgstr ""
-"Не удалось создать моментальную копию для группы согласования %(cgName)s."
-
-#, python-format
 msgid "Failed to create snapshot for volume %s."
 msgstr "Не удалось создать моментальную копию для тома %s."
-
-#, python-format
-msgid "Failed to create snapshot policy on volume %(vol)s: %(res)s."
-msgstr ""
-"Не удалось создать стратегию моментальной копии на томе %(vol)s: %(res)s."
-
-#, python-format
-msgid "Failed to create snapshot resource area on volume %(vol)s: %(res)s."
-msgstr ""
-"Не удалось найти область ресурсов моментальной копии на томе %(vol)s: "
-"%(res)s."
-
-msgid "Failed to create snapshot."
-msgstr "Не удалось создать моментальную копию."
-
-#, python-format
-msgid ""
-"Failed to create snapshot. CloudByte volume information not found for "
-"OpenStack volume [%s]."
-msgstr ""
-"Не удалось создать моментальную копию. Не найдена информация о томе "
-"CloudByte для тома OpenStack [%s]."
-
-#, python-format
-msgid "Failed to create storage group %(storageGroupName)s."
-msgstr "Не удалось создать группу носителей %(storageGroupName)s."
 
 #, python-format
 msgid "Failed to create thin pool, error message was: %s"
@@ -3193,18 +2322,6 @@ msgstr "Не удалось создать оперативный пул, соо
 #, python-format
 msgid "Failed to create volume %s"
 msgstr "Не удалось создать том %s"
-
-#, python-format
-msgid "Failed to delete SI for volume_id: %(volume_id)s because it has pair."
-msgstr ""
-"Не удалось удалить SI для volume_id %(volume_id)s, поскольку у него есть "
-"пара."
-
-#, python-format
-msgid "Failed to delete a logical device. (LDEV: %(ldev)s, reason: %(reason)s)"
-msgstr ""
-"Не удалось удалить логическое устройство. (LDEV: %(ldev)s, причина: "
-"%(reason)s)"
 
 #, python-format
 msgid "Failed to delete cgsnapshot %(id)s due to %(reason)s."
@@ -3216,74 +2333,19 @@ msgid "Failed to delete consistency group %(id)s due to %(reason)s."
 msgstr "Не удалось удалить группу согласования %(id)s, причина: %(reason)s."
 
 #, python-format
-msgid "Failed to delete consistency group: %(cgName)s."
-msgstr "Не удалось удалить группу согласования %(cgName)s."
-
-#, python-format
-msgid ""
-"Failed to delete consistency group: %(consistencyGroupName)s Return code: "
-"%(rc)lu. Error: %(error)s."
-msgstr ""
-"Не удалось удалить группу согласования %(consistencyGroupName)s. Код "
-"возврата %(rc)lu. Ошибка: %(error)s."
-
-msgid "Failed to delete device."
-msgstr "Не удалось удалить устройство."
-
-#, python-format
 msgid ""
 "Failed to delete fileset for consistency group %(cgname)s. Error: %(excmsg)s."
 msgstr ""
 "Не удалось удалить набор файлов для группы согласования %(cgname)s. Ошибка: "
 "%(excmsg)s."
 
-msgid "Failed to delete iqn."
-msgstr "Не удалось удалить iqn."
-
-msgid "Failed to delete map."
-msgstr "Не удалось удалить карту связей."
-
-msgid "Failed to delete partition."
-msgstr "Не удалось удалить раздел."
-
-msgid "Failed to delete replica."
-msgstr "Не удалось удалить реплику."
-
 #, python-format
 msgid "Failed to delete snapshot %s"
 msgstr "Не удалось удалить моментальную копию %s"
 
 #, python-format
-msgid "Failed to delete snapshot for cg: %(cgId)s."
-msgstr ""
-"Не удалось удалить моментальную копию для группы согласования %(cgId)s."
-
-#, python-format
-msgid "Failed to delete snapshot for snapshot_id: %s because it has pair."
-msgstr ""
-"Не удалось удалить моментальную копию для snapshot_id %s, поскольку у нее "
-"есть пара."
-
-msgid "Failed to delete snapshot."
-msgstr "Не удалось удалить снимок."
-
-#, python-format
-msgid "Failed to delete volume %(volumeName)s."
-msgstr "Не удалось удалить том %(volumeName)s."
-
-#, python-format
-msgid ""
-"Failed to delete volume for volume_id: %(volume_id)s because it has pair."
-msgstr ""
-"Не удалось удалить том для volume_id %(volume_id)s, поскольку у него есть "
-"пара."
-
-#, python-format
 msgid "Failed to detach iSCSI target for volume %(volume_id)s."
 msgstr "Не удалось отключить целевой объект iSCSI для тома %(volume_id)s."
-
-msgid "Failed to determine blockbridge API configuration"
-msgstr "Не удалось определить конфигурацию API Blockbridge"
 
 msgid "Failed to disassociate qos specs."
 msgstr "Не удалось удалить связь спецификации QoS."
@@ -3291,27 +2353,6 @@ msgstr "Не удалось удалить связь спецификации Q
 #, python-format
 msgid "Failed to disassociate qos_specs: %(specs_id)s with type %(type_id)s."
 msgstr "Не удалось удалить связь qos_specs %(specs_id)s с типом %(type_id)s."
-
-#, python-format
-msgid ""
-"Failed to ensure snapshot resource area, could not locate volume for id %s"
-msgstr ""
-"Не удалось обеспечить область ресурсов моментальной копии. Не найден том с "
-"ИД %s"
-
-msgid "Failed to establish connection with Coho cluster"
-msgstr "Не удалось установить соединение с кластером Coho"
-
-#, python-format
-msgid ""
-"Failed to execute CloudByte API [%(cmd)s]. Http status: %(status)s, Error: "
-"%(error)s."
-msgstr ""
-"Не удалось выполнить API CloudByte [%(cmd)s]. Состояние Http: %(status)s, "
-"Ошибка: %(error)s."
-
-msgid "Failed to execute common command."
-msgstr "Не удалось выполнить общую команду."
 
 #, python-format
 msgid "Failed to export for volume: %(reason)s"
@@ -3350,10 +2391,6 @@ msgid "Failed to find iSCSI initiator group containing %(initiator)s."
 msgstr "Не найдена группа инициаторов iSCSI, содержащая %(initiator)s."
 
 #, python-format
-msgid "Failed to get CloudByte account details for account [%s]."
-msgstr "Не удалось получить сведения об учетной записи CloudByte [%s]."
-
-#, python-format
 msgid "Failed to get LUN target details for the LUN %s"
 msgstr "Не удалось получить целевые сведения LUN для LUN %s"
 
@@ -3365,46 +2402,16 @@ msgstr "Не удалось получить сведения о целевом 
 msgid "Failed to get LUN target list for the LUN %s"
 msgstr "Не удалось получить целевой список LUN для LUN %s"
 
-#, python-format
-msgid "Failed to get Partition ID for volume %(volume_id)s."
-msgstr "Не удалось получить ИД раздела для тома %(volume_id)s."
-
-#, python-format
-msgid "Failed to get Raid Snapshot ID from Snapshot %(snapshot_id)s."
-msgstr ""
-"Не удалось получить ИД моментальной копии RAID из моментальной копии "
-"%(snapshot_id)s."
-
-#, python-format
-msgid "Failed to get Raid Snapshot ID from snapshot: %(snapshot_id)s."
-msgstr ""
-"Не удалось получить ИД моментальной копии RAID из моментальной копии "
-"%(snapshot_id)s."
-
 msgid "Failed to get SplitMirror."
 msgstr "Не удалось получить SplitMirror."
-
-#, python-format
-msgid ""
-"Failed to get a storage resource. The system will attempt to get the storage "
-"resource again. (resource: %(resource)s)"
-msgstr ""
-"Не удалось получить ресурс памяти. Система попытается получить ресурс памяти "
-"повторно. (ресурс: %(resource)s)"
 
 #, python-format
 msgid "Failed to get all associations of qos specs %s"
 msgstr "Не удалось получить все связи спецификаций QoS %s"
 
-msgid "Failed to get channel info."
-msgstr "Не удалось получить информацию о канале."
-
 #, python-format
 msgid "Failed to get code level (%s)."
 msgstr "Не удалось получить уровень кода (%s)."
-
-msgid "Failed to get device info."
-msgstr "Не удалось получить информацию об устройстве."
 
 #, python-format
 msgid "Failed to get domain because CPG (%s) doesn't exist on array."
@@ -3412,23 +2419,6 @@ msgstr "Не удалось получить домен: в массиве не�
 
 msgid "Failed to get image snapshots."
 msgstr "Не удалось получить моментальные копии образа."
-
-#, python-format
-msgid "Failed to get ip on Channel %(channel_id)s with volume: %(volume_id)s."
-msgstr ""
-"Не удалось получить IP-адрес в канале %(channel_id)s с томом %(volume_id)s."
-
-msgid "Failed to get iqn info."
-msgstr "Не удалось получить информацию о iqn."
-
-msgid "Failed to get license info."
-msgstr "Не удалось получить информацию о лицензии."
-
-msgid "Failed to get lv info."
-msgstr "Не удалось получить информацию о логическом томе."
-
-msgid "Failed to get map info."
-msgstr "Не удалось получить информацию о карте связей."
 
 msgid "Failed to get migration task."
 msgstr "Не удалось получить задачу переноса."
@@ -3438,36 +2428,6 @@ msgstr "Не удалось получить обновление модели �
 
 msgid "Failed to get name server info."
 msgstr "Не удалось получить информацию о серверах имен."
-
-msgid "Failed to get network info."
-msgstr "Не удалось получить информацию о сети."
-
-#, python-format
-msgid "Failed to get new part id in new pool: %(pool_id)s."
-msgstr "Не удалось получить ИД нового раздела в новом пуле %(pool_id)s."
-
-msgid "Failed to get partition info."
-msgstr "Не удалось получить информацию о разделе."
-
-#, python-format
-msgid "Failed to get pool id with volume %(volume_id)s."
-msgstr "Не удалось получить ИД пула с томом %(volume_id)s."
-
-#, python-format
-msgid "Failed to get remote copy information for %(volume)s due to %(err)s."
-msgstr ""
-"Не удаётся получить информацию удаленного копирования для %(volume)s, "
-"причина: %(err)s."
-
-#, python-format
-msgid ""
-"Failed to get remote copy information for %(volume)s. Exception: %(err)s."
-msgstr ""
-"Не удаётся получить информацию удаленного копирования для %(volume)s. "
-"Исключительная ситуация: %(err)s."
-
-msgid "Failed to get replica info."
-msgstr "Не удалось получить информацию о реплике."
 
 msgid "Failed to get show fcns database info."
 msgstr "Не удалось получить информацию из базы данных команды show fcns."
@@ -3479,9 +2439,6 @@ msgstr "Не удалось получить размер тома %s"
 #, python-format
 msgid "Failed to get snapshot for volume %s."
 msgstr "Не удалось получить моментальную копию для тома %s."
-
-msgid "Failed to get snapshot info."
-msgstr "Не удалось получить информацию о моментальной копии."
 
 #, python-format
 msgid "Failed to get target IQN for the LUN %s"
@@ -3496,18 +2453,6 @@ msgstr "Не удалось получить целевой портал для 
 
 msgid "Failed to get targets"
 msgstr "Не удалось получить целевые объекты"
-
-msgid "Failed to get wwn info."
-msgstr "Не удалось получить информацию о WWN."
-
-#, python-format
-msgid ""
-"Failed to get, create or add volume %(volumeName)s to masking view "
-"%(maskingViewName)s. The error message received was %(errorMessage)s."
-msgstr ""
-"Не удалось получить, создать или добавить том %(volumeName)s для "
-"маскирующего представления %(maskingViewName)s. Сообщение об ошибке: "
-"%(errorMessage)s."
 
 msgid "Failed to identify volume backend."
 msgstr "Не удалось идентифицировать базовую программу тома."
@@ -3632,32 +2577,12 @@ msgid "Failed to manage volume %s."
 msgstr "Сбой управления томом %s."
 
 #, python-format
-msgid ""
-"Failed to map a logical device. (LDEV: %(ldev)s, LUN: %(lun)s, port: "
-"%(port)s, id: %(id)s)"
-msgstr ""
-"Не удалось связать логическое устройство. (LDEV: %(ldev)s, LUN: %(lun)s, "
-"порт: %(port)s, ИД: %(id)s)"
-
-msgid "Failed to migrate volume for the first time."
-msgstr "Перенести том в первый раз не удалось."
-
-msgid "Failed to migrate volume for the second time."
-msgstr "Перенести том во второй раз не удалось."
-
-#, python-format
 msgid "Failed to move LUN mapping.  Return code: %s"
 msgstr "Не удалось переместить связи LUN. Код возврата: %s"
 
 #, python-format
 msgid "Failed to move volume %s."
 msgstr "Не удалось переместить том %s."
-
-#, python-format
-msgid "Failed to open a file. (file: %(file)s, ret: %(ret)s, stderr: %(err)s)"
-msgstr ""
-"Не удалось открыть файл. (файл: %(file)s, код возврата: %(ret)s, stderr: "
-"%(err)s)"
 
 #, python-format
 msgid ""
@@ -3688,47 +2613,12 @@ msgstr ""
 "<тип_конечной_точки>"
 
 #, python-format
-msgid ""
-"Failed to perform a zero-page reclamation. (LDEV: %(ldev)s, reason: "
-"%(reason)s)"
-msgstr ""
-"Не удалось затребовать обнуленные страницы. (LDEV: %(ldev)s, причина: "
-"%(reason)s)"
-
-#, python-format
 msgid "Failed to remove export for volume %(volume)s: %(reason)s"
 msgstr "Не удалось удалить экспорт для тома %(volume)s: %(reason)s"
 
 #, python-format
 msgid "Failed to remove iscsi target for volume %(volume_id)s."
 msgstr "Не удалось удалить целевой объект iscsi для тома %(volume_id)s."
-
-#, python-format
-msgid ""
-"Failed to remove volume %(volumeName)s from consistency group %(cgName)s. "
-"Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Не удалось удалить том %(volumeName)s из группы согласования %(cgName)s. Код "
-"возврата: %(rc)lu. Ошибка: %(error)s."
-
-#, python-format
-msgid "Failed to remove volume %(volumeName)s from default SG."
-msgstr ""
-"Не удалось удалить том %(volumeName)s из группы носителей по умолчанию."
-
-#, python-format
-msgid "Failed to remove volume %(volumeName)s from default SG: %(volumeName)s."
-msgstr ""
-"Не удалось удалить том %(volumeName)s из группы носителей по умолчанию: "
-"%(volumeName)s."
-
-#, python-format
-msgid ""
-"Failed to remove: %(volumename)s. from the default storage group for FAST "
-"policy %(fastPolicyName)s."
-msgstr ""
-"Не удалось удалить том %(volumename)s из группы носителей по умолчанию для "
-"стратегии FAST %(fastPolicyName)s."
 
 #, python-format
 msgid ""
@@ -3758,9 +2648,6 @@ msgid "Failed to set attribute 'Incoming user' for SCST target."
 msgstr ""
 "Не удалось задать атрибут Входящий пользователь для целевого объекта SCST."
 
-msgid "Failed to set partition."
-msgstr "Не удалось задать раздел."
-
 #, python-format
 msgid ""
 "Failed to set permissions for the consistency group %(cgname)s. Error: "
@@ -3771,43 +2658,10 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Failed to specify a logical device for the volume %(volume_id)s to be "
-"unmapped."
-msgstr ""
-"Не удалось указать логическое устройство для тома %(volume_id)s, связь "
-"которого необходимо удалить."
-
-#, python-format
-msgid ""
-"Failed to specify a logical device to be deleted. (method: %(method)s, id: "
-"%(id)s)"
-msgstr ""
-"Не удалось указать удаляемое логическое устройство. (метод: %(method)s, ИД: "
-"%(id)s)"
-
-msgid "Failed to terminate migrate session."
-msgstr "Завершить сеанс переноса не удалось."
-
-#, python-format
-msgid "Failed to unbind volume %(volume)s"
-msgstr "Не удалось удалить привязку тома %(volume)s"
-
-#, python-format
-msgid ""
 "Failed to unlink fileset for consistency group %(cgname)s. Error: %(excmsg)s."
 msgstr ""
 "Не удалось удалить связь набора файлов для группы согласования %(cgname)s. "
 "Ошибка: %(excmsg)s."
-
-#, python-format
-msgid "Failed to unmap a logical device. (LDEV: %(ldev)s, reason: %(reason)s)"
-msgstr ""
-"Не удалось удалить связь логического устройства. (LDEV: %(ldev)s, причина: "
-"%(reason)s)"
-
-#, python-format
-msgid "Failed to update consistency group: %(cgName)s."
-msgstr "Не удалось изменить группу согласования: %(cgName)s."
 
 #, python-format
 msgid "Failed to update metadata for volume: %(reason)s"
@@ -4115,9 +2969,6 @@ msgstr "Папка %s не существует в устройстве Nexenta 
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS не выполняется, состояние: %s."
 
-msgid "Gateway VIP is not set"
-msgstr "Не задан VIP шлюза"
-
 msgid "Get FC ports by port group error."
 msgstr "Ошибка получения портов FC по группе портов."
 
@@ -4261,10 +3112,6 @@ msgid "Glance metadata for volume/snapshot %(id)s cannot be found."
 msgstr "Не найдены метаданные glance для тома/моментальной копии %(id)s."
 
 #, python-format
-msgid "Gluster config file at %(config)s doesn't exist"
-msgstr "Файл конфигурации Gluster в %(config)s не существует"
-
-#, python-format
 msgid "Google Cloud Storage api failure: %(reason)s"
 msgstr "Ошибка API Google Cloud Storage: %(reason)s"
 
@@ -4280,9 +3127,6 @@ msgstr "Ошибка oauth2 Google Cloud Storage: %(reason)s"
 msgid "Got bad path information from DRBDmanage! (%s)"
 msgstr "Получена неправильная информация о пути от DRBDmanage! (%s)"
 
-msgid "HBSD error occurs."
-msgstr "Ошибка HBSD."
-
 msgid "HPELeftHand url not found"
 msgstr "URL HPELeftHand не найден"
 
@@ -4296,10 +3140,6 @@ msgstr ""
 "Необходимо полное резервное копирование."
 
 #, python-format
-msgid "Have not created %(tier_levels)s tier(s)."
-msgstr "Не созданы слои %(tier_levels)s."
-
-#, python-format
 msgid "Hint \"%s\" not supported."
 msgstr "Всплывающая подсказка \"%s\" не поддерживается."
 
@@ -4309,14 +3149,6 @@ msgstr "Узел"
 #, python-format
 msgid "Host %(host)s could not be found."
 msgstr "Узел %(host)s не найден."
-
-#, python-format
-msgid ""
-"Host %(host)s does not match x509 certificate contents: CommonName "
-"%(commonName)s."
-msgstr ""
-"Хост %(host)s не соответствует содержимому сертификата x509: CommonName "
-"%(commonName)s."
 
 #, python-format
 msgid "Host %s has no FC initiators"
@@ -4330,19 +3162,9 @@ msgstr "Не найдена группа хостов с именем %s"
 msgid "Host group with ref %s not found"
 msgstr "Не найдена группа хостов со ссылкой %s"
 
-msgid "Host is NOT Frozen."
-msgstr "Хост не заморожен."
-
-msgid "Host is already Frozen."
-msgstr "Хост уже заморожен."
-
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
 msgstr "Хост не найден. Не удалось переместить %(service)s на %(host)s."
-
-#, python-format
-msgid "Host replication_status must be %s to failover."
-msgstr "Для аварийного переключения состояние репликации хоста должно быть %s."
 
 #, python-format
 msgid "Host type %s not supported."
@@ -4355,12 +3177,6 @@ msgstr "Не найден хост с портами %(ports)s."
 msgid "Hypermetro and Replication can not be used in the same volume_type."
 msgstr ""
 "Нельзя использовать Hypermetro и репликацию с одним и тем же типом тома."
-
-#, python-format
-msgid "I/O group %(iogrp)d is not valid; available I/O groups are %(avail)s."
-msgstr ""
-"Группа ввода-вывода %(iogrp)d недопустимая. Доступные группы ввода-вывода: "
-"%(avail)s."
 
 msgid "ID"
 msgstr "ID"
@@ -4437,14 +3253,6 @@ msgstr ""
 "Возникла ошибка ImageBusy при удалении тома rbd. Причиной может быть сбой "
 "клиентского соединения. В этом случае повторите удаление через 30 с."
 
-#, python-format
-msgid ""
-"Import record failed, cannot find backup service to perform the import. "
-"Request service %(service)s"
-msgstr ""
-"Сбой импорта записи: не найдена служба резервного копирования для выполнения "
-"импорта. Запрос службы %(service)s"
-
 msgid "Incorrect request body format"
 msgstr "Неправильный формат тела запроса"
 
@@ -4453,14 +3261,6 @@ msgstr "Недопустимый формат тела запроса."
 
 msgid "Incremental backups exist for this backup."
 msgstr "Для этой резервной копии существует дополняющие резервные копии."
-
-#, python-format
-msgid ""
-"Infortrend CLI exception: %(err)s Param: %(param)s (Return Code: %(rc)s) "
-"(Output: %(out)s)"
-msgstr ""
-"Исключительная ситуация CLI Infortrend: %(err)s. Параметр: %(param)s (Код "
-"возврата: %(rc)s) (Вывод: %(out)s)"
 
 msgid "Input volumes or snapshots are invalid."
 msgstr "Недопустимые входные тома или моментальные копии."
@@ -4471,12 +3271,6 @@ msgstr "Недопустимые входные или выходные тома
 #, python-format
 msgid "Instance %(uuid)s could not be found."
 msgstr "Не удалось найти экземпляр %(uuid)s."
-
-msgid "Insufficient free space available to extend volume."
-msgstr "Недостаточно места для расширения тома."
-
-msgid "Insufficient privileges"
-msgstr "Недостаточно прав доступа"
 
 #, python-format
 msgid "Invalid 3PAR Domain: %(err)s"
@@ -4496,10 +3290,6 @@ msgstr "Недопустимая моментальная копия групп�
 #, python-format
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "Недопустимая группа согласования: %(reason)s"
-
-msgid "Invalid ConsistencyGroup: No host to create consistency group"
-msgstr ""
-"Недопустимая группа согласования: нет хоста для создания группы согласования"
 
 #, python-format
 msgid ""
@@ -4540,15 +3330,8 @@ msgstr "Недопустимая версия XtremIO %(cur)s, требуетс�
 msgid "Invalid allocated quotas defined for the following project quotas: %s"
 msgstr "Неправильно определены квоты для следующего проекта: %s"
 
-msgid "Invalid argument"
-msgstr "Недопустимый аргумент"
-
 msgid "Invalid argument - negative seek offset."
 msgstr "Недопустимый аргумент - отрицательное смещение функции seek."
-
-#, python-format
-msgid "Invalid argument - whence=%s not supported"
-msgstr "Недопустимый аргумент - whence=%s не поддерживается"
 
 #, python-format
 msgid "Invalid argument - whence=%s not supported."
@@ -4566,10 +3349,6 @@ msgstr "Недопустимый ключ идентификации: %(reason)s
 msgid "Invalid backup: %(reason)s"
 msgstr "Недопустимая резервная копия: %(reason)s"
 
-msgid "Invalid chap user details found in CloudByte storage."
-msgstr ""
-"Обнаружена недопустимая информация о пользователе chap в хранилище CloudByte."
-
 #, python-format
 msgid "Invalid connection initialization response of volume %(name)s"
 msgstr "Недопустимый ответ об инициализации соединения от тома %(name)s:"
@@ -4583,9 +3362,6 @@ msgstr ""
 #, python-format
 msgid "Invalid content type %(content_type)s."
 msgstr "Недопустимый тип содержимого %(content_type)s."
-
-msgid "Invalid credentials"
-msgstr "Недопустимые идентификационные данные"
 
 #, python-format
 msgid "Invalid directory: %s"
@@ -4679,10 +3455,6 @@ msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
 msgstr "Недопустимое новое имя snapCPG для изменения типа. new_snap_cpg='%s'."
 
 #, python-format
-msgid "Invalid port number %(config)s for Coho rpc port"
-msgstr "Недопустимый порт %(config)s для порта RPC Coho"
-
-#, python-format
 msgid ""
 "Invalid prefetch type '%s' is configured. PrefetchType must be in 0,1,2,3."
 msgstr ""
@@ -4707,9 +3479,6 @@ msgstr ""
 #, python-format
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "Неверный срок резервирования %(expire)s."
-
-msgid "Invalid response header from RPC server"
-msgstr "Недопустимый заголовок ответа от сервера RPC"
 
 #, python-format
 msgid "Invalid secondary id %s."
@@ -4750,16 +3519,6 @@ msgstr "Недопустимый параметр обновления: '%s'"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "Неверное значение '%s' для принудительного применения."
-
-#, python-format
-msgid "Invalid value '%s' for force. "
-msgstr "Недопустимое значение '%s' для принудительного использования. "
-
-#, python-format
-msgid "Invalid value '%s' for is_public. Accepted values: True or False."
-msgstr ""
-"Недопустимое значение '%s' для is_public. Допустимые значения: True или "
-"False."
 
 #, python-format
 msgid "Invalid value '%s' for skip_validation."
@@ -4813,41 +3572,6 @@ msgid "Invalid volume: %(reason)s"
 msgstr "Недопустимый том: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid volume: Cannot add volume %(volume_id)s to consistency group "
-"%(group_id)s because volume is in an invalid state: %(status)s. Valid states "
-"are: ('available', 'in-use')."
-msgstr ""
-"Недопустимый том: нельзя добавить том %(volume_id)s в группу согласования "
-"%(group_id)s, поскольку он находится в недопустимом состоянии %(status)s. "
-"Допустимые состояния: ('available', 'in-use')."
-
-#, python-format
-msgid ""
-"Invalid volume: Cannot add volume %(volume_id)s to consistency group "
-"%(group_id)s because volume type %(volume_type)s is not supported by the "
-"group."
-msgstr ""
-"Недопустимый том: нельзя добавить том %(volume_id)s в группу согласования "
-"%(group_id)s, поскольку тип тома %(volume_type)s не поддерживается ."
-
-#, python-format
-msgid ""
-"Invalid volume: Cannot add volume fake-volume-uuid to consistency group "
-"%(group_id)s because volume cannot be found."
-msgstr ""
-"Недопустимый том: нельзя добавить том fake-volume-uuid в группу согласования "
-"%(group_id)s, поскольку он не найден."
-
-#, python-format
-msgid ""
-"Invalid volume: Cannot remove volume fake-volume-uuid from consistency group "
-"%(group_id)s because it is not in the group."
-msgstr ""
-"Недопустимый том: нельзя удалить том fake-volume-uuid из группы согласования "
-"%(group_id)s, поскольку он отсутствует в этой группе."
-
-#, python-format
 msgid "Invalid volume_type passed: %s."
 msgstr "Передано недопустимое значение volume_type: %s."
 
@@ -4893,14 +3617,6 @@ msgid ""
 msgstr ""
 "Переключение после сбоя невозможно, так как репликация настроена неверно."
 
-#, python-format
-msgid "Job id not found in CloudByte's create volume [%s] response."
-msgstr "Не найден ИД задания в ответе на запрос создания тома CloudByte [%s]."
-
-#, python-format
-msgid "Job id not found in CloudByte's delete volume [%s] response."
-msgstr "Не найден ИД задания в ответе на запрос удаления тома CloudByte [%s]."
-
 msgid ""
 "Key names can only contain alphanumeric characters, underscores, periods, "
 "colons and hyphens."
@@ -4916,24 +3632,8 @@ msgid "Keystone version 3 or greater must be used to get nested quota support."
 msgstr "Поддержка вложенных квот доступна в keystone версии не ниже 3."
 
 #, python-format
-msgid "LU does not exist for volume: %s"
-msgstr "LU не существует для тома: %s"
-
-msgid "LUN export failed!"
-msgstr "Сбой экспорта LUN!"
-
-msgid "LUN map overflow on every channel."
-msgstr "Переполнение карты LUN на каждом канале."
-
-#, python-format
 msgid "LUN not found with given ref %s."
 msgstr "LUN не найден по данной ссылке %s."
-
-#, python-format
-msgid "LUN number is out of bound on channel id: %(ch_id)s."
-msgstr ""
-"Номер LUN в ИД канала %(ch_id)s выходит за пределы диапазона допустимых "
-"значений."
 
 #, python-format
 msgid "Last %s cinder syslog entries:-"
@@ -4948,9 +3648,6 @@ msgstr "Лицензия недоступна."
 #, python-format
 msgid "Line %(dis)d : %(line)s"
 msgstr "Строка %(dis)d : %(line)s"
-
-msgid "Link path already exists and its not a symlink"
-msgstr "Путь ссылки уже существует и не является символьной ссылкой"
 
 #, python-format
 msgid "Linked clone of source volume not supported in state: %s."
@@ -4978,18 +3675,6 @@ msgid ""
 "same."
 msgstr ""
 "MD5 объекта %(object_name)s до: %(md5)s и после: %(etag)s не совпадают."
-
-#, python-format
-msgid "MSG_DENIED: %r"
-msgstr "MSG_DENIED: %r"
-
-#, python-format
-msgid "MSG_DENIED: AUTH_ERROR: %r"
-msgstr "MSG_DENIED: AUTH_ERROR: %r"
-
-#, python-format
-msgid "MSG_DENIED: RPC_MISMATCH: %r"
-msgstr "MSG_DENIED: RPC_MISMATCH: %r"
 
 #, python-format
 msgid "Malformed fcns output string: %s"
@@ -5062,14 +3747,6 @@ msgstr "Управление существующим томом не реали
 msgid "Manage existing volume requires 'source-id'."
 msgstr "Для управления существующим томом требуется 'source-id'."
 
-#, python-format
-msgid ""
-"Manage volume is not supported if FAST is enable. FAST policy: "
-"%(fastPolicyName)s."
-msgstr ""
-"Управление томом не поддерживается, если включен режим FAST. Стратегия FAST: "
-"%(fastPolicyName)s."
-
 msgid "Managing of snapshots to failed-over volumes is not allowed."
 msgstr ""
 "Передача управления моментальными копиями томам, переключенным после сбоя, "
@@ -5085,10 +3762,6 @@ msgid ""
 msgstr ""
 "Подготовка преобразования %(id)s не выполнена за отведенный тайм-аут %(to)d "
 "секунд. Завершается."
-
-#, python-format
-msgid "Masking view %(maskingViewName)s was not deleted successfully"
-msgstr "Маскирующее представление %(maskingViewName)s не было успешно удалено"
 
 #, python-format
 msgid "Maximum number of backups allowed (%(allowed)d) exceeded"
@@ -5117,9 +3790,6 @@ msgstr "Резервная копия метаданных уже существ
 #, python-format
 msgid "Metadata backup object '%s' already exists"
 msgstr "Объект резервной копии метаданных %s уже существует"
-
-msgid "Metadata property key blank."
-msgstr "Пустой ключ свойства метаданных."
 
 msgid "Metadata restore failed due to incompatible version"
 msgstr "Не удалось восстановить метаданные: несовместимая версия"
@@ -5151,22 +3821,6 @@ msgstr "В теле запроса отсутствует обязательны
 msgid "Missing required element '%s' in request body."
 msgstr "В теле запроса отсутствует обязательный элемент '%s'."
 
-msgid "Missing required element 'consistencygroup' in request body."
-msgstr "В теле запроса отсутствует обязательный элемент 'consistencygroup'."
-
-msgid "Missing required element quota_class_set in request body."
-msgstr "Отсутствует требуемый параметр quota_class_set в теле запроса."
-
-msgid "Missing required element snapshot in request body."
-msgstr "В теле запроса отсутствует обязательный элемент snapshot."
-
-msgid ""
-"Multiple SerialNumbers found, when only one was expected for this operation. "
-"Please change your EMC config file."
-msgstr ""
-"Обнаружено несколько значений SerialNumber, но только одно ожидалось для "
-"этой операции. Измените файл конфигурации EMC."
-
 #, python-format
 msgid "Multiple copies of volume %s found."
 msgstr "Обнаружено несколько копий тома %s."
@@ -5182,15 +3836,6 @@ msgstr "Обнаружено несколько профайлов."
 
 msgid "Must implement a fallback schedule"
 msgstr "Необходимо реализовать резервное расписание"
-
-msgid "Must implement find_retype_host"
-msgstr "Необходимо реализовать implement find_retype_host"
-
-msgid "Must implement host_passes_filters"
-msgstr "Необходимо реализовать host_passes_filters"
-
-msgid "Must implement schedule_create_consistencygroup"
-msgstr "Необходимо реализовать schedule_create_consistencygroup"
 
 msgid "Must implement schedule_create_volume"
 msgstr "Необходимо реализовать schedule_create_volume"
@@ -5211,12 +3856,6 @@ msgstr ""
 
 msgid "Must specify 'connector'"
 msgstr "Необходимо указать 'connector'"
-
-msgid "Must specify 'connector'."
-msgstr "Необходимо указать 'connector'."
-
-msgid "Must specify 'host'."
-msgstr "Необходимо указать 'host'."
 
 msgid "Must specify 'new_volume'"
 msgstr "Необходимо указать 'new_volume'"
@@ -5259,9 +3898,6 @@ msgstr "Необходимо указать класс ExtensionManager"
 msgid "Must specify bootable in request."
 msgstr "Необходимо указать загружаемый файл в запросе."
 
-msgid "Must specify protection domain name or protection domain id."
-msgstr "Необходимо указать имя или ИД домена защиты."
-
 msgid "Must specify readonly in request."
 msgstr "В запросе должен быть указан параметр readonly."
 
@@ -5270,9 +3906,6 @@ msgstr "Необходимо указать source-name или source-id мом�
 
 msgid "Must specify source-name or source-id."
 msgstr "Необходимо указать source-name или source-id."
-
-msgid "Must specify storage pool name or id."
-msgstr "Необходимо указать имя или ИД пула памяти."
 
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr "Необходимо указать пулы памяти. Опция: sio_storage_pools."
@@ -5315,10 +3948,6 @@ msgstr ""
 msgid "Need non-zero volume size"
 msgstr "Требуется ненулевой размер тома"
 
-#, python-format
-msgid "Neither MSG_DENIED nor MSG_ACCEPTED: %r"
-msgstr "Ни MSG_DENIED, ни MSG_ACCEPTED: %r"
-
 msgid "NetApp Cinder Driver exception."
 msgstr "Исключительная ситуация драйвера NetApp Cinder."
 
@@ -5356,35 +3985,14 @@ msgstr "Инициатор Fibre Channel не добавлен в хост."
 msgid "No FC port connected to fabric."
 msgstr "Никакой порт Fibre Channel не подключен к фабрике."
 
-msgid "No FCP targets found"
-msgstr "Не найден ы целевые объекты FCP"
-
-msgid "No Port Group elements found in config file."
-msgstr "Элементы группы портов не найдены в файле конфигурации."
-
 msgid "No VF ID is defined in the configuration file."
 msgstr "В файле конфигурации не задан VF ID."
 
 msgid "No active iSCSI portals with supplied iSCSI IPs"
 msgstr "Нет активных порталов iSCSI с указанными IP-адресами iSCSI"
 
-#, python-format
-msgid "No available service named %s"
-msgstr "Нет доступной службы с именем %s"
-
-#, python-format
-msgid "No backup with id %s"
-msgstr "Отсутствует резервная копия с ИД %s"
-
 msgid "No backups available to do an incremental backup."
 msgstr "Нет резервных копий для создания дополняющей резервной копии."
-
-msgid "No big enough free disk"
-msgstr "Отсутствуют достаточно большие свободные диски"
-
-#, python-format
-msgid "No cgsnapshot with id %s"
-msgstr "Нет моментальной копии группы согласования с ИД %s"
 
 msgid "No cinder entries in syslog!"
 msgstr "Нет записей cinder в системном протоколе!"
@@ -5396,10 +4004,6 @@ msgstr ""
 
 msgid "No config node found."
 msgstr "Не найден узел конфигурации."
-
-#, python-format
-msgid "No consistency group with id %s"
-msgstr "Нет группы согласования с ИД %s"
 
 #, python-format
 msgid "No element by given name %s."
@@ -5420,9 +4024,6 @@ msgstr ""
 "Не осталось свободных ИД LUN. Максимальное число томов, которое можно "
 "подключать к хосту (%s) превышено."
 
-msgid "No free disk"
-msgstr "Отсутствуют свободные диски"
-
 #, python-format
 msgid "No good iscsi portal found in supplied list for %s."
 msgstr "Не найден правильный портал iscsi в указанном списке %s."
@@ -5430,10 +4031,6 @@ msgstr "Не найден правильный портал iscsi в указа�
 #, python-format
 msgid "No good iscsi portals found for %s."
 msgstr "Не найдены правильные порталы iscsi для %s."
-
-#, python-format
-msgid "No host to create consistency group %s."
-msgstr "Нет хоста для создания группы согласования %s."
 
 msgid "No iSCSI-enabled ports on target array."
 msgstr "В целевом массиве нет портов с поддержкой iSCSI."
@@ -5448,35 +4045,12 @@ msgstr "Никакой инициатор не подключен к фабри�
 msgid "No initiator group found for initiator %s"
 msgstr "Группа инициатора не найдена для инициатора %s"
 
-msgid "No initiators found, cannot proceed"
-msgstr "Инициаторы не найдены продолжение работы невозможно"
-
 #, python-format
 msgid "No interface found on cluster for ip %s"
 msgstr "В кластере не найден интерфейс для ip-адреса %s"
 
 msgid "No ip address found."
 msgstr "Не найден IP-адрес."
-
-msgid "No iscsi auth groups were found in CloudByte."
-msgstr "Не найдены группы идентификации iSCSI в CloudByte."
-
-msgid "No iscsi initiators were found in CloudByte."
-msgstr "В CloudByte не найдены инициаторы iscsi."
-
-#, python-format
-msgid "No iscsi service found for CloudByte volume [%s]."
-msgstr "Не найдена служба iscsi для тома CloudByte [%s]."
-
-msgid "No iscsi services found in CloudByte storage."
-msgstr "Службы iscsi не найдены в хранилище CloudByte."
-
-#, python-format
-msgid "No key file specified and unable to load key from %(cert)s %(e)s."
-msgstr "Не указан файл ключа, и невозможно загрузить ключ из %(cert)s %(e)s."
-
-msgid "No mounted Gluster shares found"
-msgstr "Не обнаружено смонтированных общих ресурсов Gluster"
 
 msgid "No mounted NFS shares found"
 msgstr "Не обнаружено смонтированных общих ресурсов NFS"
@@ -5501,22 +4075,6 @@ msgstr ""
 "Нет пулов для предоставления ресурсов томам. Убедитесь, что правильно "
 "настроен параметр конфигурации netapp_pool_name_search_pattern."
 
-msgid ""
-"No response was received from CloudByte storage list iSCSI auth user API "
-"call."
-msgstr ""
-"Не получен ответ из вызова API идентификации пользователей iSCSI списка "
-"хранилища CloudByte."
-
-msgid "No response was received from CloudByte storage list tsm API call."
-msgstr "Вызов API tsm списка хранилища CloudByte не вернул ответа."
-
-msgid "No response was received from CloudByte's list filesystem api call."
-msgstr "Вызов api  файловой системы списка CloudByte не вернул ответа."
-
-msgid "No service VIP configured and no nexenta_client_address"
-msgstr "Не настроен VIP службы и не задан nexenta_client_address"
-
 #, python-format
 msgid "No snap found with %s as backing file."
 msgstr "Не найдена моментальная копия с %s в качестве базового файла."
@@ -5528,11 +4086,6 @@ msgstr "Не найден образ моментальной копии в гр
 #, python-format
 msgid "No snapshots could be found on volume %s."
 msgstr "Не найдены моментальные копии для тома %s."
-
-#, python-format
-msgid "No source snapshots provided to create consistency group %s."
-msgstr ""
-"Не указаны исходные моментальные копии для создания группы согласования %s."
 
 #, python-format
 msgid "No storage path found for export path %s"
@@ -5561,20 +4114,8 @@ msgstr ""
 "это требует, чтобы все ИД LUN были уникальны в пределах всей группы хостов."
 
 #, python-format
-msgid "No valid host was found. %(reason)s"
-msgstr "Допустимый узел не найден. %(reason)s"
-
-#, python-format
-msgid "No valid hosts for volume %(id)s with type %(type)s"
-msgstr "Нет допустимых хостов для тома %(id)s с типом %(type)s"
-
-#, python-format
 msgid "No vdisk with the UID specified by ref %s."
 msgstr "Vdisk с UID, заданным по ссылке %s, отсутствует."
-
-#, python-format
-msgid "No views found for LUN: %s"
-msgstr "Не найдены представления для LUN: %s"
 
 #, python-format
 msgid ""
@@ -5586,28 +4127,8 @@ msgstr ""
 msgid "No volume service(s) started successfully, terminating."
 msgstr "Не удалось запустить службы томов. Завершение."
 
-msgid "No volume was found at CloudByte storage."
-msgstr "Не найден том в хранилище CloudByte."
-
-msgid "No volume_type should be provided when creating test replica."
-msgstr "Нельзя указывать volume_type при создании пробной копии."
-
-msgid "No volumes found in CloudByte storage."
-msgstr "В хранилище CloudByte не найдены тома."
-
-msgid "No weighed hosts available"
-msgstr "Нет хостов с весами"
-
-#, python-format
-msgid "Not a valid string: %s"
-msgstr "Недопустимая строка: %s"
-
 msgid "Not a valid value for NaElement."
 msgstr "Недопустимое значение для NaElement."
-
-#, python-format
-msgid "Not able to find a suitable datastore for the volume: %s."
-msgstr "Не найдено подходящее хранилище данных для тома %s."
 
 msgid "Not an rbd snapshot"
 msgstr "Не является моментальной копией rbd"
@@ -5635,34 +4156,6 @@ msgid "Nova returned \"error\" status while creating snapshot."
 msgstr ""
 "Во время создания моментальной копии из Nova возвращено состояние error."
 
-msgid "Null response received from CloudByte's list filesystem."
-msgstr "Файловая система списка CloudByte вернула пустой ответ."
-
-msgid "Null response received from CloudByte's list iscsi auth groups."
-msgstr "Получен пустой ответ из групп идентификации iSCSI списка CloudByte."
-
-msgid "Null response received from CloudByte's list iscsi initiators."
-msgstr "Инициаторы iscsi списков CloudByte вернули пустой ответ."
-
-msgid "Null response received from CloudByte's list volume iscsi service."
-msgstr "Служба iscsi списков томов CloudByte вернула пустой ответ."
-
-#, python-format
-msgid "Null response received while creating volume [%s] at CloudByte storage."
-msgstr "При создании тома [%s] в хранилище CloudByte получен пустой ответ."
-
-#, python-format
-msgid "Null response received while deleting volume [%s] at CloudByte storage."
-msgstr "Получен пустой ответ при удалении тома [%s] в хранилище CloudByte."
-
-#, python-format
-msgid ""
-"Null response received while querying for [%(operation)s] based job "
-"[%(job)s] at CloudByte storage."
-msgstr ""
-"Получен пустой ответ на запрос выполнения операции [%(operation)s] с помощью "
-"задания [%(job)s] в хранилище CloudByte."
-
 msgid "Object Count"
 msgstr "Количество объектов"
 
@@ -5671,13 +4164,6 @@ msgstr "Версия объекта"
 
 msgid "Object is not a NetApp LUN."
 msgstr "Объект не находится в LUN NetApp."
-
-#, python-format
-msgid ""
-"On an Extend Operation, error adding volume to composite volume: "
-"%(volumename)s."
-msgstr ""
-"Ошибка в операции Extend при добавлении тома в составной том %(volumename)s."
 
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr ""
@@ -5717,9 +4203,6 @@ msgstr "Операция не поддерживается: %(operation)s."
 msgid "Option gpfs_images_dir is not set correctly."
 msgstr "Опция gpfs_images_dir указана неправильно."
 
-msgid "Option gpfs_images_share_mode is not set correctly."
-msgstr "Опция gpfs_images_share_mode указана неправильно."
-
 msgid "Option gpfs_mount_point_base is not set correctly."
 msgstr "Опция gpfs_mount_point_base указана неправильно."
 
@@ -5744,36 +4227,12 @@ msgstr ""
 msgid "Path to REST server's certificate must be specified."
 msgstr "Необходимо указать путь к сертификату сервера REST."
 
-#, python-format
-msgid "Please create %(pool_list)s pool in advance!"
-msgstr "Заранее создайте пул %(pool_list)s!"
-
-#, python-format
-msgid "Please create %(tier_levels)s tier in pool %(pool)s in advance!"
-msgstr "Заранее создайте слой %(tier_levels)s в пуле %(pool)s!"
-
 msgid "Please specify a name for QoS specs."
 msgstr "Укажите имя спецификации QoS."
 
 #, python-format
 msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "Политика не допускает выполнения %(action)s."
-
-#, python-format
-msgid "Pool %(poolNameInStr)s is not found."
-msgstr "Пул %(poolNameInStr)s не найден."
-
-#, python-format
-msgid "Pool %s does not exist in Nexenta Store appliance"
-msgstr "Пул %s не существует в устройстве Nexenta Store"
-
-#, python-format
-msgid "Pool from volume['host'] %(host)s not found."
-msgstr "Не найден пул из volume['host'] %(host)s."
-
-#, python-format
-msgid "Pool from volume['host'] failed with: %(ex)s."
-msgstr "Сбой пула из volume['host']. Исключительная ситуация: %(ex)s."
 
 msgid "Pool is not available in the volume host field."
 msgstr "Не указан пул в поле хоста тома."
@@ -5782,35 +4241,12 @@ msgid "Pool is not available in the volume host fields."
 msgstr "Пул недоступен в полях хоста тома."
 
 #, python-format
-msgid "Pool with name %(pool)s wasn't found in domain %(domain)s."
-msgstr "Не найден пул с именем %(pool)s в домене %(domain)s."
-
-#, python-format
 msgid "Pool with name %(pool_name)s wasn't found in domain %(domain_id)s."
 msgstr "Не найден пул с именем %(pool_name)s в домене %(domain_id)s."
 
 #, python-format
-msgid ""
-"Pool: %(poolName)s. is not associated to storage tier for fast policy "
-"%(fastPolicy)s."
-msgstr ""
-"Пул %(poolName)s. не связан со слоем памяти для быстрой стратегии "
-"%(fastPolicy)s."
-
-#, python-format
-msgid "PoolName must be in the file %(fileName)s."
-msgstr "Значение PoolName должно быть указано в файле %(fileName)s."
-
-#, python-format
 msgid "Pools %s does not exist"
 msgstr "Пулы %s не существуют"
-
-msgid "Pools name is not set."
-msgstr "Не задано имя пула."
-
-#, python-format
-msgid "Primary copy status: %(status)s and synchronized: %(sync)s."
-msgstr "Состояние главной копии: %(status)s, синхронизирована: %(sync)s."
 
 msgid "Project ID"
 msgstr " ID проекта"
@@ -5840,14 +4276,6 @@ msgid ""
 msgstr ""
 "Указанное состояние моментальной копии %(provided)s запрещено для "
 "моментальной копии с состоянием %(current)s."
-
-#, python-format
-msgid ""
-"Provider information w.r.t CloudByte storage was not found for OpenStack "
-"volume [%s]."
-msgstr ""
-"Не найдена информация поставщика о хранилище CloudByte для тома OpenStack "
-"[%s]."
 
 #, python-format
 msgid "Pure Storage Cinder driver failure: %(reason)s"
@@ -5900,19 +4328,8 @@ msgstr ""
 msgid "Qos specs still in use."
 msgstr "Спецификация QoS еще используется."
 
-msgid ""
-"Query by service parameter is deprecated. Please use binary parameter "
-"instead."
-msgstr ""
-"Запрос по параметру службы устарело. Вместо него следует использовать "
-"двоичный параметр."
-
 msgid "Query resource pool error."
 msgstr "Ошибка запроса пула ресурсов."
-
-#, python-format
-msgid "Quota %s limit must be equal or greater than existing resources."
-msgstr "Ограничение %s квоты должно быть не меньше существующих ресурсов."
 
 #, python-format
 msgid "Quota class %(class_name)s could not be found."
@@ -5957,23 +4374,8 @@ msgstr "Сбой операции diff RBD - (код возврата=%(ret)s st
 msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
 msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
 
-msgid "REST server IP must by specified."
-msgstr "Должен быть указан IP-адрес сервера REST."
-
-msgid "REST server password must by specified."
-msgstr "Должен быть указан пароль сервера REST."
-
-msgid "REST server username must by specified."
-msgstr "Должно быть указано имя пользователя сервера REST."
-
 msgid "RPC Version"
 msgstr "Версия RPC"
-
-msgid "RPC server response is incomplete"
-msgstr "Неполный ответ от сервера RPC"
-
-msgid "Raid did not have MCS Channel."
-msgstr "У RAID нет канала MCS."
 
 #, python-format
 msgid "Received error string: %s"
@@ -6077,14 +4479,6 @@ msgstr "Ошибка переименования моментальной ко�
 msgid "Replication %(name)s to %(ssn)s failed."
 msgstr "Репликация %(name)s в %(ssn)s не выполнена."
 
-#, python-format
-msgid "Replication Service Capability not found on %(storageSystemName)s."
-msgstr "Функция службы репликации не найдена в %(storageSystemName)s."
-
-#, python-format
-msgid "Replication Service not found on %(storageSystemName)s."
-msgstr "Служба репликации не найдена в %(storageSystemName)s."
-
 msgid "Replication not allowed yet."
 msgstr "Репликация еще не разрешена."
 
@@ -6122,19 +4516,8 @@ msgstr ""
 "Запрошенный том или моментальная копия превышают разрешенную квоту %(name)s. "
 "Запрошено %(requested)s ГБ, квота %(quota)s ГБ, использовано %(consumed)s ГБ."
 
-#, python-format
-msgid ""
-"Requested volume size %(size)d is larger than maximum allowed limit "
-"%(limit)d."
-msgstr ""
-"Запрошенный размер тома %(size)d больше максимально допустимого (%(limit)d)."
-
 msgid "Required configuration not found"
 msgstr "Не найдена требуемая конфигурация"
-
-#, python-format
-msgid "Required flag %s is not set"
-msgstr "Не указан требуемый флаг %s"
 
 #, python-format
 msgid ""
@@ -6228,10 +4611,6 @@ msgid "Retype requires migration but is not allowed."
 msgstr "Для изменения типа требуется перенос, но он запрещен."
 
 #, python-format
-msgid "Rolling back %(volumeName)s by deleting it."
-msgstr "Выполняется откат %(volumeName)s путем его удаления."
-
-#, python-format
 msgid ""
 "Running Cinder with a VMware vCenter version less than %s is not allowed."
 msgstr "Работа Cinder с версией VMware vCenter ниже %s невозможна."
@@ -6241,18 +4620,6 @@ msgstr "Продукт SAN не настроен."
 
 msgid "SAN protocol is not configured."
 msgstr "Протокол SAN не настроен."
-
-#, python-format
-msgid "SMBFS config 'smbfs_oversub_ratio' invalid.  Must be > 0: %s"
-msgstr ""
-"Недопустимая конфигурация SMBFS smbfs_oversub_ratio. Значение должно быть "
-"больше 0: %s"
-
-#, python-format
-msgid "SMBFS config 'smbfs_used_ratio' invalid.  Must be > 0 and <= 1.0: %s"
-msgstr ""
-"Недопустимая конфигурация SMBFS smbfs_used_ratio. Значение должно быть "
-"больше 0 и не больше 1,0: %s"
 
 #, python-format
 msgid "SMBFS config file at %(config)s doesn't exist."
@@ -6275,14 +4642,6 @@ msgid "SSH connection failed for %(fabric)s with error: %(err)s"
 msgstr "Сбой соединения SSH для %(fabric)s, ошибка: %(err)s"
 
 #, python-format
-msgid "SSL Certificate expired on %s."
-msgstr "Срок действия сертификата SSL истек %s."
-
-#, python-format
-msgid "SSL error: %(arg)s."
-msgstr "Ошибка SSL: %(arg)s."
-
-#, python-format
 msgid "Scheduler Host Filter %(filter_name)s could not be found."
 msgstr "Фильтр узлов диспетчера %(filter_name)s не найден"
 
@@ -6294,23 +4653,11 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Secondary copy status: %(status)s and synchronized: %(sync)s, sync progress "
-"is: %(progress)s%%."
-msgstr ""
-"Состояние вспомогательной копии: %(status)s, состояние синхронизации: "
-"%(sync)s, ход синхронизации %(progress)s%%."
-
-#, python-format
-msgid ""
 "Secondary id can not be the same as primary array, backend_id = "
 "%(secondary)s."
 msgstr ""
 "Вторичный ИД не может совпадать с основным массивом, backend_id = "
 "%(secondary)s."
-
-#, python-format
-msgid "SerialNumber must be in the file %(fileName)s."
-msgstr "Значение SerialNumber должно быть указано в файле %(fileName)s."
 
 #, python-format
 msgid "Service %(service)s on host %(host)s removed."
@@ -6419,14 +4766,6 @@ msgstr "У снимка %(snapshot_id)s нет метаданных с ключ�
 msgid "Snapshot '%s' doesn't exist on array."
 msgstr "Моментальная копия '%s' не существует в массиве."
 
-#, python-format
-msgid ""
-"Snapshot cannot be created because volume %(vol_id)s is not available, "
-"current volume status: %(vol_status)s."
-msgstr ""
-"Невозможно создать моментальную копию, поскольку том %(vol_id)s недоступен. "
-"Текущее состояние тома: %(vol_status)s."
-
 msgid "Snapshot cannot be created while volume is migrating."
 msgstr "Моментальную копию нельзя создать во время переноса тома."
 
@@ -6448,9 +4787,6 @@ msgid "Snapshot status %(cur)s not allowed for update_snapshot_status"
 msgstr ""
 "Состояние моментальной копии %(cur)s запрещено для update_snapshot_status"
 
-msgid "Snapshot status must be \"available\" to clone."
-msgstr "Для дублирования состояние моментальной копии должно быть available."
-
 #, python-format
 msgid ""
 "Snapshot to be backed up must be available, but the current status is \"%s\"."
@@ -6462,22 +4798,6 @@ msgstr ""
 msgid "Snapshot with id of %s could not be found."
 msgstr "Моментальная копия с ИД %s не найдена."
 
-#, python-format
-msgid ""
-"Snapshot='%(snap)s' does not exist in base image='%(base)s' - aborting "
-"incremental backup"
-msgstr ""
-"Моментальная копия='%(snap)s' не существует в базовом образе='%(base)s' - "
-"прерывание дополняющего резервного копирования"
-
-#, python-format
-msgid "Snapshots are not supported for this volume format: %s"
-msgstr "Моментальные копии не поддерживаются для этого формата тома: %s"
-
-#, python-format
-msgid "Socket error: %(arg)s."
-msgstr "Ошибка сокета: %(arg)s."
-
 msgid "SolidFire Cinder Driver exception"
 msgstr "Исключительная ситуация драйвера SolidFire Cinder"
 
@@ -6485,10 +4805,6 @@ msgid "Sort direction array size exceeds sort key array size."
 msgstr ""
 "Размер массива значений направления сортировки превышает размер массива "
 "ключей сортировки."
-
-msgid "Source CG is empty. No consistency group will be created."
-msgstr ""
-"Исходная группа согласования пустая. Группа согласования создана не будет."
 
 msgid "Source host details not found."
 msgstr "Не найдены сведения об исходном хосте."
@@ -6509,9 +4825,6 @@ msgid ""
 msgstr ""
 "Указанный хост для связывания с томом %(vol)s находится в неподдерживаемой "
 "группе хостов %(group)s."
-
-msgid "Specified logical volume does not exist."
-msgstr "Указанный логический том не существует."
 
 #, python-format
 msgid "Specified snapshot group with id %s could not be found."
@@ -6552,30 +4865,8 @@ msgid "Stop snapshot error."
 msgstr "Ошибка остановки моментальной копии."
 
 #, python-format
-msgid "Storage Configuration Service not found on %(storageSystemName)s."
-msgstr "Служба конфигурации носителей не найдена в %(storageSystemName)s."
-
-#, python-format
-msgid "Storage HardwareId mgmt Service not found on %(storageSystemName)s."
-msgstr ""
-"Служба управления ИД аппаратного обеспечения носителей не найдена в "
-"%(storageSystemName)s."
-
-#, python-format
-msgid "Storage Profile %s not found."
-msgstr "Не найден профайл хранилища %s."
-
-#, python-format
-msgid "Storage Relocation Service not found on %(storageSystemName)s."
-msgstr "Служба перемещения носителей не найдена в %(storageSystemName)s."
-
-#, python-format
 msgid "Storage family %s is not supported."
 msgstr "Семейство памяти %s не поддерживается."
-
-#, python-format
-msgid "Storage group %(storageGroupName)s was not deleted successfully"
-msgstr "Группа носителей %(storageGroupName)s не была удалена успешно"
 
 #, python-format
 msgid "Storage host %(svr)s not detected, verify name"
@@ -6588,19 +4879,8 @@ msgstr "Пул памяти не настроен."
 msgid "Storage profile: %(storage_profile)s not found."
 msgstr "Профайл хранилища: %(storage_profile)s не найден."
 
-msgid "Storage resource could not be found."
-msgstr "Ресурс памяти не найден."
-
 msgid "Storage system id not set."
 msgstr "Не указан ИД системы хранения."
-
-#, python-format
-msgid "Storage system not found for pool %(poolNameInStr)s."
-msgstr "Для пула %(poolNameInStr)s не найдена система памяти."
-
-#, python-format
-msgid "StorageSystem %(array)s is not found."
-msgstr "Система хранения %(array)s не найдена."
 
 #, python-format
 msgid ""
@@ -6633,13 +4913,6 @@ msgstr "Система не поддерживает сжатие."
 msgid "System is busy, retry operation."
 msgstr "Система занята. Повторите операцию."
 
-#, python-format
-msgid ""
-"TSM [%(tsm)s] was not found in CloudByte storage for account [%(account)s]."
-msgstr ""
-"TSM [%(tsm)s] не найден в хранилище CloudByte для учетной записи "
-"[%(account)s]."
-
 msgid "Target volume type is still in use."
 msgstr "Тип целевого тома еще используется."
 
@@ -6654,19 +4927,12 @@ msgstr ""
 msgid "Terminate volume connection failed: %(err)s"
 msgstr "Не удалось закрыть соединение с томом: %(err)s"
 
-#, python-format
-msgid "The %(type)s %(id)s source to be replicated was not found."
-msgstr "Реплицируемый исходный том %(type)s %(id)s не найден."
-
 msgid ""
 "The 'sort_key' and 'sort_dir' parameters are deprecated and cannot be used "
 "with the 'sort' parameter."
 msgstr ""
 "Параметры sort_key и sort_dir устарели и не могут использоваться с "
 "параметром sort."
-
-msgid "The EQL array has closed the connection."
-msgstr "Массив EQL закрыл соединение."
 
 #, python-format
 msgid ""
@@ -6675,9 +4941,6 @@ msgid ""
 msgstr ""
 "Уровень выпуска файловой системы GPFS %(fs)s не соответствует требуемому. "
 "Текущий уровень - %(cur)s, должен быть %(min)s."
-
-msgid "The IP Address was not found."
-msgstr "Не найден IP-адрес."
 
 #, python-format
 msgid ""
@@ -6696,32 +4959,8 @@ msgstr ""
 "Перед выполнением этой команды создайте базу данных с помощью команды "
 "'cinder-manage db sync'."
 
-#, python-format
-msgid ""
-"The array does not support the storage pool setting for SLO %(slo)s and "
-"workload %(workload)s.  Please check the array for valid SLOs and workloads."
-msgstr ""
-"Массив не поддерживает параметр пула памяти для SLO %(slo)s и нагрузки "
-"%(workload)s.  Проверьте правильность настройки SLO и нагрузок для массива."
-
-msgid ""
-"The back-end where the volume is created does not have replication enabled."
-msgstr "Репликация не включена в базовой системе, где создан том."
-
-#, python-format
-msgid ""
-"The command %(cmd)s failed. (ret: %(ret)s, stdout: %(out)s, stderr: %(err)s)"
-msgstr ""
-"Команда %(cmd)s не выполнена. (код возврата: %(ret)s, stdout: %(out)s, "
-"stderr: %(err)s)"
-
 msgid "The copy should be primary or secondary"
 msgstr "Копия должна быть первичной или вторичной"
-
-#, python-format
-msgid ""
-"The creation of a logical device could not be completed. (LDEV: %(ldev)s)"
-msgstr "Не удалось создать логическое устройство. (LDEV: %(ldev)s)"
 
 msgid "The decorated method must accept either a volume or a snapshot object"
 msgstr ""
@@ -6738,22 +4977,12 @@ msgstr ""
 "(%(start)s)."
 
 #, python-format
-msgid "The extraspec: %(extraspec)s is not valid."
-msgstr "Недопустимая дополнительная спецификация %(extraspec)s."
-
-#, python-format
 msgid "The failed-over volume could not be deleted: %s"
 msgstr "Нельзя удалить том, для которого выполнено переключение после сбоя: %s"
 
 #, python-format
 msgid "The following elements are required: %s"
 msgstr "Требуются следующие элементы: %s"
-
-msgid "The host group or iSCSI target could not be added."
-msgstr "Не удалось добавить группу хостов или целевое расположение iSCSI."
-
-msgid "The host group or iSCSI target was not found."
-msgstr "Не найдена группа хостов или целевое расположение iSCSI."
 
 msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
@@ -6769,41 +4998,11 @@ msgstr ""
 "Хост не готов к обратному переключению. Выполните повторную синхронизацию "
 "томов и возобновите репликацию в базовых системах LeftHand."
 
-msgid ""
-"The host is not ready to be failed back. Please resynchronize the volumes "
-"and resume replication on the Storwize backends."
-msgstr ""
-"Хост не готов к обратному переключению. Выполните повторную синхронизацию "
-"томов и возобновите репликацию в базовых системах Storwize."
-
-#, python-format
-msgid "The iSCSI CHAP user %(user)s does not exist."
-msgstr "Пользователь %(user)s CHAP iSCSI не существует."
-
 msgid "The key cannot be None."
 msgstr "Ключ не может быть None."
 
-#, python-format
-msgid "The logical device for specified %(type)s %(id)s was already deleted."
-msgstr "Логическое устройство для указанного %(type)s %(id)s уже удалено."
-
-#, python-format
-msgid "The method %(method)s is timed out. (timeout value: %(timeout)s)"
-msgstr "Истек тайм-аут у метода %(method)s. (значение тайм-аута: %(timeout)s)"
-
 msgid "The method update_migrated_volume is not implemented."
 msgstr "Метод update_migrated_volume не реализован."
-
-#, python-format
-msgid ""
-"The mount %(mount_path)s is not a valid Quobyte USP volume. Error: %(exc)s"
-msgstr ""
-"Путь монтирования %(mount_path)s не является допустимым томом USP Quobyte. "
-"Ошибка: %(exc)s"
-
-#, python-format
-msgid "The parameter of the storage backend. (config_group: %(config_group)s)"
-msgstr "Параметр базовой системы хранения. (config_group: %(config_group)s)"
 
 msgid "The parent backup must be available for incremental backup."
 msgstr ""
@@ -6813,13 +5012,6 @@ msgstr ""
 #, python-format
 msgid "The provided snapshot '%s' is not a snapshot of the provided volume."
 msgstr "Моментальная копия '%s' не является моментальной копией данного тома."
-
-msgid ""
-"The reference to the volume in the backend should have the format "
-"file_system/volume_name (volume_name cannot contain '/')"
-msgstr ""
-"Ссылка на том в базовой системе должна указываться в формате: файловая-"
-"система/имя-тома. Имя тома не может содержать символ '/'"
 
 msgid ""
 "The replication mode was not configured correctly in the volume type "
@@ -6833,18 +5025,6 @@ msgstr ""
 #, python-format
 msgid "The replication sync period must be at least %s seconds."
 msgstr "Минимальное значение периода репликации составляет %s секунд."
-
-#, python-format
-msgid ""
-"The requested size : %(requestedSize)s is not the same as resulting size: "
-"%(resultSize)s."
-msgstr ""
-"Запрошенный размер %(requestedSize)s не совпадает с итоговым размером "
-"%(resultSize)s."
-
-#, python-format
-msgid "The resource %(resource)s was not found."
-msgstr "Ресурс %(resource)s не найден."
 
 msgid "The results are invalid."
 msgstr "Неверные результаты."
@@ -6868,58 +5048,11 @@ msgid "The source volume type '%s' is not available."
 msgstr "Тип исходного тома '%s' не доступен. "
 
 #, python-format
-msgid "The specified %(desc)s is busy."
-msgstr "Указанное %(desc)s занято."
-
-#, python-format
 msgid "The specified LUN does not belong to the given pool: %s."
 msgstr "LUN не принадлежит данному пулу: %s."
 
-#, python-format
-msgid ""
-"The specified ldev %(ldev)s could not be managed. The ldev must not be "
-"mapping."
-msgstr ""
-"Не удалось включить управление для заданного ldev %(ldev)s. ldev не должен "
-"преобразован."
-
-#, python-format
-msgid ""
-"The specified ldev %(ldev)s could not be managed. The ldev must not be "
-"paired."
-msgstr ""
-"Не удалось включить управление для заданного ldev %(ldev)s. ldev не должен "
-"иметь парное устройство."
-
-#, python-format
-msgid ""
-"The specified ldev %(ldev)s could not be managed. The ldev size must be in "
-"multiples of gigabyte."
-msgstr ""
-"Не удалось включить управление для заданного ldev %(ldev)s. Размер ldev "
-"должен указываться в единицах, кратных гигабайтам."
-
-#, python-format
-msgid ""
-"The specified ldev %(ldev)s could not be managed. The volume type must be DP-"
-"VOL."
-msgstr ""
-"Не удалось включить управление для заданного ldev %(ldev)s. Требуемый тип "
-"тома: DP-VOL."
-
-#, python-format
-msgid ""
-"The specified operation is not supported. The volume size must be the same "
-"as the source %(type)s. (volume: %(volume_id)s)"
-msgstr ""
-"Указанная операция не поддерживается. Размер тома должен совпадать с "
-"исходным %(type)s. (том: %(volume_id)s)"
-
 msgid "The specified vdisk is mapped to a host."
 msgstr "Указанный vdisk связан с хостом."
-
-msgid "The specified volume is mapped to a host."
-msgstr "Указанный том связан с хостом."
 
 #, python-format
 msgid ""
@@ -6927,12 +5060,6 @@ msgid ""
 "password."
 msgstr ""
 "Неверный пароль массива хранения для %s. Обновите пароль в конфигурации."
-
-#, python-format
-msgid "The storage backend can be used. (config_group: %(config_group)s)"
-msgstr ""
-"Базовая система хранения пригодна для использования. (config_group: "
-"%(config_group)s)"
 
 #, python-format
 msgid ""
@@ -6944,45 +5071,11 @@ msgstr ""
 
 #, python-format
 msgid ""
-"The striped meta count of %(memberCount)s is too small for volume: "
-"%(volumeName)s, with size %(volumeSize)s."
-msgstr ""
-"Счетчик чередующихся метаданных %(memberCount)s слишком мал для тома "
-"%(volumeName)s с размером %(volumeSize)s."
-
-#, python-format
-msgid ""
 "The type of metadata: %(metadata_type)s for volume/snapshot %(id)s is "
 "invalid."
 msgstr ""
 "Тип метаданных %(metadata_type)s для тома/моментальной копии %(id)s "
 "недопустимый."
-
-#, python-format
-msgid ""
-"The volume %(volume_id)s could not be extended. The volume type must be "
-"Normal."
-msgstr "Том %(volume_id)s не удалось расширить. Тип тома должен быть Normal."
-
-#, python-format
-msgid ""
-"The volume %(volume_id)s could not be unmanaged. The volume type must be "
-"%(volume_type)s."
-msgstr ""
-"Не удалось отменить управление для тома %(volume_id)s. Требуемый тип тома: "
-"%(volume_type)s."
-
-#, python-format
-msgid "The volume %(volume_id)s is managed successfully. (LDEV: %(ldev)s)"
-msgstr "Управление тома %(volume_id)s выполняется успешно. (LDEV: %(ldev)s)"
-
-#, python-format
-msgid "The volume %(volume_id)s is unmanaged successfully. (LDEV: %(ldev)s)"
-msgstr "Управление томом %(volume_id)s отменено успешно. (LDEV: %(ldev)s)"
-
-#, python-format
-msgid "The volume %(volume_id)s to be mapped was not found."
-msgstr "Связываемый том %(volume_id)s не найден."
 
 msgid "The volume cannot accept transfer in maintenance mode."
 msgstr "Том не может принять передачу в режиме обслуживания."
@@ -7012,30 +5105,11 @@ msgstr ""
 msgid "The volume label is required as input."
 msgstr "Требуется метка тома во входных данных."
 
-#, python-format
-msgid "There are no resources available for use. (resource: %(resource)s)"
-msgstr "Нет доступных ресурсов. (ресурс: %(resource)s)"
-
 msgid "There are no valid ESX hosts."
 msgstr "Нет допустимых хостов ESX."
 
 msgid "There are no valid datastores."
 msgstr "Нет допустимых хранилищ данных."
-
-#, python-format
-msgid ""
-"There is no designation of the %(param)s. The specified storage is essential "
-"to manage the volume."
-msgstr ""
-"Отсутствует обозначение %(param)s. Заданное хранилище требуется для "
-"управления томом."
-
-msgid ""
-"There is no designation of the ldev. The specified ldev is essential to "
-"manage the volume."
-msgstr ""
-"Отсутствует обозначение для ldev. Указанное ldev требуется для управления "
-"томом."
 
 msgid "There is no metadata in DB object."
 msgstr "Нет метаданных в объекте базы данных."
@@ -7095,10 +5169,6 @@ msgid "There was an error starting remote copy: %s."
 msgstr "Ошибка при запуске удаленного копирования: %s."
 
 #, python-format
-msgid "There's no Gluster config file configured (%s)"
-msgstr "Отсутствует настроенный файл конфигурации Gluster (%s)"
-
-#, python-format
 msgid "There's no NFS config file configured (%s)"
 msgstr "Отсутствует настроенный файл конфигурации NFS (%s)"
 
@@ -7112,13 +5182,6 @@ msgstr ""
 msgid "Thin provisioning not supported on this version of LVM."
 msgstr "Оперативное выделение ресурсов не поддерживается в этой версии LVM."
 
-msgid "This driver does not support deleting in-use snapshots."
-msgstr "Этот драйвер не поддерживает удаление используемых моментальных копий."
-
-msgid "This driver does not support snapshotting in-use volumes."
-msgstr ""
-"Этот драйвер не поддерживает создание моментальных копий используемых томов."
-
 msgid "This request was rate-limited."
 msgstr "Этот запрос ограничен по частоте."
 
@@ -7129,10 +5192,6 @@ msgid ""
 msgstr ""
 "Платформа %s не поддерживается. Этот драйвер поддерживает только платформы "
 "Win32."
-
-#, python-format
-msgid "Tier Policy Service not found for %(storageSystemName)s."
-msgstr "Служба стратегии слоев для %(storageSystemName)s не найдена."
 
 #, python-format
 msgid "Timed out while waiting for Nova update for creation of snapshot %s."
@@ -7161,14 +5220,6 @@ msgstr "Тайм-аут во время функциональности от б
 #, python-format
 msgid "Transfer %(transfer_id)s could not be found."
 msgstr "Не удалось найти передачу %(transfer_id)s."
-
-#, python-format
-msgid ""
-"Transfer %(transfer_id)s: Volume id %(volume_id)s in unexpected state "
-"%(status)s, expected awaiting-transfer"
-msgstr ""
-"Передача %(transfer_id)s: ИД тома %(volume_id)s в непредвиденном состоянии "
-"%(status)s, ожидалось состояние Ожидание-передачи"
 
 #, python-format
 msgid ""
@@ -7207,10 +5258,6 @@ msgid "UUIDs %s are in both add and remove volume list."
 msgstr ""
 "UUID %s находятся и в списке добавления томов, и в списке удаления томов."
 
-#, python-format
-msgid "Unable to access the Storwize back-end for volume %s."
-msgstr "Не удаётся получить доступ к базовой системе Storwize для тома %s."
-
 msgid "Unable to access the backend storage via file handle."
 msgstr "Нет доступа к памяти базовой системы через ссылку на файл."
 
@@ -7231,29 +5278,9 @@ msgstr "Не удается выполнить переключение посл
 msgid "Unable to connect or find connection to host"
 msgstr "Не удалось подключиться к хосту или найти соединение с ним"
 
-#, python-format
-msgid "Unable to create consistency group %s"
-msgstr "Не удалось создать группу согласования %s"
-
 msgid "Unable to create lock. Coordination backend not started."
 msgstr ""
 "Не удается создать блокировку. Базовая система координации не запущена."
-
-#, python-format
-msgid ""
-"Unable to create or get default storage group for FAST policy: "
-"%(fastPolicyName)s."
-msgstr ""
-"Создать или получить группу носителей по умолчанию для стратегии FAST "
-"%(fastPolicyName)s."
-
-#, python-format
-msgid "Unable to create replica clone for volume %s."
-msgstr "Не удалось создать реплику дубликата для тома %s."
-
-#, python-format
-msgid "Unable to create the relationship for %s."
-msgstr "Не удаётся создать взаимосвязь для %s."
 
 #, python-format
 msgid "Unable to create volume %(name)s from %(snap)s."
@@ -7271,22 +5298,8 @@ msgid "Unable to create volume. Backend down."
 msgstr "Не удается создать том. Выключена базовая система."
 
 #, python-format
-msgid "Unable to delete Consistency Group snapshot %s"
-msgstr "Не удалось удалить моментальную копию группы согласования %s"
-
-#, python-format
 msgid "Unable to delete snapshot %(id)s, status: %(status)s."
 msgstr "Не удалось удалить моментальную копию %(id)s, состояние: %(status)s."
-
-#, python-format
-msgid "Unable to delete snapshot policy on volume %s."
-msgstr "Не удалось удалить стратегию моментальной копии на томе %s."
-
-#, python-format
-msgid ""
-"Unable to delete the target volume for volume %(vol)s. Exception: %(err)s."
-msgstr ""
-"Не удаётся удалить целевой том для %(vol)s. Исключительная ситуация: %(err)s."
 
 msgid ""
 "Unable to detach volume. Volume status must be 'in-use' and attach_status "
@@ -7336,26 +5349,12 @@ msgstr "Не удаётся установить партнёрство с кл�
 msgid "Unable to extend volume %s"
 msgstr "Не удалось расширить том %s"
 
-#, python-format
-msgid ""
-"Unable to fail-over the volume %(id)s to the secondary back-end, because the "
-"replication relationship is unable to switch: %(error)s"
-msgstr ""
-"Не удаётся переключить том %(id)s на вторичную базовую систему, так как "
-"невозможно переключить взаимосвязь репликации: %(error)s"
-
 msgid ""
 "Unable to failback to \"default\", this can only be done after a failover "
 "has completed."
 msgstr ""
 "Не удается восстановить состояние \"default\", это возможно только по "
 "завершении переключения после сбоя."
-
-#, python-format
-msgid "Unable to failover to replication target:%(reason)s)."
-msgstr ""
-"Не удается переключиться после сбоя на целевой объект репликации: "
-"%(reason)s)."
 
 msgid "Unable to fetch connection information from backend."
 msgstr "Не удалось получить информацию о соединении из базовой программы."
@@ -7419,9 +5418,6 @@ msgstr ""
 "Извлечь информацию о конфигурации, необходимую для создания тома, "
 "невозможно: %(errorMessage)s."
 
-msgid "Unable to get corresponding record for pool."
-msgstr "Не удалось получить соответствующую запись для пула."
-
 #, python-format
 msgid ""
 "Unable to get information on space %(space)s, please verify that the cluster "
@@ -7452,61 +5448,6 @@ msgstr ""
 #, python-format
 msgid "Unable to get stats for backend_name: %s"
 msgstr "Не удалось получить статистику для backend_name: %s"
-
-msgid "Unable to get storage volume from job."
-msgstr "Не удается получить том носителя из задания."
-
-#, python-format
-msgid "Unable to get target endpoints for hardwareId %(hardwareIdInstance)s."
-msgstr ""
-"Не удалось получить целевые конечные точки для ИД аппаратного обеспечения "
-"%(hardwareIdInstance)s."
-
-msgid "Unable to get the name of the masking view."
-msgstr "Не удается получить имя маскирующего представления."
-
-msgid "Unable to get the name of the portgroup."
-msgstr "Не удается получить имя группы портов."
-
-#, python-format
-msgid "Unable to get the replication relationship for volume %s."
-msgstr "Не удаётся получить взаимосвязь репликации для тома %s."
-
-#, python-format
-msgid ""
-"Unable to import volume %(deviceId)s to cinder. It is the source volume of "
-"replication session %(sync)s."
-msgstr ""
-"Не удалось импортировать том %(deviceId)s в Cinder. Это исходный том сеанса "
-"репликации %(sync)s."
-
-#, python-format
-msgid ""
-"Unable to import volume %(deviceId)s to cinder. The external volume is not "
-"in the pool managed by current cinder host."
-msgstr ""
-"Не удалось импортировать том %(deviceId)s в Cinder. Внешний том не в пуле, "
-"управляемом текущим хостом Cinder."
-
-#, python-format
-msgid ""
-"Unable to import volume %(deviceId)s to cinder. Volume is in masking view "
-"%(mv)s."
-msgstr ""
-"Не удалось импортировать том %(deviceId)s в Cinder. Том находится в "
-"маскирующем представлении %(mv)s."
-
-#, python-format
-msgid "Unable to load CA from %(cert)s %(e)s."
-msgstr "Не удалось загрузить CA из %(cert)s %(e)s."
-
-#, python-format
-msgid "Unable to load cert from %(cert)s %(e)s."
-msgstr "Не удалось загрузить сертификат из %(cert)s %(e)s."
-
-#, python-format
-msgid "Unable to load key from %(cert)s %(e)s."
-msgstr "Не удалось загрузить ключ из %(cert)s %(e)s."
 
 #, python-format
 msgid "Unable to locate account %(account_name)s on Solidfire device"
@@ -7540,13 +5481,6 @@ msgstr "Не удалось связать том."
 
 msgid "Unable to parse attributes."
 msgstr "Не удалось проанализировать атрибуты."
-
-#, python-format
-msgid ""
-"Unable to promote replica to primary for volume %s. No secondary copy "
-"available."
-msgstr ""
-"Не удалось сделать копию главной для тома %s. Вспомогательной копии нет."
 
 msgid ""
 "Unable to re-use a host that is not managed by Cinder with "
@@ -7586,22 +5520,10 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Unable to retype: Current action needs volume-copy, it is not allowed when "
-"new type is replication. Volume = %s"
-msgstr ""
-"Не удалось изменить тип: для текущего действия требуется том-копия, что не "
-"разрешено, если в качестве нового типа указана репликация. Том: %s"
-
-#, python-format
-msgid ""
 "Unable to set up mirror mode replication for %(vol)s. Exception: %(err)s."
 msgstr ""
 "Не удаётся настроить зеркальную репликацию для %(vol)s. Исключительная "
 "ситуация: %(err)s."
-
-#, python-format
-msgid "Unable to snap Consistency Group %s"
-msgstr "Не удалось создать моментальную копию группы согласования %s"
 
 msgid "Unable to terminate volume connection from backend."
 msgstr "Не удалось разорвать соединение с томом из базовой программы."
@@ -7609,18 +5531,6 @@ msgstr "Не удалось разорвать соединение с томо�
 #, python-format
 msgid "Unable to terminate volume connection: %(err)s"
 msgstr "Не удалось закрыть соединение с томом: %(err)s"
-
-#, python-format
-msgid "Unable to update consistency group %s"
-msgstr "Не удалось изменить группу согласования %s"
-
-#, python-format
-msgid ""
-"Unable to verify initiator group: %(igGroupName)s in masking view "
-"%(maskingViewName)s. "
-msgstr ""
-"Проверить группу инициатора %(igGroupName)s в маскирующем представлении "
-"%(maskingViewName)s. "
 
 msgid "Unacceptable parameters."
 msgstr "Недопустимые параметры."
@@ -7656,9 +5566,6 @@ msgstr ""
 msgid "Unexpected response from Nimble API"
 msgstr "Непредвиденный ответ от API Nimble"
 
-msgid "Unexpected response from Tegile IntelliFlash API"
-msgstr "Непредвиденный ответ от Tegile IntelliFlash API"
-
 msgid "Unexpected status code"
 msgstr "Непредвиденный код состояния"
 
@@ -7669,9 +5576,6 @@ msgid ""
 msgstr ""
 "Непредвиденный код состояния коммутатора %(switch_id)s с протоколом "
 "%(protocol)s для url %(page)s. Ошибка: %(error)s"
-
-msgid "Unknown Gluster exception"
-msgstr "Неизвестная исключительная ситуация Gluster"
 
 msgid "Unknown NFS exception"
 msgstr "Неизвестная исключительная ситуация NFS"
@@ -7725,10 +5629,6 @@ msgid "Unknown or unsupported command %(cmd)s"
 msgstr "Неизвестная или неподдерживаемая команда %(cmd)s"
 
 #, python-format
-msgid "Unknown protocol: %(protocol)s."
-msgstr "Неизвестный протокол: %(protocol)s."
-
-#, python-format
 msgid "Unknown quota resources %(unknown)s."
 msgstr "Неизвестные ресурсы квоты: %(unknown)s."
 
@@ -7765,10 +5665,6 @@ msgstr "Нераспознанный формат базового файл: %s"
 #, python-format
 msgid "Unrecognized read_deleted value '%s'"
 msgstr "Нераспознанное значение read_deleted '%s'"
-
-#, python-format
-msgid "Unset gcs options: %s"
-msgstr "Сбросить параметры gcs: %s"
 
 msgid "Unsupported Content-Type"
 msgstr "Не поддерживаемый  тип содержимого"
@@ -7819,9 +5715,6 @@ msgstr ""
 "Операции изменения и удаления квоты разрешены только для проектов в той "
 "жеиерархии проекта, где находятся пользователи."
 
-msgid "Update list, doesn't include volume_id"
-msgstr "Список обновления не включает volume_id"
-
 msgid "Updated At"
 msgstr "Обновлено"
 
@@ -7853,12 +5746,6 @@ msgstr "UserName не настроен."
 msgid "UserPassword is not configured."
 msgstr "UserPassword не настроен."
 
-msgid "V2 rollback, volume is not in any storage group."
-msgstr "Откат V2: том не принадлежит ни одной группе носителей."
-
-msgid "V3 rollback"
-msgstr "Откат V3"
-
 msgid "VF is not enabled."
 msgstr "VF не включен."
 
@@ -7883,13 +5770,6 @@ msgid ""
 "Value \"%(value)s\" is not valid for configuration option \"%(option)s\""
 msgstr ""
 "Значение \"%(value)s\" недопустимо для параметра конфигурации \"%(option)s\""
-
-#, python-format
-msgid "Value %(param)s for %(param_string)s is not a boolean."
-msgstr "Значение %(param)s для %(param_string)s не булевское."
-
-msgid "Value required for 'scality_sofs_config'"
-msgstr "Требуется значение для 'scality_sofs_config'"
 
 #, python-format
 msgid "ValueError: %s"
@@ -7926,14 +5806,6 @@ msgstr "Не удалось выполнить задание копирован
 #, python-format
 msgid "Volume %(deviceID)s not found."
 msgstr "Том %(deviceID)s не найден."
-
-#, python-format
-msgid ""
-"Volume %(name)s not found on the array. Cannot determine if there are "
-"volumes mapped."
-msgstr ""
-"Том %(name)s не найден в массиве. Не удается определить, преобразованы ли "
-"тома."
 
 #, python-format
 msgid "Volume %(name)s was created in VNX, but in %(state)s state."
@@ -7997,10 +5869,6 @@ msgid "Volume %(volume_id)s replication error: %(reason)s"
 msgstr "Ошибка репликации тома %(volume_id)s: %(reason)s"
 
 #, python-format
-msgid "Volume %(volume_name)s is busy."
-msgstr "Том %(volume_name)s занят."
-
-#, python-format
 msgid "Volume %s could not be created from source volume."
 msgstr "Не удалось создать том %s из исходного тома."
 
@@ -8035,20 +5903,6 @@ msgstr "Том %s не существует в массиве."
 #, python-format
 msgid "Volume %s doesn't exist on the ZFSSA backend."
 msgstr "Том %s не существует в базовой системе ZFSSA."
-
-#, python-format
-msgid "Volume %s is already managed by OpenStack."
-msgstr "Том %s уже находится под управлением OpenStack."
-
-#, python-format
-msgid ""
-"Volume %s is not of replicated type. This volume needs to be of a volume "
-"type with the extra spec replication_enabled set to '<is> True' to support "
-"replication actions."
-msgstr ""
-"Тип тома %s не поддерживает репликацию. Для поддержки репликации в "
-"параметрах типа тома необходимо указать replication_enabled со значением "
-"'<is> True'."
 
 #, python-format
 msgid ""
@@ -8103,31 +5957,8 @@ msgstr ""
 msgid "Volume Type id must not be None."
 msgstr "ИД типа тома не должен быть None."
 
-#, python-format
-msgid ""
-"Volume [%(cb_vol)s] was not found at CloudByte storage corresponding to "
-"OpenStack volume [%(ops_vol)s]."
-msgstr ""
-"Том [%(cb_vol)s] не найден в носителе CloudByte, соответствующем тому "
-"OpenStack [%(ops_vol)s]."
-
-#, python-format
-msgid "Volume [%s] not found in CloudByte storage."
-msgstr "Том [%s] не найден в хранилище CloudByte."
-
-#, python-format
-msgid "Volume attachment could not be found with filter: %(filter)s ."
-msgstr "Подключение тома не удалось найти с фильтром %(filter)s ."
-
-#, python-format
-msgid "Volume backend config is invalid: %(reason)s"
-msgstr "Недопустимая конфигурация базовой программы тома: %(reason)s"
-
 msgid "Volume by this name already exists"
 msgstr "Том с таким именем уже существует"
-
-msgid "Volume cannot be restored since it contains snapshots."
-msgstr "Том невозможно восстановить, поскольку он содержит моментальные копии."
 
 msgid "Volume create failed while extracting volume ref."
 msgstr "Ошибка создания тома при извлечении ссылки на том."
@@ -8169,9 +6000,6 @@ msgstr "Том используется."
 msgid "Volume is not available."
 msgstr "Том недоступен."
 
-msgid "Volume is not local to this node"
-msgstr "Том не является локальным для этого узла"
-
 msgid "Volume is not local to this node."
 msgstr "Том не является локальным для этого узла."
 
@@ -8185,9 +6013,6 @@ msgstr ""
 #, python-format
 msgid "Volume migration failed: %(reason)s"
 msgstr "Не удалось выполнить перенос тома: %(reason)s"
-
-msgid "Volume must be available"
-msgstr "Том должен быть доступен"
 
 msgid "Volume must be in the same availability zone as the snapshot"
 msgstr "Том должен находиться в одной зоне доступности с моментальной копией"
@@ -8210,13 +6035,6 @@ msgstr "Не найден том для копии %(instance_id)s."
 
 msgid "Volume not found on configured storage backend."
 msgstr "Том не найден в настроенной базовой системе хранения."
-
-msgid ""
-"Volume not found on configured storage backend. If your volume name contains "
-"\"/\", please rename it and try to manage again."
-msgstr ""
-"Том не найден в настроенной базовой системе хранения. Если имя тома содержит "
-"\"/\", переименуйте его и повторите операцию."
 
 msgid "Volume not found on configured storage pools."
 msgstr "Не найден том в настроенных пулах памяти."
@@ -8285,20 +6103,6 @@ msgstr "Размер тома должен быть кратным 1 ГБ."
 msgid "Volume size must multiple of 1 GB."
 msgstr "Размер тома должен быть кратен 1 ГБ."
 
-#, python-format
-msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
-msgstr ""
-"Состояние тома должно быть available или in-use для моментальной копии. "
-"(Фактическое состояние: %s)"
-
-msgid "Volume status must be \"available\" or \"in-use\"."
-msgstr ""
-"Состояние тома должно быть available или in-use для моментальной копии."
-
-#, python-format
-msgid "Volume status must be %s to reserve."
-msgstr "Для резервирования том должен находиться в состоянии %s."
-
 msgid "Volume status must be 'available'."
 msgstr "Состояние тома должно быть available."
 
@@ -8356,19 +6160,6 @@ msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "Тип тома под названием %(volume_type_name)s не может быть найден."
 
 #, python-format
-msgid ""
-"Volume: %(volumeName)s is not a concatenated volume. You can only perform "
-"extend on concatenated volume. Exiting..."
-msgstr ""
-"Том: %(volumeName)s не является объединенным томом. Выполнить Extend можно "
-"только над объединенным томом. Выполняется выход..."
-
-#, python-format
-msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s."
-msgstr ""
-"Том %(volumeName)s не был добавлен в группу носителей %(sgGroupName)s. "
-
-#, python-format
 msgid "Volume: %s is already being managed by Cinder."
 msgstr "Том %s уже находится под управлением Cinder."
 
@@ -8389,9 +6180,6 @@ msgstr ""
 msgid "VzStorage config file at %(config)s doesn't exist."
 msgstr "Файл конфигурации VzStorage в %(config)s не существует."
 
-msgid "Wait replica complete timeout."
-msgstr "Ожидание тайм-аута завершения репликации."
-
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."
 msgstr "Ошибка ожидания синхронизации. Состояние выполнения: %s."
@@ -8404,9 +6192,6 @@ msgstr ""
 
 msgid "We should not do switch over on primary array."
 msgstr "Переключение для основного массива не разрешено."
-
-msgid "X-IO Volume Driver exception!"
-msgstr "Исключительная ситуация драйвера тома X-IO!"
 
 msgid "XtremIO not configured correctly, no iscsi portals found"
 msgstr "Неправильно настроен XtremIO: не найдены порталы iSCSI"
@@ -8424,17 +6209,6 @@ msgstr ""
 "Необходимо установить hpe3parclient, прежде чем использовать драйверы 3PAR. "
 "Выполните команду \"pip install --install python-3parclient\" для установки "
 "hpe3parclient."
-
-msgid "You must supply an array in your EMC configuration file."
-msgstr "Необходимо указать массив в файле конфигурации EMC."
-
-#, python-format
-msgid ""
-"Your original size: %(originalVolumeSize)s GB is greater than: %(newSize)s "
-"GB. Only Extend is supported. Exiting..."
-msgstr ""
-"Исходный размер, %(originalVolumeSize)s ГБ, превышает %(newSize)s ГБ. "
-"Поддерживается только Extend. Выполняется выход..."
 
 #, python-format
 msgid "ZeroDivisionError: %s"
@@ -8809,9 +6583,6 @@ msgstr "уже создан"
 msgid "already_created"
 msgstr "already_created"
 
-msgid "attach snapshot from remote node"
-msgstr "подключить моментальную копию с удаленного узла"
-
 #, python-format
 msgid "attribute %s not lazy-loadable"
 msgstr "атрибут %s не с отложенной загрузкой"
@@ -8887,23 +6658,6 @@ msgid "being attached by different mode"
 msgstr "подключается с другим режимом"
 
 #, python-format
-msgid "call failed: %r"
-msgstr "вызов не выполнен: %r"
-
-msgid "call failed: GARBAGE_ARGS"
-msgstr "вызов не выполнен: GARBAGE_ARGS"
-
-msgid "call failed: PROC_UNAVAIL"
-msgstr "вызов не выполнен: PROC_UNAVAIL"
-
-#, python-format
-msgid "call failed: PROG_MISMATCH: %r"
-msgstr "вызов не выполнен: PROG_MISMATCH: %r"
-
-msgid "call failed: PROG_UNAVAIL"
-msgstr "вызов не выполнен: PROG_UNAVAIL"
-
-#, python-format
 msgid "can't find lun-map, ig:%(ig)s vol:%(vol)s"
 msgstr "не найден элемент lun-map, группа инициаторов: %(ig)s, том: %(vol)s"
 
@@ -8915,10 +6669,6 @@ msgstr "нельзя обработать и имя и индекс в запр�
 
 msgid "cannot understand JSON"
 msgstr "невозможно понять JSON"
-
-#, python-format
-msgid "cg-%s"
-msgstr "cg-%s"
 
 msgid "cgsnapshot assigned"
 msgstr "cgsnapshot присвоен"
@@ -8975,21 +6725,6 @@ msgstr ""
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "create_cloned_volume: различаются исходный и целевой размеры."
 
-#, python-format
-msgid ""
-"create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
-"doesn't fit in target volume %(tgt_vol)s of size %(tgt_size)dGB."
-msgstr ""
-"create_cloned_volume: размер исходного тома %(src_vol)s равен %(src_size)d "
-"ГБ и превышает размер целевого тома %(tgt_vol)s, %(tgt_size)d ГБ."
-
-msgid ""
-"create_consistencygroup_from_src must be creating from a CG snapshot, or a "
-"source CG."
-msgstr ""
-"create_consistencygroup_from_src: необходимо создавать из моментальной копии "
-"группы согласования, а не их исходной группы согласования."
-
 msgid ""
 "create_consistencygroup_from_src only supports a cgsnapshot source or a "
 "consistency group source. Multiple sources cannot be used."
@@ -9007,9 +6742,6 @@ msgstr "create_copy: исходный vdisk %(src)s не существует."
 
 msgid "create_host: Host name is not unicode or string."
 msgstr "create_host: Имя хоста не типа string или unicode."
-
-msgid "create_host: No initiators or wwpns supplied."
-msgstr "create_host: Не переданы инициаторы или глобальные имена портов."
 
 msgid "create_hypermetro_pair error."
 msgstr "Ошибка create_hypermetro_pair."
@@ -9146,9 +6878,6 @@ msgstr "удаляемый снимок %(snapshot_name)s имеет завис�
 msgid "deleting volume %(volume_name)s that has snapshot"
 msgstr "удаление тома %(volume_name)s, который имеет снимок"
 
-msgid "detach snapshot from remote node"
-msgstr "отключить моментальную копию от удаленного узла"
-
 msgid "do_setup: No configured nodes."
 msgstr "do_setup: Нет настроенных узлов."
 
@@ -9184,25 +6913,11 @@ msgstr ""
 msgid "extend_volume, volumename: %(volumename)s, volume not found."
 msgstr "extend_volume, имя тома: %(volumename)s, том не найден."
 
-msgid "failed to create new_volume on destination host"
-msgstr "не удалось создать new_volume на целевом хосте"
-
 msgid "fake"
 msgstr "поддельный"
 
-#, python-format
-msgid "file already exists at %s"
-msgstr "файл уже существует в %s"
-
 msgid "fileno is not supported by SheepdogIOWrapper"
 msgstr "fileno не поддерживается SheepdogIOWrapper"
-
-msgid "fileno() not supported by RBD()"
-msgstr "Функция fileno() не поддерживается RBD()"
-
-#, python-format
-msgid "filesystem %s does not exist in Nexenta Store appliance"
-msgstr "Файловая система %s не существует в устройстве Nexenta Store"
 
 msgid ""
 "flashsystem_multihostmap_enabled is set to False, not allow multi host "
@@ -9212,9 +6927,6 @@ msgstr ""
 "Параметру flashsystem_multihostmap_enabled присвоено значение False, не "
 "разрешать преобразование нескольких хостов. CMMVC6071E Преобразование VDisk-"
 "в-хост не создано, так как VDisk уже преобразован в хост."
-
-msgid "flush() not supported in this version of librbd"
-msgstr "Функция flush() не поддерживается в этой версии librbd"
 
 #, python-format
 msgid "fmt=%(fmt)s backed by: %(backing_file)s"
@@ -9369,10 +7081,6 @@ msgstr ""
 "для тома %(vol)s"
 
 #, python-format
-msgid "marker [%s] not found"
-msgstr "маркер [%s] не найден"
-
-#, python-format
 msgid "mdiskgrp missing quotes %s"
 msgstr "у mdiskgrp отсутствуют кавычки %s"
 
@@ -9389,9 +7097,6 @@ msgstr "Сбой команды mkfs для тома %(vol)s, сообщение
 msgid "mock"
 msgstr "ложный"
 
-msgid "mount.glusterfs is not installed"
-msgstr "mount.glusterfs не установлена"
-
 #, python-format
 msgid "multiple resources with name %s found by drbdmanage"
 msgstr "drbdmanage обнаружил несколько ресурсов с именем %s"
@@ -9402,10 +7107,6 @@ msgstr "Обнаружено несколько ресурсов с ИД мом�
 
 msgid "name cannot be None"
 msgstr "Недопустимое значение для имени: None"
-
-#, python-format
-msgid "no REPLY but %r"
-msgstr "нет REPLY за исключением %r"
 
 #, python-format
 msgid "no snapshot with id %s found in drbdmanage"
@@ -9519,9 +7220,6 @@ msgstr ""
 "В rtslib_fb отсутствует элемент %s: может потребоваться более новая версия "
 "python-rtslib-fb."
 
-msgid "san_ip is not set."
-msgstr "Не задано значение san_ip."
-
 msgid "san_ip must be set"
 msgstr "san_ip должен быть назначен"
 
@@ -9545,10 +7243,6 @@ msgstr "моментальные копии присвоены"
 
 msgid "snapshots changed"
 msgstr "моментальные копии изменены"
-
-#, python-format
-msgid "source volume id:%s is not replicated"
-msgstr "исходный том с ИД %s не скопирован"
 
 msgid "source-name cannot be empty."
 msgstr "source-name не может быть пустым."
@@ -9581,25 +7275,8 @@ msgstr ""
 msgid "terminate_connection: Failed to get host name from connector."
 msgstr "terminate_connection: Не удалось получить имя хоста из коннектора."
 
-msgid "timeout creating new_volume on destination host"
-msgstr "истек тайм-аут создания new_volume на целевом хосте"
-
 msgid "too many body keys"
 msgstr "слишком много ключей тела"
-
-#, python-format
-msgid "umount: %s: not mounted"
-msgstr "umount: %s: не смонтирован"
-
-#, python-format
-msgid "umount: %s: target is busy"
-msgstr "umount: %s: цель занята"
-
-msgid "umount: <mnt_path>: some other error"
-msgstr "umount: <путь_к_mnt>: другая ошибка"
-
-msgid "umount: <mnt_path>: target is busy"
-msgstr "umount: <путь_к_mnt>: цель занята"
 
 #, python-format
 msgid "unmanage_snapshot: Cannot find snapshot named %s"
@@ -9624,9 +7301,6 @@ msgstr "Для show_target требуется допустимый iqn"
 msgid "vdisk %s is not defined."
 msgstr "vdisk %s не определен."
 
-msgid "vmemclient python library not found"
-msgstr "Не найдена библиотека vmemclient для языка Python"
-
 #, python-format
 msgid "volume %s not found in drbdmanage"
 msgstr "Том %s не найден в drbdmanage"
@@ -9639,9 +7313,6 @@ msgstr "том изменен"
 
 msgid "volume is already attached"
 msgstr "том уже подключен"
-
-msgid "volume is not local to this node"
-msgstr "Том не является локальным для этого узла"
 
 #, python-format
 msgid ""
@@ -9666,10 +7337,6 @@ msgstr "Недопустимое значение для volume_type_id: None"
 msgid "volume_types must be provided to create consistency group %(name)s."
 msgstr ""
 "Необходимо указать volume_types для создания группы согласования %(name)s."
-
-#, python-format
-msgid "volume_types must be provided to create consistency group %s."
-msgstr "Необходимо указать volume_types для создания группы согласования %s."
 
 msgid "volumes assigned"
 msgstr "тома присвоены"

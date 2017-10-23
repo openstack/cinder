@@ -8,20 +8,21 @@
 # Sungjin Kang <potopro@gmail.com>, 2013
 # Yongbok Kim <ruo91@yongbok.net>, 2014
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
+# Ian Y. Choi <ianyrchoi@gmail.com>, 2017. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev202\n"
+"Project-Id-Version: cinder 11.0.0.0rc2.dev468\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-10-07 03:25+0000\n"
+"POT-Creation-Date: 2017-10-23 05:32+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-25 06:57+0000\n"
-"Last-Translator: SeYeon Lee <sy_lee@kr.ibm.com>\n"
+"PO-Revision-Date: 2017-08-19 07:36+0000\n"
+"Last-Translator: Ian Y. Choi <ianyrchoi@gmail.com>\n"
 "Language: ko-KR\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
-"X-Generator: Zanata 3.7.3\n"
+"X-Generator: Zanata 3.9.6\n"
 "Language-Team: Korean (South Korea)\n"
 
 #, python-format
@@ -40,16 +41,8 @@ msgstr ""
 msgid " but size is now %d"
 msgstr "현재 크기는 %d 입니다. "
 
-#, python-format
-msgid " but size is now %d."
-msgstr " 그러나 현재 크기는 %d입니다."
-
 msgid " or "
 msgstr "또는"
-
-#, python-format
-msgid "%(attr)s is not set."
-msgstr "%(attr)s이(가) 설정되지 않았습니다."
 
 #, python-format
 msgid ""
@@ -60,10 +53,6 @@ msgstr ""
 "오기 전에 이 볼륨과 기존 호스트의 연결을 끊으십시오. "
 
 #, python-format
-msgid "%(err)s"
-msgstr "%(err)s"
-
-#, python-format
 msgid ""
 "%(err)s\n"
 "result: %(res)s."
@@ -72,16 +61,8 @@ msgstr ""
 "결과: %(res)s."
 
 #, python-format
-msgid "%(error_message)s"
-msgstr "%(error_message)s"
-
-#, python-format
 msgid "%(exception)s: %(explanation)s"
 msgstr "%(exception)s: %(explanation)s"
-
-#, python-format
-msgid "%(file)s: Permission denied."
-msgstr "%(file)s: 권한이 거부됩니다."
 
 #, python-format
 msgid ""
@@ -104,10 +85,6 @@ msgid "%(host)-25s\t%(zone)-15s"
 msgstr "%(host)-25s\t%(zone)-15s"
 
 #, python-format
-msgid "%(message)s"
-msgstr "%(message)s"
-
-#, python-format
 msgid ""
 "%(message)s\n"
 "Status Code: %(_status)s\n"
@@ -116,10 +93,6 @@ msgstr ""
 "%(message)s\n"
 "상태 코드: %(_status)s\n"
 "본문: %(_body)s"
-
-#, python-format
-msgid "%(message)s, subjectAltName: %(sanList)s."
-msgstr "%(message)s, subjectAltName: %(sanList)s."
 
 #, python-format
 msgid ""
@@ -272,63 +245,8 @@ msgstr ""
 "(명령: %(cmd)s) (리턴 코드: %(exit_code)s) (Stdout: %(stdout)s) (Stderr: "
 "%(stderr)s)"
 
-#, python-format
-msgid "A LUN (HLUN) was not found. (LDEV: %(ldev)s)"
-msgstr "A LUN(HLUN)을 찾을 수 없습니다.(LDEV: %(ldev)s)"
-
 msgid "A concurrent, possibly contradictory, request has been made."
 msgstr "동시에 모순된 요청이 수행되었습니다."
-
-#, python-format
-msgid ""
-"A free LUN (HLUN) was not found. Add a different host group. (LDEV: %(ldev)s)"
-msgstr ""
-"사용 가능한 LUN(HLUN)을 찾을 수 없습니다. 다른 호스트 그룹을 추가하십시오."
-"(LDEV: %(ldev)s)"
-
-#, python-format
-msgid "A host group could not be added. (port: %(port)s, name: %(name)s)"
-msgstr "호스트 그룹을 추가할 수 없습니다.(포트: %(port)s, 이름e: %(name)s)"
-
-#, python-format
-msgid ""
-"A host group could not be deleted. (port: %(port)s, gid: %(gid)s, name: "
-"%(name)s)"
-msgstr ""
-"호스트 그룹을 삭제할 수 없습니다.(포트: %(port)s, gid: %(gid)s, 이름: "
-"%(name)s)"
-
-#, python-format
-msgid "A host group is invalid. (host group: %(gid)s)"
-msgstr "호스트 그룹이 올바르지 않습니다.(호스트 그룹: %(gid)s)"
-
-#, python-format
-msgid "A pair cannot be deleted. (P-VOL: %(pvol)s, S-VOL: %(svol)s)"
-msgstr "쌍을 삭제할 수 없습니다.(P-VOL: %(pvol)s, S-VOL: %(svol)s)"
-
-#, python-format
-msgid ""
-"A pair could not be created. The maximum number of pair is exceeded. (copy "
-"method: %(copy_method)s, P-VOL: %(pvol)s)"
-msgstr ""
-"쌍을 작성할 수 없습니다. 쌍의 최대 수가 초과되었습니다.(복사 메소드: "
-"%(copy_method)s, P-VOL: %(pvol)s)"
-
-#, python-format
-msgid "A parameter is invalid. (%(param)s)"
-msgstr "매개변수가 올바르지 않습니다.(%(param)s)"
-
-#, python-format
-msgid "A parameter value is invalid. (%(meta)s)"
-msgstr "매개변수값이 올바르지 않습니다.(%(meta)s)"
-
-#, python-format
-msgid "A pool could not be found. (pool id: %(pool_id)s)"
-msgstr "풀을 찾을 수 없습니다.(pool id: %(pool_id)s)"
-
-#, python-format
-msgid "A snapshot status is invalid. (status: %(status)s)"
-msgstr "스냅샷 상태가 올바르지 않습니다.(상태: %(status)s)"
 
 msgid "A valid secondary target MUST be specified in order to failover."
 msgstr "장애 복구하려면 올바른 보조 대상을 지정해야 합니다."
@@ -337,27 +255,12 @@ msgid "A volume ID or share was not specified."
 msgstr "볼륨 ID 또는 공유가 지정되지 않았습니다. "
 
 #, python-format
-msgid "A volume status is invalid. (status: %(status)s)"
-msgstr "볼륨 상태가 올바르지 않습니다.(상태: %(status)s)"
-
-#, python-format
-msgid "API %(name)s failed with error string %(err)s"
-msgstr "API %(name)s이(가) 실패했으며 오류 문자열은 %(err)s임"
-
-#, python-format
 msgid ""
 "API Version String %(version)s is of invalid format. Must be of format "
 "MajorNum.MinorNum."
 msgstr ""
 "API 버전 문자열 %(version)s 형식이 올바르지 않습니다. 형식은 MajorNum."
 "MinorNum 이어야 합니다."
-
-msgid "API key is missing for CloudByte driver."
-msgstr "CloudByte 드라이버의 API 키가 누락되었습니다."
-
-#, python-format
-msgid "API response: %(response)s"
-msgstr "API 응답: %(response)s"
 
 #, python-format
 msgid "API response: %s"
@@ -441,32 +344,8 @@ msgstr "볼륨 \"%s\"을(를) 읽는 중에 오류가 발생했습니다. "
 msgid "An error occurred while writing to volume \"%s\"."
 msgstr "볼륨 \"%s\"에 쓰는 중에 오류가 발생했습니다. "
 
-#, python-format
-msgid "An iSCSI CHAP user could not be added. (username: %(user)s)"
-msgstr "iSCSI CHAP 사용자를 추가할 수 없습니다.(사용자 이름: %(user)s)"
-
-#, python-format
-msgid "An iSCSI CHAP user could not be deleted. (username: %(user)s)"
-msgstr "iSCSI CHAP 사용자를 삭제할 수 없습니다.(사용자 이름: %(user)s)"
-
-#, python-format
-msgid ""
-"An iSCSI target could not be added. (port: %(port)s, alias: %(alias)s, "
-"reason: %(reason)s)"
-msgstr ""
-"iSCSI 대상을 추가할 수 없습니다.(포트: %(port)s, 별명: %(alias)s, 이유: "
-"%(reason)s)"
-
-#, python-format
-msgid ""
-"An iSCSI target could not be deleted. (port: %(port)s, tno: %(tno)s, alias: "
-"%(alias)s)"
-msgstr ""
-"iSCSI 대상을 삭제할 수 없습니다.(포트: %(port)s, tno: %(tno)s, 별명: "
-"%(alias)s)"
-
 msgid "An unknown exception occurred."
-msgstr "알 수 없는 예외가 발생했습니다. "
+msgstr "알 수 없는 예외가 발생했습니다."
 
 msgid ""
 "An user with a token scoped to a subproject is not allowed to see the quota "
@@ -520,13 +399,6 @@ msgid "Attempt to transfer %s with invalid auth key."
 msgstr "올바르지 않은 인증 키로 %s 전송을 시도했습니다. "
 
 #, python-format
-msgid "Auth group [%s] details not found in CloudByte storage."
-msgstr "CloudByte 스토리지에서 인증 그룹 [%s] 세부사항을 찾을 수 없습니다. "
-
-msgid "Auth user details not found in CloudByte storage."
-msgstr "CloudByte 스토리지에서 인증 사용자 세부사항을 찾을 수 없습니다. "
-
-#, python-format
 msgid "Authentication failed, verify the switch credentials, error code %s."
 msgstr "인증 실패, 스위치 자격 증명 확인, 오류 코드 %s."
 
@@ -546,20 +418,6 @@ msgstr ""
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr "백엔드가 존재하지 않음(%(backend)s)"
-
-#, python-format
-msgid "Backend reports: %(message)s"
-msgstr "백엔드 보고서: %(message)s"
-
-msgid "Backend reports: item already exists"
-msgstr "백엔드 보고서: 항목이 이미 존재함"
-
-msgid "Backend reports: item not found"
-msgstr "백엔드 보고서: 항목을 찾을 수 없음"
-
-#, python-format
-msgid "Backend service retry timeout hit: %(timeout)s sec"
-msgstr "백엔드 서비스 재시도 제한시간 도달: %(timeout)s초"
 
 msgid "Backend storage did not configure fiber channel target."
 msgstr "백엔드 스토리지가 파이버 채널 대상을 구성하지 않았습니다."
@@ -583,18 +441,6 @@ msgstr "백업 드라이버 오류 보고서: %(message)s"
 
 msgid "Backup id required"
 msgstr "백업 ID 필요"
-
-msgid "Backup is not supported for GlusterFS volumes with snapshots."
-msgstr "스냅샷이 있는 GlusterFS 볼륨에 대한 백업이 지원되지 않습니다."
-
-msgid "Backup is only supported for SOFS volumes without backing file."
-msgstr "백업 파일 없는 SOFS 볼륨에 대해서만 백업이 지원됩니다."
-
-msgid "Backup is only supported for raw-formatted GlusterFS volumes."
-msgstr "백업은 원시 형식화 GlusterFS 볼륨에 대해서만 지원됩니다."
-
-msgid "Backup is only supported for raw-formatted SOFS volumes."
-msgstr "원시 형식화 SOFS 볼륨에 대해서만 백업이 지원됩니다."
 
 msgid "Backup operation of an encrypted volume failed."
 msgstr "암호화된 볼륨의 백업 조작이 실패했습니다."
@@ -633,10 +479,6 @@ msgid "Backup to be restored has invalid size"
 msgstr "복원할 백업이 올바르지 않은 크기임"
 
 #, python-format
-msgid "Bad Status line returned: %(arg)s."
-msgstr "잘못된 상태 표시줄이 리턴됨: %(arg)s."
-
-#, python-format
 msgid "Bad key(s) in quota set: %s"
 msgstr "할당량 세트의 잘못된 키: %s"
 
@@ -664,29 +506,6 @@ msgstr "2진"
 
 msgid "Blank components"
 msgstr "비어 있는 구성요소"
-
-msgid "Blockbridge api host not configured"
-msgstr "Blockbridge api 호스트가 구성되지 않음"
-
-#, python-format
-msgid "Blockbridge configured with invalid auth scheme '%(auth_scheme)s'"
-msgstr "Blockbridge가 올바르지 않은 인증 스킴 '%(auth_scheme)s'(으)로 구성됨"
-
-msgid "Blockbridge default pool does not exist"
-msgstr "Blockbridge 기본 풀이 존재하지 않음"
-
-msgid ""
-"Blockbridge password not configured (required for auth scheme 'password')"
-msgstr "Blockbridge 비밀번호가 구성되지 않음(인증 스킴 '비밀번호'의 경우 필수)"
-
-msgid "Blockbridge pools not configured"
-msgstr "Blockbridge 풀이 구성되지 않음"
-
-msgid "Blockbridge token not configured (required for auth scheme 'token')"
-msgstr "Blockbridge 토큰이 구성되지 않음(인증 스킴 '토큰'의 경우 필수)"
-
-msgid "Blockbridge user not configured (required for auth scheme 'password')"
-msgstr "Blockbridge 사용자가 구성되지 않음(인증 스킴 '비밀번호'의 경우 필수)"
 
 #, python-format
 msgid "Brocade Fibre Channel Zoning CLI error: %(reason)s"
@@ -732,9 +551,6 @@ msgstr ""
 "핑이 작성되지 않았습니다. \n"
 "\""
 
-msgid "CONCERTO version is not supported"
-msgstr "CONCERTO 버전이 지원되지 않음"
-
 #, python-format
 msgid "CPG (%s) doesn't exist on array"
 msgstr "배열에 CPG(%s)가 없음"
@@ -768,10 +584,6 @@ msgstr "풀 정보를 가져올 수 없습니다. 풀: %s"
 msgid "Can not translate %s to integer."
 msgstr "%s을(를) 정수로 변환할 수 없습니다. "
 
-#, python-format
-msgid "Can't access 'scality_sofs_config': %s"
-msgstr "'scality_sofs_config'에 액세스할 수 없음: %s"
-
 msgid "Can't decode backup record."
 msgstr "백업 레코드를 디코드할 수 없습니다. "
 
@@ -786,11 +598,6 @@ msgstr ""
 #, python-format
 msgid "Can't find cache name on the array, cache name is: %(name)s."
 msgstr "배열에서 캐시 이름을 찾을 수 없음, 캐시 이름: %(name)s."
-
-#, python-format
-msgid "Can't find lun info on the array. volume: %(id)s, lun name: %(name)s."
-msgstr ""
-"배열에서 lun 정보를 찾을 수 없습니다. 볼륨: %(id)s, lun 이름: %(name)s."
 
 #, python-format
 msgid "Can't find partition name on the array, partition name is: %(name)s."
@@ -885,55 +692,6 @@ msgstr "백업 레코드를 구문 분석할 수 없습니다. "
 
 #, python-format
 msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because it "
-"has no volume type."
-msgstr ""
-"볼륨 %(volume_id)s을(를) 일관성 그룹 %(group_id)s에 추가할 수 없습니다. 그룹"
-"에 볼륨 유형이 없습니다. "
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because it "
-"is already in consistency group %(orig_group)s."
-msgstr ""
-"이미 일관성 그룹 %(orig_group)s에 있기 때문에 볼륨 %(volume_id)s을(를) 일관"
-"성 그룹 %(group_id)s에 추가할 수 없습니다. "
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
-"volume cannot be found."
-msgstr ""
-"볼륨 %(volume_id)s을(를) 일관성 그룹 %(group_id)s에 추가할 수 없습니다. 볼륨"
-"을 찾을 수 없습니다. "
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
-"volume does not exist."
-msgstr ""
-"볼륨 %(volume_id)s을(를) 일관성 그룹 %(group_id)s에 추가할 수 없습니다. 볼륨"
-"이 없습니다. "
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
-"volume is in an invalid state: %(status)s. Valid states are: %(valid)s."
-msgstr ""
-"볼륨 %(volume_id)s을(를) 일관성 그룹 %(group_id)s에 추가할 수 없습니다. 볼륨 "
-"상태 %(status)s이(가) 올바르지 않은 상태입니다. 올바른 상태는 %(valid)s입니"
-"다. "
-
-#, python-format
-msgid ""
-"Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
-"volume type %(volume_type)s is not supported by the group."
-msgstr ""
-"볼륨 %(volume_id)s을(를) 일관성 그룹 %(group_id)s에 추가할 수 없습니다. 해당 "
-"그룹에서 볼륨 유형 %(volume_type)s을(를) 지원하지 않습니다. "
-
-#, python-format
-msgid ""
 "Cannot attach already attached volume %s; multiattach is disabled via the "
 "'netapp_enable_multiattach' configuration option."
 msgstr ""
@@ -951,25 +709,6 @@ msgstr ""
 "VF 컨텍스트를 변경할 수 없음, 관리할 수 있는 VF 목록 %(vf_list)s에서 지정된 "
 "VF를 사용할 수 없습니다."
 
-msgid "Cannot connect to ECOM server."
-msgstr "ECOM 서버를 연결할 수 없습니다. "
-
-#, python-format
-msgid ""
-"Cannot create consistency group %(group)s because snapshot %(snap)s is not "
-"in a valid state. Valid states are: %(valid)s."
-msgstr ""
-"스냅샷 %(snap)s이(가) 올바른 상태가 아니어서 일관성 그룹 %(group)s을(를)작성"
-"할 수 없습니다. 올바른 상태는 %(valid)s입니다. "
-
-#, python-format
-msgid ""
-"Cannot create consistency group %(group)s because source volume "
-"%(source_vol)s is not in a valid state. Valid states are: %(valid)s."
-msgstr ""
-"소스 볼륨 %(source_vol)s이(가) 올바른 세부 상태에 있지 않으므로 일관성 그룹 "
-"%(group)s을(를) 작성할 수 없습니다. 올바른 세부 상태는 %(valid)s입니다. "
-
 #, python-format
 msgid "Cannot create directory %s."
 msgstr "디렉토리 %s을(를) 작성할 수 없습니다. "
@@ -984,20 +723,12 @@ msgstr ""
 "디스크 형식 %s의 이미지를 작성할 수 없습니다. vmdk 디스크 형식만 허용됩니다. "
 
 #, python-format
-msgid "Cannot create masking view: %(maskingViewName)s. "
-msgstr "마스킹 보기 %(maskingViewName)s을(를) 작성할 수 없습니다. "
-
-#, python-format
 msgid ""
 "Cannot create more than %(req)s volumes on the ESeries array when "
 "'netapp_enable_multiattach' is set to true."
 msgstr ""
 "'netapp_enable_multiattach'가 true로 설정되면 ESeries 배열에서 %(req)s개를 초"
 "과하는 볼륨을 작성할 수 없습니다. "
-
-#, python-format
-msgid "Cannot create or find an storage group with name %(sgGroupName)s."
-msgstr "이름이 %(sgGroupName)s인 스토리지 그룹을 작성하거나 찾을 수 없습니다. "
 
 #, python-format
 msgid "Cannot create volume of size %s: not multiple of 8GB."
@@ -1007,10 +738,6 @@ msgstr "크기가 %s인 볼륨을 작성할 수 없습니다. 8GB의 배수가 �
 msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s"
 msgstr ""
 "이름이 %(name)s이고 스펙이 %(extra_specs)s인 volume_type을 작성할 수 없음"
-
-#, python-format
-msgid "Cannot delete LUN %s while snapshots exist."
-msgstr "스냅샷이 존재하는 동안 LUN %s을(를) 삭제할 수 없습니다. "
 
 #, python-format
 msgid ""
@@ -1031,116 +758,11 @@ msgstr ""
 msgid "Cannot delete encryption specs. Volume type in use."
 msgstr "암호화 스펙을 삭제할 수 없습니다. 볼륨 유형이 사용 중입니다."
 
-msgid "Cannot determine storage pool settings."
-msgstr "스토리지 풀 설정을 판별할 수 없습니다."
-
-msgid "Cannot execute /sbin/mount.sofs"
-msgstr "/sbin/mount.sofs를 실행할 수 없음"
-
-#, python-format
-msgid "Cannot find CG group %s."
-msgstr "CG 그룹 %s을(를) 찾을 수 없습니다."
-
-#, python-format
-msgid ""
-"Cannot find Controller Configuration Service for storage system "
-"%(storage_system)s."
-msgstr ""
-"스토리지 시스템 %(storage_system)s에 대한 제어기 구성 서비스를 찾을 수 없습니"
-"다."
-
-#, python-format
-msgid "Cannot find Replication Service to create volume for snapshot %s."
-msgstr "스냅샷 %s에 대한 볼륨을 작성할 복제 서비스를 찾을 수 없습니다. "
-
-#, python-format
-msgid "Cannot find Replication Service to delete snapshot %s."
-msgstr "스냅샷 %s을(를) 삭제할 복제 서비스를 찾을 수 없습니다. "
-
-#, python-format
-msgid "Cannot find Replication service on system %s."
-msgstr "%s 시스템에서 복제 서비스를 찾을 수 없습니다. "
-
-#, python-format
-msgid "Cannot find Volume: %(id)s. unmanage operation.  Exiting..."
-msgstr "볼륨: %(id)s을(를) 찾을 수 없습니다. 관리 해제 조작. 종료 중..."
-
-#, python-format
-msgid "Cannot find Volume: %(volumename)s. Extend operation.  Exiting...."
-msgstr "%(volumename)s 볼륨을 찾을 수 없습니다. 확장 조작. 종료 중..."
-
-#, python-format
-msgid "Cannot find device number for volume %(volumeName)s."
-msgstr "%(volumeName)s 볼륨에 대한 디바이스 번호를 찾을 수 없습니다. "
-
 msgid "Cannot find migration task."
 msgstr "마이그레이션 태스크를 찾을 수 없습니다. "
 
-#, python-format
-msgid "Cannot find replication service on system %s."
-msgstr "시스템 %s에서 복제 서비스를 찾을 수 없습니다. "
-
-#, python-format
-msgid "Cannot find source CG instance. consistencygroup_id: %s."
-msgstr "소스 CG 인스턴스를 찾을 수 없습니다. consistencygroup_id: %s."
-
-#, python-format
-msgid "Cannot get mcs_id by channel id: %(channel_id)s."
-msgstr "채널 id: %(channel_id)s을(를) 사용하여 mcs_id를 가져올 수 없습니다. "
-
-msgid "Cannot get necessary pool or storage system information."
-msgstr "필요한 풀 또는 스토리지 시스템 정보를 가져올 수 없습니다. "
-
-#, python-format
-msgid ""
-"Cannot get or create a storage group: %(sgGroupName)s for volume "
-"%(volumeName)s "
-msgstr ""
-"%(volumeName)s 볼륨의 스토리지 그룹 %(sgGroupName)s을(를) 가져오거나 작성할 "
-"수 없음 "
-
-#, python-format
-msgid "Cannot get or create initiator group: %(igGroupName)s. "
-msgstr "개시자 그룹 %(igGroupName)s을(를) 가져오거나 작성할 수 없습니다. "
-
-#, python-format
-msgid "Cannot get port group: %(pgGroupName)s. "
-msgstr "포트 그룹 %(pgGroupName)s을(를) 가져올 수 없습니다. "
-
-#, python-format
-msgid ""
-"Cannot get storage group: %(sgGroupName)s from masking view "
-"%(maskingViewInstanceName)s. "
-msgstr ""
-"마스킹 보기에서 스토리지 그룹: %(sgGroupName)s을(를) 가져오지 못"
-"함%(maskingViewInstanceName)s."
-
-#, python-format
-msgid ""
-"Cannot get supported size range for %(sps)s Return code: %(rc)lu. Error: "
-"%(error)s."
-msgstr ""
-"%(sps)s에 지원되는 크기 범위를 가져올 수 없음. 리턴 코드: %(rc)lu. 오류: "
-"%(error)s."
-
-#, python-format
-msgid ""
-"Cannot get the default storage group for FAST policy: %(fastPolicyName)s."
-msgstr ""
-"FAST 정책 %(fastPolicyName)s에 대한 기본 스토리지 그룹을 가져올 수 없습니다."
-
-msgid "Cannot get the portgroup from the masking view."
-msgstr "마스킹 보기에서 portgroup을 가져올 수 없습니다."
-
-msgid "Cannot mount Scality SOFS, check syslog for errors"
-msgstr "스케일 SOFS를 마운트할 수 없음. syslog에서 오류 확인"
-
 msgid "Cannot ping DRBDmanage backend"
 msgstr "DRBDmanage 백엔드에 대해 ping을 실행할 수 없음"
-
-#, python-format
-msgid "Cannot place volume %(id)s on %(host)s"
-msgstr "%(id)s 볼륨을 %(host)s에 배치할 수 없음 "
 
 #, python-format
 msgid ""
@@ -1155,23 +777,6 @@ msgstr "자원을 등록할 수 없습니다. "
 
 msgid "Cannot register resources"
 msgstr "자원을 등록할 수 없습니다. "
-
-#, python-format
-msgid ""
-"Cannot remove volume %(volume_id)s from consistency group %(group_id)s "
-"because it is not in the group."
-msgstr ""
-"일관성 그룹 %(group_id)s에서 볼륨 %(volume_id)s을(를) 제거할 수 없습니다. 해"
-"당 볼륨이 그룹에 있지 않습니다. "
-
-#, python-format
-msgid ""
-"Cannot remove volume %(volume_id)s from consistency group %(group_id)s "
-"because volume is in an invalid state: %(status)s. Valid states are: "
-"%(valid)s."
-msgstr ""
-"일관성 그룹 %(group_id)s에서 볼륨 %(volume_id)s을(를) 제거할 수 없습니다. 볼"
-"륨 상태 %(status)s이(가) 올바르지 않은 상태입니다. 올바른 상태: %(valid)s."
 
 #, python-format
 msgid "Cannot retype from HPE3PARDriver to %s."
@@ -1193,22 +798,11 @@ msgstr ""
 "vgc-cluster 명령을 실행할 수 없습니다. 소프트웨어가 설치되어 있으며 권한이 적"
 "절하게 설정되어 있는지 확인하십시오. "
 
-msgid "Cannot set both hitachi_serial_number and hitachi_unit_name."
-msgstr "hitachi_serial_number 및 hitachi_unit_name 모두 설정할 수 없습니다."
-
 msgid "Cannot specify both protection domain name and protection domain id."
 msgstr "보호 도메인 이름과 보호 도메인 ID를 모두 지정할 수 없습니다. "
 
 msgid "Cannot specify both storage pool name and storage pool id."
 msgstr "스토리지 풀 이름과 스토리지 풀 ID를 모두 지정할 수 없습니다. "
-
-#, python-format
-msgid ""
-"Cannot update consistency group %(group_id)s because no valid name, "
-"description, add_volumes, or remove_volumes were provided."
-msgstr ""
-"일관성 그룹 %(group_id)s을(를) 업데이트할 수 없습니다. 올바른 이름, 설명, "
-"add_volumes 또는 remove_volumes를 제공하지 않았습니다. "
 
 msgid "Cannot update encryption specs. Volume type in use."
 msgstr "암호화 스펙을 업데이트할 수 없습니다. 볼륨 유형이 사용 중입니다."
@@ -1218,15 +812,8 @@ msgid "Cannot update volume_type %(id)s"
 msgstr "volume_type %(id)s을(를) 업데이트할 수 없음"
 
 #, python-format
-msgid "Cannot verify the existence of object:%(instanceName)s."
-msgstr "오브젝트의 존재를 확인할 수 없음: %(instanceName)s."
-
-#, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr "Cg 스냅샷 %(cgsnapshot_id)s을(를) 찾을 수 없습니다. "
-
-msgid "Cgsnahost is empty. No consistency group will be created."
-msgstr "Cgsnahost가 비어 있습니다. 일관성 그룹이 작성되지 않습니다. "
 
 msgid "Change hostlun id error."
 msgstr "hostlun id 변경 오류."
@@ -1275,10 +862,6 @@ msgid "Cisco Fibre Channel Zoning CLI error: %(reason)s"
 msgstr "Cisco Fibre Channel Zoning CLI 오류: %(reason)s"
 
 #, python-format
-msgid "Clone feature is not licensed on %(storageSystem)s."
-msgstr "%(storageSystem)s에 복제 기능 라이센스가 없습니다."
-
-#, python-format
 msgid ""
 "Clone type '%(clone_type)s' is invalid; valid values are: '%(full_clone)s' "
 "and '%(linked_clone)s'."
@@ -1291,13 +874,6 @@ msgid ""
 msgstr ""
 "클러스터가 형식화되지 않았습니다. \"dog 클러스터 형식화\"를 수행해야 할 수 있"
 "습니다. "
-
-#, python-format
-msgid "Coho Data Cinder driver failure: %(message)s"
-msgstr "Coho Data Cinder 드라이버 실패: %(message)s"
-
-msgid "Coho rpc port is not configured"
-msgstr "Coho rpc 포트가 구성되지 않음"
 
 #, python-format
 msgid "Command %(cmd)s blocked in the CLI and was cancelled"
@@ -1362,9 +938,6 @@ msgstr "커넥터가 제공되지 않음: %s"
 msgid "Connector doesn't have required information: %(missing)s"
 msgstr "커넥터에 필수 정보가 없음: %(missing)s"
 
-msgid "Consistency group is empty. No cgsnapshot will be created."
-msgstr "일관성 그룹이 비어 있습니다. 작성된 cg 스냅샷이 없습니다."
-
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
 msgstr "일관성 그룹 %(consistencygroup_id)s을(를) 찾을 수 없습니다. "
@@ -1377,10 +950,6 @@ msgstr "컨테이너 크기가 필요한 파일 크기보다 작습니다."
 
 msgid "Content type not supported."
 msgstr "컨텐츠 유형이 지원되지 않습니다."
-
-#, python-format
-msgid "Controller Configuration Service not found on %(storageSystemName)s."
-msgstr "%(storageSystemName)s에서 제어기 구성 서비스를 찾을 수 없습니다. "
 
 #, python-format
 msgid "Controller IP '%(host)s' could not be resolved: %(e)s."
@@ -1403,7 +972,7 @@ msgid "Converted to raw, but format is now %s."
 msgstr "원시로 변환되었지만 형식은 현재 %s입니다."
 
 msgid "Coordinator uninitialized."
-msgstr "조정자가 초기화되지 않습니다."
+msgstr "조정자가 초기화되지 않았습니다."
 
 #, python-format
 msgid ""
@@ -1460,10 +1029,6 @@ msgid "Could not find iSCSI export for volume %s"
 msgstr "%s 볼륨에 대한 iSCSI 내보내기를 찾을 수 없음"
 
 #, python-format
-msgid "Could not find iSCSI target for volume: %(volume_id)s."
-msgstr "볼륨: %(volume_id)s에 대한 iSCSI 대상을 찾을 수 없습니다. "
-
-#, python-format
 msgid "Could not find key in output of command %(cmd)s: %(out)s."
 msgstr "명령 %(cmd)s의 출력에서 키를 찾을 수 없음: %(out)s."
 
@@ -1485,10 +1050,6 @@ msgstr "볼륨 %(vol)s에서 고유 스냅샷 %(snap)s을(를) 찾을 수 없습
 
 msgid "Could not get system name."
 msgstr "시스템 이름을 가져올 수 없습니다. "
-
-#, python-format
-msgid "Could not load paste app '%(name)s' from %(path)s"
-msgstr "%(path)s에서 페이스트 앱 '%(name)s'을(를) 로드할 수 없음"
 
 #, python-format
 msgid ""
@@ -1532,9 +1093,6 @@ msgstr ""
 "백업 작성 중단. 예상 볼륨 상태는 %(expected_status)s이지만 %(actual_status)s"
 "인 동안에는 인스턴스 연관을 변경할 수 없습니다."
 
-msgid "Create export for volume failed."
-msgstr "볼륨에 대한 내보내기 작성에 실패했습니다. "
-
 msgid "Create hostgroup error."
 msgstr "호스트 그룹 작성 오류입니다. "
 
@@ -1577,9 +1135,6 @@ msgstr "볼륨 작성 오류입니다. 원인은 %s입니다. "
 msgid "Create volume failed."
 msgstr "볼륨 작성에 실패했습니다. "
 
-msgid "Creating a consistency group from a source is not currently supported."
-msgstr "소스에서 일관성 그룹을 생성하는 기능은 현재 지원되지 않습니다."
-
 #, python-format
 msgid ""
 "Creating and activating zone set failed: (Zone set=%(cfg_name)s error="
@@ -1593,20 +1148,8 @@ msgid ""
 "%(err)s)."
 msgstr "구역 세트 작성 및 활성화에 실패: (구역 세트=%(zoneset)s 오류=%(err)s)."
 
-#, python-format
-msgid "Creating usages for %(begin_period)s until %(end_period)s"
-msgstr "%(begin_period)s에서 %(end_period)s까지의 기간에 대한 사용 내역 작성"
-
 msgid "Current host isn't part of HGST domain."
 msgstr "현재 호스트가 HGST 도메인의 일부가 아닙니다. "
-
-#, python-format
-msgid ""
-"Current host not valid for volume %(id)s with type %(type)s, migration not "
-"allowed"
-msgstr ""
-"현재 호스트가 유형이 %(type)s인 볼륨 %(id)s에 대해 올바르지 않음. 마이그레이"
-"션이 허용되지 않음"
 
 #, python-format
 msgid ""
@@ -1674,9 +1217,6 @@ msgid "Data ONTAP operating in 7-Mode does not support QoS policy groups."
 msgstr ""
 "7 모드에서 작동 중인 데이터 ONTAP이 QoS 정책 그룹을 지원하지 않습니다. "
 
-msgid "Database schema downgrade is not allowed."
-msgstr "데이터베이스 스키마 다운그레이드가 허용되지 않습니다."
-
 #, python-format
 msgid "Dataset %s is not shared in Nexenta Store appliance"
 msgstr "데이터 세트 %s이(가) Nexenta Store appliance에서 공유되지 않음"
@@ -1692,9 +1232,6 @@ msgid ""
 msgstr ""
 "Dedup는 올바른 프로비저닝 유형이지만 WSAPI 버전 '%(dedup_version)s' 버전 "
 "'%(version)s'이(가) 설치되어 있어야 합니다. "
-
-msgid "Dedup luns cannot be extended"
-msgstr "Dedup lun을 확장할 수 없음"
 
 #, python-format
 msgid ""
@@ -1727,9 +1264,6 @@ msgstr ""
 "백업 삭제가 중단되었습니다. 현재 구성된 백업 서비스 [%(configured_service)s]"
 "은(는) 이 백업 [%(backup_service)s]을(를) 작성하기 위해 사용된 백업 서비스가 "
 "아닙니다."
-
-msgid "Delete consistency group failed."
-msgstr "일관성 그룹 삭제에 실패했습니다. "
 
 msgid "Delete hostgroup error."
 msgstr "호스트 그룹 삭제 오류입니다. "
@@ -1877,13 +1411,6 @@ msgstr ""
 "EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (리턴 코드: %(rc)s) (출"
 "력: %(out)s)."
 
-msgid ""
-"EcomServerIp, EcomServerPort, EcomUserName, EcomPassword must have valid "
-"values."
-msgstr ""
-"EcomServerIp, EcomServerPort, EcomUserName, EcomPassword는 올바른 값을 가지"
-"고 있어야 합니다. "
-
 #, python-format
 msgid ""
 "Either 'cgsnapshot_id' or 'source_cgid' must be provided to create "
@@ -1899,13 +1426,6 @@ msgid ""
 msgstr ""
 "SLO: %(slo)s 또는 워크로드 %(workload)s이(가) 올바르지 않습니다. 올바른 값은"
 "이전 오류문을 확인하십시오. "
-
-msgid "Either hitachi_serial_number or hitachi_unit_name is required."
-msgstr "hitachi_serial_number 또는 hitachi_unit_name이 필요합니다."
-
-#, python-format
-msgid "Element Composition Service not found on %(storageSystemName)s."
-msgstr "%(storageSystemName)s에서 요소 컴포지션 서비스를 찾을 수 없습니다. "
 
 msgid "Enables QoS."
 msgstr "QoS를 사용으로 설정합니다. "
@@ -1948,51 +1468,6 @@ msgstr ""
 "풀: %(pool)s의 볼륨: %(lun)s에서 스냅샷: %(snapshot)s 복제 중 오류 발생 프로"
 "젝트: %(project)s 복제 프로젝트: %(clone_proj)s 리턴 코드: %(ret.status)d 메"
 "시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Create Cloned Volume: %(cloneName)s Return code: %(rc)lu. Error: "
-"%(error)s."
-msgstr ""
-"복제된 볼륨 작성 오류: %(cloneName)s 리턴 코드: %(rc)lu. 오류: %(error)s."
-
-#, python-format
-msgid ""
-"Error Create Cloned Volume: Volume: %(cloneName)s  Source Volume:"
-"%(sourceName)s.  Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"복제된 볼륨 작성 중 오류: 볼륨: %(cloneName)s  소스 볼륨: %(sourceName)s. 리"
-"턴 코드: %(rc)lu. 오류: %(error)s."
-
-#, python-format
-msgid ""
-"Error Create Group: %(groupName)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr "그룹 작성 오류: %(groupName)s.  리턴 코드: %(rc)lu.  오류: %(error)s."
-
-#, python-format
-msgid ""
-"Error Create Masking View: %(groupName)s. Return code: %(rc)lu. Error: "
-"%(error)s."
-msgstr ""
-"마스킹 보기 작성 오류: %(groupName)s. 리턴 코드: %(rc)lu. 오류: %(error)s."
-
-#, python-format
-msgid ""
-"Error Create Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr "볼륨 작성 오류: %(volumeName)s.  리턴 코드: %(rc)lu.  오류: %(error)s."
-
-#, python-format
-msgid ""
-"Error Create Volume: %(volumename)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr "볼륨 작성 오류: %(volumename)s.  리턴 코드: %(rc)lu.  오류: %(error)s."
-
-#, python-format
-msgid ""
-"Error CreateGroupReplica: source: %(source)s target: %(target)s. Return "
-"code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"CreateGroupReplica 오류: 소스: %(source)s 대상: %(target)s. 리턴 코드: "
-"%(rc)lu. 오류: %(error)s."
 
 #, python-format
 msgid ""
@@ -2068,11 +1543,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Error Creating new composite Volume Return code: %(rc)lu. Error: %(error)s."
-msgstr "새 컴포지트 볼륨 작성 중 오류. 리턴 코드: %(rc)lu. 오류: %(error)s."
-
-#, python-format
-msgid ""
 "Error Creating replication action on: pool: %(pool)s Project: %(proj)s "
 "volume: %(vol)s for target: %(tgt)s and pool: %(tgt_pool)sReturn code: "
 "%(ret.status)d Message: %(ret.data)s ."
@@ -2080,32 +1550,6 @@ msgstr ""
 "대상: %(tgt)s 및 풀: %(tgt_pool)s에 대해 풀: %(pool)s 프로젝트: %(proj)s 볼"
 "륨: %(vol)s에서 복제 조치 작성 중 오류 발생, 리턴 코드: %(ret.status)d 메시"
 "지: %(ret.data)s."
-
-msgid "Error Creating unbound volume on an Extend operation."
-msgstr "확장 조작 시 언바운드 볼륨을 작성하는 중에 오류가 발생했습니다. "
-
-msgid "Error Creating unbound volume."
-msgstr "언바운드 볼륨을 작성하는 중 오류가 발생했습니다."
-
-#, python-format
-msgid ""
-"Error Delete Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr "볼륨 삭제 오류: %(volumeName)s.  리턴 코드: %(rc)lu.  오류: %(error)s."
-
-#, python-format
-msgid ""
-"Error Deleting Group: %(storageGroupName)s. Return code: %(rc)lu. Error: "
-"%(error)s"
-msgstr ""
-"그룹 삭제 중 오류: %(storageGroupName)s. 리턴 코드: %(rc)lu. 오류:%(error)s"
-
-#, python-format
-msgid ""
-"Error Deleting Initiator Group: %(initiatorGroupName)s. Return code: "
-"%(rc)lu. Error: %(error)s"
-msgstr ""
-"개시자 그룹 삭제 오류: %(initiatorGroupName)s. 리턴 코드: %(rc)lu. 오류: "
-"%(error)s"
 
 #, python-format
 msgid ""
@@ -2146,11 +1590,6 @@ msgid ""
 msgstr ""
 "복제 조치: %(id)s 삭제 중 오류 발생, 리턴 코드: %(ret.status)d 메시지: "
 "%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Extend Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
-msgstr "볼륨 확장 오류: %(volumeName)s.  리턴 코드: %(rc)lu.  오류: %(error)s."
 
 #, python-format
 msgid ""
@@ -2208,22 +1647,6 @@ msgstr ""
 "턴 코드: %(ret.status)d 메시지: %(ret.data)s."
 
 #, python-format
-msgid ""
-"Error Migrating volume from one pool to another. Return code: %(rc)lu.  "
-"Error: %(error)s."
-msgstr ""
-"하나의 풀에서 다른 풀로 볼륨을 마이그레이션하는 중 오류 발생. 리턴 코드: "
-"%(rc)lu.  오류: %(error)s. "
-
-#, python-format
-msgid ""
-"Error Modifying masking view : %(groupName)s. Return code: %(rc)lu.  Error: "
-"%(error)s."
-msgstr ""
-"마스킹 보기 수정 중 오류 발생: %(groupName)s. 리턴 코드: %(rc)lu.  오류: "
-"%(error)s. "
-
-#, python-format
 msgid "Error Pool ownership: Pool %(pool)s is not owned by %(host)s."
 msgstr "풀 소유권 오류: %(host)s에서 풀 %(pool)s을(를) 소유하지 않습니다."
 
@@ -2234,11 +1657,6 @@ msgid ""
 msgstr ""
 "%(pool)s 풀 %(project)s 프로젝트의 %(lun)s 볼륨에서 %(props)s 특성을 가져오"
 "는 중 오류 발생. 리턴 코드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Terminating migrate session. Return code: %(rc)lu.  Error: %(error)s."
-msgstr "마이그레이션 세션 종료 중 오류. 리턴 코드: %(rc)lu. 오류: %(error)s."
 
 #, python-format
 msgid ""
@@ -2288,47 +1706,6 @@ msgstr ""
 "공유 확인 중 오류 발생: %(share)s, 프로젝트: %(project)s, 풀: %(pool)s, 리턴 "
 "코드: %(ret.status)d 메시지: %(ret.data)s."
 
-#, python-format
-msgid ""
-"Error adding Volume: %(volumeName)s with instance path: "
-"%(volumeInstancePath)s."
-msgstr ""
-"다음 인스턴스 경로를 사용하여 %(volumeName)s 볼륨을 추가하는 중에 오류가 발생"
-"했습니다. %(volumeInstancePath)s."
-
-#, python-format
-msgid ""
-"Error adding initiator to group : %(groupName)s. Return code: %(rc)lu.  "
-"Error: %(error)s."
-msgstr ""
-"그룹에 개시자 추가 중 오류 발생: %(groupName)s. 리턴 코드: %(rc)lu.  오류: "
-"%(error)s. "
-
-#, python-format
-msgid "Error adding volume to composite volume. Error is: %(error)s."
-msgstr "컴포지트 볼륨에 볼륨 추가 중 오류: %(error)s."
-
-#, python-format
-msgid "Error appending volume %(volumename)s to target base volume."
-msgstr ""
-"%(volumename)s 볼륨을 대상 기본 볼륨에 추가하는 중에 오류가 발생했습니다. "
-
-#, python-format
-msgid ""
-"Error associating storage group : %(storageGroupName)s. To fast Policy: "
-"%(fastPolicyName)s with error description: %(errordesc)s."
-msgstr ""
-"%(storageGroupName)s 스토리지 그룹을 fast 정책 %(fastPolicyName)s과(와) 연관"
-"시키는 중 오류 발생. 오류 설명: %(errordesc)s."
-
-#, python-format
-msgid ""
-"Error break clone relationship: Sync Name: %(syncName)s Return code: "
-"%(rc)lu.  Error: %(error)s."
-msgstr ""
-"복제 관계 중단 오류: 동기화 이름: %(syncName)s 리턴 코드:  %(rc)lu. 오류: "
-"%(error)s."
-
 msgid "Error connecting to ceph cluster."
 msgstr "ceph 클러스터 연결 중에 오류가 발생했습니다. "
 
@@ -2376,13 +1753,6 @@ msgid "Error encountered during cleanup of a failed attach: %(ex)s"
 msgstr "실패한 접속을 정리하는 중에 오류 발생: %(ex)s"
 
 #, python-format
-msgid "Error executing CloudByte API [%(cmd)s], Error: %(err)s."
-msgstr "CloudByte API 실행 오류 [%(cmd)s], 오류: %(err)s."
-
-msgid "Error executing EQL command"
-msgstr "EQL 명령 실행 중 오류 발생 "
-
-#, python-format
 msgid "Error executing command via ssh: %s"
 msgstr "ssh를 통해 명령 실행 중에 오류 발생: %s"
 
@@ -2398,16 +1768,6 @@ msgstr "볼륨 확장 중 오류 발생: %(reason)s"
 msgid "Error finding %(name)s."
 msgstr "%(name)s을(를) 찾는 중에 오류가 발생했습니다. "
 
-#, python-format
-msgid "Error finding %s."
-msgstr "%s을(를) 찾는 중에 오류가 발생했습니다. "
-
-#, python-format
-msgid ""
-"Error getting ReplicationSettingData. Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"ReplicationSettingData 가져오기 오류. 리턴 코드: %(rc)lu. 오류: %(error)s."
-
 msgid ""
 "Error getting appliance version details. Return code: %(ret.status)d "
 "Message: %(ret.data)s ."
@@ -2416,19 +1776,11 @@ msgstr ""
 "%(ret.status)d 메시지: %(ret.data)s."
 
 #, python-format
-msgid "Error getting domain id from name %(name)s: %(err)s."
-msgstr "이름 %(name)s에서 도메인 ID를 가져오는 중에 오류 발생: %(err)s."
-
-#, python-format
 msgid "Error getting domain id from name %(name)s: %(id)s."
 msgstr "이름 %(name)s에서 도메인 ID를 가져오는 중에 오류 발생: %(id)s."
 
 msgid "Error getting initiator groups."
 msgstr "개시자 그룹을 가져오는 중 오류가 발생했습니다."
-
-#, python-format
-msgid "Error getting pool id from name %(pool)s: %(err)s."
-msgstr "이름 %(pool)s에서 풀 ID를 가져오는 중에 오류 발생: %(err)s."
 
 #, python-format
 msgid "Error getting pool id from name %(pool_name)s: %(err_msg)s."
@@ -2465,14 +1817,6 @@ msgstr ""
 "지:  %(ret.data)s."
 
 #, python-format
-msgid ""
-"Error in Operation [%(operation)s] for volume [%(cb_volume)s] in CloudByte "
-"storage: [%(cb_error)s], error code: [%(error_code)s]."
-msgstr ""
-"CloudByte 스토리지의 볼륨 [%(cb_volume)s]에 대한 조작 [%(operation)s] 중 오"
-"류 발생: [%(cb_error)s], 오류 코드: [%(error_code)s]."
-
-#, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
 msgstr "SolidFire API 응답의 오류: 데이터=%(data)s"
 
@@ -2487,14 +1831,6 @@ msgstr "추가로 %(size)dGB를 가진 볼륨 %(space)s에 대한 공간 확장 
 #, python-format
 msgid "Error managing volume: %s."
 msgstr "볼륨 관리 중 오류 발생: %s."
-
-#, python-format
-msgid ""
-"Error modify replica synchronization: %(sv)s operation: %(operation)s. "
-"Return code: %(rc)lu.  Error: %(error)s."
-msgstr ""
-"복제본 동기화 수정 오류: %(sv)s 조작: %(operation)s. 리턴 코드: %(rc)lu. 오"
-"류: %(error)s."
 
 #, python-format
 msgid ""
@@ -2520,24 +1856,8 @@ msgid "Error not a TypeError."
 msgstr "TypeError가 아닌 오류입니다."
 
 #, python-format
-msgid "Error occurred when creating cgsnapshot %s."
-msgstr "cg 스냅샷 %s을(를) 작성하는 중에 오류가 발생했습니다."
-
-#, python-format
-msgid "Error occurred when deleting cgsnapshot %s."
-msgstr "cg 스냅샷 %s을(를) 삭제하는 중에 오류가 발생했습니다."
-
-#, python-format
-msgid "Error occurred when updating consistency group %s."
-msgstr "일관성 그룹 %s을(를) 업데이트하는 중에 오류가 발생했습니다. "
-
-#, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "볼륨 %(vol)s 이름 변경 중 오류 발생: %(err)s."
-
-#, python-format
-msgid "Error response: %s"
-msgstr "오류 응답: %s"
 
 msgid "Error retrieving volume size"
 msgstr "볼륨 크기 검색 시 오류 발생"
@@ -2572,10 +1892,6 @@ msgid ""
 msgstr ""
 "소스: %(src)s에서 패키지: %(package)s을(를) 제공하는 중 오류 발생, 리턴 코"
 "드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid "Error unbinding volume %(vol)s from pool. %(error)s."
-msgstr "풀에서 %(vol)s 볼륨 바인드 해제 중 오류: %(error)s."
 
 #, python-format
 msgid "Error while authenticating with switch: %s."
@@ -2723,19 +2039,6 @@ msgid "Exceeded the limit of snapshots per volume"
 msgstr "볼륨당 스냅샷 한계를 초과함"
 
 #, python-format
-msgid "Exception appending meta volume to target volume %(volumename)s."
-msgstr ""
-"대상 볼륨 %(volumename)s에 메타 볼륨을 추가하는 중에 예외가 발생했습니다. "
-
-#, python-format
-msgid ""
-"Exception during create element replica. Clone name: %(cloneName)s Source "
-"name: %(sourceName)s Extra specs: %(extraSpecs)s "
-msgstr ""
-"요소 복제본을 작성하는 중에 예외가 발생했습니다. 복제본 이름: %(cloneName)s "
-"소스 이름: %(sourceName)s 추가 스펙: %(extraSpecs)s "
-
-#, python-format
 msgid "Exception in _select_ds_for_volume: %s."
 msgstr "_select_ds_for_volume의 예외: %s"
 
@@ -2746,10 +2049,6 @@ msgstr "구역 문자열을 형성하는 중에 예외 발생: %s."
 #, python-format
 msgid "Exception: %s"
 msgstr "예외: %s"
-
-#, python-format
-msgid "Expected a uuid but received %(uuid)s."
-msgstr "uuid를 예상했지만 %(uuid)s을(를) 수신했습니다. "
 
 #, python-format
 msgid "Expected exactly one node called \"%s\""
@@ -2805,9 +2104,6 @@ msgstr "스냅샷이 없는 경우에만 이 드라이버에 대해 확장 볼�
 msgid "Extend volume not implemented"
 msgstr "볼륨 확장이 구현되지 않음"
 
-msgid "FAST is not supported on this array."
-msgstr "이 배열에서는 FAST가 지원되지 않습니다."
-
 msgid "FC is the protocol but wwpns are not supplied by OpenStack."
 msgstr "FC는 프로토콜이지만 OpenStack에서 wwpns를 제공하지 않습니다. "
 
@@ -2861,35 +2157,8 @@ msgstr "활성 구역 지정 구성에 액세스하지 못했습니다. "
 msgid "Failed to access zoneset status:%s"
 msgstr "구역 세트 상태 액세스 실패: %s"
 
-#, python-format
-msgid ""
-"Failed to acquire a resource lock. (serial: %(serial)s, inst: %(inst)s, ret: "
-"%(ret)s, stderr: %(err)s)"
-msgstr ""
-"자원 잠금을 획득하는 데 실패했습니다.(serial: %(serial)s, inst: %(inst)s, "
-"ret: %(ret)s, stderr: %(err)s)"
-
-msgid "Failed to add the logical device."
-msgstr "논리 디바이스를 추가하는 데 실패했습니다."
-
-#, python-format
-msgid ""
-"Failed to add volume %(volumeName)s to consistency group %(cgName)s. Return "
-"code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"볼륨 %(volumeName)s을(를) 일관성 그룹 %(cgName)s에 추가하지 못했습니다. 리턴 "
-"코드: %(rc)lu. 오류: %(error)s."
-
 msgid "Failed to add zoning configuration."
 msgstr "구역 지정 구성을 추가하지 못했습니다. "
-
-#, python-format
-msgid ""
-"Failed to assign the iSCSI initiator IQN. (port: %(port)s, reason: "
-"%(reason)s)"
-msgstr ""
-"iSCSI 게시자 IQN을 지정하는 데 실패했습니다.(포트: %(port)s, 이유: "
-"%(reason)s)"
 
 #, python-format
 msgid "Failed to associate qos_specs: %(specs_id)s with type %(type_id)s."
@@ -2922,9 +2191,6 @@ msgstr "%(vendor_name)s 배열 %(host)s에 연결 실패: %(err)s"
 msgid "Failed to connect to Dell REST API"
 msgstr "Dell REST API에 연결하는 데 실패"
 
-msgid "Failed to connect to array"
-msgstr "배열에 연결 실패"
-
 #, python-format
 msgid "Failed to connect to sheep daemon. addr: %(addr)s, port: %(port)s"
 msgstr "sheep 디먼에 연결하지 못했습니다. 주소: %(addr)s, 포트: %(port)s"
@@ -2944,27 +2210,12 @@ msgid "Failed to copy volume, source device unavailable."
 msgstr "볼륨 복사에 실패했습니다. 소스 디바이스를 사용할 수 없습니다. "
 
 #, python-format
-msgid "Failed to create CG %(cgName)s from snapshot %(cgSnapshot)s."
-msgstr "스냅샷 %(cgSnapshot)s에서 CG %(cgName)s을(를) 작성하지 못했습니다. "
-
-#, python-format
 msgid "Failed to create IG, %s"
 msgstr "IG를 작성하지 못함, %s"
 
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr "볼륨 그룹을 작성할 수 없음: %(vg_name)s"
-
-#, python-format
-msgid ""
-"Failed to create a file. (file: %(file)s, ret: %(ret)s, stderr: %(err)s)"
-msgstr ""
-"파일을 작성하는 데 실패했습니다.(파일: %(file)s, ret: %(ret)s, stderr: "
-"%(err)s)"
-
-#, python-format
-msgid "Failed to create a temporary snapshot for volume %s."
-msgstr "볼륨 %s에 대한 임시 스냅샷을 작성하지 못했습니다. "
 
 msgid "Failed to create api volume flow."
 msgstr "api 볼륨 플로우 작성에 실패했습니다. "
@@ -2982,32 +2233,8 @@ msgid "Failed to create consistency group %(id)s:%(ret)s."
 msgstr "일관성 그룹 %(id)s 작성 실패: %(ret)s."
 
 #, python-format
-msgid ""
-"Failed to create consistency group %s because VNX consistency group cannot "
-"accept compressed LUNs as members."
-msgstr ""
-"일관성 그룹 %s을(를) 작성할 수 없습니다. VNX 일관성 그룹에서 압축된 LUN를 멤"
-"버로 승인할 수 없습니다. "
-
-#, python-format
-msgid "Failed to create consistency group: %(cgName)s."
-msgstr "일관성 그룹 작성 실패: %(cgName)s."
-
-#, python-format
 msgid "Failed to create consistency group: %(cgid)s. Error: %(excmsg)s."
 msgstr "일관성 그룹 작성 실패: %(cgid)s. 오류: %(excmsg)s."
-
-#, python-format
-msgid ""
-"Failed to create consistency group: %(consistencyGroupName)s  Return code: "
-"%(rc)lu.  Error: %(error)s."
-msgstr ""
-"일관성 그룹 작성 실패: %(consistencyGroupName)s 리턴 코드: %(rc)lu. 오류: "
-"%(error)s."
-
-#, python-format
-msgid "Failed to create hardware id(s) on %(storageSystemName)s."
-msgstr "%(storageSystemName)s에서 하드웨어 ID를 작성하지 못했습니다. "
 
 #, python-format
 msgid ""
@@ -3017,9 +2244,6 @@ msgstr "호스트 작성 실패: %(name)s. 배열에 있는지 확인하십시�
 #, python-format
 msgid "Failed to create hostgroup: %(name)s. Check if it exists on the array."
 msgstr "호스트 그룹 작성 실패: %(name)s. 배열에 있는지 확인하십시오. "
-
-msgid "Failed to create iqn."
-msgstr "IQN 작성에 실패했습니다. "
 
 #, python-format
 msgid "Failed to create iscsi target for volume %(volume_id)s."
@@ -3031,26 +2255,14 @@ msgstr "기존 플로우 관리를 작성하지 못했습니다."
 msgid "Failed to create manage_existing flow."
 msgstr "manage_existing 플로우를 작성하지 못했습니다."
 
-msgid "Failed to create map on mcs, no channel can map."
-msgstr "MCS에서 맵 작성에 실패했습니다. 맵핑할 수 있는 채널이 없습니다. "
-
-msgid "Failed to create map."
-msgstr "맵 작성에 실패했습니다. "
-
 #, python-format
 msgid "Failed to create metadata for volume: %(reason)s"
 msgstr "볼륨에 대한 메타데이터를 작성하지 못함: %(reason)s"
-
-msgid "Failed to create partition."
-msgstr "파티션 작성에 실패했습니다. "
 
 #, python-format
 msgid "Failed to create qos_specs: %(name)s with specs %(qos_specs)s."
 msgstr ""
 "%(qos_specs)s 스펙을 가진 qos_specs %(name)s을(를) 작성하지 못했습니다. "
-
-msgid "Failed to create replica."
-msgstr "복제본 작성에 실패했습니다. "
 
 msgid "Failed to create scheduler manager volume flow"
 msgstr "스케줄러 관리자 볼륨 플로우 작성 실패"
@@ -3060,39 +2272,12 @@ msgid "Failed to create snapshot %s"
 msgstr "스냅샷 %s 작성 실패"
 
 #, python-format
-msgid "Failed to create snapshot for cg: %(cgName)s."
-msgstr "cg의 스냅샷 작성 실패: %(cgName)s. "
-
-#, python-format
 msgid "Failed to create snapshot for volume %s."
 msgstr "볼륨 %s에 대한 스냅샷을 작성하지 못했습니다. "
 
 #, python-format
-msgid "Failed to create snapshot policy on volume %(vol)s: %(res)s."
-msgstr "볼륨 %(vol)s에서 스냅샷 정책을 작성하지 못함: %(res)s."
-
-#, python-format
-msgid "Failed to create snapshot resource area on volume %(vol)s: %(res)s."
-msgstr "볼륨 %(vol)s에서 스냅샷 자원 영역을 작성하지 못함: %(res)s."
-
-msgid "Failed to create snapshot."
-msgstr "스냅샷 작성에 실패했습니다. "
-
-#, python-format
-msgid ""
-"Failed to create snapshot. CloudByte volume information not found for "
-"OpenStack volume [%s]."
-msgstr ""
-"스냅샷을 작성하지 못했습니다. OpenStack 볼륨 [%s]에 대한 CloudByte 볼륨 정보"
-"를 찾을 수 없습니다."
-
-#, python-format
 msgid "Failed to create south bound connector for %s."
 msgstr "%s의 남쪽 방향 커텍터를 작성하지 못했습니다."
-
-#, python-format
-msgid "Failed to create storage group %(storageGroupName)s."
-msgstr "스토리지 그룹 %(storageGroupName)s을(를) 생성하지 못했습니다."
 
 #, python-format
 msgid "Failed to create thin pool, error message was: %s"
@@ -3103,16 +2288,6 @@ msgid "Failed to create volume %s"
 msgstr "%s 볼륨을 작성하지 못함 "
 
 #, python-format
-msgid "Failed to delete SI for volume_id: %(volume_id)s because it has pair."
-msgstr ""
-"쌍이 있기 때문에 volume_id: %(volume_id)s에 대한 SI를 삭제하지 못했습니다. "
-
-#, python-format
-msgid "Failed to delete a logical device. (LDEV: %(ldev)s, reason: %(reason)s)"
-msgstr ""
-"논리 디바이스를 삭제하는 데 실패했습니다.(LDEV: %(ldev)s, 이유: %(reason)s)"
-
-#, python-format
 msgid "Failed to delete cgsnapshot %(id)s due to %(reason)s."
 msgstr "%(reason)s(으)로 인해 cg 스냅샷 %(id)s을(를) 삭제할 수 없습니다."
 
@@ -3121,68 +2296,17 @@ msgid "Failed to delete consistency group %(id)s due to %(reason)s."
 msgstr "%(reason)s(으)로 인해 일관성 그룹 %(id)s을(를) 삭제할 수 없습니다."
 
 #, python-format
-msgid "Failed to delete consistency group: %(cgName)s."
-msgstr "일관성 그룹 삭제 실패: %(cgName)s."
-
-#, python-format
-msgid ""
-"Failed to delete consistency group: %(consistencyGroupName)s Return code: "
-"%(rc)lu. Error: %(error)s."
-msgstr ""
-"일관성 그룹 삭제 실패: %(consistencyGroupName)s 리턴 코드:  %(rc)lu. 오류: "
-"%(error)s."
-
-msgid "Failed to delete device."
-msgstr "장치 삭제에 실패했습니다. "
-
-#, python-format
 msgid ""
 "Failed to delete fileset for consistency group %(cgname)s. Error: %(excmsg)s."
 msgstr "일관성 그룹 %(cgname)s에 대한 파일 세트 삭제 실패. 오류: %(excmsg)s."
-
-msgid "Failed to delete iqn."
-msgstr "IQN 삭제에 실패했습니다. "
-
-msgid "Failed to delete map."
-msgstr "맵 삭제에 실패했습니다. "
-
-msgid "Failed to delete partition."
-msgstr "파티션 삭제에 실패했습니다. "
-
-msgid "Failed to delete replica."
-msgstr "복제본 삭제에 실패했습니다. "
 
 #, python-format
 msgid "Failed to delete snapshot %s"
 msgstr "스냅샷 %s 삭제 실패"
 
 #, python-format
-msgid "Failed to delete snapshot for cg: %(cgId)s."
-msgstr "cg의 스냅샷 삭제 실패: %(cgId)s. "
-
-#, python-format
-msgid "Failed to delete snapshot for snapshot_id: %s because it has pair."
-msgstr "쌍이 있기 때문에 snapshot_id: %s에 대한 스냅샷을 삭제하지 못했습니다. "
-
-msgid "Failed to delete snapshot."
-msgstr "스냅샷 삭제에 실패했습니다. "
-
-#, python-format
-msgid "Failed to delete volume %(volumeName)s."
-msgstr "%(volumeName)s 볼륨을 삭제하는 데 실패했습니다. "
-
-#, python-format
-msgid ""
-"Failed to delete volume for volume_id: %(volume_id)s because it has pair."
-msgstr ""
-"쌍이 있기 때문에 volume_id: %(volume_id)s에 대한 볼륨을 삭제하지 못했습니다. "
-
-#, python-format
 msgid "Failed to detach iSCSI target for volume %(volume_id)s."
 msgstr "%(volume_id)s 볼륨에 대한 iSCSI 대상을 분리하지 못했습니다. "
-
-msgid "Failed to determine blockbridge API configuration"
-msgstr "Blockbridge API 구성 판별 실패"
 
 msgid "Failed to disassociate qos specs."
 msgstr "qos 스펙의 연관을 해제하지 못했습니다. "
@@ -3191,24 +2315,6 @@ msgstr "qos 스펙의 연관을 해제하지 못했습니다. "
 msgid "Failed to disassociate qos_specs: %(specs_id)s with type %(type_id)s."
 msgstr ""
 "qos_specs %(specs_id)s을(를) %(type_id)s 유형과 연관 해제시키지 못했습니다. "
-
-#, python-format
-msgid ""
-"Failed to ensure snapshot resource area, could not locate volume for id %s"
-msgstr "스냅샷 자원 영역 보장 실패, id %s에 대한 볼륨을 찾을 수 없음"
-
-msgid "Failed to establish connection with Coho cluster"
-msgstr "Coho 클러스터와 연결하는 데 실패"
-
-#, python-format
-msgid ""
-"Failed to execute CloudByte API [%(cmd)s]. Http status: %(status)s, Error: "
-"%(error)s."
-msgstr ""
-"CloudByte API 실행 실패 [%(cmd)s]. Http 상태: %(status)s, 오류: %(error)s. "
-
-msgid "Failed to execute common command."
-msgstr "공통 명령을 실행하지 못했습니다. "
 
 #, python-format
 msgid "Failed to export for volume: %(reason)s"
@@ -3247,10 +2353,6 @@ msgid "Failed to find iSCSI initiator group containing %(initiator)s."
 msgstr "%(initiator)s을(를) 포함하는 iSCSI 개시자 그룹을 찾지 못했습니다."
 
 #, python-format
-msgid "Failed to get CloudByte account details for account [%s]."
-msgstr "계정 [%s]의 CloudByte 계정 세부사항을 가져오지 못했습니다."
-
-#, python-format
 msgid "Failed to get LUN target details for the LUN %s"
 msgstr "LUN %s에 대한 LUN 대상 세부사항을 가져오지 못함"
 
@@ -3262,42 +2364,16 @@ msgstr "LUN %s에 대한 LUN 대상 세부사항을 가져오지 못했습니다
 msgid "Failed to get LUN target list for the LUN %s"
 msgstr "LUN %s에 대한 LUN 대상 목록을 가져오지 못함"
 
-#, python-format
-msgid "Failed to get Partition ID for volume %(volume_id)s."
-msgstr "볼륨 %(volume_id)s에 대한 파티션 ID를 가져오지 못했습니다. "
-
-#, python-format
-msgid "Failed to get Raid Snapshot ID from Snapshot %(snapshot_id)s."
-msgstr "스냅샷 %(snapshot_id)s에서 Raid 스냅샷 ID를 가져오지 못했습니다. "
-
-#, python-format
-msgid "Failed to get Raid Snapshot ID from snapshot: %(snapshot_id)s."
-msgstr "스냅샷: %(snapshot_id)s에서 Raid 스냅샷 ID를 가져오지 못했습니다. "
-
 msgid "Failed to get SplitMirror."
 msgstr "SplitMirror를 가져오지 못했습니다."
-
-#, python-format
-msgid ""
-"Failed to get a storage resource. The system will attempt to get the storage "
-"resource again. (resource: %(resource)s)"
-msgstr ""
-"스토리지 자원을 가져오는 데 실패했습니다. 시스템은 스토리지 자원을 다시 가져"
-"오기 위해 시도합니다.(자원: %(resource)s)"
 
 #, python-format
 msgid "Failed to get all associations of qos specs %s"
 msgstr "qos 스펙 %s의 모든 연관을 가져오지 못함 "
 
-msgid "Failed to get channel info."
-msgstr "채널 정보를 가져오지 못했습니다. "
-
 #, python-format
 msgid "Failed to get code level (%s)."
 msgstr "코드 레벨을 가져오는 데 실패했습니다(%s)."
-
-msgid "Failed to get device info."
-msgstr "디바이스 정보를 가져오지 못했습니다. "
 
 #, python-format
 msgid "Failed to get domain because CPG (%s) doesn't exist on array."
@@ -3305,23 +2381,6 @@ msgstr "배열에 CPG(%s)가 없기 때문에 도메인을 가져오지 못했�
 
 msgid "Failed to get image snapshots."
 msgstr "이미지 스냅샷을 가져오지 못했습니다."
-
-#, python-format
-msgid "Failed to get ip on Channel %(channel_id)s with volume: %(volume_id)s."
-msgstr ""
-"볼륨이 %(volume_id)s인 채널 %(channel_id)s의 ip를 가져오지 못했습니다. "
-
-msgid "Failed to get iqn info."
-msgstr "IQN 정보를 가져오지 못했습니다. "
-
-msgid "Failed to get license info."
-msgstr "라이센스 정보를 가져오지 못했습니다. "
-
-msgid "Failed to get lv info."
-msgstr "lv 정보를 가져오지 못했습니다. "
-
-msgid "Failed to get map info."
-msgstr "맵 정보를 가져오지 못했습니다. "
 
 msgid "Failed to get migration task."
 msgstr "마이그레이션 태스크를 가져오지 못했습니다."
@@ -3331,33 +2390,6 @@ msgstr "복제에서 모델 업데이트를 가져오지 못함"
 
 msgid "Failed to get name server info."
 msgstr "이름 서버 정보를 가져오지 못했습니다. "
-
-msgid "Failed to get network info."
-msgstr "네트워크 정보를 가져오지 못했습니다. "
-
-#, python-format
-msgid "Failed to get new part id in new pool: %(pool_id)s."
-msgstr "새 풀: %(pool_id)s에서 새 파트 id를 가져오지 못했습니다. "
-
-msgid "Failed to get partition info."
-msgstr "파티션 정보를 가져오지 못했습니다. "
-
-#, python-format
-msgid "Failed to get pool id with volume %(volume_id)s."
-msgstr "볼륨이 %(volume_id)s인 풀 id를 가져오지 못했습니다. "
-
-#, python-format
-msgid "Failed to get remote copy information for %(volume)s due to %(err)s."
-msgstr ""
-"%(err)s(으)로 인해 %(volume)s의 원격 복사 정보를 가져오는 데 실패했습니다."
-
-#, python-format
-msgid ""
-"Failed to get remote copy information for %(volume)s. Exception: %(err)s."
-msgstr "%(volume)s의 원격 복사 정보를 가져오는 데 실패했습니다. 예외: %(err)s."
-
-msgid "Failed to get replica info."
-msgstr "복제본 정보를 가져오지 못했습니다. "
 
 msgid "Failed to get show fcns database info."
 msgstr "표시 fcns 데이터베이스 정보를 가져오지 못했습니다. "
@@ -3369,9 +2401,6 @@ msgstr "볼륨 %s의 크기 가져오기 실패"
 #, python-format
 msgid "Failed to get snapshot for volume %s."
 msgstr "볼륨 %s에 대한 스냅샷을 가져오지 못했습니다. "
-
-msgid "Failed to get snapshot info."
-msgstr "스냅샷 정보를 가져오지 못했습니다. "
 
 #, python-format
 msgid "Failed to get target IQN for the LUN %s"
@@ -3386,18 +2415,6 @@ msgstr "LUN %s에 대한 대상 포털을 가져오지 못함"
 
 msgid "Failed to get targets"
 msgstr "대상을 가져오지 못함"
-
-msgid "Failed to get wwn info."
-msgstr "WWN 정보를 가져오지 못했습니다. "
-
-#, python-format
-msgid ""
-"Failed to get, create or add volume %(volumeName)s to masking view "
-"%(maskingViewName)s. The error message received was %(errorMessage)s."
-msgstr ""
-"볼륨 %(volumeName)s을(를) 가져오거나 작성하거나 마스킹 보기 "
-"%(maskingViewName)s에 추가하지 못함. 오류 메시지 %(errorMessage)s을(를) 수신"
-"했습니다. "
 
 msgid "Failed to identify volume backend."
 msgstr "볼륨 백엔드 식별 실패"
@@ -3517,31 +2534,12 @@ msgid "Failed to manage volume %s."
 msgstr "볼륨 %s을(를) 관리하지 못했습니다. "
 
 #, python-format
-msgid ""
-"Failed to map a logical device. (LDEV: %(ldev)s, LUN: %(lun)s, port: "
-"%(port)s, id: %(id)s)"
-msgstr ""
-"논리 디바이스를 맵핑하는 데 실패했습니다.(LDEV: %(ldev)s, LUN: %(lun)s, 포"
-"트: %(port)s, id: %(id)s)"
-
-msgid "Failed to migrate volume for the first time."
-msgstr "볼륨 마이그레이션 첫 번째 실패. "
-
-msgid "Failed to migrate volume for the second time."
-msgstr "볼륨 마이그레이션 두 번째 실패. "
-
-#, python-format
 msgid "Failed to move LUN mapping.  Return code: %s"
 msgstr "LUN 맵핑 이동에 실패했습니다. 리턴 코드: %s"
 
 #, python-format
 msgid "Failed to move volume %s."
 msgstr "볼륨 %s을(를) 이동하지 못했습니다. "
-
-#, python-format
-msgid "Failed to open a file. (file: %(file)s, ret: %(ret)s, stderr: %(err)s)"
-msgstr ""
-"파일을 여는 데 실패했습니다.(파일: %(file)s, ret: %(ret)s, stderr: %(err)s)"
 
 #, python-format
 msgid ""
@@ -3570,44 +2568,12 @@ msgstr ""
 "<service_name>:<endpoint_type> 양식이어야 함"
 
 #, python-format
-msgid ""
-"Failed to perform a zero-page reclamation. (LDEV: %(ldev)s, reason: "
-"%(reason)s)"
-msgstr ""
-"0 페이지 교정을 수행하는 데 실패했습니다.(LDEV: %(ldev)s, 이유: %(reason)s)"
-
-#, python-format
 msgid "Failed to remove export for volume %(volume)s: %(reason)s"
 msgstr "볼륨 %(volume)s의 내보내기 제거 실패: %(reason)s"
 
 #, python-format
 msgid "Failed to remove iscsi target for volume %(volume_id)s."
 msgstr "%(volume_id)s 볼륨에 대한 iscsi 대상을 제거하지 못했습니다. "
-
-#, python-format
-msgid ""
-"Failed to remove volume %(volumeName)s from consistency group %(cgName)s. "
-"Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"볼륨 %(volumeName)s을(를) 일관성 그룹 %(cgName)s에서 제거하지 못했습니다. 리"
-"턴 코드: %(rc)lu. 오류: %(error)s."
-
-#, python-format
-msgid "Failed to remove volume %(volumeName)s from default SG."
-msgstr "기본 SG에서 볼륨 %(volumeName)s을(를) 제거하지 못했습니다. "
-
-#, python-format
-msgid "Failed to remove volume %(volumeName)s from default SG: %(volumeName)s."
-msgstr ""
-"기본 SG(%(volumeName)s)에서 %(volumeName)s 볼륨을 제거하지 못했습니다. "
-
-#, python-format
-msgid ""
-"Failed to remove: %(volumename)s. from the default storage group for FAST "
-"policy %(fastPolicyName)s."
-msgstr ""
-"FAST 정책 %(fastPolicyName)s에 대한 기본 스토리지 그룹에서 %(volumename)s 볼"
-"륨을 제거하지 못했습니다."
 
 #, python-format
 msgid ""
@@ -3631,9 +2597,6 @@ msgstr ""
 msgid "Failed to set attribute 'Incoming user' for SCST target."
 msgstr "SCST 대상에 대해 '수신 사용자' 속성을 설정하는 데 실패했습니다. "
 
-msgid "Failed to set partition."
-msgstr "파티션 설정에 실패했습니다. "
-
 #, python-format
 msgid ""
 "Failed to set permissions for the consistency group %(cgname)s. Error: "
@@ -3642,42 +2605,9 @@ msgstr "일관성 그룹 %(cgname)s에 대한 권한 설정 실패. 오류: %(ex
 
 #, python-format
 msgid ""
-"Failed to specify a logical device for the volume %(volume_id)s to be "
-"unmapped."
-msgstr ""
-"맵핑되지 않는 볼륨 %(volume_id)s에 대한 논리 디바이스를 지정하는 데 실패했습"
-"니다."
-
-#, python-format
-msgid ""
-"Failed to specify a logical device to be deleted. (method: %(method)s, id: "
-"%(id)s)"
-msgstr ""
-"삭제할 논리 디바이스를 지정하는 데 실패했습니다.(메소드: %(method)s, id: "
-"%(id)s)"
-
-msgid "Failed to terminate migrate session."
-msgstr "마이그레이션 세션을 종료하는 데 실패했습니다. "
-
-#, python-format
-msgid "Failed to unbind volume %(volume)s"
-msgstr "볼륨 %(volume)s 바인드 해제 실패"
-
-#, python-format
-msgid ""
 "Failed to unlink fileset for consistency group %(cgname)s. Error: %(excmsg)s."
 msgstr ""
 "일관성 그룹 %(cgname)s에 대한 파일 세트 링크 해제 실패. 오류: %(excmsg)s."
-
-#, python-format
-msgid "Failed to unmap a logical device. (LDEV: %(ldev)s, reason: %(reason)s)"
-msgstr ""
-"논리 디바이스를 맵핑 해제하는 데 실패했습니다.(LDEV: %(ldev)s, 이유: "
-"%(reason)s)"
-
-#, python-format
-msgid "Failed to update consistency group: %(cgName)s."
-msgstr "일관성 그룹 업데이트 실패: %(cgName)s."
 
 #, python-format
 msgid "Failed to update metadata for volume: %(reason)s"
@@ -3974,9 +2904,6 @@ msgstr "폴더 %s이(가) Nexenta Store 어플라이언스에 없음"
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS가 실행 중이 아닙니다. 상태: %s."
 
-msgid "Gateway VIP is not set"
-msgstr "게이트웨이 VIP가 설정되지 않음"
-
 msgid "Get FC ports by port group error."
 msgstr "포트 그룹별로 FC 포트 가져오기 오류."
 
@@ -4120,10 +3047,6 @@ msgid "Glance metadata for volume/snapshot %(id)s cannot be found."
 msgstr "%(id)s 볼륨/스냅샷에 대한 글랜스 메타데이터를 찾을 수 없습니다. "
 
 #, python-format
-msgid "Gluster config file at %(config)s doesn't exist"
-msgstr "Gluster config 파일이 %(config)s에 없음"
-
-#, python-format
 msgid "Google Cloud Storage api failure: %(reason)s"
 msgstr "Google Cloud Storage api 실패: %(reason)s"
 
@@ -4139,9 +3062,6 @@ msgstr "Google Cloud Storage oauth2 실패: %(reason)s"
 msgid "Got bad path information from DRBDmanage! (%s)"
 msgstr "DRBDmanage에서 잘못된 경로 정보를 가져왔습니다(%s)! "
 
-msgid "HBSD error occurs."
-msgstr "HBSD 오류가 발생했습니다."
-
 msgid "HPELeftHand url not found"
 msgstr "HPELeftHand url을 찾을 수 없음"
 
@@ -4152,10 +3072,6 @@ msgid ""
 msgstr ""
 "마지막 백업 이후 해시 블록 크기가 변경되었습니다. 새 해시 블록 크기:%(new)s. "
 "이전 해시 블록 크기: %(old)s. 전체 백업을 수행하십시오. "
-
-#, python-format
-msgid "Have not created %(tier_levels)s tier(s)."
-msgstr "%(tier_levels)s 티어를 작성하지 않았습니다. "
 
 #, python-format
 msgid "Hint \"%s\" not supported."
@@ -4169,14 +3085,6 @@ msgid "Host %(host)s could not be found."
 msgstr "%(host)s 호스트를 찾을 수 없습니다. "
 
 #, python-format
-msgid ""
-"Host %(host)s does not match x509 certificate contents: CommonName "
-"%(commonName)s."
-msgstr ""
-"%(host)s 호스트가 x509 인증서 컨텐츠와 일치하지 않음: CommonName "
-"%(commonName)s."
-
-#, python-format
 msgid "Host %s has no FC initiators"
 msgstr "%s 호스트에 FC 개시자가 없음"
 
@@ -4188,21 +3096,11 @@ msgstr "이름이 %s인 호스트 그룹을 찾을 수 없음"
 msgid "Host group with ref %s not found"
 msgstr "ref %s을(를) 가진 호스트 그룹을 찾을 수 없음"
 
-msgid "Host is NOT Frozen."
-msgstr "호스트가 동결되지 않았습니다."
-
-msgid "Host is already Frozen."
-msgstr "호스트가 이미 동결되었습니다."
-
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
 msgstr ""
 "호스트를 찾을 수 없습니다. %(host)s에서 %(service)s을(를) 제거하지 못했습니"
 "다. "
-
-#, python-format
-msgid "Host replication_status must be %s to failover."
-msgstr "장애 보구하려면 호스트 replication_status가 %s이어야 합니다."
 
 #, python-format
 msgid "Host type %s not supported."
@@ -4214,12 +3112,6 @@ msgstr "포트가 %(ports)s인 호스트를 찾을 수 없습니다. "
 
 msgid "Hypermetro and Replication can not be used in the same volume_type."
 msgstr "Hypermetro와 복제를 동일한 volume_type에서 사용할 수 없습니다."
-
-#, python-format
-msgid "I/O group %(iogrp)d is not valid; available I/O groups are %(avail)s."
-msgstr ""
-"I/O 그룹 %(iogrp)d이(가) 올바르지 않습니다. 사용 가능한 I/O 그룹은 %(avail)s"
-"입니다. "
 
 msgid "ID"
 msgstr "ID"
@@ -4290,14 +3182,6 @@ msgstr ""
 "의 연결로 인해 발생했을 수 있습니다. 이러한 경우 30초 후 삭제를 재시도하여 문"
 "제를 해결할 수도 있습니다."
 
-#, python-format
-msgid ""
-"Import record failed, cannot find backup service to perform the import. "
-"Request service %(service)s"
-msgstr ""
-"레코드 가져오기에 실패했습니다. 가져오기를 수행할 백업 서비스를 찾을 수 없습"
-"니다. 요청 서비스 %(service)s"
-
 msgid "Incorrect request body format"
 msgstr "올바르지 않은 요청 본문 형식"
 
@@ -4306,14 +3190,6 @@ msgstr "올바르지 않은 요청 본문 형식입니다."
 
 msgid "Incremental backups exist for this backup."
 msgstr "이 백업에 대한 증분 백업이 있습니다. "
-
-#, python-format
-msgid ""
-"Infortrend CLI exception: %(err)s Param: %(param)s (Return Code: %(rc)s) "
-"(Output: %(out)s)"
-msgstr ""
-"Infortrend CLI 예외: %(err)s 매개변수: %(param)s(리턴 코드: %(rc)s) (출력: "
-"%(out)s)"
 
 msgid "Input volumes or snapshots are invalid."
 msgstr "입력 볼륨 또는 스냅샷이 올바르지 않습니다. "
@@ -4324,12 +3200,6 @@ msgstr "입력 볼륨 또는 소스 볼륨이 올바르지 않습니다. "
 #, python-format
 msgid "Instance %(uuid)s could not be found."
 msgstr "%(uuid)s 인스턴스를 찾을 수 없습니다. "
-
-msgid "Insufficient free space available to extend volume."
-msgstr "볼륨을 확장하는 데 충분한 여유 공간이 없습니다."
-
-msgid "Insufficient privileges"
-msgstr "권한이 충분하지 않음"
 
 #, python-format
 msgid "Invalid 3PAR Domain: %(err)s"
@@ -4348,9 +3218,6 @@ msgstr "올바르지 않은 Cg 스냅샷: %(reason)s"
 #, python-format
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "올바르지 않은 일관성 그룹: %(reason)s"
-
-msgid "Invalid ConsistencyGroup: No host to create consistency group"
-msgstr "올바르지 않은 일관성 그룹: 일관성 그룹을 작성할 호스트가 없음"
 
 #, python-format
 msgid ""
@@ -4390,15 +3257,8 @@ msgstr "올바르지 않은 XtremIO 버전 %(cur)s, %(min)s 이상의 버전이 
 msgid "Invalid allocated quotas defined for the following project quotas: %s"
 msgstr "다음 프로젝트 할당량에 잘못 할당된 할당량이 정의됨 : %s"
 
-msgid "Invalid argument"
-msgstr "올바르지 않은 인수 "
-
 msgid "Invalid argument - negative seek offset."
 msgstr "올바르지 않은 인수 - 음수 찾기 오프셋. "
-
-#, python-format
-msgid "Invalid argument - whence=%s not supported"
-msgstr "올바르지 않은 인수 - whence=%s은(는) 지원되지 않음 "
 
 #, python-format
 msgid "Invalid argument - whence=%s not supported."
@@ -4416,10 +3276,6 @@ msgstr "잘못된 인증 키: %(reason)s"
 msgid "Invalid backup: %(reason)s"
 msgstr "올바르지 않은 백업: %(reason)s"
 
-msgid "Invalid chap user details found in CloudByte storage."
-msgstr ""
-"CloudByte 스토리지에서 올바르지 않은 chap 사용자 세부사항이 발견되었습니다. "
-
 #, python-format
 msgid "Invalid connection initialization response of volume %(name)s"
 msgstr "볼륨 %(name)s의 올바르지 않은 연결 초기화 응답"
@@ -4432,9 +3288,6 @@ msgstr "볼륨 %(name)s의 올바르지 않은 연결 초기화 응답: %(output
 #, python-format
 msgid "Invalid content type %(content_type)s."
 msgstr "올바르지 않은 컨텐츠 유형 %(content_type)s."
-
-msgid "Invalid credentials"
-msgstr "올바르지 않은 신임 정보"
 
 #, python-format
 msgid "Invalid directory: %s"
@@ -4527,10 +3380,6 @@ msgstr ""
 "새 snapCPG 이름이 재입력을 수행하기에 올바르지 않습니다. new_snap_cpg='%s'."
 
 #, python-format
-msgid "Invalid port number %(config)s for Coho rpc port"
-msgstr "Coho rpc 포트의 올바르지 않은 포트 번호 %(config)s"
-
-#, python-format
 msgid ""
 "Invalid prefetch type '%s' is configured. PrefetchType must be in 0,1,2,3."
 msgstr ""
@@ -4554,9 +3403,6 @@ msgstr ""
 #, python-format
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "올바르지 않은 예약 만기 %(expire)s."
-
-msgid "Invalid response header from RPC server"
-msgstr "RPC 서버의 올바르지 않은 응답 헤더"
 
 #, python-format
 msgid "Invalid secondary id %s."
@@ -4598,15 +3444,6 @@ msgstr "올바르지 않은 업데이트 설정: '%s'"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "강제 실행에 대한 올바르지 않은 값 '%s'입니다. "
-
-#, python-format
-msgid "Invalid value '%s' for force. "
-msgstr "강제 실행에 대한 올바르지 않은 값 '%s'입니다. "
-
-#, python-format
-msgid "Invalid value '%s' for is_public. Accepted values: True or False."
-msgstr ""
-"is_public에 대해 값 '%s'이(가) 올바르지 않습니다. 승인된 값: True 또는 False."
 
 #, python-format
 msgid "Invalid value '%s' for skip_validation."
@@ -4658,41 +3495,6 @@ msgid "Invalid volume: %(reason)s"
 msgstr "잘못된 볼륨: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid volume: Cannot add volume %(volume_id)s to consistency group "
-"%(group_id)s because volume is in an invalid state: %(status)s. Valid states "
-"are: ('available', 'in-use')."
-msgstr ""
-"올바르지 않은 볼륨: %(volume_id)s 볼륨을 일관성 그룹 %(group_id)s에 추가할 "
-"수 없습니다. 볼륨 상태 %(status)s(이)가 올바르지 않은 상태입니다. 올바른 상태"
-"는 ('available', 'in-use')입니다. "
-
-#, python-format
-msgid ""
-"Invalid volume: Cannot add volume %(volume_id)s to consistency group "
-"%(group_id)s because volume type %(volume_type)s is not supported by the "
-"group."
-msgstr ""
-"올바르지 않은 볼륨: %(volume_id)s 볼륨을 일관성 그룹 %(group_id)s에 추가할 "
-"수 없습니다. 이 그룹에서 볼륨 유형 %(volume_type)s을(를) 제공되어야 합니다."
-
-#, python-format
-msgid ""
-"Invalid volume: Cannot add volume fake-volume-uuid to consistency group "
-"%(group_id)s because volume cannot be found."
-msgstr ""
-"올바르지 않은 볼륨: fake-volume-uuid 볼륨을 일관성 그룹 %(group_id)s에 추가"
-"할 수 없습니다. 해당 볼륨을 찾을 수 없습니다. "
-
-#, python-format
-msgid ""
-"Invalid volume: Cannot remove volume fake-volume-uuid from consistency group "
-"%(group_id)s because it is not in the group."
-msgstr ""
-"올바르지 않은 볼륨: fake-volume-uuid 볼륨을 일관성 그룹 %(group_id)s에서 제거"
-"할 수 없습니다. 해당 볼륨이 그룹에 없습니다. "
-
-#, python-format
 msgid "Invalid volume_type passed: %s."
 msgstr "올바르지 않은 volume_type이 전달됨: %s."
 
@@ -4737,14 +3539,6 @@ msgid ""
 "Issuing a fail-over failed because replication is not properly configured."
 msgstr "복제가 적절하게 구성되지 않았으므로 장애 복구 실행에 실패했습니다."
 
-#, python-format
-msgid "Job id not found in CloudByte's create volume [%s] response."
-msgstr "CloudByte의 볼륨 작성[%s] 응답에서 작업 ID를 찾을 수 없습니다. "
-
-#, python-format
-msgid "Job id not found in CloudByte's delete volume [%s] response."
-msgstr "CloudByte의 삭제 볼륨 [%s] 응답에서 작업 ID를 찾을 수 없습니다. "
-
 msgid ""
 "Key names can only contain alphanumeric characters, underscores, periods, "
 "colons and hyphens."
@@ -4759,22 +3553,8 @@ msgid "Keystone version 3 or greater must be used to get nested quota support."
 msgstr "중첩 할당량 지원을 받기 위해 Keystone 버전 3 이상을 사용해야 합니다."
 
 #, python-format
-msgid "LU does not exist for volume: %s"
-msgstr "볼륨의 LU가 없음: %s"
-
-msgid "LUN export failed!"
-msgstr "LUN 내보내기 실패! "
-
-msgid "LUN map overflow on every channel."
-msgstr "모든 채널의 LUN 맵 오버플로우입니다. "
-
-#, python-format
 msgid "LUN not found with given ref %s."
 msgstr "주어진 ref %s을(를) 사용하여 LUN을 찾을 수 없습니다. "
-
-#, python-format
-msgid "LUN number is out of bound on channel id: %(ch_id)s."
-msgstr "LUN 번호가 채널 id에 대한 경계를 벗어남: %(ch_id)s."
 
 #, python-format
 msgid "Last %s cinder syslog entries:-"
@@ -4789,9 +3569,6 @@ msgstr "라이센스를 사용할 수 없습니다."
 #, python-format
 msgid "Line %(dis)d : %(line)s"
 msgstr "행 %(dis)d : %(line)s"
-
-msgid "Link path already exists and its not a symlink"
-msgstr "링크 경로가 이미 존재하고 symlink가 아님"
 
 #, python-format
 msgid "Linked clone of source volume not supported in state: %s."
@@ -4819,18 +3596,6 @@ msgid ""
 "same."
 msgstr ""
 "%(md5)s 전과 %(etag)s 후의 오브젝트 %(object_name)s이(가) 동일하지 않습니다."
-
-#, python-format
-msgid "MSG_DENIED: %r"
-msgstr "MSG_DENIED: %r"
-
-#, python-format
-msgid "MSG_DENIED: AUTH_ERROR: %r"
-msgstr "MSG_DENIED: AUTH_ERROR: %r"
-
-#, python-format
-msgid "MSG_DENIED: RPC_MISMATCH: %r"
-msgstr "MSG_DENIED: RPC_MISMATCH: %r"
 
 #, python-format
 msgid "Malformed fcns output string: %s"
@@ -4902,14 +3667,6 @@ msgstr "기존 볼륨 관리가 구현되지 않았습니다."
 msgid "Manage existing volume requires 'source-id'."
 msgstr "기존 볼륨을 관리하려면 'source-id'가 필요합니다. "
 
-#, python-format
-msgid ""
-"Manage volume is not supported if FAST is enable. FAST policy: "
-"%(fastPolicyName)s."
-msgstr ""
-"FAST가 사용으로 설정된 경우 볼륨 관리가 지원되지 않습니다. FAST 정책: "
-"%(fastPolicyName)s."
-
 msgid "Managing of snapshots to failed-over volumes is not allowed."
 msgstr "장애 복구된 볼륨에서 스냅샷 관리는 허용되지 않습니다."
 
@@ -4923,10 +3680,6 @@ msgid ""
 msgstr ""
 "%(id)s 맵핑 준비가 할당된 %(to)d초(제한시간) 내에 완료되지 못했습니다. 종료됩"
 "니다. "
-
-#, python-format
-msgid "Masking view %(maskingViewName)s was not deleted successfully"
-msgstr "마스킹 보기 %(maskingViewName)s이(가) 삭제되지 않음"
 
 #, python-format
 msgid "Maximum number of backups allowed (%(allowed)d) exceeded"
@@ -4953,9 +3706,6 @@ msgstr "이 볼륨에 대한 메타데이터 백업이 이미 존재함"
 #, python-format
 msgid "Metadata backup object '%s' already exists"
 msgstr "메타데이터 백업 오브젝트 '%s'이(가) 이미 존재함"
-
-msgid "Metadata property key blank."
-msgstr "메타데이터 특성 키가 공백입니다. "
 
 msgid "Metadata restore failed due to incompatible version"
 msgstr "호환 불가능한 버전으로 인해 메타데이터 복원에 실패"
@@ -4987,22 +3737,6 @@ msgstr "요청 본문에서 '%s' 필수 요소가 누락됨 "
 msgid "Missing required element '%s' in request body."
 msgstr "요청 본문에서 필수 요소 '%s'이(가) 누락되었습니다. "
 
-msgid "Missing required element 'consistencygroup' in request body."
-msgstr "요청 본문에 필수 요소 'consistencygroup'이 누락되었습니다. "
-
-msgid "Missing required element quota_class_set in request body."
-msgstr "요청 본문에서 필수 요소 quota_class_set가 누락되었습니다."
-
-msgid "Missing required element snapshot in request body."
-msgstr "요청 본문에 필수 요소 스냅샷이 누락되었습니다. "
-
-msgid ""
-"Multiple SerialNumbers found, when only one was expected for this operation. "
-"Please change your EMC config file."
-msgstr ""
-"이 조작에 대해 하나의 SerialNumber만 예상되었을 때 다중 SerialNumber가 발견되"
-"었습니다. EMC 구성 파일을 변경하십시오. "
-
 #, python-format
 msgid "Multiple copies of volume %s found."
 msgstr "볼륨 %s의 다중 사본이 발견되었습니다. "
@@ -5018,15 +3752,6 @@ msgstr "다중 프로파일이 발견되었습니다. "
 
 msgid "Must implement a fallback schedule"
 msgstr "대체 스케줄을 구현해야 함"
-
-msgid "Must implement find_retype_host"
-msgstr "find_retype_host를 구현해야 함"
-
-msgid "Must implement host_passes_filters"
-msgstr "host_passes_filters를 구현해야 함 "
-
-msgid "Must implement schedule_create_consistencygroup"
-msgstr "schedule_create_consistencygroup을 구현해야 함"
 
 msgid "Must implement schedule_create_volume"
 msgstr "schedule_create_volume을 구현해야 함"
@@ -5046,12 +3771,6 @@ msgstr ""
 
 msgid "Must specify 'connector'"
 msgstr "'커넥터'를 지정해야 함"
-
-msgid "Must specify 'connector'."
-msgstr "'커넥터'를 지정해야 합니다. "
-
-msgid "Must specify 'host'."
-msgstr "'호스트'를 지정해야 합니다. "
 
 msgid "Must specify 'new_volume'"
 msgstr "'new_volume'을 지정해야 함"
@@ -5094,9 +3813,6 @@ msgstr "ExtensionManager 클래스를 지정해야 함"
 msgid "Must specify bootable in request."
 msgstr "요청에서 부트 가능을 지정해야 합니다."
 
-msgid "Must specify protection domain name or protection domain id."
-msgstr "보호 도메인 이름 또는 보호 도메인 ID를 지정해야 합니다. "
-
 msgid "Must specify readonly in request."
 msgstr "요청에서 읽기 전용을 지정해야 합니다."
 
@@ -5105,9 +3821,6 @@ msgstr "스냅샷 source-name 또는 source-id를 지정해야 합니다."
 
 msgid "Must specify source-name or source-id."
 msgstr "source-name 또는 source-id가 있어야 합니다."
-
-msgid "Must specify storage pool name or id."
-msgstr "스토리지 풀 이름 또는 ID를 지정해야 합니다. "
 
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr "스토리지 풀을 지정해야 합니다. 옵션: sio_storage_pools."
@@ -5149,10 +3862,6 @@ msgstr ""
 msgid "Need non-zero volume size"
 msgstr "0이 아닌 볼륨 크기가 필요함"
 
-#, python-format
-msgid "Neither MSG_DENIED nor MSG_ACCEPTED: %r"
-msgstr "MSG_DENIED와 MSG_ACCEPTED가 모두 아님: %r"
-
 msgid "NetApp Cinder Driver exception."
 msgstr "NetApp Cinder Driver 예외."
 
@@ -5190,35 +3899,14 @@ msgstr "FC 개시자를 호스트에 추가할 수 없습니다."
 msgid "No FC port connected to fabric."
 msgstr "FC 포트가 패브릭에 연결되지 않았습니다."
 
-msgid "No FCP targets found"
-msgstr "FCP 대상을 찾을 수 없음"
-
-msgid "No Port Group elements found in config file."
-msgstr "구성 파일에서 포트 그룹 요소를 찾을 수 없습니다."
-
 msgid "No VF ID is defined in the configuration file."
 msgstr "구성 파일에 VF ID가 정의되지 않았습니다."
 
 msgid "No active iSCSI portals with supplied iSCSI IPs"
 msgstr "제공된 iSCSI IP를 가진 활성 iSCSI 포털이 없음"
 
-#, python-format
-msgid "No available service named %s"
-msgstr "%s(으)로 이름 지정된 사용 가능한 서비스가 없음 "
-
-#, python-format
-msgid "No backup with id %s"
-msgstr "ID가 %s인 백업이 없음"
-
 msgid "No backups available to do an incremental backup."
 msgstr "증분 백업을 수행할 수 있는 백업이 없습니다. "
-
-msgid "No big enough free disk"
-msgstr "충분한 여유 디스크 공간 없음"
-
-#, python-format
-msgid "No cgsnapshot with id %s"
-msgstr "ID가 %s인 cg 스냅샷이 없음"
 
 msgid "No cinder entries in syslog!"
 msgstr "syslog에 cinder 항목이 없습니다!"
@@ -5229,10 +3917,6 @@ msgstr "이름이 %s인 복제 LUN을 파일러에서 찾을 수 없음"
 
 msgid "No config node found."
 msgstr "구성 노드를 찾을 수 없습니다. "
-
-#, python-format
-msgid "No consistency group with id %s"
-msgstr "ID가 %s인 일관성 그룹이 없음"
 
 #, python-format
 msgid "No element by given name %s."
@@ -5253,9 +3937,6 @@ msgstr ""
 "사용 가능한 LUN ID가 남아 있지 않습니다. 호스트에 연결할 수 있는 최대 볼륨 수"
 "(%s)가 초과되었습니다. "
 
-msgid "No free disk"
-msgstr "여유 디스크 공간 없음"
-
 #, python-format
 msgid "No good iscsi portal found in supplied list for %s."
 msgstr "%s에 대한 제공된 목록에서 올바른 iscsi 포털을 찾을 수 없습니다."
@@ -5263,10 +3944,6 @@ msgstr "%s에 대한 제공된 목록에서 올바른 iscsi 포털을 찾을 수
 #, python-format
 msgid "No good iscsi portals found for %s."
 msgstr "%s에 대한 올바른 iscsi 포털을 찾을 수 없습니다."
-
-#, python-format
-msgid "No host to create consistency group %s."
-msgstr "일관성 그룹 %s을(를) 작성할 호스트가 없습니다. "
 
 msgid "No iSCSI-enabled ports on target array."
 msgstr "대상 배열에 iSCSI 사용 포트가 없습니다. "
@@ -5281,35 +3958,12 @@ msgstr "개시자가 패브릭에 연결되지 않았습니다."
 msgid "No initiator group found for initiator %s"
 msgstr "%s 개시자의 개시자 그룹을 찾을 수 없음"
 
-msgid "No initiators found, cannot proceed"
-msgstr "개시자를 찾을 수 없음, 계속할 수 없음"
-
 #, python-format
 msgid "No interface found on cluster for ip %s"
 msgstr "ip %s에 대한 클러스터에서 인터페이스를 찾을 수 없음"
 
 msgid "No ip address found."
 msgstr "IP 주소를 찾을 수 없습니다. "
-
-msgid "No iscsi auth groups were found in CloudByte."
-msgstr "CloudByte에서 iscsi 인증 그룹을 찾을 수 없습니다. "
-
-msgid "No iscsi initiators were found in CloudByte."
-msgstr "CloudByte에서 iscsi 개시자를 찾을 수 없습니다."
-
-#, python-format
-msgid "No iscsi service found for CloudByte volume [%s]."
-msgstr "CloudByte 볼륨 [%s]의 iscsi 서비스를 찾을 수 없습니다."
-
-msgid "No iscsi services found in CloudByte storage."
-msgstr "CloudByte 스토리지에서 iscsi 서비스를 찾을 수 없습니다."
-
-#, python-format
-msgid "No key file specified and unable to load key from %(cert)s %(e)s."
-msgstr "지정된 키 파일이 없으며 %(cert)s %(e)s에서 키를 로드할 수 없습니다. "
-
-msgid "No mounted Gluster shares found"
-msgstr "마운트된 Gluster 공유를 찾지 못함"
 
 msgid "No mounted NFS shares found"
 msgstr "마운트된 NFS 공유를 찾지 못함"
@@ -5334,22 +3988,6 @@ msgstr ""
 "볼륨 프로비저닝을 위해 사용할 수 있는 풀이 없습니다. 구성 옵션 "
 "netapp_pool_name_search_pattern이 올바르게 설정되었는지 확인하십시오. "
 
-msgid ""
-"No response was received from CloudByte storage list iSCSI auth user API "
-"call."
-msgstr ""
-"CloudByte 스토리지 목록 iSCSI 인증 사용자 API 호출에서 응답이 수신되지 않았습"
-"니다. "
-
-msgid "No response was received from CloudByte storage list tsm API call."
-msgstr "CloudByte 스토리지 목록 tsm API 호출에서 응답을 수신하지 못했습니다."
-
-msgid "No response was received from CloudByte's list filesystem api call."
-msgstr "CloudByte의 목록 파일 시스템 api 호출에서 응답을 수신하지 못했습니다."
-
-msgid "No service VIP configured and no nexenta_client_address"
-msgstr "서비스 VIP가 구성되지 않았으며nexenta_client_address가 없음"
-
 #, python-format
 msgid "No snap found with %s as backing file."
 msgstr "백업 파일로 %s을(를) 가진 스냅샷을 찾을 수 없음 "
@@ -5361,11 +3999,6 @@ msgstr "스냅샷 그룹 %s에서 스냅샷 이미지를 찾을 수 없습니다
 #, python-format
 msgid "No snapshots could be found on volume %s."
 msgstr "볼륨 %s에서 스냅샷을 찾을 수 없습니다."
-
-#, python-format
-msgid "No source snapshots provided to create consistency group %s."
-msgstr ""
-"일관성 그룹 %s을(를) 작성하는 데 필요한 소스 스냅샷이 제공되지 않았습니다. "
 
 #, python-format
 msgid "No storage path found for export path %s"
@@ -5395,20 +4028,8 @@ msgstr ""
 "다. "
 
 #, python-format
-msgid "No valid host was found. %(reason)s"
-msgstr "유효한 호스트가 없습니다. %(reason)s"
-
-#, python-format
-msgid "No valid hosts for volume %(id)s with type %(type)s"
-msgstr "유형이 %(type)s인 볼륨 %(id)s의 호스트가 올바르지 않음"
-
-#, python-format
 msgid "No vdisk with the UID specified by ref %s."
 msgstr "ref %s(으)로 지정된 UID를 갖는 vdisk가 없습니다."
-
-#, python-format
-msgid "No views found for LUN: %s"
-msgstr "LUN의 보기가 없음: %s"
 
 #, python-format
 msgid ""
@@ -5419,35 +4040,15 @@ msgstr ""
 msgid "No volume service(s) started successfully, terminating."
 msgstr "볼륨 서비스가 시작되지 않아서 종료합니다. "
 
-msgid "No volume was found at CloudByte storage."
-msgstr "CloudByte 스토리지에서 볼륨을 찾을 수 없습니다."
-
-msgid "No volume_type should be provided when creating test replica."
-msgstr "테스트 복제본을 작성할 때 volume_type을 제공하지 않아야 합니다. "
-
-msgid "No volumes found in CloudByte storage."
-msgstr "CloudByte 스토리지에서 볼륨을 찾을 수 없습니다."
-
-msgid "No weighed hosts available"
-msgstr "사용 가능한 적합한 호스트가 없음"
-
-#, python-format
-msgid "Not a valid string: %s"
-msgstr "올바른 문자열이 아님: %s"
-
 msgid "Not a valid value for NaElement."
 msgstr "NaElement의 올바른 값이 아닙니다."
-
-#, python-format
-msgid "Not able to find a suitable datastore for the volume: %s."
-msgstr "볼륨: %s에 적합한 데이터베이스를 찾을 수 없습니다."
 
 msgid "Not an rbd snapshot"
 msgstr "rbd 스냅샷이 아님"
 
 #, python-format
 msgid "Not authorized for image %(image_id)s."
-msgstr "%(image_id)s 이미지에 대한 권한이 없습니다. "
+msgstr "%(image_id)s 이미지에 대한 권한이 없습니다."
 
 msgid "Not authorized."
 msgstr "권한이 없습니다. "
@@ -5465,36 +4066,6 @@ msgstr "rbd에 저장되지 않음"
 msgid "Nova returned \"error\" status while creating snapshot."
 msgstr "스냅샷을 작성하는 동안 Nova에서 \"오류\" 상태를 리턴함. "
 
-msgid "Null response received from CloudByte's list filesystem."
-msgstr "CloudByte의 목록 파일 시스템에서 널 응답을 수신했습니다."
-
-msgid "Null response received from CloudByte's list iscsi auth groups."
-msgstr "CloudByte의 목록 iscsi 인증 그룹에서 널 응답이 수신되었습니다. "
-
-msgid "Null response received from CloudByte's list iscsi initiators."
-msgstr "CloudByte의 목록 iscsi 개시자로부터 널 응답을 수신했습니다."
-
-msgid "Null response received from CloudByte's list volume iscsi service."
-msgstr "CloudByte의 목록 볼륨 iscsi 서비스에서 널 응답을 수신했습니다."
-
-#, python-format
-msgid "Null response received while creating volume [%s] at CloudByte storage."
-msgstr ""
-"CloudByte 스토리지에서 볼륨 [%s]을(를) 작성하는 중 널 응답을 수신했습니다."
-
-#, python-format
-msgid "Null response received while deleting volume [%s] at CloudByte storage."
-msgstr ""
-"CloudByte 스토리지에서 볼륨[%s]을 삭제하는 중에 널 응답이 수신되었습니다. "
-
-#, python-format
-msgid ""
-"Null response received while querying for [%(operation)s] based job "
-"[%(job)s] at CloudByte storage."
-msgstr ""
-"CloudByte 스토리지에서 [%(operation)s] 기반 작업 [%(job)s]에 대해 조회하는 중"
-"에 널 응답이 수신되었습니다. "
-
 msgid "Object Count"
 msgstr "오브젝트 카운트"
 
@@ -5503,14 +4074,6 @@ msgstr "오브젝트 버전"
 
 msgid "Object is not a NetApp LUN."
 msgstr "오브젝트가 NetApp LUN이 아닙니다."
-
-#, python-format
-msgid ""
-"On an Extend Operation, error adding volume to composite volume: "
-"%(volumename)s."
-msgstr ""
-"확장 조작에서 컴포지트 볼륨 %(volumename)s에 볼륨을 추가하는 중에 오류가 발생"
-"했습니다."
 
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr "호스트, 포트 또는 스키마에서 필요한 입력 중 하나를 찾을 수 없습니다."
@@ -5547,9 +4110,6 @@ msgstr "조작이 지원되지 않음: %(operation)s."
 msgid "Option gpfs_images_dir is not set correctly."
 msgstr "gpfs_images_dir 옵션이 올바르게 설정되지 않았습니다. "
 
-msgid "Option gpfs_images_share_mode is not set correctly."
-msgstr "gpfs_images_share_mode 옵션이 올바르게 설정되지 않았습니다. "
-
 msgid "Option gpfs_mount_point_base is not set correctly."
 msgstr "gpfs_mount_point_base 옵션이 올바르게 설정되지 않았습니다."
 
@@ -5576,36 +4136,12 @@ msgstr ""
 msgid "Path to REST server's certificate must be specified."
 msgstr "REST 서버 인증서의 경로를 지정해야 합니다. "
 
-#, python-format
-msgid "Please create %(pool_list)s pool in advance!"
-msgstr "미리 %(pool_list)s 풀을 작성하십시오! "
-
-#, python-format
-msgid "Please create %(tier_levels)s tier in pool %(pool)s in advance!"
-msgstr "미리 풀 %(pool)s에서 %(tier_levels)s 티어를 작성하십시오! "
-
 msgid "Please specify a name for QoS specs."
 msgstr "QoS 스펙에 대한 이름을 지정하십시오. "
 
 #, python-format
 msgid "Policy doesn't allow %(action)s to be performed."
-msgstr "정책이 %(action)s이(가) 수행되도록 허용하지 않습니다. "
-
-#, python-format
-msgid "Pool %(poolNameInStr)s is not found."
-msgstr "%(poolNameInStr)s 풀을 찾을 수 없습니다. "
-
-#, python-format
-msgid "Pool %s does not exist in Nexenta Store appliance"
-msgstr "풀 %s이(가) Nexenta Store 어플라이언스에 없음"
-
-#, python-format
-msgid "Pool from volume['host'] %(host)s not found."
-msgstr "volume['host'] %(host)s의 풀을 찾을 수 없습니다. "
-
-#, python-format
-msgid "Pool from volume['host'] failed with: %(ex)s."
-msgstr "다음과 함께 volume['host']의 풀이 실패함: %(ex)s."
+msgstr "정책이 %(action)s이(가) 수행되도록 허용하지 않습니다."
 
 msgid "Pool is not available in the volume host field."
 msgstr "볼륨 호스트 필드에서 풀을 사용할 수 없습니다."
@@ -5614,36 +4150,13 @@ msgid "Pool is not available in the volume host fields."
 msgstr "볼륨 호스트 필드에서 풀을 사용할 수 없습니다."
 
 #, python-format
-msgid "Pool with name %(pool)s wasn't found in domain %(domain)s."
-msgstr "이름이 %(pool)s인 풀을 도메인 %(domain)s에서 찾을 수 없습니다. "
-
-#, python-format
 msgid "Pool with name %(pool_name)s wasn't found in domain %(domain_id)s."
 msgstr ""
 "이름이 %(pool_name)s인 풀을 도메인 %(domain_id)s에서 찾을 수 없습니다. "
 
 #, python-format
-msgid ""
-"Pool: %(poolName)s. is not associated to storage tier for fast policy "
-"%(fastPolicy)s."
-msgstr ""
-"%(poolName)s 풀이 fast 정책 %(fastPolicy)s에 대한 스토리지 티어와 연관되어 있"
-"지 않습니다."
-
-#, python-format
-msgid "PoolName must be in the file %(fileName)s."
-msgstr "PoolName은 파일 %(fileName)s에 있어야 합니다. "
-
-#, python-format
 msgid "Pools %s does not exist"
 msgstr "Pools %s이(가) 존재하지 않음"
-
-msgid "Pools name is not set."
-msgstr "풀 이름이 설정되지 않았습니다. "
-
-#, python-format
-msgid "Primary copy status: %(status)s and synchronized: %(sync)s."
-msgstr "1차 사본 상태: %(status)s 및 동기화됨: %(sync)s."
 
 msgid "Project ID"
 msgstr "프로젝트 ID"
@@ -5672,14 +4185,6 @@ msgid ""
 msgstr ""
 "제공된 스냅샷 상태 %(provided)s이(가) %(current)s 상태의 스냅샷에 허용되지 않"
 "습니다. "
-
-#, python-format
-msgid ""
-"Provider information w.r.t CloudByte storage was not found for OpenStack "
-"volume [%s]."
-msgstr ""
-"OpenStack 볼륨 [%s]의 제공자 정보 w.r.t CloudByte 스토리지를 찾을 수 없습니"
-"다."
 
 #, python-format
 msgid "Pure Storage Cinder driver failure: %(reason)s"
@@ -5726,19 +4231,8 @@ msgstr "QoS 스펙이 이 스토리지 제품군 및 ONTAP 버전에서 지원�
 msgid "Qos specs still in use."
 msgstr "Qos 스펙을 아직 사용 중입니다. "
 
-msgid ""
-"Query by service parameter is deprecated. Please use binary parameter "
-"instead."
-msgstr ""
-"서비스 매개변수에 의한 조회가 더 이상 사용되지 않습니다. 2진 매개변수를 사용"
-"하십시오. 삭제 중입니다. "
-
 msgid "Query resource pool error."
 msgstr "자원 풀 조회 오류입니다. "
-
-#, python-format
-msgid "Quota %s limit must be equal or greater than existing resources."
-msgstr "할당량 %s 한계는 기존 자원 이상이어야 합니다. "
 
 #, python-format
 msgid "Quota class %(class_name)s could not be found."
@@ -5783,23 +4277,8 @@ msgstr "RBD diff op 실패 - (ret=%(ret)s stderr=%(stderr)s)"
 msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
 msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
 
-msgid "REST server IP must by specified."
-msgstr "REST 서버 IP를 지정해야 합니다. "
-
-msgid "REST server password must by specified."
-msgstr "REST 서버 비밀번호를 지정해야 합니다. "
-
-msgid "REST server username must by specified."
-msgstr "REST 서버 사용자 이름을 지정해야 합니다. "
-
 msgid "RPC Version"
 msgstr "RPC 버전"
-
-msgid "RPC server response is incomplete"
-msgstr "RPC 서버 응답이 완료되지 않음"
-
-msgid "Raid did not have MCS Channel."
-msgstr "Raid에 MCS 채널이 없습니다. "
 
 #, python-format
 msgid "Received error string: %s"
@@ -5899,14 +4378,6 @@ msgstr "배열에서 스냅샷 이름 변경 오류."
 msgid "Replication %(name)s to %(ssn)s failed."
 msgstr "%(ssn)s에 %(name)s을(를) 복제하는 데 실패했습니다."
 
-#, python-format
-msgid "Replication Service Capability not found on %(storageSystemName)s."
-msgstr "%(storageSystemName)s에서 복제 서비스 기능을 찾을 수 없습니다. "
-
-#, python-format
-msgid "Replication Service not found on %(storageSystemName)s."
-msgstr "%(storageSystemName)s에서 복제 서비스를 찾을 수 없습니다. "
-
 msgid "Replication not allowed yet."
 msgstr "복제가 아직 허용되지 않습니다."
 
@@ -5943,19 +4414,8 @@ msgstr ""
 "요청된 볼륨 또는 스냅샷이 허용된 %(name)s 할당량을 초과합니다. 요청된 크기는 "
 "%(requested)sG이고 할당량은 %(quota)sG이며 %(consumed)sG가 이용되었습니다."
 
-#, python-format
-msgid ""
-"Requested volume size %(size)d is larger than maximum allowed limit "
-"%(limit)d."
-msgstr ""
-"요청된 볼륨 크기 %(size)d이(가) 허용된 최대 한계 %(limit)d보다 큽니다. "
-
 msgid "Required configuration not found"
 msgstr "필수 구성을 찾을 수 없음"
-
-#, python-format
-msgid "Required flag %s is not set"
-msgstr "필수 플래그 %s이(가) 설정되지 않음"
 
 #, python-format
 msgid ""
@@ -6047,10 +4507,6 @@ msgid "Retype requires migration but is not allowed."
 msgstr "다시 입력에 마이그레이션이 필요하지만 허용되지 않습니다."
 
 #, python-format
-msgid "Rolling back %(volumeName)s by deleting it."
-msgstr "%(volumeName)s을(를) 삭제하여 롤백하는 중입니다. "
-
-#, python-format
 msgid ""
 "Running Cinder with a VMware vCenter version less than %s is not allowed."
 msgstr "VMware vCenter 버전이 %s보다 낮은 Cinder는 실행할 수 없습니다."
@@ -6060,17 +4516,6 @@ msgstr "SAN 제품이 구성되지 않았습니다."
 
 msgid "SAN protocol is not configured."
 msgstr "SAN 프로토콜이 구성되지 않았습니다."
-
-#, python-format
-msgid "SMBFS config 'smbfs_oversub_ratio' invalid.  Must be > 0: %s"
-msgstr ""
-"SMBFS 구성 'smbfs_oversub_ratio'가 올바르지 않습니다. 0보다 커야 함: %s"
-
-#, python-format
-msgid "SMBFS config 'smbfs_used_ratio' invalid.  Must be > 0 and <= 1.0: %s"
-msgstr ""
-"SMBFS 구성 'smbfs_used_ratio'가 올바르지 않습니다. 0보다 크고 1.00 이하여야 "
-"함: %s"
 
 #, python-format
 msgid "SMBFS config file at %(config)s doesn't exist."
@@ -6094,14 +4539,6 @@ msgid "SSH connection failed for %(fabric)s with error: %(err)s"
 msgstr "오류: %(err)s과(와) 함께 %(fabric)s에 대한 SSH 연결 실패 "
 
 #, python-format
-msgid "SSL Certificate expired on %s."
-msgstr "SSL 인증서가 %s에 만료되었습니다. "
-
-#, python-format
-msgid "SSL error: %(arg)s."
-msgstr "SSL 오류: %(arg)s."
-
-#, python-format
 msgid "Scheduler Host Filter %(filter_name)s could not be found."
 msgstr "스케줄러 호스트 필터 %(filter_name)s을(를) 찾을 수 없습니다. "
 
@@ -6111,21 +4548,9 @@ msgstr "Scheduler Host Weigher %(weigher_name)s을(를) 찾을 수 없습니다.
 
 #, python-format
 msgid ""
-"Secondary copy status: %(status)s and synchronized: %(sync)s, sync progress "
-"is: %(progress)s%%."
-msgstr ""
-"2차 사본 상태: %(status)s 및 동기화됨: %(sync)s, 동기화 프로세스는 "
-"%(progress)s%%입니다. "
-
-#, python-format
-msgid ""
 "Secondary id can not be the same as primary array, backend_id = "
 "%(secondary)s."
 msgstr "보조 id는 기본 배열과 같지 않아야 합니다.  backend_id = %(secondary)s."
-
-#, python-format
-msgid "SerialNumber must be in the file %(fileName)s."
-msgstr "SerialNumber는 파일 %(fileName)s에 있어야 합니다. "
 
 #, python-format
 msgid "Service %(service)s on host %(host)s removed."
@@ -6236,14 +4661,6 @@ msgstr ""
 msgid "Snapshot '%s' doesn't exist on array."
 msgstr "배열에 스냅샷 '%s'이(가) 없습니다."
 
-#, python-format
-msgid ""
-"Snapshot cannot be created because volume %(vol_id)s is not available, "
-"current volume status: %(vol_status)s."
-msgstr ""
-"볼륨 %(vol_id)s이(가) 사용 가능 상태가 아니어서 스냅샷을 작성할 수 없습니다. "
-"현재 볼륨 상태: %(vol_status)s."
-
 msgid "Snapshot cannot be created while volume is migrating."
 msgstr "볼륨 마이그레이션 중에 스냅샷을 작성할 수 없습니다. "
 
@@ -6263,9 +4680,6 @@ msgid "Snapshot status %(cur)s not allowed for update_snapshot_status"
 msgstr ""
 "update_snapshot_status에 대해 스냅샷 상태 %(cur)s이(가) 허용되지 않습니다. "
 
-msgid "Snapshot status must be \"available\" to clone."
-msgstr "스냅샷 상태가 복제 \"사용 가능\"이어야 합니다. "
-
 #, python-format
 msgid ""
 "Snapshot to be backed up must be available, but the current status is \"%s\"."
@@ -6275,30 +4689,11 @@ msgstr "백업할 스냅샷이 사용 가능해야 하지만 현재 상태가 \"
 msgid "Snapshot with id of %s could not be found."
 msgstr "id가 %s인 스냅샷을 찾을 수 없습니다."
 
-#, python-format
-msgid ""
-"Snapshot='%(snap)s' does not exist in base image='%(base)s' - aborting "
-"incremental backup"
-msgstr ""
-"스냅샷='%(snap)s'이(가) 기본 이미지='%(base)s'에 존재하지 않음 - 중단 중증분 "
-"백업"
-
-#, python-format
-msgid "Snapshots are not supported for this volume format: %s"
-msgstr "스냅샷이 이 볼륨 형식에 대해 지원되지 않음: %s"
-
-#, python-format
-msgid "Socket error: %(arg)s."
-msgstr "소켓 오류: %(arg)s."
-
 msgid "SolidFire Cinder Driver exception"
 msgstr "SolidFire Cinder 드라이버 예외"
 
 msgid "Sort direction array size exceeds sort key array size."
 msgstr "정렬 방향 배열 크기가 정렬 키 배열 크기를 초과합니다. "
-
-msgid "Source CG is empty. No consistency group will be created."
-msgstr "소스 CG가 비어 있습니다. 일관성 그룹이 작성되지 않습니다. "
 
 msgid "Source host details not found."
 msgstr "소스 호스트 세부사항을 찾을 수 없습니다."
@@ -6319,9 +4714,6 @@ msgid ""
 msgstr ""
 "볼륨 %(vol)s에 맵핑할 지정된 호스트가 %(group)s이(가) 포함된 지원되지 않는 호"
 "스트 그룹에 있습니다. "
-
-msgid "Specified logical volume does not exist."
-msgstr "지정된 논리적 볼륨이 존재하지 않습니다. "
 
 #, python-format
 msgid "Specified snapshot group with id %s could not be found."
@@ -6360,31 +4752,8 @@ msgid "Stop snapshot error."
 msgstr "스냅샷 중지 오류입니다. "
 
 #, python-format
-msgid "Storage Configuration Service not found on %(storageSystemName)s."
-msgstr "%(storageSystemName)s에서 스토리지 구성 서비스를 찾을 수 없습니다. "
-
-#, python-format
-msgid "Storage HardwareId mgmt Service not found on %(storageSystemName)s."
-msgstr ""
-"%(storageSystemName)s에서 스토리지 하드웨어 ID mgmt 서비스를 찾을 수 없습니"
-"다. "
-
-#, python-format
-msgid "Storage Profile %s not found."
-msgstr "스토리지 프로파일 %s을(를) 찾을 수 없습니다. "
-
-#, python-format
-msgid "Storage Relocation Service not found on %(storageSystemName)s."
-msgstr ""
-"%(storageSystemName)s에서 스토리지 위치 재지정 서비스를 찾을 수 없습니다. "
-
-#, python-format
 msgid "Storage family %s is not supported."
 msgstr "스토리지 제품군 %s이(가) 지원되지 않습니다. "
-
-#, python-format
-msgid "Storage group %(storageGroupName)s was not deleted successfully"
-msgstr "스토리지 그룹 %(storageGroupName)s이(가) 삭제되지 않음"
 
 #, python-format
 msgid "Storage host %(svr)s not detected, verify name"
@@ -6397,19 +4766,8 @@ msgstr "스토리지 풀이 구성되지 않았습니다."
 msgid "Storage profile: %(storage_profile)s not found."
 msgstr "스토리지 프로파일: %(storage_profile)s을(를) 찾을 수 없습니다."
 
-msgid "Storage resource could not be found."
-msgstr "스토리지 자원을 찾을 수 없습니다. "
-
 msgid "Storage system id not set."
 msgstr "스토리지 시스템 ID가 설정되지 않았습니다."
-
-#, python-format
-msgid "Storage system not found for pool %(poolNameInStr)s."
-msgstr "%(poolNameInStr)s 풀에 대한 스토리지 시스템을 찾을 수 없습니다. "
-
-#, python-format
-msgid "StorageSystem %(array)s is not found."
-msgstr "스토리지 시스템 %(array)s을(를) 찾을 수 없습니다."
 
 #, python-format
 msgid ""
@@ -6441,12 +4799,6 @@ msgstr "시스템이 압축을 지원하지 않습니다. "
 msgid "System is busy, retry operation."
 msgstr "시스템을 사용 중입니다. 조작을 재시도하십시오. "
 
-#, python-format
-msgid ""
-"TSM [%(tsm)s] was not found in CloudByte storage for account [%(account)s]."
-msgstr ""
-"TSM [%(tsm)s]이(가) 계정 [%(account)s]에 대한 CloudByte 스토리지에 없습니다. "
-
 msgid "Target volume type is still in use."
 msgstr "대상 볼륨 유형이 아직 사용 중입니다."
 
@@ -6460,19 +4812,12 @@ msgstr "연결 종료에서 백엔드에 연결하지 못했습니다."
 msgid "Terminate volume connection failed: %(err)s"
 msgstr "볼륨 연결 종료 실패: %(err)s"
 
-#, python-format
-msgid "The %(type)s %(id)s source to be replicated was not found."
-msgstr "복제할 %(type)s %(id)s 소스를 찾을 수 없습니다."
-
 msgid ""
 "The 'sort_key' and 'sort_dir' parameters are deprecated and cannot be used "
 "with the 'sort' parameter."
 msgstr ""
 "'sort_key'와 'sort_dir' 매개변수는 더 이상 사용되지 않는 항목이므로'sort' 매"
 "개변수에 이를 사용할 수 없습니다. "
-
-msgid "The EQL array has closed the connection."
-msgstr "EQL 배열에서 연결을 종료했습니다."
 
 #, python-format
 msgid ""
@@ -6481,9 +4826,6 @@ msgid ""
 msgstr ""
 "GPFS 파일 시스템 %(fs)s이(가) 필수 릴리스 레벨이 아닙니다. 현재 레벨은 "
 "%(cur)s이고, 최소 %(min)s이어야 합니다. "
-
-msgid "The IP Address was not found."
-msgstr "IP 주소를 찾을 수 없습니다."
 
 #, python-format
 msgid ""
@@ -6502,31 +4844,8 @@ msgstr ""
 "이 명령을 실행하기 전에 'cinder-manage db sync'를 사용하여 데이터베이스를 작"
 "성하십시오."
 
-#, python-format
-msgid ""
-"The array does not support the storage pool setting for SLO %(slo)s and "
-"workload %(workload)s.  Please check the array for valid SLOs and workloads."
-msgstr ""
-"배열에서 SLO %(slo)s 및 워크로드 %(workload)s의 스토리지 풀 설정을 지원하지 "
-"않습니다. 올바른 SLO 및 워크로드의 배열을 확인하십시오."
-
-msgid ""
-"The back-end where the volume is created does not have replication enabled."
-msgstr "볼륨이 작성된 백엔드에서 복제가 사용되지 않았습니다."
-
-#, python-format
-msgid ""
-"The command %(cmd)s failed. (ret: %(ret)s, stdout: %(out)s, stderr: %(err)s)"
-msgstr ""
-"명령 %(cmd)s에 실패했습니다.(ret: %(ret)s, stdout: %(out)s, stderr: %(err)s)"
-
 msgid "The copy should be primary or secondary"
 msgstr "사본은 1차 또는 2차여야 함"
-
-#, python-format
-msgid ""
-"The creation of a logical device could not be completed. (LDEV: %(ldev)s)"
-msgstr "논리 디바이스의 작성을 완료할 수 없습니다.(LDEV: %(ldev)s)"
 
 msgid "The decorated method must accept either a volume or a snapshot object"
 msgstr "데코레이션된 메소드는 볼륨 또는 스냅샷 오브젝트를 승인해야 함"
@@ -6540,22 +4859,12 @@ msgid "The end time (%(end)s) must be after the start time (%(start)s)."
 msgstr "종료 시간(%(end)s)은 시작 시간(%(start)s) 이후여야 합니다."
 
 #, python-format
-msgid "The extraspec: %(extraspec)s is not valid."
-msgstr "추가 스펙: %(extraspec)s이(가) 올바르지 않습니다. "
-
-#, python-format
 msgid "The failed-over volume could not be deleted: %s"
 msgstr "장애 복구된 볼륨을 삭제할 수 없음: %s"
 
 #, python-format
 msgid "The following elements are required: %s"
 msgstr "다음 요소가 필요함: %s"
-
-msgid "The host group or iSCSI target could not be added."
-msgstr "호스트 그룹 또는 iSCSI 대상을 추가할 수 없습니다."
-
-msgid "The host group or iSCSI target was not found."
-msgstr "호스트 그룹 또는 iSCSI 대상을 찾을 수 없습니다."
 
 msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
@@ -6571,41 +4880,11 @@ msgstr ""
 "호스트를 장애 복구할 준비가 되지 않았습니다. 볼륨을 다시 동기화하고 LeftHand "
 "백엔드에서 복제를 재개하십시오."
 
-msgid ""
-"The host is not ready to be failed back. Please resynchronize the volumes "
-"and resume replication on the Storwize backends."
-msgstr ""
-"호스트를 장애 복구할 준비가 되지 않았습니다. 볼륨을 다시 동기화하고 Storwize "
-"백엔드에서 복제를 재개하십시오."
-
-#, python-format
-msgid "The iSCSI CHAP user %(user)s does not exist."
-msgstr "iSCSI CHAP 사용자 %(user)s이(가) 존재하지 않습니다."
-
 msgid "The key cannot be None."
 msgstr "키는 None이 되어서는 안 됩니다. "
 
-#, python-format
-msgid "The logical device for specified %(type)s %(id)s was already deleted."
-msgstr "지정된 %(type)s %(id)s의 논리 디바이스가 이미 삭제되었습니다."
-
-#, python-format
-msgid "The method %(method)s is timed out. (timeout value: %(timeout)s)"
-msgstr ""
-"메소드 %(method)s이(가) 제한시간을 초과했습니다.(제한시간 값: %(timeout)s)"
-
 msgid "The method update_migrated_volume is not implemented."
 msgstr "update_migrated_volume 메소드가 구현되지 않았습니다. "
-
-#, python-format
-msgid ""
-"The mount %(mount_path)s is not a valid Quobyte USP volume. Error: %(exc)s"
-msgstr ""
-"마운트 %(mount_path)s이(가) 올바른 Quobyte USP 볼륨이 아닙니다. 오류: %(exc)s"
-
-#, python-format
-msgid "The parameter of the storage backend. (config_group: %(config_group)s)"
-msgstr "스토리지 백엔드의 매개변수입니다.(config_group: %(config_group)s)"
 
 msgid "The parent backup must be available for incremental backup."
 msgstr "상위 백업은 증분 백업을 수행할 수 있어야 합니다. "
@@ -6613,13 +4892,6 @@ msgstr "상위 백업은 증분 백업을 수행할 수 있어야 합니다. "
 #, python-format
 msgid "The provided snapshot '%s' is not a snapshot of the provided volume."
 msgstr "제공된 스냅샷 '%s'이(가) 제공된 볼륨의 스냅샷이 아닙니다."
-
-msgid ""
-"The reference to the volume in the backend should have the format "
-"file_system/volume_name (volume_name cannot contain '/')"
-msgstr ""
-"백엔드의 볼륨 참조 형식은 file_system/volume_name이어야 합니다(volume_name에 "
-"'/'가 포함될 수 없음)."
 
 #, python-format
 msgid "The remote retention count must be %s or less."
@@ -6637,18 +4909,6 @@ msgstr ""
 #, python-format
 msgid "The replication sync period must be at least %s seconds."
 msgstr "복제 동기화 기간은 최소 %s초여야 합니다."
-
-#, python-format
-msgid ""
-"The requested size : %(requestedSize)s is not the same as resulting size: "
-"%(resultSize)s."
-msgstr ""
-"요청된 크기 %(requestedSize)s이(가) 결과로 얻어진 크기 %(resultSize)s인 동안"
-"에는 인스턴스 연관을 변경할 수 없습니다."
-
-#, python-format
-msgid "The resource %(resource)s was not found."
-msgstr "자원 %(resource)s을(를) 찾을 수 없습니다."
 
 msgid "The results are invalid."
 msgstr "결과가 올바르지 않습니다. "
@@ -6675,58 +4935,11 @@ msgid "The source volume type '%s' is not available."
 msgstr "소스 볼륨 유형 '%s'은(는) 사용할 수 없습니다."
 
 #, python-format
-msgid "The specified %(desc)s is busy."
-msgstr "지정된 %(desc)s이(가) 사용 중입니다."
-
-#, python-format
 msgid "The specified LUN does not belong to the given pool: %s."
 msgstr "지정된 LUN이 제공된 풀에 속하지 않음: %s."
 
-#, python-format
-msgid ""
-"The specified ldev %(ldev)s could not be managed. The ldev must not be "
-"mapping."
-msgstr ""
-"지정된 ldev %(ldev)s을(를) 관리할 수 없습니다. ldev는 쌍을 이루지 아니어야 합"
-"니다."
-
-#, python-format
-msgid ""
-"The specified ldev %(ldev)s could not be managed. The ldev must not be "
-"paired."
-msgstr ""
-"지정된 ldev %(ldev)s을(를) 관리할 수 없습니다. ldev는 쌍을 이루지 않아야 합니"
-"다."
-
-#, python-format
-msgid ""
-"The specified ldev %(ldev)s could not be managed. The ldev size must be in "
-"multiples of gigabyte."
-msgstr ""
-"지정된 ldev %(ldev)s을(를) 관리할 수 없습니다. ldev 크기는 기가바이트 단위여"
-"야 합니다."
-
-#, python-format
-msgid ""
-"The specified ldev %(ldev)s could not be managed. The volume type must be DP-"
-"VOL."
-msgstr ""
-"지정된 ldev %(ldev)s을(를) 관리할 수 없습니다. 볼륨 유형은 DP-VOL이어야 합니"
-"다."
-
-#, python-format
-msgid ""
-"The specified operation is not supported. The volume size must be the same "
-"as the source %(type)s. (volume: %(volume_id)s)"
-msgstr ""
-"지정된 조작이 지원되지 않습니다. 볼륨 크기는 소스 %(type)s과(와) 동일해야 합"
-"니다.(볼륨: %(volume_id)s)"
-
 msgid "The specified vdisk is mapped to a host."
 msgstr "지정된 vdisk가 호스트에 맵핑됩니다."
-
-msgid "The specified volume is mapped to a host."
-msgstr "지정된 볼륨이 호스트에 맵핑되어 있습니다. "
 
 #, python-format
 msgid ""
@@ -6735,10 +4948,6 @@ msgid ""
 msgstr ""
 "%s의 스토리지 배열 비밀번호가 올바르지 않습니다. 구성된 비밀번호를 업데이트하"
 "십시오."
-
-#, python-format
-msgid "The storage backend can be used. (config_group: %(config_group)s)"
-msgstr "스토리지 백엔드를 사용할 수 있습니다.(config_group: %(config_group)s)"
 
 #, python-format
 msgid ""
@@ -6750,46 +4959,11 @@ msgstr ""
 
 #, python-format
 msgid ""
-"The striped meta count of %(memberCount)s is too small for volume: "
-"%(volumeName)s, with size %(volumeSize)s."
-msgstr ""
-"%(memberCount)s의 스트라이프 메타 개수가 크기가 %(volumeSize)s인 볼륨 "
-"%(volumeName)s에 대해 너무 적습니다. "
-
-#, python-format
-msgid ""
 "The type of metadata: %(metadata_type)s for volume/snapshot %(id)s is "
 "invalid."
 msgstr ""
 "볼륨/스냅샷 %(id)s에 대한 메타데이터의 유형: %(metadata_type)s이(가) 올바르"
 "지 않습니다. "
-
-#, python-format
-msgid ""
-"The volume %(volume_id)s could not be extended. The volume type must be "
-"Normal."
-msgstr ""
-"볼륨 %(volume_id)s을(를) 확장할 수 없습니다. 볼륨 유형은 보통이어야 합니다."
-
-#, python-format
-msgid ""
-"The volume %(volume_id)s could not be unmanaged. The volume type must be "
-"%(volume_type)s."
-msgstr ""
-"볼륨 %(volume_id)s을(를) 관리 해제할 수 없습니다. 볼륨 유형은 "
-"%(volume_type)s(이)어야 합니다."
-
-#, python-format
-msgid "The volume %(volume_id)s is managed successfully. (LDEV: %(ldev)s)"
-msgstr "볼륨 %(volume_id)s을(를) 정상적으로 관리합니다. (LDEV: %(ldev)s)"
-
-#, python-format
-msgid "The volume %(volume_id)s is unmanaged successfully. (LDEV: %(ldev)s)"
-msgstr "볼륨 %(volume_id)s을(를) 정상적으로 관리 해제합니다. (LDEV: %(ldev)s)"
-
-#, python-format
-msgid "The volume %(volume_id)s to be mapped was not found."
-msgstr "맵핑할 볼륨 %(volume_id)s을(를) 찾을 수 없습니다."
 
 msgid "The volume cannot accept transfer in maintenance mode."
 msgstr "유지보수 모드에서는 볼륨이 전송을 승인할 수 없습니다. "
@@ -6819,27 +4993,11 @@ msgstr ""
 msgid "The volume label is required as input."
 msgstr "볼륨 레이블이 입력으로 필요합니다. "
 
-#, python-format
-msgid "There are no resources available for use. (resource: %(resource)s)"
-msgstr "사용 가능한 자원이 없습니다.(자원: %(resource)s)"
-
 msgid "There are no valid ESX hosts."
 msgstr "올바른 ESX 호스트가 없습니다. "
 
 msgid "There are no valid datastores."
 msgstr "올바른 데이터 저장소가 없습니다. "
-
-#, python-format
-msgid ""
-"There is no designation of the %(param)s. The specified storage is essential "
-"to manage the volume."
-msgstr ""
-"%(param)s의 지정이 없습니다. 지정된 스토리지는 볼륨 관리에 꼭 필요합니다."
-
-msgid ""
-"There is no designation of the ldev. The specified ldev is essential to "
-"manage the volume."
-msgstr "ldev의 지정이 없습니다. 지정된 ldev는 볼륨 관리에 꼭 필요합니다."
 
 msgid "There is no metadata in DB object."
 msgstr "DB 오브젝트에 메타데이터가 없습니다. "
@@ -6897,10 +5055,6 @@ msgid "There was an error starting remote copy: %s."
 msgstr "원격 복사를 시작하는 중 오류 발생: %s."
 
 #, python-format
-msgid "There's no Gluster config file configured (%s)"
-msgstr "Gluster config 파일이 구성되지 않음(%s)"
-
-#, python-format
 msgid "There's no NFS config file configured (%s)"
 msgstr "구성된 NFS config 파일이 없음(%s)"
 
@@ -6914,12 +5068,6 @@ msgstr ""
 msgid "Thin provisioning not supported on this version of LVM."
 msgstr "이 버전의 LVM에서는 씬 프로비저닝이 지원되지 않습니다."
 
-msgid "This driver does not support deleting in-use snapshots."
-msgstr "이 드라이버는 스냅샵 삭제 중에 사용 중인 스냅샷을 지원하지 않습니다."
-
-msgid "This driver does not support snapshotting in-use volumes."
-msgstr "이 드라이버는 스냅샵 작성 중에 사용 중인 볼륨을 지원하지 않습니다."
-
 msgid "This request was rate-limited."
 msgstr "이 요청이 비율 제한되었습니다. "
 
@@ -6930,10 +5078,6 @@ msgid ""
 msgstr ""
 "이 시스템 플랫폼 (%s)이(가) 지원되지 않습니다. 이 드라이버는 Win32 플랫폼만 "
 "지원합니다."
-
-#, python-format
-msgid "Tier Policy Service not found for %(storageSystemName)s."
-msgstr "%(storageSystemName)s에 대한 티어 정책 서비스를 찾을 수 없습니다. "
 
 #, python-format
 msgid "Timed out while waiting for Nova update for creation of snapshot %s."
@@ -6960,14 +5104,6 @@ msgstr "백엔드 %(service)s에서 기능을 요청하는 동안 제한시간�
 #, python-format
 msgid "Transfer %(transfer_id)s could not be found."
 msgstr "전송 %(transfer_id)s을(를) 찾을 수 없습니다. "
-
-#, python-format
-msgid ""
-"Transfer %(transfer_id)s: Volume id %(volume_id)s in unexpected state "
-"%(status)s, expected awaiting-transfer"
-msgstr ""
-"전송 %(transfer_id)s: 볼륨 id %(volume_id)s이(가) 예상치 않은 상태%(status)s"
-"입니다. 예상된 상태는 전송 대기입니다. "
 
 #, python-format
 msgid ""
@@ -7005,10 +5141,6 @@ msgstr "TypeError: %s"
 msgid "UUIDs %s are in both add and remove volume list."
 msgstr "UUID %s이(가) 추가 및 제거 볼륨 목록에 있습니다. "
 
-#, python-format
-msgid "Unable to access the Storwize back-end for volume %s."
-msgstr "볼륨 %s의 Storwize 백엔드에 액세스할 수 없습니다."
-
 msgid "Unable to access the backend storage via file handle."
 msgstr "파일 핸들을 통해 백엔드 스토리지에 액세스할 수 없습니다. "
 
@@ -7027,28 +5159,8 @@ msgstr "%s의 장애 복구를 완료할 수 없습니다."
 msgid "Unable to connect or find connection to host"
 msgstr "호스트에 대한 연결을 설정하거나 찾을 수 없음"
 
-#, python-format
-msgid "Unable to create consistency group %s"
-msgstr "일관성 그룹 %s을(를) 작성할 수 없음"
-
 msgid "Unable to create lock. Coordination backend not started."
 msgstr "잠금을 생성할 수 없습니다. 조정 백엔드가 시작되지 않았습니다."
-
-#, python-format
-msgid ""
-"Unable to create or get default storage group for FAST policy: "
-"%(fastPolicyName)s."
-msgstr ""
-"FAST 정책 %(fastPolicyName)s에 대한 기본 스토리지 그룹을 작성하거나 확인하지 "
-"못했습니다."
-
-#, python-format
-msgid "Unable to create replica clone for volume %s."
-msgstr "볼륨 %s에 대한 복제본을 작성할 수 없습니다. "
-
-#, python-format
-msgid "Unable to create the relationship for %s."
-msgstr "%s의 관계를 작성할 수 없습니다."
 
 #, python-format
 msgid "Unable to create volume %(name)s from %(snap)s."
@@ -7066,21 +5178,8 @@ msgid "Unable to create volume. Backend down."
 msgstr "볼륨을 생성할 수 없습니다. 백엔드가 종료되었습니다."
 
 #, python-format
-msgid "Unable to delete Consistency Group snapshot %s"
-msgstr "일관성 그룹 스냅샷 %s을(를) 삭제할 수 없음"
-
-#, python-format
 msgid "Unable to delete snapshot %(id)s, status: %(status)s."
 msgstr "스냅샷 %(id)s을(를) 삭제할 수 없음, 상태: %(status)s."
-
-#, python-format
-msgid "Unable to delete snapshot policy on volume %s."
-msgstr "볼륨 %s에 대한 스냅샷 정책을 삭제할 수 없습니다. "
-
-#, python-format
-msgid ""
-"Unable to delete the target volume for volume %(vol)s. Exception: %(err)s."
-msgstr "볼륨 %(vol)s의 대상 볼륨을 삭제할 수 없습니다. 예외: %(err)s."
 
 msgid ""
 "Unable to detach volume. Volume status must be 'in-use' and attach_status "
@@ -7128,24 +5227,12 @@ msgstr "Storwize 클러스터 %s과(와) 파트너십을 설정할 수 없습니
 msgid "Unable to extend volume %s"
 msgstr "볼륨 %s을(를) 확장할 수 없음"
 
-#, python-format
-msgid ""
-"Unable to fail-over the volume %(id)s to the secondary back-end, because the "
-"replication relationship is unable to switch: %(error)s"
-msgstr ""
-"복제 관계를 전환할 수 없으므로 볼륨 %(id)s을(를) 보조 백엔드로 장애 복구할 "
-"수 없음: %(error)s"
-
 msgid ""
 "Unable to failback to \"default\", this can only be done after a failover "
 "has completed."
 msgstr ""
 "\"default\"로 장애 복구할 수 없습니다. 장애 조치가 완료된 후에만 수행할 수 있"
 "습니다."
-
-#, python-format
-msgid "Unable to failover to replication target:%(reason)s)."
-msgstr "복제 대상으로 장애 복구할 수 없음:%(reason)s)."
 
 msgid "Unable to fetch connection information from backend."
 msgstr "백엔드에서 연결 정보를 페치할 수 없습니다."
@@ -7204,9 +5291,6 @@ msgstr ""
 "볼륨 작성에 필요한 구성 정보를 가져올 수 없음: %(errorMessage)s(이)어야 합니"
 "다."
 
-msgid "Unable to get corresponding record for pool."
-msgstr "풀에 대한 해당 레코드를 가져올 수 없습니다. "
-
 #, python-format
 msgid ""
 "Unable to get information on space %(space)s, please verify that the cluster "
@@ -7239,60 +5323,6 @@ msgstr ""
 msgid "Unable to get stats for backend_name: %s"
 msgstr "backend_name에 대한 통계를 가져올 수 없음: %s"
 
-msgid "Unable to get storage volume from job."
-msgstr "작업에서 스토리지 볼륨을 가져올 수 없습니다."
-
-#, python-format
-msgid "Unable to get target endpoints for hardwareId %(hardwareIdInstance)s."
-msgstr ""
-"하드웨어 ID %(hardwareIdInstance)s의 대상 엔드포인트를 가져올 수 없습니다."
-
-msgid "Unable to get the name of the masking view."
-msgstr "마스킹 보기의 이름을 가져올 수 없습니다."
-
-msgid "Unable to get the name of the portgroup."
-msgstr "portgroup의 이름을 가져올 수 없습니다."
-
-#, python-format
-msgid "Unable to get the replication relationship for volume %s."
-msgstr "볼륨 %s의 복제 관계를 가져올 수 없습니다."
-
-#, python-format
-msgid ""
-"Unable to import volume %(deviceId)s to cinder. It is the source volume of "
-"replication session %(sync)s."
-msgstr ""
-"볼륨 %(deviceId)s을(를) cinder로 가져올 수 없습니다. 이는 복제 세션 %(sync)s"
-"의 소스 볼륨입니다. "
-
-#, python-format
-msgid ""
-"Unable to import volume %(deviceId)s to cinder. The external volume is not "
-"in the pool managed by current cinder host."
-msgstr ""
-"볼륨 %(deviceId)s을(를) cinder로 가져올 수 없습니다. 외부 볼륨이 현재 cinder "
-"호스트에 의해 관리되는 풀에 없습니다. "
-
-#, python-format
-msgid ""
-"Unable to import volume %(deviceId)s to cinder. Volume is in masking view "
-"%(mv)s."
-msgstr ""
-"볼륨 %(deviceId)s을(를) cinder로 가져올 수 없습니다. 볼륨이 마스킹 보기 "
-"%(mv)s에 있습니다. "
-
-#, python-format
-msgid "Unable to load CA from %(cert)s %(e)s."
-msgstr "%(cert)s %(e)s에서 CA를 로드할 수 없습니다. "
-
-#, python-format
-msgid "Unable to load cert from %(cert)s %(e)s."
-msgstr "%(cert)s %(e)s에서 인증서를 로드할 수 없습니다."
-
-#, python-format
-msgid "Unable to load key from %(cert)s %(e)s."
-msgstr "%(cert)s %(e)s에서 키를 로드할 수 없습니다. "
-
 #, python-format
 msgid "Unable to locate account %(account_name)s on Solidfire device"
 msgstr "Solidfire 디바이스에서 %(account_name)s 계정을 찾을 수 없음"
@@ -7324,13 +5354,6 @@ msgstr "볼륨을 맵핑할 수 없습니다. "
 
 msgid "Unable to parse attributes."
 msgstr "속성을 구문 분석할 수 없습니다. "
-
-#, python-format
-msgid ""
-"Unable to promote replica to primary for volume %s. No secondary copy "
-"available."
-msgstr ""
-"%s 볼륨의 복제본을 1차로 승격할 수 없습니다. 2차 사본을 사용할 수 없습니다."
 
 msgid ""
 "Unable to re-use a host that is not managed by Cinder with "
@@ -7368,20 +5391,8 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Unable to retype: Current action needs volume-copy, it is not allowed when "
-"new type is replication. Volume = %s"
-msgstr ""
-"재입력할 수 없음: 현재 조치에 볼륨-사본이 필요함, 새 유형이 복제인 경우 이는 "
-"허용되지 않습니다. 볼륨 = %s"
-
-#, python-format
-msgid ""
 "Unable to set up mirror mode replication for %(vol)s. Exception: %(err)s."
 msgstr "%(vol)s의 미러 모드 복제를 설정할 수 없습니다. 예외: %(err)s."
-
-#, python-format
-msgid "Unable to snap Consistency Group %s"
-msgstr "일관성 그룹 %s의 스냅샷을 작성할 수 없음"
 
 msgid "Unable to terminate volume connection from backend."
 msgstr "백엔드에서 볼륨 연결을 종료할 수 없습니다."
@@ -7389,18 +5400,6 @@ msgstr "백엔드에서 볼륨 연결을 종료할 수 없습니다."
 #, python-format
 msgid "Unable to terminate volume connection: %(err)s"
 msgstr "볼륨 연결을 종료할 수 없음: %(err)s"
-
-#, python-format
-msgid "Unable to update consistency group %s"
-msgstr "일관성 그룹 %s을(를) 업데이트할 수 없음"
-
-#, python-format
-msgid ""
-"Unable to verify initiator group: %(igGroupName)s in masking view "
-"%(maskingViewName)s. "
-msgstr ""
-"마스킹 보기 %(maskingViewName)s에서 개시자 그룹 %(igGroupName)s을(를) 확인할 "
-"수 없습니다."
 
 msgid "Unacceptable parameters."
 msgstr "허용할 수 없는 매개변수입니다. "
@@ -7437,9 +5436,6 @@ msgstr ""
 msgid "Unexpected response from Nimble API"
 msgstr "Nimble API로부터의 예기치 않은 응답"
 
-msgid "Unexpected response from Tegile IntelliFlash API"
-msgstr "Tegile IntelliFlash API에서 예상치 못한 응답"
-
 msgid "Unexpected status code"
 msgstr "예기치 않은 상태 코드"
 
@@ -7450,9 +5446,6 @@ msgid ""
 msgstr ""
 "url %(page)s에 대해 프로토콜 %(protocol)s을(를) 사용하는 스위치 %(switch_id)s"
 "에서 예상치 못한 상태 코드 수신. 오류: %(error)s"
-
-msgid "Unknown Gluster exception"
-msgstr "알 수 없는 Gluster 예외"
 
 msgid "Unknown NFS exception"
 msgstr "알 수 없는 NFS 예외"
@@ -7504,10 +5497,6 @@ msgid "Unknown or unsupported command %(cmd)s"
 msgstr "알 수 없거나 지원되지 않는 명령 %(cmd)s"
 
 #, python-format
-msgid "Unknown protocol: %(protocol)s."
-msgstr "알 수 없는 프로토콜: %(protocol)s."
-
-#, python-format
 msgid "Unknown quota resources %(unknown)s."
 msgstr "알 수 없는 할당량 자원 %(unknown)s."
 
@@ -7542,10 +5531,6 @@ msgstr "인식할 수 없는 백업 형식: %s"
 #, python-format
 msgid "Unrecognized read_deleted value '%s'"
 msgstr "인식되지 않는 read_deleted 값 '%s'"
-
-#, python-format
-msgid "Unset gcs options: %s"
-msgstr "gcs 옵션 설정 해제: %s"
 
 msgid "Unsupported Content-Type"
 msgstr "지원되지 않는 Content-Type"
@@ -7595,9 +5580,6 @@ msgstr ""
 "할당량 업데이트 및 삭제 조작은 사용자가 범위 지정되는 프로젝트의 동일한 계층"
 "에 있는 프로젝트에 대해서만 작성될 수 있습니다. "
 
-msgid "Update list, doesn't include volume_id"
-msgstr "목록 업데이트, volume_id를 포함하지 않음"
-
 msgid "Updated At"
 msgstr "업데이트"
 
@@ -7618,7 +5600,7 @@ msgid "User ID"
 msgstr "사용자 ID"
 
 msgid "User does not have admin privileges"
-msgstr "사용자에게 관리자 권한이 없음"
+msgstr "사용자에게 관리자 권한이 없습니다"
 
 msgid "User not authorized to perform WebDAV operations."
 msgstr "사용자에게 WebDAV 조작을 수행할 권한이 없습니다."
@@ -7628,12 +5610,6 @@ msgstr "UserName이 구성되지 않았습니다."
 
 msgid "UserPassword is not configured."
 msgstr "UserPassword가 구성되지 않았습니다."
-
-msgid "V2 rollback, volume is not in any storage group."
-msgstr "V2 롤백, 볼륨이 스토리지 그룹에 없습니다. "
-
-msgid "V3 rollback"
-msgstr "V3 롤백"
 
 msgid "VF is not enabled."
 msgstr "VF가 사용되지 않습니다."
@@ -7658,13 +5634,6 @@ msgstr "볼륨 연결 유효성 검증에 실패했습니다(오류: %(err)s). "
 msgid ""
 "Value \"%(value)s\" is not valid for configuration option \"%(option)s\""
 msgstr "값 \"%(value)s\"이(가) 구성 옵션 \"%(option)s\"에 대해 올바르지 않음"
-
-#, python-format
-msgid "Value %(param)s for %(param_string)s is not a boolean."
-msgstr "%(param_string)s에 대한 값 %(param)s이(가) 부울이 아닙니다. "
-
-msgid "Value required for 'scality_sofs_config'"
-msgstr "'scality_sofs_config'에 필요한 값"
 
 #, python-format
 msgid "ValueError: %s"
@@ -7701,14 +5670,6 @@ msgstr "%s 대상에 대한 볼륨 복사 작업에 실패했습니다."
 #, python-format
 msgid "Volume %(deviceID)s not found."
 msgstr "볼륨 %(deviceID)s을(를) 찾을 수 없습니다. "
-
-#, python-format
-msgid ""
-"Volume %(name)s not found on the array. Cannot determine if there are "
-"volumes mapped."
-msgstr ""
-"배열에서 %(name)s 볼륨을 찾을 수 없습니다. 맵핑된 볼륨이 있는지 여부를 판별"
-"할 수 없습니다. "
 
 #, python-format
 msgid "Volume %(name)s was created in VNX, but in %(state)s state."
@@ -7767,15 +5728,11 @@ msgstr "볼륨 %(volume_id)s이(가) 호스트 %(host)s에 현재 맵핑되어 �
 #, python-format
 msgid "Volume %(volume_id)s is still attached, detach volume first."
 msgstr ""
-"%(volume_id)s 볼륨이 여전히 첨부되어 있습니다. 먼저 불륨을 분리하십시오. "
+"%(volume_id)s 볼륨이 여전히 첨부되어 있습니다. 먼저 불륨을 분리하십시오."
 
 #, python-format
 msgid "Volume %(volume_id)s replication error: %(reason)s"
 msgstr "볼륨 %(volume_id)s 복제 오류: %(reason)s"
-
-#, python-format
-msgid "Volume %(volume_name)s is busy."
-msgstr "볼륨 %(volume_name)s을(를) 사용 중입니다."
 
 #, python-format
 msgid "Volume %s could not be created from source volume."
@@ -7812,19 +5769,6 @@ msgstr "배열에 %s 볼륨이 없습니다."
 #, python-format
 msgid "Volume %s doesn't exist on the ZFSSA backend."
 msgstr "ZFSSA 백엔드에 %s 볼륨이 없습니다."
-
-#, python-format
-msgid "Volume %s is already managed by OpenStack."
-msgstr "OpenStack에서 이미 볼륨 %s을(를) 관리합니다."
-
-#, python-format
-msgid ""
-"Volume %s is not of replicated type. This volume needs to be of a volume "
-"type with the extra spec replication_enabled set to '<is> True' to support "
-"replication actions."
-msgstr ""
-"볼륨 %s이(가) 복제된 유형이 아닙니다. 복제 작업을 지원하려면 이 볼륨은 추가 "
-"사양 replication_enabled가 '<is> True'로 설정된 볼륨 유형이어야 합니다."
 
 #, python-format
 msgid ""
@@ -7879,31 +5823,8 @@ msgstr ""
 msgid "Volume Type id must not be None."
 msgstr "볼륨 유형 ID가 있어야 합니다. "
 
-#, python-format
-msgid ""
-"Volume [%(cb_vol)s] was not found at CloudByte storage corresponding to "
-"OpenStack volume [%(ops_vol)s]."
-msgstr ""
-"CloudByte 스토리지에서 OpenStack 볼륨 [%(ops_vol)s]에 해당하는 볼륨 "
-"[%(cb_vol)s]을(를) 찾을 수 없습니다."
-
-#, python-format
-msgid "Volume [%s] not found in CloudByte storage."
-msgstr "CloudByte 스토리지에서 볼륨 [%s]을(를) 찾을 수 없습니다."
-
-#, python-format
-msgid "Volume attachment could not be found with filter: %(filter)s ."
-msgstr "%(filter)s 필터로 볼륨 접속을 찾을 수 없습니다. "
-
-#, python-format
-msgid "Volume backend config is invalid: %(reason)s"
-msgstr "볼륨 백엔드 구성이 올바르지 않음: %(reason)s"
-
 msgid "Volume by this name already exists"
 msgstr "이 이름에 의한 볼륨이 이미 존재함"
-
-msgid "Volume cannot be restored since it contains snapshots."
-msgstr "스냅샷이 포함되었기 때문에 볼륨을 복원할 수 없습니다."
 
 msgid "Volume create failed while extracting volume ref."
 msgstr "볼륨 ref를 추출하는 동안 볼륨 작성에 실패했습니다."
@@ -7943,9 +5864,6 @@ msgstr "볼륨을 사용 중입니다."
 msgid "Volume is not available."
 msgstr "볼륨을 사용할 수 없습니다. "
 
-msgid "Volume is not local to this node"
-msgstr "볼륨이 이 노드에 대해 로컬이 아님"
-
 msgid "Volume is not local to this node."
 msgstr "볼륨이 이 노드의 로컬이 아닙니다. "
 
@@ -7959,9 +5877,6 @@ msgstr ""
 #, python-format
 msgid "Volume migration failed: %(reason)s"
 msgstr "볼륨 마이그레이션 실패: %(reason)s"
-
-msgid "Volume must be available"
-msgstr "볼륨이 사용 가능해야 함"
 
 msgid "Volume must be in the same availability zone as the snapshot"
 msgstr "볼륨이 스냅샷과 동일한 가용성 구역에 있어야 함 "
@@ -7984,13 +5899,6 @@ msgstr "%(instance_id)s 인스턴스에 대한 볼륨을 찾을 수 없습니다
 
 msgid "Volume not found on configured storage backend."
 msgstr "구성된 스토리지 백엔드에서 볼륨을 찾을 수 없습니다. "
-
-msgid ""
-"Volume not found on configured storage backend. If your volume name contains "
-"\"/\", please rename it and try to manage again."
-msgstr ""
-"구성된 스토리지 백엔드에 볼륨을 찾을 수 없습니다. 볼륨 이름에 \"/\"가 포함되"
-"지 않은 경우 이름을 변경하고 다시 관리하십시오."
 
 msgid "Volume not found on configured storage pools."
 msgstr "구성된 스토리지 풀에서 볼륨을 찾을 수 없습니다. "
@@ -8056,18 +5964,6 @@ msgstr "볼륨 크기는 1GB의 배수여야 합니다. "
 msgid "Volume size must multiple of 1 GB."
 msgstr "볼륨 크기는 1GB의 배수여야 합니다. "
 
-#, python-format
-msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
-msgstr ""
-"볼륨 상태가 스냅샷에 대해 \"사용 가능\" 또는 \"사용 중\"이어야 합니다(%s임)"
-
-msgid "Volume status must be \"available\" or \"in-use\"."
-msgstr "볼륨 상태가 \"사용 가능\" 또는 \"사용 중\"이어야 합니다."
-
-#, python-format
-msgid "Volume status must be %s to reserve."
-msgstr "예약하려면 볼륨 상태가 %s 이어야 합니다. "
-
 msgid "Volume status must be 'available'."
 msgstr "볼륨 상태가 '사용 가능'이어야 합니다. "
 
@@ -8124,20 +6020,6 @@ msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "이름이 %(volume_type_name)s인 볼륨 유형을 찾을 수 없습니다. "
 
 #, python-format
-msgid ""
-"Volume: %(volumeName)s is not a concatenated volume. You can only perform "
-"extend on concatenated volume. Exiting..."
-msgstr ""
-"%(volumeName)s 볼륨은 연결된 볼륨이 아닙니다. 연결된 볼륨에 대해서만 확장을 "
-"수행할 수 있습니다. 종료 중..."
-
-#, python-format
-msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s."
-msgstr ""
-"볼륨: %(volumeName)s이(가) 스토리지 그룹 %(sgGroupName)s에 추가되지 않았습니"
-"다."
-
-#, python-format
 msgid "Volume: %s is already being managed by Cinder."
 msgstr "Cinder에서 이미 볼륨: %s을(를) 관리 중입니다."
 
@@ -8156,9 +6038,6 @@ msgstr ""
 msgid "VzStorage config file at %(config)s doesn't exist."
 msgstr "%(config)s의 VzStorage 구성 파일이 존재하지 않습니다. "
 
-msgid "Wait replica complete timeout."
-msgstr "복제본 완료 대기 제한시간 초과"
-
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."
 msgstr "동기화 대기 실패. 실행 상태: %s."
@@ -8171,9 +6050,6 @@ msgstr ""
 
 msgid "We should not do switch over on primary array."
 msgstr "기본 배열로 전환할 수 없습니다."
-
-msgid "X-IO Volume Driver exception!"
-msgstr "X-IO 볼륨 드라이버 예외 발생!"
 
 msgid "XtremIO not configured correctly, no iscsi portals found"
 msgstr "XtremIO가 올바르게 구성되지 않음, iscsi 포털을 찾을 수 없음"
@@ -8190,17 +6066,6 @@ msgid ""
 msgstr ""
 "3PAR 드라이버를 사용하기 전에 hpe3parclient를 설치해야 합니다. \"pip install "
 "python-3parclient\"를 실행하여 hpe3parclient를 설치하십시오."
-
-msgid "You must supply an array in your EMC configuration file."
-msgstr "EMC 구성 파일에서 배열을 제공해야 합니다. "
-
-#, python-format
-msgid ""
-"Your original size: %(originalVolumeSize)s GB is greater than: %(newSize)s "
-"GB. Only Extend is supported. Exiting..."
-msgstr ""
-"원래 크기 %(originalVolumeSize)sGB가 %(newSize)sGB보다 큽니다. 확장만 지원됩"
-"니다. 종료 중..."
 
 #, python-format
 msgid "ZeroDivisionError: %s"
@@ -8574,9 +6439,6 @@ msgstr "이미 작성됨"
 msgid "already_created"
 msgstr "already_created"
 
-msgid "attach snapshot from remote node"
-msgstr "원격 노드에서 스냅샷 연결"
-
 #, python-format
 msgid "attribute %s not lazy-loadable"
 msgstr "속성 %s이(가) lazy-loadable 속성이 아님"
@@ -8648,23 +6510,6 @@ msgid "being attached by different mode"
 msgstr "다른 모드로 접속하는 중 "
 
 #, python-format
-msgid "call failed: %r"
-msgstr "호출 실패: %r"
-
-msgid "call failed: GARBAGE_ARGS"
-msgstr "호출 실패: GARBAGE_ARGS"
-
-msgid "call failed: PROC_UNAVAIL"
-msgstr "호출 실패: PROC_UNAVAIL"
-
-#, python-format
-msgid "call failed: PROG_MISMATCH: %r"
-msgstr "호출 실패: PROG_MISMATCH: %r"
-
-msgid "call failed: PROG_UNAVAIL"
-msgstr "호출 실패: PROG_UNAVAIL"
-
-#, python-format
 msgid "can't find lun-map, ig:%(ig)s vol:%(vol)s"
 msgstr "lun 맵을 찾을 수 없음, ig:%(ig)s vol:%(vol)s"
 
@@ -8676,10 +6521,6 @@ msgstr "요청의 이름 및 색인을 둘 다 처리할 수 없음"
 
 msgid "cannot understand JSON"
 msgstr "JSON을 이해할 수 없음"
-
-#, python-format
-msgid "cg-%s"
-msgstr "cg-%s"
 
 msgid "cgsnapshot assigned"
 msgstr "cgsnapshot가 지정됨"
@@ -8736,20 +6577,6 @@ msgstr ""
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "create_cloned_volume: 소스 및 대상 크기가 다릅니다. "
 
-#, python-format
-msgid ""
-"create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
-"doesn't fit in target volume %(tgt_vol)s of size %(tgt_size)dGB."
-msgstr ""
-"create_cloned_volume: 소스 볼륨 %(src_vol)s 크기는 %(src_size)dGB이고 대상 볼"
-"륨 %(tgt_vol)s의 크기 %(tgt_size)dGB에 맞지 않습니다."
-
-msgid ""
-"create_consistencygroup_from_src must be creating from a CG snapshot, or a "
-"source CG."
-msgstr ""
-"create_consistencygroup_from_src는 CG 스냅샷이나 소스 CG에서 작성해야 합니다."
-
 msgid ""
 "create_consistencygroup_from_src only supports a cgsnapshot source or a "
 "consistency group source. Multiple sources cannot be used."
@@ -8767,9 +6594,6 @@ msgstr "create_copy: 소스 vdisk %(src)s이(가) 없습니다. "
 
 msgid "create_host: Host name is not unicode or string."
 msgstr "create_host: 호스트 이름이 유니코드 또는 문자열이 아닙니다. "
-
-msgid "create_host: No initiators or wwpns supplied."
-msgstr "create_host: 개시자 또는 wwpn이 제공되지 않았습니다."
 
 msgid "create_hypermetro_pair error."
 msgstr "create_hypermetro_pair 오류."
@@ -8901,9 +6725,6 @@ msgstr "종속 볼륨을 갖는 %(snapshot_name)s 스냅샷 삭제 중"
 msgid "deleting volume %(volume_name)s that has snapshot"
 msgstr "스냅샷을 갖는 %(volume_name)s 볼륨 삭제 중"
 
-msgid "detach snapshot from remote node"
-msgstr "원격 노드에서 스냅샷 분리"
-
 msgid "do_setup: No configured nodes."
 msgstr "do_setup: 구성된 노드가 없습니다."
 
@@ -8939,25 +6760,11 @@ msgstr ""
 msgid "extend_volume, volumename: %(volumename)s, volume not found."
 msgstr "extend_volume, volumename: %(volumename)s, 볼륨을 찾을 수 없습니다."
 
-msgid "failed to create new_volume on destination host"
-msgstr "대상 호스트에 new_volume을 작성하지 못함 "
-
 msgid "fake"
 msgstr "fake"
 
-#, python-format
-msgid "file already exists at %s"
-msgstr "%s에 파일이 이미 있음 "
-
 msgid "fileno is not supported by SheepdogIOWrapper"
 msgstr "SheepdogIOWrapper는 fileno를 지원하지 않음"
-
-msgid "fileno() not supported by RBD()"
-msgstr "RBD()에서 fileno()를 지원하지 않음 "
-
-#, python-format
-msgid "filesystem %s does not exist in Nexenta Store appliance"
-msgstr "파일 시스템 %s이(가) Nexenta Store 어플라이언스에 없음"
 
 msgid ""
 "flashsystem_multihostmap_enabled is set to False, not allow multi host "
@@ -8967,9 +6774,6 @@ msgstr ""
 "flashsystem_multihostmap_enabled가 False로 설정되었습니다. 멀티 호스트 맵핑"
 "이 허용되지 않습니다. CMMVC6071E VDisk가 이미 호스트에 맵핑되었으므로 VDisk "
 "대 호스트 맵핑이 작성되지 않았습니다."
-
-msgid "flush() not supported in this version of librbd"
-msgstr "이 버전의 librbd에서는 flush()가 지원되지 않음 "
 
 #, python-format
 msgid "fmt=%(fmt)s backed by: %(backing_file)s"
@@ -9118,10 +6922,6 @@ msgstr ""
 "중 오류 발생"
 
 #, python-format
-msgid "marker [%s] not found"
-msgstr "마커 [%s]을(를) 찾을 수 없음"
-
-#, python-format
 msgid "mdiskgrp missing quotes %s"
 msgstr "mdiskgrp에 따옴표 누락 %s"
 
@@ -9136,9 +6936,6 @@ msgstr "%(vol)s 볼륨에서 mkfs가 실패했습니다. 오류 메시지: %(err
 msgid "mock"
 msgstr "mock"
 
-msgid "mount.glusterfs is not installed"
-msgstr "mount.glusterfs가 설치되지 않음"
-
 #, python-format
 msgid "multiple resources with name %s found by drbdmanage"
 msgstr "drbdmanage에서 이름이 %s인 다중 자원을 발견함"
@@ -9149,10 +6946,6 @@ msgstr "스냅샷 ID가 %s인 다중 자원이 발견됨"
 
 msgid "name cannot be None"
 msgstr "이름은 None일 수 없음"
-
-#, python-format
-msgid "no REPLY but %r"
-msgstr "REPLY가 아니라 %r"
 
 #, python-format
 msgid "no snapshot with id %s found in drbdmanage"
@@ -9262,9 +7055,6 @@ msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
 msgstr ""
 "rtslib_fb에 멤버 %s이(가) 누락됨: 새 python-rtslib-fb가 필요할 수 있습니다. "
 
-msgid "san_ip is not set."
-msgstr "san_ip가 설정되지 않았습니다. "
-
 msgid "san_ip must be set"
 msgstr "san_ip가 설정되어야 함"
 
@@ -9287,10 +7077,6 @@ msgstr "스냅샷이 지정됨"
 
 msgid "snapshots changed"
 msgstr "스냅샷이 변경됨"
-
-#, python-format
-msgid "source volume id:%s is not replicated"
-msgstr "소스 볼륨 id:%s을(를) 복제할 수 없음"
 
 msgid "source-name cannot be empty."
 msgstr "source-name은 비어 있지 않아야 합니다."
@@ -9323,25 +7109,8 @@ msgid "terminate_connection: Failed to get host name from connector."
 msgstr ""
 "terminate_connection: 커넥터에서 호스트 이름을 가져오는 데 실패했습니다."
 
-msgid "timeout creating new_volume on destination host"
-msgstr "대상 호스트에 new_volume을 작성하는 중에 제한시간이 초과됨 "
-
 msgid "too many body keys"
 msgstr "본문 키가 너무 많음"
-
-#, python-format
-msgid "umount: %s: not mounted"
-msgstr "umount: %s: 마운트되지 않았음"
-
-#, python-format
-msgid "umount: %s: target is busy"
-msgstr "umount: %s: 대상이 사용 중임"
-
-msgid "umount: <mnt_path>: some other error"
-msgstr "umount: <mnt_path>: 기타 특정 오류"
-
-msgid "umount: <mnt_path>: target is busy"
-msgstr "umount: <mnt_path>: 대상이 사용 중임"
 
 #, python-format
 msgid "unmanage_snapshot: Cannot find snapshot named %s"
@@ -9366,9 +7135,6 @@ msgstr "show_target에 필요한 올바른 iqn"
 msgid "vdisk %s is not defined."
 msgstr "vdisk %s이(가) 정의되지 않았습니다. "
 
-msgid "vmemclient python library not found"
-msgstr "vmemclient python 라이브러리를 찾을 수 없음"
-
 #, python-format
 msgid "volume %s not found in drbdmanage"
 msgstr "drbdmanage에서 볼륨 %s을(를) 찾을 수 없음"
@@ -9381,9 +7147,6 @@ msgstr "볼륨 변경됨"
 
 msgid "volume is already attached"
 msgstr "볼륨이 이미 접속됨"
-
-msgid "volume is not local to this node"
-msgstr "볼륨이 이 노드에 대해 로컬이 아님"
 
 #, python-format
 msgid ""
@@ -9406,10 +7169,6 @@ msgstr "volume_type_id는 None일 수 없음"
 #, python-format
 msgid "volume_types must be provided to create consistency group %(name)s."
 msgstr "일관성 그룹 %(name)s 작성에 volume_types가 제공되어야 합니다."
-
-#, python-format
-msgid "volume_types must be provided to create consistency group %s."
-msgstr "일관성 그룹 %s 작성에 volume_types가 제공되어야 합니다."
 
 msgid "volumes assigned"
 msgstr "볼륨이 지정됨"
