@@ -15,20 +15,21 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 # Eric Lei <1165970798@qq.com>, 2016. #zanata
 # howard lee <howard@mail.ustc.edu.cn>, 2016. #zanata
+# xiezhongtian <zhongtianemail@gmail.com>, 2017. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev243\n"
+"Project-Id-Version: cinder 10.0.7.dev4\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-10-14 23:32+0000\n"
+"POT-Creation-Date: 2017-10-07 03:21+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-28 06:21+0000\n"
-"Last-Translator: Eric Lei <1165970798@qq.com>\n"
+"PO-Revision-Date: 2017-05-09 09:27+0000\n"
+"Last-Translator: Linda <duleish@cn.ibm.com>\n"
 "Language: zh-CN\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
-"X-Generator: Zanata 3.7.3\n"
+"X-Generator: Zanata 3.9.6\n"
 "Language-Team: Chinese (China)\n"
 
 #, python-format
@@ -83,20 +84,12 @@ msgstr ""
 "主机断开与此卷的连接"
 
 #, python-format
-msgid "%(err)s"
-msgstr "%(err)s"
-
-#, python-format
 msgid ""
 "%(err)s\n"
 "result: %(res)s."
 msgstr ""
 "%(err)s\n"
 "结果：%(res)s。"
-
-#, python-format
-msgid "%(error_message)s"
-msgstr "%(error_message)s"
 
 #, python-format
 msgid "%(error_msg)s Error description: %(error_description)s"
@@ -133,10 +126,6 @@ msgstr "%(host)-25s\t%(availability_zone)-15s"
 #, python-format
 msgid "%(host)-25s\t%(zone)-15s"
 msgstr "%(host)-25s\t%(zone)-15s"
-
-#, python-format
-msgid "%(message)s"
-msgstr "%(message)s"
 
 #, python-format
 msgid ""
@@ -180,10 +169,6 @@ msgid ""
 msgstr ""
 "%(op)s：备份 %(bck_id)s（针对卷 %(vol_id)s）失败。备份对象具有意外方式。支持"
 "映像或文件备份，实际方式为 %(vol_mode)s。"
-
-#, python-format
-msgid "%(reason)s"
-msgstr "%(reason)s"
 
 #, python-format
 msgid "%(service)s Service is not %(status)s on storage appliance: %(host)s"
@@ -402,18 +387,11 @@ msgid "A volume status is invalid. (status: %(status)s)"
 msgstr "卷状态无效。（状态：%(status)s）"
 
 #, python-format
-msgid "API %(name)s failed with error string %(err)s"
-msgstr "API %(name)s 失败，带有错误字符串 %(err)s"
-
-#, python-format
 msgid ""
 "API Version String %(version)s is of invalid format. Must be of format "
 "MajorNum.MinorNum."
 msgstr ""
 "API 版本字符串 %(version)s 为无效格式。必须为以下格式：MajorNum.MinorNum。"
-
-msgid "API key is missing for CloudByte driver."
-msgstr "CloudByte 驱动程序缺少 API 键。"
 
 #, python-format
 msgid "API response: %(response)s"
@@ -608,13 +586,6 @@ msgid "Attribute: %s not found."
 msgstr "属性： %s 未找到"
 
 #, python-format
-msgid "Auth group [%s] details not found in CloudByte storage."
-msgstr "在 CloudByte 存储器中找不到认证组 [%s] 详细信息。"
-
-msgid "Auth user details not found in CloudByte storage."
-msgstr "在 CloudByte 存储器中找不到认证用户详细信息。"
-
-#, python-format
 msgid "Authentication failed, verify the switch credentials, error code %s."
 msgstr "认证失败，请验证交换机凭证，错误代码：%s。"
 
@@ -670,18 +641,6 @@ msgstr "备份驱动程序已报告错误：%(message)s"
 
 msgid "Backup id required"
 msgstr "需要备份标识"
-
-msgid "Backup is not supported for GlusterFS volumes with snapshots."
-msgstr "具有快照的 GlusterFS 卷不支持备份。"
-
-msgid "Backup is only supported for SOFS volumes without backing file."
-msgstr "仅那些不带支持文件的 SOFS 卷支持备份。"
-
-msgid "Backup is only supported for raw-formatted GlusterFS volumes."
-msgstr "仅原始格式的 GlusterFS 卷支持备份。"
-
-msgid "Backup is only supported for raw-formatted SOFS volumes."
-msgstr "仅原始格式的 SOFS 卷支持备份。"
 
 msgid "Backup operation of an encrypted volume failed."
 msgstr "已加密卷的备份操作失败。"
@@ -862,10 +821,6 @@ msgstr "无法获取目标ip地址。"
 msgid "Can not translate %s to integer."
 msgstr "无法把 %s 转换成整数"
 
-#, python-format
-msgid "Can't access 'scality_sofs_config': %s"
-msgstr "无法访问“scality_sofs_config”：%s"
-
 msgid "Can't decode backup record."
 msgstr "无法将备份记录解码。"
 
@@ -879,10 +834,6 @@ msgstr "在阵列上找不到 LUN，请检查 source-name 或 source-id。"
 #, python-format
 msgid "Can't find cache name on the array, cache name is: %(name)s."
 msgstr "在阵列上找不到高速缓存名称，高速缓存名称为 %(name)s。"
-
-#, python-format
-msgid "Can't find lun info on the array. volume: %(id)s, lun name: %(name)s."
-msgstr "在阵列上找不到 LUN 信息。卷：%(id)s。LUN 名称：%(name)s。"
 
 #, python-format
 msgid "Can't find partition name on the array, partition name is: %(name)s."
@@ -1171,9 +1122,6 @@ msgstr "无法删除加密规范。卷类型在使用中。"
 msgid "Cannot determine storage pool settings."
 msgstr "无法确定存储池设置。"
 
-msgid "Cannot execute /sbin/mount.sofs"
-msgstr "无法执行 /sbin/mount.sofs"
-
 #, python-format
 msgid "Cannot find CG group %s."
 msgstr "找不到 CG 组 %s。"
@@ -1183,14 +1131,6 @@ msgid ""
 "Cannot find Controller Configuration Service for storage system "
 "%(storage_system)s."
 msgstr "找不到对应存储系统 %(storage_system)s 的控制器配置服务。"
-
-#, python-format
-msgid "Cannot find Replication Service to create volume for snapshot %s."
-msgstr "找不到复制服务，无法为快照 %s 创建卷。"
-
-#, python-format
-msgid "Cannot find Replication Service to delete snapshot %s."
-msgstr "找不到复制服务，无法删除快照 %s。"
 
 #, python-format
 msgid "Cannot find Replication service on system %s."
@@ -1242,13 +1182,6 @@ msgstr "无法获取端口组：%(pgGroupName)s。"
 
 #, python-format
 msgid ""
-"Cannot get storage group: %(sgGroupName)s from masking view "
-"%(maskingViewInstanceName)s. "
-msgstr ""
-"无法从掩码视图 %(maskingViewInstanceName)s 获取存储器组 %(sgGroupName)s。"
-
-#, python-format
-msgid ""
 "Cannot get supported size range for %(sps)s Return code: %(rc)lu. Error: "
 "%(error)s."
 msgstr ""
@@ -1262,15 +1195,8 @@ msgstr "无法获取对应快速策略 %(fastPolicyName)s 的缺省存储器组�
 msgid "Cannot get the portgroup from the masking view."
 msgstr "无法通过掩码视图获取端口组。"
 
-msgid "Cannot mount Scality SOFS, check syslog for errors"
-msgstr "无法安装 Scality SOFS，请检查系统日志以获取错误"
-
 msgid "Cannot ping DRBDmanage backend"
 msgstr "无法对 DRBDmanage 后端执行 ping 操作"
-
-#, python-format
-msgid "Cannot place volume %(id)s on %(host)s"
-msgstr "无法将卷 %(id)s 置于 %(host)s 上"
 
 #, python-format
 msgid ""
@@ -1734,10 +1660,6 @@ msgid "Could not get system name."
 msgstr "未能获取系统名称。"
 
 #, python-format
-msgid "Could not load paste app '%(name)s' from %(path)s"
-msgstr "无法从路径 %(path)s 中加载应用 '%(name)s'"
-
-#, python-format
 msgid ""
 "Could not read information for snapshot %(name)s. Code: %(code)s. Reason: "
 "%(reason)s"
@@ -1789,9 +1711,6 @@ msgid ""
 msgstr ""
 "备份创建已异常中止，需要的卷状态为 %(expected_status)s，但实际为 "
 "%(actual_status)s。"
-
-msgid "Create export for volume failed."
-msgstr "为卷创建导出失败。"
 
 msgid "Create group failed."
 msgstr "创建组失败。"
@@ -1853,18 +1772,8 @@ msgid ""
 "%(err)s)."
 msgstr "创建并激活区域集失败（区域集为 %(zoneset)s，发生的错误为 %(err)s）。"
 
-#, python-format
-msgid "Creating usages for %(begin_period)s until %(end_period)s"
-msgstr "正在为 %(begin_period)s 直到 %(end_period)s 创建使用情况"
-
 msgid "Current host isn't part of HGST domain."
 msgstr "当前主机不存在于 HGST 域中。"
-
-#, python-format
-msgid ""
-"Current host not valid for volume %(id)s with type %(type)s, migration not "
-"allowed"
-msgstr "对于类型为 %(type)s 的卷 %(id)s，当前主机无效，不允许迁移"
 
 #, python-format
 msgid ""
@@ -1919,9 +1828,6 @@ msgstr "未能确定数据 ONTAP API 版本。"
 
 msgid "Data ONTAP operating in 7-Mode does not support QoS policy groups."
 msgstr "以 7 方式运行的 Data ONTAP 不支持 QoS 策略组。"
-
-msgid "Database schema downgrade is not allowed."
-msgstr "不允许对数据库模式进行降级。"
 
 #, python-format
 msgid "Dataset %s is not shared in Nexenta Store appliance"
@@ -2535,13 +2441,6 @@ msgid ""
 msgstr "使用以下实例路径添加卷 %(volumeName)s 时出错：%(volumeInstancePath)s。"
 
 #, python-format
-msgid ""
-"Error adding initiator to group : %(groupName)s. Return code: %(rc)lu.  "
-"Error: %(error)s."
-msgstr ""
-"向组 %(groupName)s 添加启动程序时出错。返回码：%(rc)lu。错误为 %(error)s。"
-
-#, python-format
 msgid "Error adding volume to composite volume. Error is: %(error)s."
 msgstr "向组合卷添加卷时出错。错误为：%(error)s。"
 
@@ -2610,13 +2509,6 @@ msgstr ""
 #, python-format
 msgid "Error encountered during cleanup of a failed attach: %(ex)s"
 msgstr "在清除失败的连接期间遇到错误：%(ex)s"
-
-#, python-format
-msgid "Error executing CloudByte API [%(cmd)s], Error: %(err)s."
-msgstr "执行 CloudByte API [%(cmd)s] 时出错，错误为 %(err)s。"
-
-msgid "Error executing EQL command"
-msgstr "执行 EQL 命令时出错"
 
 #, python-format
 msgid "Error executing command via ssh: %s"
@@ -2698,14 +2590,6 @@ msgstr ""
 "获取版本时出错：svc：%(svc)s。返回码：%(ret.status)d 消息：%(ret.data)s。"
 
 #, python-format
-msgid ""
-"Error in Operation [%(operation)s] for volume [%(cb_volume)s] in CloudByte "
-"storage: [%(cb_error)s], error code: [%(error_code)s]."
-msgstr ""
-"对 CloudByte 存储器中的卷 [%(cb_volume)s] 执行操作 [%(operation)s] 时出错："
-"[%(cb_error)s]，错误代码：[%(error_code)s]。"
-
-#, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
 msgstr "SolidFire API响应里发生错误：data=%(data)s"
 
@@ -2781,10 +2665,6 @@ msgstr "更新组 %s 时发生了错误。"
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "重命名卷 %(vol)s 时出错：%(err)s。"
-
-#, python-format
-msgid "Error response: %s"
-msgstr "错误响应：%s"
 
 msgid "Error retrieving volume size"
 msgstr "检索卷大小时出错"
@@ -3180,10 +3060,6 @@ msgid "Failed to copy volume, source device unavailable."
 msgstr "未能复制卷，源设备不可用。"
 
 #, python-format
-msgid "Failed to create CG %(cgName)s from snapshot %(cgSnapshot)s."
-msgstr "未能从快照 %(cgSnapshot)s 创建 CG %(cgName)s。"
-
-#, python-format
 msgid "Failed to create IG, %s"
 msgstr "未能创建映像 %s"
 
@@ -3310,12 +3186,6 @@ msgid "Failed to create snapshot."
 msgstr "未能创建快照。"
 
 #, python-format
-msgid ""
-"Failed to create snapshot. CloudByte volume information not found for "
-"OpenStack volume [%s]."
-msgstr "未能创建快照。对于 OpenStack 卷 [%s]，找不到 CloudByte 卷信息。"
-
-#, python-format
 msgid "Failed to create south bound connector for %s."
 msgstr "无法为 %s 创建南向连接器。"
 
@@ -3428,13 +3298,6 @@ msgstr "未能建立稳定的链接"
 msgid "Failed to establish connection with Coho cluster"
 msgstr "无法建立与 Coho 集群的连接。"
 
-#, python-format
-msgid ""
-"Failed to execute CloudByte API [%(cmd)s]. Http status: %(status)s, Error: "
-"%(error)s."
-msgstr ""
-"未能执行 CloudByte API [%(cmd)s]。Http 状态为 %(status)s，错误为 %(error)s。"
-
 msgid "Failed to execute common command."
 msgstr "未能执行常见命令。"
 
@@ -3473,10 +3336,6 @@ msgstr "未能找到主机 %s。"
 #, python-format
 msgid "Failed to find iSCSI initiator group containing %(initiator)s."
 msgstr "找不到包含 %(initiator)s 的 iSCSI 启动程序组。"
-
-#, python-format
-msgid "Failed to get CloudByte account details for account [%s]."
-msgstr "对于帐户 [%s]，未能获取 CloudByte 帐户详细信息。"
 
 #, python-format
 msgid "Failed to get LUN target details for the LUN %s"
@@ -3570,15 +3429,6 @@ msgstr "未能获取分区信息。"
 #, python-format
 msgid "Failed to get pool id with volume %(volume_id)s."
 msgstr "未能获取具有卷 %(volume_id)s 的池标识。"
-
-#, python-format
-msgid "Failed to get remote copy information for %(volume)s due to %(err)s."
-msgstr "无法获取 %(volume)s 的远程复制信息，因为发生了 %(err)s。"
-
-#, python-format
-msgid ""
-"Failed to get remote copy information for %(volume)s. Exception: %(err)s."
-msgstr "无法获取 %(volume)s 的远程复制信息。异常：%(err)s。"
 
 msgid "Failed to get replica info."
 msgstr "未能获取副本信息。"
@@ -4319,10 +4169,6 @@ msgid "Glance metadata for volume/snapshot %(id)s cannot be found."
 msgstr "Glance中无法找到卷/镜像 %(id)s 的元数据"
 
 #, python-format
-msgid "Gluster config file at %(config)s doesn't exist"
-msgstr "%(config)s 处不存在 Gluster 配置文件"
-
-#, python-format
 msgid "Google Cloud Storage api failure: %(reason)s"
 msgstr "Google 云存储器 API 故障：%(reason)s"
 
@@ -4487,22 +4333,9 @@ msgstr "找不到名称为 %s 的主机组"
 msgid "Host group with ref %s not found"
 msgstr "找不到具有 ref %s 的主机组"
 
-msgid "Host is NOT Frozen."
-msgstr "主机未冻结。"
-
-msgid "Host is already Frozen."
-msgstr "主机已冻结。"
-
-msgid "Host must be specified in query parameters"
-msgstr "主机必须在查询参数中指定"
-
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
 msgstr "找不到主机。未能在 %(host)s 上移除 %(service)s。"
-
-#, python-format
-msgid "Host replication_status must be %s to failover."
-msgstr "主机 replication_status 必须为 %s 才能进行故障转移。"
 
 #, python-format
 msgid "Host type %s not supported."
@@ -4521,10 +4354,6 @@ msgstr "主机"
 
 msgid "Hypermetro and Replication can not be used in the same volume_type."
 msgstr "Hypermetro 和复制不能用于同一 volume_type。"
-
-#, python-format
-msgid "I/O group %(iogrp)d is not valid; available I/O groups are %(avail)s."
-msgstr "I/O 组 %(iogrp)d 无效；可用的 I/O 组为 %(avail)s。"
 
 msgid "ID"
 msgstr "ID"
@@ -4717,15 +4546,8 @@ msgstr "XtremIO V%(cur)s 无效，需要 V%(min)s 或更高版本"
 msgid "Invalid allocated quotas defined for the following project quotas: %s"
 msgstr "对以下项目配额定义的已分配配额无效：%s"
 
-msgid "Invalid argument"
-msgstr "自变量无效"
-
 msgid "Invalid argument - negative seek offset."
 msgstr "无效参数 - 查找偏移量为负数。"
-
-#, python-format
-msgid "Invalid argument - whence=%s not supported"
-msgstr "自变量无效 - whence=%s 不受支持"
 
 #, python-format
 msgid "Invalid argument - whence=%s not supported."
@@ -4751,9 +4573,6 @@ msgstr "备份无效：%(reason)s"
 msgid "Invalid body provided for creating volume. Request API version: %s."
 msgstr "创建卷时提供了无效请求主体。请求API版本：%s。"
 
-msgid "Invalid chap user details found in CloudByte storage."
-msgstr "在 CloudByte 存储器中找到了无效 chap 用户详细信息。"
-
 #, python-format
 msgid "Invalid connection initialization response of volume %(name)s"
 msgstr "卷 %(name)s 的连接初始化响应无效"
@@ -4763,9 +4582,9 @@ msgid ""
 "Invalid connection initialization response of volume %(name)s: %(output)s"
 msgstr "卷 %(name)s 的连接初始化响应无效：%(output)s"
 
-#, python-format
+#, fuzzy, python-format
 msgid "Invalid content type %(content_type)s."
-msgstr "无效的内容类型 %(content_type)s。"
+msgstr "无效的 content type %(content_type)s."
 
 msgid "Invalid credentials"
 msgstr "无效凭证"
@@ -4806,9 +4625,9 @@ msgstr "无效的筛选键:%s"
 msgid "Invalid group type: %(reason)s"
 msgstr "无效的组类型:%(reason)s"
 
-#, python-format
+#, fuzzy, python-format
 msgid "Invalid host: %(reason)s"
-msgstr "主机无效：%(reason)s"
+msgstr "无效主机：%(reason)s"
 
 #, python-format
 msgid ""
@@ -5088,18 +4907,6 @@ msgstr "等待作业时遇到问题。"
 msgid "Issue encountered waiting for synchronization."
 msgstr "等待同步时遇到问题。"
 
-msgid ""
-"Issuing a fail-over failed because replication is not properly configured."
-msgstr "发出故障转移失败，因为未正确配置复制。"
-
-#, python-format
-msgid "Job id not found in CloudByte's create volume [%s] response."
-msgstr "在 CloudByte 的创建卷 [%s] 响应中找不到作业标识。"
-
-#, python-format
-msgid "Job id not found in CloudByte's delete volume [%s] response."
-msgstr "在 CloudByte 的删除卷 [%s] 响应中找不到作业标识。"
-
 #, python-format
 msgid "Kaminario retryable exception: %(reason)s"
 msgstr "Kaminario可重试异常:%(reason)s"
@@ -5119,10 +4926,6 @@ msgstr "KeyError：%s"
 
 msgid "Keystone version 3 or greater must be used to get nested quota support."
 msgstr "必须使用 Keystone 版本 3 或更高版本来获取嵌套配额支持。"
-
-#, python-format
-msgid "LU does not exist for volume: %s"
-msgstr "卷 %s 没有 LU"
 
 msgid "LUN export failed!"
 msgstr "LUN 导出失败！"
@@ -5155,9 +4958,6 @@ msgstr "许可证不可用。"
 #, python-format
 msgid "Line %(dis)d : %(line)s"
 msgstr "行 %(dis)d：%(line)s"
-
-msgid "Link path already exists and its not a symlink"
-msgstr "链接路径已存在，并且它不是符号链接"
 
 #, python-format
 msgid "Linked clone of source volume not supported in state: %s."
@@ -5266,12 +5066,6 @@ msgstr "未实现对现有卷的管理。"
 
 msgid "Manage existing volume requires 'source-id'."
 msgstr "管理现有卷将需要“source-id”。"
-
-#, python-format
-msgid ""
-"Manage volume is not supported if FAST is enable. FAST policy: "
-"%(fastPolicyName)s."
-msgstr "如果启用了 FAST，那么不支持管理卷。快速策略：%(fastPolicyName)s。"
 
 msgid "Managing of snapshots to failed-over volumes is not allowed."
 msgstr "不允许管理到达已故障转移的卷的快照。"
@@ -5409,12 +5203,6 @@ msgstr "找到了多个概要文件。"
 msgid "Must implement a fallback schedule"
 msgstr "必须实现一个回滚 schedule"
 
-msgid "Must implement find_retype_host"
-msgstr "必须实现 find_retype_host"
-
-msgid "Must implement host_passes_filters"
-msgstr "必须实现 host_passes_filters"
-
 msgid "Must implement schedule_create_consistencygroup"
 msgstr "必须实现 schedule_create_consistencygroup"
 
@@ -5442,9 +5230,6 @@ msgstr "必须指定“connector”"
 
 msgid "Must specify 'connector'."
 msgstr "必须指定“connector”。"
-
-msgid "Must specify 'host'."
-msgstr "必须指定“host”。"
 
 msgid "Must specify 'new_volume'"
 msgstr "必须指定“new_volume”"
@@ -5596,19 +5381,11 @@ msgstr "不存在具有所提供 iSCSI IP 的活动 iSCSI 门户网站"
 msgid "No available service named %s"
 msgstr "不存在任何名为 %s 的可用服务"
 
-#, python-format
-msgid "No backup with id %s"
-msgstr "不存在任何具有标识 %s 的备份"
-
 msgid "No backups available to do an incremental backup."
 msgstr "没有任何备份可用于执行增量备份。"
 
 msgid "No big enough free disk"
 msgstr "不存在任何足够大的可用磁盘"
-
-#, python-format
-msgid "No cgsnapshot with id %s"
-msgstr "不存在任何具有标识 %s 的 cg 快照"
 
 msgid "No cinder entries in syslog!"
 msgstr "系统日志中没有任何 cinder 条目！"
@@ -5619,10 +5396,6 @@ msgstr "在文件管理器上，找不到名为 %s 的已克隆 LUN"
 
 msgid "No config node found."
 msgstr "找不到配置节点。"
-
-#, python-format
-msgid "No consistency group with id %s"
-msgstr "不存在任何具有标识 %s 的一致性组"
 
 #, python-format
 msgid "No element by given name %s."
@@ -5657,10 +5430,6 @@ msgid "No group snapshot with id %s"
 msgstr "不存在任何具有标识 %s 的组快照"
 
 #, python-format
-msgid "No group with id %s"
-msgstr "不存在任何具有标识 %s 的组"
-
-#, python-format
 msgid "No host to create consistency group %s."
 msgstr "没有任何主机用于创建一致性组 %s。"
 
@@ -5691,25 +5460,9 @@ msgstr "集群中找不到 IP %s 的接口"
 msgid "No ip address found."
 msgstr "找不到 IP 地址。"
 
-msgid "No iscsi auth groups were found in CloudByte."
-msgstr "在 CloudByte 中，找不到任何 iscsi 认证组。"
-
-msgid "No iscsi initiators were found in CloudByte."
-msgstr "在 CloudByte 中，找不到任何 iscsi 发起方。"
-
-#, python-format
-msgid "No iscsi service found for CloudByte volume [%s]."
-msgstr "对于 CloudByte 卷 [%s]，找不到任何 iscsi 服务。"
-
-msgid "No iscsi services found in CloudByte storage."
-msgstr "在 CloudByte 存储器中，找不到任何 iscsi 服务。"
-
 #, python-format
 msgid "No key file specified and unable to load key from %(cert)s %(e)s."
 msgstr "没有指定任何密钥文件，无法从 %(cert)s %(e)s 装入密钥。"
-
-msgid "No mounted Gluster shares found"
-msgstr "找不到任何已安装的 Gluster 共享项"
 
 msgid "No mounted NFS shares found"
 msgstr "找不到任何已安装的 NFS 共享项"
@@ -5734,20 +5487,6 @@ msgstr ""
 "没有池可用于提供卷。请确保正确设置了 netapp_pool_name_search_pattern 配置选"
 "项。"
 
-msgid ""
-"No response was received from CloudByte storage list iSCSI auth user API "
-"call."
-msgstr "未从 CloudByte 存储器列表 iSCSI 认证用户 API 调用接收到任何响应。"
-
-msgid "No response was received from CloudByte storage list tsm API call."
-msgstr "未从 CloudByte 存储器列表 tsm API 调用接收到任何响应。"
-
-msgid "No response was received from CloudByte's list filesystem api call."
-msgstr "未从 CloudByte 的列表文件系统 API 调用接收到任何响应。"
-
-msgid "No service VIP configured and no nexenta_client_address"
-msgstr "未配置服务 VIP 并且没有 nexenta_client_address"
-
 #, python-format
 msgid "No snap found with %s as backing file."
 msgstr "在将 %s 作为支持文件的情况下，找不到任何 snap。"
@@ -5759,10 +5498,6 @@ msgstr "在快照组 %s 中，找不到快照映像。"
 #, python-format
 msgid "No snapshots could be found on volume %s."
 msgstr "在卷 %s 上找不到快照。"
-
-#, python-format
-msgid "No source snapshots provided to create consistency group %s."
-msgstr "未提供源快照，无法创建一致性组 %s。"
 
 msgid ""
 "No storage could be allocated for this volume request. You may be able to "
@@ -5796,20 +5531,8 @@ msgstr ""
 "机组中唯一。"
 
 #, python-format
-msgid "No valid host was found. %(reason)s"
-msgstr "找不到有效主机，原因是 %(reason)s。"
-
-#, python-format
-msgid "No valid hosts for volume %(id)s with type %(type)s"
-msgstr "对于类型为 %(type)s 的卷 %(id)s，不存在任何有效主机"
-
-#, python-format
 msgid "No vdisk with the UID specified by ref %s."
 msgstr "没有具备引用 %s 指定的 UID 的 vdisk。"
-
-#, python-format
-msgid "No views found for LUN: %s"
-msgstr "找不到 LUN %s 的视图"
 
 #, python-format
 msgid ""
@@ -5819,21 +5542,12 @@ msgstr "集群上不存在任何具有 vserver %(vserver)s 和结点路径 %(jun
 msgid "No volume service(s) started successfully, terminating."
 msgstr "未成功启动卷服务，正在终止。"
 
-msgid "No volume was found at CloudByte storage."
-msgstr "在 CloudByte 存储器上，找不到任何卷。"
-
 msgid "No volume_type should be provided when creating test replica."
 msgstr "当创建测试副本时，不应该提供任何 volume_type。"
-
-msgid "No volumes found in CloudByte storage."
-msgstr "在 CloudByte 存储器中找不到任何卷。"
 
 #, python-format
 msgid "No volumes or consistency groups exist in cluster %(current)s."
 msgstr "集群 %(current)s 中不存在卷或者一致性组。"
-
-msgid "No weighed hosts available"
-msgstr "没有加权主机可用"
 
 #, python-format
 msgid "Not a valid string: %s"
@@ -5841,10 +5555,6 @@ msgstr "无效字符串：%s"
 
 msgid "Not a valid value for NaElement."
 msgstr "此值对 NaElement 无效。"
-
-#, python-format
-msgid "Not able to find a suitable datastore for the volume: %s."
-msgstr "无法找到适合卷 %s 的数据存储器。"
 
 msgid "Not an rbd snapshot"
 msgstr "不是 rbd 快照"
@@ -5869,34 +5579,6 @@ msgstr "未存储在 rbd 中"
 msgid "Nova returned \"error\" status while creating snapshot."
 msgstr "在创建快照时，Nova 返回了“错误”状态。"
 
-msgid "Null response received from CloudByte's list filesystem."
-msgstr "从 CloudByte 的列表文件系统接收到空响应。"
-
-msgid "Null response received from CloudByte's list iscsi auth groups."
-msgstr "从 CloudByte 的列表 iscsi 认证组接收到空响应。"
-
-msgid "Null response received from CloudByte's list iscsi initiators."
-msgstr "从 CloudByte 的列表 iscsi 发起方接收到空响应。"
-
-msgid "Null response received from CloudByte's list volume iscsi service."
-msgstr "从 CloudByte 的列表卷 iscsi 服务接收到空响应。"
-
-#, python-format
-msgid "Null response received while creating volume [%s] at CloudByte storage."
-msgstr "在 CloudByte 存储器上创建卷 [%s] 时，接收到空响应。"
-
-#, python-format
-msgid "Null response received while deleting volume [%s] at CloudByte storage."
-msgstr "删除 CloudByte 存储器上的卷 [%s] 时，接收到空响应。"
-
-#, python-format
-msgid ""
-"Null response received while querying for [%(operation)s] based job "
-"[%(job)s] at CloudByte storage."
-msgstr ""
-"在 CloudByte 存储器中查询基于 [%(operation)s] 的作业[%(job)s] 时接收到空响"
-"应。"
-
 msgid "Object Count"
 msgstr "对象计数"
 
@@ -5914,13 +5596,6 @@ msgstr "执行扩展操作期间，向组合卷 %(volumename)s 添加卷时出�
 
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr "找不到来自主机、端口或方案的必需输入之一。"
-
-msgid ""
-"One of the services is in Liberty version. We do not provide backward "
-"compatibility with Liberty now, you need to upgrade to Mitaka first."
-msgstr ""
-"某一服务属于Liberty版本。目前不提供支持Liberty的后向兼容，请首先升级至"
-"Mitaka。"
 
 #, python-format
 msgid ""
@@ -5951,9 +5626,6 @@ msgstr "操作 %(operation)s 不受支持。"
 
 msgid "Option gpfs_images_dir is not set correctly."
 msgstr "选项 gpfs_images_dir 未正确设置。"
-
-msgid "Option gpfs_images_share_mode is not set correctly."
-msgstr "选项 gpfs_images_share_mode 未正确设置。"
 
 msgid "Option gpfs_mount_point_base is not set correctly."
 msgstr "选项 gpfs_mount_point_base 未正确设置。"
@@ -6001,10 +5673,6 @@ msgstr "政策不允许 %(action)s 被执行。"
 #, python-format
 msgid "Pool %(poolNameInStr)s is not found."
 msgstr "未能找到池 %(poolNameInStr)s。"
-
-#, python-format
-msgid "Pool %s does not exist in Nexenta Store appliance"
-msgstr "池 %s 在 Nexenta 存储设备中不存在"
 
 #, python-format
 msgid "Pool from volume['host'] %(host)s not found."
@@ -6086,12 +5754,6 @@ msgid ""
 msgstr "对于状态为 %(current)s 的快照，不允许提供的快照状态 %(provided)s。"
 
 #, python-format
-msgid ""
-"Provider information w.r.t CloudByte storage was not found for OpenStack "
-"volume [%s]."
-msgstr "提供程序信息 w.r.t：找不到对应 OpenStack 卷 [%s] 的 CloudByte 存储器。"
-
-#, python-format
 msgid "Pure Storage Cinder driver failure: %(reason)s"
 msgstr "Pure Storage Cinder 驱动程序故障：%(reason)s"
 
@@ -6144,10 +5806,6 @@ msgstr "建议不要按 service 参数进行查询。请改为使用 binary 参�
 
 msgid "Query resource pool error."
 msgstr "查询资源池时发生错误。"
-
-#, python-format
-msgid "Quota %s limit must be equal or greater than existing resources."
-msgstr "配额 %s 限制必须大于或等于现有资源。"
 
 #, python-format
 msgid "Quota class %(class_name)s could not be found."
@@ -6352,12 +6010,6 @@ msgid ""
 msgstr ""
 "所请求的卷或快照超过允许的 %(name)s 配额。已请求 %(requested)sG，配额为 "
 "%(quota)sG，已耗用 %(consumed)sG。"
-
-#, python-format
-msgid ""
-"Requested volume size %(size)d is larger than maximum allowed limit "
-"%(limit)d."
-msgstr "所请求的卷大小 %(size)d超过了允许的最大限制 %(limit)d。"
 
 msgid "Required configuration not found"
 msgstr "找不到必需的配置选项"
@@ -6681,12 +6333,6 @@ msgid ""
 "Consistency Group"
 msgstr "不能对卷单独地进行快照操作，因为它是一致性组的一部分"
 
-#, python-format
-msgid ""
-"Snapshot cannot be created because volume %(vol_id)s is not available, "
-"current volume status: %(vol_status)s."
-msgstr "无法创建快照，因为卷 %(vol_id)s 不可用，当前卷状态为 %(vol_status)s。"
-
 msgid "Snapshot cannot be created while volume is migrating."
 msgstr "无法在迁移卷时创建快照。"
 
@@ -6717,9 +6363,6 @@ msgstr "未在任何位置部署的快照资源“%s”？"
 #, python-format
 msgid "Snapshot status %(cur)s not allowed for update_snapshot_status"
 msgstr "对于 update_snapshot_status，不允许快照状态 %(cur)s"
-
-msgid "Snapshot status must be \"available\" to clone."
-msgstr "快照状态必须为“可用”，才能进行克隆。"
 
 #, python-format
 msgid ""
@@ -6853,10 +6496,6 @@ msgid "Storage HardwareId mgmt Service not found on %(storageSystemName)s."
 msgstr "在 %(storageSystemName)s 上找不到存储器硬件标识管理服务。"
 
 #, python-format
-msgid "Storage Profile %s not found."
-msgstr "找不到存储器概要文件 %s。"
-
-#, python-format
 msgid "Storage Relocation Service not found on %(storageSystemName)s."
 msgstr "在 %(storageSystemName)s 上找不到存储器重定位服务。"
 
@@ -6933,11 +6572,6 @@ msgstr "系统不支持压缩。"
 msgid "System is busy, retry operation."
 msgstr "系统繁忙，请重试操作。"
 
-#, python-format
-msgid ""
-"TSM [%(tsm)s] was not found in CloudByte storage for account [%(account)s]."
-msgstr "在帐户 [%(account)s] 的 CloudByte 存储器中找不到 TSM [%(tsm)s]。"
-
 msgid "Target group type is still in use."
 msgstr "目标组类型仍在使用中。"
 
@@ -6978,9 +6612,6 @@ msgid ""
 msgstr ""
 "“sort_key”和“sort_dir”参数已建议不要使用，并且不能与“sort”参数配合使用。"
 
-msgid "The EQL array has closed the connection."
-msgstr "EQL 阵列已关闭连接。"
-
 #, python-format
 msgid ""
 "The GPFS filesystem %(fs)s is not at the required release level.  Current "
@@ -7018,10 +6649,6 @@ msgstr ""
 
 msgid "The authentication service failed to reply with 401"
 msgstr "认证服务失败，返回401"
-
-msgid ""
-"The back-end where the volume is created does not have replication enabled."
-msgstr "创建该卷的后端未启用复制。"
 
 #, python-format
 msgid ""
@@ -7079,11 +6706,6 @@ msgid ""
 "and resume replication on the LeftHand backends."
 msgstr "主机未准备好故障返回。请重新同步卷并在 LeftHand 后端上继续进行复制。"
 
-msgid ""
-"The host is not ready to be failed back. Please resynchronize the volumes "
-"and resume replication on the Storwize backends."
-msgstr "主机未准备好故障返回。请重新同步卷并在 Storwize 后端上继续进行复制。"
-
 #, python-format
 msgid "The iSCSI CHAP user %(user)s does not exist."
 msgstr "iSCSI CHAP 用户 %(user)s 不存在。"
@@ -7101,11 +6723,6 @@ msgstr "方法 %(method)s 超时。（超时值：%(timeout)s）"
 
 msgid "The method update_migrated_volume is not implemented."
 msgstr "未实现方法 update_migrated_volume。"
-
-#, python-format
-msgid ""
-"The mount %(mount_path)s is not a valid Quobyte USP volume. Error: %(exc)s"
-msgstr "安装 %(mount_path)s 不是有效 Quobyte USP 卷。发生错误：%(exc)s"
 
 msgid "The name to use for storage instances created"
 msgstr "存储实例使用的名称已创建。"
@@ -7401,10 +7018,6 @@ msgid "There was an error starting remote copy: %s."
 msgstr "启动远程复制时发生了错误：%s。"
 
 #, python-format
-msgid "There's no Gluster config file configured (%s)"
-msgstr "未配置 Gluster 配置文件 (%s)"
-
-#, python-format
 msgid "There's no NFS config file configured (%s)"
 msgstr "未配置 NFS 配置文件 (%s)"
 
@@ -7463,14 +7076,6 @@ msgstr "无法找到转换器%(transfer_id)s"
 
 #, python-format
 msgid ""
-"Transfer %(transfer_id)s: Volume id %(volume_id)s in unexpected state "
-"%(status)s, expected awaiting-transfer"
-msgstr ""
-"传输 %(transfer_id)s：具有标识 %(volume_id)s 的卷处于意外状态 %(status)s，需"
-"要的状态为正在等待传输"
-
-#, python-format
-msgid ""
 "Trying to import backup metadata from id %(meta_id)s into backup %(id)s."
 msgstr "正在尝试将备份元数据从标识 %(meta_id)s 导入到备份 %(id)s。"
 
@@ -7507,10 +7112,6 @@ msgstr "URI 应该以 /tag 结尾"
 #, python-format
 msgid "UUIDs %s are in both add and remove volume list."
 msgstr "UUID %s 同时位于“添加卷”和“移除卷”列表中。"
-
-#, python-format
-msgid "Unable to access the Storwize back-end for volume %s."
-msgstr "无法访问卷 %s 的 Storwize 后端。"
 
 msgid "Unable to access the backend storage via file handle."
 msgstr "通过文件句柄无法访问后端存储器。"
@@ -7552,10 +7153,6 @@ msgid "Unable to create server object for initiator %(name)s"
 msgstr "无法为发起者 %(name)s 创建服务器对象"
 
 #, python-format
-msgid "Unable to create the relationship for %s."
-msgstr "无法为 %s 创建该关系。"
-
-#, python-format
 msgid "Unable to create volume %(name)s from %(snap)s."
 msgstr "无法通过 %(snap)s 创建卷 %(name)s。"
 
@@ -7581,11 +7178,6 @@ msgstr "无法删除快照 %(id)s，状态：%(status)s。"
 #, python-format
 msgid "Unable to delete snapshot policy on volume %s."
 msgstr "无法删除卷 %s 上的快照策略。"
-
-#, python-format
-msgid ""
-"Unable to delete the target volume for volume %(vol)s. Exception: %(err)s."
-msgstr "无法删除卷 %(vol)s 的目标卷。异常：%(err)s。"
 
 msgid ""
 "Unable to detach volume. Volume status must be 'in-use' and attach_status "
@@ -7633,20 +7225,10 @@ msgstr "无法建立与 Storwize 集群 %s 的伙伴关系。"
 msgid "Unable to extend volume %s"
 msgstr "无法扩展卷 %s"
 
-#, python-format
-msgid ""
-"Unable to fail-over the volume %(id)s to the secondary back-end, because the "
-"replication relationship is unable to switch: %(error)s"
-msgstr "无法将卷 %(id)s 故障转移至辅助后端，因为复制关系无法切换：%(error)s"
-
 msgid ""
 "Unable to failback to \"default\", this can only be done after a failover "
 "has completed."
 msgstr "无法故障返回至“default”，此操作只能在故障转换完成后进行。"
-
-#, python-format
-msgid "Unable to failover to replication target:%(reason)s)."
-msgstr "无法故障转移至复制目标：%(reason)s)。"
 
 msgid "Unable to fetch connection information from backend."
 msgstr "无法从后端访存连接信息。"
@@ -7738,19 +7320,11 @@ msgstr "无法获取 backend_name %s 的统计信息"
 msgid "Unable to get storage volume from job."
 msgstr "无法通过作业获取存储器卷。"
 
-#, python-format
-msgid "Unable to get target endpoints for hardwareId %(hardwareIdInstance)s."
-msgstr "无法获取对应硬件标识 %(hardwareIdInstance)s 的目标端点。"
-
 msgid "Unable to get the name of the masking view."
 msgstr "无法获取掩码视图的名称。"
 
 msgid "Unable to get the name of the portgroup."
 msgstr "无法获取端口组的名称。"
-
-#, python-format
-msgid "Unable to get the replication relationship for volume %s."
-msgstr "无法获取卷 %s 的复制关系。"
 
 #, python-format
 msgid ""
@@ -7931,9 +7505,6 @@ msgstr ""
 "对于 url %(page)s，带有协议 %(protocol)s 的交换机 %(switch_id)s 发出意外状态"
 "码。错误：%(error)s"
 
-msgid "Unknown Gluster exception"
-msgstr "Gluster 异常未知"
-
 msgid "Unknown NFS exception"
 msgstr "NFS 异常未知"
 
@@ -8022,12 +7593,6 @@ msgstr "无法识别支持格式：%s"
 #, python-format
 msgid "Unrecognized read_deleted value '%s'"
 msgstr "无法识别的 read_deleted 取值”%s“"
-
-#, python-format
-msgid ""
-"Unrecoverable Error: Versioned Objects in DB are capped to unknown version "
-"%(version)s."
-msgstr "不可恢复错误：数据库中的版本对象被未知版本%(version)s覆盖。"
 
 #, python-format
 msgid "Unset gcs options: %s"
@@ -8159,9 +7724,6 @@ msgstr "值“%(value)s”对于配置选项“%(option)s”无效"
 msgid "Value %(param)s for %(param_string)s is not a boolean."
 msgstr "%(param_string)s 的值 %(param)s 不是布尔值。"
 
-msgid "Value required for 'scality_sofs_config'"
-msgstr "“scality_sofs_config”的必需值"
-
 #, python-format
 msgid "ValueError: %s"
 msgstr "ValueError：%s"
@@ -8251,10 +7813,6 @@ msgstr "未能在池 %(pool)s 中创建卷 %(vol)s。"
 #, python-format
 msgid "Volume %(vol1)s does not match with snapshot.volume_id %(vol2)s."
 msgstr "卷 %(vol1)s 与 snapshot.volume_id %(vol2)s 不匹配。"
-
-#, python-format
-msgid "Volume %(vol_id)s is not local to this node %(host)s"
-msgstr "卷 %(vol_id)s 不是节点 %(host)s 的本地卷"
 
 #, python-format
 msgid "Volume %(vol_id)s status must be %(statuses)s"
@@ -8370,19 +7928,6 @@ msgid "Volume %s doesn't exist on the ZFSSA backend."
 msgstr "卷 %s 在 ZFSSA 后端上不存在。"
 
 #, python-format
-msgid "Volume %s is already managed by OpenStack."
-msgstr "卷 %s 已由 OpenStack 管理。"
-
-#, python-format
-msgid ""
-"Volume %s is not of replicated type. This volume needs to be of a volume "
-"type with the extra spec replication_enabled set to '<is> True' to support "
-"replication actions."
-msgstr ""
-"卷 %s 并非被复制类型。此卷必须为 extra spec replication_enabled 设置为“<is> "
-"True”的卷类型以支持复制操作。"
-
-#, python-format
 msgid ""
 "Volume %s is online. Set volume to offline for managing using OpenStack."
 msgstr "卷 %s 已联机。将该卷设置为脱机以便使用 OpenStack 进行管理。"
@@ -8404,15 +7949,6 @@ msgstr "找不到卷 %s"
 #, python-format
 msgid "Volume %s not found."
 msgstr "找不到卷 %s。"
-
-#, python-format
-msgid ""
-"Volume %s status must be available or in-use, must not be migrating, have "
-"snapshots, be replicated, be part of a group and destination host must be "
-"different than the current host"
-msgstr ""
-"卷 %s 的状态必须是可用的或正在使用中的，而不能是正在迁移、具有快照、重复的或"
-"者属于一个组，同时目标机器也应该不同于目前的机器。"
 
 #, python-format
 msgid "Volume %s: Error trying to extend volume"
@@ -8448,18 +7984,6 @@ msgstr "卷类型 %(volume_type_id)s 没有额外说明键 %(extra_specs_key)s �
 
 msgid "Volume Type id must not be None."
 msgstr "卷类型不能为空。"
-
-#, python-format
-msgid ""
-"Volume [%(cb_vol)s] was not found at CloudByte storage corresponding to "
-"OpenStack volume [%(ops_vol)s]."
-msgstr ""
-"在对应 OpenStack 卷 [%(ops_vol)s] 的 CloudByte 存储器上找不到卷 "
-"[%(cb_vol)s]。"
-
-#, python-format
-msgid "Volume [%s] not found in CloudByte storage."
-msgstr "在 CloudByte 存储器中找不到卷 [%s]。"
 
 msgid "Volume already managed."
 msgstr "卷已管理。"
@@ -8532,9 +8056,6 @@ msgstr "卷在使用中。"
 msgid "Volume is not available."
 msgstr "卷不可用。"
 
-msgid "Volume is not local to this node"
-msgstr "卷不是此节点的本地卷"
-
 msgid "Volume is not local to this node."
 msgstr "该卷不是此节点的本地卷。"
 
@@ -8553,9 +8074,6 @@ msgstr "已请求卷元数据备份，但此驱动程序尚不支持此功能。
 #, python-format
 msgid "Volume migration failed: %(reason)s"
 msgstr "卷迁移失败：%(reason)s"
-
-msgid "Volume must be available"
-msgstr "卷必须可用"
 
 msgid "Volume must be in the same availability zone as the snapshot"
 msgstr "卷必须与快照位于同一可用性区域中"
@@ -8644,17 +8162,6 @@ msgstr "卷大小必须为 1 GB 的倍数。"
 
 msgid "Volume size must multiple of 1 GB."
 msgstr "卷大小必须是 1 GB 的倍数。"
-
-#, python-format
-msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
-msgstr "对于快照，卷状态必须为“available”或“in-use”。（卷状态现在为 %s）"
-
-msgid "Volume status must be \"available\" or \"in-use\"."
-msgstr "卷状态必须为“available”或“in-use”。"
-
-#, python-format
-msgid "Volume status must be %s to reserve."
-msgstr "卷状态必须为 %s 才能保留。"
 
 msgid "Volume status must be 'available'."
 msgstr "卷状态必须为“可用”。"
@@ -9629,25 +9136,11 @@ msgstr ""
 msgid "extend_volume, volumename: %(volumename)s, volume not found."
 msgstr "extend_volume，volumename：%(volumename)s，找不到卷。"
 
-msgid "failed to create new_volume on destination host"
-msgstr "未能在目标主机上创建新卷"
-
 msgid "fake"
 msgstr "fake"
 
-#, python-format
-msgid "file already exists at %s"
-msgstr "文件已存在在 %s"
-
 msgid "fileno is not supported by SheepdogIOWrapper"
 msgstr "SheepdogIOWrapper 不支持 fileno"
-
-msgid "fileno() not supported by RBD()"
-msgstr "fileno() 不受 RBD() 支持"
-
-#, python-format
-msgid "filesystem %s does not exist in Nexenta Store appliance"
-msgstr "文件系统 %s 在 Nexenta 存储设备中不存在"
 
 msgid ""
 "flashsystem_multihostmap_enabled is set to False, not allow multi host "
@@ -9656,9 +9149,6 @@ msgid ""
 msgstr ""
 "flashsystem_multihostmap_enabled 设置为 False，因而不允许多主机映射。"
 "CMMVC6071E 该 VDisk 至主机的映射未创建，因为该 VDisk 已映射到某个主机。"
-
-msgid "flush() not supported in this version of librbd"
-msgstr "在 librbd 的此版本中，flush() 不受支持"
 
 #, python-format
 msgid "fmt=%(fmt)s backed by: %(backing_file)s"
@@ -9853,9 +9343,6 @@ msgstr "mkfs 在卷 %(vol)s 上发生故障，错误消息如下：%(err)s。"
 
 msgid "mock"
 msgstr "mock"
-
-msgid "mount.glusterfs is not installed"
-msgstr "未安装 mount.glusterfs"
 
 #, python-format
 msgid "multiple resources with name %s found by drbdmanage"
@@ -10057,25 +9544,8 @@ msgstr "未安装 targetcli，并且未能创建缺省目录(%(default_path)s)�
 msgid "terminate_connection: Failed to get host name from connector."
 msgstr "terminate_connection：未能从连接器获取主机名。"
 
-msgid "timeout creating new_volume on destination host"
-msgstr "在目标主机上创建新卷超时"
-
 msgid "too many body keys"
 msgstr "过多主体密钥"
-
-#, python-format
-msgid "umount: %s: not mounted"
-msgstr "umount: %s：未安装"
-
-#, python-format
-msgid "umount: %s: target is busy"
-msgstr "umount: %s：目标正忙"
-
-msgid "umount: <mnt_path>: some other error"
-msgstr "umount: <mnt_path>：某个其他错误"
-
-msgid "umount: <mnt_path>: target is busy"
-msgstr "umount: <mnt_path>：目标正忙"
 
 #, python-format
 msgid "unmanage_snapshot: Cannot find snapshot named %s"
@@ -10119,9 +9589,6 @@ msgstr "卷已更改"
 
 msgid "volume is already attached"
 msgstr "卷已连接"
-
-msgid "volume is not local to this node"
-msgstr "卷不是此节点的本地卷"
 
 #, python-format
 msgid ""
