@@ -227,7 +227,7 @@ class TestCinderManageCmd(test.TestCase):
         exit = self.assertRaises(SystemExit, db_cmds.online_data_migrations)
         self.assertEqual(0, exit.code)
         cinder_manage.DbCommands.online_migrations[0].assert_has_calls(
-            (mock.call(mock.ANY, 50, False),) * 2)
+            (mock.call(mock.ANY, 50),) * 2)
 
     def _fake_db_command(self, migrations=None):
         if migrations is None:
@@ -254,17 +254,17 @@ class TestCinderManageCmd(test.TestCase):
         expected = """\
 5 rows matched query mock_mig_1, 4 migrated, 1 remaining
 6 rows matched query mock_mig_2, 6 migrated, 0 remaining
-+------------+-------+------+-----------+
-| Migration  | Found | Done | Remaining |
-+------------+-------+------+-----------+
-| mock_mig_1 |   5   |  4   |     1     |
-| mock_mig_2 |   6   |  6   |     0     |
-+------------+-------+------+-----------+
++------------+--------------+-----------+
+| Migration  | Total Needed | Completed |
++------------+--------------+-----------+
+| mock_mig_1 |      5       |     4     |
+| mock_mig_2 |      6       |     6     |
++------------+--------------+-----------+
 """
         command.online_migrations[0].assert_has_calls([mock.call(ctxt,
-                                                                 10, False)])
+                                                                 10)])
         command.online_migrations[1].assert_has_calls([mock.call(ctxt,
-                                                                 6, False)])
+                                                                 6)])
 
         self.assertEqual(expected, sys.stdout.getvalue())
 
@@ -273,10 +273,10 @@ class TestCinderManageCmd(test.TestCase):
     def test_db_commands_online_data_migrations_ignore_state_and_max(self):
         db_cmds = cinder_manage.DbCommands()
         exit = self.assertRaises(SystemExit, db_cmds.online_data_migrations,
-                                 2, True)
+                                 2)
         self.assertEqual(1, exit.code)
         cinder_manage.DbCommands.online_migrations[0].assert_called_once_with(
-            mock.ANY, 2, True)
+            mock.ANY, 2)
 
     @mock.patch('cinder.cmd.manage.DbCommands.online_migrations',
                 (mock.Mock(side_effect=((2, 2), (0, 0)), __name__='foo'),))

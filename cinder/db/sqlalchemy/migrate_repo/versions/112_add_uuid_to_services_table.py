@@ -10,9 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
-import uuid
-
 from sqlalchemy import Column
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import Index
@@ -33,9 +30,3 @@ def upgrade(migrate_engine):
     if uuid_index_name not in (i['name'] for i in indexes):
         services = Table('services', meta, autoload=True)
         Index(uuid_index_name, services.c.uuid, unique=True).create()
-
-    service_list = list(services.select().execute())
-    for s in service_list:
-        if not s.uuid:
-            services.update().where(services.c.id == s.id).\
-                values(uuid=six.text_type(uuid.uuid4())).execute()

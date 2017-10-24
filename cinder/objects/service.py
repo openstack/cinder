@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log as logging
+from oslo_utils import uuidutils
 from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
@@ -24,6 +26,9 @@ from cinder.objects import fields as c_fields
 from cinder import utils
 
 
+LOG = logging.getLogger(__name__)
+
+
 @base.CinderObjectRegistry.register
 class Service(base.CinderPersistentObject, base.CinderObject,
               base.CinderObjectDictCompat, base.CinderComparableObject,
@@ -33,7 +38,8 @@ class Service(base.CinderPersistentObject, base.CinderObject,
     # Version 1.2: Add get_minimum_rpc_version() and get_minimum_obj_version()
     # Version 1.3: Add replication fields
     # Version 1.4: Add cluster fields
-    VERSION = '1.4'
+    # Version 1.5: Add UUID field
+    VERSION = '1.5'
 
     OPTIONAL_FIELDS = ('cluster',)
 
@@ -59,6 +65,8 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         'replication_status': c_fields.ReplicationStatusField(nullable=True),
         'frozen': fields.BooleanField(default=False),
         'active_backend_id': fields.StringField(nullable=True),
+
+        'uuid': fields.StringField(nullable=True),
     }
 
     def obj_make_compatible(self, primitive, target_version):
@@ -71,6 +79,8 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         if target_version < (1, 4):
             for obj_field in ('cluster', 'cluster_name'):
                 primitive.pop(obj_field, None)
+        if target_version < (1, 5) and 'uuid' in primitive:
+            del primitive['uuid']
 
     @staticmethod
     def _from_db_object(context, service, db_service, expected_attrs=None):
@@ -98,6 +108,14 @@ class Service(base.CinderPersistentObject, base.CinderObject,
                 service.cluster = None
 
         service.obj_reset_changes()
+
+        # TODO(jdg): Remove in S when we're sure all Services have UUID in db
+        if 'uuid' not in service:
+            service.uuid = uuidutils.generate_uuid()
+            LOG.debug('Generated UUID %(uuid)s for service %(id)i',
+                      dict(uuid=service.uuid, id=service.id))
+            service.save()
+
         return service
 
     def obj_load_attr(self, attrname):
@@ -131,6 +149,11 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         db_service = db.service_get(context, host=host, binary=binary_key)
         return cls._from_db_object(context, cls(context), db_service)
 
+    @classmethod
+    def get_by_uuid(cls, context, service_uuid):
+        db_service = db.service_get_by_uuid(context, service_uuid)
+        return cls._from_db_object(context, cls(), db_service)
+
     def create(self):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
@@ -139,6 +162,10 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         if 'cluster' in updates:
             raise exception.ObjectActionError(
                 action='create', reason=_('cluster assigned'))
+        if 'uuid' not in updates:
+            updates['uuid'] = uuidutils.generate_uuid()
+            self.uuid = updates['uuid']
+
         db_service = db.service_create(self._context, updates)
         self._from_db_object(self._context, self, db_service)
 

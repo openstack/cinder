@@ -34,6 +34,7 @@ def fake_db_service(**updates):
         'deleted_at': None,
         'deleted': False,
         'id': 123,
+        'uuid': 'ce59413f-4061-425c-9ad0-3479bd102ab2',
         'host': 'fake-host',
         'binary': 'fake-service',
         'topic': 'fake-service-topic',

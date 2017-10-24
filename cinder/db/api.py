@@ -93,6 +93,10 @@ def dispose_engine():
 ###################
 
 
+def service_uuids_online_data_migration(context, max_count):
+    return IMPL.service_uuids_online_data_migration(context, max_count)
+
+
 def service_destroy(context, service_id):
     """Destroy the service or raise if it does not exist."""
     return IMPL.service_destroy(context, service_id)
@@ -140,6 +144,14 @@ def service_update(context, service_id, values):
     Raises NotFound if service does not exist.
     """
     return IMPL.service_update(context, service_id, values)
+
+
+def service_get_by_uuid(context, service_uuid):
+    """Get a service by it's uuid.
+
+    Return Service ref or raise if it does not exist.
+    """
+    return IMPL.service_get_by_uuid(context, service_uuid)
 
 
 ###############
