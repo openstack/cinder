@@ -352,6 +352,7 @@ class ScaleIODriver(driver.VolumeDriver):
     def _get_queryable_statistics(self, sio_type, sio_id):
         if self.statisticProperties is None:
             self.statisticProperties = [
+                "snapCapacityInUseInKb",
                 "capacityAvailableForVolumeAllocationInKb",
                 "capacityLimitInKb", "spareCapacityInKb",
                 "thickCapacityInUseInKb"]
@@ -1034,6 +1035,7 @@ class ScaleIODriver(driver.VolumeDriver):
                 # Divide by two because ScaleIO creates a copy for each volume
                 provisioned_capacity = (
                     ((res['thickCapacityInUseInKb'] +
+                      res['snapCapacityInUseInKb'] +
                       thin_capacity_allocated) / 2) / units.Mi)
 
                 LOG.info("Free capacity of pool %(pool)s is: %(free)s, "
