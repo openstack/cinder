@@ -744,6 +744,20 @@ class SolidFireDriver(san.SanISCSIDriver):
                     qos[i.key] = int(i.value)
         return qos
 
+    def _extract_sf_attributes_from_extra_specs(self, type_id):
+        # This will do a 1:1 copy of the extra spec keys that
+        # include the SolidFire delimeter into a Volume attribute
+        # K/V pair
+        ctxt = context.get_admin_context()
+        volume_type = volume_types.get_volume_type(ctxt, type_id)
+        specs = volume_type.get('extra_specs')
+        sf_keys = []
+        for key, value in specs.items():
+            if "SFAttribute:" in key:
+                fields = key.split(':')
+                sf_keys.append({fields[1]: value})
+        return sf_keys
+
     def _set_qos_by_volume_type(self, ctxt, type_id, vol_size):
         qos = {}
         scale_qos = {}
@@ -1266,6 +1280,13 @@ class SolidFireDriver(san.SanISCSIDriver):
                       'is_clone': 'False',
                       'created_at': create_time}
         attributes['cinder-name'] = volume.get('display_name', "")
+
+        if volume['volume_type_id']:
+            for setting in self._extract_sf_attributes_from_extra_specs(
+                    volume['volume_type_id']):
+                for k, v in setting.iteritems():
+                    attributes[k] = v
+
         vname = '%s%s' % (self.configuration.sf_volume_prefix, volume['id'])
         params = {'name': vname,
                   'accountID': sf_account['accountID'],
