@@ -54,8 +54,8 @@ class BackupProjectAttributeTest(test.TestCase):
 
     def setUp(self):
         super(BackupProjectAttributeTest, self).setUp()
-        self.stubs.Set(backup_api.API, 'get', fake_backup_get)
-        self.stubs.Set(backup_api.API, 'get_all', fake_backup_get_all)
+        self.mock_object(backup_api.API, 'get', fake_backup_get)
+        self.mock_object(backup_api.API, 'get_all', fake_backup_get_all)
 
     def _send_backup_request(self, ctx, detail=False,
                              version=mv.BACKUP_PROJECT):

@@ -36,7 +36,6 @@ from oslo_messaging import conffixture as messaging_conffixture
 from oslo_serialization import jsonutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
-from oslotest import moxstubout
 import six
 import testtools
 
@@ -203,11 +202,6 @@ class TestCase(testtools.TestCase):
             objects_base.CinderObjectRegistry._registry._obj_classes)
         self.addCleanup(self._restore_obj_registry)
 
-        # emulate some of the mox stuff, we can't use the metaclass
-        # because it screws with our generators
-        mox_fixture = self.useFixture(moxstubout.MoxStubout())
-        self.mox = mox_fixture.mox
-        self.stubs = mox_fixture.stubs
         self.addCleanup(CONF.reset)
         self.addCleanup(self._common_cleanup)
         self.injected = []
