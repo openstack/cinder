@@ -488,7 +488,8 @@ class BackupsAPITestCase(test.TestCase):
                                 _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
 
         volume = utils.create_volume(self.context, size=5)
 
@@ -524,7 +525,8 @@ class BackupsAPITestCase(test.TestCase):
                                          _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
 
         volume = utils.create_volume(self.context, size=1)
         # Create a backup with metadata
@@ -564,7 +566,8 @@ class BackupsAPITestCase(test.TestCase):
                                           _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
 
         volume = utils.create_volume(self.context, size=5, status='in-use')
 
@@ -595,7 +598,8 @@ class BackupsAPITestCase(test.TestCase):
     def test_create_backup_inuse_force(self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
 
         volume = utils.create_volume(self.context, size=5, status='in-use')
         backup = utils.create_backup(self.context, volume.id,
@@ -635,7 +639,8 @@ class BackupsAPITestCase(test.TestCase):
                                          _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
 
         volume = utils.create_volume(self.context, size=5, status='available')
 
@@ -770,7 +775,8 @@ class BackupsAPITestCase(test.TestCase):
                                  _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
 
         volume = utils.create_volume(self.context, size=5)
         snapshot = None
@@ -819,7 +825,8 @@ class BackupsAPITestCase(test.TestCase):
             self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
 
         volume = utils.create_volume(self.context, size=5)
 
@@ -973,7 +980,8 @@ class BackupsAPITestCase(test.TestCase):
             self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
 
         volume = utils.create_volume(self.context, size=5, status='available')
 
@@ -1009,22 +1017,27 @@ class BackupsAPITestCase(test.TestCase):
         empty_service = []
         # service host not match with volume's host
         host_not_match = [{'availability_zone': 'fake_az', 'host': alt_host,
-                           'disabled': 0, 'updated_at': timeutils.utcnow()}]
+                           'disabled': 0, 'updated_at': timeutils.utcnow(),
+                           'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
         # service az not match with volume's az
         az_not_match = [{'availability_zone': 'strange_az', 'host': testhost,
-                         'disabled': 0, 'updated_at': timeutils.utcnow()}]
+                         'disabled': 0, 'updated_at': timeutils.utcnow(),
+                         'uuid': '4200b32b-0bf9-436c-86b2-0675f6ac218e'}]
         # service disabled
         disabled_service = []
 
         # dead service that last reported at 20th century
         dead_service = [{'availability_zone': 'fake_az', 'host': alt_host,
-                         'disabled': 0, 'updated_at': '1989-04-16 02:55:44'}]
+                         'disabled': 0, 'updated_at': '1989-04-16 02:55:44',
+                        'uuid': '6d91e7f5-ca17-4e3b-bf4f-19ca77166dd7'}]
 
         # first service's host not match but second one works.
         multi_services = [{'availability_zone': 'fake_az', 'host': alt_host,
-                           'disabled': 0, 'updated_at': timeutils.utcnow()},
+                           'disabled': 0, 'updated_at': timeutils.utcnow(),
+                           'uuid': '18417850-2ca9-43d1-9619-ae16bfb0f655'},
                           {'availability_zone': 'fake_az', 'host': testhost,
-                           'disabled': 0, 'updated_at': timeutils.utcnow()}]
+                           'disabled': 0, 'updated_at': timeutils.utcnow(),
+                           'uuid': 'f838f35c-4035-464f-9792-ce60e390c13d'}]
 
         # Setup mock to run through the following service cases
         _mock_service_get_all.side_effect = [empty_service,
@@ -1075,11 +1088,14 @@ class BackupsAPITestCase(test.TestCase):
     def test_get_available_backup_service(self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost1',
-             'disabled': 0, 'updated_at': timeutils.utcnow()},
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'},
             {'availability_zone': 'az2', 'host': 'testhost2',
-             'disabled': 0, 'updated_at': timeutils.utcnow()},
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': '4200b32b-0bf9-436c-86b2-0675f6ac218e'},
             {'availability_zone': 'az2', 'host': 'testhost3',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}, ]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': '6d91e7f5-ca17-4e3b-bf4f-19ca77166dd7'}, ]
         actual_host = self.backup_api._get_available_backup_service_host(
             None, 'az1')
         self.assertEqual('testhost1', actual_host)
@@ -1095,9 +1111,11 @@ class BackupsAPITestCase(test.TestCase):
             self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost1',
-             'disabled': 0, 'updated_at': timeutils.utcnow()},
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'},
             {'availability_zone': 'az2', 'host': 'testhost2',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}, ]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': '4200b32b-0bf9-436c-86b2-0675f6ac218e'}, ]
         self.override_config('backup_use_same_host', True)
         actual_host = self.backup_api._get_available_backup_service_host(
             None, 'az1')
@@ -1113,7 +1131,8 @@ class BackupsAPITestCase(test.TestCase):
     def test_delete_backup_available(self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
         backup = utils.create_backup(self.context,
                                      status=fields.BackupStatus.AVAILABLE,
                                      availability_zone='az1', host='testhost')
@@ -1136,7 +1155,8 @@ class BackupsAPITestCase(test.TestCase):
                                  _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
         backup = utils.create_backup(self.context,
                                      status=fields.BackupStatus.AVAILABLE,
                                      availability_zone='az1', host='testhost')
@@ -1164,7 +1184,8 @@ class BackupsAPITestCase(test.TestCase):
                                  _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
         backup = utils.create_backup(self.context,
                                      status=fields.BackupStatus.ERROR,
                                      availability_zone='az1', host='testhost')
@@ -1222,7 +1243,8 @@ class BackupsAPITestCase(test.TestCase):
                                                _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
         volume = utils.create_volume(self.context, size=5)
         backup = utils.create_backup(self.context, volume.id,
                                      status=fields.BackupStatus.AVAILABLE)
@@ -1253,7 +1275,8 @@ class BackupsAPITestCase(test.TestCase):
                                         _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
-             'disabled': 0, 'updated_at': '1775-04-19 05:00:00'}]
+             'disabled': 0, 'updated_at': '1775-04-19 05:00:00',
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
         backup = utils.create_backup(self.context, status='available')
         req = webob.Request.blank('/v2/%s/backups/%s' % (
                                   fake.PROJECT_ID, backup.id))
@@ -1351,7 +1374,8 @@ class BackupsAPITestCase(test.TestCase):
 
         _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
         _mock_volume_api_create.side_effect = fake_volume_api_create
 
         backup = utils.create_backup(self.context, size=5,
@@ -1386,7 +1410,8 @@ class BackupsAPITestCase(test.TestCase):
         _mock_volume_api_create.side_effect = fake_volume_api_create
         _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
 
         backup = utils.create_backup(self.context, size=5,
                                      status=fields.BackupStatus.AVAILABLE,

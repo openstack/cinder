@@ -770,7 +770,8 @@ class AdminActionsTest(BaseAdminTest):
                                   mock_service_get_all):
         mock_service_get_all.return_value = [
             {'availability_zone': "az1", 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
         # admin context
         mock_check_support.return_value = True
         # current status is dependent on argument: test_status.

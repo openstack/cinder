@@ -39,7 +39,8 @@ class Service(base.CinderPersistentObject, base.CinderObject,
     # Version 1.3: Add replication fields
     # Version 1.4: Add cluster fields
     # Version 1.5: Add UUID field
-    VERSION = '1.5'
+    # Version 1.6: Modify UUID field to be not nullable
+    VERSION = '1.6'
 
     OPTIONAL_FIELDS = ('cluster',)
 
@@ -66,7 +67,7 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         'frozen': fields.BooleanField(default=False),
         'active_backend_id': fields.StringField(nullable=True),
 
-        'uuid': fields.StringField(nullable=True),
+        'uuid': fields.StringField(),
     }
 
     def obj_make_compatible(self, primitive, target_version):
@@ -86,8 +87,10 @@ class Service(base.CinderPersistentObject, base.CinderObject,
     def _from_db_object(context, service, db_service, expected_attrs=None):
         expected_attrs = expected_attrs or []
         for name, field in service.fields.items():
-            if name in Service.OPTIONAL_FIELDS:
+            if ((name == 'uuid' and not db_service.get(name)) or
+                    name in service.OPTIONAL_FIELDS):
                 continue
+
             value = db_service.get(name)
             if isinstance(field, fields.IntegerField):
                 value = value or 0

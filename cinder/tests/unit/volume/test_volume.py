@@ -1083,7 +1083,9 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         with mock.patch('cinder.db.service_get_all') as mock_get_service, \
             mock.patch.object(volume_api,
                               'list_availability_zones') as mock_get_azs:
-            mock_get_service.return_value = [{'host': 'foo'}]
+            mock_get_service.return_value = [
+                {'host': 'foo',
+                 'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
             mock_get_azs.return_value = {}
             volume_api.create(self.context,
                               size=1,
