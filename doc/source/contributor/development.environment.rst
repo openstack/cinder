@@ -52,11 +52,15 @@ Linux Systems
 
 Install the prerequisite packages.
 
-On Ubuntu (tested on 12.04-64 and 14.04-64)::
+On Ubuntu16.04-64::
 
   sudo apt-get install python-dev libssl-dev python-pip git-core libmysqlclient-dev libpq-dev libffi-dev libxslt-dev
 
-On Fedora-based distributions e.g., Fedora/RHEL/CentOS/Scientific Linux (tested on CentOS 6.5)::
+To get a full python3 development environment, the two python3 packages need to be added to the list above::
+
+  python3-dev python3-pip
+
+On Fedora-based distributions e.g., Fedora/RHEL/CentOS/Scientific Linux (tested on CentOS 6.5 and CentOS 7.3)::
 
   sudo yum install python-virtualenv openssl-devel python-pip git gcc libffi-devel libxslt-devel mysql-devel postgresql-devel
 
