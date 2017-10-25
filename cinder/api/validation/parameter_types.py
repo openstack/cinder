@@ -135,3 +135,8 @@ boolean = {
              False, 'False', 'FALSE', 'false', '0', 'OFF', 'Off', 'off',
              'NO', 'No', 'no', 'n', 'f'],
 }
+
+
+uuid = {
+    'type': 'string', 'format': 'uuid'
+}
