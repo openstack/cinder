@@ -553,6 +553,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             'volume': backing.value,
             'volume_id': volume.id,
             'name': volume.name,
+            'profile_id': self._get_storage_profile_id(volume)
         }
 
         # vmdk connector in os-brick needs additional connection info.
@@ -585,9 +586,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             connection_info['data']['config'] = vmdk_connector_config
 
         LOG.debug("Returning connection_info (volume: '%(volume)s', volume_id:"
-                  " '%(volume_id)s') for connector: %(connector)s.",
+                  " '%(volume_id)s'), profile_id: '%(profile_id)s' for "
+                  "connector: %(connector)s.",
                   {'volume': connection_info['data']['volume'],
                    'volume_id': volume.id,
+                   'profile_id': connection_info['data']['profile_id'],
                    'connector': connector})
 
         return connection_info

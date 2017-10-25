@@ -1762,9 +1762,15 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         get_volume_group_folder.assert_called_once_with(dc, vol['project_id'])
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    def _test_get_connection_info(self, vops, vmdk_connector=False):
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile_id')
+    def _test_get_connection_info(
+            self, get_storage_profile_id, vops, vmdk_connector=False):
         volume = self._create_volume_obj()
         backing = mock.Mock(value='ref-1')
+
+        profile_id = mock.sentinel.profile_id
+        get_storage_profile_id.return_value = profile_id
+
         if vmdk_connector:
             vmdk_path = mock.sentinel.vmdk_path
             vops.get_vmdk_path.return_value = vmdk_path
@@ -1785,6 +1791,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertEqual('ref-1', ret['data']['volume'])
         self.assertEqual(volume.id, ret['data']['volume_id'])
         self.assertEqual(volume.name, ret['data']['name'])
+        self.assertEqual(profile_id, ret['data']['profile_id'])
 
         if vmdk_connector:
             self.assertEqual(volume.size * units.Gi, ret['data']['vmdk_size'])
