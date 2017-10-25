@@ -615,6 +615,18 @@ class AdminActionsTest(BaseAdminTest):
         volume = self._migrate_volume_exec(self.ctx, volume, host,
                                            expected_status)
 
+    def test_migrate_volume_replication_not_caple_success(self):
+        expected_status = http_client.ACCEPTED
+        host = 'test2'
+        volume = self._migrate_volume_prep()
+        # current status is available
+        volume = self._create_volume(self.ctx,
+                                     {'provider_location': '',
+                                      'attach_status': None,
+                                      'replication_status': 'not-capable'})
+        volume = self._migrate_volume_exec(self.ctx, volume, host,
+                                           expected_status)
+
     def test_migrate_volume_as_non_admin(self):
         expected_status = http_client.FORBIDDEN
         host = 'test2'

@@ -1432,7 +1432,10 @@ class API(base.Base):
         # Build required conditions for conditional update
         expected = {'status': ('available', 'in-use'),
                     'migration_status': self.AVAILABLE_MIGRATION_STATUS,
-                    'replication_status': (None, 'disabled'),
+                    'replication_status': (
+                        None,
+                        fields.ReplicationStatus.DISABLED,
+                        fields.ReplicationStatus.NOT_CAPABLE),
                     'consistencygroup_id': (None, ''),
                     'group_id': (None, '')}
 
