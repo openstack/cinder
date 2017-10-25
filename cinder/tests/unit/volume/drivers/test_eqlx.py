@@ -78,7 +78,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
             "--- --------------- ------------- ---------- ---------- --------",
             "1   iqn.1993-08.org.debian:01:222 *.*.*.*       none        both",
             "       7dab76162"]
-
+        self.fake_access_id = '1'
         self.fake_iqn = 'iqn.2003-10.com.equallogic:group01:25366:fakev'
         self.fake_iqn_return = ['iSCSI target name is %s.' % self.fake_iqn]
         self.fake_volume_output = ["Size: 5GB",
@@ -346,6 +346,24 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
                                '_eql_execute') as mock_eql_execute:
             mock_eql_execute.side_effect = my_side_effect
             self.driver.terminate_connection(volume, self.connector)
+
+    def test_get_access_record(self):
+        attrs = ('volume', 'select', self.volume['name'], 'access', 'show')
+        with mock.patch.object(self.driver,
+                               '_eql_execute') as mock_eql_execute:
+            mock_eql_execute.return_value = self.access_record_output
+            data = self.driver._get_access_record(self.volume, self.connector)
+            mock_eql_execute.assert_called_with(*attrs)
+            self.assertEqual(self.fake_access_id, data)
+
+    def test_get_access_record_negative(self):
+        attrs = ('volume', 'select', self.volume['name'], 'access', 'show')
+        with mock.patch.object(self.driver,
+                               '_eql_execute') as mock_eql_execute:
+            mock_eql_execute.return_value = []
+            data = self.driver._get_access_record(self.volume, self.connector)
+            mock_eql_execute.assert_called_with(*attrs)
+            self.assertIsNone(data)
 
     def test_do_setup(self):
         fake_group_ip = '10.1.2.3'
