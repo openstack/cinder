@@ -67,7 +67,7 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
 
     VERSION = '4.0.0'
 
-    CI_WIKI_NAME = "Dell_Storage_CI"
+    CI_WIKI_NAME = "Dell_EMC_SC_Series_CI"
 
     def __init__(self, *args, **kwargs):
         super(SCFCDriver, self).__init__(*args, **kwargs)
