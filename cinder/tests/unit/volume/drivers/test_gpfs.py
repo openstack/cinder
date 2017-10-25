@@ -2290,6 +2290,7 @@ class GPFSNFSDriverTestCase(test.TestCase):
         self.assertEqual({'provider_location': self.TEST_VOLUME_PATH},
                          self.driver.create_volume(volume))
 
+    @mock.patch('os.path.dirname')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_delete_gpfs_file')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSNFSDriver.'
@@ -2302,7 +2303,9 @@ class GPFSNFSDriverTestCase(test.TestCase):
                            mock_verify_gpfs_path_state,
                            mock_volume_path,
                            mock_local_path,
-                           mock_delete_gpfs_file):
+                           mock_delete_gpfs_file,
+                           mock_dirname):
+        mock_dirname.return_value = '/a/dir/'
         self.driver.delete_volume('')
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
