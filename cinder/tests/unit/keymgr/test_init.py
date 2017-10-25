@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from castellan.key_manager import barbican_key_manager
 from castellan import options as castellan_opts
 
 from oslo_config import cfg
@@ -33,6 +34,14 @@ class InitTestCase(test.TestCase):
     def test_blank_config(self):
         kmgr = keymgr.API(self.config)
         self.assertEqual(type(kmgr), keymgr.conf_key_mgr.ConfKeyManager)
+
+    def test_barbican_backend(self):
+        self.config.set_override(
+            'backend',
+            'barbican',
+            group='key_manager')
+        kmgr = keymgr.API(self.config)
+        self.assertEqual(type(kmgr), barbican_key_manager.BarbicanKeyManager)
 
     def test_set_conf_key_manager(self):
         self.config.set_override(
