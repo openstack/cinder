@@ -48,7 +48,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self.configuration.infinidat_storage_protocol = 'fc'
         self.configuration.san_ip = 'mockbox'
         self.configuration.infinidat_pool_name = 'mockpool'
-        self.configuration.san_thin_provision = 'thin'
+        self.configuration.san_thin_provision = True
         self.configuration.san_login = 'user'
         self.configuration.san_password = 'pass'
         self.configuration.volume_backend_name = 'mock'
@@ -60,6 +60,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self.configuration.chap_username = None
         self.configuration.chap_password = None
         self.configuration.infinidat_use_compression = None
+        self.configuration.max_over_subscription_ratio = 10.0
 
         self.driver = infinidat.InfiniboxVolumeDriver(
             configuration=self.configuration)
@@ -189,6 +190,13 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self._system.pools.safe_get.return_value = None
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.get_volume_stats)
+
+    def test_get_volume_stats_max_over_subscription_ratio(self):
+        result = self.driver.get_volume_stats()
+        # check the defaults defined in setUp
+        self.assertEqual(10.0, result['max_over_subscription_ratio'])
+        self.assertTrue(result['thin_provisioning_support'])
+        self.assertFalse(result['thick_provisioning_support'])
 
     @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_volume(self, *mocks):
