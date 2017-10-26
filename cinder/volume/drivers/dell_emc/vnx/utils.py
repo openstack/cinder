@@ -28,6 +28,7 @@ from cinder.objects import fields
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.san.san import san_opts
 from cinder.volume import utils as vol_utils
+from cinder.volume import volume_types
 
 storops = importutils.try_import('storops')
 
@@ -454,7 +455,12 @@ def calc_migrate_and_provision(volume):
 
 
 def get_backend_qos_specs(volume):
-    qos_specs = volume.volume_type.qos_specs
+    type_id = volume.volume_type_id
+    if type_id is None:
+        return None
+
+    # Use the provided interface to avoid permission issue
+    qos_specs = volume_types.get_volume_type_qos_specs(type_id)
     if qos_specs is None:
         return None
 
@@ -463,13 +469,12 @@ def get_backend_qos_specs(volume):
         return None
 
     consumer = qos_specs['consumer']
-    # Front end QoS specs are handled by nova. Just ignore them here.
+    # Front end QoS specs are handled by nova. We ignore them here.
     if consumer not in common.BACKEND_QOS_CONSUMERS:
         return None
 
     max_iops = qos_specs['specs'].get(common.QOS_MAX_IOPS)
     max_bws = qos_specs['specs'].get(common.QOS_MAX_BWS)
-
     if max_iops is None and max_bws is None:
         return None
 

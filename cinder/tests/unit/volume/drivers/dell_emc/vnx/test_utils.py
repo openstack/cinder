@@ -25,6 +25,7 @@ from cinder.tests.unit.volume.drivers.dell_emc.vnx import res_mock
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import utils as ut_utils
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import utils as vnx_utils
+from cinder.volume import volume_types
 
 
 class FakeDriver(object):
@@ -215,25 +216,26 @@ class TestUtils(test.TestCase):
     @ut_utils.patch_extra_specs({})
     @res_mock.mock_driver_input
     def test_get_backend_qos_specs(self, cinder_input):
-        volume = mock.Mock()
-        volume.volume_type.qos_specs = mock.Mock()
-        volume.volume_type.qos_specs.__getitem__ = mock.Mock(return_value=None)
-        r = vnx_utils.get_backend_qos_specs(volume)
-        self.assertIsNone(r)
+        volume = cinder_input['volume']
+        with mock.patch.object(volume_types, 'get_volume_type_qos_specs',
+                               return_value={'qos_specs': None}):
+            r = vnx_utils.get_backend_qos_specs(volume)
+            self.assertIsNone(r)
 
-        volume.volume_type.qos_specs.__getitem__ = mock.Mock(
-            return_value={'consumer': 'frontend'})
-        r = vnx_utils.get_backend_qos_specs(volume)
-        self.assertIsNone(r)
+        with mock.patch.object(volume_types, 'get_volume_type_qos_specs',
+                               return_value={
+                'qos_specs': {'consumer': 'frontend'}}):
+            r = vnx_utils.get_backend_qos_specs(volume)
+            self.assertIsNone(r)
 
-        volume.volume_type.qos_specs.__getitem__ = mock.Mock(
-            return_value={'id': 'test', 'consumer': 'back-end',
-                          'specs': {common.QOS_MAX_BWS: 100,
-                                    common.QOS_MAX_IOPS: 10}})
-        r = vnx_utils.get_backend_qos_specs(volume)
-        self.assertIsNotNone(r)
-        self.assertEqual(100, r[common.QOS_MAX_BWS])
-        self.assertEqual(10, r[common.QOS_MAX_IOPS])
+        with mock.patch.object(volume_types, 'get_volume_type_qos_specs',
+                               return_value={
+                'qos_specs': {'id': 'test', 'consumer': 'back-end', 'specs': {
+                    common.QOS_MAX_BWS: 100, common.QOS_MAX_IOPS: 10}}}):
+            r = vnx_utils.get_backend_qos_specs(volume)
+            self.assertIsNotNone(r)
+            self.assertEqual(100, r[common.QOS_MAX_BWS])
+            self.assertEqual(10, r[common.QOS_MAX_IOPS])
 
     @ut_utils.patch_group_specs({
         'consistent_group_replication_enabled': '<is> True'})
