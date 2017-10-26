@@ -10,6 +10,7 @@ Cinder Service Configuration
    block-storage/backup-drivers.rst
    block-storage/schedulers.rst
    block-storage/logs.rst
+   block-storage/policy.rst
    block-storage/fc-zoning.rst
    block-storage/nested-quota.rst
    block-storage/volume-encryption.rst

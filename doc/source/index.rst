@@ -63,6 +63,8 @@ Configuration Reference
 
     Sample Configuration File <sample_config>
 
+    Sample Policy File <sample_policy>
+
     drivers
 
 CLI Reference

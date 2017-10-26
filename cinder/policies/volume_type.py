@@ -27,7 +27,7 @@ volume_type_policies = [
     policy.DocumentedRuleDefault(
         name=MANAGE_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="""Create, update and delete volume type.""",
+        description="Create, update and delete volume type.",
         operations=[
             {
                 'method': 'POST',
@@ -45,8 +45,8 @@ volume_type_policies = [
     policy.DocumentedRuleDefault(
         name=ENCRYPTION_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="""List, show, create, update and delete volume
-type encryption.""",
+        description="List, show, create, update and delete volume "
+                    "type encryption.",
         operations=[
             {
                 'method': 'POST',
@@ -72,8 +72,8 @@ type encryption.""",
     policy.DocumentedRuleDefault(
         name=EXTRA_SPEC_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="""List or show volume type with access type extra
-specs attribute.""",
+        description="List or show volume type with access type extra "
+                    "specs attribute.",
         operations=[
             {
                 'method': 'GET',
@@ -87,8 +87,8 @@ specs attribute.""",
     policy.DocumentedRuleDefault(
         name=QOS_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="""List or show volume type with access type qos specs
-id attribute.""",
+        description="List or show volume type with access type qos specs "
+                    "id attribute.",
         operations=[
             {
                 'method': 'GET',

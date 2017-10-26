@@ -27,7 +27,7 @@ clusters_policies = [
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="""List clusters.""",
+        description="List clusters.",
         operations=[
             {
                 'method': 'GET',
@@ -41,7 +41,7 @@ clusters_policies = [
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="""Show cluster.""",
+        description="Show cluster.",
         operations=[
             {
                 'method': 'GET',
@@ -51,7 +51,7 @@ clusters_policies = [
     policy.DocumentedRuleDefault(
         name=UPDATE_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="""Update cluster.""",
+        description="Update cluster.",
         operations=[
             {
                 'method': 'PUT',

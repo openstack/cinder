@@ -27,7 +27,7 @@ messages_policies = [
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
         check_str=base.RULE_ADMIN_OR_OWNER,
-        description="""List messages.""",
+        description="List messages.",
         operations=[
             {
                 'method': 'GET',
@@ -37,7 +37,7 @@ messages_policies = [
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
         check_str=base.RULE_ADMIN_OR_OWNER,
-        description="""Show message.""",
+        description="Show message.",
         operations=[
             {
                 'method': 'GET',
@@ -47,7 +47,7 @@ messages_policies = [
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
         check_str=base.RULE_ADMIN_OR_OWNER,
-        description="""Delete message.""",
+        description="Delete message.",
         operations=[
             {
                 'method': 'DELETE',
