@@ -118,9 +118,9 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         found_group = self._poll_group_while(created_group_id, ['deleting'])
 
         # Should be gone
-        self.assertFalse(found_group_snapshot)
-        self.assertFalse(found_volume)
-        self.assertFalse(found_group)
+        self.assertIsNone(found_group_snapshot)
+        self.assertIsNone(found_volume)
+        self.assertIsNone(found_group)
 
     def test_create_group_from_group_snapshot(self):
         """Creates a group from a group snapshot."""
@@ -218,10 +218,10 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         found_group = self._poll_group_while(created_group_id, ['deleting'])
 
         # Should be gone
-        self.assertFalse(found_group_from_snap)
-        self.assertFalse(found_group_snapshot)
-        self.assertFalse(found_volume)
-        self.assertFalse(found_group)
+        self.assertIsNone(found_group_from_snap)
+        self.assertIsNone(found_group_snapshot)
+        self.assertIsNone(found_volume)
+        self.assertIsNone(found_group)
 
     def test_create_group_from_source_group(self):
         """Creates a group from a source group."""
@@ -298,9 +298,9 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         found_group = self._poll_group_while(created_group_id, ['deleting'])
 
         # Should be gone
-        self.assertFalse(found_group_from_group)
-        self.assertFalse(found_volume)
-        self.assertFalse(found_group)
+        self.assertIsNone(found_group_from_group)
+        self.assertIsNone(found_volume)
+        self.assertIsNone(found_group)
 
     def test_reset_group_snapshot(self):
         # Create group
@@ -352,6 +352,6 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         found_group = self._poll_group_while(group_id, ['deleting'])
 
         # Created resources should be gone
-        self.assertFalse(found_group_snapshot)
-        self.assertFalse(found_volume)
-        self.assertFalse(found_group)
+        self.assertIsNone(found_group_snapshot)
+        self.assertIsNone(found_volume)
+        self.assertIsNone(found_group)

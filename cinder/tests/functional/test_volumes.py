@@ -75,7 +75,7 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
         found_volume = self._poll_volume_while(created_volume_id, ['deleting'])
 
         # Should be gone
-        self.assertFalse(found_volume)
+        self.assertIsNone(found_volume)
 
     def test_create_volume_with_metadata(self):
         """Creates a volume with metadata."""
