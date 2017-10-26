@@ -1,6 +1,6 @@
-===================================================
-Dell Storage Center Fibre Channel and iSCSI drivers
-===================================================
+==================================================
+Dell EMC SC Series Fibre Channel and iSCSI drivers
+==================================================
 
 The Dell Storage Center volume driver interacts with configured Storage
 Center arrays.
