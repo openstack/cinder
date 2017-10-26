@@ -1,0 +1,10 @@
+---
+upgrade:
+  - Support for NetApp ONTAP 7 (previously known as "Data ONTAP operating in
+    7mode") has been removed. The NetApp Unified driver can now only be used
+    with NetApp Clustered Data ONTAP and NetApp E-Series storage systems.
+    This removal affects all three storage protocols that were supported on
+    for ONTAP 7 - iSCSI, NFS and FC. Deployers are advised to consult the
+    `migration support <https://mysupport.netapp.com/info/web/ECMP1658253
+    .html>`_ provided to transition from ONTAP 7 to Clustered
+    Data ONTAP operating system.

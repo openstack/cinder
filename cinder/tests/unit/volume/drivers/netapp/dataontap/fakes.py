@@ -311,23 +311,6 @@ FAKE_CMODE_POOL_MAP = {
     },
 }
 
-FAKE_7MODE_VOLUME = {
-    'all': [
-        netapp_api.NaElement(
-            etree.XML("""<volume-info xmlns="http://www.netapp.com/filer/admin">
-            <name>open123</name>
-            </volume-info>""")),
-        netapp_api.NaElement(
-            etree.XML("""<volume-info xmlns="http://www.netapp.com/filer/admin">
-            <name>mixed3</name>
-            </volume-info>""")),
-        netapp_api.NaElement(
-            etree.XML("""<volume-info xmlns="http://www.netapp.com/filer/admin">
-            <name>open1234</name>
-            </volume-info>"""))
-    ],
-}
-
 FILE_LIST = ['file1', 'file2', 'file3']
 
 FAKE_LUN = netapp_api.NaElement.create_node_with_children(
@@ -354,35 +337,6 @@ FAKE_LUN = netapp_api.NaElement.create_node_with_children(
        'uuid': 'cec1f3d7-3d41-11e2-9cf4-123478563412',
        'volume': 'fakeLUN',
        'vserver': 'fake_vserver'})
-
-FAKE_7MODE_VOL1 = [netapp_api.NaElement(
-    etree.XML("""<volume-info xmlns="http://www.netapp.com/filer/admin">
-    <name>open123</name>
-    <state>online</state>
-    <size-total>0</size-total>
-    <size-used>0</size-used>
-    <size-available>0</size-available>
-    <is-inconsistent>false</is-inconsistent>
-    <is-invalid>false</is-invalid>
-    </volume-info>"""))]
-
-FAKE_7MODE_POOLS = [
-    {
-        'pool_name': 'open123',
-        'consistencygroup_support': True,
-        'QoS_support': False,
-        'reserved_percentage': 0,
-        'total_capacity_gb': 0.0,
-        'free_capacity_gb': 0.0,
-        'max_over_subscription_ratio': 20.0,
-        'multiattach': False,
-        'thin_provisioning_support': False,
-        'thick_provisioning_support': True,
-        'utilization': 30.0,
-        'filter_function': 'filter',
-        'goodness_function': 'goodness',
-    }
-]
 
 CG_VOLUME_NAME = 'fake_cg_volume'
 CG_GROUP_NAME = 'fake_consistency_group'

@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Volume driver for NetApp Data ONTAP (C-mode) FibreChannel storage systems.
+Volume driver for NetApp Data ONTAP FibreChannel storage systems.
 """
 
 from cinder import interface

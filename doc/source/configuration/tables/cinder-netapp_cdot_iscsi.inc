@@ -24,8 +24,6 @@
      - (String) This option defines the type of operating system that will access a LUN exported from Data ONTAP; it is assigned to the LUN at the time it is created.
    * - ``netapp_lun_space_reservation`` = ``enabled``
      - (String) This option determines if storage space is reserved for LUN allocation. If enabled, LUNs are thick provisioned. If space reservation is disabled, storage space is allocated on demand.
-   * - ``netapp_partner_backend_name`` = ``None``
-     - (String) The name of the config.conf stanza for a Data ONTAP (7-mode) HA partner. This option is only used by the driver when connecting to an instance with a storage family of Data ONTAP operating in 7-Mode, and it is required if the storage protocol selected is FC.
    * - ``netapp_password`` = ``None``
      - (String) Password for the administrative user account specified in the netapp_login option.
    * - ``netapp_pool_name_search_pattern`` = ``(.+)``
@@ -41,7 +39,7 @@
    * - ``netapp_snapmirror_quiesce_timeout`` = ``3600``
      - (Integer) The maximum time in seconds to wait for existing SnapMirror transfers to complete before aborting during a failover.
    * - ``netapp_storage_family`` = ``ontap_cluster``
-     - (String) The storage family type used on the storage system; valid values are ontap_7mode for using Data ONTAP operating in 7-Mode, ontap_cluster for using clustered Data ONTAP, or eseries for using E-Series.
+     - (String) The storage family type used on the storage system; valid values are ontap_cluster for using clustered Data ONTAP, or eseries for using E-Series.
    * - ``netapp_storage_protocol`` = ``None``
      - (String) The storage protocol to be used on the data path with the storage system.
    * - ``netapp_transport_type`` = ``http``
