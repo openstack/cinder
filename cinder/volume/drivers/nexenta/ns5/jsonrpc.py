@@ -76,6 +76,7 @@ class RESTCaller(object):
         data = None
         if len(args) > 1:
             kwargs['json'] = args[1]
+            data = args[1]
 
         LOG.debug('Issuing call to NS: %s %s, data: %s',
                   url, self.__method, data)
@@ -93,8 +94,7 @@ class RESTCaller(object):
         try:
             check_error(response)
         except exception.NexentaException as exc:
-            if (exc.kwargs['message']['source'] == 'zpool' and
-                    exc.kwargs['message']['code'] == 'ENOENT'):
+            if exc.kwargs['message']['code'] == 'ENOENT':
                 self.handle_failover()
                 url = self.get_full_url(args[0])
                 LOG.debug('NexentaException call to NS: %s %s, data: %s',
@@ -117,7 +117,19 @@ class RESTCaller(object):
                 time.sleep(1)
                 response = self.__proxy.session.get(
                     url, verify=self.__proxy.verify)
-                check_error(response)
+                try:
+                    check_error(response)
+                except exception.NexentaException as exc:
+                    if exc.kwargs['message']['code'] == 'ENOENT':
+                        self.handle_failover()
+                        url = self.get_full_url(args[0])
+                        LOG.debug(
+                            'NexentaException call to NS: %s %s, data: %s',
+                            url, self.__method, data)
+                        response = getattr(
+                            self.__proxy.session, self.__method)(url, **kwargs)
+                    else:
+                        raise
                 LOG.debug("Got response: %(code)s %(reason)s", {
                     'code': response.status_code,
                     'reason': response.reason})
@@ -140,11 +152,12 @@ class RESTCaller(object):
 
 class HTTPSAuth(requests.auth.AuthBase):
 
-    def __init__(self, url, username, password):
+    def __init__(self, url, username, password, verify):
         self.url = url
         self.username = username
         self.password = password
         self.token = None
+        self.verify = verify
 
     def __eq__(self, other):
         return all([
@@ -185,11 +198,11 @@ class HTTPSAuth(requests.auth.AuthBase):
         return r
 
     def https_auth(self):
-        LOG.debug('Sending auth request to %s.' % self.url)
+        LOG.debug('Sending auth request to %s.', self.url)
         url = '/'.join((self.url, 'auth/login'))
         headers = {'Content-Type': 'application/json'}
         data = {'username': self.username, 'password': self.password}
-        response = requests.post(url, json=data, verify=self.__proxy.verify,
+        response = requests.post(url, json=data, verify=self.verify,
                                  headers=headers, timeout=TIMEOUT)
         content = json.loads(response.content) if response.content else None
         LOG.debug("NS auth response: %(code)s %(reason)s %(content)s", {
@@ -223,7 +236,7 @@ class NexentaJSONProxy(object):
         if use_https:
             self.scheme = 'https'
             self.port = port if port else 8443
-            self.session.auth = HTTPSAuth(self.url, user, password)
+            self.session.auth = HTTPSAuth(self.url, user, password, verify)
         else:
             self.scheme = 'http'
             self.port = port if port else 8080

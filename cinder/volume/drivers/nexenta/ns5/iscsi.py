@@ -23,26 +23,24 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
-from cinder.volume.drivers.nexenta.ns5 import zfs_garbage_collector
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 import uuid
 
-VERSION = '1.2.0'
+VERSION = '1.2.1'
 LOG = logging.getLogger(__name__)
-TARGET_GROUP_PREFIX = 'cinder-tg-'
 
 
-class NexentaISCSIDriver(driver.ISCSIDriver,
-                         zfs_garbage_collector.ZFSGarbageCollectorMixIn):
+class NexentaISCSIDriver(driver.ISCSIDriver):
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
-        1.2.0 - Failover support.
+        1.0.0 - Initial driver version.
         1.1.0 - Added HTTPS support.
                 Added use of sessions for REST calls.
                 Added abandoned volumes and snapshots cleanup.
-        1.0.0 - Initial driver version.
+        1.2.0 - Failover support.
+        1.2.1 - Configurable luns per parget, target prefix.
     """
 
     VERSION = VERSION
@@ -52,11 +50,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
 
     def __init__(self, *args, **kwargs):
         super(NexentaISCSIDriver, self).__init__(*args, **kwargs)
-        zfs_garbage_collector.ZFSGarbageCollectorMixIn.__init__(self)
         self.nef = None
         # mapping of targets and groups. Groups are the keys
         self.targets = {}
-        # list of volumes in target group. Groups are the keys
+        # list of volumes mapped to target group. Groups are the keys
         self.volumes = {}
         if self.configuration:
             self.configuration.append_config_values(
@@ -68,6 +65,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
             self.configuration.append_config_values(
                 options.NEXENTA_RRMGR_OPTS)
         self.verify_ssl = self.configuration.driver_ssl_cert_verify
+        self.target_prefix = self.configuration.nexenta_target_prefix
         self.use_https = self.configuration.nexenta_use_https
         self.nef_host = self.configuration.nexenta_rest_address
         self.iscsi_host = self.configuration.nexenta_host
@@ -98,9 +96,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         self.nef = jsonrpc.NexentaJSONProxy(
             host, self.nef_port, self.nef_user,
             self.nef_password, self.use_https, self.verify_ssl)
-        url = 'storage/pools/%s/volumeGroups' % self.storage_pool
+        url = 'storage/volumeGroups'
         data = {
-            'name': self.volume_group,
+            'path': '/'.join([self.storage_pool, self.volume_group]),
             'volumeBlockSize': (
                 self.configuration.nexenta_ns5_blocksize * units.Ki)
         }
@@ -115,22 +113,22 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         self._fetch_volumes()
 
     def _fetch_volumes(self):
-        url = 'san/iscsi/targets?fields=alias,name&limit=50000'
+        url = 'san/iscsi/targets?fields=name'
         for target in self.nef.get(url)['data']:
-            tg_name = target['alias']
-            if tg_name.startswith(TARGET_GROUP_PREFIX):
+            if target['name'].startswith(self.target_prefix):
+                tg_name = target['name'].split(':')[-1]
                 self.targets[tg_name] = target['name']
                 self._fill_volumes(tg_name)
 
     def check_for_setup_error(self):
-        """Verify that the zfs volumes exist.
+        """Verify that the zfs pool, vg and iscsi service exists.
 
         :raise: :py:exc:`LookupError`
         """
-        url = 'storage/pools/%(pool)s/volumeGroups/%(group)s' % {
-            'pool': self.storage_pool,
-            'group': self.volume_group,
-        }
+        url = 'storage/pools/%s' % self.storage_pool
+        self.nef.get(url)
+        url = 'storage/volumeGroups/%s' % '%2F'.join([
+            self.storage_pool, self.volume_group])
         try:
             self.nef.get(url)
         except exception.NexentaException:
@@ -151,12 +149,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         :param volume: volume reference
         :return: model update dict for volume reference
         """
-        url = 'storage/pools/%(pool)s/volumeGroups/%(group)s/volumes' % {
-            'pool': self.storage_pool,
-            'group': self.volume_group,
-        }
+        url = 'storage/volumes'
+        path = '/'.join([self.storage_pool, self.volume_group, volume['name']])
         data = {
-            'name': volume['name'],
+            'path': path,
             'volumeSize': volume['size'] * units.Gi,
             'volumeBlockSize': (
                 self.configuration.nexenta_ns5_blocksize * units.Ki),
@@ -169,22 +165,35 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
 
         :param volume: volume reference
         """
-
-        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s'
-               '/volumes/%(name)s') % {
-            'pool': self.storage_pool,
-            'group': self.volume_group,
-            'name': volume['name']
-        }
-        field = 'originalSnapshot'
-        origin = self.nef.get('{}?fields={}'.format(url, field)).get(field)
+        path = '%2F'.join([
+            self.storage_pool, self.volume_group, volume['name']])
+        url = 'storage/volumes/%s' % path
+        origin = self.nef.get(url).get('originalSnapshot')
         try:
+            url = 'storage/volumes/%s?snapshots=true' % path
             self.nef.delete(url)
         except exception.NexentaException as exc:
-            vol_path = self._get_volume_path(volume)
-            self.destroy_later_or_raise(exc, vol_path)
-            return
-        self.collect_zfs_garbage(origin)
+            if 'Failed to destroy snap' in exc.kwargs['message']['message']:
+                url = 'storage/snapshots?parent=%s' % path
+                snap_map = {}
+                for snap in self.nef.get(url)['data']:
+                    url = 'storage/snapshots/%s' % (
+                        snap['path'].replace('/', '%2F'))
+                    data = self.nef.get(url)
+                    if data['clones']:
+                        snap_map[data['creationTxg']] = snap['path']
+                snap = snap_map[max(snap_map)]
+                url = 'storage/snapshots/%s' % snap.replace('/', '%2F')
+                clone = self.nef.get(url)['clones'][0]
+                url = 'storage/volumes/%s/promote' % clone.replace('/', '%2F')
+                self.nef.post(url)
+                url = 'storage/volumes/%s?snapshots=true' % path
+                self.nef.delete(url)
+            else:
+                raise
+        if origin and 'clone' in origin:
+            url = 'storage/snapshots/%s' % origin.replace('/', '%2F')
+            self.nef.delete(url)
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
@@ -194,12 +203,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         """
         LOG.info('Extending volume: %(id)s New size: %(size)s GB',
                  {'id': volume['id'], 'size': new_size})
-        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s/'
-               'volumes/%(name)s') % {
-            'pool': self.storage_pool,
-            'group': self.volume_group,
-            'name': volume['name']
-        }
+        path = '%2F'.join([
+            self.storage_pool, self.volume_group, volume['name']])
+        url = 'storage/volumes/%s' % path
+
         self.nef.put(url, {'volumeSize': new_size * units.Gi})
 
     def create_snapshot(self, snapshot):
@@ -213,14 +220,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
             'vol': snapshot_vol['name']
         })
         volume_path = self._get_volume_path(snapshot_vol)
-        pool, group, volume = volume_path.split('/')
-        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s/'
-               'volumes/%(volume)s/snapshots') % {
-            'pool': pool,
-            'group': group,
-            'volume': snapshot_vol['name']
-        }
-        self.nef.post(url, {'name': snapshot['name']})
+        url = 'storage/snapshots'
+        data = {'path': '%s@%s' % (volume_path, snapshot['name'])}
+        self.nef.post(url, data)
 
     def delete_snapshot(self, snapshot):
         """Delete volume's snapshot on appliance.
@@ -231,20 +233,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         snapshot_vol = self._get_snapshot_volume(snapshot)
         volume_path = self._get_volume_path(snapshot_vol)
         pool, group, volume = volume_path.split('/')
-        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s/'
-               'volumes/%(volume)s/snapshots/%(snapshot)s') % {
-            'pool': pool,
-            'group': group,
-            'volume': volume,
-            'snapshot': snapshot['name']
-        }
+        path = '%2F'.join([self.storage_pool, self.volume_group, volume])
+        url = 'storage/snapshots/%s@%s' % (path, snapshot['name'])
         try:
             self.nef.delete(url)
-        except exception.NexentaException as exc:
-            self.destroy_later_or_raise(
-                exc, '@'.join((volume_path, snapshot['name'])))
+        except exception.NexentaException:
             return
-        self.collect_zfs_garbage(volume_path)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create new volume from other's snapshot on appliance.
@@ -254,15 +248,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         """
         LOG.info('Creating volume from snapshot: %s', snapshot['name'])
         snapshot_vol = self._get_snapshot_volume(snapshot)
-        volume_path = self._get_volume_path(snapshot_vol)
-        pool, group, snapshot_vol = volume_path.split('/')
-        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s/'
-               'volumes/%(volume)s/snapshots/%(snapshot)s/clone') % {
-            'pool': pool,
-            'group': group,
-            'volume': snapshot_vol,
-            'snapshot': snapshot['name']
-        }
+        path = '%2F'.join([
+            self.storage_pool, self.volume_group, snapshot_vol['name']])
+        url = 'storage/snapshots/%s@%s/clone' % (path, snapshot['name'])
         self.nef.post(url, {'targetPath': self._get_volume_path(volume)})
         if (('size' in volume) and (
                 volume['size'] > snapshot['volume_size'])):
@@ -283,8 +271,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         self.create_snapshot(snapshot)
         try:
             self.create_volume_from_snapshot(volume, snapshot)
-            self.mark_as_garbage('@'.join(
-                (self._get_volume_path(src_vref), snapshot['name'])))
         except exception.NexentaException:
             LOG.error('Volume creation failed, deleting created snapshot '
                       '%s', '@'.join([snapshot['volume_name'],
@@ -355,11 +341,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         """Retrieve stats info for NexentaStor appliance."""
         LOG.debug('Updating volume stats')
 
-        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s'
-               '?fields=bytesAvailable,bytesUsed') % {
-            'pool': self.storage_pool,
-            'group': self.volume_group,
-        }
+        url = 'storage/volumeGroups/%s?fields=bytesAvailable,bytesUsed' % (
+            '%2F'.join([self.storage_pool, self.volume_group]))
         stats = self.nef.get(url)
         total_amount = utils.str2gib_size(stats['bytesAvailable'])
         free_amount = utils.str2gib_size(
@@ -378,6 +361,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
             'description': self.dataset_description,
             'driver_version': self.VERSION,
             'storage_protocol': 'iSCSI',
+            'sparsed_volumes': self.configuration.nexenta_sparse,
             'total_capacity_gb': total_amount,
             'free_capacity_gb': free_amount,
             'reserved_percentage': self.configuration.reserved_percentage,
@@ -411,6 +395,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         :param volume: reference of volume to be exported
         """
         volume_path = self._get_volume_path(volume)
+        lpt = self.configuration.nexenta_luns_per_target
 
         # Find out whether the volume is exported
         vol_map_url = 'san/lunMappings?volume={}&fields=lun'.format(
@@ -422,30 +407,25 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
             # Choose the best target group among existing ones
             tg_name = None
             for tg in self.volumes.keys():
-                if len(self.volumes[tg]) < 20:
+                if len(self.volumes[tg]) < lpt:
                     tg_name = tg
                     break
             if tg_name:
                 target_name = self.targets[tg_name]
             else:
-                tg_name = TARGET_GROUP_PREFIX + uuid.uuid4().hex
-
                 # Create new target
+                target_name = self.target_prefix + uuid.uuid4().hex
                 url = 'san/iscsi/targets'
                 portal = self.iscsi_host
                 data = {
                     "portals": [
                         {"address": portal}
                     ],
-                    'alias': tg_name
+                    'name': target_name
                 }
                 self.nef.post(url, data)
-
-                # Get the name of just created target
-                data = self.nef.get(url + '?fields=name&alias={}'.format(
-                    tg_name))['data']
-                target_name = data[0]['name']
-
+                # Create new TG with corresponding name
+                tg_name = target_name.split(':')[-1]
                 self._create_target_group(tg_name, target_name)
 
                 self.targets[tg_name] = target_name
@@ -472,14 +452,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
             # Get LUN of just created volume
             data = self.nef.get(vol_map_url).get('data')
             counter = 0
-            while not data and counter < 20:
+            while not data and counter < lpt:
                 greenthread.sleep(1)
                 counter += 1
                 data = self.nef.get(vol_map_url).get('data')
             lun = data[0]['lun']
 
-            # host = self.vip.split(',')[0] if self.vip else self.nef_host
-            # LOG.warning(host)
             provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
                 'host': self.iscsi_host,
                 'port': self.configuration.nexenta_iscsi_target_portal_port,
