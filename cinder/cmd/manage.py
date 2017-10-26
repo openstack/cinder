@@ -223,7 +223,7 @@ class DbCommands(object):
             sys.exit(1)
         try:
             return db_migration.db_sync(version)
-        except db_exc.DbMigrationError as ex:
+        except db_exc.DBMigrationError as ex:
             print("Error during database migration: %s" % ex)
             sys.exit(1)
 
