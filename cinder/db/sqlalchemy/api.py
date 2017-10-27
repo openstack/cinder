@@ -598,6 +598,40 @@ def service_uuids_online_data_migration(context, max_count):
     return total, updated
 
 
+@require_admin_context
+def backup_service_online_migration(context, max_count):
+    name_rules = {'cinder.backup.drivers.swift':
+                  'cinder.backup.drivers.swift.SwiftBackupDriver',
+                  'cinder.backup.drivers.ceph':
+                  'cinder.backup.drivers.ceph.CephBackupDriver',
+                  'cinder.backup.drivers.glusterfs':
+                  'cinder.backup.drivers.glusterfs.GlusterfsBackupDriver',
+                  'cinder.backup.drivers.google':
+                  'cinder.backup.drivers.google.GoogleBackupDriver',
+                  'cinder.backup.drivers.nfs':
+                  'cinder.backup.drivers.nfs.NFSBackupDriver',
+                  'cinder.backup.drivers.tsm':
+                  'cinder.backup.drivers.tsm.TSMBackupDriver',
+                  'cinder.backup.drivers.posix':
+                  'cinder.backup.drivers.posix.PosixBackupDriver'}
+    total = 0
+    updated = 0
+    session = get_session()
+    with session.begin():
+        total = model_query(
+            context, models.Backup, session=session).filter(
+            models.Backup.service.in_(name_rules.keys())).count()
+        backups = (model_query(
+            context, models.Backup, session=session).filter(
+            models.Backup.service.in_(
+                name_rules.keys())).limit(max_count)).all()
+        if len(backups):
+            for backup in backups:
+                updated += 1
+                backup.service = name_rules[backup.service]
+
+    return total, updated
+
 ###################
 
 

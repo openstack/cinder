@@ -208,6 +208,7 @@ class DbCommands(object):
     online_migrations = (
         # Added in Queens
         db.service_uuids_online_data_migration,
+        db.backup_service_online_migration,
     )
 
     def __init__(self):

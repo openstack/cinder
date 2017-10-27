@@ -1122,11 +1122,14 @@ class BackupTestCase(BaseBackupTest):
         backup.save()
         self.backup_mgr.delete_backup(self.ctxt, backup)
 
-    def test_delete_backup(self):
+    @ddt.data('cinder.tests.unit.backup.fake_service.FakeBackupService',
+              'cinder.tests.unit.backup.fake_service')
+    def test_delete_backup(self, service):
         """Test normal backup deletion."""
         vol_id = self._create_volume_db_entry(size=1)
         backup = self._create_backup_db_entry(
-            status=fields.BackupStatus.DELETING, volume_id=vol_id)
+            status=fields.BackupStatus.DELETING, volume_id=vol_id,
+            service=service)
         self.backup_mgr.delete_backup(self.ctxt, backup)
         self.assertRaises(exception.BackupNotFound,
                           db.backup_get,
@@ -1242,16 +1245,19 @@ class BackupTestCase(BaseBackupTest):
                           self.ctxt,
                           backup)
 
-    def test_export_record(self):
+    @ddt.data('cinder.tests.unit.backup.fake_service.FakeBackupService',
+              'cinder.tests.unit.backup.fake_service')
+    def test_export_record(self, service):
         """Test normal backup record export."""
         vol_size = 1
         vol_id = self._create_volume_db_entry(status='available',
                                               size=vol_size)
         backup = self._create_backup_db_entry(
-            status=fields.BackupStatus.AVAILABLE, volume_id=vol_id)
+            status=fields.BackupStatus.AVAILABLE, volume_id=vol_id,
+            service=service)
 
         export = self.backup_mgr.export_record(self.ctxt, backup)
-        self.assertEqual(CONF.backup_driver, export['backup_service'])
+        self.assertEqual(service, export['backup_service'])
         self.assertIn('backup_url', export)
 
     def test_import_record_with_verify_not_implemented(self):
