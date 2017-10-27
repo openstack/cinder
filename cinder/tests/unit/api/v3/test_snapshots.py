@@ -34,7 +34,7 @@ UUID = '00000000-0000-0000-0000-000000000001'
 INVALID_UUID = '00000000-0000-0000-0000-000000000002'
 
 
-def stub_get(self, context, *args, **kwargs):
+def fake_get(self, context, *args, **kwargs):
     vol = {'id': fake.VOLUME_ID,
            'size': 100,
            'name': 'fake',
@@ -64,7 +64,7 @@ def create_snapshot_query_with_metadata(metadata_query_string,
 class SnapshotApiTest(test.TestCase):
     def setUp(self):
         super(SnapshotApiTest, self).setUp()
-        self.stubs.Set(volume.api.API, 'get', stub_get)
+        self.mock_object(volume.api.API, 'get', fake_get)
         self.controller = snapshots.SnapshotsController()
         self.ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 

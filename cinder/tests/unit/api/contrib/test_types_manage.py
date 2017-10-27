@@ -36,7 +36,7 @@ UPDATE_NAME_AFTER_DELETE_TYPE = fake.VOLUME_TYPE5_ID
 NOT_FOUND_VOLUME_TYPE = fake.WILL_NOT_BE_FOUND_ID
 
 
-def stub_volume_type(id):
+def fake_volume_type(id):
     specs = {"key1": "value1",
              "key2": "value2",
              "key3": "value3",
@@ -48,7 +48,7 @@ def stub_volume_type(id):
                 extra_specs=specs)
 
 
-def stub_volume_type_updated(id, is_public=True):
+def fake_volume_type_updated(id, is_public=True):
     return dict(id=id,
                 name='vol_type_%s_%s' % (six.text_type(id), six.text_type(id)),
                 is_public=is_public,
@@ -56,7 +56,7 @@ def stub_volume_type_updated(id, is_public=True):
                     six.text_type(id), six.text_type(id)))
 
 
-def stub_volume_type_updated_desc_only(id):
+def fake_volume_type_updated_desc_only(id):
     return dict(id=id,
                 name='vol_type_%s' % six.text_type(id),
                 description='vol_type_desc_%s_%s' % (
@@ -66,7 +66,7 @@ def stub_volume_type_updated_desc_only(id):
 def return_volume_types_get_volume_type(context, id):
     if id == fake.WILL_NOT_BE_FOUND_ID:
         raise exception.VolumeTypeNotFound(volume_type_id=id)
-    return stub_volume_type(id)
+    return fake_volume_type(id)
 
 
 def return_volume_types_destroy(context, name):
@@ -97,13 +97,13 @@ def return_volume_types_create_duplicate_type(context,
     raise exception.VolumeTypeExists(id=name)
 
 
-def stub_volume_type_updated_name_only(id):
+def fake_volume_type_updated_name_only(id):
     return dict(id=id,
                 name='vol_type_%s_%s' % (six.text_type(id), six.text_type(id)),
                 description='vol_type_desc_%s' % six.text_type(id))
 
 
-def stub_volume_type_updated_name_after_delete(id):
+def fake_volume_type_updated_name_after_delete(id):
     return dict(id=id,
                 name='vol_type_%s' % six.text_type(id),
                 description='vol_type_desc_%s' % six.text_type(id))
@@ -113,24 +113,24 @@ def return_volume_types_get_volume_type_updated(id, is_public=True):
     if id == NOT_FOUND_VOLUME_TYPE:
         raise exception.VolumeTypeNotFound(volume_type_id=id)
     if id == UPDATE_DESC_ONLY_TYPE:
-        return stub_volume_type_updated_desc_only(id)
+        return fake_volume_type_updated_desc_only(id)
     if id == UPDATE_NAME_ONLY_TYPE:
-        return stub_volume_type_updated_name_only(id)
+        return fake_volume_type_updated_name_only(id)
     if id == UPDATE_NAME_AFTER_DELETE_TYPE:
-        return stub_volume_type_updated_name_after_delete(id)
+        return fake_volume_type_updated_name_after_delete(id)
 
     # anything else
-    return stub_volume_type_updated(id, is_public=is_public)
+    return fake_volume_type_updated(id, is_public=is_public)
 
 
 def return_volume_types_get_by_name(context, name):
     if name == NOT_FOUND_VOLUME_TYPE:
         raise exception.VolumeTypeNotFoundByName(volume_type_name=name)
-    return stub_volume_type(name.split("_")[2])
+    return fake_volume_type(name.split("_")[2])
 
 
 def return_volume_types_get_default():
-    return stub_volume_type(DEFAULT_VOLUME_TYPE)
+    return fake_volume_type(DEFAULT_VOLUME_TYPE)
 
 
 def return_volume_types_get_default_not_found():
@@ -146,10 +146,10 @@ class VolumeTypesManageApiTest(test.TestCase):
         """to reset notifier drivers left over from other api/contrib tests"""
 
     def test_volume_types_delete(self):
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type)
-        self.stubs.Set(volume_types, 'destroy',
-                       return_volume_types_destroy)
+        self.mock_object(volume_types, 'get_volume_type',
+                         return_volume_types_get_volume_type)
+        self.mock_object(volume_types, 'destroy',
+                         return_volume_types_destroy)
 
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s' % (
             fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
@@ -158,10 +158,10 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.assertEqual(1, len(self.notifier.notifications))
 
     def test_volume_types_delete_not_found(self):
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type)
-        self.stubs.Set(volume_types, 'destroy',
-                       return_volume_types_destroy)
+        self.mock_object(volume_types, 'get_volume_type',
+                         return_volume_types_get_volume_type)
+        self.mock_object(volume_types, 'destroy',
+                         return_volume_types_destroy)
 
         self.assertEqual(0, len(self.notifier.notifications))
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s' % (
@@ -171,10 +171,10 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.assertEqual(1, len(self.notifier.notifications))
 
     def test_volume_types_with_volumes_destroy(self):
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type)
-        self.stubs.Set(volume_types, 'destroy',
-                       return_volume_types_with_volumes_destroy)
+        self.mock_object(volume_types, 'get_volume_type',
+                         return_volume_types_get_volume_type)
+        self.mock_object(volume_types, 'destroy',
+                         return_volume_types_with_volumes_destroy)
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s' % (
             fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
         self.assertEqual(0, len(self.notifier.notifications))
@@ -210,10 +210,10 @@ class VolumeTypesManageApiTest(test.TestCase):
                           req, DEFAULT_VOLUME_TYPE)
 
     def test_create(self):
-        self.stubs.Set(volume_types, 'create',
-                       return_volume_types_create)
-        self.stubs.Set(volume_types, 'get_volume_type_by_name',
-                       return_volume_types_get_by_name)
+        self.mock_object(volume_types, 'create',
+                         return_volume_types_create)
+        self.mock_object(volume_types, 'get_volume_type_by_name',
+                         return_volume_types_get_by_name)
 
         body = {"volume_type": {"name": "vol_type_1",
                                 "os-volume-type-access:is_public": True,
@@ -268,10 +268,10 @@ class VolumeTypesManageApiTest(test.TestCase):
                           self.controller._create, req, body)
 
     def test_create_duplicate_type_fail(self):
-        self.stubs.Set(volume_types, 'create',
-                       return_volume_types_create_duplicate_type)
-        self.stubs.Set(volume_types, 'get_volume_type_by_name',
-                       return_volume_types_get_by_name)
+        self.mock_object(volume_types, 'create',
+                         return_volume_types_create_duplicate_type)
+        self.mock_object(volume_types, 'get_volume_type_by_name',
+                         return_volume_types_get_by_name)
 
         body = {"volume_type": {"name": "vol_type_1",
                                 "extra_specs": {"key1": "value1"}}}
@@ -481,7 +481,7 @@ class VolumeTypesManageApiTest(test.TestCase):
     def test_update_db_fail(self, mock_update, mock_get_volume_type):
         mock_update.side_effect = exception.VolumeTypeUpdateFailed(
             id=DEFAULT_VOLUME_TYPE)
-        mock_get_volume_type.return_value = stub_volume_type(
+        mock_get_volume_type.return_value = fake_volume_type(
             DEFAULT_VOLUME_TYPE)
 
         body = {"volume_type": {"name": "vol_type_1_1",
@@ -625,8 +625,8 @@ class VolumeTypesManageApiTest(test.TestCase):
 
         # delete
         self.notifier.reset()
-        self.stubs.Set(volume_types, 'destroy',
-                       return_volume_types_destroy)
+        self.mock_object(volume_types, 'destroy',
+                         return_volume_types_destroy)
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s' % (
             fake.PROJECT_ID, UPDATE_NAME_AFTER_DELETE_TYPE))
         self.assertEqual(0, len(self.notifier.notifications))
