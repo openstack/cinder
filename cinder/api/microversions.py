@@ -127,6 +127,8 @@ BACKUP_METADATA = '3.43'
 
 NEW_ATTACH_COMPLETION = '3.44'
 
+SUPPORT_COUNT_INFO = '3.45'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.

@@ -97,6 +97,11 @@ class VolumeController(volumes_v2.VolumeController):
         sort_keys, sort_dirs = common.get_sort_params(params)
         filters = params
 
+        show_count = False
+        if req_version.matches(mv.SUPPORT_COUNT_INFO):
+            show_count = utils.get_bool_param('with_count', filters)
+            filters.pop('with_count')
+
         self._process_volume_filtering(context=context, filters=filters,
                                        req_version=req_version)
 
@@ -114,9 +119,13 @@ class VolumeController(volumes_v2.VolumeController):
         volumes = self.volume_api.get_all(context, marker, limit,
                                           sort_keys=sort_keys,
                                           sort_dirs=sort_dirs,
-                                          filters=filters,
+                                          filters=filters.copy(),
                                           viewable_admin_meta=True,
                                           offset=offset)
+        total_count = None
+        if show_count:
+            total_count = self.volume_api.calculate_resource_count(
+                context, 'volume', filters)
 
         for volume in volumes:
             utils.add_visible_admin_metadata(volume)
@@ -124,9 +133,11 @@ class VolumeController(volumes_v2.VolumeController):
         req.cache_db_volumes(volumes.objects)
 
         if is_detail:
-            volumes = self._view_builder.detail_list(req, volumes)
+            volumes = self._view_builder.detail_list(
+                req, volumes, total_count)
         else:
-            volumes = self._view_builder.summary_list(req, volumes)
+            volumes = self._view_builder.summary_list(
+                req, volumes, total_count)
         return volumes
 
     @wsgi.Controller.api_version(mv.VOLUME_SUMMARY)

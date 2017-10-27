@@ -107,6 +107,8 @@ REST_API_VERSION_HISTORY = """
              state is intentionally NOT allowed.
     * 3.43 - Support backup CRUD with metadata.
     * 3.44 - Add attachment-complete.
+    * 3.45 - Add ``count`` field to volume, backup and snapshot list and
+             detail APIs.
 """
 
 # The minimum and maximum versions of the API supported
@@ -114,7 +116,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.44"
+_MAX_API_VERSION = "3.45"
 _LEGACY_API_VERSION2 = "2.0"
 UPDATED = "2017-09-19T20:18:14Z"
 

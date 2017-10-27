@@ -59,6 +59,7 @@ Request
    - limit: limit
    - offset: offset
    - marker: marker
+   - with_count: with_count
 
 
 Response Parameters
@@ -77,6 +78,7 @@ Response Parameters
    - size: size
    - id: id
    - metadata: metadata
+   - count: count
 
 Response Example
 ----------------
@@ -164,6 +166,7 @@ Request
    - limit: limit
    - offset: offset
    - marker: marker
+   - with_count: with_count
 
 
 Response Parameters
@@ -180,6 +183,7 @@ Response Parameters
    - metadata: metadata
    - id: id
    - size: size
+   - count: count
 
 Response Example
 ----------------

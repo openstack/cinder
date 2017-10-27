@@ -30,6 +30,7 @@ from cinder import backup as backupAPI
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils
+from cinder import volume as volumeAPI
 
 LOG = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class BackupsController(wsgi.Controller):
 
     def __init__(self):
         self.backup_api = backupAPI.API()
+        self.volume_api = volumeAPI.API()
         super(BackupsController, self).__init__()
 
     def show(self, req, id):
@@ -100,6 +102,10 @@ class BackupsController(wsgi.Controller):
         marker, limit, offset = common.get_pagination_params(filters)
         sort_keys, sort_dirs = common.get_sort_params(filters)
 
+        show_count = False
+        if req_version.matches(mv.SUPPORT_COUNT_INFO):
+            show_count = utils.get_bool_param('with_count', filters)
+            filters.pop('with_count')
         self._convert_sort_name(req_version, sort_keys)
         self._process_backup_filtering(context=context, filters=filters,
                                        req_version=req_version)
@@ -107,7 +113,7 @@ class BackupsController(wsgi.Controller):
         if 'name' in filters:
             filters['display_name'] = filters.pop('name')
 
-        backups = self.backup_api.get_all(context, search_opts=filters,
+        backups = self.backup_api.get_all(context, search_opts=filters.copy(),
                                           marker=marker,
                                           limit=limit,
                                           offset=offset,
@@ -115,12 +121,18 @@ class BackupsController(wsgi.Controller):
                                           sort_dirs=sort_dirs,
                                           )
 
+        total_count = None
+        if show_count:
+            total_count = self.volume_api.calculate_resource_count(
+                context, 'backup', filters)
         req.cache_db_backups(backups.objects)
 
         if is_detail:
-            backups = self._view_builder.detail_list(req, backups.objects)
+            backups = self._view_builder.detail_list(req, backups.objects,
+                                                     total_count)
         else:
-            backups = self._view_builder.summary_list(req, backups.objects)
+            backups = self._view_builder.summary_list(req, backups.objects,
+                                                      total_count)
         return backups
 
     # TODO(frankm): Add some checks here including

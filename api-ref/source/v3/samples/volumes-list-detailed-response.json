@@ -98,5 +98,6 @@
             "created_at": "2015-11-29T02:25:18.000000",
             "volume_type": "lvmdriver-1"
         }
-    ]
+    ],
+    "count": 10
 }

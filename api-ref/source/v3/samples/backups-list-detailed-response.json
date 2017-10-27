@@ -54,5 +54,6 @@
             "is_incremental": true,
             "has_dependent_backups": false
         }
-    ]
+    ],
+    "count": 10
 }

@@ -535,6 +535,15 @@ class API(base.Base):
         LOG.info("Volume info retrieved successfully.", resource=volume)
         return volume
 
+    def calculate_resource_count(self, context, resource_type, filters):
+        filters = filters if filters else {}
+        allTenants = utils.get_bool_param('all_tenants', filters)
+        if context.is_admin and allTenants:
+            del filters['all_tenants']
+        else:
+            filters['project_id'] = context.project_id
+        return db.calculate_resource_count(context, resource_type, filters)
+
     def get_all(self, context, marker=None, limit=None, sort_keys=None,
                 sort_dirs=None, filters=None, viewable_admin_meta=False,
                 offset=None):

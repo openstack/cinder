@@ -398,6 +398,13 @@ vol_type_id_query:
   in: query
   required: true
   type: string
+with_count:
+  description: |
+    Whether to show ``count`` in API response or not, default is ``False``.
+  in: query
+  required: false
+  type: boolean
+  min_version: 3.45
 
 # variables in body
 absolute:
@@ -740,6 +747,13 @@ control_location:
   in: body
   required: false
   type: string
+count:
+  description: |
+    The total count of requested resource before pagination is applied.
+  in: body
+  required: false
+  type: integer
+  min_version: 3.45
 create-from-src:
   description: |
     The create from source action.

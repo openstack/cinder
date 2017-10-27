@@ -17,6 +17,7 @@
 
 import ddt
 import mock
+from oslo_utils import strutils
 import webob
 
 from cinder.api import microversions as mv
@@ -87,6 +88,90 @@ class BackupsControllerAPITestCase(test.TestCase):
         self.assertRaises(exception.NotFound,
                           self.controller.update,
                           req, fake.BACKUP_ID, body)
+
+    def _create_multiple_backups_with_different_project(self):
+        test_utils.create_backup(
+            context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True))
+        test_utils.create_backup(
+            context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True))
+        test_utils.create_backup(
+            context.RequestContext(fake.USER_ID, fake.PROJECT2_ID, True))
+
+    @ddt.data('backups', 'backups/detail')
+    def test_list_backup_with_count_param_version_not_matched(self, action):
+        self._create_multiple_backups_with_different_project()
+
+        is_detail = True if 'detail' in action else False
+        req = fakes.HTTPRequest.blank("/v3/%s?with_count=True" % action)
+        req.headers = mv.get_mv_header(
+            mv.get_prior_version(mv.SUPPORT_COUNT_INFO))
+        req.api_version_request = mv.get_api_version(
+            mv.get_prior_version(mv.SUPPORT_COUNT_INFO))
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req.environ['cinder.context'] = ctxt
+        res_dict = self.controller._get_backups(req, is_detail=is_detail)
+        self.assertNotIn('count', res_dict)
+
+    @ddt.data({'method': 'backups',
+               'display_param': 'True'},
+              {'method': 'backups',
+               'display_param': 'False'},
+              {'method': 'backups',
+               'display_param': '1'},
+              {'method': 'backups/detail',
+               'display_param': 'True'},
+              {'method': 'backups/detail',
+               'display_param': 'False'},
+              {'method': 'backups/detail',
+               'display_param': '1'}
+              )
+    @ddt.unpack
+    def test_list_backups_with_count_param(self, method, display_param):
+        self._create_multiple_backups_with_different_project()
+
+        is_detail = True if 'detail' in method else False
+        show_count = strutils.bool_from_string(display_param, strict=True)
+        # Request with 'with_count' and 'limit'
+        req = fakes.HTTPRequest.blank(
+            "/v3/%s?with_count=%s&limit=1" % (method, display_param))
+        req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
+        req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        req.environ['cinder.context'] = ctxt
+        res_dict = self.controller._get_backups(req, is_detail=is_detail)
+        self.assertEqual(1, len(res_dict['backups']))
+        if show_count:
+            self.assertEqual(2, res_dict['count'])
+        else:
+            self.assertNotIn('count', res_dict)
+
+        # Request with 'with_count'
+        req = fakes.HTTPRequest.blank(
+            "/v3/%s?with_count=%s" % (method, display_param))
+        req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
+        req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        req.environ['cinder.context'] = ctxt
+        res_dict = self.controller._get_backups(req, is_detail=is_detail)
+        self.assertEqual(2, len(res_dict['backups']))
+        if show_count:
+            self.assertEqual(2, res_dict['count'])
+        else:
+            self.assertNotIn('count', res_dict)
+
+        # Request with admin context and 'all_tenants'
+        req = fakes.HTTPRequest.blank(
+            "/v3/%s?with_count=%s&all_tenants=1" % (method, display_param))
+        req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
+        req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req.environ['cinder.context'] = ctxt
+        res_dict = self.controller._get_backups(req, is_detail=is_detail)
+        self.assertEqual(3, len(res_dict['backups']))
+        if show_count:
+            self.assertEqual(3, res_dict['count'])
+        else:
+            self.assertNotIn('count', res_dict)
 
     @ddt.data(mv.get_prior_version(mv.RESOURCE_FILTER),
               mv.RESOURCE_FILTER,

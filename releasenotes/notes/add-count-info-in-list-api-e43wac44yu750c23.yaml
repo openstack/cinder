@@ -1,0 +1,3 @@
+---
+features:
+  - Added count info in volume, snapshot and backup's list APIs since 3.45.
