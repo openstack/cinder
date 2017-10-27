@@ -290,12 +290,6 @@ def list_opts():
             itertools.chain(
                 cinder_keymgr_confkeymgr.key_mgr_opts,
             )),
-        ('NOVA_GROUP',
-            itertools.chain(
-                cinder_compute_nova.nova_opts,
-                cinder_compute_nova.nova_session_opts,
-                cinder_compute_nova.nova_auth_opts,
-            )),
         ('backend_defaults',
             itertools.chain(
                 cinder_volume_driver.volume_opts,
@@ -404,5 +398,11 @@ def list_opts():
                 cinder_volume_drivers_zfssa_zfssanfs.ZFSSA_OPTS,
                 cinder_volume_drivers_zte_zteks.zte_opts,
                 cinder_volume_manager.volume_backend_opts,
+            )),
+        ('nova',
+            itertools.chain(
+                cinder_compute_nova.nova_opts,
+                cinder_compute_nova.nova_session_opts,
+                cinder_compute_nova.nova_auth_opts,
             )),
     ]
