@@ -93,6 +93,12 @@ class BackendState(object):
     """Mutable and immutable information tracked for a volume backend."""
 
     def __init__(self, host, cluster_name, capabilities=None, service=None):
+        # NOTE(geguileo): We have a circular dependency between BackendState
+        # and PoolState and we resolve it with an instance attribute instead
+        # of a class attribute that we would assign after the PoolState
+        # declaration because this way we avoid splitting the code.
+        self.pool_state_cls = PoolState
+
         self.capabilities = None
         self.service = None
         self.host = host
@@ -221,8 +227,10 @@ class BackendState(object):
                 cur_pool = self.pools.get(pool_name, None)
                 if not cur_pool:
                     # Add new pool
-                    cur_pool = PoolState(self.host, self.cluster_name,
-                                         pool_cap, pool_name)
+                    cur_pool = self.pool_state_cls(self.host,
+                                                   self.cluster_name,
+                                                   pool_cap,
+                                                   pool_name)
                     self.pools[pool_name] = cur_pool
                 cur_pool.update_from_volume_capability(pool_cap, service)
 
@@ -239,8 +247,8 @@ class BackendState(object):
 
             if len(self.pools) == 0:
                 # No pool was there
-                single_pool = PoolState(self.host, self.cluster_name,
-                                        capability, pool_name)
+                single_pool = self.pool_state_cls(self.host, self.cluster_name,
+                                                  capability, pool_name)
                 self._append_backend_info(capability)
                 self.pools[pool_name] = single_pool
             else:
@@ -248,8 +256,10 @@ class BackendState(object):
                 try:
                     single_pool = self.pools[pool_name]
                 except KeyError:
-                    single_pool = PoolState(self.host, self.cluster_name,
-                                            capability, pool_name)
+                    single_pool = self.pool_state_cls(self.host,
+                                                      self.cluster_name,
+                                                      capability,
+                                                      pool_name)
                     self._append_backend_info(capability)
                     self.pools[pool_name] = single_pool
 
