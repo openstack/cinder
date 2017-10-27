@@ -75,6 +75,9 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
     # ThirdPartySystems wiki name
     CI_WIKI_NAME = "Cisco_ZM_CI"
 
+    # TODO(jsbryant) Remove driver in Rocky if CI is not fixed
+    SUPPORTED = False
+
     def __init__(self, **kwargs):
         super(CiscoFCZoneDriver, self).__init__(**kwargs)
         self.configuration = kwargs.get('configuration', None)
