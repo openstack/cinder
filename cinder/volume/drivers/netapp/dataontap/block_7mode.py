@@ -339,9 +339,6 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
             free /= units.Gi
             pool['free_capacity_gb'] = na_utils.round_down(free, '0.01')
 
-            pool['provisioned_capacity_gb'] = (round(
-                pool['total_capacity_gb'] - pool['free_capacity_gb'], 2))
-
             thick = (
                 self.configuration.netapp_lun_space_reservation == 'enabled')
             pool['thick_provisioning_support'] = thick
