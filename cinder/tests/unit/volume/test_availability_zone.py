@@ -29,7 +29,8 @@ class AvailabilityZoneTestCase(base.BaseVolumeTestCase):
         super(AvailabilityZoneTestCase, self).setUp()
         self.get_all = self.patch(
             'cinder.db.service_get_all', autospec=True,
-            return_value = [{'availability_zone': 'a', 'disabled': False}])
+            return_value=[{'availability_zone': 'a', 'disabled': False,
+                           'uuid': 'f838f35c-4035-464f-9792-ce60e390c13d'}])
 
     def test_list_availability_zones_cached(self):
         azs = self.volume_api.list_availability_zones(enable_cache=True)
@@ -80,10 +81,12 @@ class AvailabilityZoneTestCase(base.BaseVolumeTestCase):
             {
                 'availability_zone': 'a',
                 'disabled': False,
+                'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824',
             },
             {
                 'availability_zone': 'b',
                 'disabled': False,
+                'uuid': '4200b32b-0bf9-436c-86b2-0675f6ac218e',
             },
         ]
         azs = self.volume_api.list_availability_zones(enable_cache=True)
@@ -99,10 +102,14 @@ class AvailabilityZoneTestCase(base.BaseVolumeTestCase):
             return obj['name']
 
         self.get_all.return_value = [
-            {'availability_zone': 'ping', 'disabled': 0},
-            {'availability_zone': 'ping', 'disabled': 1},
-            {'availability_zone': 'pong', 'disabled': 0},
-            {'availability_zone': 'pung', 'disabled': 1},
+            {'availability_zone': 'ping', 'disabled': 0,
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'},
+            {'availability_zone': 'ping', 'disabled': 1,
+             'uuid': '4200b32b-0bf9-436c-86b2-0675f6ac218e'},
+            {'availability_zone': 'pong', 'disabled': 0,
+             'uuid': '6d91e7f5-ca17-4e3b-bf4f-19ca77166dd7'},
+            {'availability_zone': 'pung', 'disabled': 1,
+             'uuid': '18417850-2ca9-43d1-9619-ae16bfb0f655'},
         ]
 
         volume_api = cinder.volume.api.API()

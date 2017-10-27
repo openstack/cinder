@@ -162,6 +162,54 @@ class DBAPIServiceTestCase(BaseTest):
 
     """Unit tests for cinder.db.api.service_*."""
 
+    def test_service_uuid_migrations(self):
+        # Force create one entry with no UUID
+        sqlalchemy_api.service_create(self.ctxt, {
+            'host': 'host1',
+            'binary': 'cinder-volume',
+            'topic': 'volume', })
+
+        # Create another one with a valid UUID
+        sqlalchemy_api.service_create(self.ctxt, {
+            'host': 'host2',
+            'binary': 'cinder-volume',
+            'topic': 'volume',
+            'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'})
+
+        # Run the migration and verify that we updated 1 entry
+        total, updated = db.service_uuids_online_data_migration(
+            self.ctxt, 10)
+
+        self.assertEqual(1, total)
+        self.assertEqual(1, updated)
+
+    def test_service_uuid_migrations_with_limit(self):
+        sqlalchemy_api.service_create(self.ctxt, {
+            'host': 'host1',
+            'binary': 'cinder-volume',
+            'topic': 'volume', })
+        sqlalchemy_api.service_create(self.ctxt, {
+            'host': 'host2',
+            'binary': 'cinder-volume',
+            'topic': 'volume', })
+        sqlalchemy_api.service_create(self.ctxt, {
+            'host': 'host3',
+            'binary': 'cinder-volume',
+            'topic': 'volume', })
+        # Run the migration and verify that we updated 1 entry
+        total, updated = db.service_uuids_online_data_migration(
+            self.ctxt, 2)
+
+        self.assertEqual(3, total)
+        self.assertEqual(2, updated)
+
+        # Now get the rest, intentionally setting max > what we should have
+        total, updated = db.service_uuids_online_data_migration(
+            self.ctxt, 2)
+
+        self.assertEqual(1, total)
+        self.assertEqual(1, updated)
+
     def test_service_create(self):
         # Add a cluster value to the service
         values = {'cluster_name': 'cluster'}

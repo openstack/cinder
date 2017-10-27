@@ -502,11 +502,14 @@ class HostManagerTestCase(test.TestCase):
         _mock_service_is_up.return_value = True
         services = [
             dict(id=1, host='host1', topic='volume', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'),
             dict(id=2, host='host2', topic='volume', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='4200b32b-0bf9-436c-86b2-0675f6ac218e'),
             dict(id=3, host='host3', topic='volume', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='6d91e7f5-ca17-4e3b-bf4f-19ca77166dd7'),
         ]
         _mock_service_get_all.return_value = services
         # Create host_manager again to let db.service_get_all mock run
@@ -553,7 +556,8 @@ class HostManagerTestCase(test.TestCase):
         services = [
             # This is the first call to utcnow()
             dict(id=1, host='host1', topic='volume', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='6d91e7f5-ca17-4e3b-bf4f-19ca77166dd7',)
         ]
 
         mocked_service_states = {
@@ -659,19 +663,23 @@ class HostManagerTestCase(test.TestCase):
             dict(id=1, host='host1', topic='volume', disabled=False,
                  availability_zone='zone1', updated_at=timeutils.utcnow(),
                  binary=None, deleted=False, created_at=None, modified_at=None,
-                 report_count=0, deleted_at=None, disabled_reason=None),
+                 report_count=0, deleted_at=None, disabled_reason=None,
+                 uuid='a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'),
             dict(id=2, host='host2', topic='volume', disabled=False,
                  availability_zone='zone1', updated_at=timeutils.utcnow(),
                  binary=None, deleted=False, created_at=None, modified_at=None,
-                 report_count=0, deleted_at=None, disabled_reason=None),
+                 report_count=0, deleted_at=None, disabled_reason=None,
+                 uuid='4200b32b-0bf9-436c-86b2-0675f6ac218e'),
             dict(id=3, host='host3', topic='volume', disabled=False,
                  availability_zone='zone2', updated_at=timeutils.utcnow(),
                  binary=None, deleted=False, created_at=None, modified_at=None,
-                 report_count=0, deleted_at=None, disabled_reason=None),
+                 report_count=0, deleted_at=None, disabled_reason=None,
+                 uuid='6d91e7f5-ca17-4e3b-bf4f-19ca77166dd7'),
             dict(id=4, host='host4', topic='volume', disabled=False,
                  availability_zone='zone3', updated_at=timeutils.utcnow(),
                  binary=None, deleted=False, created_at=None, modified_at=None,
-                 report_count=0, deleted_at=None, disabled_reason=None),
+                 report_count=0, deleted_at=None, disabled_reason=None,
+                 uuid='18417850-2ca9-43d1-9619-ae16bfb0f655'),
         ]
 
         service_objs = []
@@ -759,11 +767,14 @@ class HostManagerTestCase(test.TestCase):
 
         services = [
             dict(id=1, host='host1', topic='volume', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'),
             dict(id=2, host='host2@back1', topic='volume', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='4200b32b-0bf9-436c-86b2-0675f6ac218e'),
             dict(id=3, host='host2@back2', topic='volume', disabled=False,
-                 availability_zone='zone2', updated_at=timeutils.utcnow()),
+                 availability_zone='zone2', updated_at=timeutils.utcnow(),
+                 uuid='6d91e7f5-ca17-4e3b-bf4f-19ca77166dd7'),
         ]
 
         mocked_service_states = {
@@ -982,9 +993,11 @@ class HostManagerTestCase(test.TestCase):
 
         services = [
             dict(id=1, host='host1', topic='volume', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'),
             dict(id=2, host='host2@back1', topic='volume', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow())
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='4200b32b-0bf9-436c-86b2-0675f6ac218e')
         ]
 
         mocked_service_states = {
@@ -1074,9 +1087,11 @@ class HostManagerTestCase(test.TestCase):
 
         services = [
             dict(id=1, host='host1', topic='volume', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'),
             dict(id=2, host='host2@back1', topic='volume', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow())
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='4200b32b-0bf9-436c-86b2-0675f6ac218e')
         ]
 
         mocked_service_states = {

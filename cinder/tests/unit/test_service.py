@@ -147,7 +147,8 @@ class ServiceTestCase(test.TestCase):
                             'topic': self.topic,
                             'report_count': 0,
                             'availability_zone': 'nova',
-                            'id': 1}
+                            'id': 1,
+                            'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}
         self.ctxt = context.get_admin_context()
 
     def _check_app(self, app, cluster=None, cluster_exists=None,

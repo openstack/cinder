@@ -62,9 +62,11 @@ def service_get(context, service_id, backend_match_level=None, host=None,
     check for existence of a host, so the content returned doesn't matter.
     """
     if host == 'host_ok':
-        return {'disabled': False}
+        return {'disabled': False,
+                'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}
     if host == 'host_disabled':
-        return {'disabled': True}
+        return {'disabled': True,
+                'uuid': '4200b32b-0bf9-436c-86b2-0675f6ac218e'}
     raise exception.ServiceNotFound(service_id=host)
 
 # Some of the tests check that volume types are correctly validated during a

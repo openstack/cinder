@@ -568,9 +568,6 @@ def service_get_by_uuid(context, service_uuid):
 
 @require_admin_context
 def service_create(context, values):
-    if not values.get('uuid'):
-        values['uuid'] = str(uuid.uuid4())
-
     service_ref = models.Service()
     service_ref.update(values)
     if not CONF.enable_new_services:
@@ -600,14 +597,11 @@ def service_update(context, service_id, values):
 def service_uuids_online_data_migration(context, max_count):
     from cinder.objects import service
 
-    total = 0
     updated = 0
-
+    total = model_query(context, models.Service).filter_by(uuid=None).count()
     db_services = model_query(context, models.Service).filter_by(
-        uuid=None).limit(max_count)
+        uuid=None).limit(max_count).all()
     for db_service in db_services:
-        total += 1
-
         # The conversion in the Service object code
         # will generate a UUID and save it for us.
         service_obj = service.Service._from_db_object(

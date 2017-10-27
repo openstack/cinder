@@ -70,7 +70,9 @@ class CapabilitiesAPITest(test.TestCase):
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities',
                 rpcapi_get_capabilities)
     def test_capabilities_summary(self, mock_services):
-        mock_services.return_value = [{'name': 'fake', 'host': 'fake_host'}]
+        mock_services.return_value = [
+            {'name': 'fake', 'host': 'fake_host',
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
         req = fakes.HTTPRequest.blank('/fake/capabilities/fake')
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.show(req, 'fake')
@@ -113,7 +115,9 @@ class CapabilitiesAPITest(test.TestCase):
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities')
     def test_get_capabilities_rpc_timeout(self, mock_rpc, mock_services):
         mock_rpc.side_effect = oslo_messaging.MessagingTimeout
-        mock_services.return_value = [{'name': 'fake'}]
+        mock_services.return_value = [
+            {'name': 'fake',
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
 
         req = fakes.HTTPRequest.blank('/fake/capabilities/fake')
         req.environ['cinder.context'] = self.ctxt

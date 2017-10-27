@@ -223,11 +223,13 @@ def fake_snapshot_update(self, context, *args, **param):
 
 
 def fake_service_get_all(*args, **kwargs):
-    return [{'availability_zone': "zone1:host1", "disabled": 0}]
+    return [{'availability_zone': "zone1:host1", "disabled": 0,
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
 
 
 def fake_service_get_all_by_topic(context, topic, disabled=None):
-    return [{'availability_zone': "zone1:host1", "disabled": 0}]
+    return [{'availability_zone': "zone1:host1", "disabled": 0,
+             'uuid': '4200b32b-0bf9-436c-86b2-0675f6ac218e'}]
 
 
 def fake_snapshot_get(self, context, snapshot_id):

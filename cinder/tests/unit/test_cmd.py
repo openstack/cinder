@@ -335,8 +335,10 @@ class TestCinderManageCmd(test.TestCase):
     @mock.patch('cinder.context.get_admin_context')
     def test_host_commands_list(self, get_admin_context, service_get_all):
         get_admin_context.return_value = mock.sentinel.ctxt
-        service_get_all.return_value = [{'host': 'fake-host',
-                                         'availability_zone': 'fake-az'}]
+        service_get_all.return_value = [
+            {'host': 'fake-host',
+             'availability_zone': 'fake-az',
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
 
         with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
             expected_out = ("%(host)-25s\t%(zone)-15s\n" %
@@ -356,10 +358,13 @@ class TestCinderManageCmd(test.TestCase):
     def test_host_commands_list_with_zone(self, get_admin_context,
                                           service_get_all):
         get_admin_context.return_value = mock.sentinel.ctxt
-        service_get_all.return_value = [{'host': 'fake-host',
-                                         'availability_zone': 'fake-az1'},
-                                        {'host': 'fake-host',
-                                         'availability_zone': 'fake-az2'}]
+        service_get_all.return_value = [
+            {'host': 'fake-host',
+             'availability_zone': 'fake-az1',
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'},
+            {'host': 'fake-host',
+             'availability_zone': 'fake-az2',
+             'uuid': '4200b32b-0bf9-436c-86b2-0675f6ac218e'}]
 
         with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
             expected_out = ("%(host)-25s\t%(zone)-15s\n" %
@@ -692,7 +697,8 @@ class TestCinderManageCmd(test.TestCase):
                    'disabled': False,
                    'rpc_current_version': '1.1',
                    'object_current_version': '1.1',
-                   'cluster_name': 'my_cluster'}
+                   'cluster_name': 'my_cluster',
+                   'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}
         for binary in ('volume', 'scheduler', 'backup'):
             service['binary'] = 'cinder-%s' % binary
             self._test_service_commands_list(service)
@@ -704,7 +710,8 @@ class TestCinderManageCmd(test.TestCase):
                    'updated_at': None,
                    'disabled': False,
                    'rpc_current_version': '1.1',
-                   'object_current_version': '1.1'}
+                   'object_current_version': '1.1',
+                   'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}
         for binary in ('volume', 'scheduler', 'backup'):
             service['binary'] = 'cinder-%s' % binary
             self._test_service_commands_list(service)
@@ -965,7 +972,10 @@ class TestCinderManageCmd(test.TestCase):
         self.assertEqual(2, exit)
 
     @mock.patch('cinder.db.service_destroy')
-    @mock.patch('cinder.db.service_get', return_value = {'id': '12'})
+    @mock.patch(
+        'cinder.db.service_get',
+        return_value = {'id': '12',
+                        'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'})
     def test_remove_service_success(self, mock_get_by_args,
                                     mock_service_destroy):
         service_commands = cinder_manage.ServiceCommands()
