@@ -587,8 +587,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         snap_info.pop(snapshot.id, None)
         self._write_info_file(info_path, snap_info)
 
-    @remotefs_drv.locked_volume_id_operation
-    def create_snapshot(self, snapshot):
+    def _create_snapshot(self, snapshot):
         volume_format = self.get_volume_format(snapshot.volume)
         if volume_format == DISK_FORMAT_PLOOP:
             self._create_snapshot_ploop(snapshot)
@@ -657,8 +656,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             # rm snap_file.info
             self._delete(_qemu_info_cache(snap_file))
 
-    @remotefs_drv.locked_volume_id_operation
-    def delete_snapshot(self, snapshot):
+    def _delete_snapshot(self, snapshot):
         volume_format = self.get_volume_format(snapshot.volume)
         if volume_format == DISK_FORMAT_PLOOP:
             self._delete_snapshot_ploop(snapshot)
@@ -683,7 +681,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
                                                                image_service,
                                                                image_meta)
 
-    def _create_cloned_volume(self, volume, src_vref):
+    def _create_cloned_volume_ploop(self, volume, src_vref):
         LOG.info('Cloning volume %(src)s to volume %(dst)s',
                  {'src': src_vref.id,
                   'dst': volume.id})
@@ -722,12 +720,11 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
         return {'provider_location': src_vref.provider_location}
 
-    @remotefs_drv.locked_volume_id_operation
-    def create_cloned_volume(self, volume, src_vref):
+    def _create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         volume_format = self.get_volume_format(src_vref)
         if volume_format == DISK_FORMAT_PLOOP:
-            return self._create_cloned_volume(volume, src_vref)
+            return self._create_cloned_volume_ploop(volume, src_vref)
         else:
             return super(VZStorageDriver, self)._create_cloned_volume(volume,
                                                                       src_vref)
