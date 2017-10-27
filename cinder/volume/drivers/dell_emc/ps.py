@@ -146,7 +146,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
     VERSION = "1.4.6"
 
     # ThirdPartySytems wiki page
-    CI_WIKI_NAME = "Dell_Storage_CI"
+    CI_WIKI_NAME = "Dell_EMC_PS_Series_CI"
 
     def __init__(self, *args, **kwargs):
         super(PSSeriesISCSIDriver, self).__init__(*args, **kwargs)
