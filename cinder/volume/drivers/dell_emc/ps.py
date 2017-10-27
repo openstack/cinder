@@ -375,6 +375,17 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
                               volume['name'])
                     raise exception.VolumeNotFound(volume_id=volume['id'])
 
+    def _get_access_record(self, volume, connector):
+        """Returns access record id for the initiator"""
+        try:
+            out = self._eql_execute('volume', 'select', volume['name'],
+                                    'access', 'show')
+            return self._parse_connection(connector, out)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error('Failed to get access records '
+                          'to volume "%s".', volume['name'])
+
     def _parse_connection(self, connector, out):
         """Returns the correct connection id for the initiator.
 
@@ -545,12 +556,15 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
     def initialize_connection(self, volume, connector):
         """Restrict access to a volume."""
         try:
-            cmd = ['volume', 'select', volume['name'], 'access', 'create',
-                   'initiator', connector['initiator']]
-            if self.configuration.use_chap_auth:
-                cmd.extend(['authmethod', 'chap', 'username',
-                            self.configuration.chap_username])
-            self._eql_execute(*cmd)
+            connection_id = self._get_access_record(volume, connector)
+            if connection_id is None:
+                cmd = ['volume', 'select', volume['name'], 'access', 'create',
+                       'initiator', connector['initiator']]
+                if self.configuration.use_chap_auth:
+                    cmd.extend(['authmethod', 'chap', 'username',
+                                self.configuration.chap_username])
+                self._eql_execute(*cmd)
+
             iscsi_properties = self._get_iscsi_properties(volume)
             iscsi_properties['discard'] = True
             return {
@@ -565,9 +579,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         """Remove access restrictions from a volume."""
         try:
-            out = self._eql_execute('volume', 'select', volume['name'],
-                                    'access', 'show')
-            connection_id = self._parse_connection(connector, out)
+            connection_id = self._get_access_record(volume, connector)
             if connection_id is not None:
                 self._eql_execute('volume', 'select', volume['name'],
                                   'access', 'delete', connection_id)
