@@ -51,8 +51,15 @@ class FlashSystemManagementSimulator(object):
             # CMMVC50000 is a fake error which indicates that command has not
             # got expected results. This error represents kinds of CLI errors.
             'CMMVC50000': ('', 'CMMVC50000 The command can not be executed '
-                               'successfully.')
+                               'successfully.'),
+            'CMMVC6045E': ('', 'CMMVC6045E The action failed, as the '
+                               '-force flag was not entered.'),
+            'CMMVC6071E': ('', 'CMMVC6071E The VDisk-to-host mapping '
+                               'was not created because the VDisk is '
+                               'already mapped to a host.')
         }
+        self._multi_host_map_error = None
+        self._multi_host_map_errors = ['CMMVC6045E', 'CMMVC6071E']
 
     @staticmethod
     def _find_unused_id(d):
@@ -94,10 +101,9 @@ class FlashSystemManagementSimulator(object):
         if arg_list[0] not in ('svcinfo', 'svctask') or len(arg_list) < 2:
             raise exception.InvalidInput(reason=six.text_type(arg_list))
         ret = {'cmd': arg_list[1]}
-        arg_list.pop(0)
 
         skip = False
-        for i in range(1, len(arg_list)):
+        for i in range(2, len(arg_list)):
             if skip:
                 skip = False
                 continue
@@ -612,15 +618,14 @@ class FlashSystemManagementSimulator(object):
         if mapping_info['host'] not in self._hosts_list:
             return self._errors['CMMVC50000']
 
-        if mapping_info['vol'] in self._mappings_list:
-            return self._errors['CMMVC50000']
-
         for v in self._mappings_list.values():
+            if (v['vol'] == mapping_info['vol']) and ('force' not in kwargs):
+                return self._errors[self._multi_host_map_error or 'CMMVC50000']
+
             if ((v['host'] == mapping_info['host']) and
                     (v['lun'] == mapping_info['lun'])):
                 return self._errors['CMMVC50000']
 
-        for v in self._mappings_list.values():
             if (v['lun'] == mapping_info['lun']) and ('force' not in kwargs):
                 return self._errors['CMMVC50000']
 
@@ -747,6 +752,13 @@ class FlashSystemDriverTestCase(test.TestCase):
             'wwnns': ['0123456789abcdef', '0123456789abcdeg'],
             'wwpns': ['abcd000000000001', 'abcd000000000002'],
             'initiator': 'iqn.123456'}
+
+        self.alt_connector = {
+            'host': 'other',
+            'wwnns': ['0123456789fedcba', '0123456789badcfe'],
+            'wwpns': ['dcba000000000001', 'dcba000000000002'],
+            'initiator': 'iqn.654321'
+        }
 
         self.sim = FlashSystemManagementSimulator()
         self.driver = FlashSystemFakeDriver(
@@ -1278,6 +1290,25 @@ class FlashSystemDriverTestCase(test.TestCase):
         self.assertEqual(
             1,
             self.driver._map_vdisk_to_host(vol1['name'], self.connector))
+
+        # case 4: multi-host mapping, good path
+        for error in self.sim._multi_host_map_errors:
+            self.sim._multi_host_map_error = error
+            self.assertEqual(
+                1,
+                self.driver._map_vdisk_to_host(
+                    vol1['name'], self.alt_connector
+                )
+            )
+            self.driver._unmap_vdisk_from_host(
+                vol1['name'], self.alt_connector
+            )
+        self.sim._multi_host_map_error = None
+
+        # case 5: multi-host mapping, bad path
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver._map_vdisk_to_host, vol1['name'], self.alt_connector)
 
         # clean environment
         self.driver._unmap_vdisk_from_host(vol1['name'], self.connector)
