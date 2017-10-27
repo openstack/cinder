@@ -74,7 +74,6 @@ class NexentaNfsDriver(nfs.NfsDriver):
         self.nef = None
         self.use_https = self.configuration.nexenta_use_https
         self.nef_host = self.configuration.nexenta_rest_address
-        self.nas_host = self.configuration.nas_host
         self.share = self.configuration.nas_share_path
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
@@ -88,6 +87,12 @@ class NexentaNfsDriver(nfs.NfsDriver):
         if not backend_name:
             backend_name = self.__class__.__name__
         return backend_name
+
+    @property
+    def nas_host(self):
+        return (
+            self.configuration.nas_host if self.configuration.nas_host
+            else self.configuration.nas_ip)
 
     def do_setup(self, context):
         host = self.nef_host or self.nas_host
