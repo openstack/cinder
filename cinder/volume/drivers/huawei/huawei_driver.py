@@ -579,18 +579,21 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         orig_lun_name = huawei_utils.encode_name(volume.id)
         new_lun_id, lun_wwn = huawei_utils.get_volume_lun_id(
             self.client, new_volume)
+        new_metadata = huawei_utils.get_lun_metadata(new_volume)
+        model_update = {
+            'provider_location': huawei_utils.to_string(**new_metadata),
+        }
 
         try:
             self.client.rename_lun(new_lun_id, orig_lun_name)
         except exception.VolumeBackendAPIException:
             LOG.error(_LE('Unable to rename lun %s on array.'), new_lun_id)
-            return {'_name_id': new_volume.name_id}
-
-        LOG.debug("Renamed lun %(id)s to %(name)s successfully.",
-                  {'id': new_lun_id,
-                   'name': orig_lun_name})
-
-        model_update = {'_name_id': None}
+            model_update['_name_id'] = new_volume.name_id
+        else:
+            LOG.debug("Renamed lun %(id)s to %(name)s successfully.",
+                      {'id': new_lun_id,
+                       'name': orig_lun_name})
+            model_update['_name_id'] = None
 
         return model_update
 
