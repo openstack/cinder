@@ -18,7 +18,7 @@ from oslo_policy import policy
 from cinder.policies import base
 
 
-CAPABILITIES_POLICY = "volume_extension:capabilities",
+CAPABILITIES_POLICY = "volume_extension:capabilities"
 
 
 capabilities_policies = [
