@@ -1138,15 +1138,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         """create volume from snapshot."""
 
         snapshot_size = float(snapshot['volume_size'])
-        if not snapshot['group_snapshot_id']:
-            snapshot_name = snapshot['name']
-        else:
-            groupname = self._group_name_from_cgsnapshot_id(
-                snapshot['group_snapshot_id'])
-            snapshot_name = self._volume_name_from_cg_snapshot(
-                groupname, snapshot.volume_name)
-        self._create_volume_from_snapshot(
-            volume, snapshot_name, snapshot_size)
+        self._create_volume_from_snapshot(volume, snapshot.name, snapshot_size)
 
     @proxy._trace_time
     def create_snapshot(self, snapshot):
