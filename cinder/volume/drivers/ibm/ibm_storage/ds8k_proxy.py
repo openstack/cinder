@@ -1035,7 +1035,9 @@ class DS8KProxy(proxy.IBMStorageProxy):
     @proxy.logger
     def create_group(self, ctxt, group):
         """Create consistency group of FlashCopy or RemoteCopy."""
+        model_update = {}
         grp = Group(group)
+        # verify replication.
         if (grp.group_replication_enabled or
                 grp.consisgroup_replication_enabled):
             for volume_type in group.volume_types:
@@ -1046,25 +1048,28 @@ class DS8KProxy(proxy.IBMStorageProxy):
                              'is for replication type, but volume '
                              '%(vtype)s is a non-replication one.'
                              % {'grp': grp.id, 'vtype': volume_type.id})
+            model_update['replication_status'] = (
+                fields.ReplicationStatus.ENABLED)
+        # verify consistency group.
         if (grp.consisgroup_snapshot_enabled or
                 grp.consisgroup_replication_enabled):
             self._assert(self._helper.backend['lss_ids_for_cg'],
                          'No LSS(s) for CG, please make sure you have '
                          'reserved LSS for CG via param lss_range_for_cg.')
-            model_update = {}
             if grp.consisgroup_replication_enabled:
                 self._helper.verify_rest_version_for_pprc_cg()
                 target_helper = self._replication.get_target_helper()
                 target_helper.verify_rest_version_for_pprc_cg()
-                model_update['replication_status'] = (
-                    fields.ReplicationStatus.ENABLED)
+
+        # driver will create replication group because base cinder
+        # doesn't update replication_status of the group, otherwise
+        # base cinder can take over it.
+        if (grp.consisgroup_snapshot_enabled or
+                grp.consisgroup_replication_enabled or
+                grp.group_replication_enabled):
             model_update.update(self._helper.create_group(group))
             return model_update
         else:
-            # NOTE(jiamin): If grp.group_replication_enabled is True, the
-            # default implementation will handle the creation of the group
-            # and driver just makes sure each volume type in group has
-            # enabled replication.
             raise NotImplementedError()
 
     @proxy.logger
@@ -1229,12 +1234,19 @@ class DS8KProxy(proxy.IBMStorageProxy):
         """Create volume group from volume group or volume group snapshot."""
         grp = Group(group)
         if (not grp.consisgroup_snapshot_enabled and
-                not grp.consisgroup_replication_enabled):
+                not grp.consisgroup_replication_enabled and
+                not grp.group_replication_enabled):
             raise NotImplementedError()
 
-        model_update = {'status': fields.GroupStatus.AVAILABLE}
+        model_update = {
+            'status': fields.GroupStatus.AVAILABLE,
+            'replication_status': fields.ReplicationStatus.DISABLED
+        }
+        if (grp.group_replication_enabled or
+                grp.consisgroup_replication_enabled):
+            model_update['replication_status'] = (
+                fields.ReplicationStatus.ENABLED)
         volumes_model_update = []
-
         if group_snapshot and sorted_snapshots:
             src_luns = [Lun(snapshot, is_snapshot=True)
                         for snapshot in sorted_snapshots]
@@ -1267,7 +1279,8 @@ class DS8KProxy(proxy.IBMStorageProxy):
             volume_model_update = tgt_lun.get_volume_update()
             volume_model_update.update({
                 'id': tgt_lun.os_id,
-                'status': model_update['status']
+                'status': model_update['status'],
+                'replication_status': model_update['replication_status']
             })
             volumes_model_update.append(volume_model_update)
 
