@@ -417,6 +417,11 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         # We use id as our name as it is unique.
         volume_name = volume.get('id')
         provider_id = volume.get('provider_id')
+        # Unless we are migrating.
+        if volume.get('migration_status') == 'deleting':
+            volume_name = volume.get('_name_id')
+            provider_id = None
+
         LOG.debug('Deleting volume %s', volume_name)
         with self._client.open_connection() as api:
             try:
@@ -748,6 +753,8 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                    'original': original_volume_name})
         if original_volume_name:
             with self._client.open_connection() as api:
+                # todo(tswanson): Delete old volume repliations/live volumes
+                # todo(tswanson): delete old volume?
                 scvolume = api.find_volume(current_name, provider_id)
                 if (scvolume and
                    api.rename_volume(scvolume, original_volume_name)):
