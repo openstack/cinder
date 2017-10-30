@@ -18,7 +18,6 @@
 import ddt
 import mock
 from oslo_utils import strutils
-import webob
 
 from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
@@ -66,17 +65,17 @@ class BackupsControllerAPITestCase(test.TestCase):
     def test_backup_update_with_no_body(self):
         # omit body from the request
         req = self._fake_update_request(fake.BACKUP_ID)
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update,
-                          req, fake.BACKUP_ID, None)
+                          req, fake.BACKUP_ID, body=None)
 
     def test_backup_update_with_unsupported_field(self):
         req = self._fake_update_request(fake.BACKUP_ID)
         body = {"backup": {"id": fake.BACKUP2_ID,
                            "description": "", }}
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update,
-                          req, fake.BACKUP_ID, body)
+                          req, fake.BACKUP_ID, body=body)
 
     def test_backup_update_with_backup_not_found(self):
         req = self._fake_update_request(fake.BACKUP_ID)
@@ -87,7 +86,7 @@ class BackupsControllerAPITestCase(test.TestCase):
         body = {"backup": updates}
         self.assertRaises(exception.NotFound,
                           self.controller.update,
-                          req, fake.BACKUP_ID, body)
+                          req, fake.BACKUP_ID, body=body)
 
     def _create_multiple_backups_with_different_project(self):
         test_utils.create_backup(
@@ -225,7 +224,7 @@ class BackupsControllerAPITestCase(test.TestCase):
         body = {"backup": updates}
         self.controller.update(req,
                                backup.id,
-                               body)
+                               body=body)
 
         backup.refresh()
         self.assertEqual(new_name, backup.display_name)

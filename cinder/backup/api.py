@@ -40,7 +40,6 @@ from cinder.policies import backups as policy
 import cinder.policy
 from cinder import quota
 from cinder import quota_utils
-from cinder import utils
 import cinder.volume
 from cinder.volume import utils as volume_utils
 
@@ -200,7 +199,6 @@ class API(base.Base):
                force=False, snapshot_id=None, metadata=None):
         """Make the RPC call to create a volume backup."""
         context.authorize(policy.CREATE_POLICY)
-        utils.check_metadata_properties(metadata)
         volume = self.volume_api.get(context, volume_id)
         snapshot = None
         if snapshot_id:

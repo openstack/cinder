@@ -18,6 +18,7 @@
 """The backups api."""
 
 from oslo_log import log as logging
+from oslo_utils import strutils
 from six.moves import http_client
 from webob import exc
 
@@ -25,10 +26,11 @@ from cinder.api import common
 from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import backups as backup
+from cinder.api import validation
 from cinder.api.views import backups as backup_views
 from cinder import backup as backupAPI
 from cinder import exception
-from cinder.i18n import _
 from cinder import utils
 from cinder import volume as volumeAPI
 
@@ -141,29 +143,25 @@ class BackupsController(wsgi.Controller):
     #   immediately
     # - maybe also do validation of swift container name
     @wsgi.response(http_client.ACCEPTED)
+    @validation.schema(backup.create, '2.0', '3.42')
+    @validation.schema(backup.create_backup_v343, '3.43')
     def create(self, req, body):
         """Create a new backup."""
         LOG.debug('Creating new backup %s', body)
-        self.assert_valid_body(body, 'backup')
 
         context = req.environ['cinder.context']
-        backup = body['backup']
         req_version = req.api_version_request
 
-        try:
-            volume_id = backup['volume_id']
-        except KeyError:
-            msg = _("Incorrect request body format")
-            raise exc.HTTPBadRequest(explanation=msg)
+        backup = body['backup']
         container = backup.get('container', None)
-        if container:
-            utils.check_string_length(container, 'Backup container',
-                                      min_length=0, max_length=255)
-        self.validate_name_and_description(backup)
+        volume_id = backup['volume_id']
+
         name = backup.get('name', None)
         description = backup.get('description', None)
-        incremental = backup.get('incremental', False)
-        force = backup.get('force', False)
+        incremental = strutils.bool_from_string(backup.get(
+            'incremental', False), strict=True)
+        force = strutils.bool_from_string(backup.get(
+            'force', False), strict=True)
         snapshot_id = backup.get('snapshot_id', None)
         metadata = backup.get('metadata', None) if req_version.matches(
             mv.BACKUP_METADATA) else None
@@ -190,11 +188,11 @@ class BackupsController(wsgi.Controller):
         return retval
 
     @wsgi.response(http_client.ACCEPTED)
+    @validation.schema(backup.restore)
     def restore(self, req, id, body):
         """Restore an existing backup to a volume."""
         LOG.debug('Restoring backup %(backup_id)s (%(body)s)',
                   {'backup_id': id, 'body': body})
-        self.assert_valid_body(body, 'restore')
 
         context = req.environ['cinder.context']
         restore = body['restore']
@@ -241,19 +239,15 @@ class BackupsController(wsgi.Controller):
         return retval
 
     @wsgi.response(http_client.CREATED)
+    @validation.schema(backup.import_record)
     def import_record(self, req, body):
         """Import a backup."""
         LOG.debug('Importing record from %s.', body)
-        self.assert_valid_body(body, 'backup-record')
         context = req.environ['cinder.context']
         import_data = body['backup-record']
-        # Verify that body elements are provided
-        try:
-            backup_service = import_data['backup_service']
-            backup_url = import_data['backup_url']
-        except KeyError:
-            msg = _("Incorrect request body format.")
-            raise exc.HTTPBadRequest(explanation=msg)
+        backup_service = import_data['backup_service']
+        backup_url = import_data['backup_url']
+
         LOG.debug('Importing backup using %(service)s and url %(url)s.',
                   {'service': backup_service, 'url': backup_url})
 

@@ -175,3 +175,13 @@ uuid_allow_null = {
 
 metadata_allows_null = copy.deepcopy(extra_specs)
 metadata_allows_null['type'] = ['object', 'null']
+
+
+container = {
+    'type': ['string', 'null'], 'minLength': 0, 'maxLength': 255}
+
+
+backup_url = {'type': 'string', 'minLength': 1, 'format': 'base64'}
+
+
+backup_service = {'type': 'string', 'minLength': 0, 'maxLength': 255}
