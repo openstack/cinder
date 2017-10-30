@@ -111,9 +111,7 @@ class NetAppNfsDriver(driver.ManageableVD,
             loopingcalls.ONE_HOUR)
 
     def _delete_snapshots_marked_for_deletion(self):
-        volume_list = self._get_backing_flexvol_names()
-        snapshots = self.zapi_client.get_snapshots_marked_for_deletion(
-            volume_list)
+        snapshots = self.zapi_client.get_snapshots_marked_for_deletion()
         for snapshot in snapshots:
             self.zapi_client.delete_snapshot(
                 snapshot['volume_name'], snapshot['name'])

@@ -1453,9 +1453,6 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             'name': fake.SNAPSHOT_NAME,
             'volume_name': fake.VOLUME['name']
         }]
-        mock_get_backing_flexvol_names = self.mock_object(
-            self.library, '_get_backing_flexvol_names')
-        mock_get_backing_flexvol_names.return_value = [fake.VOLUME['name']]
         mock_get_snapshots_marked = self.mock_object(
             self.zapi_client, 'get_snapshots_marked_for_deletion')
         mock_get_snapshots_marked.return_value = snapshots
@@ -1464,8 +1461,6 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         self.library._delete_snapshots_marked_for_deletion()
 
-        mock_get_backing_flexvol_names.assert_called_once_with()
-        mock_get_snapshots_marked.assert_called_once_with(
-            [fake.VOLUME['name']])
+        mock_get_snapshots_marked.assert_called_once_with()
         mock_delete_snapshot.assert_called_once_with(
             fake.VOLUME['name'], fake.SNAPSHOT_NAME)
