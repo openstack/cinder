@@ -170,13 +170,6 @@ class PosixBackupDriverTestCase(test.TestCase):
 
         self.driver.delete_object(FAKE_CONTAINER, FAKE_OBJECT_NAME)
 
-    def test_delete_nonexistent_object(self):
-        self.mock_object(os, 'remove', side_effect=OSError)
-
-        self.assertRaises(OSError,
-                          self.driver.delete_object, FAKE_CONTAINER,
-                          FAKE_OBJECT_NAME)
-
     @mock.patch.object(posix.timeutils, 'utcnow')
     def test_generate_object_name_prefix(self, utcnow_mock):
         timestamp = '20170518102205'

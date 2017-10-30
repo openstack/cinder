@@ -127,7 +127,10 @@ class PosixBackupDriver(chunkeddriver.ChunkedBackupDriver):
     def delete_object(self, container, object_name):
         # TODO(tbarron):  clean up the container path if it is empty
         path = os.path.join(self.backup_path, container, object_name)
-        os.remove(path)
+        try:
+            os.remove(path)
+        except OSError:
+            pass
 
     def _generate_object_name_prefix(self, backup):
         timestamp = timeutils.utcnow().strftime("%Y%m%d%H%M%S")
