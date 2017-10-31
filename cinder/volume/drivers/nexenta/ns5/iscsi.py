@@ -344,9 +344,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         url = 'storage/volumeGroups/%s?fields=bytesAvailable,bytesUsed' % (
             '%2F'.join([self.storage_pool, self.volume_group]))
         stats = self.nef.get(url)
-        total_amount = utils.str2gib_size(stats['bytesAvailable'])
-        free_amount = utils.str2gib_size(
-            stats['bytesAvailable'] - stats['bytesUsed'])
+        free = utils.str2gib_size(stats['bytesAvailable'])
+        allocated = utils.str2gib_size(stats['bytesUsed'])
 
         location_info = '%(driver)s:%(host)s:%(pool)s/%(group)s' % {
             'driver': self.__class__.__name__,
@@ -362,8 +361,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             'driver_version': self.VERSION,
             'storage_protocol': 'iSCSI',
             'sparsed_volumes': self.configuration.nexenta_sparse,
-            'total_capacity_gb': total_amount,
-            'free_capacity_gb': free_amount,
+            'total_capacity_gb': free + allocated,
+            'free_capacity_gb': free,
             'reserved_percentage': self.configuration.reserved_percentage,
             'QoS_support': False,
             'volume_backend_name': self.backend_name,
