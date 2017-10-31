@@ -986,9 +986,11 @@ class API(base.Base):
                             total_reserve_opts[key] + value
             reservations = QUOTAS.reserve(context, **total_reserve_opts)
         except exception.OverQuota as e:
-            quota_utils.process_reserve_over_quota(context, e,
-                                                   resource='snapshots',
-                                                   size=volume.size)
+            quota_utils.process_reserve_over_quota(
+                context,
+                e,
+                resource='snapshots',
+                size=total_reserve_opts.get('gigabytes', volume.size))
 
         return reservations
 
