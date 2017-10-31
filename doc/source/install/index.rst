@@ -15,7 +15,7 @@ nodes. Depending upon the drivers used, the volume service can run
 on controller nodes, compute nodes, or standalone storage nodes.
 
 For more information, see the
-`Configuration Reference <https://docs.openstack.org/ocata/config-reference/block-storage/volume-drivers.html>`_.
+`Configuration Reference <https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-drivers.html>`_.
 
 
 Prerequisites
