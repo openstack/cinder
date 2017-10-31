@@ -59,9 +59,10 @@ Response Parameters
    - created_at: created_at
    - group_id: source_group_id
    - id: group_snapshot_id_1
-   - name: name_18
+   - name: name_19
    - status: status_7
-   - description: description_14
+   - description: description_16
+   - group_type_id: group_type_id_2
 
 Response Example
 ----------------
@@ -103,11 +104,12 @@ Response Parameters
 
    - group_snapshots: group_snapshots
    - id: group_snapshot_id_1
-   - name: name_18
+   - name: name_19
    - status: status_7
-   - description: description_14
+   - description: description_16
    - created_at: created_at
    - group_id: group_id_1
+   - group_type_id: group_type_id_2
 
 Response Example
 ----------------
@@ -149,7 +151,7 @@ Response Parameters
 
    - group_snapshots: group_snapshots
    - id: group_snapshot_id_1
-   - name: name_18
+   - name: name_19
 
 
 Response Example
@@ -195,11 +197,8 @@ Response Parameters
 
    - group_snapshot: group_snapshot
    - id: group_snapshot_id_1
-   - name: name_18
-   - status: status_7
-   - description: description_14
-   - created_at: created_at
-   - group_id: group_id_1
+   - name: name_19
+   - group_type_id: group_type_id_2
 
 Response Example
 ----------------

@@ -881,6 +881,12 @@ description_15:
   in: body
   required: false
   type: string
+description_16:
+  description: |
+    The group snapshot description.
+  in: body
+  required: true
+  type: string
 description_2:
   description: |
     The description of the consistency group.
@@ -1752,6 +1758,12 @@ name_18:
     The group snapshot name.
   in: body
   required: false
+  type: string
+name_19:
+  description: |
+    The group snapshot name.
+  in: body
+  required: true
   type: string
 name_2:
   description: |
