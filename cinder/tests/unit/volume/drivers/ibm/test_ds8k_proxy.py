@@ -3953,3 +3953,80 @@ class DS8KProxyTest(test.TestCase):
             self.ctxt, group, [volume], 'default')
         self.assertEqual({}, model_update)
         self.assertEqual([], volume_update_list)
+
+    @mock.patch.object(eventlet, 'sleep')
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
+    @mock.patch.object(replication.MetroMirrorManager, 'do_pprc_failback')
+    def test_start_group_pprc_failover(self, mock_do_pprc_failback,
+                                       mock_get_pprc_pairs,
+                                       mock_sleep):
+        """group failover should not invoke do_pprc_failback."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     volume_metadata=metadata,
+                                     group_id=group.id)
+        pprc_pairs_1 = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs_1[0]['state'] = 'suspended'
+        pprc_pairs_2 = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs_2[0]['state'] = 'full_duplex'
+        mock_get_pprc_pairs.side_effect = [pprc_pairs_1]
+        self.driver.failover_replication(self.ctxt, group, [volume],
+                                         TEST_TARGET_DS8K_IP)
+        self.assertFalse(mock_do_pprc_failback.called)
+
+    @mock.patch.object(eventlet, 'sleep')
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
+    def test_start_group_pprc_failback(self, mock_get_pprc_pairs, mock_sleep):
+        """Failback group should invoke pprc failback."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        data = json.dumps(
+            {'default': {'vol_hex_id': TEST_VOLUME_ID_2}})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     volume_metadata=metadata,
+                                     group_id=group.id)
+        pprc_pairs_1 = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs_1[0]['state'] = 'suspended'
+        pprc_pairs_1[0]['source_volume']['name'] = TEST_VOLUME_ID_2
+        pprc_pairs_2 = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs_2[0]['state'] = 'full_duplex'
+        pprc_pairs_3 = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
+        pprc_pairs_3[0]['state'] = 'full_duplex'
+        mock_get_pprc_pairs.side_effect = [pprc_pairs_1, pprc_pairs_2,
+                                           pprc_pairs_3]
+        self.driver.failover_replication(self.ctxt, group, [volume], 'default')
+        self.assertTrue(mock_get_pprc_pairs.called)
