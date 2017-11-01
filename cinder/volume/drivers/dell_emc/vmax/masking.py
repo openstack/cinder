@@ -76,6 +76,7 @@ class VMAXMasking(object):
             masking_view_dict[utils.WORKLOAD],
             masking_view_dict[utils.DISABLECOMPRESSION],
             masking_view_dict[utils.IS_RE], rep_mode)
+        rollback_dict = masking_view_dict
 
         try:
             error_message = self._get_or_create_masking_view(
@@ -87,6 +88,10 @@ class VMAXMasking(object):
                 "in the masking view is %(storage_name)s.",
                 {'masking_name': maskingview_name,
                  'storage_name': storagegroup_name})
+            rollback_dict['portgroup_name'] = (
+                self.rest.get_element_from_masking_view(
+                    serial_number, maskingview_name, portgroup=True))
+
         except Exception as e:
             LOG.exception(
                 "Masking View creation or retrieval was not successful "
@@ -95,14 +100,6 @@ class VMAXMasking(object):
                 {'maskingview_name': masking_view_dict[utils.MV_NAME]})
             error_message = six.text_type(e)
 
-        rollback_dict = masking_view_dict
-        try:
-            rollback_dict['portgroup_name'] = (
-                self.rest.get_element_from_masking_view(
-                    serial_number, maskingview_name, portgroup=True))
-        except Exception as e:
-            error_message = ("Error retrieving port group. Exception "
-                             "received: %(e)s" % {'e': six.text_type(e)})
         if 'source_nf_sg' in masking_view_dict:
             default_sg_name = masking_view_dict['source_nf_sg']
         rollback_dict['default_sg_name'] = default_sg_name
@@ -856,12 +853,12 @@ class VMAXMasking(object):
             serial_number, rollback_dict['init_group_name'],
             rollback_dict['connector'])
         try:
-            found_sg_name = (
+            found_sg_name_list = (
                 self.rest.get_storage_groups_from_volume(
                     serial_number, rollback_dict['device_id']))
             # Volume is not associated with any storage group so add
             # it back to the default.
-            if not found_sg_name:
+            if not found_sg_name_list:
                 error_message = self._check_adding_volume_to_storage_group(
                     serial_number, device_id,
                     rollback_dict['default_sg_name'],
@@ -874,17 +871,24 @@ class VMAXMasking(object):
                     rollback_dict['isLiveMigration'] is True):
                 # Live migration case.
                 # Remove from nonfast storage group to fast sg
-                self.failed_live_migration(rollback_dict, found_sg_name,
+                self.failed_live_migration(rollback_dict, found_sg_name_list,
                                            rollback_dict[utils.EXTRA_SPECS])
             else:
-                LOG.info("The storage group found is %(found_sg_name)s.",
-                         {'found_sg_name': found_sg_name})
+                LOG.info("Volume %(vol_id)s is in %(list_size)d storage"
+                         "groups. The storage groups are %(found_sg_list)s.",
+                         {'vol_id': volume.id,
+                          'list_size': len(found_sg_name_list),
+                          'found_sg_list': found_sg_name_list})
 
                 # Check the name, see if it is the default storage group
                 # or another.
-                if found_sg_name != rollback_dict['default_sg_name']:
+                sg_found = False
+                for found_sg_name in found_sg_name_list:
+                    if found_sg_name == rollback_dict['default_sg_name']:
+                        sg_found = True
+                if not sg_found:
                     # Remove it from its current storage group and return it
-                    # to its default masking view if slo is defined.
+                    # to its default storage group if slo is defined.
                     self.remove_and_reset_members(
                         serial_number, volume, device_id,
                         rollback_dict['volume_name'],
@@ -997,7 +1001,7 @@ class VMAXMasking(object):
         return init_group_name
 
     def _check_ig_rollback(
-            self, serial_number, init_group_name, connector):
+            self, serial_number, init_group_name, connector, force=False):
         """Check if rollback action is required on an initiator group.
 
         If anything goes wrong on a masking view creation, we need to check if
@@ -1008,18 +1012,22 @@ class VMAXMasking(object):
         :param serial_number: the array serial number
         :param init_group_name: the initiator group name
         :param connector: the connector object
+        :param force: force a delete even if no entry in login table
         """
         initiator_names = self.find_initiator_names(connector)
         found_ig_name = self._find_initiator_group(
             serial_number, initiator_names)
         if found_ig_name:
             if found_ig_name == init_group_name:
-                host = init_group_name.split("-")[1]
-                LOG.debug("Searching for masking views associated with "
-                          "%(init_group_name)s",
-                          {'init_group_name': init_group_name})
-                self._last_volume_delete_initiator_group(
-                    serial_number, found_ig_name, host)
+                force = True
+        if force:
+            found_ig_name = init_group_name
+            host = init_group_name.split("-")[1]
+            LOG.debug("Searching for masking views associated with "
+                      "%(init_group_name)s",
+                      {'init_group_name': init_group_name})
+            self._last_volume_delete_initiator_group(
+                serial_number, found_ig_name, host)
 
     @coordination.synchronized("emc-vol-{device_id}")
     def remove_and_reset_members(
@@ -1058,6 +1066,10 @@ class VMAXMasking(object):
         storagegroup_names = (self.rest.get_storage_groups_from_volume(
             serial_number, device_id))
         if storagegroup_names:
+            if async_grp is not None:
+                for index, sg in enumerate(storagegroup_names):
+                    if sg == async_grp:
+                        storagegroup_names.pop(index)
             if len(storagegroup_names) == 1 and reset is True:
                 move = True
             elif connector is not None and reset is True:
@@ -1072,10 +1084,6 @@ class VMAXMasking(object):
                             extra_specs, connector, move)
                         break
             else:
-                if reset is True and async_grp is not None:
-                    for index, sg in enumerate(storagegroup_names):
-                        if sg == async_grp:
-                            storagegroup_names.pop(index)
                 for sg_name in storagegroup_names:
                     self.remove_volume_from_sg(
                         serial_number, device_id, volume_name, sg_name,
@@ -1553,7 +1561,8 @@ class VMAXMasking(object):
                     @coordination.synchronized("emc-ig-{ig_name}")
                     def _delete_ig(ig_name):
                         # Check initiator group hasn't been recently deleted
-                        ig_details = self.rest.get_initiator_group(ig_name)
+                        ig_details = self.rest.get_initiator_group(
+                            serial_number, ig_name)
                         if ig_details:
                             LOG.debug(
                                 "Last volume associated with the initiator "
@@ -1652,3 +1661,20 @@ class VMAXMasking(object):
                     array, source_nf_sg, source_parent_sg, extra_specs)
             # Delete non fast storage group
             self.rest.delete_storage_group(array, source_nf_sg)
+
+    def attempt_ig_cleanup(self, connector, protocol, serial_number, force):
+        """Attempt to cleanup an orphan initiator group
+
+        :param connector: connector object
+        :param protocol: iscsi or fc
+        :param serial_number: extra the array serial number
+        """
+        protocol = self.utils.get_short_protocol_type(protocol)
+        host_name = connector['host']
+        short_host_name = self.utils.get_host_short_name(host_name)
+        init_group = (
+            ("OS-%(shortHostName)s-%(protocol)s-IG"
+             % {'shortHostName': short_host_name,
+                'protocol': protocol}))
+        self._check_ig_rollback(
+            serial_number, init_group, connector, force)

@@ -60,12 +60,17 @@ IS_RE = 'replication_enabled'
 DISABLECOMPRESSION = 'storagetype:disablecompression'
 REP_SYNC = 'Synchronous'
 REP_ASYNC = 'Asynchronous'
+REP_METRO = 'Metro'
 REP_MODE = 'rep_mode'
 RDF_SYNC_STATE = 'synchronized'
 RDF_SYNCINPROG_STATE = 'syncinprog'
 RDF_CONSISTENT_STATE = 'consistent'
 RDF_SUSPENDED_STATE = 'suspended'
 RDF_FAILEDOVER_STATE = 'failed over'
+RDF_ACTIVE = 'active'
+RDF_ACTIVEACTIVE = 'activeactive'
+RDF_ACTIVEBIAS = 'activebias'
+METROBIAS = 'metro_bias'
 
 # Cinder.conf vmax configuration
 VMAX_SERVER_IP = 'san_ip'
@@ -511,6 +516,18 @@ class VMAXUtils(object):
             rep_mode = target.get('mode', '')
             if rep_mode.lower() in ['async', 'asynchronous']:
                 rep_config['mode'] = REP_ASYNC
+            elif rep_mode.lower() == 'metro':
+                rep_config['mode'] = REP_METRO
+                metro_bias = target.get('metro_use_bias', 'false')
+                if strutils.bool_from_string(metro_bias):
+                    rep_config[METROBIAS] = True
+                else:
+                    rep_config[METROBIAS] = False
+                allow_delete_metro = target.get('allow_delete_metro', 'false')
+                if strutils.bool_from_string(allow_delete_metro):
+                    rep_config['allow_delete_metro'] = True
+                else:
+                    rep_config['allow_delete_metro'] = False
             else:
                 rep_config['mode'] = REP_SYNC
 
@@ -749,12 +766,17 @@ class VMAXUtils(object):
         """Get the replication prefix.
 
         Replication prefix for storage group naming is based on whether it is
-        synchronous or asynchronous replication mode.
+        synchronous, asynchronous, or metro replication mode.
 
         :param rep_mode: flag to indicate if replication is async
         :return: prefix
         """
-        prefix = "-RE" if rep_mode == REP_SYNC else "-RA"
+        if rep_mode == REP_ASYNC:
+            prefix = "-RA"
+        elif rep_mode == REP_METRO:
+            prefix = "-RM"
+        else:
+            prefix = "-RE"
         return prefix
 
     @staticmethod
@@ -764,7 +786,33 @@ class VMAXUtils(object):
         :param rep_config: the replication configuration
         :return: group name
         """
-        rdf_group_name = rep_config['rdf_group_label']
-        async_grp_name = "OS-%(rdf)s-async-rdf-sg" % {'rdf': rdf_group_name}
-        LOG.debug("The async rdf managed group name is %s", async_grp_name)
+        async_grp_name = ("OS-%(rdf)s-%(mode)s-rdf-sg"
+                          % {'rdf': rep_config['rdf_group_label'],
+                             'mode': rep_config['mode']})
+        LOG.debug("The async/ metro rdf managed group name is %(name)s",
+                  {'name': async_grp_name})
         return async_grp_name
+
+    def is_metro_device(self, rep_config, extra_specs):
+        """Determine if a volume is a Metro enabled device.
+
+        :param rep_config: the replication configuration
+        :param extra_specs: the extra specifications
+        :return: bool
+        """
+        is_metro = (True if self.is_replication_enabled(extra_specs)
+                    and rep_config is not None
+                    and rep_config['mode'] == REP_METRO else False)
+        return is_metro
+
+    def does_vol_need_rdf_management_group(self, extra_specs):
+        """Determine if a volume is a Metro or Async.
+
+        :param extra_specs: the extra specifications
+        :return: bool
+        """
+        if (self.is_replication_enabled(extra_specs) and
+                extra_specs.get(REP_MODE, None) in
+                [REP_ASYNC, REP_METRO]):
+            return True
+        return False

@@ -68,6 +68,7 @@ class VMAXCommonData(object):
     storagegroup_name_f = 'OS-HostX-SRP_1-DiamondDSS-OS-fibre-PG'
     storagegroup_name_i = 'OS-HostX-SRP_1-Diamond-DSS-OS-iscsi-PG'
     defaultstoragegroup_name = 'OS-SRP_1-Diamond-DSS-SG'
+    storagegroup_list = [defaultstoragegroup_name]
     default_sg_no_slo = 'OS-no_SLO-SG'
     default_sg_compr_disabled = 'OS-SRP_1-Diamond-DSS-CD-SG'
     default_sg_re_enabled = 'OS-SRP_1-Diamond-DSS-RE-SG'
@@ -88,15 +89,16 @@ class VMAXCommonData(object):
     group_snapshot_name = 'Grp_snapshot'
     target_group_name = 'Grp_target'
     storagegroup_name_with_id = 'GrpId_group_name'
-    rdf_managed_async_grp = "OS-%s-async-rdf-sg" % rdf_group_name
+    rdf_managed_async_grp = "OS-%s-Asynchronous-rdf-sg" % rdf_group_name
 
     # connector info
     wwpn1 = "123456789012345"
     wwpn2 = "123456789054321"
     wwnn1 = "223456789012345"
     initiator = 'iqn.1993-08.org.debian: 01: 222'
-    ip = u'123.456.7.8'
+    ip, ip2 = u'123.456.7.8', u'123.456.7.9'
     iqn = u'iqn.1992-04.com.emc:600009700bca30c01e3e012e00000001,t,0x0001'
+    iqn2 = u'iqn.1992-04.com.emc:600009700bca30c01e3e012e00000002,t,0x0001'
     connector = {'ip': ip,
                  'initiator': initiator,
                  'wwpns': [wwpn1, wwpn2],
@@ -113,6 +115,10 @@ class VMAXCommonData(object):
         'initiator_group': initiatorgroup_name_f,
         'port_group': port_group_name_f,
         'target_wwns': target_wwns}
+    zoning_mappings_metro = deepcopy(zoning_mappings)
+    zoning_mappings_metro.update({'metro_port_group': port_group_name_f,
+                                  'metro_ig': initiatorgroup_name_f,
+                                  'metro_array': remote_array})
 
     device_map = {}
     for wwn in connector['wwpns']:
@@ -131,6 +137,10 @@ class VMAXCommonData(object):
                          'array': array,
                          'controller': {'host': '10.00.00.00'},
                          'hostlunid': 3}
+    iscsi_device_info_metro = deepcopy(iscsi_device_info)
+    iscsi_device_info_metro['metro_ip_and_iqn'] = [{'ip': ip2, 'iqn': iqn2}]
+    iscsi_device_info_metro['metro_hostlunid'] = 2
+
     fc_device_info = {'maskingview': masking_view_name_f,
                       'array': array,
                       'controller': {'host': '10.00.00.00'},
@@ -246,7 +256,8 @@ class VMAXCommonData(object):
     rep_extra_specs['retries'] = 0
     rep_extra_specs['srp'] = srp2
     rep_extra_specs['rep_mode'] = 'Synchronous'
-
+    rep_extra_specs2 = deepcopy(rep_extra_specs)
+    rep_extra_specs2[utils.PORTGROUPNAME] = port_group_name_f
     test_volume_type_1 = volume_type.VolumeType(
         id='2b06255d-f5f0-4520-a953-b029196add6a', name='abc',
         extra_specs=extra_specs
@@ -1285,6 +1296,19 @@ class VMAXUtilsTest(test.TestCase):
         rep_device_list5[0]['mode'] = 'async'
         rep_config5 = self.utils.get_replication_config(rep_device_list5)
         self.assertEqual(utils.REP_ASYNC, rep_config5['mode'])
+        # Success, mode is metro - no other options set
+        rep_device_list6 = rep_device_list5
+        rep_device_list6[0]['mode'] = 'metro'
+        rep_config6 = self.utils.get_replication_config(rep_device_list6)
+        self.assertFalse(rep_config6['metro_bias'])
+        self.assertFalse(rep_config6['allow_delete_metro'])
+        # Success, mode is metro - metro options true
+        rep_device_list7 = rep_device_list6
+        rep_device_list6[0].update(
+            {'allow_delete_metro': 'true', 'metro_use_bias': 'true'})
+        rep_config7 = self.utils.get_replication_config(rep_device_list7)
+        self.assertTrue(rep_config7['metro_bias'])
+        self.assertTrue(rep_config7['allow_delete_metro'])
 
     def test_is_volume_failed_over(self):
         vol = deepcopy(self.data.test_volume)
@@ -1407,11 +1431,32 @@ class VMAXUtilsTest(test.TestCase):
         self.assertEqual('-RA', async_prefix)
         sync_prefix = self.utils.get_replication_prefix(utils.REP_SYNC)
         self.assertEqual('-RE', sync_prefix)
+        metro_prefix = self.utils.get_replication_prefix(utils.REP_METRO)
+        self.assertEqual('-RM', metro_prefix)
 
     def test_get_async_rdf_managed_grp_name(self):
-        rep_config = {'rdf_group_label': self.data.rdf_group_name}
+        rep_config = {'rdf_group_label': self.data.rdf_group_name,
+                      'mode': utils.REP_ASYNC}
         grp_name = self.utils.get_async_rdf_managed_grp_name(rep_config)
         self.assertEqual(self.data.rdf_managed_async_grp, grp_name)
+
+    def test_is_metro_device(self):
+        rep_config = {'mode': utils.REP_METRO}
+        is_metro = self.utils.is_metro_device(
+            rep_config, self.data.rep_extra_specs)
+        self.assertTrue(is_metro)
+        rep_config2 = {'mode': utils.REP_ASYNC}
+        is_metro2 = self.utils.is_metro_device(
+            rep_config2, self.data.rep_extra_specs)
+        self.assertFalse(is_metro2)
+
+    def test_does_vol_need_rdf_management_group(self):
+        self.assertFalse(self.utils.does_vol_need_rdf_management_group(
+            self.data.rep_extra_specs))
+        extra_specs = deepcopy(self.data.rep_extra_specs)
+        extra_specs[utils.REP_MODE] = utils.REP_ASYNC
+        self.assertTrue(self.utils.does_vol_need_rdf_management_group(
+            extra_specs))
 
 
 class VMAXRestTest(test.TestCase):
@@ -1625,18 +1670,6 @@ class VMAXRestTest(test.TestCase):
         sg_details = self.rest.get_storage_group(
             self.data.array, self.data.defaultstoragegroup_name)
         self.assertEqual(ref_details, sg_details)
-
-    def test_get_storage_group_list(self):
-        ref_details = self.data.sg_list['storageGroupId']
-        sg_list = self.rest.get_storage_group_list(
-            self.data.array, {})
-        self.assertEqual(ref_details, sg_list)
-
-    def test_get_storage_group_list_none(self):
-        with mock.patch.object(self.rest, 'get_resource', return_value=None):
-            sg_list = self.rest.get_storage_group_list(
-                self.data.array, {})
-            self.assertEqual([], sg_list)
 
     def test_create_storage_group(self):
         with mock.patch.object(self.rest, 'create_resource'):
@@ -2575,10 +2608,11 @@ class VMAXRestTest(test.TestCase):
     def test_create_rdf_device_pair(self):
         ref_dict = {'array': self.data.remote_array,
                     'device_id': self.data.device_id2}
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs[utils.REP_MODE] = utils.REP_SYNC
         rdf_dict = self.rest.create_rdf_device_pair(
             self.data.array, self.data.device_id, self.data.rdf_group_no,
-            self.data.device_id2, self.data.remote_array,
-            self.data.extra_specs)
+            self.data.device_id2, self.data.remote_array, extra_specs)
         self.assertEqual(ref_dict, rdf_dict)
 
     def test_create_rdf_device_pair_async(self):
@@ -2591,6 +2625,35 @@ class VMAXRestTest(test.TestCase):
             self.data.device_id2, self.data.remote_array, extra_specs)
         self.assertEqual(ref_dict, rdf_dict)
 
+    def test_create_rdf_device_pair_metro(self):
+        ref_dict = {'array': self.data.remote_array,
+                    'device_id': self.data.device_id2}
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs[utils.REP_MODE] = utils.REP_METRO
+        extra_specs[utils.METROBIAS] = True
+        rdf_dict = self.rest.create_rdf_device_pair(
+            self.data.array, self.data.device_id, self.data.rdf_group_no,
+            self.data.device_id2, self.data.remote_array, extra_specs)
+        self.assertEqual(ref_dict, rdf_dict)
+
+    @mock.patch.object(rest.VMAXRest, 'get_rdf_group',
+                       side_effect=[{'numDevices': 0}, {'numDevices': 0},
+                                    {'numDevices': 1}])
+    def test_get_metro_payload_info(self, mock_rdfg):
+        ref_payload = {"establish": 'true', "rdfType": 'RDF1'}
+        payload1 = self.rest.get_metro_payload_info(
+            self.data.array, ref_payload, self.data.rdf_group_no, {})
+        self.assertEqual(ref_payload, payload1)
+        payload2 = self.rest.get_metro_payload_info(
+            self.data.array, ref_payload, self.data.rdf_group_no,
+            {'metro_bias': True})
+        self.assertEqual('true', payload2['metroBias'])
+        ref_payload2 = {"establish": 'true', "rdfType": 'RDF1'}
+        payload3 = self.rest.get_metro_payload_info(
+            self.data.array, ref_payload2, self.data.rdf_group_no, {})
+        ref_payload3 = {"rdfType": 'NA', "format": 'true'}
+        self.assertEqual(ref_payload3, payload3)
+
     def test_modify_rdf_device_pair(self):
         resource_name = "70/volume/00001"
         common_opts = {"force": 'false',
@@ -2598,11 +2661,9 @@ class VMAXRestTest(test.TestCase):
                        "star": 'false',
                        "hop2": 'false',
                        "bypass": 'false'}
-        split_opts = deepcopy(common_opts)
-        split_opts.update({"immediate": 'false'})
-        split_payload = {"action": "Split",
-                         'executionOption': 'ASYNCHRONOUS',
-                         "split": split_opts}
+        suspend_payload = {"action": "Suspend",
+                           'executionOption': 'ASYNCHRONOUS',
+                           "suspend": common_opts}
 
         failover_opts = deepcopy(common_opts)
         failover_opts.update({"establish": 'true',
@@ -2617,19 +2678,25 @@ class VMAXRestTest(test.TestCase):
                 return_value=(200, self.data.job_list[0])) as mock_mod:
             self.rest.modify_rdf_device_pair(
                 self.data.array, self.data.device_id, self.data.rdf_group_no,
-                self.data.extra_specs, split=True)
+                self.data.extra_specs, suspend=True)
             mock_mod.assert_called_once_with(
                 self.data.array, 'replication', 'rdf_group',
-                split_payload, resource_name=resource_name,
+                suspend_payload, resource_name=resource_name,
                 private='/private')
             mock_mod.reset_mock()
             self.rest.modify_rdf_device_pair(
                 self.data.array, self.data.device_id, self.data.rdf_group_no,
-                self.data.extra_specs, split=False)
+                self.data.extra_specs, suspend=False)
             mock_mod.assert_called_once_with(
                 self.data.array, 'replication', 'rdf_group',
                 failover_payload, resource_name=resource_name,
                 private='/private')
+
+    @mock.patch.object(rest.VMAXRest, 'delete_resource')
+    def test_delete_rdf_pair(self, mock_del):
+        self.rest.delete_rdf_pair(
+            self.data.array, self.data.device_id, self.data.rdf_group_no)
+        mock_del.assert_called_once()
 
     def test_get_storage_group_rep(self):
         array = self.data.array
@@ -2950,24 +3017,36 @@ class VMAXProvisionTest(test.TestCase):
                     self.data.array, 'no_workload_sg'))
             self.assertEqual(ref_settings2, sg_slo_settings2)
 
-    def test_break_rdf_relationship(self):
+    @mock.patch.object(rest.VMAXRest, 'wait_for_rdf_consistent_state')
+    @mock.patch.object(rest.VMAXRest, 'delete_rdf_pair')
+    @mock.patch.object(rest.VMAXRest, 'modify_rdf_device_pair')
+    def test_break_rdf_relationship(self, mock_mod, mock_del, mock_wait):
         array = self.data.array
         device_id = self.data.device_id
         target_device = self.data.device_id2
         rdf_group_name = self.data.rdf_group_name
         rep_extra_specs = self.data.rep_extra_specs
-        with mock.patch.object(
-                self.provision.rest, 'modify_rdf_device_pair') as mod_rdf:
-            with mock.patch.object(
-                    self.provision.rest, 'delete_rdf_pair') as del_rdf:
-                self.provision.break_rdf_relationship(
-                    array, device_id, target_device,
-                    rdf_group_name, rep_extra_specs, "Synchronized")
-                mod_rdf.assert_called_once_with(
-                    array, device_id, rdf_group_name, rep_extra_specs,
-                    split=True)
-                del_rdf.assert_called_once_with(
-                    array, device_id, rdf_group_name)
+        self.provision.break_rdf_relationship(
+            array, device_id, target_device,
+            rdf_group_name, rep_extra_specs, "Synchronized")
+        mock_mod.assert_called_once_with(
+            array, device_id, rdf_group_name, rep_extra_specs,
+            suspend=True)
+        mock_del.assert_called_once_with(
+            array, device_id, rdf_group_name)
+        # sync still in progress
+        self.provision.break_rdf_relationship(
+            array, device_id, target_device,
+            rdf_group_name, rep_extra_specs, "SyncInProg")
+        mock_wait.assert_called_once()
+
+    @mock.patch.object(provision.VMAXProvision, 'disable_group_replication')
+    @mock.patch.object(provision.VMAXProvision, 'delete_rdf_pair')
+    def test_break_metro_rdf_pair(self, mock_del, mock_disable):
+        self.provision.break_metro_rdf_pair(
+            self.data.array, self.data.device_id, self.data.device_id2,
+            self.data.rdf_group_no, self.data.rep_extra_specs, 'metro_grp')
+        mock_del.assert_called_once()
 
     def test_delete_rdf_pair_async(self):
         with mock.patch.object(
@@ -2976,7 +3055,7 @@ class VMAXProvisionTest(test.TestCase):
             extra_specs[utils.REP_MODE] = utils.REP_ASYNC
             self.provision.delete_rdf_pair(
                 self.data.array, self.data.device_id,
-                self.data.rdf_group_no, extra_specs)
+                self.data.rdf_group_no, self.data.device_id2, extra_specs)
             mock_del_rdf.assert_called_once()
 
     def test_failover_volume(self):
@@ -2990,15 +3069,13 @@ class VMAXProvisionTest(test.TestCase):
                 array, device_id, rdf_group_name,
                 extra_specs, '', True)
             mod_rdf.assert_called_once_with(
-                array, device_id, rdf_group_name, extra_specs,
-                split=False)
+                array, device_id, rdf_group_name, extra_specs)
             mod_rdf.reset_mock()
             self.provision.failover_volume(
                 array, device_id, rdf_group_name,
                 extra_specs, '', False)
             mod_rdf.assert_called_once_with(
-                array, device_id, rdf_group_name, extra_specs,
-                split=False)
+                array, device_id, rdf_group_name, extra_specs)
 
     def test_create_volume_group_success(self):
         array = self.data.array
@@ -3341,28 +3418,26 @@ class VMAXCommonTest(test.TestCase):
                 volume, connector, extra_specs, masking_view_dict)
         self.assertEqual(ref_dict, device_info_dict)
 
-    def test_attach_volume_failed(self):
+    @mock.patch.object(masking.VMAXMasking,
+                       'check_if_rollback_action_for_masking_required')
+    @mock.patch.object(masking.VMAXMasking, 'setup_masking_view',
+                       return_value={})
+    @mock.patch.object(common.VMAXCommon, 'find_host_lun_id',
+                       return_value=({}, False, []))
+    def test_attach_volume_failed(self, mock_lun, mock_setup, mock_rollback):
         volume = self.data.test_volume
         connector = self.data.connector
         extra_specs = deepcopy(self.data.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         masking_view_dict = self.common._populate_masking_dict(
             volume, connector, extra_specs)
-        with mock.patch.object(self.masking, 'setup_masking_view',
-                               return_value={}):
-            with mock.patch.object(self.common, 'find_host_lun_id',
-                                   return_value=({}, False, [])):
-                with mock.patch.object(
-                        self.masking,
-                        'check_if_rollback_action_for_masking_required'):
-                    self.assertRaises(exception.VolumeBackendAPIException,
-                                      self.common._attach_volume, volume,
-                                      connector, extra_specs,
-                                      masking_view_dict)
-                    device_id = self.data.device_id
-                    (self.masking.
-                     check_if_rollback_action_for_masking_required.
-                     assert_called_once_with(self.data.array, device_id, {}))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common._attach_volume, volume,
+                          connector, extra_specs,
+                          masking_view_dict)
+        device_id = self.data.device_id
+        (mock_rollback.assert_called_once_with(
+            self.data.array, volume, device_id, {}))
 
     def test_terminate_connection(self):
         volume = self.data.test_volume
@@ -3490,21 +3565,35 @@ class VMAXCommonTest(test.TestCase):
                 volume, host, extra_specs)
             self.assertEqual({}, maskedvols)
 
+    @mock.patch.object(common.VMAXCommon, 'get_remote_target_device',
+                       return_value=VMAXCommonData.device_id2)
+    def test_find_host_lun_id_rep_extra_specs(self, mock_tgt):
+        self.common.find_host_lun_id(
+            self.data.test_volume, 'HostX',
+            self.data.extra_specs, self.data.rep_extra_specs)
+        mock_tgt.assert_called_once()
+
     def test_get_masking_views_from_volume(self):
         array = self.data.array
         device_id = self.data.device_id
         host = 'HostX'
         ref_mv_list = [self.data.masking_view_name_f]
-        maskingview_list = self.common.get_masking_views_from_volume(
-            array, device_id, host)
+        maskingview_list, __ = self.common.get_masking_views_from_volume(
+            array, self.data.test_volume, device_id, host)
         self.assertEqual(ref_mv_list, maskingview_list)
+        # is metro
+        with mock.patch.object(self.utils, 'is_metro_device',
+                               return_value=True):
+            __, is_metro = self.common.get_masking_views_from_volume(
+                array, self.data.test_volume, device_id, host)
+            self.assertTrue(is_metro)
 
     def test_get_masking_views_from_volume_wrong_host(self):
         array = self.data.array
         device_id = self.data.device_id
         host = 'DifferentHost'
-        maskingview_list = self.common.get_masking_views_from_volume(
-            array, device_id, host)
+        maskingview_list, __ = self.common.get_masking_views_from_volume(
+            array, self.data.test_volume, device_id, host)
         self.assertEqual([], maskingview_list)
 
     def test_find_host_lun_id_no_host_check(self):
@@ -3546,7 +3635,9 @@ class VMAXCommonTest(test.TestCase):
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.common._initial_setup, volume)
 
-    def test_populate_masking_dict(self):
+    @mock.patch.object(common.VMAXCommon, 'get_remote_target_device',
+                       return_value=VMAXCommonData.device_id2)
+    def test_populate_masking_dict(self, mock_tgt):
         volume = self.data.test_volume
         connector = self.data.connector
         extra_specs = deepcopy(self.data.extra_specs)
@@ -3555,6 +3646,18 @@ class VMAXCommonTest(test.TestCase):
         masking_view_dict = self.common._populate_masking_dict(
             volume, connector, extra_specs)
         self.assertEqual(ref_mv_dict, masking_view_dict)
+        # Metro volume, pass in rep_extra_specs and retrieve target device
+        rep_extra_specs = deepcopy(self.data.rep_extra_specs)
+        rep_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        self.common._populate_masking_dict(
+            volume, connector, extra_specs, rep_extra_specs)
+        mock_tgt.assert_called_once()
+        # device_id is None
+        with mock.patch.object(self.common, '_find_device_on_array',
+                               return_value=None):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.common._populate_masking_dict,
+                              volume, connector, extra_specs)
 
     def test_populate_masking_dict_no_slo(self):
         volume = self.data.test_volume
@@ -3838,26 +3941,40 @@ class VMAXCommonTest(test.TestCase):
                 mock_clean.assert_called_once_with(
                     volume, volume_name, device_id, extra_specs)
 
+    @mock.patch.object(utils.VMAXUtils, 'is_volume_failed_over',
+                       side_effect=[True, False])
     @mock.patch.object(common.VMAXCommon, '_get_replication_extra_specs',
                        return_value=VMAXCommonData.rep_extra_specs)
-    def test_get_target_wwns_from_masking_view(self, mock_rep_specs):
-        target_wwns = self.common.get_target_wwns_from_masking_view(
-            self.data.test_volume, self.data.connector)
+    def test_get_target_wwns_from_masking_view(self, mock_rep_specs, mock_fo):
         ref_wwns = [self.data.wwnn1]
-        self.assertEqual(ref_wwns, target_wwns)
-        # Volume is failed over
-        with mock.patch.object(self.utils, 'is_volume_failed_over',
-                               return_value=True):
-            self.common.get_target_wwns_from_masking_view(
-                self.data.test_volume, self.data.connector)
-            mock_rep_specs.assert_called_once()
+        for x in range(0, 2):
+            target_wwns = self.common._get_target_wwns_from_masking_view(
+                self.data.device_id, self.data.connector['host'],
+                self.data.extra_specs)
+            self.assertEqual(ref_wwns, target_wwns)
 
     def test_get_target_wwns_from_masking_view_no_mv(self):
-        with mock.patch.object(self.common, 'get_masking_views_from_volume',
+        with mock.patch.object(self.common, '_get_masking_views_from_volume',
                                return_value=None):
-            target_wwns = self.common.get_target_wwns_from_masking_view(
-                self.data.test_volume, self.data.connector)
+            target_wwns = self.common._get_target_wwns_from_masking_view(
+                self.data.device_id, self.data.connector['host'],
+                self.data.extra_specs)
             self.assertEqual([], target_wwns)
+
+    @mock.patch.object(common.VMAXCommon, '_get_replication_extra_specs',
+                       return_value=VMAXCommonData.rep_extra_specs)
+    @mock.patch.object(common.VMAXCommon, 'get_remote_target_device',
+                       return_value=(VMAXCommonData.device_id2,))
+    @mock.patch.object(utils.VMAXUtils, 'is_metro_device',
+                       side_effect=[False, True])
+    def test_get_target_wwns(self, mock_metro, mock_tgt, mock_specs):
+        __, metro_wwns = self.common.get_target_wwns_from_masking_view(
+            self.data.test_volume, self.data.connector)
+        self.assertEqual([], metro_wwns)
+        # Is metro volume
+        __, metro_wwns = self.common.get_target_wwns_from_masking_view(
+            self.data.test_volume, self.data.connector)
+        self.assertEqual([self.data.wwnn1], metro_wwns)
 
     def test_get_port_group_from_masking_view(self):
         array = self.data.array
@@ -4724,10 +4841,19 @@ class VMAXFCTest(test.TestCase):
 
     def test_get_zoning_mappings_no_mv(self):
         with mock.patch.object(self.common, 'get_masking_views_from_volume',
-                               return_value=None):
+                               return_value=(None, False)):
             zoning_mappings = self.driver._get_zoning_mappings(
                 self.data.test_volume, self.data.connector)
             self.assertEqual({}, zoning_mappings)
+
+    @mock.patch.object(
+        common.VMAXCommon, 'get_masking_views_from_volume',
+        return_value=([VMAXCommonData.masking_view_name_f], True))
+    def test_get_zoning_mappings_metro(self, mock_mv):
+        ref_mappings = self.data.zoning_mappings_metro
+        zoning_mappings = self.driver._get_zoning_mappings(
+            self.data.test_volume, self.data.connector)
+        self.assertEqual(ref_mappings, zoning_mappings)
 
     def test_cleanup_zones_other_vols_mapped(self):
         ref_data = {'driver_volume_type': 'fibre_channel',
@@ -4754,7 +4880,7 @@ class VMAXFCTest(test.TestCase):
             driver = fc.VMAXFCDriver(configuration=self.configuration)
             with mock.patch.object(driver.common,
                                    'get_target_wwns_from_masking_view',
-                                   return_value=self.data.target_wwns):
+                                   return_value=(self.data.target_wwns, [])):
                 targets, target_map = driver._build_initiator_target_map(
                     self.data.test_volume, self.data.connector)
                 self.assertEqual(ref_target_map, target_map)
@@ -4946,13 +5072,29 @@ class VMAXISCSITest(test.TestCase):
             data = self.driver.get_iscsi_dict(device_info, volume)
             self.assertEqual(ref_data, data)
             self.driver.vmax_get_iscsi_properties.assert_called_once_with(
-                volume, ip_and_iqn, True, host_lun_id)
+                volume, ip_and_iqn, True, host_lun_id, None, None)
 
     def test_get_iscsi_dict_exception(self):
         device_info = {'ip_and_iqn': ''}
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.get_iscsi_dict,
                           device_info, self.data.test_volume)
+
+    def test_get_iscsi_dict_metro(self):
+        ip_and_iqn = self.common._find_ip_and_iqns(
+            self.data.array, self.data.port_group_name_i)
+        host_lun_id = self.data.iscsi_device_info_metro['hostlunid']
+        volume = self.data.test_volume
+        device_info = self.data.iscsi_device_info_metro
+        ref_data = {'driver_volume_type': 'iscsi', 'data': {}}
+        with mock.patch.object(
+                self.driver, 'vmax_get_iscsi_properties', return_value={}):
+            data = self.driver.get_iscsi_dict(device_info, volume)
+            self.assertEqual(ref_data, data)
+            self.driver.vmax_get_iscsi_properties.assert_called_once_with(
+                volume, ip_and_iqn, True, host_lun_id,
+                self.data.iscsi_device_info_metro['metro_ip_and_iqn'],
+                self.data.iscsi_device_info_metro['metro_hostlunid'])
 
     def test_vmax_get_iscsi_properties_one_target_no_auth(self):
         vol = deepcopy(self.data.test_volume)
@@ -4966,7 +5108,7 @@ class VMAXISCSITest(test.TestCase):
             'target_lun': host_lun_id,
             'volume_id': self.data.test_volume.id}
         iscsi_properties = self.driver.vmax_get_iscsi_properties(
-            vol, ip_and_iqn, True, host_lun_id)
+            vol, ip_and_iqn, True, host_lun_id, [], None)
         self.assertEqual(type(ref_properties), type(iscsi_properties))
         self.assertEqual(ref_properties, iscsi_properties)
 
@@ -4986,7 +5128,7 @@ class VMAXISCSITest(test.TestCase):
             'target_lun': host_lun_id,
             'volume_id': self.data.test_volume.id}
         iscsi_properties = self.driver.vmax_get_iscsi_properties(
-            self.data.test_volume, ip_and_iqn, True, host_lun_id)
+            self.data.test_volume, ip_and_iqn, True, host_lun_id, [], None)
         self.assertEqual(ref_properties, iscsi_properties)
 
     def test_vmax_get_iscsi_properties_auth(self):
@@ -5017,9 +5159,32 @@ class VMAXISCSITest(test.TestCase):
             'auth_username': 'auth_username',
             'auth_password': 'auth_secret'}
         iscsi_properties = self.driver.vmax_get_iscsi_properties(
-            vol, ip_and_iqn, True, host_lun_id)
+            vol, ip_and_iqn, True, host_lun_id, None, None)
         self.assertEqual(ref_properties, iscsi_properties)
         self.driver.configuration = backup_conf
+
+    def test_vmax_get_iscsi_properties_metro(self):
+        ip_and_iqn = [{'ip': self.data.ip, 'iqn': self.data.iqn}]
+        total_ip_list = [{'ip': self.data.ip, 'iqn': self.data.iqn},
+                         {'ip': self.data.ip2, 'iqn': self.data.iqn2}]
+        host_lun_id = self.data.iscsi_device_info['hostlunid']
+        host_lun_id2 = self.data.iscsi_device_info_metro['metro_hostlunid']
+        ref_properties = {
+            'target_portals': (
+                [t['ip'] + ":3260" for t in total_ip_list]),
+            'target_iqns': (
+                [t['iqn'].split(",")[0] for t in total_ip_list]),
+            'target_luns': [host_lun_id, host_lun_id2],
+            'target_discovered': True,
+            'target_iqn': ip_and_iqn[0]['iqn'].split(",")[0],
+            'target_portal': ip_and_iqn[0]['ip'] + ":3260",
+            'target_lun': host_lun_id,
+            'volume_id': self.data.test_volume.id}
+        iscsi_properties = self.driver.vmax_get_iscsi_properties(
+            self.data.test_volume, ip_and_iqn, True, host_lun_id,
+            self.data.iscsi_device_info_metro['metro_ip_and_iqn'],
+            self.data.iscsi_device_info_metro['metro_hostlunid'])
+        self.assertEqual(ref_properties, iscsi_properties)
 
     def test_terminate_connection(self):
         with mock.patch.object(self.common, 'terminate_connection'):
@@ -5137,6 +5302,8 @@ class VMAXMaskingTest(test.TestCase):
         configuration.config_group = 'MaskingTests'
         self._gather_info = common.VMAXCommon._gather_info
         common.VMAXCommon._gather_info = mock.Mock()
+        rest.VMAXRest._establish_rest_session = mock.Mock(
+            return_value=FakeRequestsSession())
         driver = common.VMAXCommon(
             'iSCSI', self.data.version, configuration=configuration)
         driver_fc = common.VMAXCommon(
@@ -5180,7 +5347,8 @@ class VMAXMaskingTest(test.TestCase):
     @mock.patch.object(
         rest.VMAXRest,
         'get_element_from_masking_view',
-        side_effect=[VMAXCommonData.port_group_name_i, Exception])
+        side_effect=[VMAXCommonData.port_group_name_i,
+                     Exception('Exception')])
     def test_get_or_create_masking_view_and_map_lun(
             self, mock_masking_view_element, mock_masking, mock_move,
             mock_add_volume):
@@ -5560,8 +5728,8 @@ class VMAXMaskingTest(test.TestCase):
                                'get_storage_groups_from_volume',
                                side_effect=[
                                    exception.VolumeBackendAPIException,
-                                   self.data.defaultstoragegroup_name,
-                                   self.data.defaultstoragegroup_name, None,
+                                   self.data.storagegroup_list,
+                                   self.data.storagegroup_list, None,
                                    None, ]):
             self.assertRaises(
                 exception.VolumeBackendAPIException,
@@ -6064,6 +6232,13 @@ class VMAXCommonReplicationTest(test.TestCase):
         rest.VMAXRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
         driver = fc.VMAXFCDriver(configuration=configuration)
+        iscsi_fake_xml = FakeXML().create_fake_config_file(
+            config_group, self.data.port_group_name_i)
+        iscsi_config = FakeConfiguration(
+            iscsi_fake_xml, config_group,
+            replication_device=self.replication_device)
+        iscsi_driver = iscsi.VMAXISCSIDriver(configuration=iscsi_config)
+        self.iscsi_common = iscsi_driver.common
         self.driver = driver
         self.common = self.driver.common
         self.masking = self.common.masking
@@ -6087,6 +6262,16 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.fake_xml, config_group,
             replication_device=self.async_rep_device)
         self.async_driver = fc.VMAXFCDriver(configuration=async_configuration)
+        self.metro_rep_device = {
+            'target_device_id': self.data.remote_array,
+            'remote_port_group': self.data.port_group_name_f,
+            'remote_pool': self.data.srp2,
+            'rdf_group_label': self.data.rdf_group_name,
+            'allow_extend': 'True', 'mode': 'metro'}
+        metro_configuration = FakeConfiguration(
+            self.fake_xml, config_group,
+            replication_device=self.metro_rep_device)
+        self.metro_driver = fc.VMAXFCDriver(configuration=metro_configuration)
 
     def test_get_replication_info(self):
         self.common._get_replication_info()
@@ -6186,6 +6371,17 @@ class VMAXCommonReplicationTest(test.TestCase):
         self.common._unmap_lun(self.data.test_volume, self.data.connector)
         mock_es.assert_called_once_with(extra_specs, rep_config)
 
+    @mock.patch.object(common.VMAXCommon, '_remove_members')
+    @mock.patch.object(common.VMAXCommon,
+                       '_get_replication_extra_specs',
+                       return_value=VMAXCommonData.rep_extra_specs)
+    @mock.patch.object(utils.VMAXUtils, 'is_metro_device', return_value=True)
+    def test_unmap_lun_metro(self, mock_md, mock_es, mock_rm):
+        extra_specs = deepcopy(self.extra_specs)
+        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        self.common._unmap_lun(self.data.test_volume, self.data.connector)
+        self.assertEqual(2, mock_rm.call_count)
+
     @mock.patch.object(utils.VMAXUtils, 'is_volume_failed_over',
                        return_value=True)
     def test_initialize_connection_vol_failed_over(self, mock_fo):
@@ -6200,6 +6396,57 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.common.initialize_connection(
                 self.data.test_volume, self.data.connector)
             mock_es.assert_called_once_with(extra_specs, rep_config)
+
+    @mock.patch.object(utils.VMAXUtils, 'is_metro_device', return_value=True)
+    def test_initialize_connection_vol_metro(self, mock_md):
+        metro_connector = deepcopy(self.data.connector)
+        metro_connector['multipath'] = True
+        info_dict = self.common.initialize_connection(
+            self.data.test_volume, metro_connector)
+        ref_dict = {'array': self.data.array,
+                    'device_id': self.data.device_id,
+                    'hostlunid': 3,
+                    'maskingview': self.data.masking_view_name_f,
+                    'metro_hostlunid': 3}
+        self.assertEqual(ref_dict, info_dict)
+
+    @mock.patch.object(rest.VMAXRest, 'get_iscsi_ip_address_and_iqn',
+                       return_value=([VMAXCommonData.ip],
+                                     VMAXCommonData.initiator))
+    @mock.patch.object(common.VMAXCommon, '_get_replication_extra_specs',
+                       return_value=VMAXCommonData.rep_extra_specs)
+    @mock.patch.object(utils.VMAXUtils, 'is_metro_device', return_value=True)
+    def test_initialize_connection_vol_metro_iscsi(self, mock_md, mock_es,
+                                                   mock_ip):
+        metro_connector = deepcopy(self.data.connector)
+        metro_connector['multipath'] = True
+        info_dict = self.iscsi_common.initialize_connection(
+            self.data.test_volume, metro_connector)
+        ref_dict = {'array': self.data.array,
+                    'device_id': self.data.device_id,
+                    'hostlunid': 3,
+                    'maskingview': self.data.masking_view_name_f,
+                    'ip_and_iqn': [{'ip': self.data.ip,
+                                    'iqn': self.data.initiator}],
+                    'metro_hostlunid': 3,
+                    'is_multipath': True,
+                    'metro_ip_and_iqn': [{'ip': self.data.ip,
+                                          'iqn': self.data.initiator}]}
+        self.assertEqual(ref_dict, info_dict)
+
+    @mock.patch.object(utils.VMAXUtils, 'is_metro_device', return_value=True)
+    def test_initialize_connection_no_multipath_iscsi(self, mock_md):
+        info_dict = self.iscsi_common.initialize_connection(
+            self.data.test_volume, self.data.connector)
+        self.assertIsNone(info_dict)
+
+    def test_attach_metro_volume(self):
+        rep_extra_specs = deepcopy(VMAXCommonData.rep_extra_specs)
+        rep_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        hostlunid, remote_port_group = self.common._attach_metro_volume(
+            self.data.test_volume, self.data.connector,
+            self.data.extra_specs, rep_extra_specs)
+        self.assertEqual(self.data.port_group_name_f, remote_port_group)
 
     @mock.patch.object(rest.VMAXRest, 'is_vol_in_rep_session',
                        return_value=(False, False, None))
@@ -6267,27 +6514,25 @@ class VMAXCommonReplicationTest(test.TestCase):
                           'device_id': self.data.device_id2}, rep_data)
         mock_create.assert_not_called()
 
-    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
     @mock.patch.object(common.VMAXCommon, '_cleanup_remote_target')
-    def test_cleanup_lun_replication_success(self, mock_clean, mock_rm):
+    def test_cleanup_lun_replication_success(self, mock_clean):
         rep_extra_specs = deepcopy(self.data.rep_extra_specs)
         rep_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         self.common.cleanup_lun_replication(
             self.data.test_volume, "1", self.data.device_id,
             self.extra_specs)
         mock_clean.assert_called_once_with(
-            self.data.array, self.data.remote_array, self.data.device_id,
+            self.data.array, self.data.test_volume,
+            self.data.remote_array, self.data.device_id,
             self.data.device_id2, self.data.rdf_group_no, "1",
             rep_extra_specs)
-        mock_rm.assert_called_once_with(
-            self.data.remote_array, self.data.test_volume,
-            self.data.device_id2, "1", rep_extra_specs, False)
         # Cleanup legacy replication
         self.common.cleanup_lun_replication(
             self.data.test_legacy_vol, "1", self.data.device_id,
             self.extra_specs)
         mock_clean.assert_called_once_with(
-            self.data.array, self.data.remote_array, self.data.device_id,
+            self.data.array, self.data.test_volume,
+            self.data.remote_array, self.data.device_id,
             self.data.device_id2, self.data.rdf_group_no, "1",
             rep_extra_specs)
 
@@ -6300,30 +6545,86 @@ class VMAXCommonReplicationTest(test.TestCase):
                 self.extra_specs)
             mock_clean.assert_not_called()
 
-    def test_cleanup_lun_replication_exception(self):
+    @mock.patch.object(
+        common.VMAXCommon, 'get_remote_target_device',
+        return_value=(VMAXCommonData.device_id2, '', '', '', ''))
+    @mock.patch.object(common.VMAXCommon,
+                       '_add_volume_to_async_rdf_managed_grp')
+    def test_cleanup_lun_replication_exception(self, mock_add, mock_tgt):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.common.cleanup_lun_replication,
                           self.data.test_volume, "1", self.data.device_id,
                           self.extra_specs)
+        # is metro or async volume
+        extra_specs = deepcopy(self.extra_specs)
+        extra_specs[utils.REP_MODE] = utils.REP_METRO
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common.cleanup_lun_replication,
+                          self.data.test_volume, "1", self.data.device_id,
+                          extra_specs)
+        mock_add.assert_called_once()
 
+    @mock.patch.object(common.VMAXCommon, '_cleanup_metro_target')
+    @mock.patch.object(masking.VMAXMasking, 'remove_vol_from_storage_group')
     @mock.patch.object(common.VMAXCommon, '_delete_from_srp')
     @mock.patch.object(provision.VMAXProvision, 'break_rdf_relationship')
-    def test_cleanup_remote_target(self, mock_break, mock_del):
+    def test_cleanup_remote_target(self, mock_break, mock_del,
+                                   mock_rm, mock_clean_metro):
         with mock.patch.object(self.rest, 'are_vols_rdf_paired',
                                return_value=(False, '', '')):
             self.common._cleanup_remote_target(
-                self.data.array, self.data.remote_array, self.data.device_id,
+                self.data.array, self.data.test_volume,
+                self.data.remote_array, self.data.device_id,
                 self.data.device_id2, self.data.rdf_group_name,
                 "vol1", self.data.rep_extra_specs)
             mock_break.assert_not_called()
         self.common._cleanup_remote_target(
-            self.data.array, self.data.remote_array, self.data.device_id,
+            self.data.array, self.data.test_volume,
+            self.data.remote_array, self.data.device_id,
             self.data.device_id2, self.data.rdf_group_name,
             "vol1", self.data.rep_extra_specs)
         mock_break.assert_called_once_with(
             self.data.array, self.data.device_id,
             self.data.device_id2, self.data.rdf_group_name,
             self.data.rep_extra_specs, "Synchronized")
+        # is metro volume
+        with mock.patch.object(self.utils, 'is_metro_device',
+                               return_value=True):
+            self.common._cleanup_remote_target(
+                self.data.array, self.data.test_volume,
+                self.data.remote_array, self.data.device_id,
+                self.data.device_id2, self.data.rdf_group_name,
+                "vol1", self.data.rep_extra_specs)
+            mock_clean_metro.assert_called_once()
+
+    def test_cleanup_remote_target_exception(self):
+        extra_specs = deepcopy(self.data.rep_extra_specs)
+        extra_specs['mode'] = utils.REP_METRO
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.metro_driver.common._cleanup_remote_target,
+                          self.data.array, self.data.test_volume,
+                          self.data.remote_array,
+                          self.data.device_id, self.data.device_id2,
+                          self.data.rdf_group_name, "vol1", extra_specs)
+
+    @mock.patch.object(provision.VMAXProvision, 'enable_group_replication')
+    @mock.patch.object(rest.VMAXRest, 'get_num_vols_in_sg',
+                       side_effect=[2, 0])
+    def test_cleanup_metro_target(self, mock_vols, mock_enable):
+        # allow delete is True
+        specs = {'allow_del_metro': True}
+        for x in range(0, 2):
+            self.common._cleanup_metro_target(
+                self.data.array, self.data.device_id, self.data.device_id2,
+                self.data.rdf_group_no, specs)
+            mock_enable.assert_called_once()
+        # allow delete is False
+        specs['allow_del_metro'] = False
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common._cleanup_metro_target,
+                          self.data.array, self.data.device_id,
+                          self.data.device_id2,
+                          self.data.rdf_group_no, specs)
 
     @mock.patch.object(common.VMAXCommon,
                        '_remove_vol_and_cleanup_replication')
@@ -6430,7 +6731,7 @@ class VMAXCommonReplicationTest(test.TestCase):
         side_effect=[None, VMAXCommonData.device_id,
                      VMAXCommonData.device_id, VMAXCommonData.device_id])
     @mock.patch.object(
-        common.VMAXCommon, 'get_masking_views_from_volume',
+        common.VMAXCommon, '_get_masking_views_from_volume',
         side_effect=['OS-host-MV', None, exception.VolumeBackendAPIException])
     def test_recover_volumes_on_failback(self, mock_mv, mock_dev):
         recovery1 = self.common.recover_volumes_on_failback(
@@ -6498,6 +6799,13 @@ class VMAXCommonReplicationTest(test.TestCase):
                           self.data.failed_resource, self.data.test_volume,
                           self.data.device_id, 'vol1', '1',
                           self.data.extra_specs_rep_enabled)
+        with mock.patch.object(self.utils, 'is_metro_device',
+                               return_value=True):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.common.extend_volume_is_replicated,
+                              self.data.array, self.data.test_volume,
+                              self.data.device_id, 'vol1', '1',
+                              self.data.extra_specs_rep_enabled)
 
     @mock.patch.object(common.VMAXCommon, 'add_volume_to_replication_group')
     @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
@@ -6545,14 +6853,12 @@ class VMAXCommonReplicationTest(test.TestCase):
         # Path one - disable compression
         extra_specs1 = deepcopy(self.extra_specs)
         extra_specs1[utils.DISABLECOMPRESSION] = "true"
-        ref_specs1 = deepcopy(self.data.rep_extra_specs)
-        ref_specs1[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        ref_specs1 = deepcopy(self.data.rep_extra_specs2)
         rep_extra_specs1 = self.common._get_replication_extra_specs(
             extra_specs1, rep_config)
         self.assertEqual(ref_specs1, rep_extra_specs1)
         # Path two - disable compression, not all flash
-        ref_specs2 = deepcopy(self.data.rep_extra_specs)
-        ref_specs2[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        ref_specs2 = deepcopy(self.data.rep_extra_specs2)
         with mock.patch.object(self.rest, 'is_compression_capable',
                                return_value=False):
             rep_extra_specs2 = self.common._get_replication_extra_specs(

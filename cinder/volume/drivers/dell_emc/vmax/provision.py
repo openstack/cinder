@@ -402,6 +402,7 @@ class VMAXProvision(object):
             raise exception.VolumeBackendAPIException(data=exception_message)
         return '%(slo)s+%(workload)s' % {'slo': slo, 'workload': workload}
 
+    @coordination.synchronized('emc-rg-{rdf_group}')
     def break_rdf_relationship(self, array, device_id, target_device,
                                rdf_group, rep_extra_specs, state):
         """Break the rdf relationship between a pair of devices.
@@ -413,28 +414,40 @@ class VMAXProvision(object):
         :param rep_extra_specs: replication extra specs
         :param state: the state of the rdf pair
         """
-        LOG.info("Splitting rdf pair: source device: %(src)s "
+        LOG.info("Suspending rdf pair: source device: %(src)s "
                  "target device: %(tgt)s.",
                  {'src': device_id, 'tgt': target_device})
-        state_check = state.lower()
-        if state_check == utils.RDF_SYNC_STATE:
-            self.rest.modify_rdf_device_pair(
-                array, device_id, rdf_group, rep_extra_specs, split=True)
-        elif state_check in [utils.RDF_CONSISTENT_STATE,
-                             utils.RDF_SYNCINPROG_STATE]:
-            if state_check == utils.RDF_SYNCINPROG_STATE:
-                self.rest.wait_for_rdf_consistent_state(
-                    array, device_id, target_device,
-                    rep_extra_specs, state)
-            self.rest.modify_rdf_device_pair(
-                array, device_id, rdf_group, rep_extra_specs, suspend=True)
-        LOG.info("Deleting rdf pair: source device: %(src)s "
-                 "target device: %(tgt)s.",
-                 {'src': device_id, 'tgt': target_device})
-        self.delete_rdf_pair(array, device_id, rdf_group, rep_extra_specs)
+        if state.lower() == utils.RDF_SYNCINPROG_STATE:
+            self.rest.wait_for_rdf_consistent_state(
+                array, device_id, target_device,
+                rep_extra_specs, state)
+        self.rest.modify_rdf_device_pair(
+            array, device_id, rdf_group, rep_extra_specs, suspend=True)
+        self.delete_rdf_pair(array, device_id, rdf_group,
+                             target_device, rep_extra_specs)
+
+    def break_metro_rdf_pair(self, array, device_id, target_device,
+                             rdf_group, rep_extra_specs, metro_grp):
+        """Delete replication for a Metro device pair.
+
+        Need to suspend the entire group before we can delete a single pair.
+        :param array: the array serial number
+        :param device_id: the device id
+        :param target_device: the target device id
+        :param rdf_group: the rdf group number
+        :param rep_extra_specs: the replication extra specifications
+        :param metro_grp: the metro storage group name
+        """
+        # Suspend I/O on the RDF links...
+        LOG.info("Suspending I/O for all volumes in the RDF group: %(rdfg)s",
+                 {'rdfg': rdf_group})
+        self.disable_group_replication(
+            array, metro_grp, rdf_group, rep_extra_specs)
+        self.delete_rdf_pair(array, device_id, rdf_group,
+                             target_device, rep_extra_specs)
 
     def delete_rdf_pair(
-            self, array, device_id, rdf_group, extra_specs):
+            self, array, device_id, rdf_group, target_device, extra_specs):
         """Delete an rdf pairing.
 
         If the replication mode is synchronous, only one attempt is required
@@ -446,8 +459,12 @@ class VMAXProvision(object):
         :param array: the array serial number
         :param device_id: source volume device id
         :param rdf_group: the rdf group number
+        :param target_device: the target device
         :param extra_specs: extra specifications
         """
+        LOG.info("Deleting rdf pair: source device: %(src)s "
+                 "target device: %(tgt)s.",
+                 {'src': device_id, 'tgt': target_device})
         if (extra_specs.get(utils.REP_MODE) and
                 extra_specs.get(utils.REP_MODE) == utils.REP_SYNC):
             return self.rest.delete_rdf_pair(array, device_id, rdf_group)
@@ -504,8 +521,13 @@ class VMAXProvision(object):
             action = "Failing back"
         LOG.info("%(action)s rdf pair: source device: %(src)s ",
                  {'action': action, 'src': device_id})
-        self.rest.modify_rdf_device_pair(
-            array, device_id, rdf_group, extra_specs, split=False)
+
+        @coordination.synchronized('emc-rg-{rdfg_no}')
+        def _failover_volume(rdfg_no):
+            self.rest.modify_rdf_device_pair(
+                array, device_id, rdfg_no, extra_specs)
+
+        _failover_volume(rdf_group)
 
     def get_or_create_volume_group(self, array, group, extra_specs):
         """Get or create a volume group.
@@ -657,7 +679,7 @@ class VMAXProvision(object):
         return rc
 
     def enable_group_replication(self, array, storagegroup_name,
-                                 rdf_group_num, extra_specs):
+                                 rdf_group_num, extra_specs, establish=False):
         """Resume rdf replication on a storage group.
 
         Replication is enabled by default. This allows resuming
@@ -666,8 +688,9 @@ class VMAXProvision(object):
         :param storagegroup_name: the storagegroup name
         :param rdf_group_num: the rdf group number
         :param extra_specs: the extra specifications
+        :param establish: flag to indicate 'establish' instead of 'resume'
         """
-        action = "Resume"
+        action = "Establish" if establish is True else "Resume"
         self.rest.modify_storagegroup_rdf(
             array, storagegroup_name, rdf_group_num, action, extra_specs)
 
