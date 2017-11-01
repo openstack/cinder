@@ -23,7 +23,7 @@ import json
 import math
 import re
 
-from os_brick.initiator import connector
+from os_brick import initiator
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_log import versionutils
@@ -138,9 +138,10 @@ class ScaleIODriver(driver.VolumeDriver):
         2.0.1: Added support for SIO 1.3x in addition to 2.0.x
         2.0.2: Added consistency group support to generic volume groups
         2.0.3: Added cache for storage pool and protection domains info
+        2.0.4: Added compatibility with os_brick>1.15.3
     """
 
-    VERSION = "2.0.3"
+    VERSION = "2.0.4"
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_ScaleIO_CI"
 
@@ -203,8 +204,8 @@ class ScaleIODriver(driver.VolumeDriver):
                  {'provisioning_type': self.provisioning_type})
         self.configuration.max_over_subscription_ratio = (
             self.configuration.sio_max_over_subscription_ratio)
-        self.connector = connector.InitiatorConnector.factory(
-            connector.SCALEIO, utils.get_root_helper(),
+        self.connector = initiator.connector.InitiatorConnector.factory(
+            initiator.SCALEIO, utils.get_root_helper(),
             self.configuration.num_volume_device_scan_tries
         )
 
