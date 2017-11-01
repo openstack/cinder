@@ -142,7 +142,7 @@ class ScaleIODriver(driver.VolumeDriver):
 
     VERSION = "2.0.3"
     # ThirdPartySystems wiki
-    CI_WIKI_NAME = "EMC_ScaleIO_CI"
+    CI_WIKI_NAME = "DELL_EMC_ScaleIO_CI"
 
     scaleio_qos_keys = (QOS_IOPS_LIMIT_KEY, QOS_BANDWIDTH_LIMIT,
                         QOS_IOPS_PER_GB, QOS_BANDWIDTH_PER_GB)
