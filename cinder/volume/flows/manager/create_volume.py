@@ -427,9 +427,11 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
     def _create_from_snapshot(self, context, volume, snapshot_id,
                               **kwargs):
         snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
-        model_update = self.driver.create_volume_from_snapshot(volume,
-                                                               snapshot)
-        self._cleanup_cg_in_volume(volume)
+        try:
+            model_update = self.driver.create_volume_from_snapshot(volume,
+                                                                   snapshot)
+        finally:
+            self._cleanup_cg_in_volume(volume)
         # NOTE(harlowja): Subtasks would be useful here since after this
         # point the volume has already been created and further failures
         # will not destroy the volume (although they could in the future).
@@ -469,8 +471,10 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # and we should have proper locks on the source volume while actions
         # that use the source volume are underway.
         srcvol_ref = objects.Volume.get_by_id(context, source_volid)
-        model_update = self.driver.create_cloned_volume(volume, srcvol_ref)
-        self._cleanup_cg_in_volume(volume)
+        try:
+            model_update = self.driver.create_cloned_volume(volume, srcvol_ref)
+        finally:
+            self._cleanup_cg_in_volume(volume)
         # NOTE(harlowja): Subtasks would be useful here since after this
         # point the volume has already been created and further failures
         # will not destroy the volume (although they could in the future).
@@ -861,8 +865,10 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         return model_update
 
     def _create_raw_volume(self, volume, **kwargs):
-        ret = self.driver.create_volume(volume)
-        self._cleanup_cg_in_volume(volume)
+        try:
+            ret = self.driver.create_volume(volume)
+        finally:
+            self._cleanup_cg_in_volume(volume)
         return ret
 
     def execute(self, context, volume, volume_spec):
