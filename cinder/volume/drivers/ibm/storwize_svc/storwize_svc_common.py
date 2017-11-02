@@ -1486,7 +1486,7 @@ class StorwizeHelpers(object):
             greenthread.sleep(self.WAIT_TIME)
 
         if not mapping_ready:
-            msg = (_('Mapping %(id)s prepare failed to complete within the'
+            msg = (_('Mapping %(id)s prepare failed to complete within the '
                      'allotted %(to)d seconds timeout. Terminating.')
                    % {'id': fc_map_id,
                       'to': timeout})
