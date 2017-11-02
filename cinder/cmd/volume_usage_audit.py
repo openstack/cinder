@@ -36,8 +36,6 @@
 
 """
 
-from __future__ import print_function
-
 import datetime
 import iso8601
 import sys
