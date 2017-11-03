@@ -191,7 +191,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               key_manager=fake_key_manager,
                               consistencygroup=None,
                               cgsnapshot=None,
-                              group=None)
+                              group=None,
+                              group_snapshot=None)
         self.assertEqual(replication_status, result['replication_status'],
                          extra_specs)
 
@@ -236,7 +237,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                      key_manager=fake_key_manager,
                      consistencygroup=None,
                      cgsnapshot=None,
-                     group=None)
+                     group=None,
+                     group_snapshot=None)
         fake_get_encryption_key.assert_called_once_with(
             fake_key_manager, self.ctxt, fakes.VOLUME_TYPE_ID,
             None, None, image_meta)
@@ -280,7 +282,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               key_manager=fake_key_manager,
                               consistencygroup=None,
                               cgsnapshot=None,
-                              group=None)
+                              group=None,
+                              group_snapshot=None)
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
@@ -336,7 +339,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                           key_manager=fake_key_manager,
                           consistencygroup=None,
                           cgsnapshot=None,
-                          group=None)
+                          group=None,
+                          group_snapshot=None)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')
     @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
@@ -379,7 +383,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               key_manager=fake_key_manager,
                               consistencygroup=None,
                               cgsnapshot=None,
-                              group=None)
+                              group=None,
+                              group_snapshot=None)
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
@@ -442,7 +447,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                                   key_manager=fake_key_manager,
                                   consistencygroup=None,
                                   cgsnapshot=None,
-                                  group=None)
+                                  group=None,
+                                  group_snapshot=None)
 
         mock_is_encrypted.assert_called_once_with(self.ctxt, 1)
         mock_get_volume_type_encryption.assert_called_once_with(self.ctxt, 1)
@@ -485,7 +491,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               key_manager=fake_key_manager,
                               consistencygroup=None,
                               cgsnapshot=None,
-                              group=None)
+                              group=None,
+                              group_snapshot=None)
         expected_result = {'size': (sys.maxsize + 1),
                            'snapshot_id': None,
                            'source_volid': None,
@@ -541,7 +548,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               key_manager=fake_key_manager,
                               consistencygroup=None,
                               cgsnapshot=None,
-                              group=None)
+                              group=None,
+                              group_snapshot=None)
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
@@ -604,7 +612,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               key_manager=fake_key_manager,
                               consistencygroup=None,
                               cgsnapshot=None,
-                              group=None)
+                              group=None,
+                              group_snapshot=None)
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
@@ -668,7 +677,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               key_manager=fake_key_manager,
                               consistencygroup=None,
                               cgsnapshot=None,
-                              group=None)
+                              group=None,
+                              group_snapshot=None)
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
@@ -731,7 +741,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               key_manager=fake_key_manager,
                               consistencygroup=None,
                               cgsnapshot=None,
-                              group=None)
+                              group=None,
+                              group_snapshot=None)
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
@@ -792,7 +803,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                           key_manager=fake_key_manager,
                           consistencygroup=None,
                           cgsnapshot=None,
-                          group=None)
+                          group=None,
+                          group_snapshot=None)
 
 
 @ddt.ddt

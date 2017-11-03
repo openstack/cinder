@@ -89,6 +89,7 @@ def create_volume(ctxt,
         vol['consistencygroup_id'] = consistencygroup_id
     if group_id:
         vol['group_id'] = group_id
+    vol['group_snapshot'] = None
     if volume_type_id:
         vol['volume_type_id'] = volume_type_id
     if metadata:
