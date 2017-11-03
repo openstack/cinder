@@ -817,6 +817,9 @@ class VMAXCommon(object):
                 (location_info, total_capacity_gb, free_capacity_gb,
                  provisioned_capacity_gb,
                  array_reserve_percent) = self._update_srp_stats(array_info)
+                arrays[array_info['SerialNumber']] = (
+                    [total_capacity_gb, free_capacity_gb,
+                     provisioned_capacity_gb, array_reserve_percent])
             else:
                 already_queried = True
             pool_name = ("%(slo)s+%(workload)s+%(srpName)s+%(array)s"

@@ -294,7 +294,6 @@ class VMAXProvision(object):
         """
         total_capacity_gb = 0
         remaining_capacity_gb = 0
-        allocated_capacity_gb = None
         subscribed_capacity_gb = 0
         array_reserve_percent = 0
         srp = array_info['srpName']
@@ -310,18 +309,16 @@ class VMAXProvision(object):
             return 0, 0, 0, 0, False
         try:
             total_capacity_gb = srp_details['total_usable_cap_gb']
-            allocated_capacity_gb = srp_details['total_allocated_cap_gb']
+            try:
+                used_capacity_gb = srp_details['total_used_cap_gb']
+                remaining_capacity_gb = float(
+                    total_capacity_gb - used_capacity_gb)
+            except KeyError:
+                remaining_capacity_gb = srp_details['fba_free_capacity']
             subscribed_capacity_gb = srp_details['total_subscribed_cap_gb']
-            remaining_capacity_gb = float(
-                total_capacity_gb - allocated_capacity_gb)
             array_reserve_percent = srp_details['reserved_cap_percent']
         except KeyError:
             pass
-
-        LOG.debug(
-            "Remaining capacity %(remaining_capacity_gb)s "
-            "GBs is determined from SRP capacity ",
-            {'remaining_capacity_gb': remaining_capacity_gb})
 
         return (total_capacity_gb, remaining_capacity_gb,
                 subscribed_capacity_gb, array_reserve_percent)
