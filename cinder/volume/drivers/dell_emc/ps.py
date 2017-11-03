@@ -135,10 +135,11 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
                 eqlx_chap_login, and eqlx_chap_password.
         1.4.1 - Rebranded driver to Dell EMC.
         1.4.4 - Fixed over-subscription ratio calculation
+        1.4.5 - Optimize volume stats information parsing
 
     """
 
-    VERSION = "1.4.4"
+    VERSION = "1.4.5"
 
     # ThirdPartySytems wiki page
     CI_WIKI_NAME = "Dell_Storage_CI"
@@ -298,12 +299,11 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
 
-        data['total_capacity_gb'] = 0
-        data['free_capacity_gb'] = 0
+        data['total_capacity_gb'] = None
+        data['free_capacity_gb'] = None
         data['multiattach'] = True
 
-        provisioned_capacity = 0
-
+        provisioned_capacity = None
         for line in self._eql_execute('pool', 'select',
                                       self.configuration.eqlx_pool, 'show'):
             if line.startswith('TotalCapacity:'):
@@ -315,6 +315,10 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
             if line.startswith('VolumeReportedSpace:'):
                 out_tup = line.rstrip().partition(' ')
                 provisioned_capacity = self._get_space_in_gb(out_tup[-1])
+            # Terminate parsing once this data is found to improve performance
+            if (data['total_capacity_gb'] and data['free_capacity_gb'] and
+               provisioned_capacity):
+                break
 
         global_capacity = data['total_capacity_gb']
         global_free = data['free_capacity_gb']
