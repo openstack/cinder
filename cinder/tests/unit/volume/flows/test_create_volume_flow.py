@@ -59,6 +59,60 @@ class CreateVolumeFlowTestCase(test.TestCase):
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.volume.utils.extract_host')
     @mock.patch('time.time')
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    def test_cast_create_volume_from_resource(self, mock_snapshot_get,
+                                              mock_time, mock_extract_host,
+                                              volume_get_by_id):
+        mock_time.side_effect = self.time_inc
+        volume = fake_volume.fake_volume_obj(self.ctxt,
+                                             host='host@backend#pool')
+        volume_get_by_id.return_value = volume
+
+        spec = {'volume_id': volume.id,
+                'volume': volume,
+                'source_volid': volume.id,
+                'snapshot_id': None,
+                'image_id': 4,
+                'consistencygroup_id': None,
+                'cgsnapshot_id': None,
+                'group_id': None, }
+
+        # Fake objects assert specs
+        task = create_volume.VolumeCastTask(
+            fake_volume_api.FakeSchedulerRpcAPI(spec, self),
+            fake_volume_api.FakeVolumeAPI(spec, self),
+            fake_volume_api.FakeDb())
+
+        task._cast_create_volume(self.ctxt, spec, {})
+        mock_extract_host.assert_called_once_with('host@backend#pool')
+
+        snapshot = fake_snapshot.fake_snapshot_obj(self.ctxt,
+                                                   volume=volume)
+        mock_snapshot_get.return_value = snapshot
+
+        spec = {'volume_id': volume.id,
+                'volume': volume,
+                'source_volid': None,
+                'snapshot_id': snapshot.id,
+                'image_id': 4,
+                'consistencygroup_id': None,
+                'cgsnapshot_id': None,
+                'group_id': None, }
+
+        # Fake objects assert specs
+        task = create_volume.VolumeCastTask(
+            fake_volume_api.FakeSchedulerRpcAPI(spec, self),
+            fake_volume_api.FakeVolumeAPI(spec, self),
+            fake_volume_api.FakeDb())
+
+        task._cast_create_volume(self.ctxt, spec, {})
+        mock_snapshot_get.assert_called_once_with(self.ctxt, snapshot.id)
+        mock_extract_host.assert_has_calls([mock.call('host@backend#pool'),
+                                            mock.call('host@backend#pool')])
+
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch('cinder.volume.utils.extract_host')
+    @mock.patch('time.time')
     @mock.patch('cinder.objects.ConsistencyGroup.get_by_id')
     def test_cast_create_volume(self, consistencygroup_get_by_id, mock_time,
                                 mock_extract_host, volume_get_by_id):

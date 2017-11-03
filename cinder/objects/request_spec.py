@@ -23,7 +23,8 @@ class RequestSpec(base.CinderObject, base.CinderObjectDictCompat,
                   base.CinderComparableObject):
     # Version 1.0: Initial version
     # Version 1.1: Added group_id and group_backend
-    VERSION = '1.1'
+    # Version 1.2 Added ``resource_backend``
+    VERSION = '1.2'
 
     fields = {
         'consistencygroup_id': fields.UUIDField(nullable=True),
@@ -40,6 +41,7 @@ class RequestSpec(base.CinderObject, base.CinderObjectDictCompat,
                                                 nullable=True),
         'CG_backend': fields.StringField(nullable=True),
         'group_backend': fields.StringField(nullable=True),
+        'resource_backend': fields.StringField(nullable=True)
     }
 
     obj_extra_fields = ['resource_properties']
