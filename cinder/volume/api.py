@@ -966,12 +966,10 @@ class API(base.Base):
         reserve_opts_list = []
         total_reserve_opts = {}
         try:
+            reserve_opts_list.append({'snapshots': 1})
             for volume in volume_list:
-                if CONF.no_snapshot_gb_quota:
-                    reserve_opts = {'snapshots': 1}
-                else:
-                    reserve_opts = {'snapshots': 1,
-                                    'gigabytes': volume['size']}
+                if not CONF.no_snapshot_gb_quota:
+                    reserve_opts = {'gigabytes': volume['size']}
                 QUOTAS.add_volume_type_opts(context,
                                             reserve_opts,
                                             volume.get('volume_type_id'))

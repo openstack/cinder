@@ -117,6 +117,7 @@ def get_flow(context, db, driver, host, volume, ref):
         'context': context,
         'volume': volume,
         'manage_existing_ref': ref,
+        'group_snapshot': None,
         'optional_args': {'is_quota_committed': False},
     }
 

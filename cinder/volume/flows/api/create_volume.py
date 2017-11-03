@@ -422,7 +422,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
     def execute(self, context, size, snapshot, image_id, source_volume,
                 availability_zone, volume_type, metadata, key_manager,
-                source_replica, consistencygroup, cgsnapshot, group):
+                source_replica, consistencygroup, cgsnapshot, group,
+                group_snapshot):
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -632,7 +633,8 @@ class QuotaReserveTask(flow_utils.CinderTask):
     def __init__(self):
         super(QuotaReserveTask, self).__init__(addons=[ACTION])
 
-    def execute(self, context, size, volume_type_id, optional_args):
+    def execute(self, context, size, volume_type_id, group_snapshot,
+                optional_args):
         try:
             values = {'per_volume_gigabytes': size}
             QUOTAS.limit_check(context, project_id=context.project_id,
@@ -643,7 +645,10 @@ class QuotaReserveTask(flow_utils.CinderTask):
                 size=size, limit=quotas['per_volume_gigabytes'])
 
         try:
-            reserve_opts = {'volumes': 1, 'gigabytes': size}
+            if group_snapshot:
+                reserve_opts = {'volumes': 1}
+            else:
+                reserve_opts = {'volumes': 1, 'gigabytes': size}
             QUOTAS.add_volume_type_opts(context, reserve_opts, volume_type_id)
             reservations = QUOTAS.reserve(context, **reserve_opts)
             return {

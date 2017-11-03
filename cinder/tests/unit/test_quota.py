@@ -37,6 +37,7 @@ from cinder import quota_utils
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 import cinder.tests.unit.image.fake
+from cinder.tests.unit import utils as tests_utils
 from cinder import volume
 
 
@@ -157,6 +158,25 @@ class QuotaIntegrationTestCase(test.TestCase):
                " quota '%s'." % resource)
         self.assertEqual(msg, six.text_type(ex))
         vol_ref.destroy()
+
+    def test__snapshots_quota_value(self):
+        test_volume1 = tests_utils.create_volume(
+            self.context,
+            status='available',
+            host=CONF.host)
+        test_volume2 = tests_utils.create_volume(
+            self.context,
+            status='available',
+            host=CONF.host)
+        volume_api = cinder.volume.api.API()
+        volume_api.create_snapshots_in_db(self.context,
+                                          [test_volume1, test_volume2],
+                                          'fake_name',
+                                          'fake_description',
+                                          fake.CONSISTENCY_GROUP_ID)
+        usages = db.quota_usage_get_all_by_project(self.context,
+                                                   self.project_id)
+        self.assertEqual(1, usages['snapshots']['in_use'])
 
     def test_too_many_snapshots_of_type(self):
         resource = 'snapshots_%s' % self.volume_type_name
