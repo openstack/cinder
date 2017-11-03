@@ -12,8 +12,6 @@
 
 """Methods for working with eventlet WSGI servers."""
 
-from __future__ import print_function
-
 import socket
 
 from oslo_config import cfg
