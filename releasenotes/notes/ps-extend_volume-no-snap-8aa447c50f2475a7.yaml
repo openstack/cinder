@@ -1,0 +1,5 @@
+---
+fixes:
+  - Dell EMC PS Series Driver was creating unmanaged snapshots
+    when extending volumes. Fixed it by adding the missing
+    no-snap parameter. This change fixes bug 1720454.
