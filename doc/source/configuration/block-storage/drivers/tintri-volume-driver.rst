@@ -18,7 +18,7 @@ following actions:
       volume_driver=cinder.volume.drivers.tintri.TintriDriver
       # Mount options passed to the nfs client. See section of the
       # nfs man page for details. (string value)
-      nfs_mount_options = vers=3,lookupcache=pos
+      nfs_mount_options = vers=3,lookupcache=pos,nolock
 
       #
       # Options defined in cinder.volume.drivers.tintri
@@ -66,7 +66,7 @@ following actions:
    .. code-block:: ini
 
       [libvirt]
-      nfs_mount_options = vers=3
+      nfs_mount_options = vers=3,nolock
 
 #. Edit the ``/etc/cinder/nfs_shares`` file and add the Tintri VMstore mount
    points associated with the configured VMstore management IP in the
