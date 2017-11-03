@@ -2604,8 +2604,20 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                               volume_type=volume_type,
                                               volume_metadata=volume_metadata)
 
+    def _check_if_group_type_cg_snapshot(self, volume):
+        if (volume.group_id and
+                not utils.is_group_a_cg_snapshot_type(volume.group)):
+            msg = _('Create volume with a replication or hyperswap '
+                    'group_id is not supported. Please add volume to '
+                    'group after volume creation.')
+            LOG.error(msg)
+            raise exception.VolumeDriverException(reason=msg)
+
     def create_volume(self, volume):
         LOG.debug('enter: create_volume: volume %s', volume['name'])
+        # Create a replication or hyperswap volume with group_id is not
+        # allowed.
+        self._check_if_group_type_cg_snapshot(volume)
         opts = self._get_vdisk_params(volume['volume_type_id'],
                                       volume_metadata=
                                       volume.get('volume_metadata'))
@@ -2707,6 +2719,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         self._helpers.delete_vdisk(snapshot['name'], False)
 
     def create_volume_from_snapshot(self, volume, snapshot):
+        # Create volume from snapshot with a replication or hyperswap group_id
+        # is not allowed.
+        self._check_if_group_type_cg_snapshot(volume)
         opts = self._get_vdisk_params(volume['volume_type_id'],
                                       volume_metadata=
                                       volume.get('volume_metadata'))
@@ -2743,7 +2758,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
     def create_cloned_volume(self, tgt_volume, src_volume):
         """Creates a clone of the specified volume."""
-
+        # Create a cloned volume with a replication or hyperswap group_id is
+        # not allowed.
+        self._check_if_group_type_cg_snapshot(tgt_volume)
         opts = self._get_vdisk_params(tgt_volume['volume_type_id'],
                                       volume_metadata=
                                       tgt_volume.get('volume_metadata'))
