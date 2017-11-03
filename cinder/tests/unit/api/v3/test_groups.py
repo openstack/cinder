@@ -1043,9 +1043,12 @@ class GroupsAPITestCase(test.TestCase):
         self.assertEqual(http_client.ACCEPTED, response.status_int)
         self.assertEqual(fields.GroupStatus.AVAILABLE, group.status)
 
+    @ddt.data(True, False)
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_create_group_from_src_snap(self, mock_validate):
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
+    def test_create_group_from_src_snap(self, valid_host, mock_validate_host,
+                                        mock_validate):
         self.mock_object(volume_api.API, "create", v3_fakes.fake_volume_create)
 
         group = utils.create_group(self.ctxt,
@@ -1064,6 +1067,7 @@ class GroupsAPITestCase(test.TestCase):
             group_snapshot_id=group_snapshot.id,
             status=fields.SnapshotStatus.AVAILABLE,
             volume_type_id=volume.volume_type_id)
+        mock_validate_host.return_value = valid_host
 
         test_grp_name = 'test grp'
         body = {"create-from-src": {"name": test_grp_name,
@@ -1072,22 +1076,30 @@ class GroupsAPITestCase(test.TestCase):
         req = fakes.HTTPRequest.blank('/v3/%s/groups/action' %
                                       fake.PROJECT_ID,
                                       version=mv.GROUP_SNAPSHOTS)
-        res_dict = self.controller.create_from_src(req, body)
+        if valid_host:
+            res_dict = self.controller.create_from_src(req, body)
 
-        self.assertIn('id', res_dict['group'])
-        self.assertEqual(test_grp_name, res_dict['group']['name'])
-        self.assertTrue(mock_validate.called)
-
-        grp_ref = objects.Group.get_by_id(
-            self.ctxt.elevated(), res_dict['group']['id'])
-
+            self.assertIn('id', res_dict['group'])
+            self.assertEqual(test_grp_name, res_dict['group']['name'])
+            self.assertTrue(mock_validate.called)
+            grp_ref = objects.Group.get_by_id(
+                self.ctxt.elevated(), res_dict['group']['id'])
+        else:
+            self.assertRaises(webob.exc.HTTPBadRequest,
+                              self.controller.create_from_src, req, body)
+            groups = objects.GroupList.get_all_by_project(self.ctxt,
+                                                          fake.PROJECT_ID)
+            grp_ref = objects.Group.get_by_id(
+                self.ctxt.elevated(), groups[0]['id'])
         grp_ref.destroy()
         snapshot.destroy()
         volume.destroy()
         group.destroy()
         group_snapshot.destroy()
 
-    def test_create_group_from_src_grp(self):
+    @ddt.data(True, False)
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
+    def test_create_group_from_src_grp(self, host_valid, mock_validate_host):
         self.mock_object(volume_api.API, "create", v3_fakes.fake_volume_create)
 
         source_grp = utils.create_group(self.ctxt,
@@ -1097,6 +1109,7 @@ class GroupsAPITestCase(test.TestCase):
             self.ctxt,
             group_id=source_grp.id,
             volume_type_id=fake.VOLUME_TYPE_ID)
+        mock_validate_host.return_value = host_valid
 
         test_grp_name = 'test cg'
         body = {"create-from-src": {"name": test_grp_name,
@@ -1105,13 +1118,22 @@ class GroupsAPITestCase(test.TestCase):
         req = fakes.HTTPRequest.blank('/v3/%s/groups/action' %
                                       fake.PROJECT_ID,
                                       version=mv.GROUP_SNAPSHOTS)
-        res_dict = self.controller.create_from_src(req, body)
-
-        self.assertIn('id', res_dict['group'])
-        self.assertEqual(test_grp_name, res_dict['group']['name'])
-
-        grp = objects.Group.get_by_id(
-            self.ctxt, res_dict['group']['id'])
+        if host_valid:
+            res_dict = self.controller.create_from_src(req, body)
+            self.assertIn('id', res_dict['group'])
+            self.assertEqual(test_grp_name, res_dict['group']['name'])
+            grp = objects.Group.get_by_id(
+                self.ctxt, res_dict['group']['id'])
+            grp.destroy()
+            volume.destroy()
+            source_grp.destroy()
+        else:
+            self.assertRaises(webob.exc.HTTPBadRequest,
+                              self.controller.create_from_src, req, body)
+            groups = objects.GroupList.get_all_by_project(self.ctxt,
+                                                          fake.PROJECT_ID)
+            grp = objects.Group.get_by_id(
+                self.ctxt.elevated(), groups[0]['id'])
         grp.destroy()
         volume.destroy()
         source_grp.destroy()

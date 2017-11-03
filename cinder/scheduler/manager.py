@@ -335,6 +335,21 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         """
         return self.driver.get_pools(context, filters)
 
+    def validate_host_capacity(self, context, backend, request_spec,
+                               filter_properties):
+        try:
+            backend_state = self.driver.backend_passes_filters(
+                context,
+                backend,
+                request_spec, filter_properties)
+            backend_state.consume_from_volume(
+                {'size': request_spec['volume_properties']['size']})
+        except exception.NoValidBackend:
+            LOG.error("Desired host %(host)s does not have enough "
+                      "capacity.", {'host': backend})
+            return False
+        return True
+
     def extend_volume(self, context, volume, new_size, reservations,
                       request_spec=None, filter_properties=None):
 
