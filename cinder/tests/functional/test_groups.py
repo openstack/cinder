@@ -109,5 +109,5 @@ class GroupsTest(functional_helpers._FunctionalTestBase):
         found_group = self._poll_group_while(created_group_id, ['deleting'])
 
         # Should be gone
-        self.assertFalse(found_volume)
-        self.assertFalse(found_group)
+        self.assertIsNone(found_volume)
+        self.assertIsNone(found_group)
