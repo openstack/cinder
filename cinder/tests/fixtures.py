@@ -99,3 +99,14 @@ class StandardLogging(fixtures.Fixture):
             # Don't log every single DB migration step
             std_logging.getLogger(
                 'migrate.versioning.api').setLevel(std_logging.WARNING)
+
+        # At times we end up calling back into main() functions in
+        # testing. This has the possibility of calling logging.setup
+        # again, which completely unwinds the logging capture we've
+        # created here. Once we've setup the logging in the way we want,
+        # disable the ability for the test to change this.
+        def fake_logging_setup(*args):
+            pass
+
+        self.useFixture(
+            fixtures.MonkeyPatch('oslo_log.log.setup', fake_logging_setup))
