@@ -116,6 +116,38 @@ def get_qemu_img_version():
     return _get_version_from_string(version.groups()[0])
 
 
+def _get_qemu_convert_cmd(src, dest, out_format, src_format=None,
+                          out_subformat=None, cache_mode=None,
+                          prefix=None):
+
+    if out_format == 'vhd':
+        # qemu-img still uses the legacy vpc name
+        out_format == 'vpc'
+
+    cmd = ['qemu-img', 'convert', '-O', out_format]
+
+    if prefix:
+        cmd = list(prefix) + cmd
+
+    if cache_mode:
+        cmd += ('-t', cache_mode)
+
+    if out_subformat:
+        cmd += ('-o', 'subformat=%s' % out_subformat)
+
+    # AMI images can be raw or qcow2 but qemu-img doesn't accept "ami" as
+    # an image format, so we use automatic detection.
+    # TODO(geguileo): This fixes unencrypted AMI image case, but we need to
+    # fix the encrypted case.
+
+    if (src_format or '').lower() not in ('', 'ami'):
+        cmd += ('-f', src_format)  # prevent detection of format
+
+    cmd += [src, dest]
+
+    return cmd
+
+
 def _get_version_from_string(version_string):
     return [int(x) for x in version_string.split('.')]
 
@@ -138,11 +170,9 @@ def check_qemu_img_version(minimum_version):
 
 
 def _convert_image(prefix, source, dest, out_format,
-                   src_format=None, run_as_root=True):
+                   out_subformat=None, src_format=None,
+                   run_as_root=True):
     """Convert image to other format."""
-
-    cmd = prefix + ('qemu-img', 'convert',
-                    '-O', out_format, source, dest)
 
     # Check whether O_DIRECT is supported and set '-t none' if it is
     # This is needed to ensure that all data hit the device before
@@ -157,17 +187,17 @@ def _convert_image(prefix, source, dest, out_format,
             volume_utils.check_for_odirect_support(source,
                                                    dest,
                                                    'oflag=direct')):
-        cmd = prefix + ('qemu-img', 'convert',
-                        '-t', 'none')
+        cache_mode = 'none'
+    else:
+        # use default
+        cache_mode = None
 
-        # AMI images can be raw or qcow2 but qemu-img doesn't accept "ami" as
-        # an image format, so we use automatic detection.
-        # TODO(geguileo): This fixes unencrypted AMI image case, but we need to
-        # fix the encrypted case.
-        if (src_format or '').lower() not in ('', 'ami'):
-            cmd += ('-f', src_format)  # prevent detection of format
-
-        cmd += ('-O', out_format, source, dest)
+    cmd = _get_qemu_convert_cmd(source, dest,
+                                out_format=out_format,
+                                src_format=src_format,
+                                out_subformat=out_subformat,
+                                cache_mode=cache_mode,
+                                prefix=prefix)
 
     start_time = timeutils.utcnow()
     utils.execute(*cmd, run_as_root=run_as_root)
@@ -201,14 +231,15 @@ def _convert_image(prefix, source, dest, out_format,
     LOG.info(msg, {"sz": fsz_mb, "mbps": mbps})
 
 
-def convert_image(source, dest, out_format, src_format=None,
-                  run_as_root=True, throttle=None):
+def convert_image(source, dest, out_format, out_subformat=None,
+                  src_format=None, run_as_root=True, throttle=None):
     if not throttle:
         throttle = throttling.Throttle.get_default()
     with throttle.subcommand(source, dest) as throttle_cmd:
         _convert_image(tuple(throttle_cmd['prefix']),
                        source, dest,
                        out_format,
+                       out_subformat=out_subformat,
                        src_format=src_format,
                        run_as_root=run_as_root)
 
@@ -349,8 +380,8 @@ def fetch_to_raw(context, image_service,
 
 def fetch_to_volume_format(context, image_service,
                            image_id, dest, volume_format, blocksize,
-                           user_id=None, project_id=None, size=None,
-                           run_as_root=True):
+                           volume_subformat=None, user_id=None,
+                           project_id=None, size=None, run_as_root=True):
     qemu_img = True
     image_meta = image_service.show(context, image_id)
 
@@ -430,6 +461,7 @@ def fetch_to_volume_format(context, image_service,
         disk_format = fixup_disk_format(image_meta['disk_format'])
 
         convert_image(tmp, dest, volume_format,
+                      out_subformat=volume_subformat,
                       src_format=disk_format,
                       run_as_root=run_as_root)
 
