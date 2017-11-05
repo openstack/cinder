@@ -359,6 +359,28 @@ class XIVProxyTest(test.TestCase):
             size_blocks=storage.gigabytes_to_blocks(16),
             pool='WTF32')
 
+    def test_create_volume_from_snapshot(self):
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        p.ibm_storage_cli = mock.MagicMock()
+
+        volume = testutils.create_volume(
+            self.ctxt, size=16, display_name='WTF32')
+        snapshot = testutils.create_snapshot(self.ctxt, volume.id)
+
+        p.create_volume_from_snapshot(volume, snapshot)
+
+        p.ibm_storage_cli.cmd.vol_copy.assert_called_once_with(
+            vol_src=snapshot.name,
+            vol_trg=volume.name)
+
     def test_create_volume_should_fail_if_no_pool_space(self):
         """Test create volume
 
