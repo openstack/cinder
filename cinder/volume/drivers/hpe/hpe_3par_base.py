@@ -54,10 +54,11 @@ class HPE3PARDriverBase(driver.ManageableVD,
 
         1.0.0 - Initial base driver
         1.0.1 - Adds consistency group capability in generic volume groups.
+        1.0.2 - Adds capability.
 
     """
 
-    VERSION = "1.0.1"
+    VERSION = "1.0.2"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARDriverBase, self).__init__(*args, **kwargs)
@@ -381,3 +382,217 @@ class HPE3PARDriverBase(driver.ManageableVD,
 
     def initialize_connection(self, volume, connector):
         pass
+
+    @utils.trace
+    def _init_vendor_properties(self):
+        """Create a dictionary of vendor unique properties.
+
+        This method creates a dictionary of vendor unique properties
+        and returns both created dictionary and vendor name.
+        Returned vendor name is used to check for name of vendor
+        unique properties.
+
+        - Vendor name shouldn't include colon(:) because of the separator
+          and it is automatically replaced by underscore(_).
+          ex. abc:d -> abc_d
+        - Vendor prefix is equal to vendor name.
+          ex. abcd
+        - Vendor unique properties must start with vendor prefix + ':'.
+          ex. abcd:maxIOPS
+
+        Each backend driver needs to override this method to expose
+        its own properties using _set_property() like this:
+
+        self._set_property(
+            properties,
+            "vendorPrefix:specific_property",
+            "Title of property",
+            _("Description of property"),
+            "type")
+
+        : return dictionary of vendor unique properties
+        : return vendor name
+
+        prefix: HPE:3PAR --> HPE_3PAR
+        """
+
+        properties = {}
+        valid_prov_values = ['thin', 'full', 'dedup']
+        valid_persona_values = ['2 - Generic-ALUA',
+                                '1 - Generic',
+                                '3 - Generic-legacy',
+                                '4 - HPEUX-legacy',
+                                '5 - AIX-legacy',
+                                '6 - EGENERA',
+                                '7 - ONTAP-legacy',
+                                '8 - VMware',
+                                '9 - OpenVMS',
+                                '10 - HPEUX',
+                                '11 - WindowsServer']
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:hpe3par:snap_cpg",
+            "Snap CPG Extra-specs.",
+            _("Specifies the Snap CPG for a volume type. It overrides the "
+              "hpe3par_cpg_snap setting. Defaults to the hpe3par_cpg_snap "
+              "setting in the cinder.conf file. If hpe3par_cpg_snap is not "
+              "set, it defaults to the hpe3par_cpg setting."),
+            "string")
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:hpe3par:persona",
+            "Host Persona Extra-specs.",
+            _("Specifies the host persona property for a volume type. It "
+              "overrides the hpe3par_cpg_snap setting. Defaults to the "
+              "hpe3par_cpg_snap setting in the cinder.conf file. "
+              "If hpe3par_cpg_snap is not set, "
+              "it defaults to the hpe3par_cpg setting."),
+            "string",
+            enum=valid_persona_values,
+            default="2 - Generic-ALUA")
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:hpe3par:vvs",
+            "Virtual Volume Set Extra-specs.",
+            _("The virtual volume set name that has been set up by the "
+              "administrator that would have predefined QoS rules "
+              "associated with it. If you specify extra_specs "
+              "hpe3par:vvs, the qos_specs minIOPS, maxIOPS, minBWS, "
+              "and maxBWS settings are ignored."),
+            "string")
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:hpe3par:flash_cache",
+            "Flash cache Extra-specs.",
+            _("Enables Flash cache setting for a volume type."),
+            "boolean",
+            default=False)
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:hpe3par:provisioning",
+            "Storage Provisioning Extra-specs.",
+            _("Specifies the provisioning for a volume type."),
+            "string",
+            enum=valid_prov_values,
+            default="thin")
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:hpe3par:compression",
+            "Storage Provisioning Extra-specs.",
+            _("Enables compression for a volume type. "
+              "Minimum requirement of 3par OS version is 3.3.1 "
+              "with SSD drives only. "
+              "Volume size must have > 16 GB to enable "
+              "compression on volume. "
+              "A full provisioned volume cannot be compressed."),
+            "boolean",
+            default=False)
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:replication_enabled",
+            "Volume Replication Extra-specs.",
+            _("The valid value is: <is> True "
+              "If True, the volume is to be replicated, if supported, "
+              "by the backend driver. If the option is not specified or "
+              "false, then replication is not enabled. This option is "
+              "required to enable replication."),
+            "string",
+            enum=["<is> True"],
+            default=False)
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:replication:mode",
+            "Replication Mode Extra-specs.",
+            _("Sets the replication mode for 3par."),
+            "string",
+            enum=["sync", "periodic"],
+            default="periodic")
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:replication:sync_period",
+            "Sync Period for Volume Replication Extra-specs.",
+            _("Sets the time interval for synchronization. "
+              "Only needed if replication:mode is periodic."),
+            "integer",
+            default=900)
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:replication:retention_count",
+            "Retention Count for Replication Extra-specs.",
+            _("Sets the number of snapshots that will be  "
+              "saved on the primary array."),
+            "integer",
+            default=5)
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:replication:remote_retention_count",
+            "Remote Retention Count for Replication Extra-specs.",
+            _("Sets the number of snapshots that will be  "
+              "saved on the secondary array."),
+            "integer",
+            default=5)
+
+        # ###### QoS Settings ###### #
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:minIOPS",
+            "Minimum IOPS QoS.",
+            _("Sets the QoS, I/O issue count minimum goal. "
+              "If not specified, there is no limit on I/O issue count."),
+            "integer")
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:maxIOPS",
+            "Maximum IOPS QoS.",
+            _("Sets the QoS, I/O issue count rate limit. "
+              "If not specified, there is no limit on I/O issue count."),
+            "integer")
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:minBWS",
+            "Minimum Bandwidth QoS.",
+            _("Sets the QoS, I/O issue bandwidth minimum goal. "
+              "If not specified, there is no limit on "
+              "I/O issue bandwidth rate."),
+            "integer")
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:maxBWS",
+            "Maximum Bandwidth QoS.",
+            _("Sets the QoS, I/O issue bandwidth rate limit. "
+              "If not specified, there is no limit on I/O issue "
+              "bandwidth rate."),
+            "integer")
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:latency",
+            "Latency QoS.",
+            _("Sets the latency goal in milliseconds."),
+            "integer")
+
+        self._set_property(
+            properties,
+            "HPE:3PAR:priority",
+            "Priority QoS.",
+            _("Sets the priority of the QoS rule over other rules."),
+            "string",
+            enum=["low", "normal", "high"],
+            default="normal")
+
+        return properties, 'HPE:3PAR'
