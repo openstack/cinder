@@ -249,6 +249,13 @@ class TestCase(testtools.TestCase):
         coordination.COORDINATOR.start()
         self.addCleanup(coordination.COORDINATOR.stop)
 
+        if six.PY3:
+            # TODO(smcginnis) Python 3 deprecates assertRaisesRegexp to
+            # assertRaisesRegex, but Python 2 does not have the new name. This
+            # can be removed once we stop supporting py2 or the new name is
+            # added.
+            self.assertRaisesRegexp = self.assertRaisesRegex
+
     def _restore_obj_registry(self):
         objects_base.CinderObjectRegistry._registry._obj_classes = \
             self._base_test_obj_backup
