@@ -35,6 +35,17 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
                                                         fake.ATTACHMENT_ID)
         self._compare(self, attachment_obj, attachment)
 
+    @mock.patch.object(objects.Volume, 'get_by_id')
+    def test_lazy_load_volume(self, volume_get_mock):
+        volume = objects.Volume(self.context, id=fake.VOLUME_ID)
+        volume_get_mock.return_value = volume
+        attach = objects.VolumeAttachment(self.context, id=fake.ATTACHMENT_ID,
+                                          volume_id=volume.id)
+
+        r = attach.volume
+        self.assertEqual(volume, r)
+        volume_get_mock.assert_called_once_with(self.context, volume.id)
+
     @mock.patch('cinder.db.volume_attachment_update')
     def test_save(self, volume_attachment_update):
         attachment = fake_volume.fake_volume_attachment_obj(self.context)
