@@ -65,6 +65,72 @@ class GroupManagerTestCase(test.TestCase):
         self.assertRaises(exception.InvalidVolume,
                           self.volume_api.delete, self.context, volume)
 
+    @mock.patch(
+        'cinder.tests.fake_driver.FakeLoggingVolumeDriver.'
+        'create_cloned_volume')
+    @mock.patch(
+        'cinder.tests.fake_driver.FakeLoggingVolumeDriver.'
+        'create_volume_from_snapshot')
+    @mock.patch('cinder.tests.fake_driver.FakeLoggingVolumeDriver.'
+                'create_volume')
+    def test_create_vol_with_group_id_driver_exception(self,
+                                                       mock_create_volume,
+                                                       mock_create_from_snap,
+                                                       mock_create_cloned_vol):
+        """Test create a volume with group_id but driver exception."""
+        # create_raw_volume with group id, but driver exception
+        mock_create_volume.side_effect = exception.CinderException
+        group = tests_utils.create_group(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type_ids=[fake.VOLUME_TYPE_ID],
+            group_type_id=fake.GROUP_TYPE_ID,
+            host=CONF.host)
+        self.volume.create_group(self.context, group)
+
+        volume = tests_utils.create_volume(
+            self.context,
+            group_id=group.id,
+            volume_type_id=fake.VOLUME_TYPE_ID,
+            status='available',
+            host=group.host)
+        self.assertRaises(exception.CinderException,
+                          self.volume.create_volume,
+                          self.context,
+                          volume)
+        self.assertIsNone(volume.consistencygroup_id)
+
+        # create volume from_snapshot with group id but driver exception
+        mock_create_from_snap.side_effect = exception.CinderException
+        snapshot = tests_utils.create_snapshot(self.context, volume.id)
+        volume2 = tests_utils.create_volume(
+            self.context,
+            group_id=group.id,
+            snapshot_id=snapshot.id,
+            status='available',
+            host=group.host,
+            volume_type_id=fake.VOLUME_TYPE_ID)
+        self.assertRaises(exception.CinderException,
+                          self.volume.create_volume,
+                          self.context,
+                          volume2)
+        self.assertIsNone(volume2.consistencygroup_id)
+
+        # create cloned volume with group_id but driver exception
+        mock_create_cloned_vol.side_effect = exception.CinderException
+        volume3 = tests_utils.create_volume(
+            self.context,
+            group_id=group.id,
+            source_volid=volume.id,
+            status='available',
+            host=group.host,
+            volume_type_id=fake.VOLUME_TYPE_ID)
+        self.assertRaises(exception.CinderException,
+                          self.volume.create_volume,
+                          self.context,
+                          volume3)
+        self.assertIsNone(volume3.consistencygroup_id)
+
     @mock.patch.object(GROUP_QUOTAS, "reserve",
                        return_value=["RESERVATION"])
     @mock.patch.object(GROUP_QUOTAS, "commit")
