@@ -118,16 +118,14 @@ class SnapshotApiTest(test.TestCase):
     def _create_snapshot(self, name=None, metadata=None):
         """Creates test snapshopt with provided metadata"""
         req = fakes.HTTPRequest.blank('/v3/snapshots')
-        snap = {"volume_size": 200,
-                "volume_id": fake.VOLUME_ID,
+        snap = {"volume_id": fake.VOLUME_ID,
                 "display_name": name or "Volume Test Name",
-                "display_description": "Volume Test Desc",
-                "availability_zone": "zone1:host1",
-                "host": "fake-host"}
+                "description": "Volume Test Desc"
+                }
         if metadata:
             snap["metadata"] = metadata
         body = {"snapshot": snap}
-        self.controller.create(req, body)
+        self.controller.create(req, body=body)
 
     @ddt.data(('host', 'test_host1', True), ('cluster_name', 'cluster1', True),
               ('availability_zone', 'nova1', False))

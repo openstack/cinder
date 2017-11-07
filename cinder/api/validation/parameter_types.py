@@ -161,3 +161,17 @@ group_snapshot_status = {
 extra_specs_with_null = copy.deepcopy(extra_specs)
 extra_specs_with_null['patternProperties'][
     '^[a-zA-Z0-9-_:. ]{1,255}$']['type'] = ['string', 'null']
+
+
+name_allow_zero_min_length = {
+    'type': 'string', 'minLength': 0, 'maxLength': 255
+}
+
+
+uuid_allow_null = {
+    'type': ['string', 'null']
+}
+
+
+metadata_allows_null = copy.deepcopy(extra_specs)
+metadata_allows_null['type'] = ['object', 'null']

@@ -16,17 +16,15 @@
 """The volumes snapshots api."""
 
 from oslo_log import log as logging
-from oslo_utils import encodeutils
 from oslo_utils import strutils
 from six.moves import http_client
 import webob
-from webob import exc
 
 from cinder.api import common
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import snapshots as snapshot
+from cinder.api import validation
 from cinder.api.views import snapshots as snapshot_views
-from cinder import exception
-from cinder.i18n import _
 from cinder import utils
 from cinder import volume
 from cinder.volume import utils as volume_utils
@@ -110,37 +108,22 @@ class SnapshotsController(wsgi.Controller):
         return snapshots
 
     @wsgi.response(http_client.ACCEPTED)
+    @validation.schema(snapshot.create)
     def create(self, req, body):
         """Creates a new snapshot."""
         kwargs = {}
         context = req.environ['cinder.context']
-
-        self.assert_valid_body(body, 'snapshot')
-
         snapshot = body['snapshot']
         kwargs['metadata'] = snapshot.get('metadata', None)
-
-        try:
-            volume_id = snapshot['volume_id']
-        except KeyError:
-            msg = _("'volume_id' must be specified")
-            raise exc.HTTPBadRequest(explanation=msg)
-
+        volume_id = snapshot['volume_id']
         volume = self.volume_api.get(context, volume_id)
         force = snapshot.get('force', False)
+        force = strutils.bool_from_string(force, strict=True)
         LOG.info("Create snapshot from volume %s", volume_id)
-        self.validate_name_and_description(snapshot)
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in snapshot:
             snapshot['display_name'] = snapshot.pop('name')
-
-        try:
-            force = strutils.bool_from_string(force, strict=True)
-        except ValueError as error:
-            err_msg = encodeutils.exception_to_unicode(error)
-            msg = _("Invalid value for 'force': '%s'") % err_msg
-            raise exception.InvalidParameterValue(err=msg)
 
         if force:
             new_snapshot = self.volume_api.create_snapshot_force(
@@ -160,50 +143,26 @@ class SnapshotsController(wsgi.Controller):
 
         return self._view_builder.detail(req, new_snapshot)
 
+    @validation.schema(snapshot.update)
     def update(self, req, id, body):
         """Update a snapshot."""
         context = req.environ['cinder.context']
+        snapshot_body = body['snapshot']
 
-        if not body:
-            msg = _("Missing request body")
-            raise exc.HTTPBadRequest(explanation=msg)
+        if 'name' in snapshot_body:
+            snapshot_body['display_name'] = snapshot_body.pop('name')
 
-        if 'snapshot' not in body:
-            msg = (_("Missing required element '%s' in request body") %
-                   'snapshot')
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        snapshot = body['snapshot']
-        update_dict = {}
-
-        valid_update_keys = (
-            'name',
-            'description',
-            'display_name',
-            'display_description',
-        )
-        self.validate_name_and_description(snapshot)
-
-        # NOTE(thingee): v2 API allows name instead of display_name
-        if 'name' in snapshot:
-            snapshot['display_name'] = snapshot.pop('name')
-
-        # NOTE(thingee): v2 API allows description instead of
-        # display_description
-        if 'description' in snapshot:
-            snapshot['display_description'] = snapshot.pop('description')
-
-        for key in valid_update_keys:
-            if key in snapshot:
-                update_dict[key] = snapshot[key]
+        if 'description' in snapshot_body:
+            snapshot_body['display_description'] = snapshot_body.pop(
+                'description')
 
         # Not found exception will be handled at the wsgi level
         snapshot = self.volume_api.get_snapshot(context, id)
         volume_utils.notify_about_snapshot_usage(context, snapshot,
                                                  'update.start')
-        self.volume_api.update_snapshot(context, snapshot, update_dict)
+        self.volume_api.update_snapshot(context, snapshot, snapshot_body)
 
-        snapshot.update(update_dict)
+        snapshot.update(snapshot_body)
         req.cache_db_snapshot(snapshot)
         volume_utils.notify_about_snapshot_usage(context, snapshot,
                                                  'update.end')

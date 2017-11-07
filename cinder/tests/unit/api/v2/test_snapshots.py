@@ -89,9 +89,7 @@ class SnapshotApiTest(test.TestCase):
         self.controller = snapshots.SnapshotsController()
         self.ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_snapshot_create(self, mock_validate):
+    def test_snapshot_create(self):
         volume = utils.create_volume(self.ctx)
         snapshot_name = 'Snapshot Test Name'
         snapshot_description = 'Snapshot Test Desc'
@@ -104,17 +102,16 @@ class SnapshotApiTest(test.TestCase):
 
         body = dict(snapshot=snapshot)
         req = fakes.HTTPRequest.blank('/v2/snapshots')
-        resp_dict = self.controller.create(req, body)
+        resp_dict = self.controller.create(req, body=body)
 
         self.assertIn('snapshot', resp_dict)
         self.assertEqual(snapshot_name, resp_dict['snapshot']['name'])
         self.assertEqual(snapshot_description,
                          resp_dict['snapshot']['description'])
-        self.assertTrue(mock_validate.called)
         self.assertIn('updated_at', resp_dict['snapshot'])
         db.volume_destroy(self.ctx, volume.id)
 
-    @ddt.data(True, 'y', 'true', 'trUE', 'yes', '1', 'on', 1, "1         ")
+    @ddt.data(True, 'y', 'true', 'yes', '1', 'on')
     def test_snapshot_create_force(self, force_param):
         volume = utils.create_volume(self.ctx, status='in-use')
         snapshot_name = 'Snapshot Test Name'
@@ -127,7 +124,7 @@ class SnapshotApiTest(test.TestCase):
         }
         body = dict(snapshot=snapshot)
         req = fakes.HTTPRequest.blank('/v2/snapshots')
-        resp_dict = self.controller.create(req, body)
+        resp_dict = self.controller.create(req, body=body)
 
         self.assertIn('snapshot', resp_dict)
         self.assertEqual(snapshot_name,
@@ -138,7 +135,7 @@ class SnapshotApiTest(test.TestCase):
 
         db.volume_destroy(self.ctx, volume.id)
 
-    @ddt.data(False, 'n', 'false', 'falSE', 'No', '0', 'off', 0)
+    @ddt.data(False, 'n', 'false', 'No', '0', 'off')
     def test_snapshot_create_force_failure(self, force_param):
         volume = utils.create_volume(self.ctx, status='in-use')
         snapshot_name = 'Snapshot Test Name'
@@ -154,13 +151,14 @@ class SnapshotApiTest(test.TestCase):
         self.assertRaises(exception.InvalidVolume,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
         db.volume_destroy(self.ctx, volume.id)
 
-    @ddt.data("**&&^^%%$$##@@", '-1', 2, '01')
+    @ddt.data("**&&^^%%$$##@@", '-1', 2, '01', 'falSE', 0, 'trUE', 1,
+              "1         ")
     def test_snapshot_create_invalid_force_param(self, force_param):
-        volume = utils.create_volume(self.ctx, status='in-use')
+        volume = utils.create_volume(self.ctx, status='available')
         snapshot_name = 'Snapshot Test Name'
         snapshot_description = 'Snapshot Test Desc'
 
@@ -172,10 +170,10 @@ class SnapshotApiTest(test.TestCase):
         }
         body = dict(snapshot=snapshot)
         req = fakes.HTTPRequest.blank('/v2/snapshots')
-        self.assertRaises(exception.InvalidParameterValue,
+        self.assertRaises(exception.ValidationError,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
         db.volume_destroy(self.ctx, volume.id)
 
@@ -190,18 +188,16 @@ class SnapshotApiTest(test.TestCase):
             }
         }
         req = fakes.HTTPRequest.blank('/v2/snapshots')
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, body=body)
 
     @mock.patch.object(volume.api.API, "update_snapshot",
                        side_effect=v2_fakes.fake_snapshot_update)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     @mock.patch('cinder.db.volume_get')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_snapshot_update(
-            self, mock_validate, snapshot_get_by_id, volume_get,
+            self, snapshot_get_by_id, volume_get,
             snapshot_metadata_get, update_snapshot):
         snapshot = {
             'id': UUID,
@@ -224,7 +220,7 @@ class SnapshotApiTest(test.TestCase):
         }
         body = {"snapshot": updates}
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
-        res_dict = self.controller.update(req, UUID, body)
+        res_dict = self.controller.update(req, UUID, body=body)
         expected = {
             'snapshot': {
                 'id': UUID,
@@ -240,20 +236,19 @@ class SnapshotApiTest(test.TestCase):
             }
         }
         self.assertEqual(expected, res_dict)
-        self.assertTrue(mock_validate.called)
         self.assertEqual(2, len(self.notifier.notifications))
 
     def test_snapshot_update_missing_body(self):
         body = {}
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, req, UUID, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.update, req, UUID, body=body)
 
     def test_snapshot_update_invalid_body(self):
         body = {'name': 'missing top level snapshot key'}
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, req, UUID, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.update, req, UUID, body=body)
 
     def test_snapshot_update_not_found(self):
         self.mock_object(volume.api.API, "get_snapshot", fake_snapshot_get)
@@ -263,7 +258,7 @@ class SnapshotApiTest(test.TestCase):
         body = {"snapshot": updates}
         req = fakes.HTTPRequest.blank('/v2/snapshots/not-the-uuid')
         self.assertRaises(exception.SnapshotNotFound, self.controller.update,
-                          req, 'not-the-uuid', body)
+                          req, 'not-the-uuid', body=body)
 
     @mock.patch.object(volume.api.API, "delete_snapshot",
                        side_effect=v2_fakes.fake_snapshot_update)
@@ -612,8 +607,8 @@ class SnapshotApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/%s/snapshots' % fake.PROJECT_ID)
         req.method = 'POST'
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, body=body)
 
     def test_create_no_body(self):
         self._create_snapshot_bad_body(body=None)

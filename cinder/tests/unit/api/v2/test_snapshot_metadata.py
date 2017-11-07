@@ -127,16 +127,13 @@ class SnapshotMetaDataTest(test.TestCase):
         self.url = '/v2/%s/snapshots/%s/metadata' % (
             fake.PROJECT_ID, self.req_id)
 
-        snap = {"volume_size": 100,
-                "volume_id": fake.VOLUME_ID,
+        snap = {"volume_id": fake.VOLUME_ID,
                 "display_name": "Volume Test Name",
-                "display_description": "Volume Test Desc",
-                "availability_zone": "zone1:host1",
-                "host": "fake-host",
+                "description": "Volume Test Desc",
                 "metadata": {}}
         body = {"snapshot": snap}
         req = fakes.HTTPRequest.blank('/v2/snapshots')
-        self.snapshot_controller.create(req, body)
+        self.snapshot_controller.create(req, body=body)
 
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     def test_index(self, snapshot_get_by_id):
