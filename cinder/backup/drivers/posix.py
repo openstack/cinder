@@ -17,6 +17,7 @@
 """Implementation of a backup service that uses a posix filesystem as the
    backend."""
 
+import errno
 import os
 import os.path
 import stat
@@ -129,8 +130,10 @@ class PosixBackupDriver(chunkeddriver.ChunkedBackupDriver):
         path = os.path.join(self.backup_path, container, object_name)
         try:
             os.remove(path)
-        except OSError:
-            pass
+        except OSError as e:
+            # ignore exception if path does not exsit
+            if e.errno != errno.ENOENT:
+                raise
 
     def _generate_object_name_prefix(self, backup):
         timestamp = timeutils.utcnow().strftime("%Y%m%d%H%M%S")
