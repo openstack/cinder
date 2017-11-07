@@ -1,0 +1,3 @@
+---
+features:
+  - Add backup snapshots support for Storwize/SVC driver.
