@@ -364,12 +364,24 @@ class BackupDriver(base.Base):
 
     @abc.abstractmethod
     def backup(self, backup, volume_file, backup_metadata=False):
-        """Start a backup of a specified volume."""
+        """Start a backup of a specified volume.
+
+        Some I/O operations may block greenthreads, so in order to prevent
+        starvation parameter volume_file will be a proxy that will execute all
+        methods in native threads, so the method implementation doesn't need to
+        worry about that..
+        """
         return
 
     @abc.abstractmethod
     def restore(self, backup, volume_id, volume_file):
-        """Restore a saved backup."""
+        """Restore a saved backup.
+
+        Some I/O operations may block greenthreads, so in order to prevent
+        starvation parameter volume_file will be a proxy that will execute all
+        methods in native threads, so the method implementation doesn't need to
+        worry about that..
+        """
         return
 
     @abc.abstractmethod
