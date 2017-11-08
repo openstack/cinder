@@ -19,6 +19,8 @@
 
 import copy
 
+from keystoneauth1.access import service_catalog as ksa_service_catalog
+from keystoneauth1 import plugin
 from oslo_config import cfg
 from oslo_context import context
 from oslo_db.sqlalchemy import enginefacade
@@ -46,6 +48,31 @@ CONF.register_opts(context_opts)
 LOG = logging.getLogger(__name__)
 
 
+class _ContextAuthPlugin(plugin.BaseAuthPlugin):
+    """A keystoneauth auth plugin that uses the values from the Context.
+
+    Ideally we would use the plugin provided by auth_token middleware however
+    this plugin isn't serialized yet so we construct one from the serialized
+    auth data.
+    """
+
+    def __init__(self, auth_token, sc):
+        super(_ContextAuthPlugin, self).__init__()
+
+        self.auth_token = auth_token
+        self.service_catalog = ksa_service_catalog.ServiceCatalogV2(sc)
+
+    def get_token(self, *args, **kwargs):
+        return self.auth_token
+
+    def get_endpoint(self, session, service_type=None, interface=None,
+                     region_name=None, service_name=None, **kwargs):
+        return self.service_catalog.url_for(service_type=service_type,
+                                            service_name=service_name,
+                                            interface=interface,
+                                            region_name=region_name)
+
+
 @enginefacade.transaction_context_provider
 class RequestContext(context.RequestContext):
     """Security context and request information.
@@ -56,7 +83,7 @@ class RequestContext(context.RequestContext):
     def __init__(self, user_id=None, project_id=None, is_admin=None,
                  read_deleted="no", project_name=None, remote_address=None,
                  timestamp=None, quota_class=None, service_catalog=None,
-                 **kwargs):
+                 user_auth_plugin=None, **kwargs):
         """Initialize RequestContext.
 
         :param read_deleted: 'no' indicates deleted records are hidden, 'yes'
@@ -100,6 +127,13 @@ class RequestContext(context.RequestContext):
             self.is_admin = policy.check_is_admin(self)
         elif self.is_admin and 'admin' not in self.roles:
             self.roles.append('admin')
+        self.user_auth_plugin = user_auth_plugin
+
+    def get_auth_plugin(self):
+        if self.user_auth_plugin:
+            return self.user_auth_plugin
+        else:
+            return _ContextAuthPlugin(self.auth_token, self.service_catalog)
 
     def _get_read_deleted(self):
         return self._read_deleted

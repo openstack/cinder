@@ -66,6 +66,7 @@ from cinder.scheduler.weights import capacity as \
 from cinder.scheduler.weights import volume_number as \
     cinder_scheduler_weights_volumenumber
 from cinder import service as cinder_service
+from cinder import service_auth as cinder_serviceauth
 from cinder import ssh_utils as cinder_sshutils
 from cinder.transfer import api as cinder_transfer_api
 from cinder.volume import api as cinder_volume_api
@@ -268,6 +269,10 @@ def list_opts():
         ('key_manager',
             itertools.chain(
                 cinder_keymgr_confkeymgr.key_mgr_opts,
+            )),
+        ('service_user',
+            itertools.chain(
+                cinder_serviceauth.service_user_opts,
             )),
         ('backend_defaults',
             itertools.chain(
