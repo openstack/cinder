@@ -5451,6 +5451,26 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 expected)
             self.assertTrue(common._replication_enabled)
 
+    def test_init_vendor_properties(self):
+        conf = self.setup_configuration()
+        mock_client = self.setup_driver(config=conf)
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+        with mock.patch.object(self.driver,
+                               'get_volume_stats') as stats:
+            stats.return_value = {}
+            # calling vendor properties from driver.
+            self.driver.init_capabilities()
+            # calling vendor properties from specific 3par driver.
+            properties, vendor_name = self.driver._init_vendor_properties()
+            for key in self.driver.capabilities['properties']:
+                new_key = key.replace('_', ':')
+                if 'HP:3PAR' in new_key:
+                    self.assertIn(new_key, properties)
+
 
 class TestHPE3PARFCDriver(HPE3PARBaseDriver):
 
