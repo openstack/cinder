@@ -947,6 +947,33 @@ class VolumeOpsTestCase(test.TestCase):
                                                snapshot, removeChildren=False)
             self.session.wait_for_task.assert_called_once_with(task)
 
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_snapshot')
+    def test_revert_to_snapshot_with_missing_snapshot(self, get_snapshot):
+        get_snapshot.return_value = None
+
+        backing = mock.sentinel.backing
+        self.assertRaises(vmdk_exceptions.SnapshotNotFoundException,
+                          self.vops.revert_to_snapshot, backing, 'foo')
+        get_snapshot.assert_called_once_with(backing, 'foo')
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_snapshot')
+    def test_revert_to_snapshot(self, get_snapshot):
+        snapshot = mock.sentinel.snapshot
+        get_snapshot.return_value = snapshot
+
+        task = mock.sentinel.task
+        self.session.invoke_api.return_value = task
+
+        backing = mock.sentinel.backing
+        self.vops.revert_to_snapshot(backing, 'foo')
+
+        get_snapshot.assert_called_once_with(backing, 'foo')
+        self.session.invoke_api.assert_called_once_with(
+            self.session.vim, 'RevertToSnapshot_Task', snapshot)
+        self.session.wait_for_task.assert_called_once_with(task)
+
     def test_get_folder(self):
         folder = mock.sentinel.folder
         backing = mock.sentinel.backing

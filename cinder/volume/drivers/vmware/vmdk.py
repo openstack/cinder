@@ -2145,3 +2145,17 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             dc = self.volumeops.get_dc(backing)
             new_folder = self._get_volume_group_folder(dc, new_project)
             self.volumeops.move_backing_to_folder(backing, new_folder)
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        inv_path = snapshot.provider_location
+        is_template = inv_path is not None
+        if is_template:
+            LOG.error("Revert to template based snapshot is not supported.")
+            raise exception.InvalidSnapshot("Cannot revert to template "
+                                            "based snapshot")
+
+        backing = self.volumeops.get_backing(volume.name)
+        if not backing:
+            LOG.debug("Backing does not exist for volume.", resource=volume)
+        else:
+            self.volumeops.revert_to_snapshot(backing, snapshot.name)

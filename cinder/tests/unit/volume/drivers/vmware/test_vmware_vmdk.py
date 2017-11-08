@@ -3058,6 +3058,48 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.move_backing_to_folder.assert_called_once_with(backing,
                                                             new_folder)
 
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_revert_to_snapshot_with_no_backing(self, vops):
+        vops.get_backing.return_value = None
+
+        volume = self._create_volume_obj()
+        snapshot = fake_snapshot.fake_snapshot_obj(self._context,
+                                                   volume=volume)
+        self._driver.revert_to_snapshot(
+            mock.sentinel.context, volume, snapshot)
+
+        vops.get_backing.assert_called_once_with(volume.name)
+        vops.revert_to_snapshot.assert_not_called()
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_revert_to_snapshot_template_format(self, vops):
+        volume = self._create_volume_obj()
+        loc = '/test-dc/foo'
+        snapshot = fake_snapshot.fake_snapshot_obj(self._context,
+                                                   volume=volume,
+                                                   provider_location=loc)
+        self.assertRaises(cinder_exceptions.InvalidSnapshot,
+                          self._driver.revert_to_snapshot,
+                          mock.sentinel.context,
+                          volume,
+                          snapshot)
+        vops.revert_to_snapshot.assert_not_called()
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_revert_to_snapshot(self, vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        volume = self._create_volume_obj()
+        snapshot = fake_snapshot.fake_snapshot_obj(self._context,
+                                                   volume=volume)
+        self._driver.revert_to_snapshot(
+            mock.sentinel.context, volume, snapshot)
+
+        vops.get_backing.assert_called_once_with(volume.name)
+        vops.revert_to_snapshot.assert_called_once_with(backing,
+                                                        snapshot.name)
+
 
 @ddt.ddt
 class ImageDiskTypeTest(test.TestCase):

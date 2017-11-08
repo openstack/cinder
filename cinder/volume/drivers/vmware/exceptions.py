@@ -60,3 +60,8 @@ class NoValidHostException(exceptions.VMwareDriverException):
 class TemplateNotFoundException(exceptions.VMwareDriverException):
     """Thrown when template cannot be found."""
     msg_fmt = _("Template cannot be found at path: %(path)s.")
+
+
+class SnapshotNotFoundException(exceptions.VMwareDriverException):
+    """Thrown when the backend snapshot cannot be found."""
+    msg_fmt = _("Snapshot: %(name)s not found.")
