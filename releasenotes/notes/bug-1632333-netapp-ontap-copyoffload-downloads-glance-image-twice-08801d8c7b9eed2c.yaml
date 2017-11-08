@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed bug 1632333 with the NetApp ONTAP Driver. Now the copy offload method is invoked
+    early to avoid downloading Glance images twice.

@@ -514,6 +514,14 @@ class NetAppNfsDriver(driver.ManageableVD,
             LOG.warning(_LW('Exception during deleting %s'), ex)
             return False
 
+    def _copy_from_cache(self, volume, image_id, cache_result):
+        """Try copying image file_name from cached file"""
+        raise NotImplementedError()
+
+    def _copy_from_img_service(self, context, volume, image_service,
+                               image_id):
+        raise NotImplementedError()
+
     def clone_image(self, context, volume,
                     image_location, image_meta,
                     image_service):
@@ -531,14 +539,22 @@ class NetAppNfsDriver(driver.ManageableVD,
         post_clone = False
 
         extra_specs = na_utils.get_volume_extra_specs(volume)
+        major, minor = self.zapi_client.get_ontapi_version()
+        col_path = self.configuration.netapp_copyoffload_tool_path
 
         try:
             cache_result = self._find_image_in_cache(image_id)
             if cache_result:
-                cloned = self._clone_from_cache(volume, image_id, cache_result)
+                cloned = self._copy_from_cache(volume, image_id, cache_result)
             else:
                 cloned = self._direct_nfs_clone(volume, image_location,
                                                 image_id)
+
+            # Try to use the copy offload tool
+            if not cloned and col_path and major == 1 and minor >= 20:
+                cloned = self._copy_from_img_service(context, volume,
+                                                     image_service, image_id)
+
             if cloned:
                 self._do_qos_for_volume(volume, extra_specs)
                 post_clone = self._post_clone_image(volume)
@@ -549,7 +565,8 @@ class NetAppNfsDriver(driver.ManageableVD,
                      {'image_id': image_id, 'msg': msg})
         finally:
             cloned = cloned and post_clone
-            share = volume['provider_location'] if cloned else None
+            share = (volume_utils.extract_host(volume['host'], level='pool')
+                     if cloned else None)
             bootable = True if cloned else False
             return {'provider_location': share, 'bootable': bootable}, cloned
 
@@ -584,7 +601,6 @@ class NetAppNfsDriver(driver.ManageableVD,
             share = self._is_cloneable_share(loc)
             if share and self._is_share_clone_compatible(volume, share):
                 LOG.debug('Share is cloneable %s', share)
-                volume['provider_location'] = share
                 (__, ___, img_file) = loc.rpartition('/')
                 dir_path = self._get_mount_point_for_share(share)
                 img_path = '%s/%s' % (dir_path, img_file)
@@ -620,7 +636,10 @@ class NetAppNfsDriver(driver.ManageableVD,
     def _post_clone_image(self, volume):
         """Do operations post image cloning."""
         LOG.info(_LI('Performing post clone for %s'), volume['name'])
-        vol_path = self.local_path(volume)
+
+        share = volume_utils.extract_host(volume['host'], level='pool')
+        vol_path = self._get_volume_path(share, volume['name'])
+
         if self._discover_file_till_timeout(vol_path):
             self._set_rw_permissions(vol_path)
             self._resize_image_file(vol_path, volume['size'])
