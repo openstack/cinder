@@ -32,7 +32,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.1.6'
+VERSION = '1.1.7'
 
 LOG = logging.getLogger(__name__)
 
@@ -86,6 +86,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.1.4 - Fixes capability to configure redundancy in quobyte_volume_url
         1.1.5 - Enables extension of volumes with snapshots
         1.1.6 - Optimizes volume creation
+        1.1.7 - Support fuse subtype based Quobyte mount validation
 
     """
 
@@ -504,7 +505,8 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         partitions = psutil.disk_partitions(all=True)
         for p in partitions:
             if mount_path == p.mountpoint:
-                if p.device.startswith("quobyte@"):
+                if (p.device.startswith("quobyte@") or
+                        (p.fstype == "fuse.quobyte")):
                     try:
                         statresult = os.stat(mount_path)
                         if statresult.st_size == 0:
