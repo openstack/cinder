@@ -31,7 +31,7 @@ import cinder.policy
 CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
-FILES_TO_SKIP = ['resource_common_manage.py']
+FILES_TO_SKIP = ['resource_common_manage.py', 'scheduler_hints.py']
 
 
 class ExtensionDescriptor(object):

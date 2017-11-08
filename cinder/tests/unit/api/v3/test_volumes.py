@@ -16,7 +16,9 @@ import ddt
 import iso8601
 
 import mock
+from oslo_serialization import jsonutils
 from oslo_utils import strutils
+from six.moves import http_client
 import webob
 
 from cinder.api import extensions
@@ -284,7 +286,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v3/volumes')
         req.headers = mv.get_mv_header(mv.SUPPORT_NOVA_IMAGE)
         req.api_version_request = mv.get_api_version(mv.SUPPORT_NOVA_IMAGE)
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
         self.assertEqual(ex, res_dict)
         context = req.environ['cinder.context']
         get_snapshot.assert_called_once_with(self.controller.volume_api,
@@ -314,7 +316,7 @@ class VolumeApiTest(test.TestCase):
             availability_zone="nova")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v3/volumes')
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
 
         req = self._fake_volumes_summary_request()
         res_dict = self.controller.summary(req)
@@ -498,25 +500,34 @@ class VolumeApiTest(test.TestCase):
 
         return volume
 
-    @ddt.data(mv.GROUP_VOLUME, mv.get_prior_version(mv.GROUP_VOLUME))
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_create(self, max_ver, mock_validate):
+    @ddt.data((mv.GROUP_VOLUME,
+               {'display_name': ' test name ',
+                'display_description': ' test desc ',
+                'size': 1}),
+              (mv.get_prior_version(mv.GROUP_VOLUME),
+               {'name': ' test name ',
+                'description': ' test desc ',
+                'size': 1}))
+    @ddt.unpack
+    def test_volume_create(self, max_ver, volume_body):
         self.mock_object(volume_api.API, 'get', v2_fakes.fake_volume_get)
         self.mock_object(volume_api.API, "create",
                          v2_fakes.fake_volume_api_create)
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
 
-        vol = self._vol_in_request_body()
-        body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v3/volumes')
         req.api_version_request = mv.get_api_version(max_ver)
-        res_dict = self.controller.create(req, body)
+
+        body = {'volume': volume_body}
+        res_dict = self.controller.create(req, body=body)
         ex = self._expected_vol_from_controller(
-            req_version=req.api_version_request)
-        self.assertEqual(ex, res_dict)
-        self.assertTrue(mock_validate.called)
+            req_version=req.api_version_request, name='test name',
+            description='test desc')
+        self.assertEqual(ex['volume']['name'],
+                         res_dict['volume']['name'])
+        self.assertEqual(ex['volume']['description'],
+                         res_dict['volume']['description'])
 
     @ddt.data(mv.GROUP_SNAPSHOTS, mv.get_prior_version(mv.GROUP_SNAPSHOTS))
     @mock.patch.object(group_api.API, 'get')
@@ -542,7 +553,7 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v3/volumes')
         req.api_version_request = mv.get_api_version(max_ver)
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
         ex = self._expected_vol_from_controller(
             snapshot_id=snapshot_id,
             req_version=req.api_version_request)
@@ -574,11 +585,14 @@ class VolumeApiTest(test.TestCase):
         volume_type_get.side_effect = v2_fakes.fake_volume_type_get
 
         backup_id = fake.BACKUP_ID
-        vol = self._vol_in_request_body(backup_id=backup_id)
-        body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v3/volumes')
         req.api_version_request = mv.get_api_version(max_ver)
-        res_dict = self.controller.create(req, body)
+        if max_ver == mv.VOLUME_CREATE_FROM_BACKUP:
+            vol = self._vol_in_request_body(backup_id=backup_id)
+        else:
+            vol = self._vol_in_request_body()
+        body = {"volume": vol}
+        res_dict = self.controller.create(req, body=body)
         ex = self._expected_vol_from_controller(
             req_version=req.api_version_request)
         self.assertEqual(ex, res_dict)
@@ -597,6 +611,63 @@ class VolumeApiTest(test.TestCase):
                                        v2_fakes.DEFAULT_VOL_DESCRIPTION,
                                        **kwargs)
 
+    def test_volume_creation_with_scheduler_hints(self):
+        vol = self._vol_in_request_body(availability_zone=None)
+        vol.pop('group_id')
+        body = {"volume": vol,
+                "OS-SCH-HNT:scheduler_hints": {
+                    'different_host': [fake.UUID1, fake.UUID2]}}
+        req = webob.Request.blank('/v3/%s/volumes' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.ctxt))
+        res_dict = jsonutils.loads(res.body)
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertIn('id', res_dict['volume'])
+
+    @ddt.data('fake_host', '', 1234, '          ')
+    def test_volume_creation_invalid_scheduler_hints(self, invalid_hints):
+        vol = self._vol_in_request_body()
+        vol.pop('group_id')
+        body = {"volume": vol,
+                "OS-SCH-HNT:scheduler_hints": {
+                    'different_host': invalid_hints}}
+        req = fakes.HTTPRequest.blank('/v3/volumes')
+        self.assertRaises(exception.ValidationError, self.controller.create,
+                          req, body=body)
+
+    @ddt.data({'size': 'a'},
+              {'size': ''},
+              {'size': 0},
+              {'size': 2 ** 31},
+              {'size': None},
+              {})
+    def test_volume_creation_fails_with_invalid_parameters(
+            self, vol_body):
+        body = {"volume": vol_body}
+        req = fakes.HTTPRequest.blank('/v3/volumes')
+        self.assertRaises(exception.ValidationError, self.controller.create,
+                          req, body=body)
+
+    def test_volume_creation_fails_with_additional_properties(self):
+        body = {"volume": {"size": 1, "user_id": fake.USER_ID,
+                           "project_id": fake.PROJECT_ID}}
+        req = fakes.HTTPRequest.blank('/v3/volumes')
+        req.api_version_request = mv.get_api_version(
+            mv.SUPPORT_VOLUME_SCHEMA_CHANGES)
+        self.assertRaises(exception.ValidationError, self.controller.create,
+                          req, body=body)
+
+    def test_volume_update_without_vol_data(self):
+        body = {"volume": {}}
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
+        req.api_version_request = mv.get_api_version(
+            mv.SUPPORT_VOLUME_SCHEMA_CHANGES)
+        self.assertRaises(exception.ValidationError, self.controller.update,
+                          req, fake.VOLUME_ID, body=body)
+
     @ddt.data({'s': 'ea895e29-8485-4930-bbb8-c5616a309c0e'},
               ['ea895e29-8485-4930-bbb8-c5616a309c0e'],
               42)
@@ -606,8 +677,8 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v3/volumes')
         # Raise 400 when snapshot has not uuid type.
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
-                          req, body)
+        self.assertRaises(exception.ValidationError, self.controller.create,
+                          req, body=body)
 
     @ddt.data({'source_volid': 1},
               {'source_volid': []},
@@ -619,8 +690,8 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 400 for resource requested with invalid uuids.
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
-                          req, body)
+        self.assertRaises(exception.ValidationError, self.controller.create,
+                          req, body=body)
 
     @ddt.data(mv.get_prior_version(mv.RESOURCE_FILTER), mv.RESOURCE_FILTER,
               mv.LIKE_FILTER)

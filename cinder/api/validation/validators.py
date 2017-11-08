@@ -219,6 +219,24 @@ def _validate_disabled_reason(param_value):
     return True
 
 
+@jsonschema.FormatChecker.cls_checks(
+    'name_non_mandatory_remove_white_spaces')
+def _validate_name_non_mandatory_remove_white_spaces(param_value):
+    _validate_string_length(param_value, 'name',
+                            mandatory=False, min_length=0, max_length=255,
+                            remove_whitespaces=True)
+    return True
+
+
+@jsonschema.FormatChecker.cls_checks(
+    'description_non_mandatory_remove_white_spaces')
+def _validate_description_non_mandatory_remove_white_spaces(param_value):
+    _validate_string_length(param_value, 'description',
+                            mandatory=False, min_length=0, max_length=255,
+                            remove_whitespaces=True)
+    return True
+
+
 @jsonschema.FormatChecker.cls_checks('quota_set')
 def _validate_quota_set(quota_set):
     bad_keys = []

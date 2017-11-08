@@ -118,6 +118,13 @@ REST_API_VERSION_HISTORY = """
     * 3.52 - ``RESKEY:availability_zones`` is a reserved spec key for AZ
              volume type, and filter volume type by ``extra_specs`` is
              supported now.
+    * 3.53 - Add schema validation support for request body using jsonschema
+             for V2/V3 volume APIs.
+             1. Modified create volume API to accept only parameters which are
+             documented in the api-ref otherwise it will return 400 error.
+             2. Update volume API expects user to pass at least one valid
+             parameter in the request body in order to update the volume.
+             Also, additional parameters will not be allowed.
 """
 
 # The minimum and maximum versions of the API supported
@@ -125,9 +132,9 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.52"
+_MAX_API_VERSION = "3.53"
 _LEGACY_API_VERSION2 = "2.0"
-UPDATED = "2017-09-19T20:18:14Z"
+UPDATED = "2018-06-29T05:34:49Z"
 
 
 # NOTE(cyeoh): min and max versions declared as functions so we can

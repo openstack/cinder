@@ -15,17 +15,19 @@
 
 from oslo_log import log as logging
 from oslo_log import versionutils
-from oslo_utils import uuidutils
 import six
 from six.moves import http_client
 import webob
 from webob import exc
 
 from cinder.api import common
+from cinder.api.contrib import scheduler_hints
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volumes
 from cinder.api.v2 import volumes as volumes_v2
 from cinder.api.v3.views import volumes as volume_views_v3
+from cinder.api import validation
 from cinder.backup import api as backup_api
 from cinder import exception
 from cinder import group as group_api
@@ -224,6 +226,10 @@ class VolumeController(volumes_v2.VolumeController):
             return image_snapshot
 
     @wsgi.response(http_client.ACCEPTED)
+    @validation.schema(volumes.create, '3.0', '3.12')
+    @validation.schema(volumes.create_volume_v313, '3.13', '3.46')
+    @validation.schema(volumes.create_volume_v347, '3.47', '3.52')
+    @validation.schema(volumes.create_volume_v353, '3.53')
     def create(self, req, body):
         """Creates a new volume.
 
@@ -232,39 +238,21 @@ class VolumeController(volumes_v2.VolumeController):
         :returns: dict -- the new volume dictionary
         :raises HTTPNotFound, HTTPBadRequest:
         """
-        self.assert_valid_body(body, 'volume')
-
         LOG.debug('Create volume request body: %s', body)
         context = req.environ['cinder.context']
 
         req_version = req.api_version_request
-        # Remove group_id from body if max version is less than GROUP_VOLUME.
-        if req_version.matches(None, mv.get_prior_version(mv.GROUP_VOLUME)):
-            # NOTE(xyang): The group_id is from a group created with a
-            # group_type. So with this group_id, we've got a group_type
-            # for this volume. Also if group_id is passed in, that means
-            # we already know which backend is hosting the group and the
-            # volume will be created on the same backend as well. So it
-            # won't go through the scheduler again if a group_id is
-            # passed in.
-            try:
-                body.get('volume', {}).pop('group_id', None)
-            except AttributeError:
-                msg = (_("Invalid body provided for creating volume. "
-                         "Request API version: %s.") % req_version)
-                raise exc.HTTPBadRequest(explanation=msg)
+
+        # NOTE (pooja_jadhav) To fix bug 1774155, scheduler hints is not
+        # loaded as a standard extension. If user passes
+        # OS-SCH-HNT:scheduler_hints in the request body, then it will be
+        # validated in the create method and this method will add
+        # scheduler_hints in body['volume'].
+        body = scheduler_hints.create(req, body)
 
         volume = body['volume']
         kwargs = {}
-        self.validate_name_and_description(volume)
-
-        # Check up front for legacy replication parameters to quick fail
-        source_replica = volume.get('source_replica')
-        if source_replica:
-            msg = _("Creating a volume from a replica source was part of the "
-                    "replication v1 implementation which is no longer "
-                    "available.")
-            raise exception.InvalidInput(reason=msg)
+        self.validate_name_and_description(volume, check_length=False)
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in volume:
@@ -288,9 +276,6 @@ class VolumeController(volumes_v2.VolumeController):
 
         snapshot_id = volume.get('snapshot_id')
         if snapshot_id is not None:
-            if not uuidutils.is_uuid_like(snapshot_id):
-                msg = _("Snapshot ID must be in UUID form.")
-                raise exc.HTTPBadRequest(explanation=msg)
             # Not found exception will be handled at the wsgi level
             kwargs['snapshot'] = self.volume_api.get_snapshot(context,
                                                               snapshot_id)
@@ -299,10 +284,6 @@ class VolumeController(volumes_v2.VolumeController):
 
         source_volid = volume.get('source_volid')
         if source_volid is not None:
-            if not uuidutils.is_uuid_like(source_volid):
-                msg = _("Source volume ID '%s' must be a "
-                        "valid UUID.") % source_volid
-                raise exc.HTTPBadRequest(explanation=msg)
             # Not found exception will be handled at the wsgi level
             kwargs['source_volume'] = (
                 self.volume_api.get_volume(context,
@@ -314,10 +295,6 @@ class VolumeController(volumes_v2.VolumeController):
         kwargs['consistencygroup'] = None
         consistencygroup_id = volume.get('consistencygroup_id')
         if consistencygroup_id is not None:
-            if not uuidutils.is_uuid_like(consistencygroup_id):
-                msg = _("Consistency group ID '%s' must be a "
-                        "valid UUID.") % consistencygroup_id
-                raise exc.HTTPBadRequest(explanation=msg)
             # Not found exception will be handled at the wsgi level
             kwargs['group'] = self.group_api.get(context, consistencygroup_id)
 
@@ -338,18 +315,10 @@ class VolumeController(volumes_v2.VolumeController):
                 else:
                     kwargs['image_id'] = image_uuid
 
-        # Add backup if min version is greater than or equal
-        # to VOLUME_CREATE_FROM_BACKUP.
-        if req_version.matches(mv.VOLUME_CREATE_FROM_BACKUP, None):
-            backup_id = volume.get('backup_id')
-            if backup_id:
-                if not uuidutils.is_uuid_like(backup_id):
-                    msg = _("Backup ID must be in UUID form.")
-                    raise exc.HTTPBadRequest(explanation=msg)
-                kwargs['backup'] = self.backup_api.get(context,
-                                                       backup_id=backup_id)
-            else:
-                kwargs['backup'] = None
+        backup_id = volume.get('backup_id')
+        if backup_id:
+            kwargs['backup'] = self.backup_api.get(context,
+                                                   backup_id=backup_id)
 
         size = volume.get('size', None)
         if size is None and kwargs['snapshot'] is not None:

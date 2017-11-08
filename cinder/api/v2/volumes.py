@@ -25,8 +25,11 @@ import webob
 from webob import exc
 
 from cinder.api import common
+from cinder.api.contrib import scheduler_hints
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volumes
 from cinder.api.v2.views import volumes as volume_views
+from cinder.api import validation
 from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _
@@ -172,24 +175,23 @@ class VolumeController(wsgi.Controller):
         raise exc.HTTPBadRequest(explanation=msg)
 
     @wsgi.response(http_client.ACCEPTED)
+    @validation.schema(volumes.create, '2.0')
     def create(self, req, body):
         """Creates a new volume."""
-        self.assert_valid_body(body, 'volume')
 
         LOG.debug('Create volume request body: %s', body)
         context = req.environ['cinder.context']
+
+        # NOTE (pooja_jadhav) To fix bug 1774155, scheduler hints is not
+        # loaded as a standard extension. If user passes
+        # OS-SCH-HNT:scheduler_hints in the request body, then it will be
+        # validated in the create method and this method will add
+        # scheduler_hints in body['volume'].
+        body = scheduler_hints.create(req, body)
         volume = body['volume']
 
-        # Check up front for legacy replication parameters to quick fail
-        source_replica = volume.get('source_replica')
-        if source_replica:
-            msg = _("Creating a volume from a replica source was part of the "
-                    "replication v1 implementation which is no longer "
-                    "available.")
-            raise exception.InvalidInput(reason=msg)
-
         kwargs = {}
-        self.validate_name_and_description(volume)
+        self.validate_name_and_description(volume, check_length=False)
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in volume:
@@ -213,9 +215,6 @@ class VolumeController(wsgi.Controller):
 
         snapshot_id = volume.get('snapshot_id')
         if snapshot_id is not None:
-            if not uuidutils.is_uuid_like(snapshot_id):
-                msg = _("Snapshot ID must be in UUID form.")
-                raise exc.HTTPBadRequest(explanation=msg)
             # Not found exception will be handled at the wsgi level
             kwargs['snapshot'] = self.volume_api.get_snapshot(context,
                                                               snapshot_id)
@@ -224,10 +223,6 @@ class VolumeController(wsgi.Controller):
 
         source_volid = volume.get('source_volid')
         if source_volid is not None:
-            if not uuidutils.is_uuid_like(source_volid):
-                msg = _("Source volume ID '%s' must be a "
-                        "valid UUID.") % source_volid
-                raise exc.HTTPBadRequest(explanation=msg)
             # Not found exception will be handled at the wsgi level
             kwargs['source_volume'] = \
                 self.volume_api.get_volume(context,
@@ -239,10 +234,6 @@ class VolumeController(wsgi.Controller):
         kwargs['consistencygroup'] = None
         consistencygroup_id = volume.get('consistencygroup_id')
         if consistencygroup_id is not None:
-            if not uuidutils.is_uuid_like(consistencygroup_id):
-                msg = _("Consistency group ID '%s' must be a "
-                        "valid UUID.") % consistencygroup_id
-                raise exc.HTTPBadRequest(explanation=msg)
             # Not found exception will be handled at the wsgi level
             kwargs['group'] = self.group_api.get(context, consistencygroup_id)
 
@@ -285,34 +276,14 @@ class VolumeController(wsgi.Controller):
         """Return volume search options allowed by non-admin."""
         return CONF.query_volume_filters
 
+    @validation.schema(volumes.update, '2.0', '3.52')
+    @validation.schema(volumes.update_volume_v353, '3.53')
     def update(self, req, id, body):
         """Update a volume."""
         context = req.environ['cinder.context']
+        update_dict = body['volume']
 
-        if not body:
-            msg = _("Missing request body")
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        if 'volume' not in body:
-            msg = _("Missing required element '%s' in request body") % 'volume'
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        volume = body['volume']
-        update_dict = {}
-
-        valid_update_keys = (
-            'name',
-            'description',
-            'display_name',
-            'display_description',
-            'metadata',
-        )
-
-        for key in valid_update_keys:
-            if key in volume:
-                update_dict[key] = volume[key]
-
-        self.validate_name_and_description(update_dict)
+        self.validate_name_and_description(update_dict, check_length=False)
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in update_dict:

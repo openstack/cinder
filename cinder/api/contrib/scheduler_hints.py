@@ -12,42 +12,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.api import extensions
-from cinder.api.openstack import wsgi
 from cinder.api.schemas import scheduler_hints
 from cinder.api import validation
 
 
-class SchedulerHintsController(wsgi.Controller):
-
-    @validation.schema(scheduler_hints.create)
-    def _extract_scheduler_hints(self, req, body):
-        hints = {}
-        attr = '%s:scheduler_hints' % Scheduler_hints.alias
-        if body.get(attr) is not None:
-            hints.update(body.get(attr))
-
-        return hints
-
-    @wsgi.extends
-    def create(self, req, body):
-        attr = '%s:scheduler_hints' % Scheduler_hints.alias
+def create(req, body):
+    attr = 'OS-SCH-HNT:scheduler_hints'
+    if body.get(attr) is not None:
         scheduler_hints_body = dict.fromkeys((attr,), body.get(attr))
-        hints = self._extract_scheduler_hints(req, body=scheduler_hints_body)
 
-        if 'volume' in body:
-            body['volume']['scheduler_hints'] = hints
-        yield
+        @validation.schema(scheduler_hints.create)
+        def _validate_scheduler_hints(req=None, body=None):
+            # TODO(pooja_jadhav): The scheduler hints schema validation
+            # should be moved to v3 volume schema directly and this module
+            # should be deleted at the time of deletion of v2 version code.
+            pass
 
-
-class Scheduler_hints(extensions.ExtensionDescriptor):
-    """Pass arbitrary key/value pairs to the scheduler."""
-
-    name = "SchedulerHints"
-    alias = "OS-SCH-HNT"
-    updated = "2013-04-18T00:00:00+00:00"
-
-    def get_controller_extensions(self):
-        controller = SchedulerHintsController()
-        ext = extensions.ControllerExtension(self, 'volumes', controller)
-        return [ext]
+        _validate_scheduler_hints(req=req, body=scheduler_hints_body)
+        body['volume']['scheduler_hints'] = scheduler_hints_body.get(attr)
+    return body
