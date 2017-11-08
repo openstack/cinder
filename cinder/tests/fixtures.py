@@ -73,7 +73,7 @@ class StandardLogging(fixtures.Fixture):
 
         # set root logger to debug
         root = std_logging.getLogger()
-        root.setLevel(std_logging.DEBUG)
+        root.setLevel(std_logging.INFO)
 
         # supports collecting debug level for local runs
         if os.environ.get('OS_DEBUG') in _TRUE_VALUES:
