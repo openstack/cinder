@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The Quobyte Cinder driver now supports identifying Quobyte mounts
+    via the mounts fstype field.
