@@ -71,6 +71,9 @@ QEMU_IMG_FORMAT_MAP = {
 }
 QEMU_IMG_FORMAT_MAP_INV = {v: k for k, v in QEMU_IMG_FORMAT_MAP.items()}
 
+QEMU_IMG_VERSION = None
+QEMU_IMG_MIN_FORCE_SHARE_VERSION = [2, 10, 0]
+
 
 def validate_disk_format(disk_format):
     return disk_format in VALID_DISK_FORMATS
@@ -88,9 +91,17 @@ def from_qemu_img_disk_format(disk_format):
     return QEMU_IMG_FORMAT_MAP_INV.get(disk_format, disk_format)
 
 
-def qemu_img_info(path, run_as_root=True):
+def qemu_img_info(path, run_as_root=True, force_share=False):
     """Return an object containing the parsed output from qemu-img info."""
-    cmd = ['env', 'LC_ALL=C', 'qemu-img', 'info', path]
+    cmd = ['env', 'LC_ALL=C', 'qemu-img', 'info']
+    if force_share:
+        if qemu_img_supports_force_share():
+            cmd.append('--force-share')
+        else:
+            msg = _("qemu-img --force-share requested, but "
+                    "qemu-img does not support this parameter")
+            LOG.warning(msg)
+    cmd.append(path)
 
     if os.name == 'nt':
         cmd = cmd[2:]
@@ -107,13 +118,24 @@ def qemu_img_info(path, run_as_root=True):
 
 
 def get_qemu_img_version():
+    """The qemu-img version will be cached until the process is restarted."""
+
+    global QEMU_IMG_VERSION
+    if QEMU_IMG_VERSION is not None:
+        return QEMU_IMG_VERSION
+
     info = utils.execute('qemu-img', '--version', check_exit_code=False)[0]
     pattern = r"qemu-img version ([0-9\.]*)"
     version = re.match(pattern, info)
     if not version:
         LOG.warning("qemu-img is not installed.")
         return None
-    return _get_version_from_string(version.groups()[0])
+    QEMU_IMG_VERSION = _get_version_from_string(version.groups()[0])
+    return QEMU_IMG_VERSION
+
+
+def qemu_img_supports_force_share():
+    return get_qemu_img_version() > [2, 10, 0]
 
 
 def _get_qemu_convert_cmd(src, dest, out_format, src_format=None,
@@ -288,7 +310,8 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
     LOG.info(msg, {"sz": fsz_mb, "mbps": mbps})
 
 
-def get_qemu_data(image_id, has_meta, disk_format_raw, dest, run_as_root):
+def get_qemu_data(image_id, has_meta, disk_format_raw, dest, run_as_root,
+                  force_share=False):
     # We may be on a system that doesn't have qemu-img installed.  That
     # is ok if we are working with a RAW image.  This logic checks to see
     # if qemu-img is installed.  If not we make sure the image is RAW and
@@ -297,7 +320,9 @@ def get_qemu_data(image_id, has_meta, disk_format_raw, dest, run_as_root):
     # whole function.
     try:
         # Use the empty tmp file to make sure qemu_img_info works.
-        data = qemu_img_info(dest, run_as_root=run_as_root)
+        data = qemu_img_info(dest,
+                             run_as_root=run_as_root,
+                             force_share=force_share)
     # There are a lot of cases that can cause a process execution
     # error, but until we do more work to separate out the various
     # cases we'll keep the general catch here

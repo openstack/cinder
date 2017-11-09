@@ -54,7 +54,9 @@ class TestQemuImgInfo(test.TestCase):
         test_path = mock.sentinel.path
         mock_exec.return_value = (mock_out, mock_err)
 
-        output = image_utils.qemu_img_info(test_path, run_as_root=False)
+        output = image_utils.qemu_img_info(test_path,
+                                           force_share=False,
+                                           run_as_root=False)
         mock_exec.assert_called_once_with('env', 'LC_ALL=C', 'qemu-img',
                                           'info', test_path, run_as_root=False,
                                           prlimit=image_utils.QEMU_IMG_LIMITS)
@@ -343,7 +345,9 @@ class TestVerifyImage(test.TestCase):
         self.assertIsNone(output)
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            dest, None, None)
-        mock_info.assert_called_once_with(dest, run_as_root=True)
+        mock_info.assert_called_once_with(dest,
+                                          run_as_root=True,
+                                          force_share=False)
         mock_fileutils.remove_path_on_error.assert_called_once_with(dest)
         (mock_fileutils.remove_path_on_error.return_value.__enter__
             .assert_called_once_with())
@@ -731,7 +735,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertIsNone(output)
         mock_temp.assert_called_once_with()
         mock_info.assert_has_calls([
-            mock.call(tmp, run_as_root=True),
+            mock.call(tmp, force_share=False, run_as_root=True),
             mock.call(tmp, run_as_root=True)])
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            tmp, None, None)
@@ -782,7 +786,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertIsNone(output)
         mock_temp.assert_called_once_with()
         mock_info.assert_has_calls([
-            mock.call(tmp, run_as_root=run_as_root),
+            mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            tmp, user_id, project_id)
@@ -834,7 +838,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertIsNone(output)
         mock_temp.assert_called_once_with()
         mock_info.assert_has_calls([
-            mock.call(tmp, run_as_root=run_as_root),
+            mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            tmp, user_id, project_id)
@@ -884,7 +888,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertIsNone(output)
         mock_temp.assert_called_once_with()
         mock_info.assert_has_calls([
-            mock.call(tmp, run_as_root=run_as_root),
+            mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            tmp, user_id, project_id)
@@ -937,8 +941,8 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertIsNone(output)
         self.assertEqual(2, mock_temp.call_count)
         mock_info.assert_has_calls([
-            mock.call(tmp, run_as_root=True),
-            mock.call(dummy, run_as_root=True),
+            mock.call(tmp, force_share=False, run_as_root=True),
+            mock.call(dummy, force_share=False, run_as_root=True),
             mock.call(tmp, run_as_root=True)])
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            tmp, None, None)
@@ -987,7 +991,9 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertIsNone(output)
         image_service.show.assert_called_once_with(ctxt, image_id)
         mock_temp.assert_called_once_with()
-        mock_info.assert_called_once_with(tmp, run_as_root=run_as_root)
+        mock_info.assert_called_once_with(tmp,
+                                          force_share=False,
+                                          run_as_root=run_as_root)
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            tmp, user_id, project_id)
         self.assertFalse(mock_repl_xen.called)
@@ -1032,7 +1038,9 @@ class TestFetchToVolumeFormat(test.TestCase):
 
         image_service.show.assert_called_once_with(ctxt, image_id)
         mock_temp.assert_called_once_with()
-        mock_info.assert_called_once_with(tmp, run_as_root=run_as_root)
+        mock_info.assert_called_once_with(tmp,
+                                          force_share=False,
+                                          run_as_root=run_as_root)
         self.assertFalse(mock_fetch.called)
         self.assertFalse(mock_repl_xen.called)
         self.assertFalse(mock_copy.called)
@@ -1075,7 +1083,9 @@ class TestFetchToVolumeFormat(test.TestCase):
 
         image_service.show.assert_called_once_with(ctxt, image_id)
         mock_temp.assert_called_once_with()
-        mock_info.assert_called_once_with(tmp, run_as_root=run_as_root)
+        mock_info.assert_called_once_with(tmp,
+                                          force_share=False,
+                                          run_as_root=run_as_root)
         self.assertFalse(mock_fetch.called)
         self.assertFalse(mock_repl_xen.called)
         self.assertFalse(mock_copy.called)
@@ -1120,7 +1130,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         image_service.show.assert_called_once_with(ctxt, image_id)
         mock_temp.assert_called_once_with()
         mock_info.assert_has_calls([
-            mock.call(tmp, run_as_root=run_as_root),
+            mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            tmp, user_id, project_id)
@@ -1213,7 +1223,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         image_service.show.assert_called_once_with(ctxt, image_id)
         mock_temp.assert_called_once_with()
         mock_info.assert_has_calls([
-            mock.call(tmp, run_as_root=run_as_root),
+            mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            tmp, user_id, project_id)
@@ -1261,7 +1271,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         image_service.show.assert_called_once_with(ctxt, image_id)
         mock_temp.assert_called_once_with()
         mock_info.assert_has_calls([
-            mock.call(tmp, run_as_root=run_as_root),
+            mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            tmp, user_id, project_id)
@@ -1308,7 +1318,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertIsNone(output)
         mock_temp.assert_called_once_with()
         mock_info.assert_has_calls([
-            mock.call(tmp, run_as_root=run_as_root),
+            mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            tmp, user_id, project_id)
@@ -1345,7 +1355,9 @@ class TestFetchToVolumeFormat(test.TestCase):
             run_as_root=run_as_root)
 
         image_service.show.assert_called_once_with(ctxt, image_id)
-        mock_info.assert_called_once_with(dest, run_as_root=run_as_root)
+        mock_info.assert_called_once_with(dest,
+                                          force_share=False,
+                                          run_as_root=run_as_root)
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            dest, None, None)
 

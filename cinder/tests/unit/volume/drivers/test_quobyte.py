@@ -625,6 +625,7 @@ class QuobyteDriverTestCase(test.TestCase):
         drv.extend_volume(volume, 3)
 
         image_utils.qemu_img_info.assert_called_once_with(volume_path,
+                                                          force_share=False,
                                                           run_as_root=False)
         image_utils.resize_image.assert_called_once_with(volume_path, 3)
 
@@ -679,6 +680,7 @@ class QuobyteDriverTestCase(test.TestCase):
 
         drv._read_info_file.assert_called_once_with(info_path)
         image_utils.qemu_img_info.assert_called_once_with(snap_path,
+                                                          force_share=False,
                                                           run_as_root=False)
         (image_utils.convert_image.
          assert_called_once_with(src_vol_path,
@@ -760,6 +762,7 @@ class QuobyteDriverTestCase(test.TestCase):
 
         drv.get_active_image_from_info.assert_called_once_with(volume)
         image_utils.qemu_img_info.assert_called_once_with(vol_path,
+                                                          force_share=False,
                                                           run_as_root=False)
 
         self.assertEqual('raw', conn_info['data']['format'])
@@ -806,6 +809,7 @@ class QuobyteDriverTestCase(test.TestCase):
             mock_get_active_image_from_info.assert_called_once_with(volume)
             mock_local_volume_dir.assert_called_once_with(volume)
             mock_qemu_img_info.assert_called_once_with(volume_path,
+                                                       force_share=False,
                                                        run_as_root=False)
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False)
@@ -852,6 +856,7 @@ class QuobyteDriverTestCase(test.TestCase):
             mock_get_active_image_from_info.assert_called_once_with(volume)
             mock_local_volume_dir.assert_called_with(volume)
             mock_qemu_img_info.assert_called_once_with(volume_path,
+                                                       force_share=False,
                                                        run_as_root=False)
             mock_convert_image.assert_called_once_with(
                 volume_path, upload_path, 'raw', run_as_root=False)
@@ -902,6 +907,7 @@ class QuobyteDriverTestCase(test.TestCase):
             mock_get_active_image_from_info.assert_called_once_with(volume)
             mock_local_volume_dir.assert_called_with(volume)
             mock_qemu_img_info.assert_called_once_with(volume_path,
+                                                       force_share=False,
                                                        run_as_root=False)
             mock_convert_image.assert_called_once_with(
                 volume_path, upload_path, 'raw', run_as_root=False)
