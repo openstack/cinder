@@ -1,0 +1,3 @@
+---
+features:
+  - Add reverting to snapshot support in Storwize Cinder driver.

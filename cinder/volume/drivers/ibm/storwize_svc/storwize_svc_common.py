@@ -582,12 +582,18 @@ class StorwizeSSH(object):
             raise exception.VolumeBackendAPIException(data=msg)
         return fc_map_id
 
-    def prestartfcmap(self, fc_map_id):
-        ssh_cmd = ['svctask', 'prestartfcmap', fc_map_id]
+    def prestartfcmap(self, fc_map_id, restore=False):
+        ssh_cmd = ['svctask', 'prestartfcmap']
+        if restore:
+            ssh_cmd.append('-restore')
+        ssh_cmd.append(fc_map_id)
         self.run_ssh_assert_no_output(ssh_cmd)
 
-    def startfcmap(self, fc_map_id):
-        ssh_cmd = ['svctask', 'startfcmap', fc_map_id]
+    def startfcmap(self, fc_map_id, restore=False):
+        ssh_cmd = ['svctask', 'startfcmap']
+        if restore:
+            ssh_cmd.append('-restore')
+        ssh_cmd.append(fc_map_id)
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def prestartfcconsistgrp(self, fc_consist_group):
@@ -1461,8 +1467,8 @@ class StorwizeHelpers(object):
                 copies['secondary'] = copy
         return copies
 
-    def _prepare_fc_map(self, fc_map_id, timeout):
-        self.ssh.prestartfcmap(fc_map_id)
+    def _prepare_fc_map(self, fc_map_id, timeout, restore):
+        self.ssh.prestartfcmap(fc_map_id, restore)
         mapping_ready = False
         max_retries = (timeout // self.WAIT_TIME) + 1
         for try_number in range(1, max_retries):
@@ -1474,7 +1480,7 @@ class StorwizeHelpers(object):
                 mapping_ready = True
                 break
             elif mapping_attrs['status'] == 'stopped':
-                self.ssh.prestartfcmap(fc_map_id)
+                self.ssh.prestartfcmap(fc_map_id, restore)
             elif mapping_attrs['status'] != 'preparing':
                 msg = (_('Unexecpted mapping status %(status)s for mapping '
                          '%(id)s. Attributes: %(attr)s.')
@@ -1650,15 +1656,15 @@ class StorwizeHelpers(object):
         return volume_model_updates
 
     def run_flashcopy(self, source, target, timeout, copy_rate,
-                      full_copy=True):
+                      full_copy=True, restore=False):
         """Create a FlashCopy mapping from the source to the target."""
         LOG.debug('Enter: run_flashcopy: execute FlashCopy from source '
                   '%(source)s to target %(target)s.',
                   {'source': source, 'target': target})
 
         fc_map_id = self.ssh.mkfcmap(source, target, full_copy, copy_rate)
-        self._prepare_fc_map(fc_map_id, timeout)
-        self.ssh.startfcmap(fc_map_id)
+        self._prepare_fc_map(fc_map_id, timeout, restore)
+        self.ssh.startfcmap(fc_map_id, restore)
 
         LOG.debug('Leave: run_flashcopy: FlashCopy started from '
                   '%(source)s to %(target)s.',
@@ -1704,10 +1710,14 @@ class StorwizeHelpers(object):
         return mapping_ids
 
     def _get_flashcopy_mapping_attributes(self, fc_map_id):
-        resp = self.ssh.lsfcmap(fc_map_id)
-        if not len(resp):
+        try:
+            resp = self.ssh.lsfcmap(fc_map_id)
+            return resp[0] if len(resp) else None
+        except exception.VolumeBackendAPIException as ex:
+            LOG.warning("Failed to get fcmap %(fcmap)s info. "
+                        "Exception: %(ex)s.", {'fcmap': fc_map_id,
+                                               'ex': ex})
             return None
-        return resp[0]
 
     def _get_flashcopy_consistgrp_attr(self, fc_map_id):
         resp = self.ssh.lsfcconsistgrp(fc_map_id)
@@ -1736,6 +1746,8 @@ class StorwizeHelpers(object):
                 attrs = self._get_flashcopy_mapping_attributes(map_id)
                 if attrs:
                     status = attrs['status']
+                else:
+                    continue
 
             if copy_rate == '0':
                 if source == name:
@@ -4602,6 +4614,30 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                                       snapshots))
 
         return model_update, snapshots_model
+
+    @cinder_utils.trace
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert volume to snapshot."""
+        if snapshot.volume_size != volume.size:
+            raise exception.InvalidInput(
+                reason=_('Reverting volume is not supported if the volume '
+                         'size is not equal to the snapshot size.'))
+
+        rep_type = self._get_volume_replicated_type(context, volume)
+        if rep_type:
+            raise exception.InvalidInput(
+                reason=_('Reverting replication volume is not supported.'))
+        try:
+            self._helpers.run_flashcopy(
+                snapshot.name, volume.name,
+                self.configuration.storwize_svc_flashcopy_timeout,
+                self.configuration.storwize_svc_flashcopy_rate, True, True)
+        except Exception as err:
+            msg = (_("Reverting volume %(vol)s to snapshot %(snap)s failed "
+                     "due to: %(err)s.")
+                   % {"vol": volume.name, "snap": snapshot.name, "err": err})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
     def get_pool(self, volume):
         attr = self._helpers.get_vdisk_attributes(volume['name'])

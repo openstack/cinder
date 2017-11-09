@@ -6341,6 +6341,40 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         uid_of_new_volume = self._get_vdisk_uid(new_volume['name'])
         self.assertEqual(uid, uid_of_new_volume)
 
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'mkfcmap')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_prepare_fc_map')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'startfcmap')
+    def test_revert_to_snapshot(self, startfcmap, prepare_fc_map, mkfcmap):
+        mkfcmap.side_effect = ['1']
+        vol1 = self._generate_vol_info()
+        snap1 = self._generate_snap_info(vol1.id)
+        vol1.size = '11'
+
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.revert_to_snapshot, self.ctxt,
+                          vol1, snap1)
+
+        vol2 = self._generate_vol_info()
+        snap2 = self._generate_snap_info(vol2.id)
+
+        with mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                               '_get_volume_replicated_type') as vol_rep_type:
+            vol_rep_type.side_effect = [True, False]
+            self.assertRaises(exception.InvalidInput,
+                              self.driver.revert_to_snapshot, self.ctxt,
+                              vol2, snap2)
+            self.driver.revert_to_snapshot(self.ctxt, vol2, snap2)
+            mkfcmap.assert_called_once_with(
+                snap2.name, vol2.name, True,
+                self.driver.configuration.storwize_svc_flashcopy_rate)
+            prepare_fc_map.assert_called_once_with(
+                '1', self.driver.configuration.storwize_svc_flashcopy_timeout,
+                True,)
+            startfcmap.assert_called_once_with('1', True)
+
 
 class CLIResponseTestCase(test.TestCase):
     def test_empty(self):
