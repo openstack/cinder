@@ -52,6 +52,7 @@ CINDER_EMC_CONFIG_DIR = '/etc/cinder/'
 class VMAXCommonData(object):
     # array info
     array = '000197800123'
+    uni_array = u'000197800123'
     array_herc = '000197900123'
     srp = 'SRP_1'
     srp2 = 'SRP_2'
@@ -90,6 +91,7 @@ class VMAXCommonData(object):
     target_group_name = 'Grp_target'
     storagegroup_name_with_id = 'GrpId_group_name'
     rdf_managed_async_grp = "OS-%s-Asynchronous-rdf-sg" % rdf_group_name
+    volume_id = '2b06255d-f5f0-4520-a953-b029196add6a'
 
     # connector info
     wwpn1 = "123456789012345"
@@ -157,6 +159,9 @@ class VMAXCommonData(object):
     provider_location3 = {'array': six.text_type(remote_array),
                           'device_id': device_id2}
 
+    provider_location4 = {'array': six.text_type(uni_array),
+                          'device_id': device_id}
+
     legacy_provider_location = {
         'classname': 'Symm_StorageVolume',
         'keybindings': {'CreationClassName': u'Symm_StorageVolume',
@@ -198,7 +203,16 @@ class VMAXCommonData(object):
         provider_location=six.text_type(provider_location2),
         host=fake_host)
 
+    test_volume_snap_manage = fake_volume.fake_volume_obj(
+        context=ctx, name='vol1', size=2, provider_auth=None,
+        display_name='vol1',
+        provider_location=six.text_type(provider_location),
+        volume_type=test_volume_type, host=fake_host,
+        replication_driver_data=six.text_type(provider_location4))
+
+    snapshot_display_id = 'my_snap'
     snapshot_id = '390eeb4d-0f56-4a02-ba14-167167967014'
+    managed_snap_id = 'OS-390eeb4d-0f56-4a02-ba14-167167967014'
     test_snapshot_snap_name = 'OS-' + snapshot_id[:6] + snapshot_id[-9:]
 
     snap_location = {'snap_name': test_snapshot_snap_name,
@@ -222,6 +236,13 @@ class VMAXCommonData(object):
         size=2,
         provider_location=six.text_type(snap_location),
         host=fake_host, volume=test_volume)
+
+    test_snapshot_manage = fake_snapshot.fake_snapshot_obj(
+        context=ctx, id=snapshot_id,
+        name='my_snap', size=2,
+        provider_location=six.text_type(snap_location),
+        host=fake_host, volume=test_volume_snap_manage,
+        display_name='my_snap')
 
     location_info = {'location_info': '000197800123#SRP_1#Diamond#DSS',
                      'storage_protocol': 'FC'}
@@ -1457,6 +1478,24 @@ class VMAXUtilsTest(test.TestCase):
         extra_specs[utils.REP_MODE] = utils.REP_ASYNC
         self.assertTrue(self.utils.does_vol_need_rdf_management_group(
             extra_specs))
+
+    def test_modify_snapshot_prefix_manage(self):
+        snap_name = self.data.snapshot_id
+        expected_snap_name = self.data.managed_snap_id
+
+        updated_name = self.utils.modify_snapshot_prefix(
+            snap_name, manage=True)
+
+        self.assertEqual(expected_snap_name, updated_name)
+
+    def test_modify_snapshot_prefix_unmanage(self):
+        snap_name = self.data.managed_snap_id
+        expected_snap_name = self.data.snapshot_id
+
+        updated_name = self.utils.modify_snapshot_prefix(
+            snap_name, unmanage=True)
+
+        self.assertEqual(expected_snap_name, updated_name)
 
 
 class VMAXRestTest(test.TestCase):
@@ -2783,6 +2822,19 @@ class VMAXRestTest(test.TestCase):
                           self.data.array, self.data.remote_array,
                           self.data.device_id, self.data.device_id2,
                           self.data.extra_specs)
+
+    @mock.patch.object(rest.VMAXRest, 'modify_resource',
+                       return_value=('200', 'JobComplete'))
+    def test_modify_volume_snap_rename(self, mock_modify):
+        array = self.data.array
+        source_id = self.data.device_id
+        old_snap_backend_name = self.data.snapshot_id
+        new_snap_backend_name = self.data.managed_snap_id
+        self.rest.modify_volume_snap(
+            array, source_id, source_id, old_snap_backend_name,
+            self.data.extra_specs, link=False, unlink=False,
+            rename=True, new_snap_name=new_snap_backend_name)
+        mock_modify.assert_called_once()
 
 
 class VMAXProvisionTest(test.TestCase):
@@ -4731,6 +4783,87 @@ class VMAXCommonTest(test.TestCase):
         self.common.configuration = backup_conf
         kwargs = self.common.get_attributes_from_cinder_config()
         self.assertIsNone(kwargs)
+
+    @mock.patch.object(rest.VMAXRest,
+                       'get_size_of_device_on_array',
+                       return_value=2.0)
+    def test_manage_snapshot_get_size_success(self, mock_get_size):
+        size = self.common.manage_existing_snapshot_get_size(
+            self.data.test_snapshot)
+        self.assertEqual(2, size)
+
+    @mock.patch.object(rest.VMAXRest, 'get_volume_snap',
+                       return_value={'snap_name': 'snap_name'})
+    def test_manage_snapshot_success(self, mock_snap):
+        snapshot = self.data.test_snapshot_manage
+        existing_ref = {u'source-name': u'test_snap'}
+        updates_response = self.common.manage_existing_snapshot(
+            snapshot, existing_ref)
+
+        prov_loc = {'source_id': self.data.device_id,
+                    'snap_name': 'OS-%s' % existing_ref['source-name']}
+
+        updates = {
+            'display_name': self.data.test_snapshot_manage.display_name,
+            'provider_location': six.text_type(prov_loc)}
+
+        self.assertEqual(updates_response, updates)
+
+    def test_manage_snapshot_fail_already_managed(self):
+        snapshot = self.data.test_snapshot_manage
+        existing_ref = {u'source-name': u'OS-test_snap'}
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common.manage_existing_snapshot,
+                          snapshot, existing_ref)
+
+    @mock.patch.object(utils.VMAXUtils,
+                       'is_volume_failed_over',
+                       return_value=True)
+    def test_manage_snapshot_fail_vol_failed_over(self, mock_failed):
+        snapshot = self.data.test_snapshot_manage
+        existing_ref = {u'source-name': u'test_snap'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common.manage_existing_snapshot,
+                          snapshot, existing_ref)
+
+    @mock.patch.object(rest.VMAXRest, 'get_volume_snap', return_value=False)
+    def test_manage_snapshot_fail_vol_not_snap_src(self, mock_snap):
+        snapshot = self.data.test_snapshot_manage
+        existing_ref = {u'source-name': u'test_snap'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common.manage_existing_snapshot,
+                          snapshot, existing_ref)
+
+    @mock.patch.object(utils.VMAXUtils, 'modify_snapshot_prefix',
+                       side_effect=exception.VolumeBackendAPIException)
+    def test_manage_snapshot_fail_add_prefix(self, mock_mod):
+        snapshot = self.data.test_snapshot_manage
+        existing_ref = {u'source-name': u'test_snap'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common.manage_existing_snapshot,
+                          snapshot, existing_ref)
+
+    @mock.patch.object(common.VMAXCommon, '_sync_check')
+    @mock.patch.object(rest.VMAXRest, 'modify_volume_snap')
+    def test_unmanage_snapshot_success(self, mock_mod, mock_sync):
+        self.common.unmanage_snapshot(self.data.test_snapshot_manage)
+        mock_mod.assert_called_once()
+
+    @mock.patch.object(
+        utils.VMAXUtils, 'is_volume_failed_over', return_value=True)
+    def test_unmanage_snapshot_fail_failover(self, mock_failed):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common.unmanage_snapshot,
+                          self.data.test_snapshot_manage)
+
+    @mock.patch.object(rest.VMAXRest,
+                       'modify_volume_snap',
+                       side_effect=exception.VolumeBackendAPIException)
+    def test_unmanage_snapshot_fail_rename(self, mock_snap):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common.unmanage_snapshot,
+                          self.data.test_snapshot_manage)
 
 
 class VMAXFCTest(test.TestCase):

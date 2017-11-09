@@ -92,6 +92,8 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
               - Deprecate backend xml configuration
               - Support for async replication (vmax-replication-enhancements)
               - Support for SRDF/Metro (vmax-replication-enhancements)
+              - Support for manage/unmanage snapshots
+                (vmax-manage-unmanage-snapshot)
     """
 
     VERSION = "3.1.0"
@@ -403,6 +405,36 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         Leave the volume intact on the backend array.
         """
         return self.common.unmanage(volume)
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Manage an existing VMAX Snapshot (import to Cinder).
+
+        Renames the Snapshot to prefix it with OS- to indicate
+        it is managed by Cinder.
+
+        :param snapshot: the snapshot object
+        :param existing_ref: the snapshot name on the backend VMAX
+        :returns: model_update
+        """
+        return self.common.manage_existing_snapshot(snapshot, existing_ref)
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """Return the size of the source volume for manage-existing-snapshot.
+
+        :param snapshot: the snapshot object
+        :param existing_ref: the snapshot name on the backend VMAX
+        :returns: size of the source volume in GB
+        """
+        return self.common.manage_existing_snapshot_get_size(snapshot)
+
+    def unmanage_snapshot(self, snapshot):
+        """Export VMAX Snapshot from Cinder.
+
+        Leaves the snapshot intact on the backend VMAX.
+
+        :param snapshot: the snapshot object
+        """
+        self.common.unmanage_snapshot(snapshot)
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Migrate volume to another host using retype.

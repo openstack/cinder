@@ -1540,7 +1540,8 @@ class VMAXRest(object):
                           job, extra_specs)
 
     def modify_volume_snap(self, array, source_id, target_id, snap_name,
-                           extra_specs, link=False, unlink=False):
+                           extra_specs, link=False, unlink=False,
+                           rename=False, new_snap_name=None):
         """Link or unlink a snapVx to or from a target volume.
 
         :param array: the array serial number
@@ -1550,20 +1551,32 @@ class VMAXRest(object):
         :param extra_specs: extra specifications
         :param link: Flag to indicate action = Link
         :param unlink: Flag to indicate action = Unlink
+        :param rename: Flag to indicate action = Rename
+        :param new_snap_name: Optional new snapshot name
         """
-        action = ''
+        action = None
         if link:
             action = "Link"
         elif unlink:
             action = "Unlink"
-        if action:
+        elif rename:
+            action = "Rename"
+
+        payload = {}
+        if action and link or unlink:
             payload = {"deviceNameListSource": [{"name": source_id}],
-                       "deviceNameListTarget": [
-                           {"name": target_id}],
+                       "deviceNameListTarget": [{"name": target_id}],
                        "copy": 'true', "action": action,
                        "star": 'false', "force": 'false',
                        "exact": 'false', "remote": 'false',
                        "symforce": 'false', "nocopy": 'false'}
+
+        elif action and rename:
+            payload = {"deviceNameListSource": [{"name": source_id}],
+                       "deviceNameListTarget": [{"name": source_id}],
+                       "action": action, "newsnapshotname": new_snap_name}
+
+        if action:
             status_code, job = self.modify_resource(
                 array, REPLICATION, 'snapshot', payload,
                 resource_name=snap_name, private='/private')

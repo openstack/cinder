@@ -1,0 +1,3 @@
+---
+features:
+  - Support for manage/ unmanage snapshots on VMAX cinder driver.

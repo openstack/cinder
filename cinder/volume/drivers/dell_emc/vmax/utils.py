@@ -224,6 +224,31 @@ class VMAXUtils(object):
                 {'elementName': element_name})
         return element_name
 
+    @staticmethod
+    def modify_snapshot_prefix(snapshot_name, manage=False, unmanage=False):
+        """Modify a Snapshot prefix on VMAX backend.
+
+        Prepare a snapshot name for manage/unmanage snapshot process either
+        by adding or removing 'OS-' prefix.
+
+        :param snapshot_name: the old snapshot backend display name
+        :param manage: (bool) if the operation is managing a snapshot
+        :param unmanage: (bool) if the operation is unmanaging a snapshot
+        :return: snapshot name ready for backend VMAX assignment
+        """
+        new_snap_name = None
+        if manage:
+            new_snap_name = ("%(prefix)s%(snapshot_name)s"
+                             % {'prefix': 'OS-',
+                                'snapshot_name': snapshot_name})
+
+        if unmanage:
+            snap_split = snapshot_name.split("-", 1)
+            if snap_split[0] == 'OS':
+                new_snap_name = snap_split[1]
+
+        return new_snap_name
+
     def generate_unique_trunc_host(self, host_name):
         """Create a unique short host name under 16 characters.
 

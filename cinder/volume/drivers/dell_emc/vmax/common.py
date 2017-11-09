@@ -1968,9 +1968,9 @@ class VMAXCommon(object):
 
         # Check if there are any replication sessions associated
         # with the volume.
-        snapvx_tgt, snapvx_src, rdf = self.rest.is_vol_in_rep_session(
+        snapvx_tgt, __, rdf = self.rest.is_vol_in_rep_session(
             array, device_id)
-        if snapvx_tgt or snapvx_src or rdf:
+        if snapvx_tgt or rdf:
             msg = (_("Unable to import volume %(device_id)s to cinder. "
                      "It is part of a replication session.")
                    % {'device_id': device_id})
@@ -2017,6 +2017,7 @@ class VMAXCommon(object):
         """Export VMAX volume from Cinder.
 
         Leave the volume intact on the backend array.
+
         :param volume: the volume object
         """
         volume_name = volume.name
@@ -2041,6 +2042,147 @@ class VMAXCommon(object):
             # Rename the volume to volumeId, thus remove the 'OS-' prefix.
             self.rest.rename_volume(
                 extra_specs[utils.ARRAY], device_id, volume_id)
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Manage an existing VMAX Snapshot (import to Cinder).
+
+        Renames the Snapshot to prefix it with OS- to indicate
+        it is managed by Cinder
+
+        :param snapshot: the snapshot object
+        :param existing_ref: the snapshot name on the backend VMAX
+        :raises: VolumeBackendAPIException
+        :returns: model update
+        """
+        volume = snapshot.volume
+        extra_specs = self._initial_setup(volume)
+        array = extra_specs[utils.ARRAY]
+        device_id = self._find_device_on_array(volume, extra_specs)
+
+        try:
+            snap_name = existing_ref['source-name']
+        except KeyError:
+            snap_name = existing_ref['source-id']
+
+        if snapshot.display_name:
+            snap_display_name = snapshot.display_name
+        else:
+            snap_display_name = snapshot.id
+
+        if snap_name.startswith(utils.VOLUME_ELEMENT_NAME_PREFIX):
+            exception_message = (
+                _("Unable to manage existing Snapshot. Snapshot "
+                  "%(snapshot)s is already managed by Cinder.") %
+                {'snapshot': snap_name})
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+
+        if self.utils.is_volume_failed_over(volume):
+            exception_message = (
+                (_("Volume %(name)s is failed over from the source volume, "
+                   "it is not possible to manage a snapshot of a failed over "
+                   "volume.") % {'name': volume.id}))
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+
+        if not self.rest.get_volume_snap(array, device_id, snap_name):
+            exception_message = (
+                _("Snapshot %(snap_name)s is not associated with specified "
+                  "volume %(device_id)s, it is not possible to manage a "
+                  "snapshot that is not associated with the specified "
+                  "volume.")
+                % {'device_id': device_id, 'snap_name': snap_name})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+
+        snap_backend_name = self.utils.modify_snapshot_prefix(
+            snap_name, manage=True)
+
+        try:
+            self.rest.modify_volume_snap(
+                array, device_id, device_id, snap_name,
+                extra_specs, rename=True, new_snap_name=snap_backend_name)
+
+        except Exception as e:
+            exception_message = (
+                _("There was an issue managing %(snap_name)s, it was not "
+                  "possible to add the OS- prefix. Error Message: %(e)s.")
+                % {'snap_name': snap_name, 'e': six.text_type(e)})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        prov_loc = {'source_id': device_id, 'snap_name': snap_backend_name}
+
+        updates = {'display_name': snap_display_name,
+                   'provider_location': six.text_type(prov_loc)}
+
+        LOG.info("Managing SnapVX Snapshot %(snap_name)s of source "
+                 "volume %(device_id)s, OpenStack Snapshot display name: "
+                 "%(snap_display_name)s", {
+                     'snap_name': snap_name, 'device_id': device_id,
+                     'snap_display_name': snap_display_name})
+
+        return updates
+
+    def manage_existing_snapshot_get_size(self, snapshot):
+        """Return the size of the source volume for manage-existing-snapshot.
+
+        :param snapshot: the snapshot object
+        :returns: size of the source volume in GB
+        """
+        volume = snapshot.volume
+        extra_specs = self._initial_setup(volume)
+        device_id = self._find_device_on_array(volume, extra_specs)
+        return self.rest.get_size_of_device_on_array(
+            extra_specs[utils.ARRAY], device_id)
+
+    def unmanage_snapshot(self, snapshot):
+        """Export VMAX Snapshot from Cinder.
+
+        Leaves the snapshot intact on the backend VMAX
+
+        :param snapshot: the snapshot object
+        :raises: VolumeBackendAPIException
+        """
+        volume = snapshot.volume
+        extra_specs = self._initial_setup(volume)
+        array = extra_specs[utils.ARRAY]
+        device_id, snap_name = self._parse_snap_info(array, snapshot)
+
+        if self.utils.is_volume_failed_over(volume):
+            exception_message = (
+                _("It is not possible to unmanage a snapshot where the "
+                  "source volume is failed-over, revert back to source "
+                  "VMAX to unmanage snapshot %(snap_name)s")
+                % {'snap_name': snap_name})
+
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+
+        new_snap_backend_name = self.utils.modify_snapshot_prefix(
+            snap_name, unmanage=True)
+
+        try:
+            self.rest.modify_volume_snap(
+                array, device_id, device_id, snap_name, extra_specs,
+                rename=True, new_snap_name=new_snap_backend_name)
+        except Exception as e:
+            exception_message = (
+                _("There was an issue unmanaging Snapshot, it "
+                  "was not possible to remove the OS- prefix. Error "
+                  "message is: %(e)s.")
+                % {'snap_name': snap_name, 'e': six.text_type(e)})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        self._sync_check(array, device_id, volume.name, extra_specs)
+
+        LOG.info("Snapshot %(snap_name)s is no longer managed in "
+                 "OpenStack but still remains on VMAX source "
+                 "%(array_id)s", {'snap_name': snap_name, 'array_id': array})
 
     def retype(self, volume, new_type, host):
         """Migrate volume to another host using retype.
