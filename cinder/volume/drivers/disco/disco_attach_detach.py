@@ -15,6 +15,7 @@
 
 """Class for DISCO to attach and detach volume."""
 
+from os_brick import initiator
 from os_brick.initiator import connector
 from oslo_log import log as logging
 
@@ -54,7 +55,7 @@ class AttachDetachDiscoVolume(object):
 
     def _get_connector_identifier(self):
         """Return connector identifier, put here to mock it in unit tests."""
-        return connector.DISCO
+        return initiator.DISCO
 
     def _attach_volume(self, volume):
         """Call the connector.connect_volume()."""
