@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added backend driver for VMware VStorageObject (First Class Disk).
