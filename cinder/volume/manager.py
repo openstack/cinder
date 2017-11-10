@@ -39,6 +39,7 @@ intact.
 import requests
 import time
 
+from castellan import key_manager
 from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
@@ -64,7 +65,6 @@ from cinder.i18n import _
 from cinder.image import cache as image_cache
 from cinder.image import glance
 from cinder.image import image_utils
-from cinder import keymgr as key_manager
 from cinder import manager
 from cinder.message import api as message_api
 from cinder.message import message_field

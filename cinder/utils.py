@@ -37,6 +37,7 @@ import tempfile
 import time
 import types
 
+from castellan import key_manager
 from os_brick import encryptors
 from os_brick.initiator import connector
 from oslo_concurrency import lockutils
@@ -54,7 +55,6 @@ import webob.exc
 
 from cinder import exception
 from cinder.i18n import _
-from cinder import keymgr
 
 
 CONF = cfg.CONF
@@ -501,10 +501,10 @@ def brick_get_encryptor(connection_info, *args, **kwargs):
     """Wrapper to get a brick encryptor object."""
 
     root_helper = get_root_helper()
-    key_manager = keymgr.API(CONF)
+    km = key_manager.API(CONF)
     return encryptors.get_volume_encryptor(root_helper=root_helper,
                                            connection_info=connection_info,
-                                           keymgr=key_manager,
+                                           keymgr=km,
                                            *args, **kwargs)
 
 

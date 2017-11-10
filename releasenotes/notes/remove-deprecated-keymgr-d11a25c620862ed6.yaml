@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    The old deprecated ``keymgr`` options have been removed.
+    Configuration options using the ``[keymgr]`` group will not be
+    applied anymore. Use the ``[key_manager]`` group from Castellan instead.
+    The Castellan ``backend`` options should also be used instead of
+    ``api_class``, as most
+    of the options that lived in Cinder have migrated to Castellan.
+
+    - Instead of ``api_class`` option
+      ``cinder.keymgr.barbican.BarbicanKeyManager``, use ``backend`` option
+      `barbican``
+    - ``cinder.keymgr.conf_key_mgr.ConfKeyManager`` still remains, but
+      the ``fixed_key`` configuration options should be moved to the ``[key_manager]`` section
+

@@ -21,6 +21,7 @@ import io
 import mock
 import six
 
+from castellan import key_manager
 import ddt
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -30,7 +31,6 @@ from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import models
 from cinder import exception
-from cinder import keymgr
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.backup import fake_backup
@@ -993,9 +993,9 @@ class VolumeUtilsTestCase(test.TestCase):
             'backend',
             'cinder.keymgr.conf_key_mgr.ConfKeyManager',
             group='key_manager')
-        key_manager = keymgr.API()
+        km = key_manager.API()
         volume_utils.create_encryption_key(ctxt,
-                                           key_manager,
+                                           km,
                                            fake.VOLUME_TYPE_ID)
         is_encryption.assert_called_once_with(ctxt,
                                               fake.VOLUME_TYPE_ID)

@@ -13,6 +13,7 @@
 #   under the License.
 
 
+from castellan import key_manager
 from oslo_config import cfg
 import oslo_messaging as messaging
 from oslo_utils import encodeutils
@@ -27,7 +28,6 @@ from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
-from cinder import keymgr
 from cinder.policies import volume_actions as policy
 from cinder import utils
 from cinder import volume
@@ -46,7 +46,7 @@ class VolumeActionsController(wsgi.Controller):
     def _key_manager(self):
         # Allows for lazy initialization of the key manager
         if self._key_mgr is None:
-            self._key_mgr = keymgr.API(CONF)
+            self._key_mgr = key_manager.API(CONF)
 
         return self._key_mgr
 

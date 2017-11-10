@@ -13,17 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from castellan import key_manager
 from castellan import options as castellan_opts
 from oslo_config import cfg
-from oslo_log import log as logging
-
-LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
 
 castellan_opts.set_defaults(CONF)
-
-
-def API(conf=CONF):
-    return key_manager.API(conf)
