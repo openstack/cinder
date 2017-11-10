@@ -253,6 +253,42 @@ def _validate_quota_class_set(instance):
     return True
 
 
+@jsonschema.FormatChecker.cls_checks(
+    'group_status', webob.exc.HTTPBadRequest)
+def _validate_group_status(param_value):
+    if param_value is None:
+        msg = _("The 'status' can not be None.")
+        raise webob.exc.HTTPBadRequest(explanation=msg)
+    if len(param_value.strip()) == 0:
+        msg = _("The 'status' can not be empty.")
+        raise exception.InvalidGroupStatus(reason=msg)
+    if param_value.lower() not in c_fields.GroupSnapshotStatus.ALL:
+        msg = _("Group status: %(status)s is invalid, valid status "
+                "are: %(valid)s.") % {'status': param_value,
+                                      'valid': c_fields.GroupStatus.ALL}
+        raise exception.InvalidGroupStatus(reason=msg)
+    return True
+
+
+@jsonschema.FormatChecker.cls_checks('availability_zone')
+def _validate_availability_zone(param_value):
+    if param_value is None:
+        return True
+    _validate_string_length(param_value, "availability_zone",
+                            mandatory=True, min_length=1,
+                            max_length=255, remove_whitespaces=True)
+    return True
+
+
+@jsonschema.FormatChecker.cls_checks(
+    'group_type', (webob.exc.HTTPBadRequest, exception.InvalidInput))
+def _validate_group_type(param_value):
+    _validate_string_length(param_value, 'group_type',
+                            mandatory=True, min_length=1, max_length=255,
+                            remove_whitespaces=True)
+    return True
+
+
 class FormatChecker(jsonschema.FormatChecker):
     """A FormatChecker can output the message from cause exception
 

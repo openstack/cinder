@@ -24,7 +24,9 @@ from webob import exc
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import groups as group
 from cinder.api.v3.views import groups as views_groups
+from cinder.api import validation
 from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _
@@ -67,6 +69,7 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_VOLUME_RESET_STATUS)
     @wsgi.action("reset_status")
+    @validation.schema(group.reset_status)
     def reset_status(self, req, id, body):
         return self._reset_status(req, id, body)
 
@@ -74,10 +77,7 @@ class GroupsController(wsgi.Controller):
         """Reset status on generic group."""
 
         context = req.environ['cinder.context']
-        try:
-            status = body['reset_status']['status'].lower()
-        except (TypeError, KeyError):
-            raise exc.HTTPBadRequest(explanation=_("Must specify 'status'"))
+        status = body['reset_status']['status'].lower()
 
         LOG.debug("Updating group '%(id)s' with "
                   "'%(update)s'", {'id': id,
@@ -108,6 +108,7 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_VOLUME)
     @wsgi.action("delete")
+    @validation.schema(group.delete)
     def delete_group(self, req, id, body):
         return self._delete(req, id, body)
 
@@ -115,19 +116,9 @@ class GroupsController(wsgi.Controller):
         """Delete a group."""
         LOG.debug('delete called for group %s', id)
         context = req.environ['cinder.context']
-        del_vol = False
-        if body:
-            self.assert_valid_body(body, 'delete')
-
-            grp_body = body['delete']
-            try:
-                del_vol = strutils.bool_from_string(
-                    grp_body.get('delete-volumes', False),
-                    strict=True)
-            except ValueError:
-                msg = (_("Invalid value '%s' for delete-volumes flag.")
-                       % del_vol)
-                raise exc.HTTPBadRequest(explanation=msg)
+        grp_body = body['delete']
+        del_vol = strutils.bool_from_string(grp_body.get(
+            'delete-volumes', False))
 
         LOG.info('Delete group with id: %s', id,
                  context=context)
@@ -193,31 +184,25 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_VOLUME)
     @wsgi.response(http_client.ACCEPTED)
+    @validation.schema(group.create)
     def create(self, req, body):
         """Create a new group."""
         LOG.debug('Creating new group %s', body)
-        self.assert_valid_body(body, 'group')
-
         context = req.environ['cinder.context']
         group = body['group']
-        self.validate_name_and_description(group)
         name = group.get('name')
         description = group.get('description')
-        group_type = group.get('group_type')
-        if not group_type:
-            msg = _("group_type must be provided to create "
-                    "group %(name)s.") % {'name': name}
-            raise exc.HTTPBadRequest(explanation=msg)
+        if name:
+            name = name.strip()
+        if description:
+            description = description.strip()
+        group_type = group['group_type']
         if not uuidutils.is_uuid_like(group_type):
             req_group_type = group_types.get_group_type_by_name(context,
                                                                 group_type)
             group_type = req_group_type['id']
         self._check_default_cgsnapshot_type(group_type)
-        volume_types = group.get('volume_types')
-        if not volume_types:
-            msg = _("volume_types must be provided to create "
-                    "group %(name)s.") % {'name': name}
-            raise exc.HTTPBadRequest(explanation=msg)
+        volume_types = group['volume_types']
         availability_zone = group.get('availability_zone')
 
         LOG.info("Creating group %(name)s.",
@@ -240,6 +225,7 @@ class GroupsController(wsgi.Controller):
     @wsgi.Controller.api_version(mv.GROUP_SNAPSHOTS)
     @wsgi.action("create-from-src")
     @wsgi.response(http_client.ACCEPTED)
+    @validation.schema(group.create_from_source)
     def create_from_src(self, req, body):
         """Create a new group from a source.
 
@@ -248,26 +234,17 @@ class GroupsController(wsgi.Controller):
         "create" API above.
         """
         LOG.debug('Creating new group %s.', body)
-        self.assert_valid_body(body, 'create-from-src')
 
         context = req.environ['cinder.context']
         group = body['create-from-src']
-        self.validate_name_and_description(group)
-        name = group.get('name', None)
-        description = group.get('description', None)
+        name = group.get('name')
+        description = group.get('description')
+        if name:
+            name = name.strip()
+        if description:
+            description = description.strip()
         group_snapshot_id = group.get('group_snapshot_id', None)
         source_group_id = group.get('source_group_id', None)
-        if not group_snapshot_id and not source_group_id:
-            msg = (_("Either 'group_snapshot_id' or 'source_group_id' must be "
-                     "provided to create group %(name)s from source.")
-                   % {'name': name})
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        if group_snapshot_id and source_group_id:
-            msg = _("Cannot provide both 'group_snapshot_id' and "
-                    "'source_group_id' to create group %(name)s from "
-                    "source.") % {'name': name}
-            raise exc.HTTPBadRequest(explanation=msg)
 
         group_type_id = None
         if group_snapshot_id:
@@ -303,6 +280,7 @@ class GroupsController(wsgi.Controller):
         return retval
 
     @wsgi.Controller.api_version(mv.GROUP_VOLUME)
+    @validation.schema(group.update)
     def update(self, req, id, body):
         """Update the group.
 
@@ -323,26 +301,17 @@ class GroupsController(wsgi.Controller):
         """
         LOG.debug('Update called for group %s.', id)
 
-        if not body:
-            msg = _("Missing request body.")
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        self.assert_valid_body(body, 'group')
         context = req.environ['cinder.context']
 
-        group = body.get('group')
-        self.validate_name_and_description(group)
+        group = body['group']
         name = group.get('name')
         description = group.get('description')
+        if name:
+            name = name.strip()
+        if description:
+            description = description.strip()
         add_volumes = group.get('add_volumes')
         remove_volumes = group.get('remove_volumes')
-
-        # Allow name or description to be changed to an empty string ''.
-        if (name is None and description is None and not add_volumes
-                and not remove_volumes):
-            msg = _("Name, description, add_volumes, and remove_volumes "
-                    "can not be all empty in the request body.")
-            raise exc.HTTPBadRequest(explanation=msg)
 
         LOG.info("Updating group %(id)s with name %(name)s "
                  "description: %(description)s add_volumes: "
@@ -369,11 +338,10 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("enable_replication")
+    @validation.schema(group.enable_replication)
     def enable_replication(self, req, id, body):
         """Enables replications for a group."""
         context = req.environ['cinder.context']
-        if body:
-            self.assert_valid_body(body, 'enable_replication')
 
         LOG.info('Enable replication group with id: %s.', id,
                  context=context)
@@ -390,11 +358,10 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("disable_replication")
+    @validation.schema(group.disable_replication)
     def disable_replication(self, req, id, body):
         """Disables replications for a group."""
         context = req.environ['cinder.context']
-        if body:
-            self.assert_valid_body(body, 'disable_replication')
 
         LOG.info('Disable replication group with id: %s.', id,
                  context=context)
@@ -411,22 +378,16 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("failover_replication")
+    @validation.schema(group.failover_replication)
     def failover_replication(self, req, id, body):
         """Fails over replications for a group."""
         context = req.environ['cinder.context']
-        if body:
-            self.assert_valid_body(body, 'failover_replication')
 
-            grp_body = body['failover_replication']
-            try:
-                allow_attached = strutils.bool_from_string(
-                    grp_body.get('allow_attached_volume', False),
-                    strict=True)
-            except ValueError:
-                msg = (_("Invalid value '%s' for allow_attached_volume flag.")
-                       % grp_body)
-                raise exc.HTTPBadRequest(explanation=msg)
-            secondary_backend_id = grp_body.get('secondary_backend_id')
+        grp_body = body['failover_replication']
+
+        allow_attached = strutils.bool_from_string(
+            grp_body.get('allow_attached_volume', False))
+        secondary_backend_id = grp_body.get('secondary_backend_id')
 
         LOG.info('Failover replication group with id: %s.', id,
                  context=context)
@@ -444,11 +405,10 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("list_replication_targets")
+    @validation.schema(group.list_replication)
     def list_replication_targets(self, req, id, body):
         """List replication targets for a group."""
         context = req.environ['cinder.context']
-        if body:
-            self.assert_valid_body(body, 'list_replication_targets')
 
         LOG.info('List replication targets for group with id: %s.', id,
                  context=context)
