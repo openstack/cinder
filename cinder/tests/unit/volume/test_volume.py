@@ -168,7 +168,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                     m_get_stats.return_value = {'name': 'cinder-volumes'}
                     m_get_filter.return_value = myfilterfunction
                     m_get_goodness.return_value = mygoodnessfunction
-                    manager._report_driver_status(1)
+                    manager._report_driver_status(context.get_admin_context())
                     self.assertTrue(m_get_stats.called)
                     mock_update.assert_called_once_with(expected)
 

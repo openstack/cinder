@@ -242,6 +242,10 @@ class GroupSnapshot(BASE, CinderBase):
 class Volume(BASE, CinderBase):
     """Represents a block storage device that can be attached to a vm."""
     __tablename__ = 'volumes'
+    __table_args__ = (Index('volumes_service_uuid_idx',
+                            'deleted', 'service_uuid'),
+                      CinderBase.__table_args__)
+
     id = Column(String(36), primary_key=True)
     _name_id = Column(String(36))  # Don't access/modify this directly!
 
@@ -310,6 +314,12 @@ class Volume(BASE, CinderBase):
         backref="volumes",
         foreign_keys=group_id,
         primaryjoin='Volume.group_id == Group.id')
+
+    service_uuid = Column(String(36), index=True)
+    service = relationship(Service,
+                           backref="volumes",
+                           foreign_keys=service_uuid,
+                           primaryjoin='Volume.service_uuid == Service.uuid')
 
 
 class VolumeMetadata(BASE, CinderBase):

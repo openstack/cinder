@@ -208,6 +208,7 @@ class DbCommands(object):
         # Added in Queens
         db.service_uuids_online_data_migration,
         db.backup_service_online_migration,
+        db.volume_service_uuids_online_data_migration,
     )
 
     def __init__(self):
@@ -299,6 +300,14 @@ class DbCommands(object):
             max_count = 50
             print(_('Running batches of %i until complete.') % max_count)
 
+        # FIXME(jdg): So this is annoying and confusing,
+        # we iterate through in batches until there are no
+        # more updates, that's AWESOME!! BUT we only print
+        # out a table reporting found/done AFTER the loop
+        # here, so that means the response the user sees is
+        # always a table of "needed 0" and "completed 0".
+        # So it's an indication of "all done" but it seems like
+        # some feedback as we go would be nice to have here.
         ran = None
         migration_info = {}
         while ran is None or ran != 0:

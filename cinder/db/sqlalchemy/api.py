@@ -632,6 +632,38 @@ def backup_service_online_migration(context, max_count):
 
     return total, updated
 
+
+@enginefacade.writer
+def volume_service_uuids_online_data_migration(context, max_count):
+    """Update volume service_uuid columns."""
+
+    updated = 0
+    query = model_query(context,
+                        models.Volume).filter_by(service_uuid=None)
+    total = query.count()
+    vol_refs = query.limit(max_count).all()
+
+    service_refs = model_query(context, models.Service).filter_by(
+        topic="cinder-volume").limit(max_count).all()
+
+    # build a map to access the service uuid by host
+    svc_map = {}
+    for svc in service_refs:
+        svc_map[svc.host] = svc.uuid
+
+    # update our volumes appropriately
+    for v in vol_refs:
+        host = v.host.split('#')
+        v['service_uuid'] = svc_map[host[0]]
+        # re-use the session we already have associated with the
+        # volumes here (from the query above)
+        session = query.session
+        with session.begin():
+            v.save(session)
+        updated += 1
+    return total, updated
+
+
 ###################
 
 

@@ -460,6 +460,61 @@ class DBAPIServiceTestCase(BaseTest):
         self.assertIsInstance(binary_op, sqlalchemy_api.sql.functions.Function)
         self.assertEqual('binary', binary_op.name)
 
+    def test_volume_service_uuid_migrations(self):
+        # Force create one entry with no UUID
+        sqlalchemy_api.volume_create(self.ctxt,
+                                     {'host': 'host1@lvm-driver1#lvm-driver1'})
+
+        # Create another one with a valid UUID
+        sqlalchemy_api.volume_create(
+            self.ctxt,
+            {'host': 'host1@lvm-driver1#lvm-driver1',
+             'service_uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'})
+
+        # Need a service to query
+        values = {
+            'host': 'host1@lvm-driver1',
+            'binary': 'cinder-volume',
+            'topic': 'cinder-volume'}
+        utils.create_service(self.ctxt, values)
+
+        # Run the migration and verify that we updated 1 entry
+        total, updated = db.volume_service_uuids_online_data_migration(
+            self.ctxt, 10)
+
+        self.assertEqual(1, total)
+        self.assertEqual(1, updated)
+
+    def test_volume_service_uuid_migrations_with_limit(self):
+        """Test db migrate of volumes in batches."""
+        db.volume_create(
+            self.ctxt, {'host': 'host1@lvm-driver1#lvm-driver1'})
+        db.volume_create(
+            self.ctxt, {'host': 'host1@lvm-driver1#lvm-driver1'})
+        db.volume_create(
+            self.ctxt, {'host': 'host1@lvm-driver1#lvm-driver1'})
+
+        values = {
+            'host': 'host1@lvm-driver1',
+            'binary': 'cinder-volume',
+            'topic': 'cinder-volume',
+            'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}
+        utils.create_service(self.ctxt, values)
+
+        # Run the migration and verify that we updated 2 entries
+        total, updated = db.volume_service_uuids_online_data_migration(
+            self.ctxt, 2)
+
+        self.assertEqual(3, total)
+        self.assertEqual(2, updated)
+
+        # Now get the ,last one (intentionally setting max > expected)
+        total, updated = db.volume_service_uuids_online_data_migration(
+            self.ctxt, 2)
+
+        self.assertEqual(1, total)
+        self.assertEqual(1, updated)
+
 
 @ddt.ddt
 class DBAPIVolumeTestCase(BaseTest):

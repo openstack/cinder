@@ -101,6 +101,10 @@ def backup_service_online_migration(context, max_count):
     return IMPL.backup_service_online_migration(context, max_count)
 
 
+def volume_service_uuids_online_data_migration(context, max_count):
+    return IMPL.volume_service_uuids_online_data_migration(context, max_count)
+
+
 def service_destroy(context, service_id):
     """Destroy the service or raise if it does not exist."""
     return IMPL.service_destroy(context, service_id)
