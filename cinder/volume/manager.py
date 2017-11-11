@@ -900,16 +900,12 @@ class VolumeManager(manager.CleanableManager,
     def _revert_to_snapshot(self, context, volume, snapshot):
         """Use driver or generic method to rollback volume."""
 
-        self._notify_about_volume_usage(context, volume, "revert.start")
-        self._notify_about_snapshot_usage(context, snapshot, "revert.start")
         try:
             self.driver.revert_to_snapshot(context, volume, snapshot)
         except (NotImplementedError, AttributeError):
             LOG.info("Driver's 'revert_to_snapshot' is not found. "
                      "Try to use copy-snapshot-to-volume method.")
             self._revert_to_snapshot_generic(context, volume, snapshot)
-        self._notify_about_volume_usage(context, volume, "revert.end")
-        self._notify_about_snapshot_usage(context, snapshot, "revert.end")
 
     def _create_backup_snapshot(self, context, volume):
         kwargs = {
@@ -945,6 +941,12 @@ class VolumeManager(manager.CleanableManager,
         backup_snapshot = None
         try:
             LOG.info("Start to perform revert to snapshot process.")
+
+            self._notify_about_volume_usage(context, volume,
+                                            "revert.start")
+            self._notify_about_snapshot_usage(context, snapshot,
+                                              "revert.start")
+
             # Create a snapshot which can be used to restore the volume
             # data by hand if revert process failed.
             backup_snapshot = self._create_backup_snapshot(context, volume)
@@ -1008,6 +1010,8 @@ class VolumeManager(manager.CleanableManager,
                'successfully.')
         msg_args = {'v_id': volume.id, 'snap_id': snapshot.id}
         LOG.info(msg, msg_args)
+        self._notify_about_volume_usage(context, volume, "revert.end")
+        self._notify_about_snapshot_usage(context, snapshot, "revert.end")
 
     @objects.Snapshot.set_workers
     def create_snapshot(self, context, snapshot):
