@@ -364,6 +364,7 @@ class HPE3PARBaseDriver(test.TestCase):
         'TASK_DONE': TASK_DONE,
         'TASK_ACTIVE': TASK_ACTIVE,
         'HOST_EDIT_ADD': 1,
+        'HOST_EDIT_REMOVE': 2,
         'CHAP_INITIATOR': 1,
         'CHAP_TARGET': 2,
         'getPorts.return_value': {
@@ -5966,6 +5967,11 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                  'lun': None, 'type': 0},
                 {'active': True,
                  'volumeName': 'there-is-another-volume',
+                 'remoteName': '123456789012ABC',
+                 'lun': None, 'type': 0},
+                {'active': True,
+                 'volumeName': 'there-is-another-volume',
+                 'remoteName': '123456789012ABC',
                  'lun': None, 'type': 0},
             ]
 
@@ -5983,7 +5989,18 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 None,
                 hostname=self.FAKE_HOST),
             mock.call.getHostVLUNs(self.FAKE_HOST),
-            mock.call.getHostVLUNs(self.FAKE_HOST)]
+            mock.call.modifyHost(
+                'fakehost',
+                {'FCWWNs': ['123456789012345', '123456789054321'],
+                 'pathOperation': self.mock_client_conf['HOST_EDIT_REMOVE']}),
+            mock.call.getHostVLUNs(self.FAKE_HOST), mock.call.getPorts()]
+
+        expect_conn = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {'initiator_target_map':
+                     {'123456789012345': ['0987654321234', '123456789000987'],
+                      '123456789054321': ['0987654321234', '123456789000987']},
+                     'target_wwn': ['0987654321234', '123456789000987']}}
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -5994,7 +6011,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 self.standard_login +
                 expect_less +
                 self.standard_logout)
-            self.assertNotIn('initiator_target_map', conn_info['data'])
+            self.assertEqual(expect_conn, conn_info)
 
     def test_get_3par_host_from_wwn_iqn(self):
         mock_client = self.setup_driver()
@@ -6996,7 +7013,10 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                     None,
                     hostname=self.FAKE_HOST),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
-                mock.call.deleteHost(self.FAKE_HOST),
+                mock.call.modifyHost(
+                    'fakehost',
+                    {'pathOperation': 2,
+                     'iSCSINames': ['iqn.1993-08.org.debian:01:222']}),
                 mock.call.removeVolumeMetaData(
                     self.VOLUME_3PAR_NAME, CHAP_USER_KEY),
                 mock.call.removeVolumeMetaData(
@@ -7048,7 +7068,10 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                     None,
                     hostname=self.FAKE_HOST),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
-                mock.call.deleteHost(self.FAKE_HOST),
+                mock.call.modifyHost(
+                    'fakehost',
+                    {'pathOperation': 2,
+                     'iSCSINames': ['iqn.1993-08.org.debian:01:222']}),
                 mock.call.removeVolumeMetaData(
                     self.VOLUME_3PAR_NAME, CHAP_USER_KEY)]
 
@@ -7099,7 +7122,10 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                     None,
                     hostname=self.FAKE_HOST),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
-                mock.call.deleteHost(self.FAKE_HOST),
+                mock.call.modifyHost(
+                    'fakehost',
+                    {'pathOperation': 2,
+                     'iSCSINames': ['iqn.1993-08.org.debian:01:222']}),
                 mock.call.removeVolumeMetaData(
                     self.VOLUME_3PAR_NAME, CHAP_USER_KEY),
                 mock.call.removeVolumeMetaData(
@@ -8590,7 +8616,10 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                     None,
                     hostname=self.FAKE_HOST),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
-                mock.call.deleteHost(self.FAKE_HOST),
+                mock.call.modifyHost(
+                    'fakehost',
+                    {'pathOperation': 2,
+                     'iSCSINames': ['iqn.1993-08.org.debian:01:222']}),
                 mock.call.removeVolumeMetaData(
                     self.VOLUME_3PAR_NAME, CHAP_USER_KEY),
                 mock.call.removeVolumeMetaData(

@@ -107,10 +107,11 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         3.0.11 - Handle manage and unmanage hosts present. bug #1648067
         3.0.12 - Adds consistency group capability in generic volume groups.
         4.0.0 - Adds base class.
+        4.0.1 - Added check to remove FC zones. bug #1730720
 
     """
 
-    VERSION = "4.0.0"
+    VERSION = "4.0.1"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -256,18 +257,30 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
             info = {'driver_volume_type': 'fibre_channel',
                     'data': {}}
 
+            zone_remove = True
             try:
-                common.client.getHostVLUNs(hostname)
+                vluns = common.client.getHostVLUNs(hostname)
             except hpeexceptions.HTTPNotFound:
                 # No more exports for this host.
+                pass
+            else:
+                # Vlun exists, so check for wwpn entry.
+                for wwpn in connector.get('wwpns'):
+                    for vlun in vluns:
+                        if vlun.get('active') and \
+                           vlun.get('remoteName') == wwpn.upper():
+                            zone_remove = False
+                            break
+
+            if zone_remove:
                 LOG.info("Need to remove FC Zone, building initiator "
                          "target map")
-
                 target_wwns, init_targ_map, _numPaths = \
                     self._build_initiator_target_map(common, connector)
 
                 info['data'] = {'target_wwn': target_wwns,
                                 'initiator_target_map': init_targ_map}
+
             return info
 
         finally:
