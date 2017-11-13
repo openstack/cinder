@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Re-added QNAP Cinder volume driver.
