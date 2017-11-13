@@ -65,48 +65,32 @@ class VolumeOpsTestCase(test.TestCase):
         vm.propSet = [prop]
         return vm
 
-    def test_get_backing(self):
-        name = 'mock-backing'
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_backing_by_uuid')
+    def test_get_backing(self, get_backing_by_uuid):
+        ref = mock.sentinel.ref
+        get_backing_by_uuid.return_value = ref
 
-        # Test no result
-        self.session.invoke_api.return_value = None
-        result = self.vops.get_backing(name)
-        self.assertIsNone(result)
-        self.session.invoke_api.assert_called_once_with(vim_util,
-                                                        'get_objects',
-                                                        self.session.vim,
-                                                        'VirtualMachine',
-                                                        self.MAX_OBJECTS)
+        name = mock.sentinel.name
+        backing_uuid = mock.sentinel.backing_uuid
+        ret = self.vops.get_backing(name, backing_uuid)
 
-        # Test single result
-        vm = self.vm(name)
-        vm.obj = mock.sentinel.vm_obj
-        retrieve_result = mock.Mock(spec=object)
-        retrieve_result.objects = [vm]
-        self.session.invoke_api.return_value = retrieve_result
-        self.vops.cancel_retrieval = mock.Mock(spec=object)
-        result = self.vops.get_backing(name)
-        self.assertEqual(mock.sentinel.vm_obj, result)
-        self.session.invoke_api.assert_called_with(vim_util, 'get_objects',
-                                                   self.session.vim,
-                                                   'VirtualMachine',
-                                                   self.MAX_OBJECTS)
-        self.vops.cancel_retrieval.assert_called_once_with(retrieve_result)
+        self.assertEqual(ref, ret)
+        get_backing_by_uuid.assert_called_once_with(backing_uuid)
 
-        # Test multiple results
-        retrieve_result2 = mock.Mock(spec=object)
-        retrieve_result2.objects = [vm('1'), vm('2'), vm('3')]
-        self.session.invoke_api.return_value = retrieve_result2
-        self.vops.continue_retrieval = mock.Mock(spec=object)
-        self.vops.continue_retrieval.return_value = retrieve_result
-        result = self.vops.get_backing(name)
-        self.assertEqual(mock.sentinel.vm_obj, result)
-        self.session.invoke_api.assert_called_with(vim_util, 'get_objects',
-                                                   self.session.vim,
-                                                   'VirtualMachine',
-                                                   self.MAX_OBJECTS)
-        self.vops.continue_retrieval.assert_called_once_with(retrieve_result2)
-        self.vops.cancel_retrieval.assert_called_with(retrieve_result)
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_backing_by_uuid')
+    def test_get_backing_legacy(self, get_backing_by_uuid):
+        ref = mock.sentinel.ref
+        get_backing_by_uuid.return_value = None
+        name = mock.sentinel.name
+        self.vops._backing_ref_cache[name] = ref
+
+        backing_uuid = mock.sentinel.backing_uuid
+        ret = self.vops.get_backing(name, backing_uuid)
+
+        self.assertEqual(ref, ret)
+        get_backing_by_uuid.assert_called_once_with(backing_uuid)
 
     def test_get_backing_by_uuid(self):
         backing = mock.sentinel.backing
@@ -121,6 +105,65 @@ class VolumeOpsTestCase(test.TestCase):
             uuid=uuid,
             vmSearch=True,
             instanceUuid=True)
+
+    def _create_property(self, name, val):
+        prop = mock.Mock()
+        prop.name = name
+        prop.val = val
+        return prop
+
+    def _create_backing_obj(self, name, ref, instance_uuid=None, vol_id=None):
+        name_prop = self._create_property('name', name)
+        instance_uuid_prop = self._create_property('config.instanceUuid',
+                                                   instance_uuid)
+        vol_id_val = mock.Mock(value=vol_id)
+        vol_id_prop = self._create_property(
+            'config.extraConfig["cinder.volume.id"]', vol_id_val)
+
+        backing = mock.Mock()
+        backing.obj = ref
+        backing.propSet = [name_prop, instance_uuid_prop, vol_id_prop]
+        return backing
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'continue_retrieval', return_value=None)
+    def test_build_backing_ref_cache(self, continue_retrieval):
+        uuid1 = 'd68cbee0-c1f7-4886-98a4-cf2201461c6e'
+        ref1 = mock.sentinel.ref1
+        non_vol_backing = self._create_backing_obj(
+            'foo', ref1, instance_uuid=uuid1)
+
+        uuid2 = 'f36f0e87-97e0-4a1c-b788-2f84f1376960'
+        ref2 = mock.sentinel.ref2
+        legacy_vol_backing = self._create_backing_obj(
+            'volume-f36f0e87-97e0-4a1c-b788-2f84f1376960', ref2,
+            instance_uuid=uuid2)
+
+        uuid3 = '405d6afd-43be-4ce0-9e5f-fd49559e2763'
+        ref3 = mock.sentinel.ref3
+        vol_backing = self._create_backing_obj(
+            'volume-405d6afd-43be-4ce0-9e5f-fd49559e2763', ref3,
+            instance_uuid=uuid3, vol_id=uuid3)
+
+        result = mock.Mock(objects=[
+            non_vol_backing, legacy_vol_backing, vol_backing])
+        self.session.invoke_api.return_value = result
+
+        self.vops.build_backing_ref_cache()
+        exp_cache = {'foo': ref1,
+                     'volume-f36f0e87-97e0-4a1c-b788-2f84f1376960': ref2}
+        self.assertEqual(exp_cache, self.vops._backing_ref_cache)
+        self.session.invoke_api.assert_called_once_with(
+            vim_util,
+            'get_objects',
+            self.session.vim,
+            'VirtualMachine',
+            self.MAX_OBJECTS,
+            properties_to_collect=[
+                'name',
+                'config.instanceUuid',
+                'config.extraConfig["cinder.volume.id"]'])
+        continue_retrieval.assert_called_once_with(result)
 
     def test_delete_backing(self):
         backing = mock.sentinel.backing

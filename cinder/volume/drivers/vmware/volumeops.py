@@ -17,7 +17,6 @@
 Implements operations on volumes residing on VMware datastores.
 """
 
-
 from oslo_log import log as logging
 from oslo_utils import units
 from oslo_vmware import exceptions
@@ -286,31 +285,29 @@ class VMwareVolumeOps(object):
         self._extension_key = extension_key
         self._extension_type = extension_type
         self._folder_cache = {}
+        self._backing_ref_cache = {}
 
-    def get_backing(self, name):
-        """Get the backing based on name.
+    def get_backing(self, name, backing_uuid):
+        """Get the backing based on name or uuid.
 
         :param name: Name of the backing
+        :param backing_uuid: UUID of the backing
         :return: Managed object reference to the backing
         """
 
-        retrieve_result = self._session.invoke_api(vim_util, 'get_objects',
-                                                   self._session.vim,
-                                                   'VirtualMachine',
-                                                   self._max_objects)
-        while retrieve_result:
-            vms = retrieve_result.objects
-            for vm in vms:
-                if vm.propSet[0].val == name:
-                    # We got the result, so cancel further retrieval.
-                    self.cancel_retrieval(retrieve_result)
-                    return vm.obj
-            # Result not obtained, continue retrieving results.
-            retrieve_result = self.continue_retrieval(retrieve_result)
+        ref = self.get_backing_by_uuid(backing_uuid)
+        if not ref:
+            # old version of the driver might have created this backing and
+            # hence cannot be queried by uuid
+            LOG.debug("Returning cached ref for %s.", name)
+            ref = self._backing_ref_cache.get(name)
 
-        LOG.debug("Did not find any backing with name: %s", name)
+        LOG.debug("Backing (%(name)s, %(uuid)s) ref: %(ref)s.",
+                  {'name': name, 'uuid': backing_uuid, 'ref': ref})
+        return ref
 
     def get_backing_by_uuid(self, uuid):
+        LOG.debug("Get ref by UUID: %s.", uuid)
         result = self._session.invoke_api(
             self._session.vim,
             'FindAllByUuid',
@@ -320,6 +317,45 @@ class VMwareVolumeOps(object):
             instanceUuid=True)
         if result:
             return result[0]
+
+    def build_backing_ref_cache(self, name_regex=None):
+
+        LOG.debug("Building backing ref cache.")
+        result = self._session.invoke_api(
+            vim_util,
+            'get_objects',
+            self._session.vim,
+            'VirtualMachine',
+            self._max_objects,
+            properties_to_collect=[
+                'name',
+                'config.instanceUuid',
+                'config.extraConfig["cinder.volume.id"]'])
+
+        while result:
+            for backing in result.objects:
+                instance_uuid = None
+                vol_id = None
+
+                for prop in backing.propSet:
+                    if prop.name == 'name':
+                        name = prop.val
+                    elif prop.name == 'config.instanceUuid':
+                        instance_uuid = prop.val
+                    else:
+                        vol_id = prop.val.value
+
+                if name_regex and not name_regex.match(name):
+                    continue
+
+                if instance_uuid and instance_uuid == vol_id:
+                    # no need to cache backing with UUID set to volume ID
+                    continue
+
+                self._backing_ref_cache[name] = backing.obj
+
+            result = self.continue_retrieval(result)
+        LOG.debug("Backing ref cache size: %d.", len(self._backing_ref_cache))
 
     def delete_backing(self, backing):
         """Delete the backing.
