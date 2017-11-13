@@ -91,9 +91,10 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         2.1.1 - Update replication to version 2.1
         2.2 - Add CG capability to generic volume groups
         2.2.1 - Add vdisk mirror/stretch cluster support
+        2.2.2 - Add npiv support
     """
 
-    VERSION = "2.2.1"
+    VERSION = "2.2.2"
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_STORAGE_CI"
@@ -198,7 +199,15 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             # so we return all target ports.
             if len(conn_wwpns) == 0:
                 for node in self._state['storage_nodes'].values():
-                    conn_wwpns.extend(node['WWPN'])
+                    # The Storwize/svc release 7.7.0.0 introduced NPIV feature,
+                    # Different commands be used to get the wwpns for host I/O
+                    if self._state['code_level'] < (7, 7, 0, 0):
+                        conn_wwpns.extend(node['WWPN'])
+                    else:
+                        npiv_wwpns = self._helpers.get_npiv_wwpns(
+                            node_id=node['id'],
+                            host_io="yes")
+                        conn_wwpns.extend(npiv_wwpns)
 
             properties['target_wwn'] = conn_wwpns
 
