@@ -105,28 +105,6 @@ if krest:
                 self.krestlock.release()
 
 
-def kaminario_logger(func):
-    """Return a function wrapper.
-
-    The wrapper adds log for entry and exit to the function.
-    """
-    def func_wrapper(*args, **kwargs):
-        LOG.debug('Entering %(function)s of %(class)s with arguments: '
-                  ' %(args)s, %(kwargs)s',
-                  {'class': args[0].__class__.__name__,
-                   'function': func.__name__,
-                   'args': args[1:],
-                   'kwargs': kwargs})
-        ret = func(*args, **kwargs)
-        LOG.debug('Exiting %(function)s of %(class)s '
-                  'having return value: %(ret)s',
-                  {'class': args[0].__class__.__name__,
-                   'function': func.__name__,
-                   'ret': ret})
-        return ret
-    return func_wrapper
-
-
 class Replication(object):
     def __init__(self, config, *args, **kwargs):
         self.backend_id = config.get('backend_id')
@@ -148,7 +126,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         k2_lock_sfx = self.configuration.safe_get('san_ip')
         self.k2_lock_name = "%s-%s" % (K2_LOCK_PREFIX, k2_lock_sfx)
 
-    @kaminario_logger
+    @utils.trace
     def check_for_setup_error(self):
         if krest is None:
             msg = _("Unable to import 'krest' python module.")
@@ -197,12 +175,12 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                     raise exception.InvalidInput(reason=msg)
             self.replica = Replication(replica[0])
 
-    @kaminario_logger
+    @utils.trace
     def do_setup(self, context):
         super(KaminarioCinderDriver, self).do_setup(context)
         self._check_ops()
 
-    @kaminario_logger
+    @utils.trace
     def create_volume(self, volume):
         """Volume creation in K2 needs a volume group.
 
@@ -236,7 +214,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         if self._get_is_replica(volume.volume_type) and self.replica:
             self._create_volume_replica(volume, vg, vol, self.replica.rpo)
 
-    @kaminario_logger
+    @utils.trace
     def _create_volume_replica(self, volume, vg, vol, rpo):
         """Volume replica creation in K2 needs session and remote volume.
 
@@ -294,7 +272,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             self._delete_by_ref(self.client, "volume_groups", vg.name, "vg")
             raise exception.KaminarioCinderDriverException(reason=ex)
 
-    @kaminario_logger
+    @utils.trace
     def _create_failover_volume_replica(self, volume, vg_name, vol_name):
         """Volume replica creation in K2 needs session and remote volume.
 
@@ -349,14 +327,14 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             self._delete_by_ref(self.client, "volume_groups", vg_name, "vg")
             raise exception.KaminarioCinderDriverException(reason=ex)
 
-    @kaminario_logger
+    @utils.trace
     def _delete_by_ref(self, device, url, name, msg):
         rs = device.search(url, name=name)
         for result in rs.hits:
             result.delete()
             LOG.debug("Deleting %(msg)s: %(name)s", {'msg': msg, 'name': name})
 
-    @kaminario_logger
+    @utils.trace
     def _failover_volume(self, volume):
         """Promoting a secondary volume to primary volume."""
         session_name = self.get_session_name(volume.id)
@@ -369,7 +347,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.debug("The target session: %s state is "
                       "changed to failed_over ", rsession_name)
 
-    @kaminario_logger
+    @utils.trace
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Failover to replication target."""
         volume_updates = []
@@ -523,7 +501,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             back_end_ip = self.replica.backend_id
         return back_end_ip, volume_updates, []
 
-    @kaminario_logger
+    @utils.trace
     def _create_volume_replica_user_snap(self, k2, sess):
         snap = k2.new("snapshots")
         snap.is_application_consistent = "False"
@@ -552,7 +530,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                     self.snap_updates.remove(l)
                 eventlet.sleep(1)
 
-    @kaminario_logger
+    @utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create volume from snapshot.
 
@@ -617,7 +595,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                           "failed", {"vol": vol_name, "view": view_name})
             raise exception.KaminarioCinderDriverException(reason=ex)
 
-    @kaminario_logger
+    @utils.trace
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone from source volume.
 
@@ -662,7 +640,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.exception("Create a clone: %s failed.", clone_name)
             raise exception.KaminarioCinderDriverException(reason=ex)
 
-    @kaminario_logger
+    @utils.trace
     def delete_volume(self, volume):
         """Volume in K2 exists in a volume group.
 
@@ -687,7 +665,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.exception("Deletion of volume %s failed.", vol_name)
             raise exception.KaminarioCinderDriverException(reason=ex)
 
-    @kaminario_logger
+    @utils.trace
     def _delete_volume_replica(self, volume, vg_name, vol_name):
         rvg_name = self.get_rep_name(vg_name)
         rvol_name = self.get_rep_name(vol_name)
@@ -721,7 +699,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         self._delete_by_ref(self.target, "volume_groups",
                             rvg_name, "remote vg")
 
-    @kaminario_logger
+    @utils.trace
     def _delete_failover_volume_replica(self, volume, vg_name, vol_name):
         rvg_name = self.get_rep_name(vg_name)
         rvol_name = self.get_rep_name(vol_name)
@@ -746,7 +724,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             obj.refresh()
             eventlet.sleep(1)
 
-    @kaminario_logger
+    @utils.trace
     def get_volume_stats(self, refresh=False):
         if refresh:
             self.update_volume_stats()
@@ -768,7 +746,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     def remove_export(self, context, volume):
         pass
 
-    @kaminario_logger
+    @utils.trace
     def create_snapshot(self, snapshot):
         """Create a snapshot from a volume_group."""
         vg_name = self.get_volume_group_name(snapshot.volume_id)
@@ -786,7 +764,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.exception("Creation of snapshot: %s failed.", snap_name)
             raise exception.KaminarioCinderDriverException(reason=ex)
 
-    @kaminario_logger
+    @utils.trace
     def delete_snapshot(self, snapshot):
         """Delete a snapshot."""
         snap_name = self.get_snap_name(snapshot.id)
@@ -799,7 +777,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.exception("Deletion of snapshot: %s failed.", snap_name)
             raise exception.KaminarioCinderDriverException(reason=ex)
 
-    @kaminario_logger
+    @utils.trace
     def extend_volume(self, volume, new_size):
         """Extend volume."""
         vol_name = self.get_volume_name(volume.id)
@@ -878,7 +856,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         """Return the corresponding replication names."""
         return "r{0}".format(name)
 
-    @kaminario_logger
+    @utils.trace
     def _delete_host_by_name(self, name):
         """Deleting host by name."""
         host_rs = self.client.search("hosts", name=name)
@@ -922,7 +900,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     def initialize_connection(self, volume, connector):
         pass
 
-    @kaminario_logger
+    @utils.trace
     def terminate_connection(self, volume, connector):
         """Terminate connection of volume from host."""
         # Get volume object
@@ -953,7 +931,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         else:
             LOG.warning("Host: %s not found on K2.", host_name)
 
-    @kaminario_logger
+    @utils.trace
     def k2_initialize_connection(self, volume, connector):
         # Get volume object.
         if type(volume).__name__ != 'RestObject':
@@ -1012,7 +990,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 return True
         return False
 
-    @kaminario_logger
+    @utils.trace
     def manage_existing(self, volume, existing_ref):
         vol_name = existing_ref['source-name']
         new_name = self.get_volume_name(volume.id)
@@ -1063,7 +1041,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                     vg.save()
             raise
 
-    @kaminario_logger
+    @utils.trace
     def manage_existing_get_size(self, volume, existing_ref):
         vol_name = existing_ref['source-name']
         v_rs = self.client.search("volumes", name=vol_name)
@@ -1076,7 +1054,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 existing_ref=existing_ref,
                 reason=_('Unable to get size of manage volume.'))
 
-    @kaminario_logger
+    @utils.trace
     def after_volume_copy(self, ctxt, volume, new_volume, remote=None):
         self.delete_volume(volume)
         vg_name_old = self.get_volume_group_name(volume.id)
@@ -1090,7 +1068,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         vol_new.name = vol_name_old
         vol_new.save()
 
-    @kaminario_logger
+    @utils.trace
     def retype(self, ctxt, volume, new_type, diff, host):
         old_type = volume.get('volume_type')
         vg_name = self.get_volume_group_name(volume.id)
