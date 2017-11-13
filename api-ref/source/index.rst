@@ -11,5 +11,4 @@ API content can be searched using the :ref:`search`.
 
     v3/index
     v2/index
-    v1/index
 
