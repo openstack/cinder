@@ -20,6 +20,7 @@ import ssl
 import time
 
 from oslo_log import log
+from oslo_utils import strutils
 import six
 from six.moves import http_client
 from six.moves import urllib
@@ -272,7 +273,8 @@ class RestClientURL(object):
                   {'request': request, 'url': zfssaurl})
         LOG.debug('Out headers: %s', out_hdrs)
         if body and body != '':
-            LOG.debug('Body: %s', body)
+            # body may contain chap secret so must be masked
+            LOG.debug('Body: %s', strutils.mask_password(body))
 
         context = None
         if hasattr(ssl, '_create_unverified_context'):

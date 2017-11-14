@@ -23,6 +23,7 @@ import uuid
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import strutils
 from oslo_utils import units
 
 from cinder import context
@@ -1981,7 +1982,7 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
             properties['auth_password'] = chap_password
 
         LOG.info("initialize_connection success. Return data: %s.",
-                 properties)
+                 strutils.mask_password(properties))
         return {'driver_volume_type': 'iscsi', 'data': properties}
 
     @coordination.synchronized('huawei-mapping-{connector[host]}')

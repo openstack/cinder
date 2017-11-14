@@ -21,6 +21,7 @@ import time
 
 from lxml import etree
 from oslo_log import log as logging
+from oslo_utils import strutils
 from oslo_utils import units
 import requests
 import six
@@ -206,8 +207,9 @@ class DotHillClient(object):
         If the status is OK, returns the XML data for further processing.
         """
         url = self._build_request_url(path, *args, **kargs)
-        LOG.debug("Array Request URL: %s (session %s)",
-                  url, self._session_key)
+        # Don't log the created URL since it may contain chap secret
+        LOG.debug("Array Request path: %s, args: %s, kargs: %s (session %s)",
+                  path, args, strutils.mask_password(kargs), self._session_key)
         headers = {'dataType': 'api', 'sessionKey': self._session_key}
         try:
             xml = requests.get(url, headers=headers,

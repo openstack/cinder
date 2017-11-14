@@ -21,6 +21,7 @@ This driver requires VPSA with API version 15.07 or higher.
 from lxml import etree
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import strutils
 import requests
 import six
 
@@ -645,7 +646,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         properties['auth_password'] = ctrl['chap_passwd']
 
         LOG.debug('Attach properties: %(properties)s',
-                  {'properties': properties})
+                  {'properties': strutils.mask_password(properties)})
         return {'driver_volume_type':
                 ('iser' if (self.configuration.safe_get('zadara_use_iser'))
                  else 'iscsi'), 'data': properties}

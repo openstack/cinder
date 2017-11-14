@@ -134,7 +134,8 @@ class XtremIOClient(object):
                 self.update_url(params, self.cluster_id)
             if method != 'GET':
                 self.update_data(data, self.cluster_id)
-                LOG.debug('data: %s', data)
+                # data may include chap password
+                LOG.debug('data: %s', strutils.mask_password(data))
             LOG.debug('%(type)s %(url)s', {'type': method, 'url': url})
             try:
                 response = requests.request(
