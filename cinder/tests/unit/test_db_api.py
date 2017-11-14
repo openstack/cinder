@@ -3133,6 +3133,56 @@ class DBAPIGenericTestCase(BaseTest):
         self.assertTrue(res, msg="Admin cannot find the Snapshot")
 
 
+class EngineFacadeTestCase(BaseTest):
+
+    """Tests for message operations"""
+    def setUp(self):
+        super(EngineFacadeTestCase, self).setUp()
+        self.user_id = fake.USER_ID
+        self.project_id = fake.PROJECT_ID
+        self.context = context.RequestContext(self.user_id, self.project_id)
+
+    @mock.patch.object(sqlalchemy_api, 'get_session')
+    def test_use_single_context_session_writer(self, mock_get_session):
+        # Checks that session in context would not be overwritten by
+        # annotation @sqlalchemy_api.main_context_manager.writer if annotation
+        # is used twice.
+
+        @sqlalchemy_api.main_context_manager.writer
+        def fake_parent_method(context):
+            session = context.session
+            return fake_child_method(context), session
+
+        @sqlalchemy_api.main_context_manager.writer
+        def fake_child_method(context):
+            session = context.session
+            sqlalchemy_api.model_query(context, models.Volume)
+            return session
+
+        parent_session, child_session = fake_parent_method(self.context)
+        self.assertEqual(parent_session, child_session)
+
+    @mock.patch.object(sqlalchemy_api, 'get_session')
+    def test_use_single_context_session_reader(self, mock_get_session):
+        # Checks that session in context would not be overwritten by
+        # annotation @sqlalchemy_api.main_context_manager.reader if annotation
+        # is used twice.
+
+        @sqlalchemy_api.main_context_manager.reader
+        def fake_parent_method(context):
+            session = context.session
+            return fake_child_method(context), session
+
+        @sqlalchemy_api.main_context_manager.reader
+        def fake_child_method(context):
+            session = context.session
+            sqlalchemy_api.model_query(context, models.Volume)
+            return session
+
+        parent_session, child_session = fake_parent_method(self.context)
+        self.assertEqual(parent_session, child_session)
+
+
 @ddt.ddt
 class DBAPIBackendTestCase(BaseTest):
     @ddt.data((True, True), (True, False), (False, True), (False, False))

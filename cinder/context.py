@@ -21,6 +21,7 @@ import copy
 
 from oslo_config import cfg
 from oslo_context import context
+from oslo_db.sqlalchemy import enginefacade
 from oslo_log import log as logging
 from oslo_utils import timeutils
 import six
@@ -45,6 +46,7 @@ CONF.register_opts(context_opts)
 LOG = logging.getLogger(__name__)
 
 
+@enginefacade.transaction_context_provider
 class RequestContext(context.RequestContext):
     """Security context and request information.
 

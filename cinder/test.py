@@ -57,6 +57,7 @@ from cinder.volume import utils
 CONF = cfg.CONF
 
 _DB_CACHE = None
+SESSION_CONFIGURED = False
 
 
 class TestingException(Exception):
@@ -66,6 +67,12 @@ class TestingException(Exception):
 class Database(fixtures.Fixture):
 
     def __init__(self, db_api, db_migrate, sql_connection):
+        # NOTE(lhx_): oslo_db.enginefacade is configured in tests the same
+        # way as it's done for any other services that uses the db
+        global SESSION_CONFIGURED
+        if not SESSION_CONFIGURED:
+            sqla_api.configure(CONF)
+            SESSION_CONFIGURED = True
         self.sql_connection = sql_connection
 
         # Suppress logging for test runs
