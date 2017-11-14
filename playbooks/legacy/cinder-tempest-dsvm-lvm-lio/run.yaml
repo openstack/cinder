@@ -1,0 +1,73 @@
+- hosts: all
+  name: Test the LVM driver with the LIO iSCSI target and Barbican
+  tasks:
+
+    - name: Ensure legacy workspace directory
+      file:
+        path: '{{ ansible_user_dir }}/workspace'
+        state: directory
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat > clonemap.yaml << EOF
+          clonemap:
+            - name: openstack-infra/devstack-gate
+              dest: devstack-gate
+          EOF
+          /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
+              git://git.openstack.org \
+              openstack-infra/devstack-gate
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat << 'EOF' >>"/tmp/dg-local.conf"
+          [[local|localrc]]
+          CINDER_ISCSI_HELPER=lioadm
+          CINDER_LVM_TYPE=thin
+          enable_service barbican
+          enable_plugin barbican git://git.openstack.org/openstack/barbican
+
+          EOF
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          export PROJECTS="openstack/barbican $PROJECTS"
+          export PROJECTS="openstack/python-barbicanclient $PROJECTS"
+          export PYTHONUNBUFFERED=true
+          export DEVSTACK_GATE_TEMPEST=1
+          export DEVSTACK_GATE_TEMPEST_ALL_PLUGINS=1
+          # As we are setting DEVSTACK_GATE_TEMPEST_ALL_PLUGINS, we need to add
+          # the regex to limit the tests to the same as a tempest -efull would
+          # run.
+          DEVSTACK_GATE_TEMPEST_REGEX='(?!.*\[.*\bslow\b.*\])(^tempest\.(api|scenario)|(^cinder\.tests.tempest))'
+          DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesSnapshotTestJSON.test_snapshot_backup)'
+          DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsTest.test_backup_create_attached_volume)'
+          DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsTest.test_backup_create_and_restore_to_an_existing_volume)'
+          DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsTest.test_bootable_volume_backup_and_restore)'
+          DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsTest.test_incremental_backup)'
+          DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsTest.test_volume_backup_create_get_detailed_list_restore_delete)'
+          DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsTest.test_volume_snapshot_backup)'
+          DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsV39Test.test_update_backup)'
+          export DEVSTACK_GATE_TEMPEST_REGEX
+          export BRANCH_OVERRIDE=default
+          if [ "$BRANCH_OVERRIDE" != "default" ] ; then
+              export OVERRIDE_ZUUL_BRANCH=$BRANCH_OVERRIDE
+          fi
+
+          cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
+          ./safe-devstack-vm-gate-wrap.sh
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'

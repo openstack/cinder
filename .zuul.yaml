@@ -1,0 +1,33 @@
+- project:
+    name: openstack/cinder
+    check:
+      jobs:
+        - cinder-tempest-dsvm-lvm-lio:
+            voting: false
+            branches: ^(?!driverfixes/).*$
+            irrelevant-files:
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+
+- job:
+    # Previously named legacy-tempest-dsvm-full-lio
+    name: cinder-tempest-dsvm-lvm-lio
+    parent: legacy-dsvm-base
+    run: playbooks/legacy/cinder-tempest-dsvm-lvm-lio/run.yaml
+    post-run: playbooks/legacy/cinder-tempest-dsvm-lvm-lio/post.yaml
+    timeout: 10800
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/barbican
+      - openstack/python-barbicanclient
+      - openstack/tempest
+      - openstack/os-brick
