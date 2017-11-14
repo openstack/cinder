@@ -29,7 +29,7 @@ class SnapshotManageController(common.ManageResource,
     @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         self._ensure_min_version(req, mv.MANAGE_EXISTING_LIST)
-        return super(SnapshotManageController, self).create(req, body)
+        return super(SnapshotManageController, self).create(req, body=body)
 
 
 def create_resource():
