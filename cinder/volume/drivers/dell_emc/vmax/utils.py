@@ -15,10 +15,10 @@
 
 from copy import deepcopy
 import datetime
+from defusedxml import minidom
 import hashlib
 import random
 import re
-from xml.dom import minidom
 
 from cinder.objects.group import Group
 from oslo_log import log as logging
