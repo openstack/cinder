@@ -108,10 +108,11 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         3.0.12 - Adds consistency group capability in generic volume groups.
         4.0.0 - Adds base class.
         4.0.1 - Added check to remove FC zones. bug #1730720
+        4.0.2 - Create one vlun in single path configuration. bug #1727176
 
     """
 
-    VERSION = "4.0.1"
+    VERSION = "4.0.2"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -168,6 +169,10 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
             host = self._create_host(common, volume, connector)
             target_wwns, init_targ_map, numPaths = \
                 self._build_initiator_target_map(common, connector)
+            if not connector.get('multipath'):
+                target_wwns = target_wwns[:1]
+                initiator = connector.get('wwpns')[0]
+                init_targ_map[initiator] = init_targ_map[initiator][:1]
             # check if a VLUN already exists for this host
             existing_vlun = common.find_existing_vlun(volume, host)
 
@@ -387,6 +392,8 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         hostname = common._safe_hostname(connector['host'])
         cpg = common.get_cpg(volume, allowSnap=True)
         domain = common.get_domain(cpg)
+        if not connector.get('multipath'):
+            connector['wwpns'] = connector['wwpns'][:1]
         try:
             host = common._get_3par_host(hostname)
             # Check whether host with wwn of initiator present on 3par
