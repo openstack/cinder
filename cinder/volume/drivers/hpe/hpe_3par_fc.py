@@ -111,10 +111,11 @@ class HPE3PARFCDriver(driver.ManageableVD,
         3.0.10 - Added Entry point tracing
         3.0.11 - Handle manage and unmanage hosts present. bug #1648067
         3.0.12 - Adds consistency group capability in generic volume groups.
+        3.0.13 - Create one vlun in single path configuration. bug #1727176
 
     """
 
-    VERSION = "3.0.12"
+    VERSION = "3.0.13"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -287,6 +288,10 @@ class HPE3PARFCDriver(driver.ManageableVD,
             host = self._create_host(common, volume, connector)
             target_wwns, init_targ_map, numPaths = \
                 self._build_initiator_target_map(common, connector)
+            if not connector.get('multipath'):
+                target_wwns = target_wwns[:1]
+                initiator = connector.get('wwpns')[0]
+                init_targ_map[initiator] = init_targ_map[initiator][:1]
             # check if a VLUN already exists for this host
             existing_vlun = common.find_existing_vlun(volume, host)
 
@@ -494,6 +499,8 @@ class HPE3PARFCDriver(driver.ManageableVD,
         hostname = common._safe_hostname(connector['host'])
         cpg = common.get_cpg(volume, allowSnap=True)
         domain = common.get_domain(cpg)
+        if not connector.get('multipath'):
+            connector['wwpns'] = connector['wwpns'][:1]
         try:
             host = common._get_3par_host(hostname)
             # Check whether host with wwn of initiator present on 3par
