@@ -1779,8 +1779,13 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             if driver_error:
                 generic_revert.assert_called_once_with(self.context, {}, {})
 
-    @ddt.data(True, False)
-    def test_revert_to_snapshot(self, has_snapshot):
+    @ddt.data({},
+              {'has_snapshot': True},
+              {'use_temp_snapshot': True},
+              {'use_temp_snapshot': True, 'has_snapshot': True})
+    @ddt.unpack
+    def test_revert_to_snapshot(self, has_snapshot=False,
+                                use_temp_snapshot=False):
         fake_volume = tests_utils.create_volume(self.context,
                                                 status='reverting',
                                                 project_id='123',
@@ -1794,8 +1799,13 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             mock.patch.object(self.volume,
                               '_create_backup_snapshot') as _create_snapshot,\
             mock.patch.object(self.volume,
-                              'delete_snapshot') as _delete_snapshot:
+                              'delete_snapshot') as _delete_snapshot, \
+            mock.patch.object(self.volume.driver,
+                              'snapshot_revert_use_temp_snapshot') as \
+                _use_temp_snap:
             _revert.return_value = None
+            _use_temp_snap.return_value = use_temp_snapshot
+
             if has_snapshot:
                 _create_snapshot.return_value = {'id': 'fake_snapshot'}
             else:
@@ -1804,12 +1814,19 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                            fake_snapshot)
             _revert.assert_called_once_with(self.context, fake_volume,
                                             fake_snapshot)
-            _create_snapshot.assert_called_once_with(self.context, fake_volume)
-            if has_snapshot:
+
+            if not use_temp_snapshot:
+                _create_snapshot.assert_not_called()
+            else:
+                _create_snapshot.assert_called_once_with(self.context,
+                                                         fake_volume)
+
+            if use_temp_snapshot and has_snapshot:
                 _delete_snapshot.assert_called_once_with(
                     self.context, {'id': 'fake_snapshot'}, handle_quota=False)
             else:
                 _delete_snapshot.assert_not_called()
+
             fake_volume.refresh()
             fake_snapshot.refresh()
             self.assertEqual('available', fake_volume['status'])

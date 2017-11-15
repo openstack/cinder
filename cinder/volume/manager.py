@@ -949,7 +949,10 @@ class VolumeManager(manager.CleanableManager,
 
             # Create a snapshot which can be used to restore the volume
             # data by hand if revert process failed.
-            backup_snapshot = self._create_backup_snapshot(context, volume)
+
+            if self.driver.snapshot_revert_use_temp_snapshot():
+                backup_snapshot = self._create_backup_snapshot(context,
+                                                               volume)
             self._revert_to_snapshot(context, volume, snapshot)
         except Exception as error:
             with excutils.save_and_reraise_exception():

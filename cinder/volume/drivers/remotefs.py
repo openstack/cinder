@@ -690,6 +690,13 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
         self._nova = compute.API()
 
+    def snapshot_revert_use_temp_snapshot(self):
+        # Considering that RemoteFS based drivers use COW images
+        # for storing snapshots, having chains of such images,
+        # creating a backup snapshot when reverting one is not
+        # actutally helpful.
+        return False
+
     def _local_volume_dir(self, volume):
         share = volume.provider_location
         local_dir = self._get_mount_point_for_share(share)
@@ -1580,6 +1587,9 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
     def _extend_volume(self, volume, size_gb):
         raise NotImplementedError()
 
+    def _revert_to_snapshot(self, context, volume, snapshot):
+        raise NotImplementedError()
+
 
 class RemoteFSSnapDriver(RemoteFSSnapDriverBase):
     @locked_volume_id_operation
@@ -1615,6 +1625,12 @@ class RemoteFSSnapDriver(RemoteFSSnapDriverBase):
     def extend_volume(self, volume, size_gb):
         return self._extend_volume(volume, size_gb)
 
+    @locked_volume_id_operation
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert to specified snapshot."""
+
+        return self._revert_to_snapshot(context, volume, snapshot)
+
 
 class RemoteFSSnapDriverDistributed(RemoteFSSnapDriverBase):
     @coordination.synchronized('{self.driver_prefix}-{snapshot.volume.id}')
@@ -1649,6 +1665,12 @@ class RemoteFSSnapDriverDistributed(RemoteFSSnapDriverBase):
     @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def extend_volume(self, volume, size_gb):
         return self._extend_volume(volume, size_gb)
+
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert to specified snapshot."""
+
+        return self._revert_to_snapshot(context, volume, snapshot)
 
 
 class RemoteFSPoolMixin(object):
@@ -1710,3 +1732,48 @@ class RemoteFSPoolMixin(object):
         data['pools'] = pools
 
         self._stats = data
+
+
+class RevertToSnapshotMixin(object):
+
+    def _revert_to_snapshot(self, context, volume, snapshot):
+        """Revert a volume to specified snapshot
+
+        The volume must not be attached. Only the latest snapshot
+        can be used.
+        """
+        status = snapshot.volume.status
+        acceptable_states = ['available', 'reverting']
+
+        self._validate_state(status, acceptable_states)
+
+        LOG.debug('Reverting volume %(vol)s to snapshot %(snap)s',
+                  {'vol': snapshot.volume.id, 'snap': snapshot.id})
+
+        info_path = self._local_path_volume_info(snapshot.volume)
+        snap_info = self._read_info_file(info_path)
+
+        snapshot_file = snap_info[snapshot.id]
+        active_file = snap_info['active']
+
+        if not utils.paths_normcase_equal(snapshot_file, active_file):
+            msg = _("Could not revert volume '%(volume_id)s' to snapshot "
+                    "'%(snapshot_id)s' as it does not "
+                    "appear to be the latest snapshot. Current active "
+                    "image: %(active_file)s.")
+            raise exception.InvalidSnapshot(
+                msg % dict(snapshot_id=snapshot.id,
+                           active_file=active_file,
+                           volume_id=volume.id))
+
+        snapshot_path = os.path.join(
+            self._local_volume_dir(snapshot.volume), snapshot_file)
+        backing_filename = self._qemu_img_info(
+            snapshot_path, volume.name).backing_file
+
+        # We revert the volume to the latest snapshot by recreating the top
+        # image from the chain.
+        # This workflow should work with most (if not all) drivers inheriting
+        # this class.
+        self._delete(snapshot_path)
+        self._do_create_snapshot(snapshot, backing_filename, snapshot_path)

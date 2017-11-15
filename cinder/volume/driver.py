@@ -1102,6 +1102,13 @@ class BaseVD(object):
         """
         return self.configuration.safe_get("backup_use_temp_snapshot")
 
+    def snapshot_revert_use_temp_snapshot(self):
+        # Specify whether a temporary backup snapshot should be used when
+        # reverting a snapshot. For some backends, this operation is not
+        # needed or not supported, in which case the driver should override
+        # this method.
+        return True
+
     def snapshot_remote_attachable(self):
         # TODO(lixiaoy1): the method will be deleted later when remote
         # attach snapshot is implemented.
