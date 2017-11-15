@@ -74,9 +74,9 @@ must create a database, service credentials, and API endpoints.
 
          $ openstack role add --project service --user cinder admin
 
-     .. note::
+      .. note::
 
-        This command provides no output.
+         This command provides no output.
 
    #. Create the ``cinderv2`` and ``cinderv3`` service entities:
 
@@ -265,27 +265,27 @@ Install and configure components
       Replace ``RABBIT_PASS`` with the password you chose for the
       ``openstack`` account in ``RabbitMQ``.
 
-  #. In the ``[DEFAULT]`` and ``[keystone_authtoken]`` sections,
-     configure Identity service access:
+   #. In the ``[DEFAULT]`` and ``[keystone_authtoken]`` sections,
+      configure Identity service access:
 
-     .. path /etc/cinder/cinder.conf
-     .. code-block:: ini
+      .. path /etc/cinder/cinder.conf
+      .. code-block:: ini
 
-        [DEFAULT]
-        # ...
-        auth_strategy = keystone
+         [DEFAULT]
+         # ...
+         auth_strategy = keystone
 
-        [keystone_authtoken]
-        # ...
-        auth_uri = http://controller:5000
-        auth_url = http://controller:35357
-        memcached_servers = controller:11211
-        auth_type = password
-        project_domain_name = default
-        user_domain_name = default
-        project_name = service
-        username = cinder
-        password = CINDER_PASS
+         [keystone_authtoken]
+         # ...
+         auth_uri = http://controller:5000
+         auth_url = http://controller:35357
+         memcached_servers = controller:11211
+         auth_type = password
+         project_domain_name = default
+         user_domain_name = default
+         project_name = service
+         username = cinder
+         password = CINDER_PASS
 
       Replace ``CINDER_PASS`` with the password you chose for
       the ``cinder`` user in the Identity service.
