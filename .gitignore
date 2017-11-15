@@ -31,6 +31,7 @@ tags
 # Files created by Sphinx build
 doc/build
 doc/source/_static/cinder.conf.sample
+doc/source/_static/cinder.policy.yaml.sample
 doc/source/drivers.rst
 
 #Files created for API reference
