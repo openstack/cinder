@@ -159,6 +159,7 @@ volume_opts = [
                      'storage if the driver supports it.'),
     cfg.FloatOpt('max_over_subscription_ratio',
                  default=20.0,
+                 min=1,
                  help='Float representation of the over subscription ratio '
                       'when thin provisioning is involved. Default ratio is '
                       '20.0, meaning provisioned capacity can be 20 times of '
