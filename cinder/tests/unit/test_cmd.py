@@ -37,7 +37,6 @@ from cinder.cmd import rtstool as cinder_rtstool
 from cinder.cmd import scheduler as cinder_scheduler
 from cinder.cmd import volume as cinder_volume
 from cinder.cmd import volume_usage_audit
-from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
@@ -78,8 +77,9 @@ class TestCinderApiCmd(test.TestCase):
         rpc_init.assert_called_once_with(CONF)
         process_launcher.assert_called_once_with()
         wsgi_service.assert_called_once_with('osapi_volume')
-        launcher.launch_service.assert_called_once_with(server,
-                                                        workers=server.workers)
+        launcher.launch_service.assert_called_once_with(
+            server,
+            workers=server.workers)
         launcher.wait.assert_called_once_with()
 
 
@@ -379,26 +379,6 @@ class TestCinderManageCmd(test.TestCase):
             service_get_all.assert_called_once_with(mock.sentinel.ctxt)
             self.assertEqual(expected_out, fake_out.getvalue())
 
-    @mock.patch('cinder.objects.base.CinderObjectSerializer')
-    @mock.patch('cinder.rpc.get_client')
-    @mock.patch('cinder.rpc.init')
-    @mock.patch('cinder.rpc.initialized', return_value=False)
-    @mock.patch('oslo_messaging.Target')
-    def test_volume_commands_init(self, messaging_target, rpc_initialized,
-                                  rpc_init, get_client, object_serializer):
-        mock_target = messaging_target.return_value
-        mock_rpc_client = get_client.return_value
-
-        volume_cmds = cinder_manage.VolumeCommands()
-        rpc_client = volume_cmds._rpc_client()
-
-        rpc_initialized.assert_called_once_with()
-        rpc_init.assert_called_once_with(CONF)
-        messaging_target.assert_called_once_with(topic=constants.VOLUME_TOPIC)
-        get_client.assert_called_once_with(mock_target,
-                                           serializer=object_serializer())
-        self.assertEqual(mock_rpc_client, rpc_client)
-
     @mock.patch('cinder.db.sqlalchemy.api.volume_get')
     @mock.patch('cinder.context.get_admin_context')
     @mock.patch('cinder.rpc.get_client')
@@ -423,10 +403,16 @@ class TestCinderManageCmd(test.TestCase):
         volume_cmds.delete(volume_id)
 
         volume_get.assert_called_once_with(ctxt, volume_id)
-        mock_client.prepare.assert_called_once_with(server=host)
-        cctxt.cast.assert_called_once_with(ctxt, 'delete_volume',
-                                           volume_id=volume['id'],
-                                           volume=volume_obj)
+        mock_client.prepare.assert_called_once_with(
+            server="fake",
+            topic="cinder-volume.fake@host",
+            version="3.0")
+
+        cctxt.cast.assert_called_once_with(
+            ctxt, 'delete_volume',
+            cascade=False,
+            unmanage_only=False,
+            volume=volume_obj)
 
     @mock.patch('cinder.db.volume_destroy')
     @mock.patch('cinder.db.sqlalchemy.api.volume_get')

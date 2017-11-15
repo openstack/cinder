@@ -65,12 +65,10 @@ from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_db.sqlalchemy import migration
 from oslo_log import log as logging
-import oslo_messaging as messaging
 from oslo_utils import timeutils
 
 # Need to register global_opts
 from cinder.common import config  # noqa
-from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder.db import migration as db_migration
@@ -80,6 +78,7 @@ from cinder.i18n import _
 from cinder import objects
 from cinder import rpc
 from cinder import version
+from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as vutils
 
 
@@ -335,19 +334,6 @@ class VersionCommands(object):
 class VolumeCommands(object):
     """Methods for dealing with a cloud in an odd state."""
 
-    def __init__(self):
-        self._client = None
-
-    def _rpc_client(self):
-        if self._client is None:
-            if not rpc.initialized():
-                rpc.init(CONF)
-                target = messaging.Target(topic=constants.VOLUME_TOPIC)
-                serializer = objects.base.CinderObjectSerializer()
-                self._client = rpc.get_client(target, serializer=serializer)
-
-        return self._client
-
     @args('volume_id',
           help='Volume ID to be deleted')
     def delete(self, volume_id):
@@ -367,8 +353,9 @@ class VolumeCommands(object):
             print(_("Detach volume from instance and then try again."))
             return
 
-        cctxt = self._rpc_client().prepare(server=host)
-        cctxt.cast(ctxt, "delete_volume", volume_id=volume.id, volume=volume)
+        rpc.init(CONF)
+        rpcapi = volume_rpcapi.VolumeAPI()
+        rpcapi.delete_volume(ctxt, volume)
 
     @args('--currenthost', required=True, help='Existing volume host name')
     @args('--newhost', required=True, help='New volume host name')
