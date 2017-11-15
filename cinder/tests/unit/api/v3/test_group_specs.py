@@ -18,6 +18,7 @@ import webob
 
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder import rpc
 from cinder import test
 
@@ -90,7 +91,8 @@ class GroupSpecsTestCase(test.TestCase):
                                       fake.PROJECT_ID,
                                       use_admin_context=True,
                                       version=mv.GROUP_TYPE)
-        self.controller.create(req, fake.GROUP_ID, create_fake_group_specs)
+        self.controller.create(req, fake.GROUP_ID,
+                               body=create_fake_group_specs)
         self.assertTrue(mock_rpc_notifier.called)
 
     @mock.patch.object(rpc, 'get_notifier')
@@ -111,7 +113,7 @@ class GroupSpecsTestCase(test.TestCase):
         self.controller.update(req,
                                fake.GROUP_TYPE_ID,
                                'id',
-                               update_fake_group_specs)
+                               body=update_fake_group_specs)
         self.assertTrue(mock_rpc_notifier.called)
 
     @mock.patch.object(db, 'group_type_specs_get',
@@ -155,7 +157,7 @@ class GroupSpecsTestCase(test.TestCase):
                           self.controller.create,
                           req,
                           fake.GROUP_ID,
-                          create_fake_group_specs)
+                          body=create_fake_group_specs)
 
     @mock.patch.object(rpc, 'get_notifier')
     @mock.patch.object(db, 'group_type_get', return_value={})
@@ -178,15 +180,17 @@ class GroupSpecsTestCase(test.TestCase):
                                       fake.PROJECT_ID,
                                       use_admin_context=True,
                                       version=mv.GROUP_TYPE)
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update,
                           req,
                           fake.GROUP_TYPE_ID,
-                          'id')
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          req, fake.GROUP_TYPE_ID, 'id', fake_group_specs)
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          req, fake.GROUP_TYPE_ID, 'key1', fake_group_specs)
+                          'id', body=None)
+        self.assertRaises(exception.ValidationError, self.controller.update,
+                          req, fake.GROUP_TYPE_ID, 'id',
+                          body=fake_group_specs)
+        self.assertRaises(exception.ValidationError, self.controller.update,
+                          req, fake.GROUP_TYPE_ID, 'key1',
+                          body=fake_group_specs)
 
     @mock.patch.object(db, 'group_type_specs_get',
                        return_value=fake_group_specs)
@@ -216,5 +220,5 @@ class GroupSpecsTestCase(test.TestCase):
                                       fake.PROJECT_ID,
                                       use_admin_context=True,
                                       version=mv.GROUP_TYPE)
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
-                          req, fake.GROUP_ID, incorrect_fake_group_specs)
+        self.assertRaises(exception.ValidationError, self.controller.create,
+                          req, fake.GROUP_ID, body=incorrect_fake_group_specs)
