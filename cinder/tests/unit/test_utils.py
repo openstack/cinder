@@ -1491,7 +1491,7 @@ class TestLogLevels(test.TestCase):
     def test_get_log_levels(self):
         levels = utils.get_log_levels('cinder.api')
         self.assertTrue(len(levels) > 1)
-        self.assertSetEqual({'DEBUG'}, set(levels.values()))
+        self.assertSetEqual({'INFO'}, set(levels.values()))
 
     @ddt.data(None, '', 'wronglevel')
     def test_set_log_levels_invalid(self, level):
@@ -1501,15 +1501,14 @@ class TestLogLevels(test.TestCase):
     def test_set_log_levels(self):
         prefix = 'cinder.utils'
         levels = utils.get_log_levels(prefix)
+
+        utils.set_log_levels(prefix, 'debug')
+        levels = utils.get_log_levels(prefix)
         self.assertEqual('DEBUG', levels[prefix])
 
         utils.set_log_levels(prefix, 'warning')
         levels = utils.get_log_levels(prefix)
         self.assertEqual('WARNING', levels[prefix])
-
-        utils.set_log_levels(prefix, 'debug')
-        levels = utils.get_log_levels(prefix)
-        self.assertEqual('DEBUG', levels[prefix])
 
 
 @ddt.ddt

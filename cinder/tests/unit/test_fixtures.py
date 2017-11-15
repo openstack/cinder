@@ -35,7 +35,8 @@ class TestLogging(testtools.TestCase):
 
         # broken debug messages should still explode, even though we
         # aren't logging them in the regular handler
-        self.assertRaises(TypeError, log.debug, "this is broken %s %s", "foo")
+        self.assertRaises(TypeError, log.warning,
+                          "this is broken %s %s", "foo")
 
         # and, ensure that one of the terrible log messages isn't
         # output at info
@@ -56,4 +57,4 @@ class TestLogging(testtools.TestCase):
         log.info("at info")
         log.debug("at debug")
         self.assertIn("at info", stdlog.logger.output)
-        self.assertIn("at debug", stdlog.logger.output)
+        self.assertNotIn("at debug", stdlog.logger.output)
