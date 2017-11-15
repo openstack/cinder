@@ -61,11 +61,8 @@ class WindowsSmbFsTestCase(test.TestCase):
         self.context = context.get_admin_context()
 
         self._FAKE_SMBFS_CONFIG = mock.MagicMock(
-            smbfs_oversub_ratio = 2,
-            smbfs_used_ratio = 0.5,
             smbfs_shares_config = mock.sentinel.share_config_file,
-            smbfs_default_volume_format = 'vhdx',
-            smbfs_sparsed_volumes = False)
+            smbfs_default_volume_format = 'vhdx')
 
         self._smbfs_driver = smbfs.WindowsSmbfsDriver(
             configuration=mock.Mock())
@@ -115,9 +112,7 @@ class WindowsSmbFsTestCase(test.TestCase):
         self._smbfs_driver._setup_pool_mappings = mock.Mock()
         self._smbfs_driver.configuration = config
 
-        if not (config.smbfs_shares_config and share_config_exists and
-                config.smbfs_oversub_ratio > 0 and
-                0 <= config.smbfs_used_ratio <= 1):
+        if not (config.smbfs_shares_config and share_config_exists):
             self.assertRaises(exception.SmbfsException,
                               self._smbfs_driver.do_setup,
                               mock.sentinel.context)
@@ -195,21 +190,6 @@ class WindowsSmbFsTestCase(test.TestCase):
     def test_setup_missing_shares_config_file(self):
         self._test_setup(config=self._FAKE_SMBFS_CONFIG,
                          share_config_exists=False)
-
-    def test_setup_invlid_oversub_ratio(self):
-        fake_config = copy.copy(self._FAKE_SMBFS_CONFIG)
-        fake_config.smbfs_oversub_ratio = -1
-        self._test_setup(config=fake_config)
-
-    def test_setup_invalid_used_ratio(self):
-        fake_config = copy.copy(self._FAKE_SMBFS_CONFIG)
-        fake_config.smbfs_used_ratio = -1
-        self._test_setup(config=fake_config)
-
-    def test_setup_invalid_used_ratio2(self):
-        fake_config = copy.copy(self._FAKE_SMBFS_CONFIG)
-        fake_config.smbfs_used_ratio = 1.1
-        self._test_setup(config=fake_config)
 
     @mock.patch.object(smbfs, 'context')
     @mock.patch.object(smbfs.WindowsSmbfsDriver,
