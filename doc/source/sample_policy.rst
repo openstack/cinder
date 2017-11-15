@@ -15,3 +15,4 @@ file (**/etc/cinder/policy.json**).
 The sample policy file can also be viewed in `file form <_static/cinder.policy.yaml.sample>`_.
 
 .. literalinclude:: _static/cinder.policy.yaml.sample
+
