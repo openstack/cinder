@@ -940,6 +940,8 @@ class BackupTestCase(BaseBackupTest):
                           backup,
                           vol_id)
         backup = db.backup_get(self.ctxt, backup.id)
+        vol = db.volume_get(self.ctxt, vol_id)
+        self.assertEqual('error_restoring', vol['status'])
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
 
     def test_restore_backup_with_bad_backup_status(self):
