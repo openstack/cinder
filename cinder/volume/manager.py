@@ -2871,8 +2871,8 @@ class VolumeManager(manager.CleanableManager,
             try:
                 model_update = self.driver.create_group(context, group)
             except NotImplementedError:
-                cgsnap_type = group_types.get_default_cgsnapshot_type()
-                if group.group_type_id != cgsnap_type['id']:
+                if not group_types.is_default_cgsnapshot_type(
+                        group.group_type_id):
                     model_update = self._create_group_generic(context, group)
                 else:
                     cg, __ = self._convert_group_to_cg(group, [])
@@ -3000,8 +3000,8 @@ class VolumeManager(manager.CleanableManager,
                         context, group, volumes, group_snapshot,
                         sorted_snapshots, source_group, sorted_source_vols))
             except NotImplementedError:
-                cgsnap_type = group_types.get_default_cgsnapshot_type()
-                if group.group_type_id != cgsnap_type['id']:
+                if not group_types.is_default_cgsnapshot_type(
+                        group.group_type_id):
                     model_update, volumes_model_update = (
                         self._create_group_from_src_generic(
                             context, group, volumes, group_snapshot,
@@ -3271,8 +3271,8 @@ class VolumeManager(manager.CleanableManager,
                 model_update, volumes_model_update = (
                     self.driver.delete_group(context, group, volumes))
             except NotImplementedError:
-                cgsnap_type = group_types.get_default_cgsnapshot_type()
-                if group.group_type_id != cgsnap_type['id']:
+                if not group_types.is_default_cgsnapshot_type(
+                        group.group_type_id):
                     model_update, volumes_model_update = (
                         self._delete_group_generic(context, group, volumes))
                 else:
@@ -3512,8 +3512,8 @@ class VolumeManager(manager.CleanableManager,
                         add_volumes=add_volumes_ref,
                         remove_volumes=remove_volumes_ref))
             except NotImplementedError:
-                cgsnap_type = group_types.get_default_cgsnapshot_type()
-                if group.group_type_id != cgsnap_type['id']:
+                if not group_types.is_default_cgsnapshot_type(
+                        group.group_type_id):
                     model_update, add_volumes_update, remove_volumes_update = (
                         self._update_group_generic(
                             context, group,
@@ -3615,8 +3615,8 @@ class VolumeManager(manager.CleanableManager,
                     self.driver.create_group_snapshot(context, group_snapshot,
                                                       snapshots))
             except NotImplementedError:
-                cgsnap_type = group_types.get_default_cgsnapshot_type()
-                if group_snapshot.group_type_id != cgsnap_type['id']:
+                if not group_types.is_default_cgsnapshot_type(
+                        group_snapshot.group_type_id):
                     model_update, snapshots_model_update = (
                         self._create_group_snapshot_generic(
                             context, group_snapshot, snapshots))
@@ -3782,8 +3782,8 @@ class VolumeManager(manager.CleanableManager,
                     self.driver.delete_group_snapshot(context, group_snapshot,
                                                       snapshots))
             except NotImplementedError:
-                cgsnap_type = group_types.get_default_cgsnapshot_type()
-                if group_snapshot.group_type_id != cgsnap_type['id']:
+                if not group_types.is_default_cgsnapshot_type(
+                        group_snapshot.group_type_id):
                     model_update, snapshots_model_update = (
                         self._delete_group_snapshot_generic(
                             context, group_snapshot, snapshots))
