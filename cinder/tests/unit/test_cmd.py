@@ -38,6 +38,7 @@ from cinder.cmd import scheduler as cinder_scheduler
 from cinder.cmd import volume as cinder_volume
 from cinder.cmd import volume_usage_audit
 from cinder import context
+from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
@@ -45,7 +46,9 @@ from cinder.tests.unit import fake_cluster
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_service
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import utils
 from cinder import version
+from cinder.volume import rpcapi
 
 CONF = cfg.CONF
 
@@ -2008,3 +2011,97 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
             mock.call(ctxt, backup1, 'delete.end',
                       extra_usage_info=extra_info_backup_delete)
         ])
+
+
+class TestVolumeSharedTargetsOnlineMigration(test.TestCase):
+    """Unit tests for cinder.db.api.service_*."""
+
+    def setUp(self):
+        super(TestVolumeSharedTargetsOnlineMigration, self).setUp()
+
+        def _get_minimum_rpc_version_mock(ctxt, binary):
+            binary_map = {
+                'cinder-volume': rpcapi.VolumeAPI,
+            }
+            return binary_map[binary].RPC_API_VERSION
+
+        self.patch('cinder.objects.Service.get_minimum_rpc_version',
+                   side_effect=_get_minimum_rpc_version_mock)
+
+    @mock.patch('cinder.objects.Service.get_minimum_obj_version',
+                return_value='1.8')
+    def test_shared_targets_migrations(self, mock_version):
+        """Ensure we can update the column."""
+        ctxt = context.get_admin_context()
+        sqlalchemy_api.volume_create(
+            ctxt,
+            {'host': 'host1@lvm-driver1#lvm-driver1',
+             'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'})
+
+        # Create another one correct setting
+        sqlalchemy_api.volume_create(
+            ctxt,
+            {'host': 'host1@lvm-driver1#lvm-driver1',
+             'shared_targets': False,
+             'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'})
+
+        # Need a service to query
+        values = {
+            'host': 'host1@lvm-driver1',
+            'binary': 'cinder-volume',
+            'topic': 'cinder-volume',
+            'uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'}
+        utils.create_service(ctxt, values)
+
+        # Run the migration and verify that we updated 1 entry
+        with mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities',
+                        return_value={'shared_targets': False}):
+            total, updated = (
+                cinder_manage.shared_targets_online_data_migration(
+                    ctxt, 10))
+            self.assertEqual(1, total)
+            self.assertEqual(1, updated)
+
+    @mock.patch('cinder.objects.Service.get_minimum_obj_version',
+                return_value='1.8')
+    def test_shared_targets_migrations_with_limit(self, mock_version):
+        """Ensure we update in batches."""
+        ctxt = context.get_admin_context()
+        # default value in db for shared_targets on a volume
+        # is True, so don't need to set it here explicitly
+        sqlalchemy_api.volume_create(
+            ctxt,
+            {'host': 'host1@lvm-driver1#lvm-driver1',
+             'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'})
+
+        sqlalchemy_api.volume_create(
+            ctxt,
+            {'host': 'host1@lvm-driver1#lvm-driver1',
+             'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'})
+
+        sqlalchemy_api.volume_create(
+            ctxt,
+            {'host': 'host1@lvm-driver1#lvm-driver1',
+             'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'})
+
+        values = {
+            'host': 'host1@lvm-driver1',
+            'binary': 'cinder-volume',
+            'topic': 'cinder-volume',
+            'uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'}
+        utils.create_service(ctxt, values)
+
+        # Run the migration and verify that we updated 1 entry
+        with mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities',
+                        return_value={'shared_targets': False}):
+            total, updated = (
+                cinder_manage.shared_targets_online_data_migration(
+                    ctxt, 2))
+            self.assertEqual(3, total)
+            self.assertEqual(2, updated)
+
+            total, updated = (
+                cinder_manage.shared_targets_online_data_migration(
+                    ctxt, 2))
+            self.assertEqual(1, total)
+            self.assertEqual(1, updated)

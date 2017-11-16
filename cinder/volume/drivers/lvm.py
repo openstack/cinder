@@ -279,6 +279,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             multiattach=False
         ))
         data["pools"].append(single_pool)
+        data["shared_targets"] = False
 
         # Check availability of sparse volume copy.
         data['sparse_copy_volume'] = self._sparse_copy_volume

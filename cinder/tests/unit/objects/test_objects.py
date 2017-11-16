@@ -47,7 +47,7 @@ object_data = {
     'ServiceList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'Snapshot': '1.5-ac1cdbd5b89588f6a8f44afdf6b8b201',
     'SnapshotList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
-    'Volume': '1.7-0845c5b7b826a4e9019f3684c2f9b132',
+    'Volume': '1.8-6cf615b72269cef48702a2a5c2940159',
     'VolumeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'VolumeAttachment': '1.2-b68b357a1756582b706006ea9de40c9a',
     'VolumeAttachmentList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',

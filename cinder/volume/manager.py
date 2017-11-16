@@ -680,7 +680,13 @@ class VolumeManager(manager.CleanableManager,
                 # volume stats as these are decremented on delete.
                 self._update_allocated_capacity(volume)
 
-        updates = {'service_uuid': self.service_uuid}
+        shared_targets = (
+            1
+            if self.driver.capabilities.get('shared_targets', True)
+            else 0)
+        updates = {'service_uuid': self.service_uuid,
+                   'shared_targets': shared_targets}
+
         volume.update(updates)
         volume.save()
 

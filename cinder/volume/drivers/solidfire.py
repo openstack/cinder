@@ -1845,6 +1845,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             results['deDuplicationPercent'])
         data['thin_provision_percent'] = (
             results['thinProvisioningPercent'])
+        data['shared_targets'] = False
         self.cluster_stats = data
 
     def initialize_connection(self, volume, connector):
