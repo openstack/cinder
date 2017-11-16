@@ -170,15 +170,22 @@ class API(base.Base):
         # Populate group_type_id and volume_type_ids
         group_type_id = None
         volume_type_ids = []
+        size = 0
         if group_snapshot_id:
             grp_snap = self.get_group_snapshot(context, group_snapshot_id)
             group_type_id = grp_snap.group_type_id
             grp_snap_src_grp = self.get(context, grp_snap.group_id)
             volume_type_ids = [vt.id for vt in grp_snap_src_grp.volume_types]
+            snapshots = objects.SnapshotList.get_all_for_group_snapshot(
+                context, group_snapshot_id)
+            size = sum(s.volume.size for s in snapshots)
         elif source_group_id:
             source_group = self.get(context, source_group_id)
             group_type_id = source_group.group_type_id
             volume_type_ids = [vt.id for vt in source_group.volume_types]
+            source_vols = objects.VolumeList.get_all_by_generic_group(
+                context, source_group.id)
+            size = sum(v.size for v in source_vols)
 
         kwargs = {
             'user_id': context.user_id,
@@ -226,8 +233,15 @@ class API(base.Base):
         # Update quota for groups
         GROUP_QUOTAS.commit(context, reservations)
 
-        if not group.host:
-            msg = _("No host to create group %s.") % group.id
+        # NOTE(tommylikehu): We wrap the size inside of the attribute
+        # 'volume_properties' as scheduler's filter logic are all designed
+        # based on this attribute.
+        kwargs = {'group_id': group.id,
+                  'volume_properties': objects.VolumeProperties(size=size)}
+
+        if not group.host or not self.scheduler_rpcapi.validate_host_capacity(
+                context, group.host, objects.RequestSpec(**kwargs)):
+            msg = _("No valid host to create group %s.") % group.id
             LOG.error(msg)
             raise exception.InvalidGroup(reason=msg)
 

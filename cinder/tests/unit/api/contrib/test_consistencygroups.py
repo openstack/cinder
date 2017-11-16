@@ -1143,7 +1143,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_create_consistencygroup_from_src_snap(self, mock_validate):
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
+    def test_create_consistencygroup_from_src_snap(self, mock_validate_host,
+                                                   mock_validate):
         self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
 
         consistencygroup = utils.create_group(
@@ -1161,6 +1163,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             volume_id,
             group_snapshot_id=cgsnapshot.id,
             status=fields.SnapshotStatus.AVAILABLE)
+        mock_validate_host.return_value = True
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,
@@ -1190,7 +1193,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
         cgsnapshot.destroy()
 
-    def test_create_consistencygroup_from_src_cg(self):
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
+    def test_create_consistencygroup_from_src_cg(self, mock_validate):
         self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
 
         source_cg = utils.create_group(
@@ -1200,6 +1204,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         volume_id = utils.create_volume(
             self.ctxt,
             group_id=source_cg.id)['id']
+        mock_validate.return_value = True
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,
@@ -1343,7 +1348,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)
         self.assertEqual(http_client.BAD_REQUEST,
                          res_dict['badRequest']['code'])
-        msg = _('Invalid Group: No host to create group')
+        msg = _('Invalid Group: No valid host to create group')
         self.assertIn(msg, res_dict['badRequest']['message'])
 
         snapshot.destroy()
@@ -1351,7 +1356,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
         cgsnapshot.destroy()
 
-    def test_create_consistencygroup_from_src_cgsnapshot_empty(self):
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
+    def test_create_consistencygroup_from_src_cgsnapshot_empty(self,
+                                                               mock_validate):
         consistencygroup = utils.create_group(
             self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
             volume_type_ids=[fake.VOLUME_TYPE_ID],)
@@ -1361,6 +1368,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         cgsnapshot = utils.create_group_snapshot(
             self.ctxt, group_id=consistencygroup.id,
             group_type_id=fake.GROUP_TYPE_ID,)
+        mock_validate.return_value = True
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,
@@ -1385,10 +1393,13 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
         cgsnapshot.destroy()
 
-    def test_create_consistencygroup_from_src_source_cg_empty(self):
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
+    def test_create_consistencygroup_from_src_source_cg_empty(self,
+                                                              mock_validate):
         source_cg = utils.create_group(
             self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
             volume_type_ids=[fake.VOLUME_TYPE_ID],)
+        mock_validate.return_value = True
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,
@@ -1472,8 +1483,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     @mock.patch.object(volume_api.API, 'create',
                        side_effect=exception.CinderException(
                            'Create volume failed.'))
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
     def test_create_consistencygroup_from_src_cgsnapshot_create_volume_failed(
-            self, mock_create):
+            self, mock_validate, mock_create):
         consistencygroup = utils.create_group(
             self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
             volume_type_ids=[fake.VOLUME_TYPE_ID],)
@@ -1488,6 +1500,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             volume_id,
             group_snapshot_id=cgsnapshot.id,
             status=fields.SnapshotStatus.AVAILABLE)
+        mock_validate.return_value = True
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,
@@ -1517,14 +1530,16 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     @mock.patch.object(volume_api.API, 'create',
                        side_effect=exception.CinderException(
                            'Create volume failed.'))
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
     def test_create_consistencygroup_from_src_cg_create_volume_failed(
-            self, mock_create):
+            self, mock_validate, mock_create):
         source_cg = utils.create_group(
             self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
             volume_type_ids=[fake.VOLUME_TYPE_ID],)
         volume_id = utils.create_volume(
             self.ctxt,
             group_id=source_cg.id)['id']
+        mock_validate.return_value = True
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,

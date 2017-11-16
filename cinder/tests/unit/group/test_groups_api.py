@@ -515,7 +515,8 @@ class GroupAPITestCase(test.TestCase):
     @mock.patch('cinder.group.api.API.update_quota')
     @mock.patch('cinder.objects.GroupSnapshot.get_by_id')
     @mock.patch('cinder.objects.SnapshotList.get_all_for_group_snapshot')
-    def test_create_from_src(self, mock_snap_get_all,
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
+    def test_create_from_src(self, mock_validate_host, mock_snap_get_all,
                              mock_group_snap_get, mock_update_quota,
                              mock_create_from_group,
                              mock_create_from_snap):
@@ -537,6 +538,7 @@ class GroupAPITestCase(test.TestCase):
                                      volume_type_id=fake.VOLUME_TYPE_ID,
                                      status=fields.SnapshotStatus.AVAILABLE)
         mock_snap_get_all.return_value = [snap]
+        mock_validate_host.return_host = True
 
         grp_snap = utils.create_group_snapshot(
             self.ctxt, grp.id,
@@ -584,10 +586,12 @@ class GroupAPITestCase(test.TestCase):
         mock_group_snapshot.update.assert_called_once_with(update_field)
         mock_group_snapshot.save.assert_called_once_with()
 
-    def test_create_group_from_src_frozen(self):
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
+    def test_create_group_from_src_frozen(self, mock_validate_host):
         service = utils.create_service(self.ctxt, {'frozen': True})
         group = utils.create_group(self.ctxt, host=service.host,
                                    group_type_id='gt')
+        mock_validate_host.return_value = True
         group_api = cinder.group.api.API()
         self.assertRaises(exception.InvalidInput,
                           group_api.create_from_src,

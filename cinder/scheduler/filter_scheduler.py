@@ -123,11 +123,16 @@ class FilterScheduler(driver.Scheduler):
             if backend_id == backend:
                 return weighed_backend.obj
 
-        volume_id = request_spec.get('volume_id', '??volume_id missing??')
-        raise exception.NoValidBackend(reason=_('Cannot place volume %(id)s '
-                                                'on %(backend)s') %
-                                       {'id': volume_id,
-                                        'backend': backend})
+        reason_param = {'resource': 'volume',
+                        'id': '??id missing??',
+                        'backend': backend}
+        for resource in ['volume', 'group']:
+            resource_id = request_spec.get('%s_id' % resource, None)
+            if resource_id:
+                reason_param.update({'resource': resource, 'id': resource_id})
+                break
+        raise exception.NoValidBackend(_('Cannot place %(resource)s %(id)s '
+                                         'on %(backend)s.') % reason_param)
 
     def find_retype_backend(self, context, request_spec,
                             filter_properties=None, migration_policy='never'):
