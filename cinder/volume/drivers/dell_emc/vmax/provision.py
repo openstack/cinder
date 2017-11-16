@@ -214,16 +214,85 @@ class VMAXProvision(object):
         rc = timer.start(interval=UNLINK_INTERVAL).wait()
         return rc
 
-    def delete_volume_snap(self, array, snap_name, source_device_id):
+    def delete_volume_snap(self, array, snap_name,
+                           source_device_id, restored=False):
         """Delete a snapVx snapshot of a volume.
 
         :param array: the array serial number
         :param snap_name: the snapshot name
         :param source_device_id: the source device id
+        :param restored: Flag to indicate if restored session is being deleted
         """
         LOG.debug("Delete SnapVx: %(snap_name)s for volume %(vol)s.",
                   {'vol': source_device_id, 'snap_name': snap_name})
-        self.rest.delete_volume_snap(array, snap_name, source_device_id)
+        self.rest.delete_volume_snap(
+            array, snap_name, source_device_id, restored)
+
+    def is_restore_complete(self, array, source_device_id,
+                            snap_name, extra_specs):
+        """Check and wait for a restore to complete
+
+        :param array: the array serial number
+        :param source_device_id: source device id
+        :param snap_name: snapshot name
+        :param extra_specs: extra specification
+        :returns: bool
+        """
+
+        def _wait_for_restore():
+            """Called at an interval until the restore is finished.
+
+            :raises: loopingcall.LoopingCallDone
+            :raises: VolumeBackendAPIException
+            """
+            retries = kwargs['retries']
+            try:
+                kwargs['retries'] = retries + 1
+                if not kwargs['wait_for_restore_called']:
+                    if self._is_restore_complete(
+                            array, source_device_id, snap_name):
+                        kwargs['wait_for_restore_called'] = True
+            except Exception:
+                exception_message = (_("Issue encountered waiting for "
+                                       "restore."))
+                LOG.exception(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+
+            if kwargs['wait_for_restore_called']:
+                raise loopingcall.LoopingCallDone()
+            if kwargs['retries'] > int(extra_specs[utils.RETRIES]):
+                LOG.error("_wait_for_restore failed after %(retries)d "
+                          "tries.", {'retries': retries})
+                raise loopingcall.LoopingCallDone(
+                    retvalue=int(extra_specs[utils.RETRIES]))
+
+        kwargs = {'retries': 0,
+                  'wait_for_restore_called': False}
+        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_restore)
+        rc = timer.start(interval=int(extra_specs[utils.INTERVAL])).wait()
+        return rc
+
+    def _is_restore_complete(self, array, source_device_id, snap_name):
+        """Helper function to check if restore is complete.
+
+        :param array: the array serial number
+        :param source_device_id: source device id
+        :param snap_name: the snapshot name
+        :returns: restored -- bool
+        """
+        restored = False
+        snap_details = self.rest.get_volume_snap(
+            array, source_device_id, snap_name)
+        if snap_details:
+            linked_devices = snap_details.get("linkedDevices", [])
+            for linked_device in linked_devices:
+                if ('targetDevice' in linked_device and
+                        source_device_id == linked_device['targetDevice']):
+                    if ('state' in linked_device and
+                            linked_device['state'] == "Restored"):
+                        restored = True
+        return restored
 
     def delete_temp_volume_snap(self, array, snap_name, source_device_id):
         """Delete the temporary snapshot created for clone operations.
@@ -739,3 +808,19 @@ class VMAXProvision(object):
                   {'sg': storagegroup_name})
         self.rest.delete_storagegroup_rdf(
             array, storagegroup_name, rdf_group_num)
+
+    def revert_volume_snapshot(self, array, source_device_id,
+                               snap_name, extra_specs):
+        """Revert a volume snapshot
+
+        :param array: the array serial number
+        :param source_device_id: device id of the source
+        :param snap_name: snapvx snapshot name
+        :param extra_specs: the extra specifications
+        """
+        start_time = time.time()
+        self.rest.modify_volume_snap(
+            array, source_device_id, "", snap_name, extra_specs, restore=True)
+        LOG.debug("Restore volume snapshot took: %(delta)s H:MM:SS.",
+                  {'delta': self.utils.get_time_delta(start_time,
+                                                      time.time())})

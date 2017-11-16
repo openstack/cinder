@@ -89,6 +89,7 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Support for SRDF/Metro (vmax-replication-enhancements)
               - Support for manage/unmanage snapshots
                 (vmax-manage-unmanage-snapshot)
+              - Support for revert to volume snapshot
     """
 
     VERSION = "3.1.0"
@@ -638,3 +639,12 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         """
         return self.common.failover_replication(
             context, group, volumes, secondary_backend_id)
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert volume to snapshot
+
+        :param context: the context
+        :param volume: the cinder volume object
+        :param snapshot: the cinder snapshot object
+        """
+        self.common.revert_to_snapshot(volume, snapshot)

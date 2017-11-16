@@ -1541,8 +1541,8 @@ class VMAXRest(object):
 
     def modify_volume_snap(self, array, source_id, target_id, snap_name,
                            extra_specs, link=False, unlink=False,
-                           rename=False, new_snap_name=None):
-        """Link or unlink a snapVx to or from a target volume.
+                           rename=False, new_snap_name=None, restore=False):
+        """Modify a snapvx snapshot
 
         :param array: the array serial number
         :param source_id: the source device id
@@ -1553,17 +1553,28 @@ class VMAXRest(object):
         :param unlink: Flag to indicate action = Unlink
         :param rename: Flag to indicate action = Rename
         :param new_snap_name: Optional new snapshot name
+        :param restore: Flag to indicate action = Restore
         """
         action = None
+        operation = ''
         if link:
             action = "Link"
         elif unlink:
             action = "Unlink"
         elif rename:
             action = "Rename"
+        elif restore:
+            action = "Restore"
 
         payload = {}
-        if action and link or unlink:
+        if action == "Restore":
+            operation = 'Restore snapVx snapshot'
+            payload = {"deviceNameListSource": [{"name": source_id}],
+                       "deviceNameListTarget": [{"name": source_id}],
+                       "action": action,
+                       "star": 'false', "force": 'false'}
+        elif action in ('Link', 'Unlink'):
+            operation = 'Modify snapVx relationship to target'
             payload = {"deviceNameListSource": [{"name": source_id}],
                        "deviceNameListTarget": [{"name": target_id}],
                        "copy": 'true', "action": action,
@@ -1571,7 +1582,8 @@ class VMAXRest(object):
                        "exact": 'false', "remote": 'false',
                        "symforce": 'false', "nocopy": 'false'}
 
-        elif action and rename:
+        elif action == "Rename":
+            operation = 'Rename snapVx snapshot'
             payload = {"deviceNameListSource": [{"name": source_id}],
                        "deviceNameListTarget": [{"name": source_id}],
                        "action": action, "newsnapshotname": new_snap_name}
@@ -1580,18 +1592,22 @@ class VMAXRest(object):
             status_code, job = self.modify_resource(
                 array, REPLICATION, 'snapshot', payload,
                 resource_name=snap_name, private='/private')
+            self.wait_for_job(operation, status_code, job, extra_specs)
 
-            self.wait_for_job('Modify snapVx relationship to target',
-                              status_code, job, extra_specs)
-
-    def delete_volume_snap(self, array, snap_name, source_device_id):
+    def delete_volume_snap(self, array, snap_name,
+                           source_device_id, restored=False):
         """Delete the snapshot of a volume.
 
         :param array: the array serial number
         :param snap_name: the name of the snapshot
         :param source_device_id: the source device id
+        :param restored: Flag to indicate terminate restore session
         """
-        payload = {"deviceNameListSource": [{"name": source_device_id}]}
+        if restored:
+            payload = {"deviceNameListSource": [{"name": source_device_id}],
+                       "restore": True}
+        else:
+            payload = {"deviceNameListSource": [{"name": source_device_id}]}
         return self.delete_resource(
             array, REPLICATION, 'snapshot', snap_name, payload=payload,
             private='/private')

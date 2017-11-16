@@ -1,0 +1,4 @@
+---
+features:
+  - Support for reverting a volume to a previous snapshot in VMAX cinder
+    driver.

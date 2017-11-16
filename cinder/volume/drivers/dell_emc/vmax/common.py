@@ -4079,3 +4079,48 @@ class VMAXCommon(object):
             if slo is not None:
                 kwargs.update({'ServiceLevel': slo, 'Workload': workload})
         return kwargs
+
+    def revert_to_snapshot(self, volume, snapshot):
+        """Revert volume to snapshot.
+
+        :param volume: the volume object
+        :param snapshot: the snapshot object
+        """
+        extra_specs = self._initial_setup(volume)
+        array = extra_specs[utils.ARRAY]
+        sourcedevice_id, snap_name = self._parse_snap_info(
+            array, snapshot)
+        if not sourcedevice_id or not snap_name:
+            LOG.error("No snapshot found on the array")
+            exception_message = (_(
+                "Failed to revert the volume to the snapshot"))
+            raise exception.VolumeDriverException(data=exception_message)
+        self._sync_check(array, sourcedevice_id, volume.name, extra_specs)
+        try:
+            LOG.info("Reverting device: %(deviceid)s "
+                     "to snapshot: %(snapname)s.",
+                     {'deviceid': sourcedevice_id, 'snapname': snap_name})
+            self.provision.revert_volume_snapshot(
+                array, sourcedevice_id, snap_name, extra_specs)
+            # Once the restore is done, we need to check if it is complete
+            restore_complete = self.provision.is_restore_complete(
+                array, sourcedevice_id, snap_name, extra_specs)
+            if not restore_complete:
+                LOG.debug("Restore couldn't complete in the specified "
+                          "time interval. The terminate restore may fail")
+            LOG.debug("Terminating restore session")
+            # This may throw an exception if restore_complete is False
+            self.provision.delete_volume_snap(
+                array, snap_name, sourcedevice_id, restored=True)
+            # Revert volume to snapshot is successful if termination was
+            # successful - possible even if restore_complete was False
+            # when we checked last.
+            LOG.debug("Restored session was terminated")
+            LOG.info("Reverted the volume to snapshot successfully")
+        except Exception as e:
+            exception_message = (_(
+                "Failed to revert the volume to the snapshot"
+                "Exception received was %(e)s") % {'e': six.text_type(e)})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
