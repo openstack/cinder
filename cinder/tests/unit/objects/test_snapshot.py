@@ -201,7 +201,8 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
                                                volume_type_id)
         snapshot_data_get.assert_called_once_with(self.context,
                                                   self.project_id,
-                                                  volume_type_id)
+                                                  volume_type_id,
+                                                  host=None)
 
     @mock.patch('cinder.db.sqlalchemy.api.snapshot_get')
     def test_refresh(self, snapshot_get):

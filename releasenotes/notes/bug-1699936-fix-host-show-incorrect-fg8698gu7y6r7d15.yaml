@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Now the ``os-host show`` API will count project's
+    resource correctly.

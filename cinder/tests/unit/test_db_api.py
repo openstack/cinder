@@ -549,6 +549,22 @@ class DBAPIVolumeTestCase(BaseTest):
                              db.volume_data_get_for_project(
                                  self.ctxt, 'p%d' % i))
 
+    def test_volume_data_get_for_project_with_host(self):
+
+        db.volume_create(self.ctxt, {'project_id': fake.PROJECT_ID,
+                                     'size': 100,
+                                     'host': 'host1'})
+        db.volume_create(self.ctxt, {'project_id': fake.PROJECT2_ID,
+                                     'size': 200,
+                                     'host': 'host1'})
+        db.volume_create(self.ctxt, {'project_id': fake.PROJECT2_ID,
+                                     'size': 300,
+                                     'host': 'host2'})
+        resp = db.volume_data_get_for_project(self.ctxt,
+                                              fake.PROJECT2_ID,
+                                              host='host2')
+        self.assertEqual((1, 300), resp)
+
     def test_volume_detached_from_instance(self):
         volume = db.volume_create(self.ctxt, {})
         instance_uuid = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -1819,6 +1835,27 @@ class DBAPISnapshotTestCase(BaseTest):
                                             'project2',
                                             {'fake_key': 'fake'}),
                                         ignored_keys='volume')
+
+    def test_snapshot_get_all_by_project_with_host(self):
+        db.volume_create(self.ctxt, {'id': 1, 'host': 'host1', 'size': 1,
+                                     'project_id': fake.PROJECT_ID})
+        db.volume_create(self.ctxt, {'id': 2, 'host': 'host1', 'size': 2,
+                                     'project_id': fake.PROJECT2_ID})
+        db.volume_create(self.ctxt, {'id': 3, 'host': 'host2', 'size': 3,
+                                     'project_id': fake.PROJECT2_ID})
+        db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1,
+                                       'project_id': fake.PROJECT_ID,
+                                       'volume_size': 1})
+        db.snapshot_create(self.ctxt, {'id': 2, 'volume_id': 2,
+                                       'project_id': fake.PROJECT2_ID,
+                                       'volume_size': 2})
+        db.snapshot_create(self.ctxt, {'id': 3, 'volume_id': 3,
+                                       'project_id': fake.PROJECT2_ID,
+                                       'volume_size': 3})
+        resp = db.snapshot_data_get_for_project(self.ctxt,
+                                                fake.PROJECT2_ID,
+                                                host='host2')
+        self.assertEqual((1, 3), resp)
 
     def test_snapshot_metadata_get(self):
         metadata = {'a': 'b', 'c': 'd'}

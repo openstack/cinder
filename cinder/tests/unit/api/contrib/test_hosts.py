@@ -14,6 +14,7 @@
 #    under the License.
 
 import datetime
+import mock
 
 import iso8601
 from oslo_utils import timeutils
@@ -22,7 +23,10 @@ import webob.exc
 from cinder.api.contrib import hosts as os_hosts
 from cinder import context
 from cinder import exception
+from cinder.objects import service
 from cinder import test
+from cinder.tests.unit import fake_constants
+from cinder.tests.unit import utils as test_utils
 
 
 created_time = datetime.datetime(2012, 11, 14, 1, 20, 41, 95099)
@@ -149,6 +153,63 @@ class HostTestCase(test.TestCase):
                           self.req,
                           'bogus_host_name',
                           body={'disabled': 0})
+
+    @mock.patch.object(service.Service, 'get_by_host_and_topic')
+    def test_show_host(self, mock_get_host):
+        host = 'test_host'
+        test_service = service.Service(id=1, host=host,
+                                       binary='cinder-volume',
+                                       topic='cinder-volume')
+        mock_get_host.return_value = test_service
+
+        ctxt1 = context.RequestContext(project_id=fake_constants.PROJECT_ID,
+                                       is_admin=True)
+        ctxt2 = context.RequestContext(project_id=fake_constants.PROJECT2_ID,
+                                       is_admin=True)
+        # Create two volumes with different project.
+        volume1 = test_utils.create_volume(ctxt1,
+                                           host=host, size=1)
+        test_utils.create_volume(ctxt2, host=host, size=1)
+        # This volume is not on the same host. It should not be counted.
+        test_utils.create_volume(ctxt2, host='fake_host', size=1)
+        test_utils.create_snapshot(ctxt1, volume_id=volume1.id)
+
+        resp = self.controller.show(self.req, host)
+
+        host_resp = resp['host']
+        # There are 3 resource list: total, project1, project2
+        self.assertEqual(3, len(host_resp))
+        expected = [
+            {
+                "resource": {
+                    "volume_count": "2",
+                    "total_volume_gb": "2",
+                    "host": "test_host",
+                    "total_snapshot_gb": "1",
+                    "project": "(total)",
+                    "snapshot_count": "1"}
+            },
+            {
+                "resource": {
+                    "volume_count": "1",
+                    "total_volume_gb": "1",
+                    "host": "test_host",
+                    "project": fake_constants.PROJECT2_ID,
+                    "total_snapshot_gb": "0",
+                    "snapshot_count": "0"}
+            },
+            {
+                "resource": {
+                    "volume_count": "1",
+                    "total_volume_gb": "1",
+                    "host": "test_host",
+                    "total_snapshot_gb": "1",
+                    "project": fake_constants.PROJECT_ID,
+                    "snapshot_count": "1"}
+            }
+        ]
+        self.assertListEqual(expected, sorted(
+            host_resp, key=lambda h: h['resource']['project']))
 
     def test_show_forbidden(self):
         self.req.environ['cinder.context'].is_admin = False
