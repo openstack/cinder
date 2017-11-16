@@ -162,7 +162,7 @@ def get_default_cgsnapshot_type():
 
 def is_default_cgsnapshot_type(group_type_id):
     cgsnap_type = get_default_cgsnapshot_type()
-    return group_type_id == cgsnap_type['id']
+    return cgsnap_type and group_type_id == cgsnap_type['id']
 
 
 def get_group_type_specs(group_type_id, key=False):
