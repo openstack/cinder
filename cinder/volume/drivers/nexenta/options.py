@@ -146,6 +146,10 @@ NEXENTA_DATASET_OPTIONS = [
     cfg.BoolOpt('nexenta_sparse',
                 default=False,
                 help='Enables or disables the creation of sparse datasets'),
+    cfg.IntOpt('nexenta_capacitycheck',
+               default=80,
+               help=('Percentage of real disc capacity for cinder to use. '
+                     '80 is recommened')),
 ]
 
 NEXENTA_RRMGR_OPTIONS = [
