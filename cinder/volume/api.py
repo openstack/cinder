@@ -1709,6 +1709,10 @@ class API(base.Base):
             'metadata': metadata,
             'availability_zone': availability_zone,
             'bootable': bootable,
+            'size': 0,
+            'group_snapshot': None,
+            'optional_args': {'is_quota_committed': False},
+            'volume_type_id': None if not volume_type else volume_type['id'],
         }
 
         try:
@@ -1749,7 +1753,7 @@ class API(base.Base):
         snapshot_object = self.create_snapshot_in_db(context, volume, name,
                                                      description, True,
                                                      metadata, None,
-                                                     commit_quota=False)
+                                                     commit_quota=True)
         self.volume_rpcapi.manage_existing_snapshot(
             context, snapshot_object, ref, service.service_topic_queue)
         return snapshot_object

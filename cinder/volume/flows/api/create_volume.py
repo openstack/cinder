@@ -631,6 +631,9 @@ class QuotaReserveTask(flow_utils.CinderTask):
                 reserve_opts = {'volumes': 1}
             else:
                 reserve_opts = {'volumes': 1, 'gigabytes': size}
+            if ('update_size' in optional_args
+                    and optional_args['update_size']):
+                reserve_opts.pop('volumes', None)
             QUOTAS.add_volume_type_opts(context, reserve_opts, volume_type_id)
             reservations = QUOTAS.reserve(context, **reserve_opts)
             return {

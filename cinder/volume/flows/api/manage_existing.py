@@ -20,6 +20,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder import objects
 from cinder.objects import fields
+from cinder.volume.flows.api import create_volume as create_api
 from cinder.volume.flows import common
 
 LOG = logging.getLogger(__name__)
@@ -138,7 +139,9 @@ def get_flow(scheduler_rpcapi, db_api, create_what):
 
     # This will cast it out to either the scheduler or volume manager via
     # the rpc apis provided.
-    api_flow.add(EntryCreateTask(db_api),
+    api_flow.add(create_api.QuotaReserveTask(),
+                 EntryCreateTask(db_api),
+                 create_api.QuotaCommitTask(),
                  ManageCastTask(scheduler_rpcapi, db_api))
 
     # Now load (but do not run) the flow using the provided initial data.
