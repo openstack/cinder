@@ -14,6 +14,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import logging as pylogging
+
 import fixtures as fx
 from oslo_log import log as logging
 import testtools
@@ -25,6 +27,7 @@ class TestLogging(testtools.TestCase):
     def test_default_logging(self):
         stdlog = self.useFixture(fixtures.StandardLogging())
         root = logging.getLogger()
+        root.logger.setLevel(pylogging.INFO)
         # there should be a null handler as well at DEBUG
         self.assertEqual(2, len(root.handlers), root.handlers)
         log = logging.getLogger(__name__)
@@ -51,6 +54,7 @@ class TestLogging(testtools.TestCase):
 
         stdlog = self.useFixture(fixtures.StandardLogging())
         root = logging.getLogger()
+        root.logger.setLevel(pylogging.INFO)
         # there should no longer be a null handler
         self.assertEqual(1, len(root.handlers), root.handlers)
         log = logging.getLogger(__name__)
