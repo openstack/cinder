@@ -274,6 +274,8 @@ class VMAXCommon(object):
         if volume.group_id is not None:
             if (volume_utils.is_group_a_cg_snapshot_type(volume.group)
                     or volume.group.is_replicated):
+                LOG.debug("Adding volume %(vol_id)s to group %(grp_id)s",
+                          {'vol_id': volume.id, 'grp_id': volume.group_id})
                 self._add_new_volume_to_volume_group(
                     volume, volume_dict['device_id'], volume_name,
                     extra_specs, rep_driver_data)
@@ -1007,8 +1009,11 @@ class VMAXCommon(object):
                 device_id = name['keybindings']['DeviceID']
             else:
                 device_id = None
-            founddevice_id = self.rest.check_volume_device_id(
-                array, device_id, volume_name)
+            try:
+                founddevice_id = self.rest.check_volume_device_id(
+                    array, device_id, volume_name)
+            except exception.VolumeBackendAPIException:
+                pass
 
         if founddevice_id is None:
             LOG.debug("Volume %(volume_name)s not found on the array.",
@@ -3237,10 +3242,8 @@ class VMAXCommon(object):
         vol_grp_name = self.utils.update_volume_group_name(group)
 
         try:
-            array, __ = self.utils.get_volume_group_utils(
+            array, interval_retries_dict = self.utils.get_volume_group_utils(
                 group, self.interval, self.retries)
-            interval_retries_dict = self.utils.get_intervals_retries_dict(
-                self.interval, self.retries)
             self.provision.create_volume_group(
                 array, vol_grp_name, interval_retries_dict)
             if group.is_replicated:
@@ -3288,7 +3291,7 @@ class VMAXCommon(object):
         :returns: model_update, volumes_model_update
         """
         volumes_model_update = []
-        array, extraspecs_dict_list = self.utils.get_volume_group_utils(
+        array, interval_retries_dict = self.utils.get_volume_group_utils(
             group, self.interval, self.retries)
         vol_grp_name = None
 
@@ -3308,39 +3311,33 @@ class VMAXCommon(object):
             vol_grp_name = volume_group['name']
         volume_device_ids = self._get_members_of_volume_group(
             array, vol_grp_name)
-        intervals_retries_dict = self.utils.get_intervals_retries_dict(
-            self.interval, self.retries)
         deleted_volume_device_ids = []
 
         # Remove replication for group, if applicable
         if group.is_replicated:
             self._cleanup_group_replication(
                 array, vol_grp_name, volume_device_ids,
-                intervals_retries_dict)
+                interval_retries_dict)
         try:
             if volume_device_ids:
                 # First remove all the volumes from the SG
                 self.masking.remove_volumes_from_storage_group(
                     array, volume_device_ids, vol_grp_name,
-                    intervals_retries_dict)
+                    interval_retries_dict)
                 for vol in volumes:
-                    for extraspecs_dict in extraspecs_dict_list:
-                        if (vol.volume_type_id in
-                                extraspecs_dict['volumeTypeId']):
-                            extraspecs = extraspecs_dict.get(
-                                utils.EXTRA_SPECS)
-                            device_id = self._find_device_on_array(
-                                vol, extraspecs)
-                            if device_id in volume_device_ids:
-                                self.masking.remove_and_reset_members(
-                                    array, vol, device_id, vol.name,
-                                    extraspecs, False)
-                                self._delete_from_srp(
-                                    array, device_id, "group vol", extraspecs)
-                            else:
-                                LOG.debug("Volume not found on the array.")
-                            # Add the device id to the deleted list
-                            deleted_volume_device_ids.append(device_id)
+                    extra_specs = self._initial_setup(vol)
+                    device_id = self._find_device_on_array(
+                        vol, extra_specs)
+                    if device_id in volume_device_ids:
+                        self.masking.remove_and_reset_members(
+                            array, vol, device_id, vol.name,
+                            extra_specs, False)
+                        self._delete_from_srp(
+                            array, device_id, "group vol", extra_specs)
+                    else:
+                        LOG.debug("Volume not found on the array.")
+                    # Add the device id to the deleted list
+                    deleted_volume_device_ids.append(device_id)
             # Once all volumes are deleted then delete the SG
             self.rest.delete_storage_group(array, vol_grp_name)
             model_update = {'status': fields.GroupStatus.DELETED}
@@ -3351,27 +3348,28 @@ class VMAXCommon(object):
                       "Error received: %(e)s", {'e': e})
             model_update = {'status': fields.GroupStatus.ERROR_DELETING}
             # Update the volumes_model_update
+            if len(deleted_volume_device_ids) is not 0:
+                LOG.debug("Device ids: %(dev)s are deleted.",
+                          {'dev': deleted_volume_device_ids})
             volumes_not_deleted = []
             for vol in volume_device_ids:
                 if vol not in deleted_volume_device_ids:
                     volumes_not_deleted.append(vol)
             if not deleted_volume_device_ids:
                 volumes_model_update = self.utils.update_volume_model_updates(
-                    volumes_model_update,
-                    deleted_volume_device_ids,
+                    volumes_model_update, deleted_volume_device_ids,
                     group.id, status='deleted')
             if not volumes_not_deleted:
                 volumes_model_update = self.utils.update_volume_model_updates(
-                    volumes_model_update,
-                    volumes_not_deleted,
-                    group.id, status='deleted')
+                    volumes_model_update, volumes_not_deleted,
+                    group.id, status='error_deleting')
             # As a best effort try to add back the undeleted volumes to sg
-            # Dont throw any exception in case of failure
+            # Don't throw any exception in case of failure
             try:
                 if not volumes_not_deleted:
                     self.masking.add_volumes_to_storage_group(
                         array, volumes_not_deleted,
-                        vol_grp_name, intervals_retries_dict)
+                        vol_grp_name, interval_retries_dict)
             except Exception as ex:
                 LOG.error("Error in rollback - %(ex)s. "
                           "Failed to add back volumes to sg %(sg_name)s",
@@ -3434,8 +3432,7 @@ class VMAXCommon(object):
 
         try:
             snap_name = self.utils.truncate_string(group_snapshot.id, 19)
-            self._create_group_replica(source_group,
-                                       snap_name)
+            self._create_group_replica(source_group, snap_name)
 
         except Exception as e:
             exception_message = (_("Failed to create snapshot for group: "
@@ -3446,12 +3443,25 @@ class VMAXCommon(object):
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         for snapshot in snapshots:
+            src_dev_id = self._get_src_device_id_for_group_snap(snapshot)
             snapshots_model_update.append(
                 {'id': snapshot.id,
+                 'provider_location': six.text_type(
+                     {'source_id': src_dev_id, 'snap_name': snap_name}),
                  'status': fields.SnapshotStatus.AVAILABLE})
         model_update = {'status': fields.GroupStatus.AVAILABLE}
 
         return model_update, snapshots_model_update
+
+    def _get_src_device_id_for_group_snap(self, snapshot):
+        """Get the source device id for the provider_location.
+
+        :param snapshot: the snapshot object
+        :return: src_device_id
+        """
+        volume = snapshot.volume
+        extra_specs = self._initial_setup(volume)
+        return self._find_device_on_array(volume, extra_specs)
 
     def _create_group_replica(
             self, source_group, snap_name):
@@ -3461,9 +3471,8 @@ class VMAXCommon(object):
         :param source_group: the group object
         :param snap_name: the name of the snapshot
         """
-        array, __ = (
-            self.utils.get_volume_group_utils(
-                source_group, self.interval, self.retries))
+        array, interval_retries_dict = self.utils.get_volume_group_utils(
+            source_group, self.interval, self.retries)
         vol_grp_name = None
         volume_group = (
             self._find_volume_group(array, source_group))
@@ -3476,8 +3485,6 @@ class VMAXCommon(object):
                 {'group_id': source_group.id})
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
-        interval_retries_dict = self.utils.get_intervals_retries_dict(
-            self.interval, self.retries)
         self.provision.create_group_replica(
             array, vol_grp_name,
             snap_name, interval_retries_dict)
@@ -3503,7 +3510,6 @@ class VMAXCommon(object):
         :raises: VolumeBackendApiException, NotImplementedError
         """
         snapshots_model_update = []
-        model_update = {}
         source_group = group_snapshot.get('group')
         grp_id = group_snapshot.group_id
         if not volume_utils.is_group_a_cg_snapshot_type(source_group):
@@ -3518,15 +3524,12 @@ class VMAXCommon(object):
         vol_grp_name = None
         try:
             # Get the array serial
-            array, __ = (
-                self.utils.get_volume_group_utils(
-                    source_group, self.interval, self.retries))
+            array, extra_specs = self.utils.get_volume_group_utils(
+                source_group, self.interval, self.retries)
             # Get the volume group dict for getting the group name
-            volume_group = (
-                self._find_volume_group(array, source_group))
-            if volume_group:
-                if 'name' in volume_group:
-                    vol_grp_name = volume_group['name']
+            volume_group = (self._find_volume_group(array, source_group))
+            if volume_group and volume_group.get('name'):
+                vol_grp_name = volume_group['name']
             if vol_grp_name is None:
                 exception_message = (
                     _("Cannot find generic volume group %(grp_id)s.") %
@@ -3536,9 +3539,9 @@ class VMAXCommon(object):
             # Check if the snapshot exists
             if 'snapVXSnapshots' in volume_group:
                 if snap_name in volume_group['snapVXSnapshots']:
-                    self.provision.delete_group_replica(array,
-                                                        snap_name,
-                                                        vol_grp_name)
+                    src_devs = self._get_snap_src_dev_list(array, snapshots)
+                    self.provision.delete_group_replica(
+                        array, snap_name, vol_grp_name, src_devs, extra_specs)
             else:
                 # Snapshot has been already deleted, return successfully
                 LOG.error("Cannot find group snapshot %(snapId)s.",
@@ -3555,6 +3558,20 @@ class VMAXCommon(object):
                 'status': fields.GroupSnapshotStatus.ERROR_DELETING}
 
         return model_update, snapshots_model_update
+
+    def _get_snap_src_dev_list(self, array, snapshots):
+        """Get the list of source devices for a list of snapshots.
+
+        :param array: the array serial number
+        :param snapshots: the list of snapshot objects
+        :return: src_dev_ids
+        """
+        src_dev_ids = []
+        for snap in snapshots:
+            src_dev_id, snap_name = self._parse_snap_info(array, snap)
+            if snap_name:
+                src_dev_ids.append(src_dev_id)
+        return src_dev_ids
 
     def _find_volume_group(self, array, group):
         """Finds a volume group given the group.
@@ -3603,7 +3620,7 @@ class VMAXCommon(object):
                 and not group.is_replicated):
             raise NotImplementedError()
 
-        array, __ = self.utils.get_volume_group_utils(
+        array, interval_retries_dict = self.utils.get_volume_group_utils(
             group, self.interval, self.retries)
         model_update = {'status': fields.GroupStatus.AVAILABLE}
         add_vols = [vol for vol in add_volumes] if add_volumes else []
@@ -3618,8 +3635,6 @@ class VMAXCommon(object):
                     vol_grp_name = volume_group['name']
             if vol_grp_name is None:
                 raise exception.GroupNotFound(group_id=group.id)
-            interval_retries_dict = self.utils.get_intervals_retries_dict(
-                self.interval, self.retries)
             # Add volume(s) to the group
             if add_device_ids:
                 self.utils.check_rep_status_enabled(group)
@@ -3741,15 +3756,12 @@ class VMAXCommon(object):
         """
         if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
-        # Check if we need to create a snapshot
         create_snapshot = False
         volumes_model_update = []
         if group_snapshot:
-            source_vols_or_snapshots = snapshots
             source_id = group_snapshot.id
-            actual_source_grp = group_snapshot
+            actual_source_grp = group_snapshot.get('group')
         elif source_group:
-            source_vols_or_snapshots = source_vols
             source_id = source_group.id
             actual_source_grp = source_group
             create_snapshot = True
@@ -3759,87 +3771,168 @@ class VMAXCommon(object):
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
 
+        tgt_name = self.utils.update_volume_group_name(group)
+        rollback_dict = {}
+        array, interval_retries_dict = self.utils.get_volume_group_utils(
+            group, self.interval, self.retries)
+        source_sg = self._find_volume_group(array, actual_source_grp)
+        if source_sg is not None:
+            src_grp_name = (source_sg['name']
+                            if 'name' in source_sg else None)
+            rollback_dict['source_group_name'] = src_grp_name
+        else:
+            error_msg = (_("Cannot retrieve source volume group %(grp_id)s "
+                           "from the array.")
+                         % {'grp_id': actual_source_grp.id})
+            LOG.error(error_msg)
+            raise exception.VolumeBackendAPIException(data=error_msg)
+
         LOG.debug("Enter VMAX create_volume group_from_src. Group to be "
                   "created: %(grpId)s, Source : %(SourceGrpId)s.",
-                  {'grpId': group.id,
-                   'SourceGrpId': source_id})
+                  {'grpId': group.id, 'SourceGrpId': source_id})
 
-        tgt_name = self.utils.update_volume_group_name(group)
-        self.create_group(context, group)
-        model_update = {'status': fields.GroupStatus.AVAILABLE}
         try:
-            array, extraspecs_dict_list = (
-                self.utils.get_volume_group_utils(
-                    group, self.interval, self.retries))
-            vol_grp_name = ""
+            self.provision.create_volume_group(
+                array, tgt_name, interval_retries_dict)
+            rollback_dict.update({
+                'target_group_name': tgt_name, 'volumes': [],
+                'device_ids': [], 'list_volume_pairs': [],
+                'interval_retries_dict': interval_retries_dict})
+            model_update = {'status': fields.GroupStatus.AVAILABLE}
             # Create the target devices
-            dict_volume_dicts = {}
-            target_volume_names = {}
-            for volume, source_vol_or_snapshot in zip(
-                    volumes, source_vols_or_snapshots):
-                if 'size' in source_vol_or_snapshot:
-                    volume_size = source_vol_or_snapshot['size']
-                else:
-                    volume_size = source_vol_or_snapshot['volume_size']
-                for extraspecs_dict in extraspecs_dict_list:
-                    if volume.volume_type_id in (
-                            extraspecs_dict['volumeTypeId']):
-                        extraspecs = extraspecs_dict.get(utils.EXTRA_SPECS)
-                        target_volume_name = (
-                            self.utils.get_volume_element_name(volume.id))
-                        volume_dict = self.provision.create_volume_from_sg(
-                            array, target_volume_name,
-                            tgt_name, volume_size, extraspecs)
-                        dict_volume_dicts[volume.id] = volume_dict
-                        target_volume_names[volume.id] = target_volume_name
+            list_volume_pairs = []
+            for volume in volumes:
+                src_dev_id, extra_specs, vol_size, tgt_vol_name = (
+                    self._get_clone_vol_info(
+                        volume, source_vols, snapshots))
+                volume_dict = self._create_volume(
+                    tgt_vol_name, vol_size, extra_specs)
+                device_id = volume_dict['device_id']
+                # Add the volume to the volume group SG
+                self.masking.add_volume_to_storage_group(
+                    extra_specs[utils.ARRAY], device_id, tgt_name,
+                    tgt_vol_name, extra_specs)
+                # Record relevant information
+                list_volume_pairs.append((src_dev_id, device_id))
+                # Add details to rollback dict
+                rollback_dict['device_ids'].append(device_id)
+                rollback_dict['list_volume_pairs'].append(
+                    (src_dev_id, device_id))
+                rollback_dict['volumes'].append(
+                    (device_id, extra_specs, volume))
+                volumes_model_update.append(
+                    self.utils.get_grp_volume_model_update(
+                        volume, volume_dict, group.id))
 
             if create_snapshot is True:
                 # We have to create a snapshot of the source group
                 snap_name = self.utils.truncate_string(group.id, 19)
                 self._create_group_replica(actual_source_grp, snap_name)
-                vol_grp_name = self.utils.update_volume_group_name(
-                    source_group)
+                rollback_dict['snap_name'] = snap_name
             else:
                 # We need to check if the snapshot exists
                 snap_name = self.utils.truncate_string(source_id, 19)
-                source_group = actual_source_grp.get('group')
-                volume_group = self._find_volume_group(array, source_group)
-                if volume_group is not None:
-                    if 'snapVXSnapshots' in volume_group:
-                        if snap_name in volume_group['snapVXSnapshots']:
-                            LOG.info("Snapshot is present on the array")
-                    if 'name' in volume_group:
-                        vol_grp_name = volume_group['name']
+                if ('snapVXSnapshots' in source_sg and
+                        snap_name in source_sg['snapVXSnapshots']):
+                    LOG.info("Snapshot is present on the array")
+                else:
+                    error_msg = (
+                        _("Cannot retrieve source snapshot %(snap_id)s "
+                          "from the array.") % {'snap_id': source_id})
+                    LOG.error(error_msg)
+                    raise exception.VolumeBackendAPIException(data=error_msg)
             # Link and break the snapshot to the source group
-            interval_retries_dict = self.utils.get_intervals_retries_dict(
-                self.interval, self.retries)
             self.provision.link_and_break_replica(
-                array, vol_grp_name, tgt_name, snap_name,
-                interval_retries_dict, delete_snapshot=create_snapshot)
-        except Exception:
-            exception_message = (_("Failed to create vol grp %(volGrpName)s"
-                                   " from source %(grpSnapshot)s.")
-                                 % {'volGrpName': group.id,
-                                    'grpSnapshot': source_id})
-            LOG.exception(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-        volumes_model_update = self.utils.update_volume_model_updates(
-            volumes_model_update, volumes, group.id, model_update['status'])
-
-        # Update the provider_location & replication status
-        for volume_model_update in volumes_model_update:
-            if volume_model_update['id'] in dict_volume_dicts:
-                volume_model_update.update(
-                    {'provider_location': six.text_type(
-                        dict_volume_dicts[volume_model_update['id']])})
+                array, src_grp_name, tgt_name, snap_name,
+                interval_retries_dict, list_volume_pairs,
+                delete_snapshot=create_snapshot)
+            # Update the replication status
             if group.is_replicated:
                 volumes_model_update = self._replicate_group(
                     array, volumes_model_update,
                     tgt_name, interval_retries_dict)
                 model_update.update({
                     'replication_status': fields.ReplicationStatus.ENABLED})
+        except Exception:
+            exception_message = (_("Failed to create vol grp %(volGrpName)s"
+                                   " from source %(grpSnapshot)s.")
+                                 % {'volGrpName': group.id,
+                                    'grpSnapshot': source_id})
+            LOG.error(exception_message)
+            if array is not None:
+                LOG.info("Attempting rollback for the create group from src.")
+                self._rollback_create_group_from_src(array, rollback_dict)
+            raise exception.VolumeBackendAPIException(data=exception_message)
 
         return model_update, volumes_model_update
+
+    def _get_clone_vol_info(self, volume, source_vols, snapshots):
+        """Get the clone volume info.
+
+        :param volume: the new volume object
+        :param source_vols: the source volume list
+        :param snapshots: the source snapshot list
+        :returns: src_dev_id, extra_specs, vol_size, tgt_vol_name
+        """
+        src_dev_id, vol_size = None, None
+        extra_specs = self._initial_setup(volume)
+        if not source_vols:
+            for snap in snapshots:
+                if snap.id == volume.snapshot_id:
+                    src_dev_id, __ = self._parse_snap_info(
+                        extra_specs[utils.ARRAY], snap)
+                    vol_size = snap.volume_size
+        else:
+            for src_vol in source_vols:
+                if src_vol.id == volume.source_volid:
+                    src_extra_specs = self._initial_setup(src_vol)
+                    src_dev_id = self._find_device_on_array(
+                        src_vol, src_extra_specs)
+                    vol_size = src_vol.size
+        tgt_vol_name = self.utils.get_volume_element_name(volume.id)
+        return src_dev_id, extra_specs, vol_size, tgt_vol_name
+
+    def _rollback_create_group_from_src(self, array, rollback_dict):
+        """Performs rollback for create group from src in case of failure.
+
+        :param array: the array serial number
+        :param rollback_dict: dict containing rollback details
+        """
+        try:
+            # Delete the snapshot if required
+            if rollback_dict.get("snap_name"):
+                try:
+                    src_dev_ids = [
+                        a for a, b in rollback_dict['list_volume_pairs']]
+                    self.provision.delete_group_replica(
+                        array, rollback_dict["snap_name"],
+                        rollback_dict["source_group_name"],
+                        src_dev_ids, rollback_dict['interval_retries_dict'])
+                except Exception as e:
+                    LOG.debug("Failed to delete group snapshot. Attempting "
+                              "further rollback. Exception received: %(e)s.",
+                              {'e': e})
+            if rollback_dict.get('volumes'):
+                # Remove any devices which were added to the target SG
+                if rollback_dict['device_ids']:
+                    self.masking.remove_volumes_from_storage_group(
+                        array, rollback_dict['device_ids'],
+                        rollback_dict['target_group_name'],
+                        rollback_dict['interval_retries_dict'])
+                # Delete all the volumes
+                for dev_id, extra_specs, volume in rollback_dict['volumes']:
+                    self._remove_vol_and_cleanup_replication(
+                        array, dev_id, "group vol", extra_specs, volume)
+                    self._delete_from_srp(
+                        array, dev_id, "group vol", extra_specs)
+            # Delete the target SG
+            if rollback_dict.get("target_group_name"):
+                self.rest.delete_storage_group(
+                    array, rollback_dict['target_group_name'])
+            LOG.info("Rollback completed for create group from src.")
+        except Exception as e:
+            LOG.error("Rollback failed for the create group from src. "
+                      "Exception received: %(e)s.", {'e': e})
 
     def _replicate_group(self, array, volumes_model_update,
                          group_name, extra_specs):
@@ -3854,10 +3947,11 @@ class VMAXCommon(object):
         rdf_group_no, remote_array = self.get_rdf_details(array)
         self.rest.replicate_group(
             array, group_name, rdf_group_no, remote_array, extra_specs)
-        # Need to set SRP to None for generic volume group - Not set
+        # Need to set SRP to None for remote generic volume group - Not set
         # automatically, and a volume can only be in one storage group
         # managed by FAST
-        self.rest.set_storagegroup_srp(array, group_name, "None", extra_specs)
+        self.rest.set_storagegroup_srp(
+            remote_array, group_name, "None", extra_specs)
         for volume_model_update in volumes_model_update:
             vol_id = volume_model_update['id']
             loc = ast.literal_eval(volume_model_update['provider_location'])
