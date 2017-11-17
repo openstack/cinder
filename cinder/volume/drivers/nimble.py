@@ -1081,6 +1081,12 @@ class NimbleRestAPIExecutor(object):
                  {'name': response['name']})
         return response['name']
 
+    def _is_ascii(self, value):
+        try:
+            return all(ord(c) < 128 for c in value)
+        except TypeError:
+            return False
+
     def _execute_create_vol(self, volume, pool_name, reserve, protocol,
                             is_gst_enabled):
         """Create volume
@@ -1092,9 +1098,20 @@ class NimbleRestAPIExecutor(object):
         volume_size = volume['size'] * units.Ki
         reserve_size = 100 if reserve else 0
         # Set volume description
-        display_list = [getattr(volume, 'display_name', ''),
-                        getattr(volume, 'display_description', '')]
-        description = ':'.join(filter(None, display_list))
+        display_name = getattr(volume, 'display_name', '')
+        display_description = getattr(volume, 'display_description', '')
+        if self._is_ascii(display_name) and self._is_ascii(
+                display_description):
+            display_list = [getattr(volume, 'display_name', ''),
+                            getattr(volume, 'display_description', '')]
+            description = ':'.join(filter(None, display_list))
+        elif self._is_ascii(display_name):
+            description = display_name
+        elif self._is_ascii(display_description):
+            description = display_description
+        else:
+            description = ""
+
         # Limit description size to 254 characters
         description = description[:254]
         pool_id = self.get_pool_id(pool_name)
