@@ -490,7 +490,11 @@ class BackupManager(manager.ThreadPoolManager):
 
         backup_service = self._map_service_to_driver(backup['service'])
         configured_service = self.driver_name
-        if backup_service != configured_service:
+        # TODO(tommylikehu): We upgraded the 'driver_name' from module
+        # to class name, so we use 'in' here to match two namings,
+        # this can be replaced with equal sign during next
+        # release (Rocky).
+        if backup_service not in configured_service:
             err = _('Restore backup aborted, the backup service currently'
                     ' configured [%(configured_service)s] is not the'
                     ' backup service that was used to create this'
@@ -574,7 +578,11 @@ class BackupManager(manager.ThreadPoolManager):
         backup_service = self._map_service_to_driver(backup['service'])
         if backup_service is not None:
             configured_service = self.driver_name
-            if backup_service != configured_service:
+            # TODO(tommylikehu): We upgraded the 'driver_name' from module
+            # to class name, so we use 'in' here to match two namings,
+            # this can be replaced with equal sign during next
+            # release (Rocky).
+            if backup_service not in configured_service:
                 err = _('Delete backup aborted, the backup service currently'
                         ' configured [%(configured_service)s] is not the'
                         ' backup service that was used to create this'
@@ -658,7 +666,11 @@ class BackupManager(manager.ThreadPoolManager):
         backup_record = {'backup_service': backup.service}
         backup_service = self._map_service_to_driver(backup.service)
         configured_service = self.driver_name
-        if backup_service != configured_service:
+        # TODO(tommylikehu): We upgraded the 'driver_name' from module
+        # to class name, so we use 'in' here to match two namings,
+        # this can be replaced with equal sign during next
+        # release (Rocky).
+        if backup_service not in configured_service:
             err = (_('Export record aborted, the backup service currently '
                      'configured [%(configured_service)s] is not the '
                      'backup service that was used to create this '
@@ -815,7 +827,11 @@ class BackupManager(manager.ThreadPoolManager):
         LOG.info('Backup service: %s.', backup_service_name)
         if backup_service_name is not None:
             configured_service = self.driver_name
-            if backup_service_name != configured_service:
+            # TODO(tommylikehu): We upgraded the 'driver_name' from module
+            # to class name, so we use 'in' here to match two namings,
+            # this can be replaced with equal sign during next
+            # release (Rocky).
+            if backup_service_name not in configured_service:
                 err = _('Reset backup status aborted, the backup service'
                         ' currently configured [%(configured_service)s] '
                         'is not the backup service that was used to create'

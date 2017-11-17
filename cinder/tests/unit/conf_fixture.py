@@ -43,7 +43,8 @@ def set_defaults(conf):
     conf.set_default('sqlite_synchronous', False, group='database')
     conf.set_default('policy_file', 'cinder.tests.unit/policy.json',
                      group='oslo_policy')
-    conf.set_default('backup_driver', 'cinder.tests.unit.backup.fake_service')
+    conf.set_default('backup_driver',
+                     'cinder.tests.unit.backup.fake_service.FakeBackupService')
     conf.set_default('backend',
                      'castellan.tests.unit.key_manager.mock_key_manager.'
                      'MockKeyManager',

@@ -210,6 +210,31 @@ class DBAPIServiceTestCase(BaseTest):
         self.assertEqual(1, total)
         self.assertEqual(1, updated)
 
+    @ddt.data({'count': 5, 'total': 3, 'updated': 3},
+              {'count': 2, 'total': 3, 'updated': 2})
+    @ddt.unpack
+    def test_backup_service_online_migration(self, count, total, updated):
+        volume = utils.create_volume(self.ctxt)
+        sqlalchemy_api.backup_create(self.ctxt, {
+            'service': 'cinder.backup.drivers.swift',
+            'volume_id': volume.id
+        })
+        sqlalchemy_api.backup_create(self.ctxt, {
+            'service': 'cinder.backup.drivers.ceph',
+            'volume_id': volume.id
+        })
+        sqlalchemy_api.backup_create(self.ctxt, {
+            'service': 'cinder.backup.drivers.glusterfs',
+            'volume_id': volume.id
+        })
+        sqlalchemy_api.backup_create(self.ctxt, {
+            'service': 'cinder.backup.drivers.fake_backup_service',
+            'volume_id': volume.id
+        })
+        t, u = db.backup_service_online_migration(self.ctxt, count)
+        self.assertEqual(total, t)
+        self.assertEqual(updated, u)
+
     def test_service_create(self):
         # Add a cluster value to the service
         values = {'cluster_name': 'cluster'}
