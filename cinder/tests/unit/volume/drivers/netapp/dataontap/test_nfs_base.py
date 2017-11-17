@@ -26,7 +26,6 @@ import mock
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils
 from oslo_utils import units
-import shutil
 
 from cinder import context
 from cinder import exception
@@ -802,7 +801,6 @@ class NetAppNfsDriverTestCase(test.TestCase):
         vol_path = "%s/%s" % (self.fake_nfs_export_1, test_file)
         vol_ref = {'source-name': vol_path}
         self.driver._check_volume_type = mock.Mock()
-        shutil.move = mock.Mock()
         self.mock_object(self.driver, '_execute')
         self.driver._ensure_shares_mounted = mock.Mock()
         self.driver._get_mount_point_for_share = mock.Mock(
@@ -835,23 +833,21 @@ class NetAppNfsDriverTestCase(test.TestCase):
         volume = fake.FAKE_MANAGE_VOLUME
         vol_path = "%s/%s" % (self.fake_nfs_export_1, test_file)
         vol_ref = {'source-name': vol_path}
-        mock_check_volume_type = self.driver._check_volume_type = mock.Mock()
+        self.driver._check_volume_type = mock.Mock()
         self.driver._ensure_shares_mounted = mock.Mock()
         self.driver._get_mount_point_for_share = mock.Mock(
             return_value=self.fake_mount_point)
         self.driver._get_share_mount_and_vol_from_vol_ref = mock.Mock(
             return_value=(self.fake_nfs_export_1, self.fake_mount_point,
                           test_file))
-        self.driver._execute = mock.Mock(side_effect=OSError)
+        self.driver._execute = mock.Mock(
+            side_effect=processutils.ProcessExecutionError)
         mock_get_specs = self.mock_object(na_utils, 'get_volume_extra_specs')
         mock_get_specs.return_value = {}
         self.mock_object(self.driver, '_do_qos_for_volume')
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.manage_existing, volume, vol_ref)
-
-        mock_check_volume_type.assert_called_once_with(
-            volume, self.fake_nfs_export_1, test_file, {})
 
     def test_unmanage(self):
         mock_log = self.mock_object(nfs_base, 'LOG')
