@@ -15,27 +15,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder import exception
-from cinder import test
-
 import mock
 import six
 from six.moves import http_client
 import webob.util
 
-
-class ExceptionTestCase(test.TestCase):
-    @staticmethod
-    def _raise_exc(exc):
-        raise exc()
-
-    def test_exceptions_raise(self):
-        # NOTE(dprince): disable format errors since we are not passing kwargs
-        self.flags(fatal_exception_format_errors=False)
-        for name in dir(exception):
-            exc = getattr(exception, name)
-            if isinstance(exc, type):
-                self.assertRaises(exc, self._raise_exc, exc)
+from cinder import exception
+from cinder import test
 
 
 class CinderExceptionTestCase(test.TestCase):
