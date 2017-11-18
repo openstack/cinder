@@ -110,9 +110,9 @@ must create a database, service credentials, and API endpoints.
         | type        | volumev3                         |
         +-------------+----------------------------------+
 
-    .. note::
+      .. note::
 
-       The Block Storage services require two service entities.
+         The Block Storage services require two service entities.
 
 #. Create the Block Storage service API endpoints:
 
@@ -241,15 +241,15 @@ Install and configure components
 
    #. In the ``[database]`` section, configure database access:
 
-     .. path /etc/cinder/cinder.conf
-     .. code-block:: ini
+      .. path /etc/cinder/cinder.conf
+      .. code-block:: ini
 
-        [database]
-        # ...
-        connection = mysql+pymysql://cinder:CINDER_DBPASS@controller/cinder
+         [database]
+         # ...
+         connection = mysql+pymysql://cinder:CINDER_DBPASS@controller/cinder
 
-     Replace ``CINDER_DBPASS`` with the password you chose for the
-     Block Storage database.
+      Replace ``CINDER_DBPASS`` with the password you chose for the
+      Block Storage database.
 
    #. In the ``[DEFAULT]`` section, configure ``RabbitMQ``
       message queue access:

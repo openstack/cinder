@@ -24,20 +24,20 @@ must create a database, service credentials, and API endpoints.
 
    #. Create the ``cinder`` database:
 
-     .. code-block:: console
+      .. code-block:: console
 
-        MariaDB [(none)]> CREATE DATABASE cinder;
+         MariaDB [(none)]> CREATE DATABASE cinder;
 
    #. Grant proper access to the ``cinder`` database:
 
-     .. code-block:: console
+      .. code-block:: console
 
-        MariaDB [(none)]> GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'localhost' \
-          IDENTIFIED BY 'CINDER_DBPASS';
-        MariaDB [(none)]> GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'%' \
-          IDENTIFIED BY 'CINDER_DBPASS';
+         MariaDB [(none)]> GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'localhost' \
+           IDENTIFIED BY 'CINDER_DBPASS';
+         MariaDB [(none)]> GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'%' \
+           IDENTIFIED BY 'CINDER_DBPASS';
 
-     Replace ``CINDER_DBPASS`` with a suitable password.
+      Replace ``CINDER_DBPASS`` with a suitable password.
 
    #. Exit the database access client.
 
@@ -52,64 +52,64 @@ must create a database, service credentials, and API endpoints.
 
    #. Create a ``cinder`` user:
 
-     .. code-block:: console
+      .. code-block:: console
 
-        $ openstack user create --domain default --password-prompt cinder
+         $ openstack user create --domain default --password-prompt cinder
 
-        User Password:
-        Repeat User Password:
-        +---------------------+----------------------------------+
-        | Field               | Value                            |
-        +---------------------+----------------------------------+
-        | domain_id           | default                          |
-        | enabled             | True                             |
-        | id                  | 9d7e33de3e1a498390353819bc7d245d |
-        | name                | cinder                           |
-        | options             | {}                               |
-        | password_expires_at | None                             |
-        +---------------------+----------------------------------+
+         User Password:
+         Repeat User Password:
+         +---------------------+----------------------------------+
+         | Field               | Value                            |
+         +---------------------+----------------------------------+
+         | domain_id           | default                          |
+         | enabled             | True                             |
+         | id                  | 9d7e33de3e1a498390353819bc7d245d |
+         | name                | cinder                           |
+         | options             | {}                               |
+         | password_expires_at | None                             |
+         +---------------------+----------------------------------+
 
    #. Add the ``admin`` role to the ``cinder`` user:
 
-     .. code-block:: console
+      .. code-block:: console
 
-        $ openstack role add --project service --user cinder admin
+         $ openstack role add --project service --user cinder admin
 
-     .. note::
+      .. note::
 
-        This command provides no output.
+         This command provides no output.
 
    #. Create the ``cinderv2`` and ``cinderv3`` service entities:
 
-     .. code-block:: console
+      .. code-block:: console
 
-        $ openstack service create --name cinderv2 \
-          --description "OpenStack Block Storage" volumev2
+         $ openstack service create --name cinderv2 \
+           --description "OpenStack Block Storage" volumev2
 
-        +-------------+----------------------------------+
-        | Field       | Value                            |
-        +-------------+----------------------------------+
-        | description | OpenStack Block Storage          |
-        | enabled     | True                             |
-        | id          | eb9fd245bdbc414695952e93f29fe3ac |
-        | name        | cinderv2                         |
-        | type        | volumev2                         |
-        +-------------+----------------------------------+
+         +-------------+----------------------------------+
+         | Field       | Value                            |
+         +-------------+----------------------------------+
+         | description | OpenStack Block Storage          |
+         | enabled     | True                             |
+         | id          | eb9fd245bdbc414695952e93f29fe3ac |
+         | name        | cinderv2                         |
+         | type        | volumev2                         |
+         +-------------+----------------------------------+
 
-     .. code-block:: console
+      .. code-block:: console
 
-        $ openstack service create --name cinderv3 \
-          --description "OpenStack Block Storage" volumev3
+         $ openstack service create --name cinderv3 \
+           --description "OpenStack Block Storage" volumev3
 
-        +-------------+----------------------------------+
-        | Field       | Value                            |
-        +-------------+----------------------------------+
-        | description | OpenStack Block Storage          |
-        | enabled     | True                             |
-        | id          | ab3bbbef780845a1a283490d281e7fda |
-        | name        | cinderv3                         |
-        | type        | volumev3                         |
-        +-------------+----------------------------------+
+         +-------------+----------------------------------+
+         | Field       | Value                            |
+         +-------------+----------------------------------+
+         | description | OpenStack Block Storage          |
+         | enabled     | True                             |
+         | id          | ab3bbbef780845a1a283490d281e7fda |
+         | name        | cinderv3                         |
+         | type        | volumev3                         |
+         +-------------+----------------------------------+
 
    .. note::
 
@@ -249,21 +249,21 @@ Install and configure components
          # ...
          connection = mysql+pymysql://cinder:CINDER_DBPASS@controller/cinder
 
-     Replace ``CINDER_DBPASS`` with the password you chose for the
-     Block Storage database.
+      Replace ``CINDER_DBPASS`` with the password you chose for the
+      Block Storage database.
 
    #. In the ``[DEFAULT]`` section, configure ``RabbitMQ``
       message queue access:
 
-     .. path /etc/cinder/cinder.conf
-     .. code-block:: ini
+      .. path /etc/cinder/cinder.conf
+      .. code-block:: ini
 
-        [DEFAULT]
-        # ...
-        transport_url = rabbit://openstack:RABBIT_PASS@controller
+         [DEFAULT]
+         # ...
+         transport_url = rabbit://openstack:RABBIT_PASS@controller
 
-     Replace ``RABBIT_PASS`` with the password you chose for the
-     ``openstack`` account in ``RabbitMQ``.
+      Replace ``RABBIT_PASS`` with the password you chose for the
+      ``openstack`` account in ``RabbitMQ``.
 
    #. In the ``[DEFAULT]`` and ``[keystone_authtoken]`` sections,
       configure Identity service access:
