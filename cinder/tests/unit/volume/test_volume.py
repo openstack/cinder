@@ -1524,18 +1524,15 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                 volume_dst['encryption_key_id'])
         self.assertEqual(volume_src_key, volume_dst_key)
 
-    def test_delete_encrypted_volume(self):
-        self.volume_params['status'] = 'active'
+    def test_delete_invalid_status_fails(self):
+        self.volume_params['status'] = 'invalid1234'
         volume = tests_utils.create_volume(self.context,
                                            **self.volume_params)
         vol_api = cinder.volume.api.API()
-        with mock.patch.object(
-                vol_api.key_manager,
-                'delete',
-                side_effect=Exception):
-            self.assertRaises(exception.InvalidVolume,
-                              vol_api.delete,
-                              self.context, volume)
+        self.assertRaises(exception.InvalidVolume,
+                          vol_api.delete,
+                          self.context,
+                          volume)
 
     def test_create_volume_from_snapshot_fail_bad_size(self):
         """Test volume can't be created from snapshot with bad volume size."""
