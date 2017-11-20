@@ -142,7 +142,9 @@ class VolumeManageController(wsgi.Controller):
                                                          volume['ref'],
                                                          **kwargs)
         except exception.ServiceNotFound:
-            msg = _("Host '%s' not found") % volume['host']
+            msg = _("%(name)s '%(value)s' not found") % {
+                'name': 'Host' if host else 'Cluster',
+                'value': host or cluster_name}
             raise exception.ServiceUnavailable(message=msg)
 
         utils.add_visible_admin_metadata(new_volume)
