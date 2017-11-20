@@ -113,6 +113,12 @@ key_4:
   in: path
   required: true
   type: string
+key_5:
+  description: |
+    The key name of the encryption spec for a volume type.
+  in: path
+  required: true
+  type: string
 message_id:
   description: |
     The UUID of the message.
