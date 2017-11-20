@@ -264,11 +264,12 @@ class HPE3PARCommon(object):
         3.0.37 - Fixed image cache enabled capability. bug #1686985
         3.0.38 - Fixed delete operation of replicated volume which is part
                  of QOS. bug #1717875
+        3.0.39 - Added check to modify host after volume detach. bug #1730720
 
 
     """
 
-    VERSION = "3.0.38"
+    VERSION = "3.0.39"
 
     stats = {}
 
@@ -1495,14 +1496,14 @@ class HPE3PARCommon(object):
                               vlun_info['lun_id'],
                               nsp)
 
-    def delete_vlun(self, volume, hostname):
+    def delete_vlun(self, volume, hostname, wwn=None, iqn=None):
         volume_name = self._get_3par_vol_name(volume['id'])
         vluns = self.client.getHostVLUNs(hostname)
 
         # When deleteing VLUNs, you simply need to remove the template VLUN
         # and any active VLUNs will be automatically removed.  The template
         # VLUN are marked as active: False
-
+        modify_host = True
         volume_vluns = []
 
         for vlun in vluns:
@@ -1536,11 +1537,20 @@ class HPE3PARCommon(object):
             LOG.debug("All VLUNs removed from host %s", hostname)
             pass
 
+        if wwn is not None and not isinstance(wwn, list):
+            wwn = [wwn]
+        if iqn is not None and not isinstance(iqn, list):
+            iqn = [iqn]
+
         for vlun in vluns:
-            if volume_name not in vlun['volumeName']:
-                # Found another volume
-                break
-        else:
+            if vlun.get('active'):
+                if (wwn is not None and vlun.get('remoteName').lower() in wwn)\
+                    or (iqn is not None and vlun.get('remoteName').lower() in
+                        iqn):
+                    modify_host = False
+                    break
+
+        if len(vluns) == 0:
             # We deleted the last vlun, so try to delete the host too.
             # This check avoids the old unnecessary try/fail when vluns exist
             # but adds a minor race condition if a vlun is manually deleted
@@ -1561,6 +1571,22 @@ class HPE3PARCommon(object):
                 # The log info explains why the host was left alone.
                 LOG.info("3PAR vlun for volume '%(name)s' was deleted, "
                          "but the host '%(host)s' was not deleted "
+                         "because: %(reason)s",
+                         {'name': volume_name, 'host': hostname,
+                          'reason': ex.get_description()})
+        elif modify_host:
+            if wwn is not None:
+                mod_request = {'pathOperation': self.client.HOST_EDIT_REMOVE,
+                               'FCWWNs': wwn}
+            else:
+                mod_request = {'pathOperation': self.client.HOST_EDIT_REMOVE,
+                               'iSCSINames': iqn}
+
+            try:
+                self.client.modifyHost(hostname, mod_request)
+            except Exception as ex:
+                LOG.info("3PAR vlun for volume '%(name)s' was deleted, "
+                         "but the host '%(host)s' was not Modified "
                          "because: %(reason)s",
                          {'name': volume_name, 'host': hostname,
                           'reason': ex.get_description()})
@@ -2720,7 +2746,7 @@ class HPE3PARCommon(object):
             hostname = hosts['members'][0]['name']
 
         try:
-            self.delete_vlun(volume, hostname)
+            self.delete_vlun(volume, hostname, wwn=wwn, iqn=iqn)
             return
         except hpeexceptions.HTTPNotFound as e:
             if 'host does not exist' in e.get_description():
@@ -2750,7 +2776,7 @@ class HPE3PARCommon(object):
                 raise
 
         # try again with name retrieved from 3par
-        self.delete_vlun(volume, hostname)
+        self.delete_vlun(volume, hostname, wwn=wwn, iqn=iqn)
 
     def build_nsp(self, portPos):
         return '%s:%s:%s' % (portPos['node'],
