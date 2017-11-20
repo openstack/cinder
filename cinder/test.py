@@ -102,6 +102,15 @@ class TestCase(testtools.TestCase):
     MOCK_WORKER = True
     MOCK_TOOZ = True
 
+    def __init__(self, *args, **kwargs):
+        super(TestCase, self).__init__(*args, **kwargs)
+
+        # Suppress some log messages during test runs
+        castellan_logger = logging.getLogger('castellan')
+        castellan_logger.setLevel(logging.ERROR)
+        stevedore_logger = logging.getLogger('stevedore')
+        stevedore_logger.setLevel(logging.ERROR)
+
     def _get_joined_notifier(self, *args, **kwargs):
         # We create a new fake notifier but we join the notifications with
         # the default notifier
