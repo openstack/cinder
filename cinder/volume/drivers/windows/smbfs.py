@@ -92,7 +92,8 @@ CONF.set_default('reserved_percentage', 5)
 
 
 @interface.volumedriver
-class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
+class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
+                         remotefs_drv.RemoteFSPoolMixin,
                          remotefs_drv.RemoteFSSnapDriverDistributed):
     VERSION = VERSION
 
