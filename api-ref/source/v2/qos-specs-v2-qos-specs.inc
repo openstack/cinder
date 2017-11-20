@@ -158,9 +158,9 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - name: name
-   - links: links
-   - id: id
+   - name: name_4
+   - links: links_2
+   - id: id_3
    - qos_specs: qos_specs
    - consumer: consumer
    - specs: specs
@@ -247,7 +247,7 @@ Request
 
    - qos_specs: qos_specs
    - consumer: consumer
-   - name: name
+   - name: name_4
    - project_id: project_id_path
 
 Request Example
@@ -263,9 +263,9 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - name: name
-   - links: links
-   - id: id
+   - name: name_4
+   - links: links_2
+   - id: id_3
    - qos_specs: qos_specs
    - consumer: consumer
    - specs: specs
@@ -302,8 +302,8 @@ Response Parameters
    - specs: specs
    - qos_specs: qos_specs
    - consumer: consumer
-   - id: id
-   - name: name
+   - id: id_3
+   - name: name_4
 
 
 Response Example
