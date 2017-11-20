@@ -112,10 +112,11 @@ class HPE3PARFCDriver(driver.ManageableVD,
         3.0.11 - Handle manage and unmanage hosts present. bug #1648067
         3.0.12 - Adds consistency group capability in generic volume groups.
         3.0.13 - Create one vlun in single path configuration. bug #1727176
+        3.0.14 - Added check to remove FC zones. bug #1730720
 
     """
 
-    VERSION = "3.0.13"
+    VERSION = "3.0.14"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -381,10 +382,23 @@ class HPE3PARFCDriver(driver.ManageableVD,
             info = {'driver_volume_type': 'fibre_channel',
                     'data': {}}
 
+            zone_remove = True
+
             try:
-                common.client.getHostVLUNs(hostname)
+                vluns = common.client.getHostVLUNs(hostname)
             except hpeexceptions.HTTPNotFound:
                 # No more exports for this host.
+                pass
+            else:
+                # Vlun exists, so check for wwpn entry.
+                for wwpn in connector.get('wwpns'):
+                    for vlun in vluns:
+                        if vlun.get('active') and \
+                           vlun.get('remoteName') == wwpn.upper():
+                            zone_remove = False
+                            break
+
+            if zone_remove:
                 LOG.info("Need to remove FC Zone, building initiator "
                          "target map")
 
@@ -393,6 +407,7 @@ class HPE3PARFCDriver(driver.ManageableVD,
 
                 info['data'] = {'target_wwn': target_wwns,
                                 'initiator_target_map': init_targ_map}
+
             return info
 
         finally:
