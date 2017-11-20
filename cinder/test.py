@@ -311,7 +311,7 @@ class TestCase(testtools.TestCase):
         """Override CONF variables for a test."""
         group = kw.pop('group', None)
         for k, v in kw.items():
-            CONF.set_override(k, v, group)
+            self.override_config(k, v, group)
 
     def start_service(self, name, host=None, **kwargs):
         host = host if host else uuid.uuid4().hex
