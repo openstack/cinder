@@ -123,6 +123,10 @@ from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc as \
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_iscsi as \
     cinder_volume_drivers_ibm_storwize_svc_storwizesvciscsi
 from cinder.volume.drivers import infinidat as cinder_volume_drivers_infinidat
+from cinder.volume.drivers.inspur.instorage import instorage_common as \
+    cinder_volume_drivers_inspur_instorage_instoragecommon
+from cinder.volume.drivers.inspur.instorage import instorage_iscsi as \
+    cinder_volume_drivers_inspur_instorage_instorageiscsi
 from cinder.volume.drivers.kaminario import kaminario_common as \
     cinder_volume_drivers_kaminario_kaminariocommon
 from cinder.volume.drivers.lenovo import lenovo_common as \
@@ -241,6 +245,10 @@ def list_opts():
                 [cinder_volume_api.az_cache_time_opt],
                 cinder_volume_driver.volume_opts,
                 cinder_volume_driver.iser_opts,
+                cinder_volume_drivers_inspur_instorage_instoragecommon.
+                instorage_mcs_opts,
+                cinder_volume_drivers_inspur_instorage_instorageiscsi.
+                instorage_mcs_iscsi_opts,
                 cinder_volume_manager.volume_manager_opts,
                 cinder_wsgi_eventletserver.socket_opts,
             )),
