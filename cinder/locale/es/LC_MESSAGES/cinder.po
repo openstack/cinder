@@ -10,9 +10,9 @@
 # Jose Porrua <jose.porrua@netapp.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 11.0.0.0rc2.dev468\n"
+"Project-Id-Version: cinder 12.0.0.0b2.dev197\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-10-23 05:32+0000\n"
+"POT-Creation-Date: 2017-11-21 04:03+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -281,9 +281,6 @@ msgstr "Respuesta de la API: %s"
 msgid "API version %(version)s is not supported on this method."
 msgstr "La versión de la API %(version)s, no está soportada en este método."
 
-msgid "API version could not be determined."
-msgstr "No se ha podido determinar la versión de API."
-
 msgid ""
 "About to delete child projects having non-zero quota. This should not be "
 "performed"
@@ -428,13 +425,6 @@ msgstr "La zona de disponibilidad '%(s_az)s' no es válida."
 
 msgid "Available categories:"
 msgstr "Categorías disponibles:"
-
-msgid ""
-"Back-end QoS specs are not supported on this storage family and ONTAP "
-"version."
-msgstr ""
-"Las especificaciones QoS de programa de fondo no se admiten en esta familia "
-"de almacenamiento y versión ONTAP ."
 
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
@@ -1301,14 +1291,6 @@ msgid ""
 msgstr ""
 "Tiempo de espera excedido para DRBDmanage esperando el tamaño del volumen; "
 "ID de volumen \"%(id)s\" (res \"%(res)s\", vnr %(vnr)d)"
-
-msgid "Data ONTAP API version could not be determined."
-msgstr "No se ha podido determinar la versión de API de ONTAP de datos."
-
-msgid "Data ONTAP operating in 7-Mode does not support QoS policy groups."
-msgstr ""
-"Los datos ONTAP que funcionan en 7-Mode no dan soporte a los grupos de "
-"política QoS."
 
 #, python-format
 msgid "Dataset %s is not shared in Nexenta Store appliance"
@@ -4286,16 +4268,6 @@ msgstr ""
 "instantáneas %s."
 
 #, python-format
-msgid "No snapshots could be found on volume %s."
-msgstr "No se han podido encontrar instantáneas en el volumen %s."
-
-#, python-format
-msgid "No storage path found for export path %s"
-msgstr ""
-"No se ha encontrado ninguna vía de acceso de almacenamiento para la vía de "
-"acceso de exportación %s"
-
-#, python-format
 msgid "No such QoS spec %(specs_id)s."
 msgstr "No hay especificaciones de QoS %(specs_id)s."
 
@@ -4547,11 +4519,6 @@ msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
 msgstr ""
 "La especificación QoS %(specs_id)s no tiene especificación con clave "
 "%(specs_key)s."
-
-msgid "QoS specs are not supported on this storage family and ONTAP version."
-msgstr ""
-"Las especificaciones QoS no se admiten en esta familia de almacenamiento y "
-"versión ONTAP."
 
 msgid "Qos specs still in use."
 msgstr "Especificaciones de QoS aún en uso."
@@ -4930,20 +4897,6 @@ msgstr "Error al definir el acceso secundario del par."
 
 msgid "Sets thin provisioning."
 msgstr "Establece suministro ligero."
-
-msgid ""
-"Setting LUN QoS policy group is not supported on this storage family and "
-"ONTAP version."
-msgstr ""
-"No se admite el establecimiento del grupo de política de calidad de servicio "
-"de LUN en esta familia de almacenamiento y versión de ONTAP."
-
-msgid ""
-"Setting file qos policy group is not supported on this storage family and "
-"ontap version."
-msgstr ""
-"No se admite el establecimiento del grupo de política de calidad de servicio "
-"del archivo en esta familia de almacenamiento y versión de ontap."
 
 #, python-format
 msgid ""
@@ -5814,6 +5767,15 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Unable to retype: Current action needs volume-copy, it is not allowed when "
+"new type is replication. Volume = %s"
+msgstr ""
+"No se ha podido volver a escribir: la acción requiere una copia de volumen "
+"(volume-copy), que no se permite cuando el nuevo tipo es replicación. "
+"Volumen = %s"
+
+#, python-format
+msgid ""
 "Unable to set up mirror mode replication for %(vol)s. Exception: %(err)s."
 msgstr ""
 "No se ha podido configurar la replicación en modo reflejo para %(vol)s. "
@@ -5964,13 +5926,6 @@ msgstr "Valor de read_deleted no reconocido '%s'"
 
 msgid "Unsupported Content-Type"
 msgstr "Tipo de contenido no soportado"
-
-msgid ""
-"Unsupported Data ONTAP version. Data ONTAP version 7.3.1 and above is "
-"supported."
-msgstr ""
-"Versión de ONTAP de datos no soportada. Hay soporte para la versión de ONTAP "
-"de datos 7.3.1 y posterior."
 
 #, python-format
 msgid "Unsupported backup metadata version (%s)"
@@ -7076,6 +7031,15 @@ msgstr ""
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "create_cloned_volume: el tamaño de origen y de destino son distintos."
 
+#, python-format
+msgid ""
+"create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
+"doesn't fit in target volume %(tgt_vol)s of size %(tgt_size)dGB."
+msgstr ""
+"create_cloned_volume: el tamaño del volumen de origen %(src_vol)s es "
+"%(src_size)dGB y no cabe en el volumen de destino %(tgt_vol)s of size "
+"%(tgt_size)dGB."
+
 msgid ""
 "create_consistencygroup_from_src only supports a cgsnapshot source or a "
 "consistency group source. Multiple sources cannot be used."
@@ -7094,6 +7058,9 @@ msgstr "create_copy: el disco virtual de origen %(src)s no existe."
 
 msgid "create_host: Host name is not unicode or string."
 msgstr "create_host: El nombre de host no está en Unicode ni es una serie."
+
+msgid "create_host: No initiators or wwpns supplied."
+msgstr "create_host: No se han proporcionado iniciadores o wwpns."
 
 msgid "create_hypermetro_pair error."
 msgstr "Error de  create_hypermetro_pair."
@@ -7283,16 +7250,6 @@ msgstr "ficticio"
 
 msgid "fileno is not supported by SheepdogIOWrapper"
 msgstr "fileno no admitido por SheepdogIOWrapper"
-
-msgid ""
-"flashsystem_multihostmap_enabled is set to False, not allow multi host "
-"mapping. CMMVC6071E The VDisk-to-host mapping was not created because the "
-"VDisk is already mapped to a host."
-msgstr ""
-"flashsystem_multihostmap_enabled está establecido en False y no permite la "
-"correlación de varios hosts. CMMVC6071E La correlación de disco virtual a "
-"host no se ha creado, ya que el disco virtual ya está correlacionado con un "
-"host."
 
 #, python-format
 msgid "fmt=%(fmt)s backed by: %(backing_file)s"

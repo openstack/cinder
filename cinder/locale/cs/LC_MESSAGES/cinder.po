@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 11.0.0.0rc2.dev468\n"
+"Project-Id-Version: cinder 12.0.0.0b2.dev197\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-10-23 05:32+0000\n"
+"POT-Creation-Date: 2017-11-21 04:03+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -250,9 +250,6 @@ msgstr "Odpověď API: %s"
 msgid "API version %(version)s is not supported on this method."
 msgstr "API s verzí %(version)s není v této metodě podporován."
 
-msgid "API version could not be determined."
-msgstr "Nelze zjistit verzi API."
-
 msgid ""
 "About to delete child projects having non-zero quota. This should not be "
 "performed"
@@ -363,13 +360,6 @@ msgstr "Zóna dostupnosti '%(s_az)s' je neplatná."
 
 msgid "Available categories:"
 msgstr "Dostupné kategorie:"
-
-msgid ""
-"Back-end QoS specs are not supported on this storage family and ONTAP "
-"version."
-msgstr ""
-"Specifikace QoS podpůrné vrstvy nejsou podporovány u tohoto druhu úložišť a "
-"verze ONTAP."
 
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
@@ -974,12 +964,6 @@ msgstr ""
 #, python-format
 msgid "DRBDmanage expected one resource (\"%(res)s\"), got %(n)d"
 msgstr "DRBDmanage očekával jeden zdroj (\"%(res)s\"), obdrženo %(n)d"
-
-msgid "Data ONTAP API version could not be determined."
-msgstr "Nelze zjistit verzi API Data ONTAP."
-
-msgid "Data ONTAP operating in 7-Mode does not support QoS policy groups."
-msgstr "Data ONTAP pracuje v režimu 7, který nepodporuje skupiny zásad QoS."
 
 #, python-format
 msgid ""
@@ -3355,10 +3339,6 @@ msgid "No snapshot image found in snapshot group %s."
 msgstr "Obraz snímku nebyl nalezen ve skupině snímku %s."
 
 #, python-format
-msgid "No storage path found for export path %s"
-msgstr "Nenalezena žádná cesta úložiště pro cestu exportu %s"
-
-#, python-format
 msgid "No such QoS spec %(specs_id)s."
 msgstr "Žádné takové specifikace QoS: %(specs_id)s."
 
@@ -3547,10 +3527,6 @@ msgstr "Specifikace QoS %(specs_id)s je stále přidružena k entitám."
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
 msgstr ""
 "Specifikace QoS %(specs_id)s nemají specifikace s klíčem %(specs_key)s."
-
-msgid "QoS specs are not supported on this storage family and ONTAP version."
-msgstr ""
-"Specifikace QoS nejsou podporovány u tohoto druhu úložišť a verze ONTAP."
 
 msgid "Qos specs still in use."
 msgstr "Specifikace QoS se stále používá."
@@ -3821,20 +3797,6 @@ msgstr "Služba je v tuto chvíli nedostupná."
 
 msgid "Sets thin provisioning."
 msgstr "Nastaví mělké poskytování."
-
-msgid ""
-"Setting LUN QoS policy group is not supported on this storage family and "
-"ONTAP version."
-msgstr ""
-"Nastavení skupin zásad QoS LUN není podporováno u tohoto druhu úložišť a "
-"verze ONTAP."
-
-msgid ""
-"Setting file qos policy group is not supported on this storage family and "
-"ontap version."
-msgstr ""
-"Nastavení souboru skupiny zásad QoS není podporováno u tohoto druhu úložišť "
-"a verze ONTAP."
 
 #, python-format
 msgid ""
@@ -4453,6 +4415,14 @@ msgstr ""
 "Nezle přetypovat: Kopie svazku %s již existuje, Přetypování by překročilo "
 "omezení 2 kopií."
 
+#, python-format
+msgid ""
+"Unable to retype: Current action needs volume-copy, it is not allowed when "
+"new type is replication. Volume = %s"
+msgstr ""
+"Nezle přetypovat: Současná činnost vyžaduje kopii svazku, není povoleno, "
+"pokud je nový typ replikace. Svazek = %s"
+
 msgid "Unable to terminate volume connection from backend."
 msgstr "Nelze ukončit připojení svazku v podpůrné vrstvě."
 
@@ -4534,11 +4504,6 @@ msgstr "Nerozpoznaná hodnota read_deleted '%s'"
 
 msgid "Unsupported Content-Type"
 msgstr "Nepodporovaný Content-Type"
-
-msgid ""
-"Unsupported Data ONTAP version. Data ONTAP version 7.3.1 and above is "
-"supported."
-msgstr "Nepodporovaná verze Data ONTAP. Podporované jsou verze 7.3.1 a vyšší."
 
 #, python-format
 msgid "Unsupported backup metadata version (%s)"
@@ -5245,6 +5210,9 @@ msgstr "Vytvoření kopie: Zdrojový virtuální disk %(src)s neexistuje."
 msgid "create_host: Host name is not unicode or string."
 msgstr "Vytvoření hostitele: Název není unicode nebo řetězec."
 
+msgid "create_host: No initiators or wwpns supplied."
+msgstr "Vytvoření hostitele: Nepředány žádné zavaděče nebo wwpns."
+
 msgid "create_hypermetro_pair error."
 msgstr "Chyba při vytváření páru hypermetro."
 
@@ -5327,15 +5295,6 @@ msgstr "falešný"
 
 msgid "fileno is not supported by SheepdogIOWrapper"
 msgstr "fileno nepodporuje SheepdogIOWrapper"
-
-msgid ""
-"flashsystem_multihostmap_enabled is set to False, not allow multi host "
-"mapping. CMMVC6071E The VDisk-to-host mapping was not created because the "
-"VDisk is already mapped to a host."
-msgstr ""
-"flashsystem_multihostmap_enabled je nastaven na False, neumožňující mapování "
-"více hostitelů. CMMVC6071E, mapování virtuálního disku na hostitele nebylo "
-"vytvořeno protože disk k hostiteli již je namapován."
 
 #, python-format
 msgid "fmt=%(fmt)s backed by: %(backing_file)s"

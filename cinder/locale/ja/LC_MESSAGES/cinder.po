@@ -11,9 +11,9 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 11.0.0.0rc2.dev468\n"
+"Project-Id-Version: cinder 12.0.0.0b2.dev197\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-10-23 05:32+0000\n"
+"POT-Creation-Date: 2017-11-21 04:03+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -350,9 +350,6 @@ msgstr "API 応答: %s"
 msgid "API version %(version)s is not supported on this method."
 msgstr "このメソッドでは API バージョン %(version)s はサポートされていません。"
 
-msgid "API version could not be determined."
-msgstr "API バージョンを判別できませんでした。"
-
 msgid ""
 "About to delete child projects having non-zero quota. This should not be "
 "performed"
@@ -547,13 +544,6 @@ msgstr "アベイラビリティーゾーン '%(s_az)s' は無効です。"
 
 msgid "Available categories:"
 msgstr "使用可能カテゴリー:"
-
-msgid ""
-"Back-end QoS specs are not supported on this storage family and ONTAP "
-"version."
-msgstr ""
-"バックエンド QoS 仕様はこのストレージファミリーおよび ONTAP バージョンでサ"
-"ポートされません。"
 
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
@@ -1650,13 +1640,6 @@ msgid ""
 msgstr ""
 "DRBDmanage でボリュームサイズの待機のタイムアウトが発生しました。ボリューム "
 "ID \"%(id)s\" (res \"%(res)s\"、vnr %(vnr)d)"
-
-msgid "Data ONTAP API version could not be determined."
-msgstr "データ ONTAP API バージョンを判別できませんでした。"
-
-msgid "Data ONTAP operating in 7-Mode does not support QoS policy groups."
-msgstr ""
-"7-Mode で動作する Data ONTAP は QoS ポリシーグループをサポートしません。"
 
 #, python-format
 msgid "Dataset %s is not shared in Nexenta Store appliance"
@@ -5037,10 +5020,6 @@ msgstr "%s の正しい iscsi ポータルが見つかりません。"
 msgid "No group snapshot with id %s"
 msgstr "id %s のグループスナップショットは存在しません。"
 
-#, python-format
-msgid "No host to create group %s."
-msgstr "グループ %s を作成するためのホストがありません。"
-
 msgid "No iSCSI-enabled ports on target array."
 msgstr "ターゲット配列に iSCSI に対応するポートがありません。"
 
@@ -5097,20 +5076,12 @@ msgid "No snapshot image found in snapshot group %s."
 msgstr ""
 "スナップショットグループ %s にスナップショットイメージが見つかりません。"
 
-#, python-format
-msgid "No snapshots could be found on volume %s."
-msgstr "ボリューム %s でスナップショットを見つけることができませんでした。"
-
 msgid ""
 "No storage could be allocated for this volume request. You may be able to "
 "try another size or volume type."
 msgstr ""
 "このボリュームのリクエストに対して、ストレージを割り当てられませんでした。サ"
 "イズやボリューム種別を変更して試すことができるかもしれません。"
-
-#, python-format
-msgid "No storage path found for export path %s"
-msgstr "エクスポートパス %s 用のストレージパスが見つかりません"
 
 #, python-format
 msgid "No such QoS spec %(specs_id)s."
@@ -5406,11 +5377,6 @@ msgstr ""
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
 msgstr ""
 "QoS 仕様 %(specs_id)s には、キー %(specs_key)s を持つ仕様はありません。"
-
-msgid "QoS specs are not supported on this storage family and ONTAP version."
-msgstr ""
-"QoS 仕様はこのストレージファミリーおよび ONTAP バージョンでサポートされませ"
-"ん。"
 
 msgid "Qos specs still in use."
 msgstr "Qos 仕様はまだ使用中です。"
@@ -5846,20 +5812,6 @@ msgstr "ペアのセカンダリーアクセス設定のエラー。"
 
 msgid "Sets thin provisioning."
 msgstr "シンプロビジョニングを設定します。"
-
-msgid ""
-"Setting LUN QoS policy group is not supported on this storage family and "
-"ONTAP version."
-msgstr ""
-"LUN QoS ポリシーグループの設定は、このストレージファミリーおよび ONTAP バー"
-"ジョンではサポートされていません。"
-
-msgid ""
-"Setting file qos policy group is not supported on this storage family and "
-"ontap version."
-msgstr ""
-"ファイル qos ポリシーグループの設定は、このストレージファミリーおよびontap "
-"バージョンではサポートされていません。"
 
 msgid ""
 "Setup is incomplete. Device mapping not found from FC network. Cannot "
@@ -7000,6 +6952,14 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Unable to retype: Current action needs volume-copy, it is not allowed when "
+"new type is replication. Volume = %s"
+msgstr ""
+"種別変更ができません: 現行アクションにはボリュームコピーが必要ですが、新しい"
+"タイプが複製の場合は許可されません。ボリューム = %s"
+
+#, python-format
+msgid ""
 "Unable to set up mirror mode replication for %(vol)s. Exception: %(err)s."
 msgstr ""
 "%(vol)s のミラーモードレプリケーションをセットアップできません。例外: "
@@ -7157,13 +7117,6 @@ msgstr "認識されない read_deleted 値 '%s'"
 
 msgid "Unsupported Content-Type"
 msgstr "サポートされない Content-Type"
-
-msgid ""
-"Unsupported Data ONTAP version. Data ONTAP version 7.3.1 and above is "
-"supported."
-msgstr ""
-"サポートされない Data ONTAP バージョンです。Data ONTAP バージョン 7.3.1 以上"
-"がサポートされています。"
 
 #, python-format
 msgid "Unsupported backup metadata version (%s)"
@@ -8444,6 +8397,15 @@ msgstr ""
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "create_cloned_volume: ソースと宛先のサイズが異なっています。"
 
+#, python-format
+msgid ""
+"create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
+"doesn't fit in target volume %(tgt_vol)s of size %(tgt_size)dGB."
+msgstr ""
+"create_cloned_volume: ソースボリューム %(src_vol)s のサイズは %(src_size)dGB "
+"で、サイズ %(tgt_size)dGBand のターゲットボリューム %(tgt_vol)s に適合しませ"
+"ん。"
+
 msgid ""
 "create_consistencygroup_from_src only supports a cgsnapshot source or a "
 "consistency group source. Multiple sources cannot be used."
@@ -8461,6 +8423,9 @@ msgstr "create_copy: ソース vdisk %(src)s は存在しません。"
 
 msgid "create_host: Host name is not unicode or string."
 msgstr "create_host: ホスト名は Unicode でもバイト文字列でもありません。"
+
+msgid "create_host: No initiators or wwpns supplied."
+msgstr "create_host: イニシエーターも wwpn も指定されていません。"
 
 msgid "create_hypermetro_pair error."
 msgstr "create_hypermetro_pair エラー。"
@@ -8563,6 +8528,16 @@ msgstr ""
 "create_volume_from_snapshot: ボリュームサイズが、スナップショットベースボ"
 "リュームと異なります。"
 
+#, python-format
+msgid ""
+"create_volume_from_snapshot: snapshot %(snapshot_name)s size is "
+"%(snapshot_size)dGB and doesn't fit in target volume %(volume_name)s of size "
+"%(volume_size)dGB."
+msgstr ""
+"create_volume_from_snapshot: スナップショット %(snapshot_name)s のサイズは "
+"%(snapshot_size)dGB で、ターゲットボリューム %(volume_name)s のサイズ "
+"%(volume_size)dGB に適合しません。"
+
 msgid "data not found"
 msgstr "データが見つかりません。"
 
@@ -8664,15 +8639,6 @@ msgstr "偽"
 
 msgid "fileno is not supported by SheepdogIOWrapper"
 msgstr "SheepdogIOWrapper は fileno をサポートしません。"
-
-msgid ""
-"flashsystem_multihostmap_enabled is set to False, not allow multi host "
-"mapping. CMMVC6071E The VDisk-to-host mapping was not created because the "
-"VDisk is already mapped to a host."
-msgstr ""
-"flashsystem_multihostmap_enabled は False に設定されています。マルチホスト"
-"マッピングは許可されていません。CMMVC6071E VDisk は既にホストにマッピングされ"
-"ているため、VDisk からホストへのマッピングは作成されませんでした。"
 
 #, python-format
 msgid "fmt=%(fmt)s backed by: %(backing_file)s"

@@ -17,9 +17,9 @@
 # howard lee <howard@mail.ustc.edu.cn>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 11.0.0.0rc2.dev468\n"
+"Project-Id-Version: cinder 12.0.0.0b2.dev197\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-10-23 05:32+0000\n"
+"POT-Creation-Date: 2017-11-21 04:03+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -330,9 +330,6 @@ msgstr "API 响应：%s"
 msgid "API version %(version)s is not supported on this method."
 msgstr "API 版本 %(version)s 在此方法上不受支持。"
 
-msgid "API version could not be determined."
-msgstr "未能确定 API 版本。"
-
 msgid ""
 "About to delete child projects having non-zero quota. This should not be "
 "performed"
@@ -498,11 +495,6 @@ msgstr "可用性区域“%(s_az)s”无效。"
 
 msgid "Available categories:"
 msgstr "可用的类别："
-
-msgid ""
-"Back-end QoS specs are not supported on this storage family and ONTAP "
-"version."
-msgstr "在此存储器系列和 ONTAP 版本上，后端 QoS 规范不受支持。"
 
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
@@ -1441,12 +1433,6 @@ msgid ""
 "\"%(res)s\", vnr %(vnr)d)"
 msgstr ""
 "DRBDmanage 等待卷大小时超时；卷标识“%(id)s”（res \"%(res)s\"，vnr %(vnr)d）"
-
-msgid "Data ONTAP API version could not be determined."
-msgstr "未能确定数据 ONTAP API 版本。"
-
-msgid "Data ONTAP operating in 7-Mode does not support QoS policy groups."
-msgstr "以 7 方式运行的 Data ONTAP 不支持 QoS 策略组。"
 
 #, python-format
 msgid "Dataset %s is not shared in Nexenta Store appliance"
@@ -4343,10 +4329,6 @@ msgstr "对于 %s，找不到任何有用的 iSCSI 门户网站。"
 msgid "No group snapshot with id %s"
 msgstr "不存在任何具有标识 %s 的组快照"
 
-#, python-format
-msgid "No host to create group %s."
-msgstr "没有任何主机用于创建组 %s。"
-
 msgid "No iSCSI-enabled ports on target array."
 msgstr "目标阵列上没有可支持 iSCSI 的端口。"
 
@@ -4398,18 +4380,10 @@ msgstr "在将 %s 作为支持文件的情况下，找不到任何 snap。"
 msgid "No snapshot image found in snapshot group %s."
 msgstr "在快照组 %s 中，找不到快照映像。"
 
-#, python-format
-msgid "No snapshots could be found on volume %s."
-msgstr "在卷 %s 上找不到快照。"
-
 msgid ""
 "No storage could be allocated for this volume request. You may be able to "
 "try another size or volume type."
 msgstr "无法为该卷请求分配存储。可以尝试其他大小或卷类型。"
-
-#, python-format
-msgid "No storage path found for export path %s"
-msgstr "对于导出路径 %s，找不到存储路径"
 
 #, python-format
 msgid "No such QoS spec %(specs_id)s."
@@ -4641,9 +4615,6 @@ msgstr ""
 #, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
 msgstr "QoS 规范 %(specs_id)s 没有任何具有键 %(specs_key)s 的规范。"
-
-msgid "QoS specs are not supported on this storage family and ONTAP version."
-msgstr "在此存储器系列和 ONTAP 版本上，QoS 规范不受支持。"
 
 msgid "Qos specs still in use."
 msgstr "Qos 规范仍在使用中。"
@@ -5008,16 +4979,6 @@ msgstr "设置对辅助访问时出错。"
 
 msgid "Sets thin provisioning."
 msgstr "设置自动精简配置。"
-
-msgid ""
-"Setting LUN QoS policy group is not supported on this storage family and "
-"ONTAP version."
-msgstr "不支持对此存储器系列和 ONTAP 版本设置 LUN QoS 策略组。"
-
-msgid ""
-"Setting file qos policy group is not supported on this storage family and "
-"ontap version."
-msgstr "不支持对此存储器系列和 ONTAP 版本设置文件 QoS 策略组。"
 
 #, python-format
 msgid ""
@@ -5927,6 +5888,12 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Unable to retype: Current action needs volume-copy, it is not allowed when "
+"new type is replication. Volume = %s"
+msgstr "无法转型：当前操作需要卷拷贝，当新类型为复制时，不允许卷拷贝。卷为 %s"
+
+#, python-format
+msgid ""
 "Unable to set up mirror mode replication for %(vol)s. Exception: %(err)s."
 msgstr "无法对 %(vol)s 设置镜像方式复制。异常：%(err)s。"
 
@@ -6066,11 +6033,6 @@ msgstr "无法识别的 read_deleted 取值”%s“"
 
 msgid "Unsupported Content-Type"
 msgstr "不支持的Content-Type"
-
-msgid ""
-"Unsupported Data ONTAP version. Data ONTAP version 7.3.1 and above is "
-"supported."
-msgstr "不支持该数据 ONTAP 版本。支持数据 ONTAP V7.3.1 和更高版本。"
 
 #, python-format
 msgid "Unsupported backup metadata version (%s)"
@@ -7223,6 +7185,14 @@ msgstr ""
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "create_cloned_volume：源和目标大小不同。"
 
+#, python-format
+msgid ""
+"create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
+"doesn't fit in target volume %(tgt_vol)s of size %(tgt_size)dGB."
+msgstr ""
+"create_cloned_volume：源卷 %(src_vol)s 大小为 %(src_size)dGB，无法拟合大小为 "
+"%(tgt_size)dGB 的目标卷 %(tgt_vol)s。"
+
 msgid ""
 "create_consistencygroup_from_src only supports a cgsnapshot source or a "
 "consistency group source. Multiple sources cannot be used."
@@ -7240,6 +7210,9 @@ msgstr "create_copy：源 vdisk %(src)s 不存在。"
 
 msgid "create_host: Host name is not unicode or string."
 msgstr "create_host：主机名不是 Unicode 或字符串。"
+
+msgid "create_host: No initiators or wwpns supplied."
+msgstr "create_host：未提供任何发起方或 wwpn。"
 
 msgid "create_hypermetro_pair error."
 msgstr "create_hypermetro_pair 错误。"
@@ -7423,14 +7396,6 @@ msgstr "fake"
 
 msgid "fileno is not supported by SheepdogIOWrapper"
 msgstr "SheepdogIOWrapper 不支持 fileno"
-
-msgid ""
-"flashsystem_multihostmap_enabled is set to False, not allow multi host "
-"mapping. CMMVC6071E The VDisk-to-host mapping was not created because the "
-"VDisk is already mapped to a host."
-msgstr ""
-"flashsystem_multihostmap_enabled 设置为 False，因而不允许多主机映射。"
-"CMMVC6071E 该 VDisk 至主机的映射未创建，因为该 VDisk 已映射到某个主机。"
 
 #, python-format
 msgid "fmt=%(fmt)s backed by: %(backing_file)s"

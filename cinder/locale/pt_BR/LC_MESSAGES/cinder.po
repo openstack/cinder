@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 11.0.0.0rc2.dev468\n"
+"Project-Id-Version: cinder 12.0.0.0b2.dev197\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-10-23 05:32+0000\n"
+"POT-Creation-Date: 2017-11-21 04:03+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -270,9 +270,6 @@ msgstr "Resposta da API: %s"
 msgid "API version %(version)s is not supported on this method."
 msgstr "A versão da API %(version)s não é suportada nesse método."
 
-msgid "API version could not be determined."
-msgstr "A versão da API não pôde ser determinada."
-
 msgid ""
 "About to delete child projects having non-zero quota. This should not be "
 "performed"
@@ -412,13 +409,6 @@ msgstr "A zona de disponibilidade '%(s_az)s' é inválida."
 
 msgid "Available categories:"
 msgstr "Categorias disponíveis:"
-
-msgid ""
-"Back-end QoS specs are not supported on this storage family and ONTAP "
-"version."
-msgstr ""
-"As especificações de QoS backend não são suportadas nesta família de "
-"armazenamento e versão ONTAP. "
 
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
@@ -1258,13 +1248,6 @@ msgid ""
 msgstr ""
 "Tempo limite de DRBDmanage ao aguardar o tamanho do volume; ID de volume "
 "\"%(id)s\" (res \"%(res)s\", vnr %(vnr)d)"
-
-msgid "Data ONTAP API version could not be determined."
-msgstr "A versão da API do Data ONTAP não pôde ser determinada."
-
-msgid "Data ONTAP operating in 7-Mode does not support QoS policy groups."
-msgstr ""
-"A operação ONTAP de dados em Modo 7 não suporta grupos de política de QoS."
 
 #, python-format
 msgid "Dataset %s is not shared in Nexenta Store appliance"
@@ -4127,15 +4110,6 @@ msgstr ""
 "instantâneas %s."
 
 #, python-format
-msgid "No snapshots could be found on volume %s."
-msgstr "Nenhuma captura instantânea pôde ser localizada no volume %s."
-
-#, python-format
-msgid "No storage path found for export path %s"
-msgstr ""
-"Nenhum caminho do armazenamento localizado para o caminho de exportação %s"
-
-#, python-format
 msgid "No such QoS spec %(specs_id)s."
 msgstr "Sem spec QoS %(specs_id)s."
 
@@ -4365,11 +4339,6 @@ msgstr ""
 #, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
 msgstr "Especificação QoS %(specs_id)s não tem spec com chave %(specs_key)s."
-
-msgid "QoS specs are not supported on this storage family and ONTAP version."
-msgstr ""
-"Especificações de QoS não são suportadas nesta família de armazenamento e "
-"versão de ONTAP."
 
 msgid "Qos specs still in use."
 msgstr "Qos specs ainda em uso."
@@ -4726,20 +4695,6 @@ msgstr "Erro de configuração de acesso secundário do par."
 
 msgid "Sets thin provisioning."
 msgstr "Configura thin provisioning."
-
-msgid ""
-"Setting LUN QoS policy group is not supported on this storage family and "
-"ONTAP version."
-msgstr ""
-"Configurar o grupo de política de LUN QoS não é suportado nesta família de "
-"armazenamento e versão de ONTAP."
-
-msgid ""
-"Setting file qos policy group is not supported on this storage family and "
-"ontap version."
-msgstr ""
-"Configurar o grupo de política de arquivo qos não é suportado nesta família "
-"de armazenamento e versão de ONTAP."
 
 #, python-format
 msgid ""
@@ -5592,6 +5547,14 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Unable to retype: Current action needs volume-copy, it is not allowed when "
+"new type is replication. Volume = %s"
+msgstr ""
+"Não é possível digitar novamente: A ação atual precisa de cópia de volume, "
+"isso não é permitido quando a nova digitação for a replicação. Volume = %s"
+
+#, python-format
+msgid ""
 "Unable to set up mirror mode replication for %(vol)s. Exception: %(err)s."
 msgstr ""
 "Não é possível configurar a replicação de modo de espelho para %(vol)s. "
@@ -5740,13 +5703,6 @@ msgstr "Valor read_deleted não reconhecido '%s'"
 
 msgid "Unsupported Content-Type"
 msgstr "Tipo de Conteúdo Não Suportado"
-
-msgid ""
-"Unsupported Data ONTAP version. Data ONTAP version 7.3.1 and above is "
-"supported."
-msgstr ""
-"Versão do Data ONTAP não suportada. Data ONTAP versão 7.3.1 e acima são "
-"suportados."
 
 #, python-format
 msgid "Unsupported backup metadata version (%s)"
@@ -6814,6 +6770,15 @@ msgstr ""
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "create_cloned_volume: Os tamanhos de origem e destino diferem."
 
+#, python-format
+msgid ""
+"create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
+"doesn't fit in target volume %(tgt_vol)s of size %(tgt_size)dGB."
+msgstr ""
+"create_cloned_volume: O tamanho do volume de origem %(src_vol)s é "
+"%(src_size)dGB e não cabe no volume de destino %(tgt_vol)s de tamanho "
+"%(tgt_size)dGB."
+
 msgid ""
 "create_consistencygroup_from_src only supports a cgsnapshot source or a "
 "consistency group source. Multiple sources cannot be used."
@@ -6831,6 +6796,9 @@ msgstr "create_copy: Vdisk de origem %(src)s não existe."
 
 msgid "create_host: Host name is not unicode or string."
 msgstr "create_host: Nome do host não é unicode ou sequência."
+
+msgid "create_host: No initiators or wwpns supplied."
+msgstr "create_host: Nenhum inicializador ou wwpns fornecido."
 
 msgid "create_hypermetro_pair error."
 msgstr "Erro de create_hypermetro_pair."
@@ -7011,15 +6979,6 @@ msgstr "falso"
 
 msgid "fileno is not supported by SheepdogIOWrapper"
 msgstr "fileno não é suportado pelo SheepdogIOWrapper"
-
-msgid ""
-"flashsystem_multihostmap_enabled is set to False, not allow multi host "
-"mapping. CMMVC6071E The VDisk-to-host mapping was not created because the "
-"VDisk is already mapped to a host."
-msgstr ""
-"flashsystem_multihostmap_enabled está configurado para False, não permite "
-"vários mapeamentos de host. CMMVC6071E O mapeamento de VDisk para host não "
-"foi criado porque o VDisk já está mapeado para um host."
 
 #, python-format
 msgid "fmt=%(fmt)s backed by: %(backing_file)s"
