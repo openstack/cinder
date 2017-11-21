@@ -813,8 +813,15 @@ class API(base.Base):
             context, volume, name,
             description, force, metadata, cgsnapshot_id,
             True, group_snapshot_id)
-        self.volume_rpcapi.create_snapshot(context, volume, snapshot)
-
+        # NOTE(tommylikehu): We only wrap the 'size' attribute here
+        # because only the volume's host is passed and only capacity is
+        # validated in the scheduler now.
+        kwargs = {'snapshot_id': snapshot.id,
+                  'volume_properties': objects.VolumeProperties(
+                      size=volume.size)}
+        self.scheduler_rpcapi.create_snapshot(context, volume, snapshot,
+                                              volume.service_topic_queue,
+                                              objects.RequestSpec(**kwargs))
         return snapshot
 
     def create_snapshot_in_db(self, context,
