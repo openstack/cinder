@@ -1,0 +1,5 @@
+---
+fixes:
+  - Dell EMC PS Series Driver code was creating duplicate ACL records during
+    live migration. Fixes the initialize_connection code to not create access
+    record for a host if one exists previously. This change fixes bug 1726591.
