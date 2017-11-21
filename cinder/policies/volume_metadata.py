@@ -99,10 +99,6 @@ volume_metadata_policies = [
             },
             {
                 'method': 'POST',
-                'path': '/volumes/{volume_id}/action (os-show_image_metadata)'
-            },
-            {
-                'method': 'POST',
                 'path': '/volumes/{volume_id}/action (os-unset_image_metadata)'
             }
         ]),
