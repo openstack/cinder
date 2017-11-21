@@ -25,7 +25,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_type_id: group_type_id
+   - group_type_id: group_type_id_1
    - group_type: group_type
    - name: name_16
    - description: description_12
@@ -74,7 +74,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_type_id: group_type_id
+   - group_type_id: group_type_id_1
 
 
 Response Parameters
@@ -114,7 +114,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - group_type_id: group_type_id
+   - group_type_id: group_type_id_1
    - project_id: project_id_path
 
 
