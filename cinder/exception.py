@@ -1336,3 +1336,7 @@ class ErrorInParsingArguments(VolumeDriverException):
 # GPFS driver
 class GPFSDriverUnsupportedOperation(VolumeBackendAPIException):
     message = _("GPFS driver unsupported operation: %(msg)s")
+
+
+class InvalidName(Invalid):
+    message = _("An invalid 'name' value was provided. %(reason)s")
