@@ -24,6 +24,11 @@ from cinder.volume.flows.api import manage_existing
 from cinder.volume.flows import common as flow_common
 from cinder.volume.flows.manager import manage_existing as manager
 
+if hasattr(inspect, 'getfullargspec'):
+    getargspec = inspect.getfullargspec
+else:
+    getargspec = inspect.getargspec
+
 
 class ManageVolumeFlowTestCase(test.TestCase):
 
@@ -150,10 +155,10 @@ class ManageVolumeFlowTestCase(test.TestCase):
                 for p in task.default_provides:
                     provides.add(p)
 
-            execute_args = inspect.getargspec(task.execute)[0]
+            execute_args = getargspec(task.execute)[0]
             execute_args = [x for x in execute_args if x not in provides]
             [self.assertIn(arg, param_names) for arg in execute_args]
 
-            revert_args = inspect.getargspec(task.revert)[0]
+            revert_args = getargspec(task.revert)[0]
             revert_args = [x for x in revert_args if x not in revert_provides]
             [self.assertIn(arg, param_names) for arg in revert_args]

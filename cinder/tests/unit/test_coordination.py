@@ -22,6 +22,11 @@ import tooz.locking
 from cinder import coordination
 from cinder import test
 
+if hasattr(inspect, 'getfullargspec'):
+    getargspec = inspect.getfullargspec
+else:
+    getargspec = inspect.getargspec
+
 
 class Locked(Exception):
     pass
@@ -106,4 +111,4 @@ class CoordinationTestCase(test.TestCase):
         bar.__getitem__.return_value = 8
         func(foo, bar)
         get_lock.assert_called_with('lock-func-7-8')
-        self.assertEqual(['foo', 'bar'], inspect.getargspec(func)[0])
+        self.assertEqual(['foo', 'bar'], getargspec(func)[0])

@@ -19,6 +19,11 @@ import inspect
 
 import six
 
+if hasattr(inspect, 'getfullargspec'):
+    getargspec = inspect.getfullargspec
+else:
+    getargspec = inspect.getargspec
+
 
 def _get_arg_count(method):
     """Get the number of args for a method.
@@ -29,7 +34,7 @@ def _get_arg_count(method):
     if not method:
         return 0
 
-    arg_spec = inspect.getargspec(method)
+    arg_spec = getargspec(method)
     return len(arg_spec[0])
 
 
