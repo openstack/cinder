@@ -28,7 +28,7 @@ VALIDATE_NESTED_QUOTA_POLICY = \
 quota_policies = [
     policy.DocumentedRuleDefault(
         name=SHOW_POLICY,
-        check_str="",
+        check_str=base.RULE_ADMIN_OR_OWNER,
         description="Show project quota (including usage and default).",
         operations=[
             {

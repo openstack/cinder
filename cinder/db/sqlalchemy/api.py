@@ -1437,7 +1437,7 @@ def quota_destroy_by_project(*args, **kwargs):
     quota_destroy_all_by_project(only_quotas=True, *args, **kwargs)
 
 
-@require_admin_context
+@require_context
 @_retry_on_deadlock
 def quota_destroy_all_by_project(context, project_id, only_quotas=False):
     """Destroy all quotas associated with a project.
