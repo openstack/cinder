@@ -285,7 +285,6 @@ class CommonAdapter(object):
         else:
             self.client.delete_lun(lun_id)
 
-    @cinder_utils.trace
     def _initialize_connection(self, lun_or_snap, connector, vol_id):
         host = self.client.create_host(connector['host'],
                                        self.get_connector_uids(connector))
@@ -298,7 +297,6 @@ class CommonAdapter(object):
             'driver_volume_type': self.driver_volume_type,
             'data': data,
         }
-        LOG.debug('Initialized connection info: %s', conn_info)
         return conn_info
 
     @cinder_utils.trace
@@ -306,7 +304,6 @@ class CommonAdapter(object):
         lun = self.client.get_lun(lun_id=self.get_lun_id(volume))
         return self._initialize_connection(lun, connector, volume.id)
 
-    @cinder_utils.trace
     def _terminate_connection(self, lun_or_snap, connector):
         host = self.client.get_host(connector['host'])
         self.client.detach(host, lun_or_snap)
@@ -730,7 +727,6 @@ class FCAdapter(CommonAdapter):
         data['target_lun'] = hlu
         return data
 
-    @cinder_utils.trace
     def _terminate_connection(self, lun_or_snap, connector):
         # For FC, terminate_connection needs to return data to zone manager
         # which would clean the zone based on the data.
