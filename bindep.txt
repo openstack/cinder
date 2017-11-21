@@ -4,9 +4,12 @@
 
 build-essential [platform:dpkg test]
 gcc [platform:rpm test]
-gettext [!platform:suse]
-gettext-runtime [platform:suse]
-graphviz [test]
+# gettext and graphviz are needed by doc builds only. For transition,
+# have them in both doc and test.
+# TODO(jaegerandi): Remove test once infra scripts are updated.
+gettext [!platform:suse doc test]
+gettext-runtime [platform:suse doc test]
+graphviz [doc test]
 libffi-dev [platform:dpkg]
 libffi-devel [platform:redhat]
 libffi48-devel [platform:suse]
