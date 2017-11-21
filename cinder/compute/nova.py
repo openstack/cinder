@@ -105,7 +105,7 @@ def novaclient(context, privileged_user=False, timeout=None, api_version=None):
         n_auth = identity.Token(auth_url=url,
                                 token=context.auth_token,
                                 project_name=context.project_name,
-                                project_domain_id=context.project_domain)
+                                project_domain_id=context.project_domain_id)
 
     keystone_session = ks_loading.load_session_from_conf_options(
         CONF,
