@@ -1744,6 +1744,14 @@ volume_id_6:
   in: body
   required: false
   type: string
+volume_image_metadata:
+  description: |
+    List of image metadata entries.  Only included for volumes that were
+    created from an image, or from a snapshot of a volume originally created
+    from an image.
+  in: body
+  required: false
+  type: object
 volume_name:
   description: |
     The volume name.

@@ -111,6 +111,7 @@ Response Parameters
    - os-vol-mig-status-attr:migstat: os-vol-mig-status-attr:migstat
    - metadata: metadata
    - status: status_3
+   - volume_image_metadata: volume_image_metadata
    - description: description
    - multiattach: multiattach
    - source_volid: source_volid
@@ -333,6 +334,7 @@ Response Parameters
    - os-vol-mig-status-attr:migstat: os-vol-mig-status-attr:migstat
    - metadata: metadata
    - status: status_3
+   - volume_image_metadata: volume_image_metadata
    - description: description
    - multiattach: multiattach
    - source_volid: source_volid
