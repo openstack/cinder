@@ -46,6 +46,11 @@
           export PROJECTS="openstack/barbican $PROJECTS"
           export PROJECTS="openstack/python-barbicanclient $PROJECTS"
           export PYTHONUNBUFFERED=true
+          if [ "$ZUUL_BRANCH" == "master" ]; then
+              # Use os-brick head for master, use os-brick from
+              # pip for stable branches.
+              export DEVSTACK_PROJECT_FROM_GIT=os-brick
+          fi
           export DEVSTACK_GATE_TEMPEST=1
           export DEVSTACK_GATE_TEMPEST_ALL_PLUGINS=1
           # As we are setting DEVSTACK_GATE_TEMPEST_ALL_PLUGINS, we need to add
