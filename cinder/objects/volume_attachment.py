@@ -110,7 +110,7 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
                                                 objtype=self.obj_name())
 
         if attrname == 'volume':
-            volume = objects.Volume.get_by_id(self._context, self.id)
+            volume = objects.Volume.get_by_id(self._context, self.volume_id)
             self.volume = volume
 
         self.obj_reset_changes(fields=[attrname])
