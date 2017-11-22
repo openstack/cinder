@@ -33,7 +33,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type: volume_type
+   - volume_type: volume_type_1
    - volume_type_id: volume_type_id
    - project_id: project_id_path
 
@@ -53,7 +53,7 @@ Response Parameters
    - is_public: is_public
    - extra_specs: extra_specs
    - description: description
-   - volume_type: volume_type
+   - volume_type: volume_type_1
    - name: name
 
 Response Example
@@ -80,7 +80,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - extra_specs: extra_specs
-   - volume_type: volume_type
+   - volume_type: volume_type_1
    - volume_type_id: volume_type_id
    - project_id: project_id_path
 
@@ -100,7 +100,7 @@ Response Parameters
    - is_public: is_public
    - extra_specs: extra_specs
    - description: description
-   - volume_type: volume_type
+   - volume_type: volume_type_1
    - name: name
 
 
@@ -138,7 +138,7 @@ Response Parameters
    - is_public: is_public
    - extra_specs: extra_specs
    - description: description
-   - volume_type: volume_type
+   - volume_type: volume_type_1
    - name: name
 
 
@@ -238,7 +238,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type: volume_type
+   - volume_type: volume_type_1
    - project_id: project_id_path
 
 Request Example
@@ -256,7 +256,7 @@ Response Parameters
    - is_public: is_public
    - extra_specs: extra_specs
    - description: description
-   - volume_type: volume_type
+   - volume_type: volume_type_1
    - name: name
 
 
