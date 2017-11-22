@@ -210,6 +210,10 @@ class TestCase(testtools.TestCase):
                                  sql_connection=CONF.database.connection)
         self.useFixture(_DB_CACHE)
 
+        # NOTE(blk-u): WarningsFixture must be after the Database fixture
+        # because sqlalchemy-migrate messes with the warnings filters.
+        self.useFixture(cinder_fixtures.WarningsFixture())
+
         # NOTE(danms): Make sure to reset us back to non-remote objects
         # for each test to avoid interactions. Also, backup the object
         # registry.

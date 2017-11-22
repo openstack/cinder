@@ -18,6 +18,7 @@ from __future__ import absolute_import
 
 import logging as std_logging
 import os
+import warnings
 
 import fixtures
 
@@ -110,3 +111,23 @@ class StandardLogging(fixtures.Fixture):
 
         self.useFixture(
             fixtures.MonkeyPatch('oslo_log.log.setup', fake_logging_setup))
+
+
+class WarningsFixture(fixtures.Fixture):
+    """Filters out warnings during test runs."""
+
+    def setUp(self):
+        super(WarningsFixture, self).setUp()
+        # NOTE(sdague): Make deprecation warnings only happen once. Otherwise
+        # this gets kind of crazy given the way that upstream python libs use
+        # this.
+        warnings.simplefilter('once', DeprecationWarning)
+
+        # NOTE(sdague): this remains an unresolved item around the way
+        # forward on is_admin, the deprecation is definitely really premature.
+        warnings.filterwarnings(
+            'ignore',
+            message='Policy enforcement is depending on the value of is_admin.'
+                    ' This key is deprecated. Please update your policy '
+                    'file to use the standard policy values.')
+        self.addCleanup(warnings.resetwarnings)
