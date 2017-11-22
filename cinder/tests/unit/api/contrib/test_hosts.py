@@ -214,7 +214,7 @@ class HostTestCase(test.TestCase):
     def test_show_forbidden(self):
         self.req.environ['cinder.context'].is_admin = False
         dest = 'dummydest'
-        self.assertRaises(webob.exc.HTTPForbidden,
+        self.assertRaises(exception.PolicyNotAuthorized,
                           self.controller.show,
                           self.req, dest)
         self.req.environ['cinder.context'].is_admin = True

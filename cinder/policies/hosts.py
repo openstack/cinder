@@ -24,7 +24,7 @@ hosts_policies = [
     policy.DocumentedRuleDefault(
         name=MANAGE_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="List or update hosts for a project.",
+        description="List, update or show hosts for a project.",
         operations=[
             {
                 'method': 'GET',
@@ -33,6 +33,10 @@ hosts_policies = [
             {
                 'method': 'PUT',
                 'path': '/os-hosts/{host_name}'
+            },
+            {
+                'method': 'GET',
+                'path': '/os-hosts/{host_id}'
             }
         ])
 ]
