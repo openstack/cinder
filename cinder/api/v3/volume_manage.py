@@ -29,7 +29,7 @@ class VolumeManageController(common.ManageResource,
     @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         self._ensure_min_version(req, mv.MANAGE_EXISTING_LIST)
-        return super(VolumeManageController, self).create(req, body)
+        return super(VolumeManageController, self).create(req, body=body)
 
 
 def create_resource():
