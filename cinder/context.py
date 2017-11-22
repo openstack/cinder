@@ -135,7 +135,7 @@ class RequestContext(context.RequestContext):
         return cls(user_id=values.get('user_id'),
                    project_id=values.get('project_id'),
                    project_name=values.get('project_name'),
-                   domain=values.get('domain_id'),
+                   domain_id=values.get('domain_id'),
                    read_deleted=values.get('read_deleted'),
                    remote_address=values.get('remote_address'),
                    timestamp=values.get('timestamp'),
@@ -145,8 +145,8 @@ class RequestContext(context.RequestContext):
                    is_admin=values.get('is_admin'),
                    roles=values.get('roles'),
                    auth_token=values.get('auth_token'),
-                   user_domain=values.get('user_domain'),
-                   project_domain=values.get('project_domain'))
+                   user_domain_id=values.get('user_domain_id'),
+                   project_domain_id=values.get('project_domain_id'))
 
     def authorize(self, action, target=None, target_obj=None, fatal=True):
         """Verifies that the given action is valid on the target in this context.

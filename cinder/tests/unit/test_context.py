@@ -94,9 +94,9 @@ class ContextTestCase(test.TestCase):
 
     def test_user_identity(self):
         ctx = context.RequestContext("user", "tenant",
-                                     domain="domain",
-                                     user_domain="user-domain",
-                                     project_domain="project-domain")
+                                     domain_id="domain",
+                                     user_domain_id="user-domain",
+                                     project_domain_id="project-domain")
         self.assertEqual('user tenant domain user-domain project-domain',
                          ctx.to_dict()["user_identity"])
 
