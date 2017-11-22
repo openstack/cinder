@@ -17,6 +17,7 @@ import os
 import sys
 
 from os_brick.remotefs import windows_remotefs as remotefs_brick
+from os_win import constants as os_win_const
 from os_win import utilsfactory
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -118,6 +119,11 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
     _always_use_temp_snap_when_cloning = False
     _thin_provisioning_support = True
 
+    _vhd_type_mapping = {'thin': os_win_const.VHD_TYPE_DYNAMIC,
+                         'thick': os_win_const.VHD_TYPE_FIXED}
+    _vhd_qemu_subformat_mapping = {'thin': 'dynamic',
+                                   'thick': 'fixed'}
+
     def __init__(self, *args, **kwargs):
         self._remotefsclient = None
         super(WindowsSmbfsDriver, self).__init__(*args, **kwargs)
@@ -134,6 +140,12 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         self._pathutils = utilsfactory.get_pathutils()
         self._smbutils = utilsfactory.get_smbutils()
         self._diskutils = utilsfactory.get_diskutils()
+
+        thin_enabled = (
+            CONF.backend_defaults.nas_volume_prov_type ==
+            'thin')
+        self._thin_provisioning_support = thin_enabled
+        self._thick_provisioning_support = not thin_enabled
 
     def do_setup(self, context):
         self._check_os_platform()
@@ -330,7 +342,10 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
             err_msg = _("Unsupported volume format: %s ") % volume_format
             raise exception.InvalidVolume(err_msg)
 
-        self._vhdutils.create_dynamic_vhd(volume_path, volume_size_bytes)
+        vhd_type = self._get_vhd_type()
+
+        self._vhdutils.create_vhd(volume_path, vhd_type,
+                                  max_internal_size=volume_size_bytes)
 
     def _ensure_share_mounted(self, smbfs_share):
         mnt_flags = None
@@ -521,12 +536,14 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         """Fetch the image from image_service and write it to the volume."""
         volume_path = self.local_path(volume)
         volume_format = self.get_volume_format(volume, qemu_format=True)
+        volume_subformat = self._get_vhd_type(qemu_subformat=True)
         self._delete(volume_path)
 
         image_utils.fetch_to_volume_format(
             context, image_service, image_id,
             volume_path, volume_format,
-            self.configuration.volume_dd_blocksize)
+            self.configuration.volume_dd_blocksize,
+            volume_subformat)
 
         self._vhdutils.resize_vhd(self.local_path(volume),
                                   volume.size * units.Gi,
@@ -554,9 +571,12 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         snapshot_path = os.path.join(vol_dir, img_info.backing_file)
 
         volume_path = self.local_path(volume)
+        vhd_type = self._get_vhd_type()
+
         self._delete(volume_path)
         self._vhdutils.convert_vhd(snapshot_path,
-                                   volume_path)
+                                   volume_path,
+                                   vhd_type=vhd_type)
         self._vhdutils.resize_vhd(volume_path, volume_size * units.Gi,
                                   is_file_max_size=False)
 
@@ -581,3 +601,13 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
                 msg % dict(pool_name=pool_name,
                            pool_mappings=self._pool_mappings))
         return share
+
+    def _get_vhd_type(self, qemu_subformat=False):
+        prov_type = CONF.backend_defaults.nas_volume_prov_type
+
+        if qemu_subformat:
+            vhd_type = self._vhd_qemu_subformat_mapping[prov_type]
+        else:
+            vhd_type = self._vhd_type_mapping[prov_type]
+
+        return vhd_type

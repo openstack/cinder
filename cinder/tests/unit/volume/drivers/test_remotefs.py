@@ -658,6 +658,8 @@ class RemoteFSPoolMixinTestCase(test.TestCase):
         self._driver.driver_volume_type = mock.sentinel.driver_volume_type
         self._driver._thin_provisioning_support = (
             mock.sentinel.thin_prov_support)
+        self._driver._thick_provisioning_support = (
+            mock.sentinel.thick_prov_support)
 
         self._driver.get_version = mock.Mock(
             return_value=mock.sentinel.driver_version)
@@ -681,6 +683,8 @@ class RemoteFSPoolMixinTestCase(test.TestCase):
                 self._driver.configuration.max_over_subscription_ratio),
             'thin_provisioning_support': (
                 mock.sentinel.thin_prov_support),
+            'thick_provisioning_support': (
+                mock.sentinel.thick_prov_support),
             'QoS_support': False,
         }
 

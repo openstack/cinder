@@ -148,6 +148,7 @@ class RemoteFSDriver(driver.BaseVD):
     # We let the drivers inheriting this specify
     # whether thin provisioning is supported or not.
     _thin_provisioning_support = False
+    _thick_provisioning_support = False
 
     def __init__(self, *args, **kwargs):
         super(RemoteFSDriver, self).__init__(*args, **kwargs)
@@ -1722,6 +1723,8 @@ class RemoteFSPoolMixin(object):
                         self.configuration.max_over_subscription_ratio),
                     'thin_provisioning_support': (
                         self._thin_provisioning_support),
+                    'thick_provisioning_support': (
+                        self._thick_provisioning_support),
                     'QoS_support': False,
                     }
 

@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The SMBFS volume driver can now be configured to use fixed vhd/x images
+    through the 'nas_volume_prov_type' config option.
