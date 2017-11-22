@@ -189,7 +189,7 @@ The following steps are required to configure multiple K2 iSCSI/FC backends:
    ``Configure single Kaminario iSCSI/FC back end``
 
    See `Configure multiple-storage back ends
-   <https://docs.openstack.org/admin-guide/blockstorage-multi-backend.html>`__
+   <https://docs.openstack.org/cinder/latest/admin/blockstorage-multi-backend.html>`__
    for additional information.
 
 #. Restart the cinder volume service for the changes to take effect.
