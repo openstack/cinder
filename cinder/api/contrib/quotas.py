@@ -21,7 +21,6 @@ from oslo_utils import strutils
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import db
-from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
 from cinder.i18n import _
 from cinder.policies import quotas as policy
@@ -166,9 +165,10 @@ class QuotaSetsController(wsgi.Controller):
         :param id: target project id that needs to be shown
         """
         context = req.environ['cinder.context']
-        context.authorize(policy.SHOW_POLICY)
         params = req.params
         target_project_id = id
+        context.authorize(policy.SHOW_POLICY,
+                          target={'project_id': target_project_id})
 
         if not hasattr(params, '__call__') and 'usage' in params:
             usage = utils.get_bool_param('usage', params)
@@ -187,12 +187,6 @@ class QuotaSetsController(wsgi.Controller):
 
             self._authorize_show(context_project, target_project)
 
-        try:
-            sqlalchemy_api.authorize_project_context(context,
-                                                     target_project_id)
-        except exception.NotAuthorized:
-            raise webob.exc.HTTPForbidden()
-
         quotas = self._get_quotas(context, target_project_id, usage)
         return self._format_quota_set(target_project_id, quotas)
 
@@ -209,7 +203,9 @@ class QuotaSetsController(wsgi.Controller):
                      the resources if the update succeeds
         """
         context = req.environ['cinder.context']
-        context.authorize(policy.UPDATE_POLICY)
+        target_project_id = id
+        context.authorize(policy.UPDATE_POLICY,
+                          target={'project_id': target_project_id})
         self.validate_string_length(id, 'quota_set_name',
                                     min_length=1, max_length=255)
 
@@ -230,7 +226,6 @@ class QuotaSetsController(wsgi.Controller):
                         "validate it in Queens, please try to use "
                         "skip_validation=False for quota updating now.")
 
-        target_project_id = id
         bad_keys = []
 
         # NOTE(ankit): Pass #1 - In this loop for body['quota_set'].items(),
@@ -351,7 +346,7 @@ class QuotaSetsController(wsgi.Controller):
 
     def defaults(self, req, id):
         context = req.environ['cinder.context']
-        context.authorize(policy.SHOW_POLICY)
+        context.authorize(policy.SHOW_POLICY, target={'project_id': id})
         defaults = QUOTAS.get_defaults(context, project_id=id)
         group_defaults = GROUP_QUOTAS.get_defaults(context, project_id=id)
         defaults.update(group_defaults)
@@ -368,15 +363,12 @@ class QuotaSetsController(wsgi.Controller):
         :param id: target project id that needs to be deleted
         """
         context = req.environ['cinder.context']
-        context.authorize(policy.DELETE_POLICY)
+        context.authorize(policy.DELETE_POLICY, target={'project_id': id})
 
         if QUOTAS.using_nested_quotas():
             self._delete_nested_quota(context, id)
         else:
-            try:
-                db.quota_destroy_by_project(context, id)
-            except exception.AdminRequired:
-                raise webob.exc.HTTPForbidden()
+            db.quota_destroy_by_project(context, id)
 
     def _delete_nested_quota(self, ctxt, proj_id):
         # Get the parent_id of the target project to verify whether we are
@@ -418,10 +410,7 @@ class QuotaSetsController(wsgi.Controller):
             self._validate_existing_resource(
                 res, defaults[res], project_quotas)
 
-        try:
-            db.quota_destroy_by_project(ctxt, target_project.id)
-        except exception.AdminRequired:
-            raise webob.exc.HTTPForbidden()
+        db.quota_destroy_by_project(ctxt, target_project.id)
 
         for res, limit in project_quotas.items():
             # Update child limit to 0 so the parent hierarchy gets it's
