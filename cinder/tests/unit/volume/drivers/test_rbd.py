@@ -1,4 +1,3 @@
-
 # Copyright 2012 Josh Durgin
 # Copyright 2013 Canonical Ltd.
 # All Rights Reserved.
@@ -1131,6 +1130,10 @@ class RBDTestCase(test.TestCase):
                                    mock.sentinel.total_capacity_gb)
         usage_mock.return_value = mock.sentinel.provisioned_capacity_gb
 
+        expected_fsid = 'abc'
+        expected_location_info = ('nondefault:%s:%s:%s:rbd' %
+                                  (self.cfg.rbd_ceph_conf, expected_fsid,
+                                   self.cfg.rbd_user))
         expected = dict(
             volume_backend_name='RBD',
             replication_enabled=replication_enabled,
@@ -1143,7 +1146,8 @@ class RBDTestCase(test.TestCase):
             thin_provisioning_support=True,
             provisioned_capacity_gb=mock.sentinel.provisioned_capacity_gb,
             max_over_subscription_ratio=1.0,
-            multiattach=False)
+            multiattach=False,
+            location_info=expected_location_info)
 
         if replication_enabled:
             targets = [{'backend_id': 'secondary-backend'},
@@ -1157,8 +1161,10 @@ class RBDTestCase(test.TestCase):
         self.mock_object(self.driver.configuration, 'safe_get',
                          mock_driver_configuration)
 
-        actual = self.driver.get_volume_stats(True)
-        self.assertDictEqual(expected, actual)
+        with mock.patch.object(self.driver, '_get_fsid') as mock_get_fsid:
+            mock_get_fsid.return_value = expected_fsid
+            actual = self.driver.get_volume_stats(True)
+            self.assertDictEqual(expected, actual)
 
     @common_mocks
     @mock.patch('cinder.volume.drivers.rbd.RBDDriver._get_usage_info')
@@ -1167,6 +1173,10 @@ class RBDTestCase(test.TestCase):
         self.mock_object(self.driver.configuration, 'safe_get',
                          mock_driver_configuration)
 
+        expected_fsid = 'abc'
+        expected_location_info = ('nondefault:%s:%s:%s:rbd' %
+                                  (self.cfg.rbd_ceph_conf, expected_fsid,
+                                   self.cfg.rbd_user))
         expected = dict(volume_backend_name='RBD',
                         replication_enabled=False,
                         vendor_name='Open Source',
@@ -1178,10 +1188,13 @@ class RBDTestCase(test.TestCase):
                         multiattach=False,
                         provisioned_capacity_gb=0,
                         max_over_subscription_ratio=1.0,
-                        thin_provisioning_support=True)
+                        thin_provisioning_support=True,
+                        location_info=expected_location_info)
 
-        actual = self.driver.get_volume_stats(True)
-        self.assertDictEqual(expected, actual)
+        with mock.patch.object(self.driver, '_get_fsid') as mock_get_fsid:
+            mock_get_fsid.return_value = expected_fsid
+            actual = self.driver.get_volume_stats(True)
+            self.assertDictEqual(expected, actual)
 
     @ddt.data(
         # Normal case, no quota and dynamic total
@@ -1924,6 +1937,91 @@ class RBDTestCase(test.TestCase):
         ])
 
         self.assertEqual(3.00, total_provision)
+
+    def test_migrate_volume_bad_volume_status(self):
+        self.volume_a.status = 'in-use'
+        ret = self.driver.migrate_volume(context, self.volume_a, None)
+        self.assertEqual((False, None), ret)
+
+    def test_migrate_volume_bad_host(self):
+        host = {
+            'capabilities': {
+                'storage_protocol': 'not-ceph'}}
+        ret = self.driver.migrate_volume(context, self.volume_a, host)
+        self.assertEqual((False, None), ret)
+
+    def test_migrate_volume_missing_location_info(self):
+        host = {
+            'capabilities': {
+                'storage_protocol': 'ceph'}}
+        ret = self.driver.migrate_volume(context, self.volume_a, host)
+        self.assertEqual((False, None), ret)
+
+    def test_migrate_volume_invalid_location_info(self):
+        host = {
+            'capabilities': {
+                'storage_protocol': 'ceph',
+                'location_info': 'foo:bar:baz'}}
+        ret = self.driver.migrate_volume(context, self.volume_a, host)
+        self.assertEqual((False, None), ret)
+
+    @mock.patch('os_brick.initiator.linuxrbd.rbd')
+    @mock.patch('os_brick.initiator.linuxrbd.RBDClient')
+    def test_migrate_volume_mismatch_fsid(self, mock_client, mock_rbd):
+        host = {
+            'capabilities': {
+                'storage_protocol': 'ceph',
+                'location_info': 'nondefault:None:abc:None:rbd'}}
+
+        mock_client().__enter__().client.get_fsid.return_value = 'abc'
+
+        with mock.patch.object(self.driver, '_get_fsid') as mock_get_fsid:
+            mock_get_fsid.return_value = 'not-abc'
+            ret = self.driver.migrate_volume(context, self.volume_a, host)
+            self.assertEqual((False, None), ret)
+
+        mock_client().__enter__().client.get_fsid.return_value = 'not-abc'
+
+        with mock.patch.object(self.driver, '_get_fsid') as mock_get_fsid:
+            mock_get_fsid.return_value = 'abc'
+            ret = self.driver.migrate_volume(context, self.volume_a, host)
+            self.assertEqual((False, None), ret)
+
+        host = {
+            'capabilities': {
+                'storage_protocol': 'ceph',
+                'location_info': 'nondefault:None:not-abc:None:rbd'}}
+
+        mock_client().__enter__().client.get_fsid.return_value = 'abc'
+
+        with mock.patch.object(self.driver, '_get_fsid') as mock_get_fsid:
+            mock_get_fsid.return_value = 'abc'
+            ret = self.driver.migrate_volume(context, self.volume_a, host)
+            self.assertEqual((False, None), ret)
+
+    @mock.patch('os_brick.initiator.linuxrbd.rbd')
+    @mock.patch('os_brick.initiator.linuxrbd.RBDClient')
+    @mock.patch('cinder.volume.drivers.rbd.RBDVolumeProxy')
+    def test_migrate_volume(self, mock_proxy, mock_client, mock_rbd):
+        host = {
+            'capabilities': {
+                'storage_protocol': 'ceph',
+                'location_info': 'nondefault:None:abc:None:rbd'}}
+
+        mock_client().__enter__().client.get_fsid.return_value = 'abc'
+
+        with mock.patch.object(self.driver, '_get_fsid') as mock_get_fsid, \
+                mock.patch.object(self.driver, 'delete_volume') as mock_delete:
+            mock_get_fsid.return_value = 'abc'
+            proxy = mock_proxy.return_value
+            proxy.__enter__.return_value = proxy
+            ret = self.driver.migrate_volume(context, self.volume_a,
+                                             host)
+            proxy.copy.assert_called_once_with(
+                mock_client.return_value.__enter__.return_value.ioctx,
+                self.volume_a.name)
+            mock_delete.assert_called_once_with(self.volume_a)
+            self.assertEqual((True, None), ret)
 
 
 class ManagedRBDTestCase(test_driver.BaseDriverTestCase):

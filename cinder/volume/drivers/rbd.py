@@ -20,8 +20,10 @@ import os
 import tempfile
 
 from eventlet import tpool
+from os_brick.initiator import linuxrbd
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import fileutils
 from oslo_utils import units
 import six
@@ -35,6 +37,7 @@ from cinder.objects import fields
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
+
 
 try:
     import rados
@@ -451,6 +454,13 @@ class RBDDriver(driver.CloneableImageVD,
         return free_capacity, total_capacity
 
     def _update_volume_stats(self):
+        location_info = '%s:%s:%s:%s:%s' % (
+            self.configuration.rbd_cluster_name,
+            self.configuration.rbd_ceph_conf,
+            self._get_fsid(),
+            self.configuration.rbd_user,
+            self.configuration.rbd_pool)
+
         stats = {
             'vendor_name': 'Open Source',
             'driver_version': self.VERSION,
@@ -463,9 +473,10 @@ class RBDDriver(driver.CloneableImageVD,
             'multiattach': False,
             'thin_provisioning_support': True,
             'max_over_subscription_ratio': (
-                self.configuration.safe_get('max_over_subscription_ratio'))
-
+                self.configuration.safe_get('max_over_subscription_ratio')),
+            'location_info': location_info,
         }
+
         backend_name = self.configuration.safe_get('volume_backend_name')
         stats['volume_backend_name'] = backend_name or 'RBD'
 
@@ -1416,7 +1427,71 @@ class RBDDriver(driver.CloneableImageVD,
         return {'_name_id': name_id, 'provider_location': provider_location}
 
     def migrate_volume(self, context, volume, host):
-        return (False, None)
+
+        refuse_to_migrate = (False, None)
+
+        if volume.status not in ('available', 'retyping', 'maintenance'):
+            LOG.debug('Only available volumes can be migrated using backend '
+                      'assisted migration. Falling back to generic migration.')
+            return refuse_to_migrate
+
+        if (host['capabilities']['storage_protocol'] != 'ceph'):
+            LOG.debug('Source and destination drivers need to be RBD '
+                      'to use backend assisted migration. Falling back to '
+                      'generic migration.')
+            return refuse_to_migrate
+
+        loc_info = host['capabilities'].get('location_info')
+
+        LOG.debug('Attempting RBD assisted volume migration. volume: %(id)s, '
+                  'host: %(host)s, status=%(status)s.',
+                  {'id': volume.id, 'host': host, 'status': volume.status})
+
+        if not loc_info:
+            LOG.debug('Could not find location_info in capabilities reported '
+                      'by the destination driver. Falling back to generic '
+                      'migration.')
+            return refuse_to_migrate
+
+        try:
+            (rbd_cluster_name, rbd_ceph_conf, rbd_fsid, rbd_user, rbd_pool) = (
+                utils.convert_str(loc_info).split(':'))
+        except ValueError:
+            LOG.error('Location info needed for backend enabled volume '
+                      'migration not in correct format: %s. Falling back to '
+                      'generic volume migration.', loc_info)
+            return refuse_to_migrate
+
+        with linuxrbd.RBDClient(rbd_user, rbd_pool, conffile=rbd_ceph_conf,
+                                rbd_cluster_name=rbd_cluster_name) as target:
+            if ((rbd_fsid != self._get_fsid() or
+                 rbd_fsid != target.client.get_fsid())):
+                LOG.info('Migration between clusters is not supported. '
+                         'Falling back to generic migration.')
+                return refuse_to_migrate
+
+            with RBDVolumeProxy(self, volume.name, read_only=True) as source:
+                try:
+                    source.copy(target.ioctx, volume.name)
+                except Exception:
+                    with excutils.save_and_reraise_exception():
+                        LOG.error('Error copying rbd image %(vol)s to target '
+                                  'pool %(pool)s.',
+                                  {'vol': volume.name, 'pool': rbd_pool})
+                        self.RBDProxy().remove(target.ioctx, volume.name)
+
+        try:
+            # If the source fails to delete for some reason, we want to leave
+            # the target volume in place in case deleting it might cause a lose
+            # of data.
+            self.delete_volume(volume)
+        except Exception:
+            reason = 'Failed to delete migration source volume %s.', volume.id
+            raise exception.VolumeMigrationFailed(reason=reason)
+
+        LOG.info('Successful RBD assisted volume migration.')
+
+        return (True, None)
 
     def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
         """Return size of an existing image for manage_existing.
