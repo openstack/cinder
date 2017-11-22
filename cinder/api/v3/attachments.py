@@ -18,7 +18,9 @@ import webob
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import attachments as attachment
 from cinder.api.v3.views import attachments as attachment_views
+from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -95,6 +97,7 @@ class AttachmentsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.NEW_ATTACH)
     @wsgi.response(202)
+    @validation.schema(attachment.create)
     def create(self, req, body):
         """Create an attachment.
 
@@ -154,18 +157,8 @@ class AttachmentsController(wsgi.Controller):
         returns: A summary view of the attachment object
         """
         context = req.environ['cinder.context']
-        instance_uuid = body['attachment'].get('instance_uuid', None)
-        if not instance_uuid:
-            raise webob.exc.HTTPBadRequest(
-                explanation=_("Must specify 'instance_uuid' "
-                              "to create attachment."))
-
-        volume_uuid = body['attachment'].get('volume_uuid', None)
-        if not volume_uuid:
-            raise webob.exc.HTTPBadRequest(
-                explanation=_("Must specify 'volume_uuid' "
-                              "to create attachment."))
-
+        instance_uuid = body['attachment']['instance_uuid']
+        volume_uuid = body['attachment']['volume_uuid']
         volume_ref = objects.Volume.get_by_id(
             context,
             volume_uuid)
@@ -192,6 +185,7 @@ class AttachmentsController(wsgi.Controller):
         return attachment_views.ViewBuilder.detail(attachment_ref)
 
     @wsgi.Controller.api_version(mv.NEW_ATTACH)
+    @validation.schema(attachment.update)
     def update(self, req, id, body):
         """Update an attachment record.
 
@@ -223,11 +217,7 @@ class AttachmentsController(wsgi.Controller):
         context = req.environ['cinder.context']
         attachment_ref = (
             objects.VolumeAttachment.get_by_id(context, id))
-        connector = body['attachment'].get('connector', None)
-        if not connector:
-            raise webob.exc.HTTPBadRequest(
-                explanation=_("Must specify 'connector' "
-                              "to update attachment."))
+        connector = body['attachment']['connector']
         err_msg = None
         try:
             attachment_ref = (

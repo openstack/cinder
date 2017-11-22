@@ -23,6 +23,7 @@ import re
 import jsonschema
 from jsonschema import exceptions as jsonschema_exc
 from oslo_utils import timeutils
+from oslo_utils import uuidutils
 import six
 
 from cinder import exception
@@ -101,6 +102,11 @@ def _validate_name(param_value):
         msg = "The 'name' can not be empty."
         raise exception.InvalidName(reason=msg)
     return True
+
+
+@jsonschema.FormatChecker.cls_checks('uuid')
+def _validate_uuid_format(instance):
+    return uuidutils.is_uuid_like(instance)
 
 
 class FormatChecker(jsonschema.FormatChecker):

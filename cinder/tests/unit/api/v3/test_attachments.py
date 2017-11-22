@@ -19,7 +19,6 @@ Tests for attachments Api.
 
 import ddt
 import mock
-import webob
 
 from cinder.api import microversions as mv
 from cinder.api.v3 import attachments as v3_attachments
@@ -90,7 +89,7 @@ class AttachmentsAPITestCase(test.TestCase):
                 },
         }
 
-        attachment = self.controller.create(req, body)
+        attachment = self.controller.create(req, body=body)
 
         self.assertEqual(self.volume1.id,
                          attachment['attachment']['volume_id'])
@@ -112,11 +111,27 @@ class AttachmentsAPITestCase(test.TestCase):
                 },
         }
 
-        attachment = self.controller.update(req, self.attachment1.id, body)
+        attachment = self.controller.update(req, self.attachment1.id,
+                                            body=body)
 
         self.assertEqual(fake_connector,
                          attachment['attachment']['connection_info'])
         self.assertEqual(fake.UUID1, attachment['attachment']['instance'])
+
+    def test_update_attachment_with_empty_connector_object(self):
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
+                                      (fake.PROJECT_ID, self.attachment1.id),
+                                      version=mv.NEW_ATTACH,
+                                      use_admin_context=True)
+        body = {
+            "attachment":
+                {
+                    "connector": {},
+                },
+        }
+        self.assertRaises(exception.ValidationError,
+                          self.controller.update, req,
+                          self.attachment1.id, body=body)
 
     @mock.patch.object(objects.VolumeAttachment, 'get_by_id')
     def test_attachment_operations_not_authorized(self, mock_get):
@@ -133,7 +148,7 @@ class AttachmentsAPITestCase(test.TestCase):
         }
         self.assertRaises(exception.NotAuthorized,
                           self.controller.update, req,
-                          self.attachment1.id, body)
+                          self.attachment1.id, body=body)
         self.assertRaises(exception.NotAuthorized,
                           self.controller.delete, req,
                           self.attachment1.id)
@@ -210,8 +225,24 @@ class AttachmentsAPITestCase(test.TestCase):
         }
         body["attachment"][resource_uuid] = "test_id"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, body=body)
+
+    @ddt.data(
+        {"attachment": {
+            "connector": None,
+            "instance_uuid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "volume_uuid": "invalid-uuid"}},
+        {"attachment": {
+            "instance_uuid": "invalid-uuid",
+            "volume_uuid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}})
+    def test_create_attachment_with_invalid_resource_uuid(self, fake_body):
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments' %
+                                      fake.PROJECT_ID,
+                                      version=mv.NEW_ATTACH)
+
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, body=fake_body)
 
     @ddt.data(False, True)
     def test_list_attachments(self, is_detail):
