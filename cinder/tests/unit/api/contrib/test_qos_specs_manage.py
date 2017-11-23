@@ -39,6 +39,8 @@ def stub_qos_specs(id):
              "key4": "value4",
              "key5": "value5"}
     res.update(dict(specs=specs))
+    res.update(dict(created_at='2017-12-13T02:37:54Z'))
+    res.update(dict(updated_at='2017-12-13T02:38:58Z'))
     return objects.QualityOfServiceSpecs(**res)
 
 
@@ -102,6 +104,8 @@ def return_qos_specs_create(context, name, specs):
 
     return objects.QualityOfServiceSpecs(name=name,
                                          specs=specs,
+                                         created_at='2017-12-13T02:37:54Z',
+                                         updated_at='2017-12-13T02:38:58Z',
                                          consumer='back-end',
                                          id=fake.QOS_SPEC_ID)
 
@@ -330,9 +334,12 @@ class QoSSpecManageApiTest(test.TestCase):
                           self.controller.delete,
                           req, fake.QOS_SPEC_ID)
 
+    @mock.patch('cinder.volume.qos_specs.get_qos_specs',
+                side_effect=return_qos_specs_get_qos_specs)
     @mock.patch('cinder.volume.qos_specs.delete_keys',
                 side_effect=return_qos_specs_delete_keys)
-    def test_qos_specs_delete_keys(self, mock_qos_delete_keys):
+    def test_qos_specs_delete_keys(self, mock_qos_delete_keys,
+                                   mock_get_qos):
         body = {"keys": ['bar', 'zoo']}
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s/delete_keys' %
                                       (fake.PROJECT_ID, fake.IN_USE_ID),
@@ -355,9 +362,12 @@ class QoSSpecManageApiTest(test.TestCase):
                           req, fake.WILL_NOT_BE_FOUND_ID, body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
+    @mock.patch('cinder.volume.qos_specs.get_qos_specs',
+                side_effect=return_qos_specs_get_qos_specs)
     @mock.patch('cinder.volume.qos_specs.delete_keys',
                 side_effect=return_qos_specs_delete_keys)
-    def test_qos_specs_delete_keys_badkey(self, mock_qos_specs_delete):
+    def test_qos_specs_delete_keys_badkey(self, mock_qos_specs_delete,
+                                          mock_get_qos):
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s/delete_keys' %
                                       (fake.PROJECT_ID, fake.IN_USE_ID),
                                       use_admin_context=True)
@@ -370,7 +380,10 @@ class QoSSpecManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.qos_specs.delete_keys',
                 side_effect=return_qos_specs_delete_keys)
-    def test_qos_specs_delete_keys_get_notifier(self, mock_qos_delete_keys):
+    @mock.patch('cinder.volume.qos_specs.get_qos_specs',
+                side_effect=return_qos_specs_get_qos_specs)
+    def test_qos_specs_delete_keys_get_notifier(self, mock_get_qos_specs,
+                                                mock_qos_delete_keys):
         body = {"keys": ['bar', 'zoo']}
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s/delete_keys' %
                                       (fake.PROJECT_ID, fake.IN_USE_ID),
@@ -467,7 +480,9 @@ class QoSSpecManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.qos_specs.update',
                 side_effect=return_qos_specs_update)
-    def test_update(self, mock_qos_update):
+    @mock.patch('cinder.volume.qos_specs.get_qos_specs',
+                side_effect=return_qos_specs_get_qos_specs)
+    def test_update(self, mock_get_qos, mock_qos_update):
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s' %
                                       (fake.PROJECT_ID, fake.QOS_SPEC_ID),
                                       use_admin_context=True)
@@ -479,7 +494,9 @@ class QoSSpecManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.qos_specs.update',
                 side_effect=return_qos_specs_update)
-    def test_update_not_found(self, mock_qos_update):
+    @mock.patch('cinder.volume.qos_specs.get_qos_specs',
+                side_effect=return_qos_specs_get_qos_specs)
+    def test_update_not_found(self, mock_get_qos_specs, mock_qos_update):
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s' %
                                       (fake.PROJECT_ID,
                                        fake.WILL_NOT_BE_FOUND_ID),
@@ -491,9 +508,11 @@ class QoSSpecManageApiTest(test.TestCase):
                           req, fake.WILL_NOT_BE_FOUND_ID, body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
+    @mock.patch('cinder.volume.qos_specs.get_qos_specs',
+                side_effect=return_qos_specs_get_qos_specs)
     @mock.patch('cinder.volume.qos_specs.update',
                 side_effect=return_qos_specs_update)
-    def test_update_invalid_input(self, mock_qos_update):
+    def test_update_invalid_input(self, mock_qos_update, mock_get_qos):
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s' %
                                       (fake.PROJECT_ID, fake.INVALID_ID),
                                       use_admin_context=True)
@@ -504,10 +523,12 @@ class QoSSpecManageApiTest(test.TestCase):
                           req, fake.INVALID_ID, body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
+    @mock.patch('cinder.volume.qos_specs.get_qos_specs',
+                side_effect=return_qos_specs_get_qos_specs)
     @ddt.data({'qos_specs': {'key1': ['value1']}},
               {'qos_specs': {1: 'value1'}}
               )
-    def test_update_non_string_key_or_value(self, body):
+    def test_update_non_string_key_or_value(self, body, mock_get_qos):
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s' %
                                       (fake.PROJECT_ID, fake.UUID1),
                                       use_admin_context=True)
@@ -516,9 +537,11 @@ class QoSSpecManageApiTest(test.TestCase):
                           req, fake.UUID1, body)
         self.assertEqual(1, self.notifier.get_notification_count())
 
+    @mock.patch('cinder.volume.qos_specs.get_qos_specs',
+                side_effect=return_qos_specs_get_qos_specs)
     @mock.patch('cinder.volume.qos_specs.update',
                 side_effect=return_qos_specs_update)
-    def test_update_failed(self, mock_qos_update):
+    def test_update_failed(self, mock_qos_update, mock_get_qos):
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s' %
                                       (fake.PROJECT_ID,
                                        fake.UPDATE_FAILED_ID),
@@ -543,7 +566,9 @@ class QoSSpecManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.qos_specs.get_associations',
                 side_effect=return_get_qos_associations)
-    def test_get_associations(self, mock_get_assciations):
+    @mock.patch('cinder.volume.qos_specs.get_qos_specs',
+                side_effect=return_qos_specs_get_qos_specs)
+    def test_get_associations(self, mock_get_qos, mock_get_assciations):
         req = fakes.HTTPRequest.blank(
             '/v2/%s/qos-specs/%s/associations' % (
                 fake.PROJECT_ID, fake.QOS_SPEC_ID), use_admin_context=True)
@@ -567,7 +592,10 @@ class QoSSpecManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.qos_specs.get_associations',
                 side_effect=return_get_qos_associations)
-    def test_get_associations_failed(self, mock_get_associations):
+    @mock.patch('cinder.volume.qos_specs.get_qos_specs',
+                side_effect=return_qos_specs_get_qos_specs)
+    def test_get_associations_failed(self, mock_get_qos,
+                                     mock_get_associations):
         req = fakes.HTTPRequest.blank(
             '/v2/%s/qos-specs/%s/associations' % (
                 fake.PROJECT_ID, fake.RAISE_ID), use_admin_context=True)
@@ -706,7 +734,8 @@ class QoSSpecManageApiTest(test.TestCase):
                 side_effect=return_qos_specs_get_qos_specs)
     @mock.patch('cinder.volume.qos_specs.disassociate_all',
                 side_effect=return_disassociate_all)
-    def test_disassociate_all_not_found(self, mock_disassociate, mock_get):
+    def test_disassociate_all_not_found(self, mock_disassociate,
+                                        mock_get_qos):
         req = fakes.HTTPRequest.blank(
             '/v2/%s/qos-specs/%s/disassociate_all' % (
                 fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID),

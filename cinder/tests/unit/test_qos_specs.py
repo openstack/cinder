@@ -29,6 +29,7 @@ from cinder import db
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder import utils
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
@@ -366,12 +367,15 @@ class QoSSpecsTestCase(test.TestCase):
                                      'key3': 'value3',
                                      'key4': 'value4'}}]
 
-        for qos_specs_dict in qos_specs_list:
+        for index, qos_specs_dict in enumerate(qos_specs_list):
             qos_specs_id = self._create_qos_specs(
                 qos_specs_dict['name'],
                 qos_specs_dict['consumer'],
                 qos_specs_dict['specs'])
             qos_specs_dict['id'] = qos_specs_id
+            specs = db.qos_specs_get(self.ctxt, qos_specs_id)
+            qos_specs_list[index]['created_at'] = utils.time_format(
+                specs['created_at'])
 
         res = qos_specs.get_all_specs(self.ctxt)
         self.assertEqual(len(qos_specs_list), len(res))

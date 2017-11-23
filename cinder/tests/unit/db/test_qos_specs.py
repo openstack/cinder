@@ -76,6 +76,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
                           db.qos_specs_get, self.ctxt, fake_id)
 
         specs_returned = db.qos_specs_get(self.ctxt, specs_id)
+        qos_spec['created_at'] = specs_returned['created_at']
         qos_spec['id'] = specs_id
         self.assertDictEqual(qos_spec, specs_returned)
 
@@ -91,10 +92,12 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
              'consumer': 'back-end',
              'specs': {'key1': 'v5', 'key2': 'v6'}}]
 
-        for qos in qos_list:
+        for index, qos in enumerate(qos_list):
             qos['id'] = self._create_qos_specs(qos['name'],
                                                qos['consumer'],
                                                qos['specs'])
+            specs = db.qos_specs_get(self.ctxt, qos['id'])
+            qos_list[index]['created_at'] = specs['created_at']
 
         specs_list_returned = db.qos_specs_get_all(self.ctxt)
         self.assertEqual(len(qos_list), len(specs_list_returned),
@@ -124,6 +127,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
                     'specs': value}
         db.qos_specs_item_delete(self.ctxt, specs_id, 'foo')
         specs = db.qos_specs_get(self.ctxt, specs_id)
+        expected['created_at'] = specs['created_at']
         self.assertDictEqual(expected, specs)
 
     def test_associate_type_with_qos(self):
@@ -201,6 +205,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
                           self.ctxt, fake.WILL_NOT_BE_FOUND_ID, value)
         db.qos_specs_update(self.ctxt, specs_id, value)
         specs = db.qos_specs_get(self.ctxt, specs_id)
+        value['created_at'] = specs['created_at']
         self.assertEqual('new_value2', specs['specs']['key2'])
         self.assertEqual('value3', specs['specs']['key3'])
         self.assertEqual('both', specs['consumer'])

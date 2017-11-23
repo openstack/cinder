@@ -271,6 +271,21 @@ def last_completed_audit_period(unit=None):
     return (begin, end)
 
 
+def time_format(at=None):
+    """Format datetime string to date.
+
+    :param at: Type is datetime.datetime (example
+        'datetime.datetime(2017, 12, 24, 22, 11, 32, 6086)')
+    :returns: Format date (example '2017-12-24T22:11:32Z').
+    """
+    if not at:
+        at = timeutils.utcnow()
+    date_string = at.strftime("%Y-%m-%dT%H:%M:%S")
+    tz = at.tzname(None) if at.tzinfo else 'UTC'
+    date_string += ('Z' if tz == 'UTC' else tz)
+    return date_string
+
+
 def is_none_string(val):
     """Check if a string represents a None value."""
     if not isinstance(val, six.string_types):
