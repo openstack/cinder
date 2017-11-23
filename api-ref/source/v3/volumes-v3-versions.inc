@@ -7,7 +7,7 @@ API versions
 Show API v3 details
 ~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3
+.. rest_method::  GET /v3/
 
 Shows details for Block Storage API v3.
 
