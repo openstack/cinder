@@ -147,7 +147,15 @@ class QuotaReserveTask(flow_utils.CinderTask):
             if CONF.no_snapshot_gb_quota:
                 reserve_opts = {'snapshots': 1}
             else:
-                reserve_opts = {'snapshots': 1, 'gigabytes': size}
+                # NOTE(tommylikehu): We only use the difference of size here
+                # as we already committed the original size at the API
+                # service before and this reservation task is only used for
+                # managing snapshots now.
+                reserve_opts = {'snapshots': 1,
+                                'gigabytes':
+                                    int(size) - snapshot_ref.volume_size}
+            if 'update_size' in optional_args and optional_args['update_size']:
+                reserve_opts.pop('snapshots', None)
             volume = objects.Volume.get_by_id(context, snapshot_ref.volume_id)
             QUOTAS.add_volume_type_opts(context,
                                         reserve_opts,
@@ -322,7 +330,7 @@ def get_flow(context, db, driver, host, snapshot_id, ref):
         'context': context,
         'snapshot_id': snapshot_id,
         'manage_existing_ref': ref,
-        'optional_args': {'is_quota_committed': False}
+        'optional_args': {'is_quota_committed': False, 'update_size': True}
     }
 
     notify_start_msg = "manage_existing_snapshot.start"

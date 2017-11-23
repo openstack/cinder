@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fix the bug that Cinder would commit quota twice in a clean environment
+    when managing volume and snapshot resource (Bug #1587376).
