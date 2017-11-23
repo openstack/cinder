@@ -91,17 +91,25 @@ class WorkersTestCase(test.TestCase):
         self.assertEqual(http_client.FORBIDDEN, res.status_code)
         rpc_mock.assert_not_called()
 
-    @ddt.data({'fake_key': 'value'}, {'binary': 'nova-scheduler'},
+    @ddt.data({'binary': 'nova-scheduler'},
               {'disabled': 'sure'}, {'is_up': 'nop'},
-              {'resource_type': 'service'}, {'resource_id': 'non UUID'})
+              {'resource_type': 'service'}, {'resource_id': 'non UUID'},
+              {'is_up': 11}, {'disabled': 11},
+              {'is_up': '   true  '}, {'disabled': '   false  '})
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.work_cleanup')
     def test_cleanup_wrong_param(self, body, rpc_mock):
         res = self._get_resp_post(body)
         self.assertEqual(http_client.BAD_REQUEST, res.status_code)
-        if 'disabled' in body or 'is_up' in body:
-            expected = 'is not a boolean'
-        else:
-            expected = 'Invalid input'
+        expected = 'Invalid input'
+        self.assertIn(expected, res.json['badRequest']['message'])
+        rpc_mock.assert_not_called()
+
+    @ddt.data({'fake_key': 'value'})
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.work_cleanup')
+    def test_cleanup_with_additional_properties(self, body, rpc_mock):
+        res = self._get_resp_post(body)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_code)
+        expected = 'Additional properties are not allowed'
         self.assertIn(expected, res.json['badRequest']['message'])
         rpc_mock.assert_not_called()
 
@@ -113,11 +121,17 @@ class WorkersTestCase(test.TestCase):
         return {'cleaning': [service_view(s) for s in cleaning],
                 'unavailable': [service_view(s) for s in unavailable]}
 
-    @ddt.data({'service_id': 10}, {'cluster_name': 'cluster_name'},
-              {'host': 'hostname'}, {'binary': 'cinder-volume'},
-              {'binary': 'cinder-scheduler'}, {'disabled': 'true'},
+    @ddt.data({'service_id': 10}, {'binary': 'cinder-volume'},
+              {'binary': 'cinder-scheduler'}, {'disabled': 'false'},
               {'is_up': 'no'}, {'resource_type': 'Volume'},
-              {'resource_id': fake.VOLUME_ID, 'host': 'hostname'})
+              {'resource_id': fake.VOLUME_ID, 'host': 'host@backend'},
+              {'host': 'host@backend#pool'},
+              {'cluster_name': 'cluster@backend'},
+              {'cluster_name': 'cluster@backend#pool'},
+              {'service_id': None},
+              {'cluster_name': None}, {'host': None},
+              {'resource_type': ''}, {'resource_type': None},
+              {'resource_id': None})
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.work_cleanup',
                 return_value=SERVICES)
     def test_cleanup_params(self, body, rpc_mock):
@@ -127,7 +141,8 @@ class WorkersTestCase(test.TestCase):
         cleanup_request = rpc_mock.call_args[0][1]
         for key, value in body.items():
             if key in ('disabled', 'is_up'):
-                value = value == 'true'
+                if value is not None:
+                    value = value == 'true'
             self.assertEqual(value, getattr(cleanup_request, key))
         self.assertEqual(self._expected_services(*SERVICES), res.json)
 

@@ -13,13 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import strutils
 from oslo_utils import timeutils
-from oslo_utils import uuidutils
 
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import workers
 from cinder.api.v3.views import workers as workers_view
-from cinder.common import constants
+from cinder.api import validation
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
@@ -31,29 +32,25 @@ from cinder import utils
 
 
 class WorkerController(wsgi.Controller):
-    allowed_clean_keys = {'service_id', 'cluster_name', 'host', 'binary',
-                          'is_up', 'disabled', 'resource_id', 'resource_type'}
 
     def __init__(self, *args, **kwargs):
         self.sch_api = sch_rpc.SchedulerAPI()
 
-    def _prepare_params(self, ctxt, params, allowed):
-        if not allowed.issuperset(params):
-            invalid_keys = set(params).difference(allowed)
-            msg = _('Invalid filter keys: %s') % ', '.join(invalid_keys)
-            raise exception.InvalidInput(reason=msg)
-
-        if params.get('binary') not in (None, constants.VOLUME_BINARY,
-                                        'cinder-scheduler'):
-            msg = _('binary must be empty or set to cinder-volume or '
-                    'cinder-scheduler')
-            raise exception.InvalidInput(reason=msg)
+    @wsgi.Controller.api_version(mv.WORKERS_CLEANUP)
+    @wsgi.response(202)
+    @validation.schema(workers.cleanup)
+    def cleanup(self, req, body=None):
+        """Do the cleanup on resources from a specific service/host/node."""
+        # Let the wsgi middleware convert NotAuthorized exceptions
+        ctxt = req.environ['cinder.context']
+        ctxt.authorize(policy.CLEAN_POLICY)
+        body = body or {}
 
         for boolean in ('disabled', 'is_up'):
-            if params.get(boolean) is not None:
-                params[boolean] = utils.get_bool_param(boolean, params)
+            if body.get(boolean) is not None:
+                body[boolean] = strutils.bool_from_string(body[boolean])
 
-        resource_type = params.get('resource_type')
+        resource_type = body.get('resource_type')
 
         if resource_type:
             resource_type = resource_type.title()
@@ -65,23 +62,19 @@ class WorkerController(wsgi.Controller):
                 msg = msg % {"resource_type": resource_type,
                              "valid_types": valid_types}
                 raise exception.InvalidInput(reason=msg)
-            params['resource_type'] = resource_type
+            body['resource_type'] = resource_type
 
-        resource_id = params.get('resource_id')
+        resource_id = body.get('resource_id')
         if resource_id:
-            if not uuidutils.is_uuid_like(resource_id):
-                msg = (_('Resource ID must be a UUID, and %s is not.') %
-                       resource_id)
-                raise exception.InvalidInput(reason=msg)
 
             # If we have the resource type but we don't have where it is
             # located, we get it from the DB to limit the distribution of the
             # request by the scheduler, otherwise it will be distributed to all
             # the services.
             location_keys = {'service_id', 'cluster_name', 'host'}
-            if not location_keys.intersection(params):
+            if not location_keys.intersection(body):
                 workers = db.worker_get_all(ctxt, resource_id=resource_id,
-                                            binary=params.get('binary'),
+                                            binary=body.get('binary'),
                                             resource_type=resource_type)
 
                 if len(workers) == 0:
@@ -95,26 +88,14 @@ class WorkerController(wsgi.Controller):
                     raise exception.InvalidInput(reason=msg)
 
                 worker = workers[0]
-                params.update(service_id=worker.service_id,
-                              resource_type=worker.resource_type)
+                body.update(service_id=worker.service_id,
+                            resource_type=worker.resource_type)
 
-        return params
-
-    @wsgi.Controller.api_version(mv.WORKERS_CLEANUP)
-    @wsgi.response(202)
-    def cleanup(self, req, body=None):
-        """Do the cleanup on resources from a specific service/host/node."""
-        # Let the wsgi middleware convert NotAuthorized exceptions
-        ctxt = req.environ['cinder.context']
-        ctxt.authorize(policy.CLEAN_POLICY)
-        body = body or {}
-
-        params = self._prepare_params(ctxt, body, self.allowed_clean_keys)
-        params['until'] = timeutils.utcnow()
+        body['until'] = timeutils.utcnow()
 
         # NOTE(geguileo): If is_up is not specified in the request
         # CleanupRequest's default will be used (False)
-        cleanup_request = objects.CleanupRequest(**params)
+        cleanup_request = objects.CleanupRequest(**body)
         cleaning, unavailable = self.sch_api.work_cleanup(ctxt,
                                                           cleanup_request)
         return {
