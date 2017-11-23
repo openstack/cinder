@@ -161,22 +161,49 @@ class DS8KCommonHelper(object):
         self.backend['storage_version'] = storage_info['release']
 
     def _get_lss_ids_for_cg(self):
-        lss_ids_for_cg = set()
         lss_range = self._get_value('lss_range_for_cg')
-        if lss_range:
-            lss_range = lss_range.replace(' ', '').split('-')
-            if len(lss_range) == 1:
-                begin = int(lss_range[0], 16)
-                end = begin
-            else:
-                begin = int(lss_range[0], 16)
-                end = int(lss_range[1], 16)
-            if begin > 0xFF or end > 0xFF or begin > end:
+        lss_ids_for_cg = set()
+        if not lss_range or not lss_range.strip():
+            return lss_ids_for_cg
+        if '-' in lss_range:
+            lss_ids = list()
+            lss_range = lss_range.strip()
+            if lss_range.startswith('-') or lss_range.endswith('-'):
+                raise exception.InvalidParameterValue(
+                    err=_('Param [lss_range_for_cg]\'s format is invalid, '
+                          'please don\'t put the \'-\' at the beginning or '
+                          'the end.'))
+            lss_range = lss_range.replace('-', ' - ').split()
+            for index, lss in enumerate(lss_range):
+                if lss is '-':
+                    try:
+                        begin = int(lss_range[index - 1], 16)
+                        end = int(lss_range[index + 1], 16)
+                        lss_ids_for_cg |= set(
+                            ('%02x' % i).upper() for i in
+                            range(begin, end + 1))
+                    except ValueError as e:
+                        raise exception.InvalidParameterValue(
+                            err=_('Param [lss_range_for_cg] is invalid, it '
+                                  'only supports space and \'-\' as '
+                                  'separator. '
+                                  'Exception = %s.') % six.text_type(e))
+                else:
+                    lss_ids.append(lss)
+            lss_ids_for_cg |= set(lss_ids)
+        else:
+            lss_ids_for_cg = set(lss_range.split())
+        for lss_id in lss_ids_for_cg:
+            try:
+                if int(lss_id, 16) > 0xFF:
+                    raise exception.InvalidParameterValue(
+                        err=_('Param [lss_range_for_cg] is invalid, it '
+                              'should be within 00-FF'))
+            except ValueError as e:
                 raise exception.InvalidParameterValue(
                     err=_('Param [lss_range_for_cg] is invalid, it '
-                          'should be within 00-FF.'))
-            lss_ids_for_cg = set(
-                ('%02x' % i).upper() for i in range(begin, end + 1))
+                          'only supports space and \'-\' as separator. '
+                          'Exception = %s.') % six.text_type(e))
         return lss_ids_for_cg
 
     def _check_host_type(self):
