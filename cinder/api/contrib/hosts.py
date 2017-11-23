@@ -146,9 +146,7 @@ class HostController(wsgi.Controller):
         """
         host = id
         context = req.environ['cinder.context']
-        if not context.is_admin:
-            msg = _("Describe-resource is admin only functionality")
-            raise webob.exc.HTTPForbidden(explanation=msg)
+        context.authorize(policy.MANAGE_POLICY)
 
         # Not found exception will be handled at the wsgi level
         host_ref = objects.Service.get_by_host_and_topic(
