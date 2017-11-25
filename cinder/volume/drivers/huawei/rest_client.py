@@ -1114,6 +1114,30 @@ class RestClient(object):
 
         return wwns
 
+    def _get_fc_initiator_count(self):
+        url = '/fc_initiator/count'
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get fc initiator count error.'))
+        return int(result['data']['COUNT'])
+
+    def get_fc_initiator_on_array(self):
+        count = self._get_fc_initiator_count()
+        if count <= 0:
+            return []
+
+        fc_initiators = []
+        for i in range((count - 1) // constants.MAX_QUERY_COUNT + 1):
+            url = '/fc_initiator?range=[%d-%d]' % (
+                i * constants.MAX_QUERY_COUNT,
+                (i + 1) * constants.MAX_QUERY_COUNT)
+            result = self.call(url, None, "GET")
+            msg = _('Get FC initiators from array error.')
+            self._assert_rest_result(result, msg)
+            for item in result.get('data', []):
+                fc_initiators.append(item['ID'])
+
+        return fc_initiators
+
     def add_fc_port_to_host(self, host_id, wwn):
         """Add a FC port to the host."""
         url = "/fc_initiator/" + wwn
