@@ -80,7 +80,8 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
 
         req_version = req.api_version_request
         show_count = False
-        if req_version.matches(mv.SUPPORT_COUNT_INFO):
+        if req_version.matches(
+                mv.SUPPORT_COUNT_INFO) and 'with_count' in search_opts:
             show_count = utils.get_bool_param('with_count', search_opts)
             search_opts.pop('with_count')
 

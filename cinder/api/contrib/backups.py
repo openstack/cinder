@@ -103,7 +103,8 @@ class BackupsController(wsgi.Controller):
         sort_keys, sort_dirs = common.get_sort_params(filters)
 
         show_count = False
-        if req_version.matches(mv.SUPPORT_COUNT_INFO):
+        if req_version.matches(
+                mv.SUPPORT_COUNT_INFO) and 'with_count' in filters:
             show_count = utils.get_bool_param('with_count', filters)
             filters.pop('with_count')
         self._convert_sort_name(req_version, sort_keys)

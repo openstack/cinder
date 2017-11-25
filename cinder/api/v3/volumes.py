@@ -98,7 +98,8 @@ class VolumeController(volumes_v2.VolumeController):
         filters = params
 
         show_count = False
-        if req_version.matches(mv.SUPPORT_COUNT_INFO):
+        if req_version.matches(
+                mv.SUPPORT_COUNT_INFO) and 'with_count' in filters:
             show_count = utils.get_bool_param('with_count', filters)
             filters.pop('with_count')
 
