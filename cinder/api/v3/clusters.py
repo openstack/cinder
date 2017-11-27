@@ -15,7 +15,9 @@
 
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import clusters as cluster
 from cinder.api.v3.views import clusters as clusters_view
+from cinder.api import validation
 from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
@@ -102,15 +104,11 @@ class ClusterController(wsgi.Controller):
             raise exception.NotFound(message=_("Unknown action"))
 
         disabled = id != 'enable'
-        disabled_reason = self._get_disabled_reason(body) if disabled else None
+        disabled_reason = self._disable_cluster(
+            req, body=body) if disabled else self._enable_cluster(
+            req, body=body)
 
-        if not disabled and disabled_reason:
-            msg = _("Unexpected 'disabled_reason' found on enable request.")
-            raise exception.InvalidInput(reason=msg)
-
-        name = body.get('name')
-        if not name:
-            raise exception.MissingRequired(element='name')
+        name = body['name']
 
         binary = body.get('binary', constants.VOLUME_BINARY)
 
@@ -129,14 +127,16 @@ class ClusterController(wsgi.Controller):
 
         return ret_val
 
-    def _get_disabled_reason(self, body):
+    @validation.schema(cluster.disable_cluster)
+    def _disable_cluster(self, req, body):
         reason = body.get('disabled_reason')
         if reason:
-            # Let wsgi handle InvalidInput exception
             reason = reason.strip()
-            utils.check_string_length(reason, 'Disabled reason', min_length=1,
-                                      max_length=255)
         return reason
+
+    @validation.schema(cluster.enable_cluster)
+    def _enable_cluster(self, req, body):
+        pass
 
 
 def create_resource():

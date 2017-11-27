@@ -26,10 +26,12 @@ from jsonschema import exceptions as jsonschema_exc
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import six
+import webob.exc
 
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields as c_fields
+from cinder import utils
 
 
 def _soft_validate_additional_properties(
@@ -83,6 +85,34 @@ def _soft_validate_additional_properties(
     else:
         for prop in extra_properties:
             del param_value[prop]
+
+
+def _validate_string_length(value, entity_name, mandatory=False,
+                            min_length=0, max_length=None,
+                            remove_whitespaces=False):
+    """Check the length of specified string.
+
+    :param value: the value of the string
+    :param entity_name: the name of the string
+    :mandatory: string is mandatory or not
+    :param min_length: the min_length of the string
+    :param max_length: the max_length of the string
+    :param remove_whitespaces: True if trimming whitespaces is needed
+                                   else False
+    """
+    if not mandatory and not value:
+        return True
+
+    if mandatory and not value:
+        msg = _("The '%s' can not be None.") % entity_name
+        raise webob.exc.HTTPBadRequest(explanation=msg)
+
+    if remove_whitespaces:
+        value = value.strip()
+
+    utils.check_string_length(value, entity_name,
+                              min_length=min_length,
+                              max_length=max_length)
 
 
 @jsonschema.FormatChecker.cls_checks('date-time')
@@ -154,6 +184,14 @@ def _validate_base64_format(instance):
         # TypeError will be raised at here.
         return False
 
+    return True
+
+
+@jsonschema.FormatChecker.cls_checks('disabled_reason')
+def _validate_disabled_reason(param_value):
+    _validate_string_length(param_value, 'disabled_reason',
+                            mandatory=False, min_length=1, max_length=255,
+                            remove_whitespaces=True)
     return True
 
 
