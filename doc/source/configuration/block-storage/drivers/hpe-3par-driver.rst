@@ -245,12 +245,12 @@ the following requirements:
 
 Other restrictions and considerations for ``hpe3par:compression``:
 
-   - For a compressed volume, minimum volume size needed is 16 GB; otherwise
-     resulting volume will be created successfully but will not be a compressed volume.
+- For a compressed volume, minimum volume size needed is 16 GB; otherwise
+  resulting volume will be created successfully but will not be a compressed volume.
 
-   - A full provisioned volume cannot be compressed,
-     if a compression is enabled and provisioning type requested is full,
-     the resulting volume defaults to thinly provisioned compressed volume.
+- A full provisioned volume cannot be compressed,
+  if a compression is enabled and provisioning type requested is full,
+  the resulting volume defaults to thinly provisioned compressed volume.
 
 LDAP and AD authentication is now supported in the HPE 3PAR driver.
 

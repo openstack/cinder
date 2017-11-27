@@ -15,7 +15,7 @@ storage node, you must prepare the storage device.
 
 #. Install the LVM packages:
 
-    .. code-block:: console
+   .. code-block:: console
 
       # zypper install lvm2
 
