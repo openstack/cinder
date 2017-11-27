@@ -206,6 +206,7 @@ class VolumeManager(manager.CleanableManager,
         self.configuration = config.Configuration(volume_backend_opts,
                                                   config_group=service_name)
         self.stats = {}
+        self.service_uuid = None
 
         if not volume_driver:
             # Get from configuration, which will get the default
@@ -236,6 +237,7 @@ class VolumeManager(manager.CleanableManager,
                      "for driver init.")
         else:
             curr_active_backend_id = service.active_backend_id
+            self.service_uuid = service.uuid
 
         if self.configuration.suppress_requests_ssl_warnings:
             LOG.warning("Suppressing requests library SSL Warnings")
@@ -677,6 +679,10 @@ class VolumeManager(manager.CleanableManager,
                 # NOTE(dulek): Volume wasn't rescheduled so we need to update
                 # volume stats as these are decremented on delete.
                 self._update_allocated_capacity(volume)
+
+        updates = {'service_uuid': self.service_uuid}
+        volume.update(updates)
+        volume.save()
 
         LOG.info("Created volume successfully.", resource=volume)
         return volume.id
@@ -2358,6 +2364,24 @@ class VolumeManager(manager.CleanableManager,
 
     @periodic_task.periodic_task
     def _report_driver_status(self, context):
+        # It's possible during live db migration that the self.service_uuid
+        # value isn't set (we didn't restart services), so we'll go ahead
+        # and make this a part of the service periodic
+        if not self.service_uuid:
+            svc_host = vol_utils.extract_host(self.host, 'backend')
+            # We hack this with a try/except for unit tests temporarily
+            try:
+                service = objects.Service.get_by_args(
+                    context,
+                    svc_host,
+                    constants.VOLUME_BINARY)
+                self.service_uuid = service.uuid
+            except exception.ServiceNotFound:
+                LOG.warning("Attempt to update service_uuid "
+                            "resulted in a Service NotFound "
+                            "exception, service_uuid field on "
+                            "volumes will be NULL.")
+
         if not self.driver.initialized:
             if self.driver.configuration.config_group is None:
                 config_group = ''

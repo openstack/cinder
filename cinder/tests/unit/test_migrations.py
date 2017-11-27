@@ -372,6 +372,18 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertEqual(sorted(['deleted', 'uuid']),
                          sorted(index_columns))
 
+    def _check_114(self, engine, data):
+        volumes = db_utils.get_table(engine, 'volumes')
+        self.assertIsInstance(volumes.c.service_uuid.type,
+                              self.VARCHAR_TYPE)
+        index_columns = []
+        for idx in volumes.indexes:
+            if idx.name == 'volumes_service_uuid_idx':
+                index_columns = idx.columns.keys()
+                break
+        self.assertEqual(sorted(['deleted', 'service_uuid']),
+                         sorted(index_columns))
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
         self.assert_each_foreign_key_is_part_of_an_index()

@@ -60,7 +60,8 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
     # Version 1.4: Added cluster fields
     # Version 1.5: Added group
     # Version 1.6: This object is now cleanable (adds rows to workers table)
-    VERSION = '1.6'
+    # Version 1.7: Added service_uuid
+    VERSION = '1.7'
 
     OPTIONAL_FIELDS = ('metadata', 'admin_metadata', 'glance_metadata',
                        'volume_type', 'volume_attachment', 'consistencygroup',
@@ -124,6 +125,7 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
                                                nullable=True),
         'snapshots': fields.ObjectField('SnapshotList', nullable=True),
         'group': fields.ObjectField('Group', nullable=True),
+        'service_uuid': fields.StringField(nullable=True),
     }
 
     # NOTE(thangp): obj_extra_fields is used to hold properties that are not
@@ -233,7 +235,8 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
     def obj_make_compatible(self, primitive, target_version):
         """Make a Volume representation compatible with a target version."""
         added_fields = (((1, 4), ('cluster', 'cluster_name')),
-                        ((1, 5), ('group', 'group_id')))
+                        ((1, 5), ('group', 'group_id')),
+                        ((1, 7), ('service_uuid')))
 
         # Convert all related objects
         super(Volume, self).obj_make_compatible(primitive, target_version)
