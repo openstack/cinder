@@ -479,7 +479,9 @@ class API(base.Base):
         encryption_key_id = volume.get('encryption_key_id', None)
         if encryption_key_id is not None:
             try:
-                self.key_manager.delete(context, encryption_key_id)
+                volume_utils.delete_encryption_key(context,
+                                                   self.key_manager,
+                                                   encryption_key_id)
             except Exception as e:
                 volume.update({'status': 'error_deleting'})
                 volume.save()
