@@ -28,6 +28,7 @@ from cinder.api.v3.views import volumes as volume_views_v3
 from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _
+from cinder.image import glance
 from cinder import objects
 from cinder.policies import volumes as policy
 from cinder import utils
@@ -193,6 +194,31 @@ class VolumeController(volumes_v2.VolumeController):
         except exception.VolumeSizeExceedsAvailableQuota as e:
             raise exc.HTTPForbidden(explanation=six.text_type(e))
 
+    def _get_image_snapshot(self, context, image_uuid):
+        image_snapshot = None
+        if image_uuid:
+            image_service = glance.get_default_image_service()
+            image_meta = image_service.show(context, image_uuid)
+            if image_meta is not None:
+                bdms = image_meta.get('properties', {}).get(
+                    'block_device_mapping', [])
+                if bdms:
+                    boot_bdm = [bdm for bdm in bdms if (
+                        bdm.get('source_type') == 'snapshot' and
+                        bdm.get('boot_index') == 0)]
+                    if boot_bdm:
+                        try:
+                            image_snapshot = self.volume_api.get_snapshot(
+                                context, boot_bdm[0].get('snapshot_id'))
+                            return image_snapshot
+                        except exception.NotFound:
+                            explanation = _(
+                                'Nova specific image is found, but boot '
+                                'volume snapshot id:%s not found.'
+                            ) % boot_bdm[0].get('snapshot_id')
+                            raise exc.HTTPNotFound(explanation=explanation)
+            return image_snapshot
+
     @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Creates a new volume.
@@ -297,6 +323,17 @@ class VolumeController(volumes_v2.VolumeController):
             # Not found exception will be handled at the wsgi level
             kwargs['group'] = self.group_api.get(context, group_id)
 
+        if self.ext_mgr.is_loaded('os-image-create'):
+            image_ref = volume.get('imageRef')
+            if image_ref is not None:
+                image_uuid = self._image_uuid_from_ref(image_ref, context)
+                image_snapshot = self._get_image_snapshot(context, image_uuid)
+                if (req_version.matches(mv.get_api_version(
+                        mv.SUPPORT_NOVA_IMAGE)) and image_snapshot):
+                    kwargs['snapshot'] = image_snapshot
+                else:
+                    kwargs['image_id'] = image_uuid
+
         size = volume.get('size', None)
         if size is None and kwargs['snapshot'] is not None:
             size = kwargs['snapshot']['volume_size']
@@ -304,12 +341,6 @@ class VolumeController(volumes_v2.VolumeController):
             size = kwargs['source_volume']['size']
 
         LOG.info("Create volume of %s GB", size)
-
-        if self.ext_mgr.is_loaded('os-image-create'):
-            image_ref = volume.get('imageRef')
-            if image_ref is not None:
-                image_uuid = self._image_uuid_from_ref(image_ref, context)
-                kwargs['image_id'] = image_uuid
 
         kwargs['availability_zone'] = volume.get('availability_zone', None)
         kwargs['scheduler_hints'] = volume.get('scheduler_hints', None)

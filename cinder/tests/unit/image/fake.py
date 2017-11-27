@@ -147,6 +147,24 @@ class _FakeImageService(object):
                                  'auto_disk_config': 'True'},
                   'size': 1234000000}
 
+        image8 = {'id': 'b0a599e0-41d7-3582-b260-769f443c862a',
+                  'name': 'fakeimage8',
+                  'created_at': timestamp,
+                  'updated_at': timestamp,
+                  'deleted_at': None,
+                  'deleted': False,
+                  'status': 'active',
+                  'is_public': False,
+                  'container_format': 'bare',
+                  'disk_format': 'raw',
+                  'properties':
+                  {'block_device_mapping': [
+                      {'boot_index': 0, 'source_type': 'snapshot',
+                       'snapshot_id': fake_constants.SNAPSHOT_ID}],
+                      'ramdisk_id': 'nokernel',
+                      'architecture': 'x86_64',
+                      'auto_disk_config': 'True'}}
+
         self.create(None, image1)
         self.create(None, image2)
         self.create(None, image3)
@@ -154,6 +172,7 @@ class _FakeImageService(object):
         self.create(None, image5)
         self.create(None, image6)
         self.create(None, image7)
+        self.create(None, image8)
         self._imagedata = {}
         self.temp_images = mock.MagicMock()
         super(_FakeImageService, self).__init__()

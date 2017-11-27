@@ -34,6 +34,7 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit.api.v2 import test_volumes as v2_test_volumes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import utils as test_utils
 from cinder import utils
 from cinder.volume import api as volume_api
@@ -48,6 +49,7 @@ class VolumeApiTest(test.TestCase):
         super(VolumeApiTest, self).setUp()
         self.ext_mgr = extensions.ExtensionManager()
         self.ext_mgr.extensions = {}
+        fake_image.mock_image_service(self)
         self.controller = volumes.VolumeController(self.ext_mgr)
 
         self.flags(host='fake')
@@ -258,6 +260,40 @@ class VolumeApiTest(test.TestCase):
         req.headers = mv.get_mv_header(version)
         req.api_version_request = mv.get_api_version(version)
         return req
+
+    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
+                       autospec=True)
+    @mock.patch.object(volume_api.API, 'get_snapshot', autospec=True)
+    @mock.patch.object(volume_api.API, 'create', autospec=True)
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_create_with_snapshot_image(self, mock_validate, create,
+                                               get_snapshot, volume_type_get):
+        create.side_effect = v2_fakes.fake_volume_api_create
+        get_snapshot.side_effect = v2_fakes.fake_snapshot_get
+        volume_type_get.side_effect = v2_fakes.fake_volume_type_get
+
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = self._vol_in_request_body(
+            image_id="b0a599e0-41d7-3582-b260-769f443c862a")
+
+        snapshot_id = fake.SNAPSHOT_ID
+        ex = self._expected_vol_from_controller(snapshot_id=snapshot_id)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v3/volumes')
+        req.headers = mv.get_mv_header(mv.SUPPORT_NOVA_IMAGE)
+        req.api_version_request = mv.get_api_version(mv.SUPPORT_NOVA_IMAGE)
+        res_dict = self.controller.create(req, body)
+        self.assertEqual(ex, res_dict)
+        context = req.environ['cinder.context']
+        get_snapshot.assert_called_once_with(self.controller.volume_api,
+                                             context, snapshot_id)
+        kwargs = self._expected_volume_api_create_kwargs(
+            v2_fakes.fake_snapshot(snapshot_id))
+        create.assert_called_once_with(
+            self.controller.volume_api, context,
+            vol['size'], v2_fakes.DEFAULT_VOL_NAME,
+            v2_fakes.DEFAULT_VOL_DESCRIPTION, **kwargs)
 
     def test_volumes_summary_in_unsupport_version(self):
         """Function call to test summary volumes API in unsupported version"""

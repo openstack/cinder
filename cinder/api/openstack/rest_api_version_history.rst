@@ -377,3 +377,7 @@ user documentation.
 3.45
 ----
   Add ``count`` field to volume, backup and snapshot list and detail APIs.
+
+3.46
+----
+  Support create volume by Nova specific image (0 size image).
