@@ -24,9 +24,9 @@ import os
 import fixtures
 from migrate.versioning import api as migration_api
 from migrate.versioning import repository
-from oslo_db.sqlalchemy import test_base
 from oslo_db.sqlalchemy import test_migrations
 from oslo_db.sqlalchemy import utils as db_utils
+from oslo_db.tests.sqlalchemy import base as test_base
 import sqlalchemy
 from sqlalchemy.engine import reflection
 
