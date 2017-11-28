@@ -55,6 +55,14 @@ encryption_id:
   in: path
   required: true
   type: string
+force_5:
+  description: |
+    Indicates whether to force delete a volume even if
+    the volume is in deleting or error_deleting. Default is ``false``.
+  in: path
+  required: false
+  type: boolean
+  min_version: 3.23
 group_id:
   description: |
     The ID of the group.
@@ -1072,14 +1080,6 @@ force_4:
   in: body
   required: false
   type: boolean
-force_5:
-  description: |
-    Indicates whether to force deletes a volume even if
-    the volume is in deleting or error_deleting. Default is ``false``.
-  in: body
-  required: false
-  type: boolean
-  min_version: 3.23
 free_capacity:
   description: |
     The amount of free capacity for the back-end
