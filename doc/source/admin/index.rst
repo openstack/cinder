@@ -29,5 +29,5 @@ Amazon EC2 Elastic Block Storage (EBS) offering.
    blockstorage-troubleshoot.rst
    generalized_filters.rst
 
-.. _`Storage Decisions`: https://docs.openstack.org/ops-guide/arch-storage.html
-.. _`OpenStack Operations Guide`: https://docs.openstack.org/ops-guide/
+.. _`Storage Decisions`: https://docs.openstack.org/arch-design/design-storage/design-storage-arch.html
+.. _`OpenStack Operations Guide`: https://wiki.openstack.org/wiki/OpsGuide
