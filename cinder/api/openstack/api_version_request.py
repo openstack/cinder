@@ -110,6 +110,7 @@ REST_API_VERSION_HISTORY = """
     * 3.45 - Add ``count`` field to volume, backup and snapshot list and
              detail APIs.
     * 3.46 - Support create volume by Nova specific image (0 size image).
+    * 3.47 - Support create volume from backup.
 """
 
 # The minimum and maximum versions of the API supported
@@ -117,7 +118,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.46"
+_MAX_API_VERSION = "3.47"
 _LEGACY_API_VERSION2 = "2.0"
 UPDATED = "2017-09-19T20:18:14Z"
 

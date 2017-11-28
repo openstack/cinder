@@ -381,3 +381,7 @@ user documentation.
 3.46
 ----
   Support create volume by Nova specific image (0 size image).
+
+3.47
+----
+  Support create volume from backup.

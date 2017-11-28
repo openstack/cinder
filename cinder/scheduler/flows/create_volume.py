@@ -40,7 +40,7 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
         super(ExtractSchedulerSpecTask, self).__init__(addons=[ACTION],
                                                        **kwargs)
 
-    def _populate_request_spec(self, volume, snapshot_id, image_id):
+    def _populate_request_spec(self, volume, snapshot_id, image_id, backup_id):
         # Create the full request spec using the volume object.
         #
         # NOTE(dulek): At this point, a volume can be deleted before it gets
@@ -53,6 +53,7 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
             'volume_id': volume.id,
             'snapshot_id': snapshot_id,
             'image_id': image_id,
+            'backup_id': backup_id,
             'volume_properties': {
                 'size': utils.as_int(volume.size, quiet=False),
                 'availability_zone': volume.availability_zone,
@@ -62,11 +63,12 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
         }
 
     def execute(self, context, request_spec, volume, snapshot_id,
-                image_id):
+                image_id, backup_id):
         # For RPC version < 1.2 backward compatibility
         if request_spec is None:
             request_spec = self._populate_request_spec(volume,
-                                                       snapshot_id, image_id)
+                                                       snapshot_id, image_id,
+                                                       backup_id)
         return {
             'request_spec': request_spec,
         }
@@ -140,7 +142,7 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
 
 def get_flow(context, driver_api, request_spec=None,
              filter_properties=None,
-             volume=None, snapshot_id=None, image_id=None):
+             volume=None, snapshot_id=None, image_id=None, backup_id=None):
 
     """Constructs and returns the scheduler entrypoint flow.
 
@@ -158,6 +160,7 @@ def get_flow(context, driver_api, request_spec=None,
         'volume': volume,
         'snapshot_id': snapshot_id,
         'image_id': image_id,
+        'backup_id': backup_id,
     }
 
     flow_name = ACTION.replace(":", "_") + "_scheduler"

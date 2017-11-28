@@ -22,6 +22,8 @@ import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
 
+from cinder import backup as backup_api
+from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context as cinder_context
 from cinder import coordination
 from cinder import exception
@@ -33,6 +35,7 @@ from cinder.message import api as message_api
 from cinder.message import message_field
 from cinder import objects
 from cinder.objects import consistencygroup
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume.flows import common
 from cinder.volume import utils as volume_utils
@@ -267,7 +270,7 @@ class ExtractVolumeSpecTask(flow_utils.CinderTask):
             'status': volume.status,
             'type': 'raw',  # This will have the type of the volume to be
                             # created, which should be one of [raw, snap,
-                            # source_vol, image]
+                            # source_vol, image, backup]
             'volume_id': volume.id,
             'volume_name': volume_name,
             'volume_size': volume_size,
@@ -314,7 +317,17 @@ class ExtractVolumeSpecTask(flow_utils.CinderTask):
                 # demand in the future.
                 'image_service': image_service,
             })
-
+        elif request_spec.get('backup_id'):
+            # We are making a backup based volume instead of a raw volume.
+            specs.update({
+                'type': 'backup',
+                'backup_id': request_spec['backup_id'],
+                # NOTE(luqitao): if the driver does not implement the method
+                # `create_volume_from_backup`, cinder-backup will update the
+                # volume's status, otherwise we need update it in the method
+                # `CreateVolumeOnFinishTask`.
+                'need_update_volume': True,
+            })
         return specs
 
     def revert(self, context, result, **kwargs):
@@ -357,6 +370,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
     Reversion strategy: N/A
     """
 
+    default_provides = 'volume_spec'
+
     def __init__(self, manager, db, driver, image_volume_cache=None):
         super(CreateVolumeFromSpecTask, self).__init__(addons=[ACTION])
         self.manager = manager
@@ -364,6 +379,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         self.driver = driver
         self.image_volume_cache = image_volume_cache
         self.message = message_api.API()
+        self.backup_api = backup_api.API()
+        self.backup_rpcapi = backup_rpcapi.BackupAPI()
 
     def _handle_bootable_volume_glance_meta(self, context, volume,
                                             **kwargs):
@@ -864,6 +881,45 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                                  image_meta=image_meta)
         return model_update
 
+    def _create_from_backup(self, context, volume, backup_id, **kwargs):
+        LOG.info("Creating volume %(volume_id)s from backup %(backup_id)s.",
+                 {'volume_id': volume.id,
+                  'backup_id': backup_id})
+        ret = {}
+        backup = objects.Backup.get_by_id(context, backup_id)
+        try:
+            ret = self.driver.create_volume_from_backup(volume, backup)
+            need_update_volume = True
+
+        except NotImplementedError:
+            LOG.info("Backend does not support creating volume from "
+                     "backup %(id)s. It will directly create the raw volume "
+                     "at the backend and then schedule the request to the "
+                     "backup service to restore the volume with backup.",
+                     {'id': backup_id})
+            model_update = self._create_raw_volume(volume, **kwargs) or {}
+            model_update.update({'status': 'restoring-backup'})
+            volume.update(model_update)
+            volume.save()
+
+            backup_host = self.backup_api.get_available_backup_service_host(
+                backup.host, backup.availability_zone)
+            updates = {'status': fields.BackupStatus.RESTORING,
+                       'restore_volume_id': volume.id,
+                       'host': backup_host}
+            backup.update(updates)
+            backup.save()
+
+            self.backup_rpcapi.restore_backup(context, backup.host, backup,
+                                              volume.id)
+            need_update_volume = False
+
+        LOG.info("Created volume %(volume_id)s from backup %(backup_id)s "
+                 "successfully.",
+                 {'volume_id': volume.id,
+                  'backup_id': backup_id})
+        return ret, need_update_volume
+
     def _create_raw_volume(self, volume, **kwargs):
         try:
             ret = self.driver.create_volume(volume)
@@ -910,6 +966,10 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             model_update = self._create_from_image(context,
                                                    volume,
                                                    **volume_spec)
+        elif create_type == 'backup':
+            model_update, need_update_volume = self._create_from_backup(
+                context, volume, **volume_spec)
+            volume_spec.update({'need_update_volume': need_update_volume})
         else:
             raise exception.VolumeTypeNotFound(volume_type_id=create_type)
 
@@ -927,6 +987,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                           "with creation provided model %(model)s",
                           {'volume_id': volume_id, 'model': model_update})
             raise
+        return volume_spec
 
     def _cleanup_cg_in_volume(self, volume):
         # NOTE(xyang): Cannot have both group_id and consistencygroup_id.
@@ -959,6 +1020,11 @@ class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
         }
 
     def execute(self, context, volume, volume_spec):
+        need_update_volume = volume_spec.pop('need_update_volume', True)
+        if not need_update_volume:
+            super(CreateVolumeOnFinishTask, self).execute(context, volume)
+            return
+
         new_status = self.status_translation.get(volume_spec.get('status'),
                                                  'available')
         update = {

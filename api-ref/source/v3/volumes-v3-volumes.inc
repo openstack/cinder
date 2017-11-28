@@ -188,6 +188,7 @@ Request
    - description: description
    - multiattach: multiattach
    - snapshot_id: snapshot_id
+   - backup_id: backup_id_1
    - name: name_13
    - imageRef: imageRef
    - volume_type: volume_type

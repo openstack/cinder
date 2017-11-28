@@ -139,6 +139,7 @@ OBJ_VERSIONS.add('1.28', {'Service': '1.5'})
 OBJ_VERSIONS.add('1.29', {'Service': '1.6'})
 OBJ_VERSIONS.add('1.30', {'RequestSpec': '1.2'})
 OBJ_VERSIONS.add('1.31', {'Volume': '1.7'})
+OBJ_VERSIONS.add('1.32', {'RequestSpec': '1.3'})
 
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):

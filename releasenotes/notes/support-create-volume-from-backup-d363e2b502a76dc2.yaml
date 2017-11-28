@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Starting with API microversion 3.47, Cinder now supports the ability to
+    create a volume directly from a backup. For instance, you can use the
+    command: ``cinder create <size> --backup-id <backup_id>`` in cinderclient.
