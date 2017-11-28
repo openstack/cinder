@@ -344,20 +344,29 @@ class VMAXProvision(object):
                                 list_volume_pairs=list_device_pairs)
         self.delete_volume_snap(array, snap_name, source_devices)
 
-    def extend_volume(self, array, device_id, new_size, extra_specs):
+    def extend_volume(self, array, device_id, new_size, extra_specs,
+                      rdf_group=None):
         """Extend a volume.
 
         :param array: the array serial number
         :param device_id: the volume device id
         :param new_size: the new size (GB)
         :param extra_specs: the extra specifications
+        :param rdf_group: the rdf group number, if required
         :returns: status_code
         """
         start_time = time.time()
-        self.rest.extend_volume(array, device_id, new_size, extra_specs)
-        LOG.debug("Extend VMAX volume took: %(delta)s H:MM:SS.",
-                  {'delta': self.utils.get_time_delta(start_time,
-                                                      time.time())})
+        if rdf_group:
+            @coordination.synchronized('emc-rg-{rdf_group}')
+            def _extend_replicated_volume(rdf_group):
+                self.rest.extend_volume(array, device_id,
+                                        new_size, extra_specs)
+            _extend_replicated_volume(rdf_group)
+        else:
+            self.rest.extend_volume(array, device_id, new_size, extra_specs)
+            LOG.debug("Extend VMAX volume took: %(delta)s H:MM:SS.",
+                      {'delta': self.utils.get_time_delta(start_time,
+                                                          time.time())})
 
     def get_srp_pool_stats(self, array, array_info):
         """Get the srp capacity stats.
@@ -495,8 +504,11 @@ class VMAXProvision(object):
             self.rest.wait_for_rdf_consistent_state(
                 array, device_id, target_device,
                 rep_extra_specs, state)
-        self.rest.modify_rdf_device_pair(
-            array, device_id, rdf_group, rep_extra_specs, suspend=True)
+        if state.lower() == utils.RDF_SUSPENDED_STATE:
+            LOG.info("RDF pair is already suspended")
+        else:
+            self.rest.modify_rdf_device_pair(
+                array, device_id, rdf_group, rep_extra_specs, suspend=True)
         self.delete_rdf_pair(array, device_id, rdf_group,
                              target_device, rep_extra_specs)
 
