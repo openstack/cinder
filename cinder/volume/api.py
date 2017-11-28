@@ -399,6 +399,11 @@ class API(base.Base):
         if not unmanage_only:
             volume.assert_not_frozen()
 
+        if unmanage_only and volume.encryption_key_id is not None:
+            msg = _("Unmanaging encrypted volumes is not supported.")
+            e = exception.Invalid(reason=msg)
+            raise e
+
         # Build required conditions for conditional update
         expected = {
             'attach_status': db.Not(fields.VolumeAttachStatus.ATTACHED),
