@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    When Barbican is the encryption key_manager backend, any encryption keys
+    associated with the legacy ConfKeyManager will be automatically migrated
+    to Barbican. All database references to the ConfKeyManager's all-zeros key
+    ID will be updated with a Barbican key ID. The encryption keys do not
+    change. Only the encryption key ID changes.
+
+    Key migration is initiated on service startup, and entries in the
+    cinder-volume log will indicate the migration status. Log entries will
+    indicate when a volume's encryption key ID has been migrated to Barbican,
+    and a summary log message will indicate when key migration has finished.
