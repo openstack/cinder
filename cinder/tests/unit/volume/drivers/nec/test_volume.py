@@ -20,6 +20,7 @@ import mock
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.nec import volume_common
 from cinder.volume.drivers.nec import volume_helper
 
 
@@ -1095,8 +1096,6 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
 
 class VolumeStats_test(volume_helper.MStorageDSVDriver, test.TestCase):
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
     def setUp(self):
         super(VolumeStats_test, self).setUp()
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
@@ -1106,6 +1105,8 @@ class VolumeStats_test(volume_helper.MStorageDSVDriver, test.TestCase):
         self._properties['pool_backup_pools'] = {2, 3}
 
     def test_update_volume_status(self):
+        self.mock_object(volume_common.MStorageVolumeCommon, 'parse_xml',
+                         side_effect=Exception)
         stats = self._update_volume_status()
         self.assertEqual('dummy', stats.get('volume_backend_name'))
         self.assertEqual('NEC', stats.get('vendor_name'))
