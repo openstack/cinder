@@ -613,9 +613,6 @@ class MStorageISMCLI(object):
 
 
 class UnpairWait(object):
-    error_updates = {'status': 'error',
-                     'progress': '100%',
-                     'migration_status': None}
 
     def __init__(self, volume_properties, cli):
         super(UnpairWait, self).__init__()

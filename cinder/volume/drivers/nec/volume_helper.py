@@ -206,8 +206,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             raise exception.NotFound(msg)
         return ldname
 
-    def _validate_iscsildset_exist(self, ldsets, connector, metadata=None):
-        ldset = self.get_ldset(ldsets, metadata)
+    def _validate_iscsildset_exist(self, ldsets, connector):
+        ldset = self.get_ldset(ldsets)
         if ldset is None:
             for tldset in ldsets.values():
                 if 'initiator_list' not in tldset:
@@ -225,8 +225,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             raise exception.NotFound(msg)
         return ldset
 
-    def _validate_fcldset_exist(self, ldsets, connector, metadata=None):
-        ldset = self.get_ldset(ldsets, metadata)
+    def _validate_fcldset_exist(self, ldsets, connector):
+        ldset = self.get_ldset(ldsets)
         if ldset is None:
             for conect in connector['wwpns']:
                 length = len(conect)
@@ -682,64 +682,33 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         LOG.debug('_iscsi_do_export'
                   '(Volume ID = %(id)s, connector = %(connector)s) Start.',
                   {'id': volume.id, 'connector': connector})
-        while True:
+
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+
+        # find LD Set.
+        ldset = self._validate_iscsildset_exist(
+            ldsets, connector)
+        ldname = self.get_ldname(
+            volume.id, self._properties['ld_name_format'])
+
+        # add LD to LD set.
+        if ldname not in lds:
+            msg = _('Logical Disk `%s` could not be found.') % ldname
+            raise exception.NotFound(msg)
+        ld = lds[ldname]
+
+        if ld['ldn'] not in ldset['lds']:
+            # assign the LD to LD Set.
+            self._cli.addldsetld(ldset['ldsetname'], ldname)
+            # update local info.
             xml = self._cli.view_all(self._properties['ismview_path'])
             pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
                 self.configs(xml))
-
-            # find LD Set.
-
-            # get target LD Set name.
-            metadata = {}
-            # image to volume or volume to image.
-            if (volume.status in ['downloading', 'uploading'] and
-                    self._properties['ldset_controller_node_name'] != ''):
-                metadata['ldset'] = (
-                    self._properties['ldset_controller_node_name'])
-                LOG.debug('image to volume or volume to image:%s',
-                          volume.status)
-            # migrate.
-            elif (hasattr(volume, 'migration_status') and
-                    volume.migration_status is not None and
-                    self._properties['ldset_controller_node_name'] != ''):
-                metadata['ldset'] = (
-                    self._properties['ldset_controller_node_name'])
-                LOG.debug('migrate:%s', volume.migration_status)
-
-            ldset = self._validate_iscsildset_exist(
-                ldsets, connector, metadata)
-
-            ldname = self.get_ldname(
-                volume.id, self._properties['ld_name_format'])
-
-            # add LD to LD set.
-            if ldname not in lds:
-                msg = _('Logical Disk `%s` could not be found.') % ldname
-                raise exception.NotFound(msg)
-            ld = lds[ldname]
-
-            if ld['ldn'] not in ldset['lds']:
-                # Check the LD is remaining on ldset_controller_node.
-                ldset_controller_node_name = (
-                    self._properties['ldset_controller_node_name'])
-                if ldset_controller_node_name != '':
-                    if ldset_controller_node_name != ldset['ldsetname']:
-                        ldset_controller = ldsets[ldset_controller_node_name]
-                        if ld['ldn'] in ldset_controller['lds']:
-                            LOG.debug(
-                                'delete remaining the LD from '
-                                'ldset_controller_node. '
-                                'Ldset Name=%s.',
-                                ldset_controller_node_name)
-                            self._cli.delldsetld(ldset_controller_node_name,
-                                                 ldname)
-                # assign the LD to LD Set.
-                self._cli.addldsetld(ldset['ldsetname'], ldname)
-
-                LOG.debug('Add LD `%(ld)s` to LD Set `%(ldset)s`.',
-                          {'ld': ldname, 'ldset': ldset['ldsetname']})
-            else:
-                break
+            ldset = self._validate_iscsildset_exist(ldsets, connector)
+            LOG.debug('Add LD `%(ld)s` to LD Set `%(ldset)s`.',
+                      {'ld': ldname, 'ldset': ldset['ldsetname']})
 
         # enumerate portals for iscsi multipath.
         prefered_director = ld['pool_num'] % 2
@@ -762,7 +731,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                    % {'id': volume.id,
                       'wwpns': connector['wwpns']})
         try:
-            ret = self._fc_do_export(_ctx, volume, connector, ensure)
+            ret = self._fc_do_export(_ctx, volume, connector, ensure,
+                                     self._properties['diskarray_name'])
             LOG.info('Created FC Export (%s)', msgparm)
             return ret
         except exception.CinderException as e:
@@ -771,79 +741,41 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
-    def _fc_do_export(self, _ctx, volume, connector, ensure):
+    @coordination.synchronized('mstorage_bind_execute_{diskarray_name}')
+    def _fc_do_export(self, _ctx, volume, connector, ensure, diskarray_name):
         LOG.debug('_fc_do_export'
                   '(Volume ID = %(id)s, connector = %(connector)s) Start.',
                   {'id': volume.id, 'connector': connector})
-        while True:
-            xml = self._cli.view_all(self._properties['ismview_path'])
-            pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-                self.configs(xml))
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
 
-            # find LD Set.
+        # get target LD Set.
+        ldset = self._validate_fcldset_exist(ldsets, connector)
+        ldname = self.get_ldname(volume.id, self._properties['ld_name_format'])
 
-            # get target LD Set.
-            metadata = {}
-            # image to volume or volume to image.
-            if (volume.status in ['downloading', 'uploading'] and
-                    self._properties['ldset_controller_node_name'] != ''):
-                metadata['ldset'] = (
-                    self._properties['ldset_controller_node_name'])
-                LOG.debug('image to volume or volume to image:%s',
-                          volume.status)
-            # migrate.
-            elif (hasattr(volume, 'migration_status') and
-                    volume.migration_status is not None and
-                    self._properties['ldset_controller_node_name'] != ''
-                  ):
-                metadata['ldset'] = (
-                    self._properties['ldset_controller_node_name'])
-                LOG.debug('migrate:%s', volume.migration_status)
-
-            ldset = self._validate_fcldset_exist(ldsets, connector, metadata)
-
-            # get free lun.
-            luns = []
-            ldsetlds = ldset['lds']
-            for ld in ldsetlds.values():
-                luns.append(ld['lun'])
-
-            target_lun = 0
-            for lun in sorted(luns):
-                if target_lun < lun:
-                    break
-                target_lun += 1
-
-            ldname = self.get_ldname(
-                volume.id, self._properties['ld_name_format'])
-
-            # add LD to LD set.
-            if ldname not in lds:
-                msg = _('Logical Disk `%s` could not be found.') % ldname
-                raise exception.NotFound(msg)
-            ld = lds[ldname]
-
-            if ld['ldn'] not in ldset['lds']:
-                # Check the LD is remaining on ldset_controller_node.
-                ldset_controller_node_name = (
-                    self._properties['ldset_controller_node_name'])
-                if ldset_controller_node_name != '':
-                    if ldset_controller_node_name != ldset['ldsetname']:
-                        ldset_controller = ldsets[ldset_controller_node_name]
-                        if ld['ldn'] in ldset_controller['lds']:
-                            LOG.debug(
-                                'delete remaining the LD from '
-                                'ldset_controller_node. '
-                                'Ldset Name=%s.', ldset_controller_node_name)
-                            self._cli.delldsetld(ldset_controller_node_name,
-                                                 ldname)
-                # assign the LD to LD Set.
-                self._cli.addldsetld(ldset['ldsetname'], ldname, target_lun)
-
-                LOG.debug('Add LD `%(ld)s` to LD Set `%(ldset)s`.',
-                          {'ld': ldname, 'ldset': ldset['ldsetname']})
-            else:
+        # get free lun.
+        luns = []
+        ldsetlds = ldset['lds']
+        for ld in ldsetlds.values():
+            luns.append(ld['lun'])
+        target_lun = 0
+        for lun in sorted(luns):
+            if target_lun < lun:
                 break
+            target_lun += 1
+
+        # add LD to LD set.
+        if ldname not in lds:
+            msg = _('Logical Disk `%s` could not be found.') % ldname
+            raise exception.NotFound(msg)
+        ld = lds[ldname]
+
+        if ld['ldn'] not in ldset['lds']:
+            # assign the LD to LD Set.
+            self._cli.addldsetld(ldset['ldsetname'], ldname, target_lun)
+            LOG.debug('Add LD `%(ld)s` to LD Set `%(ldset)s`.',
+                      {'ld': ldname, 'ldset': ldset['ldsetname']})
 
         LOG.debug('%(ensure)sexport LD `%(ld)s`.',
                   {'ensure': 'ensure_' if ensure else '',
@@ -992,24 +924,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                 self.configs(xml))
 
             # get target LD Set.
-            metadata = {}
-            # image to volume or volume to image.
-            if (volume.status in ['downloading', 'uploading'] and
-                    self._properties['ldset_controller_node_name'] != ''):
-                metadata['ldset'] = (
-                    self._properties['ldset_controller_node_name'])
-                LOG.debug('image to volume or volume to image:%s',
-                          volume.status)
-            # migrate.
-            elif (hasattr(volume, 'migration_status') and
-                    volume.migration_status is not None and
-                    self._properties['ldset_controller_node_name'] != ''
-                  ):
-                metadata['ldset'] = (
-                    self._properties['ldset_controller_node_name'])
-                LOG.debug('migrate:%s', volume.migration_status)
-
-            ldset = self.get_ldset(ldsets, metadata)
+            ldset = self.get_ldset(ldsets)
             ldname = self.get_ldname(
                 volume.id, self._properties['ld_name_format'])
 
@@ -1530,18 +1445,6 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                    % ld['RPL Attribute'])
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
-
-        # Check the LD is remaining on ldset_controller_node.
-        ldset_controller_node_name = (
-            self._properties['ldset_controller_node_name'])
-        if ldset_controller_node_name != '':
-            if ldset_controller_node_name in ldsets:
-                ldset = ldsets[ldset_controller_node_name]
-                if ld['ldn'] in ldset['lds']:
-                    LOG.debug('delete LD from ldset_controller_node. '
-                              'Ldset Name=%s.',
-                              ldset_controller_node_name)
-                    self._cli.delldsetld(ldset_controller_node_name, ldname)
 
         # unbind LD.
         self._cli.unbind(ldname)

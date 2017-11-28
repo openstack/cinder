@@ -303,38 +303,6 @@ xml_out = '''
      <UNIT name="Path">1000-0090-FAA0-786A</UNIT>
     </SECTION>
    </OBJECT>
-   <OBJECT name="LD Set(FC)">
-    <SECTION name="LD Set(FC) Information">
-     <UNIT name="Platform">WN</UNIT>
-     <UNIT name="LD Set Name">TNES120250</UNIT>
-    </SECTION>
-    <SECTION name="Path List">
-     <UNIT name="Path">1000-0090-FA76-9605</UNIT>
-    </SECTION>
-    <SECTION name="Path List">
-     <UNIT name="Path">1000-0090-FA76-9604</UNIT>
-    </SECTION>
-   </OBJECT>
-   <OBJECT name="LD Set(FC)">
-    <SECTION name="LD Set(FC) Information">
-     <UNIT name="Platform">WN</UNIT>
-     <UNIT name="LD Set Name">TNES140098</UNIT>
-    </SECTION>
-    <SECTION name="Path List">
-     <UNIT name="Path">1000-0090-FA53-302C</UNIT>
-    </SECTION>
-    <SECTION name="Path List">
-     <UNIT name="Path">1000-0090-FA53-302D</UNIT>
-    </SECTION>
-    <SECTION name="LUN/LD List">
-     <UNIT name="LUN(h)">0000</UNIT>
-     <UNIT name="LDN(h)">0005</UNIT>
-    </SECTION>
-    <SECTION name="LUN/LD List">
-     <UNIT name="LUN(h)">0001</UNIT>
-     <UNIT name="LDN(h)">0006</UNIT>
-    </SECTION>
-   </OBJECT>
    <OBJECT name="LD Set(iSCSI)">
     <SECTION name="LD Set(iSCSI) Information">
      <UNIT name="Platform">LX</UNIT>
@@ -604,6 +572,39 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
                                                   999999999999)
 
 
+class GetInformationTest(volume_helper.MStorageDSVDriver, test.TestCase):
+
+    def setUp(self):
+        super(GetInformationTest, self).setUp()
+        self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.do_setup(None)
+
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                '_create_ismview_dir', new=mock.Mock())
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
+                'view_all', patch_view_all)
+    def test_get_ldset(self):
+        self.xml = self._cli.view_all()
+        (self.pools,
+         self.lds,
+         self.ldsets,
+         self.used_ldns,
+         self.hostports,
+         self.max_ld_count) = self.configs(self.xml)
+        self._properties['ldset_name'] = ''
+        ldset = self.get_ldset(self.ldsets)
+        self.assertIsNone(ldset)
+        self._properties['ldset_name'] = 'LX:OpenStack1'
+        ldset = self.get_ldset(self.ldsets)
+        self.assertEqual('LX:OpenStack1', ldset['ldsetname'])
+        self._properties['ldset_name'] = 'LX:OpenStackX'
+        with self.assertRaisesRegexp(exception.NotFound,
+                                     'Logical Disk Set'
+                                     ' `LX:OpenStackX`'
+                                     ' could not be found.'):
+            self.get_ldset(self.ldsets)
+
+
 class VolumeCreateTest(volume_helper.MStorageDSVDriver, test.TestCase):
 
     @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
@@ -799,9 +800,6 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
          self.used_ldns,
          self.hostports,
          self.max_ld_count) = self.configs(self.xml)
-        mock_getldset = mock.Mock()
-        self.get_ldset = mock_getldset
-        self.get_ldset.return_value = self.ldsets["LX:OpenStack0"]
 
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
                 patch_execute)
@@ -949,6 +947,34 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
         info = self._fc_terminate_connection(self.vol, None)
         self.assertEqual('fibre_channel', info['driver_volume_type'])
         self.assertEqual({}, info['data'])
+
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
+                patch_execute)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
+                patch_view_all)
+    def test_iscsi_portal_with_controller_node_name(self):
+        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
+        self.vol.status = 'downloading'
+        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
+        self._properties['ldset_controller_node_name'] = 'LX:OpenStack1'
+        self._properties['portal_number'] = 2
+        location = self.iscsi_do_export(None, self.vol, connector)
+        self.assertEqual('192.168.1.90:3260;192.168.1.91:3260;'
+                         '192.168.2.92:3260;192.168.2.93:3260'
+                         ',1 iqn.2001-03.target0000 0',
+                         location['provider_location'])
+
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
+                patch_execute)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
+                patch_view_all)
+    def test_fc_do_export_with_controller_node_name(self):
+        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
+        self.vol.status = 'downloading'
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
+        self._properties['ldset_controller_node_name'] = 'LX:OpenStack0'
+        location = self.fc_do_export(None, self.vol, connector)
+        self.assertIsNone(location)
 
 
 class DeleteDSVVolume_test(volume_helper.MStorageDSVDriver,
