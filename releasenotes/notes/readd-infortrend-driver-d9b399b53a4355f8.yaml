@@ -1,0 +1,5 @@
+---
+features:
+  - Re-added Infortrend Cinder volume driver. The Infortrend driver,
+    removed in Cinder 12.0.0 (Queens), has been restored in this release.
+
