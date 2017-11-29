@@ -67,12 +67,6 @@ group_snapshot_id:
   in: path
   required: true
   type: string
-group_type_id:
-  description: |
-    The UUID for an existing group type.
-  in: path
-  required: false
-  type: string
 group_type_id_1:
   description: |
     The UUID for an existing group type.
