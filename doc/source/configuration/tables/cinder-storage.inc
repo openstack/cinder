@@ -57,11 +57,11 @@
    * - ``volume_backend_name`` = ``None``
      - (String) The backend name for a given driver implementation
    * - ``volume_clear`` = ``zero``
-     - (String) Method used to wipe old volumes
+     - (String) Method used to wipe old volumes. This option can either be set in section [backend_defaults] (to apply to all enabled_backends) or directly in the backend specific section to apply for just this one backend.
    * - ``volume_clear_ionice`` = ``None``
-     - (String) The flag to pass to ionice to alter the i/o priority of the process used to zero a volume after deletion, for example "-c3" for idle only priority.
+     - (String) The flag to pass to ionice to alter the i/o priority of the process used to zero a volume after deletion, for example "-c3" for idle only priority. This option can either be set in section [backend_defaults] (to apply to all enabled_backends) or directly in the backend specific section to apply for just this one backend.
    * - ``volume_clear_size`` = ``0``
-     - (Integer) Size in MiB to wipe at start of old volumes. 1024 MiBat max. 0 => all
+     - (Integer) Size in MiB to wipe at start of old volumes. 1024 MiBat max. 0 => all. This option can either be set in section [backend_defaults] (to apply to all enabled_backends) or directly in the backend specific section to apply for just this one backend.
    * - ``volume_copy_blkio_cgroup_name`` = ``cinder-volume-copy``
      - (String) The blkio cgroup name to be used to limit bandwidth of volume copy
    * - ``volume_copy_bps_limit`` = ``0``
