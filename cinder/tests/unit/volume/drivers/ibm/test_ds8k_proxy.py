@@ -2893,6 +2893,24 @@ class DS8KProxyTest(test.TestCase):
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.create_group, self.ctxt, group)
 
+    @ddt.data('group_replication_enabled',
+              'consistent_group_replication_enabled')
+    def test_create_replication_group_update_replication_status(self, key):
+        """create replication group should update replication_status."""
+        self.configuration.lss_range_for_cg = '20-23'
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(self.ctxt, 'group', {key: '<is> True'})
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+        model_update = self.driver.create_group(self.ctxt, group)
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
     def test_delete_consistency_group_sucessfully(self):
         """test a successful consistency group deletion."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2955,7 +2973,8 @@ class DS8KProxyTest(test.TestCase):
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
         location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
-        data = json.dumps({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location,
                                      replication_driver_data=data,
@@ -2981,7 +3000,8 @@ class DS8KProxyTest(test.TestCase):
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
         location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
-        data = json.dumps({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location,
                                      replication_driver_data=data,
@@ -3222,8 +3242,7 @@ class DS8KProxyTest(test.TestCase):
                 self.ctxt, group, [volume], None, None, src_group, [src_vol]))
         self.assertEqual('2200',
                          volumes_model_update[0]['metadata']['vol_hex_id'])
-        self.assertEqual(fields.GroupStatus.AVAILABLE,
-                         model_update['status'])
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
 
     @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, '_create_lun')
@@ -3263,11 +3282,13 @@ class DS8KProxyTest(test.TestCase):
                 [snapshot], None, None))
         self.assertEqual(
             '2200', volumes_model_update[0]['metadata']['vol_hex_id'])
-        self.assertEqual(fields.GroupStatus.AVAILABLE,
-                         model_update['status'])
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
 
-    def test_create_group_from_generic_group(self):
-        """create group from generic group is not implemented."""
+    @mock.patch.object(eventlet, 'sleep')
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
+    def test_create_group_from_replication_group(self, mock_get_flashcopy,
+                                                 mock_sleep):
+        """create group from replication group."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -3283,7 +3304,8 @@ class DS8KProxyTest(test.TestCase):
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
         location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
-        data = json.dumps({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         src_volume = self._create_volume(volume_type_id=vol_type.id,
                                          provider_location=location,
                                          replication_driver_data=data,
@@ -3292,11 +3314,12 @@ class DS8KProxyTest(test.TestCase):
         group = self._create_group(host=TEST_GROUP_HOST,
                                    group_type_id=group_type.id)
         volume = self._create_volume(group_id=group.id)
-
-        self.assertRaises(NotImplementedError,
-                          self.driver.create_group_from_src,
-                          self.ctxt, group, [volume],
-                          None, None, src_group, [src_volume])
+        mock_get_flashcopy.side_effect = [[TEST_FLASHCOPY], {}]
+        model_update, volumes_model_update = self.driver.create_group_from_src(
+            self.ctxt, group, [volume], None, None, src_group, [src_volume])
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
     @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
