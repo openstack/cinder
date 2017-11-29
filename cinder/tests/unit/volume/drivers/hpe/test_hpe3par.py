@@ -5492,12 +5492,10 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             hpeexceptions.HTTPNotFound('fake'),
             [{'active': True,
               'volumeName': self.VOLUME_3PAR_NAME,
-              'portPos': {'node': 7, 'slot': 1, 'cardPort': 1},
               'remoteName': self.wwn[1],
               'lun': 90, 'type': 0}],
             [{'active': True,
               'volumeName': self.VOLUME_3PAR_NAME,
-              'portPos': {'node': 6, 'slot': 1, 'cardPort': 1},
               'remoteName': self.wwn[0],
               'lun': 90, 'type': 0}]]
 
@@ -5515,8 +5513,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 'target_wwn': ['0987654321234', '123456789000987'],
                 'target_discovered': True,
                 'initiator_target_map':
-                    {'123456789012345': ['123456789000987'],
-                     '123456789054321': ['0987654321234']}}}
+                    {'123456789012345': ['0987654321234', '123456789000987'],
+                     '123456789054321': ['0987654321234', '123456789000987']}}}
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -5534,20 +5532,11 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.getPorts(),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
-                mock.call.getPorts(),
                 mock.call.createVLUN(
                     self.VOLUME_3PAR_NAME,
                     auto=True,
                     hostname=self.FAKE_HOST,
-                    lun=None,
-                    portPos={'node': 7, 'slot': 1, 'cardPort': 1}),
-                mock.call.getHostVLUNs(self.FAKE_HOST),
-                mock.call.createVLUN(
-                    self.VOLUME_3PAR_NAME,
-                    auto=False,
-                    hostname=self.FAKE_HOST,
-                    lun=90,
-                    portPos={'node': 6, 'slot': 1, 'cardPort': 1}),
+                    lun=None),
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
@@ -5570,8 +5559,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                              'firmwareVersion': None,
                              'hostSpeed': 0,
                              'model': None,
-                             'portPos': {'cardPort': 1, 'node': 7,
-                                         'slot': 1},
                              'vendor': None,
                              'wwn': self.wwn[0]}]}]
         mock_client.queryHost.return_value = {
@@ -5619,13 +5606,11 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.getPorts(),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
-                mock.call.getPorts(),
                 mock.call.createVLUN(
                     self.VOLUME_3PAR_NAME,
                     auto=True,
                     hostname=self.FAKE_HOST,
-                    lun=None,
-                    portPos={'node': 7, 'slot': 1, 'cardPort': 1}),
+                    lun=None),
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
@@ -5742,16 +5727,12 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                              'firmwareVersion': None,
                              'hostSpeed': 0,
                              'model': None,
-                             'portPos': {'cardPort': 1, 'node': 7,
-                                         'slot': 1},
                              'vendor': None,
                              'wwn': self.wwn[0]},
                             {'driverVersion': None,
                              'firmwareVersion': None,
                              'hostSpeed': 0,
                              'model': None,
-                             'portPos': {'cardPort': 1, 'node': 6,
-                                         'slot': 1},
                              'vendor': None,
                              'wwn': self.wwn[1]}]}]
         mock_client.queryHost.return_value = {
@@ -5765,11 +5746,9 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             [{'active': True,
               'volumeName': self.VOLUME_3PAR_NAME,
               'lun': 90, 'type': 0,
-              'remoteName': self.wwn[1],
-              'portPos': {'cardPort': 1, 'node': 7, 'slot': 1}}],
+              'remoteName': self.wwn[1]}],
             [{'active': True,
               'volumeName': self.VOLUME_3PAR_NAME,
-              'portPos': {'node': 6, 'slot': 1, 'cardPort': 1},
               'remoteName': self.wwn[0],
               'lun': 90, 'type': 0}]]
 
@@ -5787,8 +5766,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 'target_wwn': ['0987654321234', '123456789000987'],
                 'target_discovered': True,
                 'initiator_target_map':
-                    {'123456789012345': ['123456789000987'],
-                     '123456789054321': ['0987654321234']}}}
+                    {'123456789012345': ['0987654321234', '123456789000987'],
+                     '123456789054321': ['0987654321234', '123456789000987']}}}
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -5806,20 +5785,11 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.getPorts(),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
-                mock.call.getPorts(),
                 mock.call.createVLUN(
                     self.VOLUME_3PAR_NAME,
                     auto=True,
                     hostname=self.FAKE_HOST,
-                    lun=None,
-                    portPos={'node': 7, 'slot': 1, 'cardPort': 1}),
-                mock.call.getHostVLUNs(self.FAKE_HOST),
-                mock.call.createVLUN(
-                    self.VOLUME_3PAR_NAME,
-                    auto=False,
-                    hostname=self.FAKE_HOST,
-                    lun=90,
-                    portPos={'node': 6, 'slot': 1, 'cardPort': 1}),
+                    lun=None),
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(

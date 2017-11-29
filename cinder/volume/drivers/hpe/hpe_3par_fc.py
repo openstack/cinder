@@ -113,10 +113,11 @@ class HPE3PARFCDriver(driver.ManageableVD,
         3.0.12 - Adds consistency group capability in generic volume groups.
         3.0.13 - Create one vlun in single path configuration. bug #1727176
         3.0.14 - Added check to remove FC zones. bug #1730720
+        3.0.15 - Create FC vlun as host sees. bug #1734505
 
     """
 
-    VERSION = "3.0.14"
+    VERSION = "3.0.15"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -299,61 +300,16 @@ class HPE3PARFCDriver(driver.ManageableVD,
             vlun = None
             if existing_vlun is None:
                 # now that we have a host, create the VLUN
-                nsp = None
-                lun_id = None
-                active_fc_port_list = common.get_active_fc_target_ports()
-
-                if self.lookup_service:
-                    if not init_targ_map:
-                        msg = _("Setup is incomplete. Device mapping "
-                                "not found from FC network. "
-                                "Cannot perform VLUN creation.")
-                        LOG.error(msg)
-                        raise exception.FCSanLookupServiceException(msg)
-
-                    for target_wwn in target_wwns:
-                        for port in active_fc_port_list:
-                            if port['portWWN'].lower() == target_wwn.lower():
-                                nsp = port['nsp']
-                                vlun = common.create_vlun(volume,
-                                                          host,
-                                                          nsp,
-                                                          lun_id=lun_id)
-                                if lun_id is None:
-                                    lun_id = vlun['lun']
-                                break
-                else:
-                    init_targ_map.clear()
-                    del target_wwns[:]
-                    host_connected_nsp = []
-                    for fcpath in host['FCPaths']:
-                        if 'portPos' in fcpath:
-                            host_connected_nsp.append(
-                                common.build_nsp(fcpath['portPos']))
+                if self.lookup_service is not None and numPaths == 1:
+                    nsp = None
+                    active_fc_port_list = common.get_active_fc_target_ports()
                     for port in active_fc_port_list:
-                        if (
-                            port['type'] == common.client.PORT_TYPE_HOST and
-                            port['nsp'] in host_connected_nsp
-                        ):
+                        if port['portWWN'].lower() == target_wwns[0].lower():
                             nsp = port['nsp']
-                            vlun = common.create_vlun(volume,
-                                                      host,
-                                                      nsp,
-                                                      lun_id=lun_id)
-                            target_wwns.append(port['portWWN'])
-                            if vlun['remoteName'] in init_targ_map:
-                                init_targ_map[vlun['remoteName']].append(
-                                    port['portWWN'])
-                            else:
-                                init_targ_map[vlun['remoteName']] = [
-                                    port['portWWN']]
-                            if lun_id is None:
-                                lun_id = vlun['lun']
-                if lun_id is None:
-                    # New vlun creation failed
-                    msg = _('No new vlun(s) were created')
-                    LOG.error(msg)
-                    raise exception.VolumeDriverException(msg)
+                            break
+                    vlun = common.create_vlun(volume, host, nsp)
+                else:
+                    vlun = common.create_vlun(volume, host)
             else:
                 vlun = existing_vlun
 
