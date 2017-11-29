@@ -25,6 +25,7 @@ import re
 import time
 import uuid
 
+from castellan.common import exception as castellan_exception
 import eventlet
 from eventlet import tpool
 from oslo_concurrency import processutils
@@ -892,11 +893,35 @@ def create_encryption_key(context, key_manager, volume_type_id):
         cipher = volume_type_encryption.cipher
         length = volume_type_encryption.key_size
         algorithm = cipher.split('-')[0] if cipher else None
-        encryption_key_id = key_manager.create_key(
-            context,
-            algorithm=algorithm,
-            length=length)
+        try:
+            encryption_key_id = key_manager.create_key(
+                context,
+                algorithm=algorithm,
+                length=length)
+        except castellan_exception.KeyManagerError:
+            # The messaging back to the client here is
+            # purposefully terse, so we don't leak any sensitive
+            # details.
+            LOG.exception("Key manager error")
+            raise exception.Invalid(message="Key manager error")
+
     return encryption_key_id
+
+
+def delete_encryption_key(context, key_manager, encryption_key_id):
+    try:
+        key_manager.delete(context, encryption_key_id)
+    except castellan_exception.ManagedObjectNotFoundError:
+        pass
+
+
+def clone_encryption_key(context, key_manager, encryption_key_id):
+    clone_key_id = None
+    if encryption_key_id is not None:
+        clone_key_id = key_manager.store(
+            context,
+            key_manager.get(context, encryption_key_id))
+    return clone_key_id
 
 
 def is_replicated_str(str):

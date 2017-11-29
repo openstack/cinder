@@ -463,7 +463,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
                                   group_snapshot=None,
                                   backup=None)
 
-        mock_is_encrypted.assert_called_once_with(self.ctxt, 1)
+        mock_is_encrypted.assert_called_with(self.ctxt, 1)
         mock_get_volume_type_encryption.assert_called_once_with(self.ctxt, 1)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')

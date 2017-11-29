@@ -11,7 +11,6 @@
 #    under the License.
 
 
-from castellan.common import exception as castellan_exc
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
@@ -391,30 +390,15 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             # Clone the existing key and associate a separate -- but
             # identical -- key with each volume.
             if encryption_key_id is not None:
-                encryption_key_id = key_manager.store(
-                    context, key_manager.get(context, encryption_key_id))
+                encryption_key_id = vol_utils.clone_encryption_key(
+                    context,
+                    key_manager,
+                    encryption_key_id)
             else:
-                volume_type_encryption = (
-                    volume_types.get_volume_type_encryption(context,
-                                                            volume_type_id))
-                cipher = volume_type_encryption.cipher
-                length = volume_type_encryption.key_size
-
-                # NOTE(kaitlin-farr): dm-crypt expects the cipher in a
-                # hyphenated format (aes-xts-plain64). The algorithm needs
-                # to be parsed out to pass to the key manager (aes).
-                algorithm = cipher.split('-')[0] if cipher else None
-                try:
-                    encryption_key_id = key_manager.create_key(
-                        context,
-                        algorithm=algorithm,
-                        length=length)
-                except castellan_exc.KeyManagerError:
-                    # The messaging back to the client here is
-                    # purposefully terse, so we don't leak any sensitive
-                    # details.
-                    LOG.exception("Key manager error")
-                    raise exception.Invalid(message="Key manager error")
+                encryption_key_id = vol_utils.create_encryption_key(
+                    context,
+                    key_manager,
+                    volume_type_id)
 
         return encryption_key_id
 

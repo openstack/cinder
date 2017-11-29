@@ -20,6 +20,7 @@ import ddt
 import time
 import uuid
 
+from castellan.common import exception as castellan_exception
 from castellan import key_manager
 import enum
 import eventlet
@@ -778,6 +779,40 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                               volume)
         volume = objects.Volume.get_by_id(self.context, volume_id)
         self.assertEqual("error_deleting", volume.status)
+        volume.destroy()
+
+    @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
+    def test_delete_encrypted_volume_key_not_found(self):
+        cipher = 'aes-xts-plain64'
+        key_size = 256
+        db.volume_type_create(self.context,
+                              {'id': fake.VOLUME_TYPE_ID, 'name': 'LUKS'})
+        db.volume_type_encryption_create(
+            self.context, fake.VOLUME_TYPE_ID,
+            {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER,
+             'cipher': cipher, 'key_size': key_size})
+
+        db_vol_type = db.volume_type_get_by_name(self.context, 'LUKS')
+
+        volume = self.volume_api.create(self.context,
+                                        1,
+                                        'name',
+                                        'description',
+                                        volume_type=db_vol_type)
+
+        volume_id = volume['id']
+        volume['host'] = 'fake_host'
+        volume['status'] = 'available'
+        db.volume_update(self.context, volume_id, {'status': 'available'})
+
+        with mock.patch.object(
+                self.volume_api.key_manager,
+                'delete',
+                side_effect=castellan_exception.ManagedObjectNotFoundError):
+            self.volume_api.delete(self.context, volume)
+
+        volume = objects.Volume.get_by_id(self.context, volume_id)
+        self.assertEqual("deleting", volume.status)
         volume.destroy()
 
     def test_delete_busy_volume(self):
