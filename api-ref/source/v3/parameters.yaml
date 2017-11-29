@@ -1135,7 +1135,7 @@ group_id_1:
   description: |
     The ID of the group.
   in: body
-  required: false
+  required: true
   type: string
 group_name:
   description: |
