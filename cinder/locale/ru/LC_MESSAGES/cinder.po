@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 12.0.0.0b2.dev197\n"
+"Project-Id-Version: cinder 12.0.0.0b2.dev262\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-11-21 04:03+0000\n"
+"POT-Creation-Date: 2017-11-29 20:28+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1335,9 +1335,6 @@ msgstr ""
 msgid "Dell Cinder driver configuration error replication_device %s not found"
 msgstr ""
 "Ошибка конфигурации драйвера Dell Cinder. replication_device %s не найден"
-
-msgid "Describe-resource is admin only functionality"
-msgstr "Функция Describe-resource доступна только администраторам"
 
 #, python-format
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
@@ -3893,9 +3890,8 @@ msgstr "Необходимо указать source-name или source-id."
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr "Необходимо указать пулы памяти. Опция: sio_storage_pools."
 
-msgid "Must supply a positive, non-zero value for age"
-msgstr ""
-"В качестве возраста необходимо указать положительное число, не равное 0"
+msgid "Must supply a positive value for age"
+msgstr "Должно быть указано положительное значение возраста"
 
 #, python-format
 msgid ""

@@ -17,9 +17,9 @@
 # howard lee <howard@mail.ustc.edu.cn>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 12.0.0.0b2.dev197\n"
+"Project-Id-Version: cinder 12.0.0.0b2.dev262\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-11-21 04:03+0000\n"
+"POT-Creation-Date: 2017-11-29 20:28+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1550,9 +1550,6 @@ msgstr "直接连接不支持 Dell Cinder 驱动程序配置错误复制。"
 #, python-format
 msgid "Dell Cinder driver configuration error replication_device %s not found"
 msgstr "找不到 Dell Cinder 驱动程序配置错误 replication_device %s"
-
-msgid "Describe-resource is admin only functionality"
-msgstr "Describe-resource是只有管理员才能执行的功能。"
 
 #, python-format
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
@@ -4212,8 +4209,8 @@ msgstr "必须指定 source-name 或 source-id。"
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr "必须指定存储库。选项：sio_storage_pools。"
 
-msgid "Must supply a positive, non-zero value for age"
-msgstr "必须为时效提供非零正值"
+msgid "Must supply a positive value for age"
+msgstr "必须为 age 提供正值"
 
 #, python-format
 msgid ""
