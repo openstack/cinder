@@ -11,9 +11,9 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 12.0.0.0b2.dev197\n"
+"Project-Id-Version: cinder 12.0.0.0b2.dev262\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-11-21 04:03+0000\n"
+"POT-Creation-Date: 2017-11-29 20:28+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1777,9 +1777,6 @@ msgid "Dell Cinder driver configuration error replication_device %s not found"
 msgstr ""
 "Dell Cinder ドライバーの設定エラー の replication_device %s が見つかりませ"
 "ん。"
-
-msgid "Describe-resource is admin only functionality"
-msgstr "Describe-resource は管理者専用の機能です"
 
 #, python-format
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
@@ -4892,8 +4889,8 @@ msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr ""
 "ストレージプールを指定しなければなりません。オプション: sio_storage_pools。"
 
-msgid "Must supply a positive, non-zero value for age"
-msgstr "存続期間には正の非ゼロ値を指定してください"
+msgid "Must supply a positive value for age"
+msgstr "年齢には正の値を提供する必要があります"
 
 #, python-format
 msgid ""
@@ -5051,9 +5048,6 @@ msgstr "マウントされた Virtuozzo Storage 共有が見つかりません"
 
 msgid "No mounted shares found"
 msgstr "マウントされた共有が見つかりません"
-
-msgid "No new vlun(s) were created"
-msgstr "新しい vlun が作成されていません。"
 
 #, python-format
 msgid "No node found in I/O group %(gid)s for volume %(vol)s."
@@ -5812,13 +5806,6 @@ msgstr "ペアのセカンダリーアクセス設定のエラー。"
 
 msgid "Sets thin provisioning."
 msgstr "シンプロビジョニングを設定します。"
-
-msgid ""
-"Setup is incomplete. Device mapping not found from FC network. Cannot "
-"perform VLUN creation."
-msgstr ""
-"セットアップは未完了です。 FC ネットワークでデバイスマッピングが見つかりませ"
-"んでした。 VLUN の作成を実行できません。"
 
 #, python-format
 msgid ""
