@@ -86,7 +86,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
             fake_volume_api.FakeDb())
 
         task._cast_create_volume(self.ctxt, spec, {})
-        mock_extract_host.assert_called_once_with('host@backend#pool')
+        mock_extract_host.assert_not_called()
 
         snapshot = fake_snapshot.fake_snapshot_obj(self.ctxt,
                                                    volume=volume)
@@ -110,8 +110,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
 
         task._cast_create_volume(self.ctxt, spec, {})
         mock_snapshot_get.assert_called_once_with(self.ctxt, snapshot.id)
-        mock_extract_host.assert_has_calls([mock.call('host@backend#pool'),
-                                            mock.call('host@backend#pool')])
+        mock_extract_host.assert_not_called()
 
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.volume.utils.extract_host')

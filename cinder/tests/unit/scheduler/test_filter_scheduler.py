@@ -184,34 +184,50 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertIsNotNone(weighed_host.obj)
         self.assertTrue(_mock_service_get_all.called)
 
+    @ddt.data(('host10@BackendA', True),
+              ('host10@BackendB#openstack_nfs_1', True),
+              ('host10', False))
+    @ddt.unpack
     @mock.patch('cinder.db.service_get_all')
     def test_create_volume_host_different_with_resource_backend(
-            self, _mock_service_get_all):
+            self, resource_backend, multibackend_with_pools,
+            _mock_service_get_all):
         sched = fakes.FakeFilterScheduler()
-        sched.host_manager = fakes.FakeHostManager()
-        fakes.mock_host_manager_db_calls(_mock_service_get_all)
+        sched.host_manager = fakes.FakeHostManager(
+            multibackend_with_pools=multibackend_with_pools)
+        fakes.mock_host_manager_db_calls(
+            _mock_service_get_all, backends_with_pools=multibackend_with_pools)
         fake_context = context.RequestContext('user', 'project')
         request_spec = {'volume_properties': {'project_id': 1,
                                               'size': 1},
                         'volume_type': {'name': 'LVM_iSCSI'},
-                        'resource_backend': 'host_none'}
+                        'resource_backend': resource_backend}
         weighed_host = sched._schedule(fake_context, request_spec, {})
         self.assertIsNone(weighed_host)
 
+    @ddt.data(('host1@BackendA', True),
+              ('host1@BackendB#openstack_nfs_1', True),
+              ('host1', False))
+    @ddt.unpack
     @mock.patch('cinder.db.service_get_all')
-    def test_create_volume_host_same_as_resource(self, _mock_service_get_all):
+    def test_create_volume_host_same_as_resource(self, resource_backend,
+                                                 multibackend_with_pools,
+                                                 _mock_service_get_all):
         # Ensure we don't clear the host whose backend is same as
-        # group's backend.
+        # requested backend (ex: create from source-volume/snapshot,
+        # or create within a group)
         sched = fakes.FakeFilterScheduler()
-        sched.host_manager = fakes.FakeHostManager()
-        fakes.mock_host_manager_db_calls(_mock_service_get_all)
+        sched.host_manager = fakes.FakeHostManager(
+            multibackend_with_pools=multibackend_with_pools)
+        fakes.mock_host_manager_db_calls(
+            _mock_service_get_all, backends_with_pools=multibackend_with_pools)
         fake_context = context.RequestContext('user', 'project')
         request_spec = {'volume_properties': {'project_id': 1,
                                               'size': 1},
                         'volume_type': {'name': 'LVM_iSCSI'},
-                        'resource_backend': 'host1'}
+                        'resource_backend': resource_backend}
         weighed_host = sched._schedule(fake_context, request_spec, {})
-        self.assertEqual('host1#lvm1', weighed_host.obj.host)
+        self.assertIn(resource_backend, weighed_host.obj.host)
 
     def test_max_attempts(self):
         self.flags(scheduler_max_attempts=4)
