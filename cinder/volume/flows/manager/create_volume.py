@@ -844,8 +844,19 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 os.path.exists(CONF.image_conversion_dir)):
             os.makedirs(CONF.image_conversion_dir)
         try:
-            image_utils.check_available_space(CONF.image_conversion_dir,
-                                              image_meta['size'], image_id)
+            # cinder should not check free space in conversion directory
+            # if it's creating volume from image snapshot (Bug1683228).
+            # If image disk format is other than raw, cinder should
+            # convert it (this means free space check will be needed).
+            if ('cinder' in CONF.allowed_direct_url_schemes and
+                    image_meta.get('disk_format') == 'raw'):
+                LOG.debug("Creating volume from image snapshot. "
+                          "Skipping free space check on image "
+                          "convert path.")
+            else:
+                image_utils.check_available_space(
+                    CONF.image_conversion_dir,
+                    image_meta['size'], image_id)
         except exception.ImageTooBig as err:
             with excutils.save_and_reraise_exception():
                 self.message.create(
