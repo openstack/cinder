@@ -286,8 +286,9 @@ class CommonAdapter(object):
             self.client.delete_lun(lun_id)
 
     def _initialize_connection(self, lun_or_snap, connector, vol_id):
-        host = self.client.create_host(connector['host'],
-                                       self.get_connector_uids(connector))
+        host = self.client.create_host(connector['host'])
+        self.client.update_host_initiators(
+            host, self.get_connector_uids(connector))
         hlu = self.client.attach(host, lun_or_snap)
         data = self.get_connection_info(hlu, host, connector)
         data['target_discovered'] = True
@@ -305,7 +306,7 @@ class CommonAdapter(object):
         return self._initialize_connection(lun, connector, volume.id)
 
     def _terminate_connection(self, lun_or_snap, connector):
-        host = self.client.get_host(connector['host'])
+        host = self.client.create_host(connector['host'])
         self.client.detach(host, lun_or_snap)
 
     @cinder_utils.trace
@@ -738,7 +739,7 @@ class FCAdapter(CommonAdapter):
                 'driver_volume_type': self.driver_volume_type,
                 'data': {}
             }
-            host = self.client.get_host(connector['host'])
+            host = self.client.create_host(connector['host'])
             if len(host.host_luns) == 0:
                 targets = self.client.get_fc_target_info(
                     logged_in_only=True, allowed_ports=self.allowed_ports)

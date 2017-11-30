@@ -127,11 +127,7 @@ class MockClient(object):
             raise ex.SnapDeleteIsCalled()
 
     @staticmethod
-    def create_host(name, uids):
-        return test_client.MockResource(name=name)
-
-    @staticmethod
-    def get_host(name):
+    def create_host(name):
         return test_client.MockResource(name=name)
 
     @staticmethod
@@ -187,6 +183,10 @@ class MockClient(object):
             return test_client.MockResource(_id=name)
         else:
             raise ex.UnityThinCloneLimitExceededError
+
+    @staticmethod
+    def update_host_initiators(host, wwns):
+        return None
 
     @property
     def system(self):
