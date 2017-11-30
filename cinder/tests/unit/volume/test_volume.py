@@ -2837,7 +2837,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             {'pool_name': 'pool2', 'provisioned_capacity_gb': 21}]}
         manager._append_volume_stats(vol_stats)
 
-        expected = {'provisioned_capacity_gb': 30, 'allocated_capacity_gb': 20}
         expected = {'vendor_name': 'Open Source', 'pools': [
             {'pool_name': 'pool1', 'provisioned_capacity_gb': 31,
              'allocated_capacity_gb': 20},
