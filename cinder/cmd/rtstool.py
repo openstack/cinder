@@ -108,6 +108,84 @@ def create(backing_device, name, userid, password, iser_enabled,
                         'that RDMA is supported on your iSCSI port %(port)d '
                         'on ip %(ip)s.') % {'port': portals_port, 'ip': ip})
                 raise
+	
+
+def create_base_user_backstores(name, config, size, userid, password, iser_enabled,
+           initiator_iqns=None, portals_ips=None, portals_port=3260):
+    '''
+    This function allow you to create a target base an userspace backstores,
+    for example, user:rbd, user:glfs, user:qcow etc.
+    you should install and run tcmu-runner first, 
+	see more information: https://github.com/open-iscsi/tcmu-runner
+    '''
+    
+    # List of IPS that will not raise an error when they fail binding.
+    # Originally we will fail on all binding errors.
+    ips_allow_fail = ()
+
+    try:
+        rtsroot = rtslib_fb.root.RTSRoot()  # create an object of class RTSRoot: rtstool
+    except rtslib_fb.utils.RTSLibError:
+        print(_('Ensure that configfs is mounted at /sys/kernel/config.'))
+        raise
+
+    # Look to see if UserBackedStorageObject already exists
+    for x in rtsroot.storage_objects:
+        if x.name == name:
+            # Already exists, use this one
+            return
+
+    # create an object of class UserBackedStorageObject: so_new
+    so_new = rtslib_fb.UserBackedStorageObject(name=name, config=config, size=size)
+    
+	# create an object of class Target: target_new
+    target_new = rtslib_fb.Target(rtslib_fb.FabricModule('iscsi'), name, 'create')
+    # create an object of class TPG: tpg_new
+    tpg_new = rtslib_fb.TPG(target_new, mode='create')
+    tpg_new.set_attribute('authentication', '1')
+    
+	# create an object of class LUN: lun_new
+    lun_new = rtslib_fb.LUN(tpg_new, storage_object=so_new)
+
+    if initiator_iqns:
+        initiator_iqns = initiator_iqns.strip(' ')
+        for i in initiator_iqns.split(','):
+            acl_new = rtslib_fb.NodeACL(tpg_new, i, mode='create') 
+            acl_new.chap_userid = userid
+            acl_new.chap_password = password
+
+            rtslib_fb.MappedLUN(acl_new, lun_new.lun, lun_new.lun)
+
+    tpg_new.enable = 1
+
+    # If no ips are given we'll bind to all IPv4 and v6
+    if not portals_ips:
+        portals_ips = ('0.0.0.0', '[::0]')
+        # TODO(emh): Binding to IPv6 fails sometimes -- let pass for now.
+        ips_allow_fail = ('[::0]',)
+
+    for ip in portals_ips:
+        try:
+            # rtslib expects IPv6 addresses to be surrounded by brackets
+            portal = rtslib_fb.NetworkPortal(tpg_new, _canonicalize_ip(ip),
+                                             portals_port, mode='any')
+        except rtslib_fb.utils.RTSLibError:
+            raise_exc = ip not in ips_allow_fail
+            msg_type = 'Error' if raise_exc else 'Warning'
+            print(_('%(msg_type)s: creating NetworkPortal: ensure port '
+                    '%(port)d on ip %(ip)s is not in use by another service.')
+                  % {'msg_type': msg_type, 'port': portals_port, 'ip': ip})
+            if raise_exc:
+                raise
+        else:
+            try:
+                if iser_enabled == 'True':
+                    portal.iser = True
+            except rtslib_fb.utils.RTSLibError:
+                print(_('Error enabling iSER for NetworkPortal: please ensure '
+                        'that RDMA is supported on your iSCSI port %(port)d '
+                        'on ip %(ip)s.') % {'port': portals_port, 'ip': ip})
+                raise
 
 
 def _lookup_target(target_iqn, initiator_iqn):
@@ -172,9 +250,8 @@ def delete(iqn):
 
 
 def verify_rtslib():
-    for member in ['BlockStorageObject', 'FabricModule', 'LUN',
-                   'MappedLUN', 'NetworkPortal', 'NodeACL', 'root',
-                   'Target', 'TPG']:
+    for member in ['BlockStorageObject', 'UserBackedStorageObject', 'FabricModule', 'LUN',
+                   'MappedLUN', 'NetworkPortal', 'NodeACL', 'root', 'Target', 'TPG']:
         if not hasattr(rtslib_fb, member):
             raise RtstoolImportError(_("rtslib_fb is missing member %s: You "
                                        "may need a newer python-rtslib-fb.") %
@@ -185,6 +262,9 @@ def usage():
     print("Usage:")
     print(sys.argv[0] +
           " create [device] [name] [userid] [password] [iser_enabled]" +
+          " <initiator_iqn,iqn2,iqn3,...> [-a<IP1,IP2,...>] [-pPORT]")
+    print(sys.argv[0] +
+          " create_base_user_backstores [name] [config] [size] [userid] [password] [iser_enabled]" +
           " <initiator_iqn,iqn2,iqn3,...> [-a<IP1,IP2,...>] [-pPORT]")
     print(sys.argv[0] +
           " add-initiator [target_iqn] [userid] [password] [initiator_iqn]")
@@ -292,6 +372,28 @@ def main(argv=None):
 
         create(backing_device, name, userid, password, iser_enabled,
                **optional_args)
+	
+    elif argv[1] == 'create_base_user_backstores':
+        if len(argv) < 8:
+            usage()
+
+        if len(argv) > 11:
+            usage()
+
+        name = argv[2]
+        config = argv[3]
+        size = int(argv[4], 10)  # convert argv[4] to int
+        userid = argv[5]
+        password = argv[6]
+        iser_enabled = argv[7]
+
+        if len(argv) > 8:
+            optional_args = parse_optional_create(argv[8:])
+        else:
+            optional_args = {}
+
+        create_base_user_backstores(name, config, size, userid, password, iser_enabled,
+               **optional_args)
 
     elif argv[1] == 'add-initiator':
         if len(argv) < 6:
@@ -349,3 +451,7 @@ def main(argv=None):
         usage()
 
     return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
