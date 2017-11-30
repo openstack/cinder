@@ -5,5 +5,4 @@
         "volumes_ceph": 3,
         "backups": 4
     },
-    "skip_validation": false
 }

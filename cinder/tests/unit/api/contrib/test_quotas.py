@@ -309,32 +309,15 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
                          db.quota_usage_get_all_by_project(ctxt,
                                                            fake.PROJECT_ID))
 
-    def test_update_lower_than_existing_resources_when_skip_false(self):
+    def test_update_lower_than_existing_resources(self):
         self._commit_quota_reservation()
-        body = {'quota_set': {'volumes': 0},
-                'skip_validation': 'false'}
+        body = {'quota_set': {'volumes': 0}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, fake.PROJECT_ID, body)
         # Ensure that validation works even if some resources are valid
-        body = {'quota_set': {'gigabytes': 1, 'volumes': 10},
-                'skip_validation': 'false'}
+        body = {'quota_set': {'gigabytes': 1, 'volumes': 10}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, fake.PROJECT_ID, body)
-
-    def test_update_lower_than_existing_resources_when_skip_true(self):
-        self._commit_quota_reservation()
-        body = {'quota_set': {'volumes': 0},
-                'skip_validation': 'true'}
-        result = self.controller.update(self.req, fake.PROJECT_ID, body)
-        self.assertEqual(body['quota_set']['volumes'],
-                         result['quota_set']['volumes'])
-
-    def test_update_lower_than_existing_resources_without_skip_argument(self):
-        self._commit_quota_reservation()
-        body = {'quota_set': {'volumes': 0}}
-        result = self.controller.update(self.req, fake.PROJECT_ID, body)
-        self.assertEqual(body['quota_set']['volumes'],
-                         result['quota_set']['volumes'])
 
     def test_delete(self):
         result_show = self.controller.show(self.req, fake.PROJECT_ID)
