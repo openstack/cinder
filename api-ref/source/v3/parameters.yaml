@@ -1396,6 +1396,12 @@ is_public_1:
   in: body
   required: false
   type: boolean
+is_public_2:
+  description:
+    Whether the group type is publicly visible.
+  in: body
+  required: false
+  type: boolean
 is_up:
   description: |
     Filter by up/down status.
@@ -1752,7 +1758,7 @@ name_16:
   description: |
     The group type name.
   in: body
-  required: false
+  required: true
   type: string
 name_17:
   description: |
