@@ -61,7 +61,8 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
     # Version 1.5: Added group
     # Version 1.6: This object is now cleanable (adds rows to workers table)
     # Version 1.7: Added service_uuid
-    VERSION = '1.7'
+    # Version 1.8: Added shared_targets
+    VERSION = '1.8'
 
     OPTIONAL_FIELDS = ('metadata', 'admin_metadata', 'glance_metadata',
                        'volume_type', 'volume_attachment', 'consistencygroup',
@@ -126,6 +127,7 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
         'snapshots': fields.ObjectField('SnapshotList', nullable=True),
         'group': fields.ObjectField('Group', nullable=True),
         'service_uuid': fields.StringField(nullable=True),
+        'shared_targets': fields.BooleanField(default=True, nullable=True),
     }
 
     # NOTE(thangp): obj_extra_fields is used to hold properties that are not

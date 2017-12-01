@@ -73,6 +73,7 @@ from cinder import context
 from cinder import db
 from cinder.db import migration as db_migration
 from cinder.db.sqlalchemy import api as db_api
+from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -83,6 +84,48 @@ from cinder.volume import utils as vutils
 
 
 CONF = cfg.CONF
+
+
+def _get_non_shared_target_hosts(ctxt):
+    hosts = []
+    numvols_needing_update = 0
+    rpc.init(CONF)
+    rpcapi = volume_rpcapi.VolumeAPI()
+
+    services = objects.ServiceList.get_all_by_topic(ctxt, 'cinder-volume')
+    for service in services:
+        capabilities = rpcapi.get_capabilities(ctxt, service.host, True)
+        if not capabilities.get('shared_targets', True):
+            hosts.append(service.host)
+            numvols_needing_update += db_api.model_query(
+                ctxt, models.Volume).filter_by(
+                    shared_targets=True,
+                    service_uuid=service.uuid).count()
+    return hosts, numvols_needing_update
+
+
+def shared_targets_online_data_migration(ctxt, max_count):
+    """Update existing volumes shared_targets flag based on capabilities."""
+    non_shared_hosts = []
+    completed = 0
+
+    non_shared_hosts, total_vols_to_update = _get_non_shared_target_hosts(ctxt)
+    for host in non_shared_hosts:
+        # We use the api call here instead of going direct to
+        # db query to take advantage of parsing out the host
+        # correctly
+        vrefs = db_api.volume_get_all_by_host(
+            ctxt, host,
+            filters={'shared_targets': True})
+        if len(vrefs) > max_count:
+            del vrefs[-(len(vrefs) - max_count):]
+        max_count -= len(vrefs)
+        for v in vrefs:
+            db.volume_update(
+                ctxt, v['id'],
+                {'shared_targets': 0})
+            completed += 1
+    return total_vols_to_update, completed
 
 
 # Decorators for actions
@@ -209,6 +252,7 @@ class DbCommands(object):
         db.service_uuids_online_data_migration,
         db.backup_service_online_migration,
         db.volume_service_uuids_online_data_migration,
+        shared_targets_online_data_migration,
     )
 
     def __init__(self):

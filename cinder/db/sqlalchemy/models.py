@@ -320,6 +320,7 @@ class Volume(BASE, CinderBase):
                            backref="volumes",
                            foreign_keys=service_uuid,
                            primaryjoin='Volume.service_uuid == Service.uuid')
+    shared_targets = Column(Boolean, default=True)  # make an FK of service?
 
 
 class VolumeMetadata(BASE, CinderBase):
