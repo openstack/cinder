@@ -61,18 +61,6 @@
     "backup:get_all": "",
     "backup:restore": "",
 
-    "consistencygroup:create" : "",
-    "consistencygroup:delete": "",
-    "consistencygroup:update": "",
-    "consistencygroup:get": "",
-    "consistencygroup:get_all": "",
-
-    "consistencygroup:create_cgsnapshot" : "",
-    "consistencygroup:delete_cgsnapshot": "",
-    "consistencygroup:get_cgsnapshot": "",
-    "consistencygroup:get_all_cgsnapshots": "",
-
-
     "group:delete": "",
     "group:update": "",
     "group:get": "",

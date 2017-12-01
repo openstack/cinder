@@ -22,6 +22,7 @@ from cinder.api.contrib import consistencygroups as cg_v2
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.i18n import _
+from cinder.policies import groups as group_policy
 
 LOG = logging.getLogger(__name__)
 
@@ -72,6 +73,8 @@ class ConsistencyGroupsController(cg_v2.ConsistencyGroupsController):
 
         self.assert_valid_body(body, 'consistencygroup')
         context = req.environ['cinder.context']
+        group = self._get(context, id)
+        context.authorize(group_policy.UPDATE_POLICY, target_obj=group)
         consistencygroup = body.get('consistencygroup', None)
         self.validate_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
@@ -83,7 +86,7 @@ class ConsistencyGroupsController(cg_v2.ConsistencyGroupsController):
                                                        description,
                                                        add_volumes,
                                                        remove_volumes)
-        self._update(context, id, name, description, add_volumes,
+        self._update(context, group, name, description, add_volumes,
                      remove_volumes, allow_empty)
         return webob.Response(status_int=http_client.ACCEPTED)
 

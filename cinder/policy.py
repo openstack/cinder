@@ -40,25 +40,17 @@ def reset():
         _ENFORCER = None
 
 
-def init(policy_file=None, rules=None, default_rule=None, use_conf=True):
+def init(use_conf=True):
     """Init an Enforcer class.
 
-        :param policy_file: Custom policy file to use, if none is specified,
-                          `CONF.policy_file` will be used.
-        :param rules: Default dictionary / Rules to use. It will be
-                    considered just in the first instantiation.
-        :param default_rule: Default rule to use, CONF.default_rule will
-                           be used if none is specified.
-        :param use_conf: Whether to load rules from config file.
+    :param use_conf: Whether to load rules from config file.
     """
 
     global _ENFORCER
     if not _ENFORCER:
-        _ENFORCER = policy.Enforcer(CONF,
-                                    policy_file=policy_file,
-                                    rules=rules,
-                                    default_rule=default_rule,
-                                    use_conf=use_conf)
+        _ENFORCER = policy.Enforcer(
+            CONF,
+            use_conf=use_conf)
         register_rules(_ENFORCER)
         _ENFORCER.load_rules()
 
@@ -66,19 +58,19 @@ def init(policy_file=None, rules=None, default_rule=None, use_conf=True):
 def enforce(context, action, target):
     """Verifies that the action is valid on the target in this context.
 
-       :param context: cinder context
-       :param action: string representing the action to be checked
-           this should be colon separated for clarity.
-           i.e. ``compute:create_instance``,
-           ``compute:attach_volume``,
-           ``volume:attach_volume``
+    :param context: cinder context
+    :param action: string representing the action to be checked
+                   this should be colon separated for clarity.
+                   i.e. ``compute:create_instance``,
+                   ``compute:attach_volume``,
+                   ``volume:attach_volume``
 
-       :param object: dictionary representing the object of the action
-           for object creation this should be a dictionary representing the
-           location of the object e.g. ``{'project_id': context.project_id}``
+    :param target: dictionary representing the object of the action for object
+                   creation this should be a dictionary representing the
+                   location of the object e.g.
+                   ``{'project_id': context.project_id}``
 
-       :raises PolicyNotAuthorized: if verification fails.
-
+    :raises PolicyNotAuthorized: if verification fails.
     """
     init()
 
@@ -93,10 +85,10 @@ def enforce(context, action, target):
 def set_rules(rules, overwrite=True, use_conf=False):
     """Set rules based on the provided dict of rules.
 
-       :param rules: New rules to use. It should be an instance of dict.
-       :param overwrite: Whether to overwrite current rules or update them
-                         with the new rules.
-       :param use_conf: Whether to reload rules from config file.
+    :param rules: New rules to use. It should be an instance of dict.
+    :param overwrite: Whether to overwrite current rules or update them
+                      with the new rules.
+    :param use_conf: Whether to reload rules from config file.
     """
 
     init(use_conf=False)
@@ -135,30 +127,31 @@ def get_enforcer():
 def authorize(context, action, target, do_raise=True, exc=None):
     """Verifies that the action is valid on the target in this context.
 
-       :param context: cinder context
-       :param action: string representing the action to be checked
-           this should be colon separated for clarity.
-           i.e. ``compute:create_instance``,
-           ``compute:attach_volume``,
-           ``volume:attach_volume``
-       :param target: dictionary representing the object of the action
-           for object creation this should be a dictionary representing the
-           location of the object e.g. ``{'project_id': context.project_id}``
-       :param do_raise: if True (the default), raises PolicyNotAuthorized;
-           if False, returns False
-       :param exc: Class of the exception to raise if the check fails.
-                   Any remaining arguments passed to :meth:`authorize` (both
-                   positional and keyword arguments) will be passed to
-                   the exception class. If not specified,
-                   :class:`PolicyNotAuthorized` will be used.
+    :param context: cinder context
+    :param action: string representing the action to be checked
+                   this should be colon separated for clarity.
+                   i.e. ``compute:create_instance``,
+                   ``compute:attach_volume``,
+                   ``volume:attach_volume``
+    :param target: dictionary representing the object of the action for object
+                   creation this should be a dictionary representing the
+                   location of the object e.g.
+                   ``{'project_id': context.project_id}``
+    :param do_raise: if True (the default), raises PolicyNotAuthorized;
+                     if False, returns False
+    :param exc: Class of the exception to raise if the check fails.
+                Any remaining arguments passed to :meth:`authorize` (both
+                positional and keyword arguments) will be passed to
+                the exception class. If not specified,
+                :class:`PolicyNotAuthorized` will be used.
 
-       :raises cinder.exception.PolicyNotAuthorized: if verification fails
+    :raises cinder.exception.PolicyNotAuthorized: if verification fails
            and do_raise is True. Or if 'exc' is specified it will raise an
            exception of that type.
 
-       :return: returns a non-False value (not necessarily "True") if
-           authorized, and the exact value False if not authorized and
-           do_raise is False.
+    :return: returns a non-False value (not necessarily "True") if
+             authorized, and the exact value False if not authorized and
+             do_raise is False.
     """
     init()
     credentials = context.to_policy_values()
@@ -179,9 +172,7 @@ def authorize(context, action, target, do_raise=True, exc=None):
 
 
 def check_is_admin(context):
-    """Whether or not user is admin according to policy setting.
-
-    """
+    """Whether or not user is admin according to policy setting."""
     init()
     # the target is user-self
     credentials = context.to_policy_values()

@@ -25,10 +25,11 @@ from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import consistencygroups as consistencygroup_views
-from cinder.consistencygroup import api as consistencygroup_api
 from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _
+from cinder.policies import group_actions as gp_action_policy
+from cinder.policies import groups as group_policy
 from cinder.volume import group_types
 
 LOG = logging.getLogger(__name__)
@@ -73,7 +74,7 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         try:
             group = self._get(context, id)
-            consistencygroup_api.check_policy(context, 'delete')
+            context.authorize(gp_action_policy.DELETE_POLICY, target_obj=group)
             self.group_api.delete(context, group, force)
         # Not found exception will be handled at the wsgi level
         except exception.InvalidConsistencyGroup as error:
@@ -106,6 +107,7 @@ class ConsistencyGroupsController(wsgi.Controller):
     def _get_consistencygroups(self, req, is_detail):
         """Returns a list of consistency groups through view builder."""
         context = req.environ['cinder.context']
+        context.authorize(group_policy.GET_ALL_POLICY)
         filters = req.params.copy()
 
         # make another copy of filters, since it is being modified in
@@ -131,6 +133,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         self.assert_valid_body(body, 'consistencygroup')
 
         context = req.environ['cinder.context']
+        context.authorize(group_policy.CREATE_POLICY)
         consistencygroup = body['consistencygroup']
         self.validate_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
@@ -153,7 +156,6 @@ class ConsistencyGroupsController(wsgi.Controller):
                  {'name': name})
 
         try:
-            consistencygroup_api.check_policy(context, 'create')
             new_consistencygroup = self.group_api.create(
                 context, name, description, group_type['id'], volume_types,
                 availability_zone=availability_zone)
@@ -181,6 +183,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         self.assert_valid_body(body, 'consistencygroup-from-src')
 
         context = req.environ['cinder.context']
+        context.authorize(group_policy.CREATE_POLICY)
         consistencygroup = body['consistencygroup-from-src']
         self.validate_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
@@ -213,7 +216,6 @@ class ConsistencyGroupsController(wsgi.Controller):
                 self._get(context, source_cgid)
             if cgsnapshot_id:
                 self._get_cgsnapshot(context, cgsnapshot_id)
-            consistencygroup_api.check_policy(context, 'create')
             new_group = self.group_api.create_from_src(
                 context, name, description, cgsnapshot_id, source_cgid)
         except exception.NotFound:
@@ -232,19 +234,18 @@ class ConsistencyGroupsController(wsgi.Controller):
                     "can not be all empty in the request body.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-    def _update(self, context, id, name, description, add_volumes,
+    def _update(self, context, group, name, description, add_volumes,
                 remove_volumes,
                 allow_empty=False):
         LOG.info("Updating consistency group %(id)s with name %(name)s "
                  "description: %(description)s add_volumes: "
                  "%(add_volumes)s remove_volumes: %(remove_volumes)s.",
-                 {'id': id,
+                 {'id': group.id,
                   'name': name,
                   'description': description,
                   'add_volumes': add_volumes,
                   'remove_volumes': remove_volumes})
 
-        group = self._get(context, id)
         self.group_api.update(context, group, name, description,
                               add_volumes, remove_volumes)
 
@@ -273,6 +274,8 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         self.assert_valid_body(body, 'consistencygroup')
         context = req.environ['cinder.context']
+        group = self._get(context, id)
+        context.authorize(group_policy.UPDATE_POLICY, target_obj=group)
         consistencygroup = body.get('consistencygroup', None)
         self.validate_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
@@ -282,7 +285,7 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         self._check_update_parameters(name, description, add_volumes,
                                       remove_volumes)
-        self._update(context, id, name, description, add_volumes,
+        self._update(context, group, name, description, add_volumes,
                      remove_volumes)
         return webob.Response(status_int=http_client.ACCEPTED)
 
