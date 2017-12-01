@@ -8,16 +8,17 @@
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
 # Jonathan Dupart <jonathan+transifex@dupart.org>, 2014
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
+# safouen benhadj <safouen.benhadj@gmail.com>, 2017. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 12.0.0.0b2.dev262\n"
+"Project-Id-Version: cinder 12.0.0.0b2.dev276\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-11-29 20:28+0000\n"
+"POT-Creation-Date: 2017-12-01 03:50+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-04-12 04:56+0000\n"
-"Last-Translator: Copied by Zanata <copied-by-zanata@zanata.org>\n"
+"PO-Revision-Date: 2017-11-30 09:03+0000\n"
+"Last-Translator: safouen benhadj <safouen.benhadj@gmail.com>\n"
 "Language: fr\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -406,6 +407,10 @@ msgid "Authentication failed, verify the switch credentials, error code %s."
 msgstr ""
 "L'authentification a échoué, vérifiez les données d'identification du "
 "commutateur, code d'erreur : %s."
+
+#, python-format
+msgid "Availability zone '%(az)s' is invalid."
+msgstr "La zone de disponibilité '%(az)s' n'est pas valide."
 
 #, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
@@ -3534,6 +3539,10 @@ msgid "Invalid disk type: %s."
 msgstr "Type de disque non valide : %s."
 
 #, python-format
+msgid "Invalid group type: %(reason)s"
+msgstr "Type de groupe invalide : %(reason)s"
+
+#, python-format
 msgid "Invalid host: %(reason)s"
 msgstr "Hôte non valide : %(reason)s"
 
@@ -3714,7 +3723,7 @@ msgstr ""
 
 #, python-format
 msgid "Invalid volume type: %(reason)s"
-msgstr "Type de volume non valide : %(reason)s"
+msgstr "Type de volume invalide : %(reason)s"
 
 #, python-format
 msgid "Invalid volume: %(reason)s"
