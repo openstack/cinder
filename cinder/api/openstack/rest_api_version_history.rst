@@ -385,3 +385,7 @@ user documentation.
 3.47
 ----
   Support create volume from backup.
+
+3.48
+----
+  Add ``shared_targets`` and ``service_uuid`` fields to volume.
