@@ -54,6 +54,13 @@ class ViewBuilder(views_v2.ViewBuilder):
                 req_version.matches(mv.VOLUME_DETAIL_PROVIDER_ID, None)):
             volume_ref['volume']['provider_id'] = volume.get('provider_id')
 
+        if req_version.matches(
+                mv.VOLUME_SHARED_TARGETS_AND_SERVICE_FIELDS, None):
+            volume_ref['volume']['shared_targets'] = volume.get(
+                'shared_targets', None)
+            volume_ref['volume']['service_uuid'] = volume.get(
+                'service_uuid', None)
+
         return volume_ref
 
     def _list_view(self, func, request, volumes, volume_count,

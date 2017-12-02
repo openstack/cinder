@@ -133,6 +133,8 @@ SUPPORT_NOVA_IMAGE = '3.46'
 
 VOLUME_CREATE_FROM_BACKUP = '3.47'
 
+VOLUME_SHARED_TARGETS_AND_SERVICE_FIELDS = '3.48'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.
