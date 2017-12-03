@@ -57,3 +57,14 @@ class CinderUnicodeTest(volume_base.BaseVolumeTest):
         fetched_volume = result['volume']
         self.assertEqual(fetched_volume['name'],
                          self.volume_name)
+
+    def test_snapshot_create_volume_description_non_ascii_code(self):
+        # Create a volume with non-ascii description
+        description = u'\u05e7\u05d9\u05d9\u05e4\u05e9'
+        volume = self.create_volume(description=description)
+        vol_info = self.volumes_client.show_volume(volume['id'])['volume']
+        self.assertEqual(description, vol_info['description'])
+        snapshot = self.create_snapshot(volume['id'])
+        snapshot_info = self.snapshots_client.show_snapshot(
+            snapshot['id'])['snapshot']
+        self.assertEqual(description, snapshot_info['description'])
