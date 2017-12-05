@@ -43,3 +43,5 @@ capacity # BSD
 infi.dtypes.wwn # PSF
 infi.dtypes.iqn # PSF
 
+# DataCore SANsymphony
+websocket-client>=0.32.0 # LGPLv2+
