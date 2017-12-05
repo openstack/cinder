@@ -19,12 +19,15 @@ import itertools
 
 import ddt
 import glanceclient.exc
+from keystoneauth1.loading import session as ks_session
+from keystoneauth1 import session
 import mock
 from oslo_config import cfg
 
 from cinder import context
 from cinder import exception
 from cinder.image import glance
+from cinder import service_auth
 from cinder import test
 from cinder.tests.unit.glance import stubs as glance_stubs
 
@@ -813,40 +816,12 @@ class TestGlanceImageServiceClient(test.TestCase):
         super(TestGlanceImageServiceClient, self).setUp()
         self.context = context.RequestContext('fake', 'fake', auth_token=True)
         self.mock_object(glance.time, 'sleep', return_value=None)
+        service_auth.reset_globals()
 
-    def test_create_glance_client(self):
-        self.flags(auth_strategy='keystone')
-        self.flags(glance_request_timeout=60)
-
-        class MyGlanceStubClient(object):
-            def __init__(inst, version, *args, **kwargs):
-                self.assertEqual('2', version)
-                self.assertEqual("http://fake_host:9292", args[0])
-                self.assertTrue(kwargs['token'])
-                self.assertEqual(60, kwargs['timeout'])
-
-        self.mock_object(glance.glanceclient, 'Client', MyGlanceStubClient)
-        client = glance._create_glance_client(self.context, 'fake_host:9292',
-                                              False)
-        self.assertIsInstance(client, MyGlanceStubClient)
-
-    def test_create_glance_client_auth_strategy_is_not_keystone(self):
-        self.flags(auth_strategy='noauth')
-        self.flags(glance_request_timeout=60)
-
-        class MyGlanceStubClient(object):
-            def __init__(inst, version, *args, **kwargs):
-                self.assertEqual('2', version)
-                self.assertEqual('http://fake_host:9292', args[0])
-                self.assertNotIn('token', kwargs)
-                self.assertEqual(60, kwargs['timeout'])
-
-        self.mock_object(glance.glanceclient, 'Client', MyGlanceStubClient)
-        client = glance._create_glance_client(self.context, 'fake_host:9292',
-                                              False)
-        self.assertIsInstance(client, MyGlanceStubClient)
-
-    def test_create_glance_client_glance_request_default_timeout(self):
+    @mock.patch('cinder.service_auth.get_auth_plugin')
+    @mock.patch.object(ks_session.Session, 'load_from_options')
+    def test_create_glance_client_with_protocol_http(
+            self, mock_load, mock_get_auth_plugin):
         self.flags(auth_strategy='keystone')
         self.flags(glance_request_timeout=None)
 
@@ -854,8 +829,89 @@ class TestGlanceImageServiceClient(test.TestCase):
             def __init__(inst, version, *args, **kwargs):
                 self.assertEqual('2', version)
                 self.assertEqual("http://fake_host:9292", args[0])
-                self.assertTrue(kwargs['token'])
                 self.assertNotIn('timeout', kwargs)
+                self.assertIn("session", kwargs)
+                self.assertIn("auth", kwargs)
+
+        config_options = {'insecure': False,
+                          'cacert': None,
+                          'timeout': None}
+
+        mock_get_auth_plugin.return_value = context._ContextAuthPlugin
+        mock_load.return_value = session.Session
+        self.mock_object(glance.glanceclient, 'Client', MyGlanceStubClient)
+        client = glance._create_glance_client(self.context, 'fake_host:9292',
+                                              False)
+        self.assertIsInstance(client, MyGlanceStubClient)
+        mock_get_auth_plugin.assert_called_once_with(self.context)
+        mock_load.assert_called_once_with(**config_options)
+
+    @mock.patch('cinder.service_auth.get_auth_plugin')
+    @mock.patch.object(ks_session.Session, 'load_from_options')
+    def test_create_glance_client_with_protocol_https(
+            self, mock_load, mock_get_auth_plugin):
+        self.flags(auth_strategy='keystone')
+        self.flags(glance_request_timeout=60)
+        self.flags(
+            glance_ca_certificates_file='/opt/stack/data/ca-bundle.pem')
+
+        class MyGlanceStubClient(object):
+            def __init__(inst, version, *args, **kwargs):
+                self.assertEqual('2', version)
+                self.assertEqual("https://fake_host:9292", args[0])
+                self.assertNotIn('timeout', kwargs)
+                self.assertIn("session", kwargs)
+                self.assertIn("auth", kwargs)
+
+        config_options = {'insecure': False,
+                          'cacert': '/opt/stack/data/ca-bundle.pem',
+                          'timeout': 60}
+
+        mock_get_auth_plugin.return_value = context._ContextAuthPlugin
+        mock_load.return_value = session.Session
+        self.mock_object(glance.glanceclient, 'Client', MyGlanceStubClient)
+        client = glance._create_glance_client(self.context, 'fake_host:9292',
+                                              True)
+        self.assertIsInstance(client, MyGlanceStubClient)
+        mock_get_auth_plugin.assert_called_once_with(self.context)
+        mock_load.assert_called_once_with(**config_options)
+
+    def test_create_glance_client_auth_strategy_noauth_with_protocol_https(
+            self):
+        self.flags(auth_strategy='noauth')
+        self.flags(glance_request_timeout=60)
+        self.flags(glance_api_insecure=False)
+        self.flags(
+            glance_ca_certificates_file='/opt/stack/data/ca-bundle.pem')
+
+        class MyGlanceStubClient(object):
+            def __init__(inst, version, *args, **kwargs):
+                self.assertEqual('2', version)
+                self.assertEqual('https://fake_host:9292', args[0])
+                self.assertEqual(60, kwargs['timeout'])
+                self.assertNotIn("session", kwargs)
+                self.assertNotIn("auth", kwargs)
+                self.assertEqual(
+                    '/opt/stack/data/ca-bundle.pem', kwargs['cacert'])
+                self.assertEqual(False, kwargs['insecure'])
+
+        self.mock_object(glance.glanceclient, 'Client', MyGlanceStubClient)
+        client = glance._create_glance_client(self.context, 'fake_host:9292',
+                                              True)
+        self.assertIsInstance(client, MyGlanceStubClient)
+
+    def test_create_glance_client_auth_strategy_noauth_with_protocol_http(
+            self):
+        self.flags(auth_strategy='noauth')
+        self.flags(glance_request_timeout=None)
+
+        class MyGlanceStubClient(object):
+            def __init__(inst, version, *args, **kwargs):
+                self.assertEqual('2', version)
+                self.assertEqual("http://fake_host:9292", args[0])
+                self.assertNotIn('timeout', kwargs)
+                self.assertNotIn("session", kwargs)
+                self.assertNotIn("auth", kwargs)
 
         self.mock_object(glance.glanceclient, 'Client', MyGlanceStubClient)
         client = glance._create_glance_client(self.context, 'fake_host:9292',
