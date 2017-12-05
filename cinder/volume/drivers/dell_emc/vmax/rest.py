@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Dell Inc. or its subsidiaries.
+# Copyright (c) 2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -35,6 +35,7 @@ LOG = logging.getLogger(__name__)
 SLOPROVISIONING = 'sloprovisioning'
 REPLICATION = 'replication'
 U4V_VERSION = '84'
+UCODE_5978 = '5978'
 retry_exc_tuple = (exception.VolumeBackendAPIException,)
 # HTTP constants
 GET = 'GET'
@@ -413,6 +414,20 @@ class VMAXRest(object):
                       {'array': array})
         return array_details
 
+    def is_next_gen_array(self, array):
+        """Check to see if array is a next gen array(ucode 5978 or greater).
+
+        :param array: the array serial number
+        :returns: bool
+        """
+        is_next_gen = False
+        array_details = self.get_array_serial(array)
+        if array_details:
+            ucode_version = array_details['ucode'].split('.')[0]
+            if ucode_version >= UCODE_5978:
+                is_next_gen = True
+        return is_next_gen
+
     def get_srp_by_name(self, array, srp=None):
         """Returns the details of a storage pool.
 
@@ -441,13 +456,16 @@ class VMAXRest(object):
     def get_workload_settings(self, array):
         """Get valid workload options from array.
 
+        Workloads are no longer supported from HyperMaxOS 5978 onwards.
         :param array: the array serial number
         :returns: workload_setting -- list of workload names
         """
         workload_setting = []
-        wl_details = self.get_resource(array, SLOPROVISIONING, 'workloadtype')
-        if wl_details:
-            workload_setting = wl_details['workloadId']
+        if not self.is_next_gen_array(array):
+            wl_details = self.get_resource(
+                array, SLOPROVISIONING, 'workloadtype')
+            if wl_details:
+                workload_setting = wl_details['workloadId']
         return workload_setting
 
     def is_compression_capable(self, array):

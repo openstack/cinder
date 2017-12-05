@@ -52,6 +52,7 @@ CINDER_EMC_CONFIG_DIR = '/etc/cinder/'
 class VMAXCommonData(object):
     # array info
     array = '000197800123'
+    array_herc = '000197900123'
     srp = 'SRP_1'
     srp2 = 'SRP_2'
     slo = 'Diamond'
@@ -613,9 +614,12 @@ class VMAXCommonData(object):
                  "resourceLink": "storagegroup/%s" % storagegroup_name_f},
                 {"status": "RUNNING", "jobId": "55555"},
                 {"status": "FAILED", "jobId": "09999"}]
-    symmetrix = {"symmetrixId": array,
-                 "model": "VMAX250F",
-                 "ucode": "5977.1091.1092"}
+    symmetrix = [{"symmetrixId": array,
+                  "model": "VMAX250F",
+                  "ucode": "5977.1091.1092"},
+                 {"symmetrixId": array_herc,
+                  "model": "VMAXHERC",
+                  "ucode": "5978.1091.1092"}]
 
     headroom = {"headroom": [{"headroomCapacity": 20348.29}]}
 
@@ -805,7 +809,10 @@ class FakeRequestsSession(object):
                     return_object = job
                     break
         else:
-            return_object = self.data.symmetrix
+            for symm in self.data.symmetrix:
+                if symm['symmetrixId'] in url:
+                    return_object = symm
+                    break
         return return_object
 
     def _post_or_put(self, url, payload):
@@ -1527,7 +1534,7 @@ class VMAXRestTest(test.TestCase):
             resource_type, resource_name)
 
     def test_get_array_serial(self):
-        ref_details = self.data.symmetrix
+        ref_details = self.data.symmetrix[0]
         array_details = self.rest.get_array_serial(self.data.array)
         self.assertEqual(ref_details, array_details)
 
@@ -1555,6 +1562,10 @@ class VMAXRestTest(test.TestCase):
     def test_get_workload_settings_failed(self):
         wl_settings = self.rest.get_workload_settings(
             self.data.failed_resource)
+        self.assertEqual([], wl_settings)
+        # New array
+        wl_settings = self.rest.get_workload_settings(
+            self.data.array_herc)
         self.assertEqual([], wl_settings)
 
     def test_is_compression_capable_true(self):
@@ -2632,6 +2643,12 @@ class VMAXRestTest(test.TestCase):
                 self.data.array, self.data.test_vol_grp_name,
                 self.data.rdf_group_no)
             mock_del.assert_called_once()
+
+    def test_is_next_gen_array(self):
+        is_next_gen = self.rest.is_next_gen_array(self.data.array)
+        self.assertFalse(is_next_gen)
+        is_next_gen2 = self.rest.is_next_gen_array(self.data.array_herc)
+        self.assertTrue(is_next_gen2)
 
 
 class VMAXProvisionTest(test.TestCase):

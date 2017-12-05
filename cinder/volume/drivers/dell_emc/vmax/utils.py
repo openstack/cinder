@@ -538,9 +538,15 @@ class VMAXUtils(object):
         try:
             pool_details = extraspecs['pool_name'].split('+')
             extraspecs[SLO] = pool_details[0]
-            extraspecs[WORKLOAD] = pool_details[1]
-            extraspecs[SRP] = pool_details[2]
-            extraspecs[ARRAY] = pool_details[3]
+            if len(pool_details) == 4:
+                extraspecs[WORKLOAD] = pool_details[1]
+                extraspecs[SRP] = pool_details[2]
+                extraspecs[ARRAY] = pool_details[3]
+            else:
+                # Assume no workload given in pool name
+                extraspecs[SRP] = pool_details[1]
+                extraspecs[ARRAY] = pool_details[2]
+                extraspecs[WORKLOAD] = 'NONE'
         except KeyError:
             LOG.error("Error parsing SLO, workload from"
                       " the provided extra_specs.")
