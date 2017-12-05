@@ -36,10 +36,9 @@ Request
    - project_id: project_id_path
    - volume_type_id: volume_type_id
    - volume_type: volume_type_1
-   - name: name_7
+   - name: name_10
    - description: description_15
    - is_public: is_public
-   - extra_specs: extra_specs
 
 Request Example
 ---------------
@@ -355,8 +354,9 @@ Request
    - volume_type: volume_type_1
    - project_id: project_id_path
    - name: name_7
-   - is_public: is_public
+   - os-volume-type-access:is_public: is_public
    - description: description_15
+   - extra_specs: extra_specs_1
 
 Request Example
 ---------------
