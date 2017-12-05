@@ -20,13 +20,14 @@ from oslo_log import log as logging
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.vmax import common
+from cinder.volume.drivers.san import san
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
 
 @interface.volumedriver
-class VMAXFCDriver(driver.FibreChannelDriver):
+class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
     """FC Drivers for VMAX using REST.
 
     Version history:
@@ -83,6 +84,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
               - Support for live migration
               - Support for Generic Volume Group
         3.1.0 - Support for replication groups (Tiramisu)
+              - Deprecate backend xml configuration
     """
 
     VERSION = "3.1.0"

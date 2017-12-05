@@ -59,6 +59,17 @@ EXTRA_SPECS = 'extra_specs'
 IS_RE = 'replication_enabled'
 DISABLECOMPRESSION = 'storagetype:disablecompression'
 
+# Cinder.conf vmax configuration
+VMAX_SERVER_IP = 'san_ip'
+VMAX_USER_NAME = 'san_login'
+VMAX_PASSWORD = 'san_password'
+VMAX_SERVER_PORT = 'san_rest_port'
+VMAX_ARRAY = 'vmax_array'
+VMAX_WORKLOAD = 'vmax_workload'
+VMAX_SRP = 'vmax_srp'
+VMAX_SERVICE_LEVEL = 'vmax_service_level'
+VMAX_PORT_GROUPS = 'vmax_port_groups'
+
 
 class VMAXUtils(object):
     """Utility class for Rest based VMAX volume drivers.
@@ -325,6 +336,8 @@ class VMAXUtils(object):
         :param file_name: the configuration file
         :returns: list
         """
+        LOG.warning("Use of xml file in backend configuration is deprecated "
+                    "in Queens and will not be supported in future releases.")
         kwargs = {}
         my_file = open(file_name, 'r')
         data = my_file.read()

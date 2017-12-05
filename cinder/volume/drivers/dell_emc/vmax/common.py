@@ -16,6 +16,7 @@
 import ast
 from copy import deepcopy
 import os.path
+import random
 import sys
 
 from oslo_config import cfg
@@ -55,6 +56,7 @@ REPLICATION_ERROR = fields.ReplicationStatus.ERROR
 vmax_opts = [
     cfg.StrOpt('cinder_dell_emc_config_file',
                default=CINDER_EMC_CONFIG_FILE,
+               deprecated_for_removal=True,
                help='Use this file for cinder emc plugin '
                     'config data.'),
     cfg.IntOpt('interval',
@@ -68,7 +70,22 @@ vmax_opts = [
     cfg.BoolOpt('initiator_check',
                 default=False,
                 help='Use this value to enable '
-                     'the initiator_check.')]
+                     'the initiator_check.'),
+    cfg.PortOpt(utils.VMAX_SERVER_PORT,
+                default=8443,
+                help='REST server port number.'),
+    cfg.StrOpt(utils.VMAX_ARRAY,
+               help='Serial number of the array to connect to.'),
+    cfg.StrOpt(utils.VMAX_SRP,
+               help='Storage resource pool on array to use for provisioning.'),
+    cfg.StrOpt(utils.VMAX_SERVICE_LEVEL,
+               help='Service level to use for provisioning storage.'),
+    cfg.StrOpt(utils.VMAX_WORKLOAD,
+               help='Workload'),
+    cfg.ListOpt(utils.VMAX_PORT_GROUPS,
+                bounds=True,
+                help='List of port groups containing frontend ports '
+                     'configured prior for server connection.')]
 
 CONF.register_opts(vmax_opts, group=configuration.SHARED_CONF_GROUP)
 
@@ -81,18 +98,6 @@ class VMAXCommon(object):
     It supports VMAX 3 and VMAX All Flash arrays.
 
     """
-    VERSION = "3.0.0"
-
-    stats = {'driver_version': '3.0',
-             'free_capacity_gb': 0,
-             'reserved_percentage': 0,
-             'storage_protocol': None,
-             'total_capacity_gb': 0,
-             'vendor_name': 'Dell EMC',
-             'volume_backend_name': None,
-             'replication_enabled': False,
-             'replication_targets': None}
-
     pool_info = {'backend_name': None,
                  'config_file': None,
                  'arrays_info': {},
@@ -123,8 +128,10 @@ class VMAXCommon(object):
     def _gather_info(self):
         """Gather the relevant information for update_volume_stats."""
         self._get_attributes_from_config()
-        array_info = self.utils.parse_file_to_get_array_map(
-            self.pool_info['config_file'])
+        array_info = self.get_attributes_from_cinder_config()
+        if array_info is None:
+            array_info = self.utils.parse_file_to_get_array_map(
+                self.pool_info['config_file'])
         self.rest.set_rest_credentials(array_info)
         finalarrayinfolist = self._get_slo_workload_combinations(
             array_info)
@@ -855,7 +862,8 @@ class VMAXCommon(object):
                 array_reserve_percent)
 
     def _set_config_file_and_get_extra_specs(self, volume,
-                                             volume_type_id=None):
+                                             volume_type_id=None,
+                                             register_config_file=True):
         """Given the volume object get the associated volumetype.
 
         Given the volume object get the associated volumetype and the
@@ -876,13 +884,15 @@ class VMAXCommon(object):
             qos_specs = res['qos_specs']
 
         config_group = None
+        config_file = None
         # If there are no extra specs then the default case is assumed.
         if extra_specs:
             config_group = self.configuration.config_group
             if extra_specs.get('replication_enabled') == '<is> True':
                 extra_specs[utils.IS_RE] = True
-        config_file = self._register_config_file_from_config_group(
-            config_group)
+        if register_config_file:
+            config_file = self._register_config_file_from_config_group(
+                config_group)
         return extra_specs, config_file, qos_specs
 
     def _find_device_on_array(self, volume, extra_specs):
@@ -1061,11 +1071,17 @@ class VMAXCommon(object):
         :raises: VolumeBackendAPIException:
         """
         try:
-            extra_specs, config_file, qos_specs = (
-                self._set_config_file_and_get_extra_specs(
-                    volume, volume_type_id))
-            array_info = self.utils.parse_file_to_get_array_map(
-                config_file)
+            array_info = self.get_attributes_from_cinder_config()
+            if array_info:
+                extra_specs, config_file, qos_specs = (
+                    self._set_config_file_and_get_extra_specs(
+                        volume, volume_type_id, register_config_file=False))
+            else:
+                extra_specs, config_file, qos_specs = (
+                    self._set_config_file_and_get_extra_specs(
+                        volume, volume_type_id))
+                array_info = self.utils.parse_file_to_get_array_map(
+                    self.pool_info['config_file'])
             if not array_info:
                 exception_message = (_(
                     "Unable to get corresponding record for srp."))
@@ -3568,3 +3584,42 @@ class VMAXCommon(object):
             vol_model_updates.append(update)
 
         return model_update, vol_model_updates
+
+    def get_attributes_from_cinder_config(self):
+        LOG.debug("Using cinder.conf file")
+        kwargs = None
+        username = self.configuration.safe_get(utils.VMAX_USER_NAME)
+        password = self.configuration.safe_get(utils.VMAX_PASSWORD)
+        if username and password:
+            serial_number = self.configuration.safe_get(utils.VMAX_ARRAY)
+            if serial_number is None:
+                LOG.error("Array Serial Number must be set in cinder.conf")
+            srp_name = self.configuration.safe_get(utils.VMAX_SRP)
+            if srp_name is None:
+                LOG.error("SRP Name must be set in cinder.conf")
+            slo = self.configuration.safe_get(utils.VMAX_SERVICE_LEVEL)
+            workload = self.configuration.safe_get(utils.WORKLOAD)
+            port_groups = self.configuration.safe_get(utils.VMAX_PORT_GROUPS)
+            random_portgroup = None
+            if port_groups:
+                random_portgroup = random.choice(self.configuration.safe_get(
+                    utils.VMAX_PORT_GROUPS))
+            kwargs = (
+                {'RestServerIp': self.configuration.safe_get(
+                    utils.VMAX_SERVER_IP),
+                 'RestServerPort': self.configuration.safe_get(
+                    utils.VMAX_SERVER_PORT),
+                 'RestUserName': username,
+                 'RestPassword': password,
+                 'SSLCert': self.configuration.safe_get('driver_client_cert'),
+                 'SerialNumber': serial_number,
+                 'srpName': srp_name,
+                 'PortGroup': random_portgroup})
+            if self.configuration.safe_get('driver_ssl_cert_verify'):
+                kwargs.update({'SSLVerify': self.configuration.safe_get(
+                    'driver_ssl_cert_path')})
+            else:
+                kwargs.update({'SSLVerify': False})
+            if slo is not None:
+                kwargs.update({'ServiceLevel': slo, 'Workload': workload})
+        return kwargs
