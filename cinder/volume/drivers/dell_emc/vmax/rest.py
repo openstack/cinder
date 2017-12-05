@@ -697,14 +697,15 @@ class VMAXRest(object):
         volume_dict = {'array': array, 'device_id': device_id}
         return volume_dict
 
-    def check_volume_device_id(self, array, device_id, element_name):
+    def check_volume_device_id(self, array, device_id, volume_id):
         """Check if the identifiers match for a given volume.
 
         :param array: the array serial number
         :param device_id: the device id
-        :param element_name: name associated with cinder, e.g.OS-<cinderUUID>
-        :return: found_device_id
+        :param volume_id: cinder volume id
+        :returns: found_device_id
         """
+        element_name = self.utils.get_volume_element_name(volume_id)
         found_device_id = None
         vol_details = self.get_volume(array, device_id)
         if vol_details:
@@ -859,6 +860,22 @@ class VMAXRest(object):
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
         return property_dict
+
+    def set_storagegroup_srp(
+            self, array, storagegroup_name, srp_name, extra_specs):
+        """Modify a storage group's srp value.
+
+        :param array: the array serial number
+        :param storagegroup_name: the storage group name
+        :param srp_name: the srp pool name
+        :param extra_specs: the extra specifications
+        """
+        payload = {"editStorageGroupActionParam": {
+            "editStorageGroupSRPParam": {"srpId": srp_name}}}
+        status_code, job = self.modify_storage_group(
+            array, storagegroup_name, payload)
+        self.wait_for_job("Set storage group srp", status_code,
+                          job, extra_specs)
 
     def get_vmax_default_storage_group(
             self, array, srp, slo, workload,
@@ -1796,41 +1813,43 @@ class VMAXRest(object):
         """
         return self.get_resource(array, REPLICATION, 'rdf_group')
 
-    def get_rdf_group_volume(self, array, rdf_number, device_id):
-        """Get specific volume details, from an RDF group.
+    def get_rdf_group_volume(self, array, src_device_id):
+        """Get the RDF details for a volume.
 
         :param array: the array serial number
-        :param rdf_number: the rdf group number
-        :param device_id: the device id
+        :param src_device_id: the source device id
+        :returns: rdf_session
         """
-        resource_name = "%(rdf)s/volume/%(dev)s" % {
-            'rdf': rdf_number, 'dev': device_id}
-        return self.get_resource(array, REPLICATION, 'rdf_group',
-                                 resource_name)
+        rdf_session = None
+        volume = self._get_private_volume(array, src_device_id)
+        try:
+            rdf_session = volume['rdfInfo']['RDFSession'][0]
+        except (KeyError, TypeError, IndexError):
+            LOG.warning("Cannot locate source RDF volume %s", src_device_id)
+        return rdf_session
 
-    def are_vols_rdf_paired(self, array, remote_array, device_id,
-                            target_device, rdf_group):
+    def are_vols_rdf_paired(self, array, remote_array,
+                            device_id, target_device):
         """Check if a pair of volumes are RDF paired.
 
         :param array: the array serial number
         :param remote_array: the remote array serial number
         :param device_id: the device id
         :param target_device: the target device id
-        :param rdf_group: the rdf group
-        :returns: paired -- bool, state -- string
+        :returns: paired -- bool, local_vol_state, rdf_pair_state
         """
         paired, local_vol_state, rdf_pair_state = False, '', ''
-        volume = self.get_rdf_group_volume(array, rdf_group, device_id)
-        if volume:
-            remote_volume = volume['remoteVolumeName']
-            remote_symm = volume['remoteSymmetrixId']
+        rdf_session = self.get_rdf_group_volume(array, device_id)
+        if rdf_session:
+            remote_volume = rdf_session['remoteDeviceID']
+            remote_symm = rdf_session['remoteSymmetrixID']
             if (remote_volume == target_device
                     and remote_array == remote_symm):
                 paired = True
-                local_vol_state = volume['localVolumeState']
-                rdf_pair_state = volume['rdfpairState']
+                local_vol_state = rdf_session['SRDFStatus']
+                rdf_pair_state = rdf_session['pairState']
         else:
-            LOG.warning("Cannot locate source RDF volume %s", device_id)
+            LOG.warning("Cannot locate RDF session for volume %s", device_id)
         return paired, local_vol_state, rdf_pair_state
 
     def get_rdf_group_number(self, array, rdf_group_label):
@@ -1843,8 +1862,9 @@ class VMAXRest(object):
         number = None
         rdf_list = self.get_rdf_group_list(array)
         if rdf_list and rdf_list.get('rdfGroupID'):
-            number = [rdf['rdfgNumber'] for rdf in rdf_list['rdfGroupID']
-                      if rdf['label'] == rdf_group_label][0]
+            number_list = [rdf['rdfgNumber'] for rdf in rdf_list['rdfGroupID']
+                           if rdf['label'] == rdf_group_label]
+            number = number_list[0] if len(number_list) > 0 else None
         if number:
             rdf_group = self.get_rdf_group(array, number)
             if not rdf_group:
@@ -2023,3 +2043,105 @@ class VMAXRest(object):
                          % {'sg_name': source_sg_id, 'snap_id': snap_name})
         return self.delete_resource(
             array, REPLICATION, 'storagegroup', resource_name)
+
+    def get_storagegroup_rdf_details(self, array, storagegroup_name,
+                                     rdf_group_num):
+        """Get the remote replication details of a storage group.
+
+        :param array: the array serial number
+        :param storagegroup_name: the storage group name
+        :param rdf_group_num: the rdf group number
+        """
+        resource_name = ("%(sg_name)s/rdf_group/%(rdf_num)s"
+                         % {'sg_name': storagegroup_name,
+                            'rdf_num': rdf_group_num})
+        return self.get_resource(array, REPLICATION, 'storagegroup',
+                                 resource_name=resource_name)
+
+    def replicate_group(self, array, storagegroup_name,
+                        rdf_group_num, remote_array, extra_specs):
+        """Create a target group on the remote array and enable replication.
+
+        :param array: the array serial number
+        :param storagegroup_name: the name of the group
+        :param rdf_group_num: the rdf group number
+        :param remote_array: the remote array serial number
+        :param extra_specs: the extra specifications
+        """
+        resource_name = ("storagegroup/%(sg_name)s/rdf_group"
+                         % {'sg_name': storagegroup_name})
+        payload = {"executionOption": "ASYNCHRONOUS",
+                   "replicationMode": "Synchronous",
+                   "remoteSymmId": remote_array,
+                   "remoteStorageGroupName": storagegroup_name,
+                   "rdfgNumber": rdf_group_num, "establish": 'true'}
+        status_code, job = self.create_resource(
+            array, REPLICATION, resource_name, payload)
+        self.wait_for_job('Create storage group rdf', status_code,
+                          job, extra_specs)
+
+    def _verify_rdf_state(self, array, storagegroup_name,
+                          rdf_group_num, action):
+        """Verify if a storage group requires the requested state change.
+
+        :param array: the array serial number
+        :param storagegroup_name: the storage group name
+        :param rdf_group_num: the rdf group number
+        :param action: the requested action
+        :returns: bool
+        """
+        mod_rqd = False
+        sg_rdf_details = self.get_storagegroup_rdf_details(
+            array, storagegroup_name, rdf_group_num)
+        if sg_rdf_details:
+            state_list = sg_rdf_details['states']
+            for state in state_list:
+                if (action.lower() in ["establish", "failback", "resume"] and
+                        state.lower() in ["suspended", "failed over"]):
+                    mod_rqd = True
+                    break
+                elif (action.lower() in ["split", "failover", "suspend"] and
+                      state.lower() in ["synchronized", "syncinprog"]):
+                    mod_rqd = True
+                    break
+        return mod_rqd
+
+    def modify_storagegroup_rdf(self, array, storagegroup_name,
+                                rdf_group_num, action, extra_specs):
+        """Modify the rdf state of a storage group.
+
+        :param array: the array serial number
+        :param storagegroup_name: the name of the storage group
+        :param rdf_group_num: the number of the rdf group
+        :param action: the required action
+        :param extra_specs: the extra specifications
+        """
+        # Check if group is in valid state for desired action
+        mod_reqd = self._verify_rdf_state(array, storagegroup_name,
+                                          rdf_group_num, action)
+        if mod_reqd:
+            payload = {"executionOption": "ASYNCHRONOUS", "action": action}
+            resource_name = ('%(sg_name)s/rdf_group/%(rdf_num)s'
+                             % {'sg_name': storagegroup_name,
+                                'rdf_num': rdf_group_num})
+
+            status_code, job = self.modify_resource(
+                array, REPLICATION, 'storagegroup', payload,
+                resource_name=resource_name)
+
+            self.wait_for_job('Modify storagegroup rdf',
+                              status_code, job, extra_specs)
+
+    def delete_storagegroup_rdf(self, array, storagegroup_name,
+                                rdf_group_num):
+        """Delete the rdf pairs for a storage group.
+
+        :param array: the array serial number
+        :param storagegroup_name: the name of the storage group
+        :param rdf_group_num: the number of the rdf group
+        """
+        resource_name = ('%(sg_name)s/rdf_group/%(rdf_num)s'
+                         % {'sg_name': storagegroup_name,
+                            'rdf_num': rdf_group_num})
+        self.delete_resource(
+            array, REPLICATION, 'storagegroup', resource_name=resource_name)

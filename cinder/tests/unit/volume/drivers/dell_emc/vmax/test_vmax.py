@@ -26,6 +26,7 @@ import six
 
 from cinder import context
 from cinder import exception
+from cinder import objects
 from cinder.objects import fields
 from cinder.objects import group
 from cinder.objects import group_snapshot
@@ -252,12 +253,12 @@ class VMAXCommonData(object):
 
     test_vol_grp_name_id_only = 'ec870a2f-6bf7-4152-aa41-75aad8e2ea96'
     test_vol_grp_name = 'Grp_source_sg_%s' % test_vol_grp_name_id_only
+    test_fo_vol_group = 'fo_vol_group_%s' % test_vol_grp_name_id_only
 
     test_group_1 = group.Group(
         context=None, name=storagegroup_name_source,
         group_id='abc', size=1,
-        id=test_vol_grp_name_id_only,
-        status='available',
+        id=test_vol_grp_name_id_only, status='available',
         provider_auth=None, volume_type_ids=['abc'],
         group_type_id='grptypeid',
         volume_types=test_volume_type_list,
@@ -272,17 +273,21 @@ class VMAXCommonData(object):
         provider_auth=None, volume_type_ids=['abc'],
         group_type_id='grptypeid',
         volume_types=test_volume_type_list,
-        host=fake_host, provider_location=six.text_type(provider_location))
+        host=fake_host, provider_location=six.text_type(provider_location),
+        replication_status=fields.ReplicationStatus.DISABLED)
+
+    test_rep_group = fake_group.fake_group_obj(
+        context=ctx, name=storagegroup_name_source,
+        id=test_vol_grp_name_id_only, host=fake_host,
+        replication_status=fields.ReplicationStatus.ENABLED)
 
     test_group = fake_group.fake_group_obj(
         context=ctx, name=storagegroup_name_source,
-        id='7634bda4-6950-436f-998c-37c3e01bad30', host=fake_host)
+        id=test_vol_grp_name_id_only, host=fake_host)
 
     test_group_without_name = fake_group.fake_group_obj(
-        context=ctx,
-        name=None,
-        id=test_vol_grp_name_id_only,
-        host=fake_host)
+        context=ctx, name=None,
+        id=test_vol_grp_name_id_only, host=fake_host)
 
     test_group_snapshot_1 = group_snapshot.GroupSnapshot(
         context=None, id='6560405d-b89a-4f79-9e81-ad1752f5a139',
@@ -299,6 +304,13 @@ class VMAXCommonData(object):
         group_type_id='6b70de13-98c5-46b2-8f24-e4e96a8988fa',
         status='available',
         group=test_group_failed)
+
+    test_volume_group_member = fake_volume.fake_volume_obj(
+        context=ctx, name='vol1', size=2, provider_auth=None,
+        provider_location=six.text_type(provider_location),
+        volume_type=test_volume_type, host=fake_host,
+        replication_driver_data=six.text_type(provider_location3),
+        group_id=test_vol_grp_name_id_only)
 
     # masking view dict
     masking_view_dict = {
@@ -441,6 +453,17 @@ class VMAXCommonData(object):
                        "symmetrixId": array,
                        "numSnapVXSnapshots": 1}]
 
+    sg_rdf_details = [{"storageGroupName": test_vol_grp_name,
+                       "symmetrixId": array,
+                       "modes": ["Synchronous"],
+                       "rdfGroupNumber": rdf_group_no,
+                       "states": ["Synchronized"]},
+                      {"storageGroupName": test_fo_vol_group,
+                       "symmetrixId": array,
+                       "modes": ["Synchronous"],
+                       "rdfGroupNumber": rdf_group_no,
+                       "states": ["Failed Over"]}]
+
     sg_list = {"storageGroupId": [storagegroup_name_f,
                                   defaultstoragegroup_name]}
 
@@ -498,7 +521,12 @@ class VMAXCommonData(object):
                             "targetDevice": device_id2,
                             "sourceDevice": device_id}}],
                     "snapVXSrc": 'true',
-                    "snapVXTgt": 'true'}}]}}
+                    "snapVXTgt": 'true'},
+                "rdfInfo": {"RDFSession": [
+                    {"SRDFStatus": "Ready",
+                     "pairState": "Synchronized",
+                     "remoteDeviceID": device_id2,
+                     "remoteSymmetrixID": remote_array}]}}]}}
 
     workloadtype = {"workloadId": ["OLTP", "OLTP_REP", "DSS", "DSS_REP"]}
     slo_details = {"sloId": ["Bronze", "Diamond", "Gold",
@@ -741,15 +769,15 @@ class FakeRequestsSession(object):
 
     def _replication(self, url):
         return_object = None
-        if 'rdf_group' in url:
+        if 'storagegroup' in url:
+            return_object = self._replication_sg(url)
+        elif 'rdf_group' in url:
             if self.data.device_id in url:
                 return_object = self.data.rdf_group_vol_details
             elif self.data.rdf_group_no in url:
                 return_object = self.data.rdf_group_details
             else:
                 return_object = self.data.rdf_group_list
-        elif 'storagegroup' in url:
-            return_object = self._replication_sg(url)
         elif 'snapshot' in url:
             return_object = self.data.volume_snap_vx
         elif 'capabilities' in url:
@@ -760,6 +788,11 @@ class FakeRequestsSession(object):
         return_object = None
         if 'generation' in url:
             return_object = self.data.group_snap_vx
+        elif 'rdf_group' in url:
+            for sg in self.data.sg_rdf_details:
+                if sg['storageGroupName'] in url:
+                    return_object = sg
+                    break
         elif 'storagegroup' in url:
             return_object = self.data.sg_details_rep[0]
         return return_object
@@ -1247,19 +1280,6 @@ class VMAXUtilsTest(test.TestCase):
         vol_grp_name = self.utils.update_volume_group_name(group)
         self.assertEqual(ref_group_name, vol_grp_name)
 
-    def test_update_admin_metadata(self):
-        admin_metadata = {'targetVolumeName': '123456'}
-        ref_model_update = [{'id': '12345',
-                             'admin_metadata': admin_metadata}]
-        volume_model_update = {'id': '12345'}
-        volumes_model_update = [volume_model_update]
-        key = 'targetVolumeName'
-        values = {}
-        values['12345'] = '123456'
-        self.utils.update_admin_metadata(
-            volumes_model_update, key, values)
-        self.assertEqual(ref_model_update, volumes_model_update)
-
     def test_get_volume_group_utils(self):
         group = self.data.test_group_1
         array, extraspecs_dict = self.utils.get_volume_group_utils(
@@ -1312,6 +1332,38 @@ class VMAXUtilsTest(test.TestCase):
         ret_val = self.utils.update_volume_model_updates(
             volume_model_updates, volumes, 'abc')
         self.assertEqual(ref_val, ret_val)
+
+    def test_check_replication_matched(self):
+        # Check 1: Volume is not part of a group
+        self.utils.check_replication_matched(
+            self.data.test_volume, self.data.extra_specs)
+        group_volume = deepcopy(self.data.test_volume)
+        group_volume.group = self.data.test_group
+        with mock.patch.object(volume_utils, 'is_group_a_type',
+                               return_value=False):
+            # Check 2: Both volume and group have the same rep status
+            self.utils.check_replication_matched(
+                group_volume, self.data.extra_specs)
+            # Check 3: Volume and group have different rep status
+            with mock.patch.object(self.utils, 'is_replication_enabled',
+                                   return_value=True):
+                self.assertRaises(exception.InvalidInput,
+                                  self.utils.check_replication_matched,
+                                  group_volume, self.data.extra_specs)
+
+    def test_check_rep_status_enabled(self):
+        # Check 1: not replication enabled
+        with mock.patch.object(volume_utils, 'is_group_a_type',
+                               return_value=False):
+            self.utils.check_rep_status_enabled(self.data.test_group)
+        # Check 2: replication enabled, status enabled
+        with mock.patch.object(volume_utils, 'is_group_a_type',
+                               return_value=True):
+            self.utils.check_rep_status_enabled(self.data.test_rep_group)
+        # Check 3: replication enabled, status disabled
+            self.assertRaises(exception.InvalidInput,
+                              self.utils.check_rep_status_enabled,
+                              self.data.test_group)
 
 
 class VMAXRestTest(test.TestCase):
@@ -2408,6 +2460,14 @@ class VMAXRestTest(test.TestCase):
             sg_value, qos_extra_spec, input_prop_dict)
         self.assertEqual(input_prop_dict, ret_prop_dict)
 
+    @mock.patch.object(rest.VMAXRest, 'modify_storage_group',
+                       return_value=(202, VMAXCommonData.job_list[0]))
+    def test_set_storagegroup_srp(self, mock_mod):
+        self.rest.set_storagegroup_srp(
+            self.data.array, self.data.test_vol_grp_name,
+            self.data.srp2, self.data.extra_specs)
+        mock_mod.assert_called_once()
+
     def test_get_rdf_group(self):
         with mock.patch.object(self.rest, 'get_resource') as mock_get:
             self.rest.get_rdf_group(self.data.array, self.data.rdf_group_no)
@@ -2420,26 +2480,29 @@ class VMAXRestTest(test.TestCase):
         self.assertEqual(self.data.rdf_group_list, rdf_list)
 
     def test_get_rdf_group_volume(self):
-        with mock.patch.object(self.rest, 'get_resource') as mock_get:
+        vol_details = self.data.private_vol_details['resultList']['result'][0]
+        with mock.patch.object(
+                self.rest, '_get_private_volume', return_value=vol_details
+        ) as mock_get:
             self.rest.get_rdf_group_volume(
-                self.data.array, self.data.rdf_group_no, self.data.device_id)
+                self.data.array, self.data.device_id)
             mock_get.assert_called_once_with(
-                self.data.array, 'replication', 'rdf_group', "70/volume/00001")
+                self.data.array, self.data.device_id)
 
     def test_are_vols_rdf_paired(self):
         are_vols1, local_state, pair_state = self.rest.are_vols_rdf_paired(
             self.data.array, self.data.remote_array, self.data.device_id,
-            self.data.device_id2, self.data.rdf_group_no)
+            self.data.device_id2)
         self.assertTrue(are_vols1)
         are_vols2, local_state, pair_state = self.rest.are_vols_rdf_paired(
             self.data.array, "00012345", self.data.device_id,
-            self.data.device_id2, self.data.rdf_group_no)
+            self.data.device_id2)
         self.assertFalse(are_vols2)
         with mock.patch.object(self.rest, "get_rdf_group_volume",
                                return_value=None):
             are_vols3, local, pair = self.rest.are_vols_rdf_paired(
                 self.data.array, self.data.remote_array, self.data.device_id,
-                self.data.device_id2, self.data.rdf_group_no)
+                self.data.device_id2)
             self.assertFalse(are_vols3)
 
     def test_get_rdf_group_number(self):
@@ -2535,6 +2598,40 @@ class VMAXRestTest(test.TestCase):
                                                 source_group,
                                                 snap_name,
                                                 extra_specs)
+
+    def test_get_storagegroup_rdf_details(self):
+        details = self.rest.get_storagegroup_rdf_details(
+            self.data.array, self.data.test_vol_grp_name,
+            self.data.rdf_group_no)
+        self.assertEqual(self.data.sg_rdf_details[0], details)
+
+    def test_verify_rdf_state(self):
+        verify1 = self.rest._verify_rdf_state(
+            self.data.array, self.data.test_vol_grp_name,
+            self.data.rdf_group_no, 'Failover')
+        self.assertTrue(verify1)
+        verify2 = self.rest._verify_rdf_state(
+            self.data.array, self.data.test_fo_vol_group,
+            self.data.rdf_group_no, 'Establish')
+        self.assertTrue(verify2)
+
+    def test_modify_storagegroup_rdf(self):
+        with mock.patch.object(
+                self.rest, 'modify_resource',
+                return_value=(202, self.data.job_list[0])) as mock_mod:
+            self.rest.modify_storagegroup_rdf(
+                self.data.array, self.data.test_vol_grp_name,
+                self.data.rdf_group_no, 'Failover',
+                self.data.extra_specs)
+            mock_mod.assert_called_once()
+
+    def test_delete_storagegroup_rdf(self):
+        with mock.patch.object(
+                self.rest, 'delete_resource') as mock_del:
+            self.rest.delete_storagegroup_rdf(
+                self.data.array, self.data.test_vol_grp_name,
+                self.data.rdf_group_no)
+            mock_del.assert_called_once()
 
 
 class VMAXProvisionTest(test.TestCase):
@@ -2886,6 +2983,59 @@ class VMAXProvisionTest(test.TestCase):
                 self.data.array, self.data.test_group, self.data.extra_specs)
         self.assertEqual(2, mock_sg.call_count)
         self.assertEqual(1, mock_create.call_count)
+
+    @mock.patch.object(rest.VMAXRest, 'create_resource',
+                       return_value=(202, VMAXCommonData.job_list[0]))
+    def test_replicate_group(self, mock_create):
+        self.rest.replicate_group(
+            self.data.array, self.data.test_rep_group,
+            self.data.rdf_group_no, self.data.remote_array,
+            self.data.extra_specs)
+        mock_create.assert_called_once()
+
+    def test_enable_group_replication(self):
+        with mock.patch.object(self.rest,
+                               'modify_storagegroup_rdf') as mock_mod:
+            self.provision.enable_group_replication(
+                self.data.array, self.data.test_vol_grp_name,
+                self.data.rdf_group_no, self.data.extra_specs)
+            mock_mod.assert_called_once()
+
+    def test_disable_group_replication(self):
+        with mock.patch.object(self.rest,
+                               'modify_storagegroup_rdf') as mock_mod:
+            self.provision.disable_group_replication(
+                self.data.array, self.data.test_vol_grp_name,
+                self.data.rdf_group_no, self.data.extra_specs)
+            mock_mod.assert_called_once()
+
+    def test_failover_group(self):
+        with mock.patch.object(self.rest,
+                               'modify_storagegroup_rdf') as mock_fo:
+            # Failover
+            self.provision.failover_group(
+                self.data.array, self.data.test_vol_grp_name,
+                self.data.rdf_group_no, self.data.extra_specs)
+            mock_fo.assert_called_once_with(
+                self.data.array, self.data.test_vol_grp_name,
+                self.data.rdf_group_no, 'Failover', self.data.extra_specs)
+            mock_fo.reset_mock()
+            # Failback
+            self.provision.failover_group(
+                self.data.array, self.data.test_vol_grp_name,
+                self.data.rdf_group_no, self.data.extra_specs, False)
+            mock_fo.assert_called_once_with(
+                self.data.array, self.data.test_vol_grp_name,
+                self.data.rdf_group_no, 'Failback', self.data.extra_specs)
+
+    @mock.patch.object(rest.VMAXRest, 'modify_storagegroup_rdf')
+    @mock.patch.object(rest.VMAXRest, 'delete_storagegroup_rdf')
+    def test_delete_group_replication(self, mock_mod, mock_del):
+        self.provision.delete_group_replication(
+            self.data.array, self.data.test_vol_grp_name,
+            self.data.rdf_group_no, self.data.extra_specs)
+        mock_mod.assert_called_once()
+        mock_del.assert_called_once()
 
 
 class VMAXCommonTest(test.TestCase):
@@ -4178,15 +4328,14 @@ class VMAXCommonTest(test.TestCase):
                               group_snapshot,
                               snapshots)
 
-    def test_create_group(self):
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    @mock.patch.object(volume_utils, 'is_group_a_type',
+                       side_effect=[False, False])
+    def test_create_group(self, mock_type, mock_cg_type):
         ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
-        context = None
-        group = self.data.test_group_1
-        with mock.patch.object(
-                volume_utils, 'is_group_a_cg_snapshot_type',
-                return_value=True):
-            model_update = self.common.create_group(context, group)
-            self.assertEqual(ref_model_update, model_update)
+        model_update = self.common.create_group(None, self.data.test_group_1)
+        self.assertEqual(ref_model_update, model_update)
 
     def test_create_group_exception(self):
         context = None
@@ -4196,8 +4345,7 @@ class VMAXCommonTest(test.TestCase):
                 return_value=True):
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.common.create_group,
-                              context,
-                              group)
+                              context, group)
 
     def test_delete_group_snapshot(self):
         group_snapshot = self.data.test_group_snapshot_1
@@ -4234,47 +4382,39 @@ class VMAXCommonTest(test.TestCase):
                                                    snapshots))
             self.assertEqual(ref_model_update, model_update)
 
-    def test_update_group(self):
+    @mock.patch.object(volume_utils, 'is_group_a_type',
+                       return_value=False)
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    def test_update_group(self, mock_cg_type, mock_type_check):
         group = self.data.test_group_1
         add_vols = [self.data.test_volume]
         remove_vols = []
         ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
-        with mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
-                               return_value=True):
-            model_update, __, __ = self.common.update_group(group,
-                                                            add_vols,
-                                                            remove_vols)
-            self.assertEqual(ref_model_update, model_update)
+        model_update, __, __ = self.common.update_group(group,
+                                                        add_vols,
+                                                        remove_vols)
+        self.assertEqual(ref_model_update, model_update)
 
+    @mock.patch.object(common.VMAXCommon, '_find_volume_group',
+                       return_value=None)
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=True)
-    def test_update_group_not_found(self, mock_check):
-        group = self.data.test_group_1
-        add_vols = []
-        remove_vols = []
-        with mock.patch.object(
-                self.common, '_find_volume_group',
-                return_value=None):
-            self.assertRaises(exception.GroupNotFound,
-                              self.common.update_group,
-                              group,
-                              add_vols,
-                              remove_vols)
+    def test_update_group_not_found(self, mock_check, mock_grp):
+        self.assertRaises(exception.GroupNotFound, self.common.update_group,
+                          self.data.test_group_1, [], [])
 
+    @mock.patch.object(common.VMAXCommon, '_find_volume_group',
+                       side_effect=exception.VolumeBackendAPIException)
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=True)
-    def test_update_group_exception(self, mock_check):
-        group = self.data.test_group_1
-        add_vols = []
-        remove_vols = []
-        with mock.patch.object(
-                self.common, '_find_volume_group',
-                side_effect=exception.VolumeBackendAPIException):
-            self.assertRaises(exception.VolumeBackendAPIException,
-                              self.common.update_group,
-                              group, add_vols, remove_vols)
+    def test_update_group_exception(self, mock_check, mock_grp):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common.update_group,
+                          self.data.test_group_1, [], [])
 
-    def test_delete_group(self):
+    @mock.patch.object(volume_utils, 'is_group_a_type', return_value=False)
+    def test_delete_group(self, mock_check):
         group = self.data.test_group_1
         volumes = [self.data.test_volume]
         context = None
@@ -4287,7 +4427,8 @@ class VMAXCommonTest(test.TestCase):
                 context, group, volumes)
             self.assertEqual(ref_model_update, model_update)
 
-    def test_delete_group_success(self):
+    @mock.patch.object(volume_utils, 'is_group_a_type', return_value=False)
+    def test_delete_group_success(self, mock_check):
         group = self.data.test_group_1
         volumes = []
         ref_model_update = {'status': fields.GroupStatus.DELETED}
@@ -4307,9 +4448,10 @@ class VMAXCommonTest(test.TestCase):
             model_update, __ = self.common._delete_group(group, volumes)
             self.assertEqual(ref_model_update, model_update)
 
+    @mock.patch.object(volume_utils, 'is_group_a_type', return_value=False)
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=True)
-    def test_delete_group_failed(self, mock_check):
+    def test_delete_group_failed(self, mock_check, mock_type_check):
         group = self.data.test_group_1
         volumes = []
         ref_model_update = {'status': fields.GroupStatus.ERROR_DELETING}
@@ -4320,7 +4462,11 @@ class VMAXCommonTest(test.TestCase):
                 group, volumes)
         self.assertEqual(ref_model_update, model_update)
 
-    def test_create_group_from_src_success(self):
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    @mock.patch.object(volume_utils, 'is_group_a_type',
+                       return_value=False)
+    def test_create_group_from_src_success(self, mock_type, mock_cg_type):
         context = None
         group = self.data.test_group_1
         group_snapshot = self.data.test_group_snapshot_1
@@ -4329,13 +4475,11 @@ class VMAXCommonTest(test.TestCase):
         source_group = None
         source_vols = []
         ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
-        with mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
-                               return_value=True):
-            model_update, volumes_model_update = (
-                self.common.create_group_from_src(
-                    context, group, volumes,
-                    group_snapshot, snapshots,
-                    source_group, source_vols))
+        model_update, volumes_model_update = (
+            self.common.create_group_from_src(
+                context, group, volumes,
+                group_snapshot, snapshots,
+                source_group, source_vols))
         self.assertEqual(ref_model_update, model_update)
 
 
@@ -4564,6 +4708,27 @@ class VMAXFCTest(test.TestCase):
             self.driver.failover_host(self.data.ctx, [self.data.test_volume])
             mock_fo.assert_called_once_with([self.data.test_volume], None,
                                             None)
+
+    def test_enable_replication(self):
+        with mock.patch.object(
+                self.common, 'enable_replication') as mock_er:
+            self.driver.enable_replication(
+                self.data.ctx, self.data.test_group, [self.data.test_volume])
+            mock_er.assert_called_once()
+
+    def test_disable_replication(self):
+        with mock.patch.object(
+                self.common, 'disable_replication') as mock_dr:
+            self.driver.disable_replication(
+                self.data.ctx, self.data.test_group, [self.data.test_volume])
+            mock_dr.assert_called_once()
+
+    def test_failover_replication(self):
+        with mock.patch.object(
+                self.common, 'failover_replication') as mock_fo:
+            self.driver.failover_replication(
+                self.data.ctx, self.data.test_group, [self.data.test_volume])
+            mock_fo.assert_called_once()
 
 
 class VMAXISCSITest(test.TestCase):
@@ -4803,6 +4968,27 @@ class VMAXISCSITest(test.TestCase):
             self.driver.failover_host({}, [self.data.test_volume])
             mock_fo.assert_called_once_with([self.data.test_volume], None,
                                             None)
+
+    def test_enable_replication(self):
+        with mock.patch.object(
+                self.common, 'enable_replication') as mock_er:
+            self.driver.enable_replication(
+                self.data.ctx, self.data.test_group, [self.data.test_volume])
+            mock_er.assert_called_once()
+
+    def test_disable_replication(self):
+        with mock.patch.object(
+                self.common, 'disable_replication') as mock_dr:
+            self.driver.disable_replication(
+                self.data.ctx, self.data.test_group, [self.data.test_volume])
+            mock_dr.assert_called_once()
+
+    def test_failover_replication(self):
+        with mock.patch.object(
+                self.common, 'failover_replication') as mock_fo:
+            self.driver.failover_replication(
+                self.data.ctx, self.data.test_group, [self.data.test_volume])
+            mock_fo.assert_called_once()
 
 
 class VMAXMaskingTest(test.TestCase):
@@ -5759,18 +5945,33 @@ class VMAXCommonReplicationTest(test.TestCase):
         self.common._get_replication_info()
         self.assertTrue(self.common.replication_enabled)
 
-    def test_create_replicated_volume(self):
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=False)
+    @mock.patch.object(objects.Group, 'get_by_id',
+                       return_value=VMAXCommonData.test_rep_group)
+    @mock.patch.object(volume_utils, 'is_group_a_type', return_value=True)
+    @mock.patch.object(utils.VMAXUtils, 'check_replication_matched',
+                       return_value=True)
+    @mock.patch.object(masking.VMAXMasking, 'add_volume_to_storage_group')
+    @mock.patch.object(
+        common.VMAXCommon, '_replicate_volume',
+        return_value={
+            'replication_driver_data':
+                VMAXCommonData.test_volume.replication_driver_data})
+    def test_create_replicated_volume(self, mock_rep, mock_add, mock_match,
+                                      mock_check, mock_get, mock_cg):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         vol_identifier = self.utils.get_volume_element_name(
             self.data.test_volume.id)
-        with mock.patch.object(self.common, '_replicate_volume',
-                               return_value={}) as mock_rep:
-            self.common.create_volume(self.data.test_volume)
-            volume_dict = self.data.provider_location
-            mock_rep.assert_called_once_with(
-                self.data.test_volume, vol_identifier, volume_dict,
-                extra_specs)
+        self.common.create_volume(self.data.test_volume)
+        volume_dict = self.data.provider_location
+        mock_rep.assert_called_once_with(
+            self.data.test_volume, vol_identifier, volume_dict,
+            extra_specs)
+        # Add volume to replication group
+        self.common.create_volume(self.data.test_volume_group_member)
+        mock_add.assert_called_once()
 
     def test_create_cloned_replicated_volume(self):
         extra_specs = deepcopy(self.extra_specs)
@@ -6013,6 +6214,17 @@ class VMAXCommonReplicationTest(test.TestCase):
                           self.common.failover_host,
                           volumes, secondary_id="default")
 
+    @mock.patch.object(common.VMAXCommon, 'failover_replication',
+                       return_value=({}, {}))
+    @mock.patch.object(common.VMAXCommon, '_failover_volume',
+                       return_value={})
+    def test_failover_host_groups(self, mock_fv, mock_fg):
+        volumes = [self.data.test_volume_group_member]
+        group1 = self.data.test_group
+        self.common.failover_host(volumes, None, [group1])
+        mock_fv.assert_not_called()
+        mock_fg.assert_called_once()
+
     def test_failover_volume(self):
         ref_model_update = {
             'volume_id': self.data.test_volume.id,
@@ -6215,3 +6427,164 @@ class VMAXCommonReplicationTest(test.TestCase):
         secondary_info = self.common.get_secondary_stats_info(
             rep_config, array_info)
         self.assertEqual(ref_info, secondary_info)
+
+    def test_replicate_group(self):
+        volume_model_update = {
+            'id': self.data.test_volume.id,
+            'provider_location': self.data.test_volume.provider_location}
+        vols_model_update = self.common._replicate_group(
+            self.data.array, [volume_model_update],
+            self.data.test_vol_grp_name, self.extra_specs)
+        ref_rep_data = six.text_type({'array': self.data.remote_array,
+                                      'device_id': self.data.device_id2})
+        ref_vol_update = {
+            'id': self.data.test_volume.id,
+            'provider_location': self.data.test_volume.provider_location,
+            'replication_driver_data': ref_rep_data,
+            'replication_status': fields.ReplicationStatus.ENABLED}
+        self.assertEqual(ref_vol_update, vols_model_update[0])
+
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=False)
+    @mock.patch.object(volume_utils, 'is_group_a_type',
+                       side_effect=[True, True])
+    def test_create_replicaton_group(self, mock_type, mock_cg_type):
+        ref_model_update = {
+            'status': fields.GroupStatus.AVAILABLE,
+            'replication_status': fields.ReplicationStatus.ENABLED}
+        model_update = self.common.create_group(None, self.data.test_group_1)
+        self.assertEqual(ref_model_update, model_update)
+
+    def test_enable_replication(self):
+        # Case 1: Group not replicated
+        with mock.patch.object(volume_utils, 'is_group_a_type',
+                               return_value=False):
+            self.assertRaises(NotImplementedError,
+                              self.common.enable_replication,
+                              None, self.data.test_group,
+                              [self.data.test_volume])
+        with mock.patch.object(volume_utils, 'is_group_a_type',
+                               return_value=True):
+            # Case 2: Empty group
+            model_update, __ = self.common.enable_replication(
+                None, self.data.test_group, [])
+            self.assertEqual({}, model_update)
+            # Case 3: Successfully enabled
+            model_update, __ = self.common.enable_replication(
+                None, self.data.test_group, [self.data.test_volume])
+            self.assertEqual(fields.ReplicationStatus.ENABLED,
+                             model_update['replication_status'])
+            # Case 4: Exception
+            model_update, __ = self.common.enable_replication(
+                None, self.data.test_group_failed, [self.data.test_volume])
+            self.assertEqual(fields.ReplicationStatus.ERROR,
+                             model_update['replication_status'])
+
+    def test_disable_replication(self):
+        # Case 1: Group not replicated
+        with mock.patch.object(volume_utils, 'is_group_a_type',
+                               return_value=False):
+            self.assertRaises(NotImplementedError,
+                              self.common.disable_replication,
+                              None, self.data.test_group,
+                              [self.data.test_volume])
+        with mock.patch.object(volume_utils, 'is_group_a_type',
+                               return_value=True):
+            # Case 2: Empty group
+            model_update, __ = self.common.disable_replication(
+                None, self.data.test_group, [])
+            self.assertEqual({}, model_update)
+            # Case 3: Successfully disabled
+            model_update, __ = self.common.disable_replication(
+                None, self.data.test_group, [self.data.test_volume])
+            self.assertEqual(fields.ReplicationStatus.DISABLED,
+                             model_update['replication_status'])
+            # Case 4: Exception
+            model_update, __ = self.common.disable_replication(
+                None, self.data.test_group_failed, [self.data.test_volume])
+            self.assertEqual(fields.ReplicationStatus.ERROR,
+                             model_update['replication_status'])
+
+    def test_failover_replication(self):
+        # Case 1: Group not replicated
+        with mock.patch.object(volume_utils, 'is_group_a_type',
+                               return_value=False):
+            self.assertRaises(NotImplementedError,
+                              self.common.failover_replication,
+                              None, self.data.test_group,
+                              [self.data.test_volume])
+        with mock.patch.object(volume_utils, 'is_group_a_type',
+                               return_value=True):
+            # Case 2: Empty group
+            model_update, __ = self.common.failover_replication(
+                None, self.data.test_group, [])
+            self.assertEqual({}, model_update)
+            # Case 3: Successfully failed over
+            model_update, __ = self.common.failover_replication(
+                None, self.data.test_group, [self.data.test_volume])
+            self.assertEqual(fields.ReplicationStatus.FAILED_OVER,
+                             model_update['replication_status'])
+            # Case 4: Successfully failed back
+            model_update, __ = self.common.failover_replication(
+                None, self.data.test_group, [self.data.test_volume],
+                secondary_backend_id='default')
+            self.assertEqual(fields.ReplicationStatus.ENABLED,
+                             model_update['replication_status'])
+            # Case 5: Exception
+            model_update, __ = self.common.failover_replication(
+                None, self.data.test_group_failed, [self.data.test_volume])
+            self.assertEqual(fields.ReplicationStatus.ERROR,
+                             model_update['replication_status'])
+
+    @mock.patch.object(utils.VMAXUtils, 'get_volume_group_utils',
+                       return_value=(VMAXCommonData.array, []))
+    @mock.patch.object(common.VMAXCommon, '_cleanup_group_replication')
+    @mock.patch.object(volume_utils, 'is_group_a_type', return_value=True)
+    def test_delete_replication_group(self, mock_check,
+                                      mock_cleanup, mock_utils):
+        self.common._delete_group(self.data.test_rep_group, [])
+        mock_cleanup.assert_called_once()
+
+    @mock.patch.object(masking.VMAXMasking,
+                       'remove_volumes_from_storage_group')
+    @mock.patch.object(utils.VMAXUtils, 'check_rep_status_enabled')
+    @mock.patch.object(common.VMAXCommon,
+                       '_remove_remote_vols_from_volume_group')
+    @mock.patch.object(common.VMAXCommon, '_add_remote_vols_to_volume_group')
+    @mock.patch.object(volume_utils, 'is_group_a_type', return_value=True)
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    def test_update_replicated_group(self, mock_cg_type, mock_type_check,
+                                     mock_add, mock_remove, mock_check,
+                                     mock_rm):
+        add_vols = [self.data.test_volume]
+        remove_vols = [self.data.test_clone_volume]
+        self.common.update_group(
+            self.data.test_group_1, add_vols, remove_vols)
+        mock_add.assert_called_once()
+        mock_remove.assert_called_once()
+
+    @mock.patch.object(masking.VMAXMasking,
+                       'add_volumes_to_storage_group')
+    def test_add_remote_vols_to_volume_group(self, mock_add):
+        self.common._add_remote_vols_to_volume_group(
+            self.data.remote_array, [self.data.test_volume],
+            self.data.test_rep_group, self.data.rep_extra_specs)
+        mock_add.assert_called_once()
+
+    @mock.patch.object(masking.VMAXMasking,
+                       'remove_volumes_from_storage_group')
+    def test_remove_remote_vols_from_volume_group(self, mock_rm):
+        self.common._remove_remote_vols_from_volume_group(
+            self.data.remote_array, [self.data.test_volume],
+            self.data.test_rep_group, self.data.rep_extra_specs)
+        mock_rm.assert_called_once()
+
+    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
+    @mock.patch.object(masking.VMAXMasking,
+                       'remove_volumes_from_storage_group')
+    def test_cleanup_group_replication(self, mock_rm, mock_rm_reset):
+        self.common._cleanup_group_replication(
+            self.data.array, self.data.test_vol_grp_name,
+            [self.data.device_id], self.extra_specs)
+        mock_rm.assert_called_once()

@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add consistent replication group support in Dell EMC VMAX cinder driver.
+

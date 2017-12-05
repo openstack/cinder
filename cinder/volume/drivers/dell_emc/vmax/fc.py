@@ -82,9 +82,10 @@ class VMAXFCDriver(driver.FibreChannelDriver):
               - Support for volume replication
               - Support for live migration
               - Support for Generic Volume Group
+        3.1.0 - Support for replication groups (Tiramisu)
     """
 
-    VERSION = "3.0.0"
+    VERSION = "3.1.0"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
@@ -465,8 +466,9 @@ class VMAXFCDriver(driver.FibreChannelDriver):
 
         :param context: the context
         :param group: the group object
+        :returns: model_update
         """
-        self.common.create_group(context, group)
+        return self.common.create_group(context, group)
 
     def delete_group(self, context, group, volumes):
         """Deletes a generic volume group.
@@ -526,3 +528,36 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         return self.common.create_group_from_src(
             context, group, volumes, group_snapshot, snapshots, source_group,
             source_vols)
+
+    def enable_replication(self, context, group, volumes):
+        """Enable replication for a group.
+
+        :param context: the context
+        :param group: the group object
+        :param volumes: the list of volumes
+        :returns: model_update, None
+        """
+        return self.common.enable_replication(context, group, volumes)
+
+    def disable_replication(self, context, group, volumes):
+        """Disable replication for a group.
+
+        :param context: the context
+        :param group: the group object
+        :param volumes: the list of volumes
+        :returns: model_update, None
+        """
+        return self.common.disable_replication(context, group, volumes)
+
+    def failover_replication(self, context, group, volumes,
+                             secondary_backend_id=None):
+        """Failover replication for a group.
+
+        :param context: the context
+        :param group: the group object
+        :param volumes: the list of volumes
+        :param secondary_backend_id: the secondary backend id - default None
+        :returns: model_update, vol_model_updates
+        """
+        return self.common.failover_replication(
+            context, group, volumes, secondary_backend_id)
