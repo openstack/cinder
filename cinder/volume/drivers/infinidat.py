@@ -119,7 +119,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     VERSION = '1.5'
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "INFINIDAT_Cinder_CI"
+    CI_WIKI_NAME = "INFINIDAT_CI"
 
     def __init__(self, *args, **kwargs):
         super(InfiniboxVolumeDriver, self).__init__(*args, **kwargs)
