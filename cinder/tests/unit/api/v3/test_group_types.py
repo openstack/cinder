@@ -136,7 +136,7 @@ class GroupTypesApiTest(test.TestCase):
 
         body = {"group_type": {"is_public": is_public, "name": "group_type1",
                                "description": None}}
-        self.controller.create(req, body)
+        self.controller.create(req, body=body)
         mock_create.assert_called_once_with(
             self.ctxt, 'group_type1', {},
             boolean_is_public, description=None)
@@ -327,14 +327,14 @@ class GroupTypesApiTest(test.TestCase):
     def test_update_group_type_with_valid_is_public_in_string(
             self, is_public, mock_show, mock_cache_resource,
             mock_update, mock_get):
-        boolean_is_public = strutils.bool_from_string(is_public)
         type_id = six.text_type(uuid.uuid4())
         req = fakes.HTTPRequest.blank(
             '/v3/%s/types/%s' % (fake.PROJECT_ID, type_id),
             version=mv.GROUP_TYPE)
         req.environ['cinder.context'] = self.ctxt
+        boolean_is_public = strutils.bool_from_string(is_public)
         body = {"group_type": {"is_public": is_public, "name": "group_type1"}}
-        self.controller.update(req, type_id, body)
+        self.controller.update(req, type_id, body=body)
         mock_update.assert_called_once_with(
             self.ctxt, type_id, 'group_type1', None,
             is_public=boolean_is_public)
