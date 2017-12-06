@@ -177,7 +177,7 @@ You can apply this process to volumes of any size.
    *and data only*. This ensures that you do not waste space by backing
    up empty sectors.
 
-#. Checksum calculation I
+#. Checksum calculation
 
    You should always have the checksum for your backup files. When you
    transfer the same file over the network, you can run a checksum
