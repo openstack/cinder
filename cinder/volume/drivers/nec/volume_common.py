@@ -876,6 +876,15 @@ class MStorageVolumeCommon(object):
             else:
                 specs['upperreport'] = None
 
+    def check_accesscontrol(self, ldsets, ld):
+        """Check Logical disk is in-use or not."""
+        set_accesscontrol = False
+        for ldset in ldsets.values():
+            if ld['ldn'] in ldset['lds']:
+                set_accesscontrol = True
+                break
+        return set_accesscontrol
+
     def validates_number(self, value):
         return re.match(r'^(?![-+]0+$)[-+]?([1-9][0-9]*)?[0-9](\.[0-9]+)?$',
                         '%s' % value) and True or False

@@ -1,0 +1,4 @@
+---
+features:
+  - Support manage/unmanage volume and manage/unmanage snapshot
+    functions for the NEC volume driver.

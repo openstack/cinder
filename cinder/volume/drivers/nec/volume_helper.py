@@ -15,6 +15,7 @@
 #    under the License.
 
 import random
+import re
 import traceback
 
 from oslo_log import log as logging
@@ -26,6 +27,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.volume.drivers.nec import cli
 from cinder.volume.drivers.nec import volume_common
+from cinder.volume import utils as volutils
 
 
 LOG = logging.getLogger(__name__)
@@ -1450,6 +1452,206 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         self._cli.unbind(ldname)
         LOG.debug('LD unbound. Name=%s.', ldname)
 
+    def _is_manageable_volume(self, ld):
+        if ld['RPL Attribute'] == '---':
+            return False
+        if ld['Purpose'] != '---' and 'BV' not in ld['RPL Attribute']:
+            return False
+        if ld['pool_num'] not in self._properties['pool_pools']:
+            return False
+        return True
+
+    def _is_manageable_snapshot(self, ld):
+        if ld['RPL Attribute'] == '---':
+            return False
+        if 'SV' not in ld['RPL Attribute']:
+            return False
+        if ld['pool_num'] not in self._properties['pool_backup_pools']:
+            return False
+        return True
+
+    def _reference_to_ldname(self, resource_type, volume, existing_ref):
+        if resource_type == 'volume':
+            ldname_format = self._properties['ld_name_format']
+        else:
+            ldname_format = self._properties['ld_backupname_format']
+
+        id_name = self.get_ldname(volume.id, ldname_format)
+        ref_name = existing_ref['source-name']
+        volid = re.search(
+            r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+            ref_name)
+        if volid:
+            ref_name = self.get_ldname(volid.group(0), ldname_format)
+
+        return id_name, ref_name
+
+    def _get_manageable_resources(self, resource_type, cinder_volumes, marker,
+                                  limit, offset, sort_keys, sort_dirs):
+        entries = []
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+        cinder_ids = [resource['id'] for resource in cinder_volumes]
+
+        for ld in lds.values():
+            if ((resource_type == 'volume' and
+                 not self._is_manageable_volume(ld)) or
+                (resource_type == 'snapshot' and
+                 not self._is_manageable_snapshot(ld))):
+                continue
+
+            ld_info = {'reference': {'source-name': ld['ldname']},
+                       'size': ld['ld_capacity'],
+                       'cinder_id': None,
+                       'extra_info': None}
+
+            potential_id = volume_common.convert_to_id(ld['ldname'][3:])
+            if potential_id in cinder_ids:
+                ld_info['safe_to_manage'] = False
+                ld_info['reason_not_safe'] = 'already managed'
+                ld_info['cinder_id'] = potential_id
+            elif self.check_accesscontrol(ldsets, ld):
+                ld_info['safe_to_manage'] = False
+                ld_info['reason_not_safe'] = '%s in use' % resource_type
+            else:
+                ld_info['safe_to_manage'] = True
+                ld_info['reason_not_safe'] = None
+
+            if resource_type == 'snapshot':
+                bvname = self._cli.get_bvname(ld['ldname'])
+                bv_id = volume_common.convert_to_id(bvname)
+                ld_info['source_reference'] = {'source-name': bv_id}
+
+            entries.append(ld_info)
+
+        return volutils.paginate_entries_list(entries, marker, limit, offset,
+                                              sort_keys, sort_dirs)
+
+    def _manage_existing_get_size(self, resource_type, volume, existing_ref):
+        if 'source-name' not in existing_ref:
+            reason = _('Reference must contain source-name element.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+
+        id_name, ref_name = self._reference_to_ldname(resource_type,
+                                                      volume,
+                                                      existing_ref)
+        if ref_name not in lds:
+            reason = _('Specified resource does not exist.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+        ld = lds[ref_name]
+        return ld['ld_capacity']
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        """List volumes on the backend available for management by Cinder."""
+        LOG.debug('get_manageable_volumes Start.')
+        return self._get_manageable_resources('volume',
+                                              cinder_volumes, marker, limit,
+                                              offset, sort_keys, sort_dirs)
+
+    def manage_existing(self, volume, existing_ref):
+        """Brings an existing backend storage object under Cinder management.
+
+        Rename the backend storage object so that it matches the,
+        volume['name'] which is how drivers traditionally map between a
+        cinder volume and the associated backend storage object.
+        """
+        LOG.debug('manage_existing Start.')
+
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+
+        newname, oldname = self._reference_to_ldname('volume',
+                                                     volume,
+                                                     existing_ref)
+        if self.check_accesscontrol(ldsets, lds[oldname]):
+            reason = _('Specified resource is already in-use.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+
+        if lds[oldname]['pool_num'] not in self._properties['pool_pools']:
+            reason = _('Volume type is unmatched.')
+            raise exception.ManageExistingVolumeTypeMismatch(
+                existing_ref=existing_ref, reason=reason)
+
+        try:
+            self._cli.changeldname(None, newname, oldname)
+        except exception.CinderException as e:
+            LOG.warning('Unable to manage existing volume '
+                        '(reference = %(ref)s), (%(exception)s)',
+                        {'ref': existing_ref['source-name'], 'exception': e})
+        return
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of volume to be managed by manage_existing."""
+        LOG.debug('manage_existing_get_size Start.')
+        return self._manage_existing_get_size('volume', volume, existing_ref)
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management."""
+        pass
+
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        """List snapshots on the backend available for management by Cinder."""
+        LOG.debug('get_manageable_snapshots Start.')
+        return self._get_manageable_resources('snapshot',
+                                              cinder_snapshots, marker, limit,
+                                              offset, sort_keys, sort_dirs)
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Brings an existing backend storage object under Cinder management.
+
+        Rename the backend storage object so that it matches the
+        snapshot['name'] which is how drivers traditionally map between a
+        cinder snapshot and the associated backend storage object.
+        """
+        LOG.debug('manage_existing_snapshots Start.')
+
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+
+        newname, oldname = self._reference_to_ldname('snapshot',
+                                                     snapshot,
+                                                     existing_ref)
+        param_source = self.get_ldname(snapshot.volume_id,
+                                       self._properties['ld_name_format'])
+        ref_source = self._cli.get_bvname(oldname)
+        if param_source[3:] != ref_source:
+            reason = _('Snapshot source is unmatched.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+        if (lds[oldname]['pool_num']
+                not in self._properties['pool_backup_pools']):
+            reason = _('Volume type is unmatched.')
+            raise exception.ManageExistingVolumeTypeMismatch(
+                existing_ref=existing_ref, reason=reason)
+
+        try:
+            self._cli.changeldname(None, newname, oldname)
+        except exception.CinderException as e:
+            LOG.warning('Unable to manage existing snapshot '
+                        '(reference = %(ref)s), (%(exception)s)',
+                        {'ref': existing_ref['source-name'], 'exception': e})
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """Return size of snapshot to be managed by manage_existing."""
+        LOG.debug('manage_existing_snapshot_get_size Start.')
+        return self._manage_existing_get_size('snapshot',
+                                              snapshot, existing_ref)
+
+    def unmanage_snapshot(self, snapshot):
+        """Removes the specified snapshot from Cinder management."""
+        pass
+
 
 class MStorageDSVDriver(MStorageDriver):
     """M-Series Storage Snapshot helper class."""
@@ -1522,7 +1724,7 @@ class MStorageDSVDriver(MStorageDriver):
         ldname = self.get_ldname(snapshot.volume_id,
                                  self._properties['ld_name_format'])
         if ldname not in lds:
-            LOG.debug('LD(MV) `%s` already unbound?', ldname)
+            LOG.debug('LD(BV) `%s` already unbound?', ldname)
             return
 
         # get SV name.
