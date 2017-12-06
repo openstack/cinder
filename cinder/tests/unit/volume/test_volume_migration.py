@@ -917,3 +917,22 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         # The volume is successfully removed during the volume delete
         # and won't exist in the database any more.
         self.assertRaises(exception.VolumeNotFound, volume.refresh)
+
+    def test_retype_volume_not_capable_to_replica(self):
+        elevated = context.get_admin_context()
+        db.volume_type_create(elevated, {'name': 'old', 'extra_specs': {}})
+        old_vol_type = db.volume_type_get_by_name(elevated, 'old')
+        new_extra_specs = {'replication_enabled': '<is> True'}
+        db.volume_type_create(elevated, {'name': 'new',
+                                         'extra_specs': new_extra_specs})
+        new_vol_type = db.volume_type_get_by_name(elevated, 'new')
+        volume = tests_utils.create_volume(self.context, size=1,
+                                           host=CONF.host, status='available',
+                                           volume_type_id=old_vol_type['id'],
+                                           replication_status='not-capable')
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+        with mock.patch.object(self.volume,
+                               'migrate_volume') as migrate_volume:
+            migrate_volume.return_value = True
+            self.volume.retype(self.context, volume, new_vol_type['id'],
+                               host_obj, migration_policy='on-demand')
