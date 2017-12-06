@@ -12,11 +12,11 @@ httplib2>=0.9.1 # MIT
 iso8601>=0.1.11 # MIT
 jsonschema<3.0.0,>=2.6.0 # MIT
 ipaddress>=1.0.16;python_version<'3.3' # PSF
-keystoneauth1>=3.2.0 # Apache-2.0
+keystoneauth1>=3.3.0 # Apache-2.0
 keystonemiddleware>=4.17.0 # Apache-2.0
 lxml!=3.7.0,>=3.4.1 # BSD
 oauth2client!=4.0.0,>=1.5.0 # Apache-2.0
-oslo.config>=4.6.0 # Apache-2.0
+oslo.config>=5.1.0 # Apache-2.0
 oslo.concurrency>=3.20.0 # Apache-2.0
 oslo.context>=2.19.2 # Apache-2.0
 oslo.db>=4.27.0 # Apache-2.0
@@ -29,7 +29,7 @@ oslo.reports>=1.18.0 # Apache-2.0
 oslo.rootwrap>=5.8.0 # Apache-2.0
 oslo.serialization!=2.19.1,>=2.18.0 # Apache-2.0
 oslo.service>=1.24.0 # Apache-2.0
-oslo.utils>=3.28.0 # Apache-2.0
+oslo.utils>=3.31.0 # Apache-2.0
 oslo.versionedobjects>=1.28.0 # Apache-2.0
 osprofiler>=1.4.0 # Apache-2.0
 paramiko>=2.0.0 # LGPLv2.1+
@@ -50,7 +50,7 @@ Routes>=2.3.1 # MIT
 taskflow>=2.7.0 # Apache-2.0
 rtslib-fb!=2.1.60,!=2.1.61,>=2.1.43 # Apache-2.0
 simplejson>=3.5.1 # MIT
-six>=1.9.0 # MIT
+six>=1.10.0 # MIT
 SQLAlchemy!=1.1.5,!=1.1.6,!=1.1.7,!=1.1.8,>=1.0.10 # MIT
 sqlalchemy-migrate>=0.11.0 # Apache-2.0
 stevedore>=1.20.0 # Apache-2.0
@@ -58,7 +58,7 @@ suds-jurko>=0.6 # LGPLv3+
 WebOb>=1.7.1 # MIT
 oslo.i18n>=3.15.3 # Apache-2.0
 oslo.vmware>=2.17.0 # Apache-2.0
-os-brick>=1.15.2 # Apache-2.0
+os-brick>=2.1.1 # Apache-2.0
 os-win>=2.0.0 # Apache-2.0
 tooz>=1.58.0 # Apache-2.0
 google-api-python-client>=1.4.2 # Apache-2.0
