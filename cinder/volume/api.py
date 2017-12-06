@@ -60,7 +60,6 @@ from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
-
 allow_force_upload_opt = cfg.BoolOpt('enable_force_upload',
                                      default=False,
                                      help='Enables the Force option on '
@@ -1696,6 +1695,15 @@ class API(base.Base):
     def manage_existing(self, context, host, cluster_name, ref, name=None,
                         description=None, volume_type=None, metadata=None,
                         availability_zone=None, bootable=False):
+
+        if 'source-name' in ref:
+            vol_id = volume_utils.extract_id_from_volume_name(
+                ref['source-name'])
+            if vol_id and volume_utils.check_already_managed_volume(vol_id):
+                raise exception.InvalidVolume(
+                    _("Unable to manage existing volume."
+                      " The volume is already managed"))
+
         if volume_type and 'extra_specs' not in volume_type:
             extra_specs = volume_types.get_volume_type_extra_specs(
                 volume_type['id'])
