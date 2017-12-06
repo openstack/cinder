@@ -57,55 +57,30 @@ def create_volume(ctxt,
                   display_name='test_volume',
                   display_description='this is a test volume',
                   status='available',
-                  migration_status=None,
                   size=1,
                   availability_zone='fake_az',
-                  volume_type_id=None,
                   replication_status='disabled',
-                  replication_extended_status=None,
-                  replication_driver_data=None,
-                  consistencygroup_id=None,
-                  group_id=None,
-                  previous_status=None,
                   testcase_instance=None,
                   id=None,
                   metadata=None,
-                  cluster_name=None,
                   **kwargs):
     """Create a volume object in the DB."""
-    vol = {}
-    vol['size'] = size
-    vol['host'] = host
-    vol['user_id'] = ctxt.user_id
-    vol['project_id'] = ctxt.project_id
-    vol['status'] = status
-    if migration_status:
-        vol['migration_status'] = migration_status
-    vol['display_name'] = display_name
-    vol['display_description'] = display_description
-    vol['attach_status'] = fields.VolumeAttachStatus.DETACHED
-    vol['availability_zone'] = availability_zone
-    if consistencygroup_id:
-        vol['consistencygroup_id'] = consistencygroup_id
-    if group_id:
-        vol['group_id'] = group_id
-    vol['group_snapshot'] = None
-    if volume_type_id:
-        vol['volume_type_id'] = volume_type_id
+    vol = {'size': size,
+           'host': host,
+           'user_id': ctxt.user_id,
+           'project_id': ctxt.project_id,
+           'status': status,
+           'display_name': display_name,
+           'display_description': display_description,
+           'attach_status': fields.VolumeAttachStatus.DETACHED,
+           'availability_zone': availability_zone,
+           }
+
     if metadata:
         vol['metadata'] = metadata
     for key in kwargs:
         vol[key] = kwargs[key]
     vol['replication_status'] = replication_status
-
-    if replication_extended_status:
-        vol['replication_extended_status'] = replication_extended_status
-    if replication_driver_data:
-        vol['replication_driver_data'] = replication_driver_data
-    if previous_status:
-        vol['previous_status'] = previous_status
-    if cluster_name:
-        vol['cluster_name'] = cluster_name
 
     if id:
         with mock.patch('cinder.objects.Volume.obj_attr_is_set',
