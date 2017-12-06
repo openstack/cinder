@@ -607,6 +607,13 @@ bootable:
   in: body
   required: true
   type: boolean
+bootable_1:
+  description: |
+    Enables or disables the bootable attribute. You
+    can boot an instance from a bootable volume.
+  in: body
+  required: false
+  type: boolean
 bootable_response:
   description: |
     Enables or disables the bootable attribute. You
@@ -1598,6 +1605,13 @@ metadata_1:
     metadata key and value pairs that are associated with the volume.
   in: body
   required: true
+  type: object
+metadata_10:
+  description: |
+    One or more metadata key and value pairs to be associated
+    with the new volume.
+  in: body
+  required: false
   type: object
 metadata_2:
   description: |
@@ -2778,6 +2792,12 @@ volume_name:
     The volume name.
   in: body
   required: true
+  type: string
+volume_name_1:
+  description: |
+    The volume name.
+  in: body
+  required: false
   type: string
 volume_type_1:
   description: |
