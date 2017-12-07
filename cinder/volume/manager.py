@@ -738,6 +738,11 @@ class VolumeManager(manager.CleanableManager,
             raise exception.VolumeAttached(volume_id=volume.id)
         self._check_is_our_resource(volume)
 
+        if unmanage_only and volume.encryption_key_id is not None:
+            raise exception.Invalid(
+                reason=_("Unmanaging encrypted volumes is not "
+                         "supported."))
+
         if unmanage_only and cascade:
             # This could be done, but is ruled out for now just
             # for simplicity.

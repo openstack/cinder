@@ -39,6 +39,8 @@ from cinder import flow_utils
 from cinder.i18n import _
 from cinder.image import cache as image_cache
 from cinder.image import glance
+from cinder.message import api as message_api
+from cinder.message import message_field
 from cinder import objects
 from cinder.objects import base as objects_base
 from cinder.objects import fields
@@ -107,6 +109,7 @@ class API(base.Base):
         self.availability_zones = []
         self.availability_zones_last_fetched = None
         self.key_manager = key_manager.API(CONF)
+        self.message = message_api.API()
         super(API, self).__init__(db_driver)
 
     def list_availability_zones(self, enable_cache=False, refresh_cache=False):
@@ -408,6 +411,17 @@ class API(base.Base):
 
         if not unmanage_only:
             volume.assert_not_frozen()
+
+        if unmanage_only and volume.encryption_key_id is not None:
+            msg = _("Unmanaging encrypted volumes is not supported.")
+            e = exception.Invalid(reason=msg)
+            self.message.create(
+                context,
+                message_field.Action.UNMANAGE_VOLUME,
+                resource_uuid=volume.id,
+                detail=message_field.Detail.UNMANAGE_ENC_NOT_SUPPORTED,
+                exception=e)
+            raise e
 
         # Build required conditions for conditional update
         expected = {

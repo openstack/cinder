@@ -831,6 +831,20 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             self.assertEqual("available", volume_ref.status)
             mock_del_vol.assert_called_once_with(volume)
 
+    def test_unmanage_encrypted_volume_fails(self):
+        volume = tests_utils.create_volume(
+            self.context,
+            encryption_key_id=fake.ENCRYPTION_KEY_ID,
+            **self.volume_params)
+        self.volume.create_volume(self.context, volume)
+        manager = vol_manager.VolumeManager()
+        self.assertRaises(exception.Invalid,
+                          manager.delete_volume,
+                          self.context,
+                          volume,
+                          unmanage_only=True)
+        self.volume.delete_volume(self.context, volume)
+
     def test_get_volume_different_tenant(self):
         """Test can't get volume of another tenant when viewable_admin_meta."""
         volume = tests_utils.create_volume(self.context,
