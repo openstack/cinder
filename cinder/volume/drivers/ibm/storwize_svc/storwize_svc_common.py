@@ -4388,17 +4388,30 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         LOG.debug("Creating group.")
 
-        # we'll rely on the generic group implementation if it is
-        # not a consistency group and not a consistency replication
-        # request.
-        if (not utils.is_group_a_cg_snapshot_type(group) and not
-            utils.is_group_a_type(group,
-                                  "consistent_group_replication_enabled")):
-            raise NotImplementedError()
-
         model_update = {'status': fields.GroupStatus.AVAILABLE}
+        group_type = objects.GroupType.get_by_id(context, group.group_type_id)
+        if len(group_type.group_specs) > 1:
+            LOG.error('Unable to create group: create group with mixed specs '
+                      '%s is not supported.', group_type.group_specs)
+            model_update = {'status': fields.GroupStatus.ERROR}
+            return model_update
 
-        if utils.is_group_a_cg_snapshot_type(group):
+        support_grps = ['group_snapshot_enabled',
+                        'consistent_group_snapshot_enabled',
+                        'consistent_group_replication_enabled']
+        supported_grp = False
+        for grp_spec in support_grps:
+            if utils.is_group_a_type(group, grp_spec):
+                supported_grp = True
+                break
+        if not supported_grp:
+            LOG.error('Unable to create group: %s is not a supported group '
+                      'type.', group.group_type_id)
+            model_update = {'status': fields.GroupStatus.ERROR}
+            return model_update
+
+        if (utils.is_group_a_cg_snapshot_type(group) or
+                utils.is_group_a_type(group, "group_snapshot_enabled")):
             for vol_type_id in group.volume_type_ids:
                 replication_type = self._get_volume_replicated_type(
                     context, None, vol_type_id)
@@ -4410,8 +4423,14 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     model_update = {'status': fields.GroupStatus.ERROR}
                     return model_update
 
+        # We'll rely on the generic group implementation if it is
+        # a non-consistent snapshot group.
+        if utils.is_group_a_type(group, "group_snapshot_enabled"):
+            raise NotImplementedError()
+
         if utils.is_group_a_type(group,
                                  "consistent_group_replication_enabled"):
+            rccg_type = None
             for vol_type_id in group.volume_type_ids:
                 replication_type = self._get_volume_replicated_type(
                     context, None, vol_type_id)
@@ -4422,6 +4441,21 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                               ' type is not supported.')
                     model_update = {'status': fields.GroupStatus.ERROR}
                     return model_update
+                if not rccg_type:
+                    rccg_type = replication_type
+                elif rccg_type != replication_type:
+                    # An unsupported configuration
+                    LOG.error('Unable to create group: create consistent '
+                              'replication group with different replication '
+                              'types is not supported.')
+                    model_update = {'status': fields.GroupStatus.ERROR}
+                    return model_update
+            if rccg_type == storwize_const.GMCV:
+                LOG.error('Unable to create group: create consistent '
+                          'replication group with GMCV replication '
+                          'volume type is not supported.')
+                model_update = {'status': fields.GroupStatus.ERROR}
+                return model_update
 
             rccg_name = self._get_rccg_name(group)
             try:
@@ -4806,7 +4840,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         # Add remote copy relationship to rccg
         for volume in add_volumes:
             try:
-                rcrel = self._helpers.get_relationship_info(volume.name)
+                vol_name = (volume.name if not self._active_backend_id else
+                            storwize_const.REPLICA_AUX_VOL_PREFIX +
+                            volume.name)
+                rcrel = self._helpers.get_relationship_info(vol_name)
                 if not rcrel:
                     LOG.error("Failed to update group: remote copy "
                               "relationship of %(vol)s does not exist in "
@@ -4815,6 +4852,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 elif (rccg['copy_type'] != 'empty_group' and
                       (rccg['copy_type'] != rcrel['copy_type'] or
                       rccg['state'] != rcrel['state'] or
+                      rccg['primary'] != rcrel['primary'] or
                       rccg['cycling_mode'] != rcrel['cycling_mode'] or
                       (rccg['cycle_period_seconds'] !=
                        rcrel['cycle_period_seconds']))):
@@ -4822,6 +4860,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                               "type of %(vol)s is %(vol_rc_type)s, the rccg "
                               "type is %(rccg_type)s. rcrel state is "
                               "%(rcrel_state)s, rccg state is %(rccg_state)s. "
+                              "rcrel primary is %(rcrel_primary)s, rccg "
+                              "primary is %(rccg_primary)s. "
                               "rcrel cycling mode is %(rcrel_cmode)s, rccg "
                               "cycling mode is %(rccg_cmode)s. rcrel cycling "
                               "period is %(rcrel_period)s, rccg cycling "
@@ -4832,6 +4872,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                'rccg_type': rccg['copy_type'],
                                'rcrel_state': rcrel['state'],
                                'rccg_state': rccg['state'],
+                               'rcrel_primary': rcrel['primary'],
+                               'rccg_primary': rccg['primary'],
                                'rcrel_cmode': rcrel['cycling_mode'],
                                'rccg_cmode': rccg['cycling_mode'],
                                'rcrel_period': rcrel['cycle_period_seconds'],
@@ -4839,6 +4881,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     model_update['status'] = fields.GroupStatus.ERROR
                 else:
                     self._helpers.chrcrelationship(rcrel['name'], rccg_name)
+                    if rccg['copy_type'] == 'empty_group':
+                        rccg = self._helpers.get_rccg(rccg_name)
             except exception.VolumeBackendAPIException as err:
                 model_update['status'] = fields.GroupStatus.ERROR
                 LOG.error("Failed to add the remote copy of volume %(vol)s to "
@@ -4848,7 +4892,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         # Remove remote copy relationship from rccg
         for volume in remove_volumes:
             try:
-                rcrel = self._helpers.get_relationship_info(volume.name)
+                vol_name = (volume.name if not self._active_backend_id else
+                            storwize_const.REPLICA_AUX_VOL_PREFIX +
+                            volume.name)
+                rcrel = self._helpers.get_relationship_info(vol_name)
                 if not rcrel:
                     LOG.error("Failed to update group: remote copy "
                               "relationship of %(vol)s does not exist in "

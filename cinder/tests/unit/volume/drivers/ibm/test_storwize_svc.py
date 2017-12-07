@@ -5429,49 +5429,49 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.assertNotIn(volume['id'], self.driver._vdiskcopyops)
 
     # Test groups operation ####
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
-    @mock.patch('cinder.volume.utils.is_group_a_type')
-    def test_storwize_group_create_with_replication(
-            self, is_grp_a_cg_rep_type, is_grp_a_cg_snapshot_type):
+    @ddt.data(({'group_replication_enabled': '<is> True'}, {}),
+              ({'group_replication_enabled': '<is> True',
+               'consistent_group_snapshot_enabled': '<is> True'}, {}),
+              ({'group_snapshot_enabled': '<is> True'}, {}),
+              ({'consistent_group_snapshot_enabled': '<is> True'},
+               {'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'}),
+              ({'consistent_group_replication_enabled': '<is> True'},
+               {'replication_enabled': '<is> Fasle'}),
+              ({'consistent_group_replication_enabled': '<is> True'},
+               {'replication_enabled': '<is> True',
+                'replication_type': '<in> gmcv'}))
+    @ddt.unpack
+    def test_storwize_group_create_with_replication(self, grp_sepc, vol_spec):
         """Test group create."""
-        is_grp_a_cg_snapshot_type.side_effect = [True, True, False, False]
-        is_grp_a_cg_rep_type.side_effect = [True, True]
-        spec = {'replication_enabled': '<is> True',
-                'replication_type': '<in> metro'}
-        rep_type_ref = volume_types.create(self.ctxt, 'rep_type', spec)
+        gr_type_ref = group_types.create(self.ctxt, 'gr_type', grp_sepc)
+        gr_type = objects.GroupType.get_by_id(self.ctxt, gr_type_ref['id'])
+        vol_type_ref = volume_types.create(self.ctxt, 'vol_type', vol_spec)
+        group = testutils.create_group(self.ctxt,
+                                       group_type_id=gr_type.id,
+                                       volume_type_ids=[vol_type_ref['id']])
+
+        if 'group_snapshot_enabled' in grp_sepc:
+            self.assertRaises(NotImplementedError,
+                              self.driver.create_group, self.ctxt, group)
+        else:
+            model_update = self.driver.create_group(self.ctxt, group)
+            self.assertEqual(fields.GroupStatus.ERROR, model_update['status'])
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'create_rccg')
+    def test_storwize_group_create(self, create_rccg):
+        """Test group create."""
+        rccg_spec = {'consistent_group_snapshot_enabled': '<is> True'}
+        rccg_type_ref = group_types.create(self.ctxt, 'cg_type', rccg_spec)
+        rccg_type = objects.GroupType.get_by_id(self.ctxt, rccg_type_ref['id'])
+
+        rep_type_ref = volume_types.create(self.ctxt, 'rep_type', {})
         rep_group = testutils.create_group(
-            self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+            self.ctxt, group_type_id=rccg_type.id,
             volume_type_ids=[rep_type_ref['id']])
 
         model_update = self.driver.create_group(self.ctxt, rep_group)
-        self.assertEqual(fields.GroupStatus.ERROR,
-                         model_update['status'])
-
-        spec = {'replication_enabled': '<is> False'}
-        non_rep_type_ref = volume_types.create(self.ctxt, 'non_rep_type', spec)
-        non_rep_group = testutils.create_group(
-            self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
-            volume_type_ids=[non_rep_type_ref['id']])
-
-        model_update = self.driver.create_group(self.ctxt, non_rep_group)
-        self.assertEqual(fields.GroupStatus.ERROR,
-                         model_update['status'])
-
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
-    @mock.patch('cinder.volume.utils.is_group_a_type')
-    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                       'create_rccg')
-    def test_storwize_group_create(self, create_rccg, is_grp_a_cg_rep_type,
-                                   is_grp_a_cg_snapshot_type):
-        """Test group create."""
-        is_grp_a_cg_snapshot_type.side_effect = [False, True, True]
-        is_grp_a_cg_rep_type.side_effect = [False, False]
-        group = mock.MagicMock()
-
-        self.assertRaises(NotImplementedError,
-                          self.driver.create_group, self.ctxt, group)
-
-        model_update = self.driver.create_group(self.ctxt, group)
         self.assertFalse(create_rccg.called)
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'])
@@ -7054,9 +7054,11 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                          model_update['replication_status'])
         self._validate_replic_vol_creation(vol2)
 
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
+        self.driver.delete_volume(vol2)
         self.driver.delete_snapshot(snap)
         self.driver.delete_volume(vol1)
-        self.driver.delete_volume(vol2)
 
         # Create gmcv replication volume.
         vol1, model_update = self._create_test_volume(self.gmcv_default_type)
@@ -7099,6 +7101,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                          model_update['replication_status'])
         self._validate_replic_vol_creation(volume)
 
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
         self.driver.delete_volume(src_volume)
         self.driver.delete_volume(volume)
         # Create a source gmcv replication volume.
@@ -7115,6 +7119,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                          model_update['replication_status'])
         self._validate_replic_vol_creation(volume, True)
 
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
         self.driver.delete_volume(src_volume)
         self.driver.delete_volume(volume)
 
@@ -7131,6 +7137,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                          model_update['replication_status'])
         self._validate_replic_vol_creation(volume, True)
 
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
         self.driver.delete_volume(src_volume)
         self.driver.delete_volume(volume)
 
@@ -8585,6 +8593,32 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             self.assertEqual(fields.GroupStatus.DELETED, vol_update['status'])
         self.assertEqual(fields.GroupStatus.DELETED, model_update['status'])
 
+    @ddt.data(('state', 'inconsistent_stopped'), ('primary', 'aux'),
+              ('cycling_mode', 'multi'), ('cycle_period_seconds', '500'))
+    @ddt.unpack
+    def test_storwize_rep_group_update_error(self, state, value):
+        """Test group update error."""
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        mm_vol1, model_update = self._create_test_volume(self.mm_type)
+        mm_vol2, model_update = self._create_test_volume(self.mm_type)
+        self.driver.update_group(self.ctxt, group, [mm_vol1], [])
+
+        rccg_name = self.driver._get_rccg_name(group)
+        temp_state = self.sim._rcconsistgrp_list[rccg_name][state]
+        self.sim._rcconsistgrp_list[rccg_name]['state'] = value
+        (model_update, add_volumes_update,
+         remove_volumes_update) = self.driver.update_group(
+            self.ctxt, group, [mm_vol2], [])
+        self.assertEqual(model_update['status'], fields.GroupStatus.ERROR)
+        self.assertIsNone(add_volumes_update)
+        self.assertIsNone(remove_volumes_update)
+        self.sim._rcconsistgrp_list[rccg_name]['state'] = temp_state
+
+        self.driver.delete_group(self.ctxt, group, [mm_vol1])
+
     def test_storwize_rep_group_update(self):
         """Test group update."""
         self.driver.configuration.set_override('replication_device',
@@ -8893,7 +8927,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
     @ddt.data(({'replication_enabled': '<is> True',
                 'replication_type': '<in> metro'}, 'test_rep_metro'),
               ({'replication_enabled': '<is> True',
-                'replication_type': '<in> gmcv'}, 'test_rep_gmcv'))
+                'replication_type': '<in> global'}, 'test_rep_gm'))
     @ddt.unpack
     def test_storwize_failover_replica_group(self, spec, type_name):
         self.driver.configuration.set_override('replication_device',
@@ -8988,7 +9022,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
     @ddt.data(({'replication_enabled': '<is> True',
                 'replication_type': '<in> metro'}, 'test_rep_metro'),
               ({'replication_enabled': '<is> True',
-                'replication_type': '<in> gmcv'}, 'test_rep_gmcv_default'))
+                'replication_type': '<in> global'}, 'test_rep_gm_default'))
     @ddt.unpack
     def test_storwize_failback_replica_group(self, spec, type_name):
         self.driver.configuration.set_override('replication_device',
