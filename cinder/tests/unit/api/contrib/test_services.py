@@ -181,7 +181,8 @@ def fake_service_update(context, service_id, values):
          'disabled': values['disabled']}
 
 
-def fake_policy_authorize(context, action, target):
+def fake_policy_authorize(context, action, target,
+                          do_raise=True, exc=exception.PolicyNotAuthorized):
     pass
 
 

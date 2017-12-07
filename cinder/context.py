@@ -160,7 +160,7 @@ class RequestContext(context.RequestContext):
         :param: target_obj: dictionary representing the object which will be
             used to update target.
         :param fatal: if False, will return False when an
-            exception.NotAuthorized occurs.
+            exception.PolicyNotAuthorized occurs.
 
         :raises cinder.exception.NotAuthorized: if verification fails and fatal
             is True.
@@ -177,12 +177,9 @@ class RequestContext(context.RequestContext):
                 target_obj.obj_to_primitive()['versioned_object.data'] or {})
         else:
             target.update(target_obj or {})
-        try:
-            return policy.authorize(self, action, target)
-        except exception.NotAuthorized:
-            if fatal:
-                raise
-            return False
+
+        return policy.authorize(self, action, target, do_raise=fatal,
+                                exc=exception.PolicyNotAuthorized)
 
     def to_policy_values(self):
         policy = super(RequestContext, self).to_policy_values()

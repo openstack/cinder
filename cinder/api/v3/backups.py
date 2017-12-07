@@ -22,7 +22,6 @@ from cinder.api.contrib import backups as backups_v2
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v3.views import backups as backup_views
-from cinder import exception
 from cinder.i18n import _
 from cinder.policies import backups as policy
 
@@ -80,11 +79,8 @@ class BackupsController(backups_v2.BackupsController):
 
         resp_backup = self._view_builder.detail(req, backup)
         if req_version.matches(mv.BACKUP_PROJECT):
-            try:
-                context.authorize(policy.BACKUP_ATTRIBUTES_POLICY)
+            if context.authorize(policy.BACKUP_ATTRIBUTES_POLICY, fatal=False):
                 self._add_backup_project_attribute(req, resp_backup['backup'])
-            except exception.PolicyNotAuthorized:
-                pass
         return resp_backup
 
     def detail(self, req):
@@ -93,12 +89,9 @@ class BackupsController(backups_v2.BackupsController):
         req_version = req.api_version_request
 
         if req_version.matches(mv.BACKUP_PROJECT):
-            try:
-                context.authorize(policy.BACKUP_ATTRIBUTES_POLICY)
+            if context.authorize(policy.BACKUP_ATTRIBUTES_POLICY, fatal=False):
                 for bak in resp_backup['backups']:
                     self._add_backup_project_attribute(req, bak)
-            except exception.PolicyNotAuthorized:
-                pass
         return resp_backup
 
     def _convert_sort_name(self, req_version, sort_keys):
