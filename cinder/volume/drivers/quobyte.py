@@ -38,7 +38,8 @@ LOG = logging.getLogger(__name__)
 
 volume_opts = [
     cfg.StrOpt('quobyte_volume_url',
-               help=('Quobyte URL to the Quobyte volume e.g.,'
+               help=('Quobyte URL to the Quobyte volume using e.g. a DNS SRV'
+                     ' record (preferred) or a host list (alternatively) like'
                      ' quobyte://<DIR host1>, <DIR host2>/<volume name>')),
     cfg.StrOpt('quobyte_client_cfg',
                help=('Path to a Quobyte Client configuration file.')),
