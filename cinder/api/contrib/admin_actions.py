@@ -14,22 +14,22 @@
 
 from oslo_log import log as logging
 import oslo_messaging as messaging
+from oslo_utils import strutils
 from six.moves import http_client
 import webob
-from webob import exc
 
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import admin_actions
+from cinder.api import validation
 from cinder import backup
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
-from cinder.objects import fields
 from cinder import rpc
-from cinder import utils
 from cinder import volume
 
 
@@ -43,13 +43,6 @@ class AdminController(wsgi.Controller):
 
     # FIXME(clayg): this will be hard to keep up-to-date
     # Concrete classes can expand or over-ride
-    valid_status = set(['creating',
-                        'available',
-                        'deleting',
-                        'error',
-                        'error_deleting',
-                        'error_managing',
-                        'managing', ])
 
     def __init__(self, *args, **kwargs):
         super(AdminController, self).__init__(*args, **kwargs)
@@ -67,16 +60,8 @@ class AdminController(wsgi.Controller):
     def _delete(self, *args, **kwargs):
         raise NotImplementedError()
 
-    def validate_update(self, body):
-        update = {}
-        try:
-            update['status'] = body['status'].lower()
-        except (TypeError, KeyError):
-            raise exc.HTTPBadRequest(explanation=_("Must specify 'status'"))
-        if update['status'] not in self.valid_status:
-            raise exc.HTTPBadRequest(
-                explanation=_("Must specify a valid status"))
-        return update
+    def validate_update(self, req, body):
+        raise NotImplementedError()
 
     def authorize(self, context, action_name, target_obj=None):
         context.authorize(
@@ -107,7 +92,7 @@ class AdminController(wsgi.Controller):
                                             'attached_mode')
 
         context = req.environ['cinder.context']
-        update = self.validate_update(body['os-reset_status'])
+        update = self.validate_update(req, body=body)
         msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
                         'update': update})
@@ -142,20 +127,6 @@ class VolumeAdminController(AdminController):
 
     collection = 'volumes'
 
-    # FIXME(jdg): We're appending additional valid status
-    # entries to the set we declare in the parent class
-    # this doesn't make a ton of sense, we should probably
-    # look at the structure of this whole process again
-    # Perhaps we don't even want any definitions in the abstract
-    # parent class?
-    valid_status = AdminController.valid_status.union(
-        ('attaching', 'in-use', 'detaching', 'maintenance'))
-    valid_attach_status = (fields.VolumeAttachStatus.ATTACHED,
-                           fields.VolumeAttachStatus.DETACHED,)
-    valid_migration_status = ('migrating', 'error',
-                              'success', 'completing',
-                              'none', 'starting',)
-
     def _update(self, *args, **kwargs):
         context = args[0]
         volume_id = args[1]
@@ -169,53 +140,38 @@ class VolumeAdminController(AdminController):
     def _delete(self, *args, **kwargs):
         return self.volume_api.delete(*args, **kwargs)
 
-    def validate_update(self, body):
+    @validation.schema(admin_actions.reset)
+    def validate_update(self, req, body):
         update = {}
+        body = body['os-reset_status']
         status = body.get('status', None)
         attach_status = body.get('attach_status', None)
         migration_status = body.get('migration_status', None)
 
-        valid = False
         if status:
-            valid = True
-            update = super(VolumeAdminController, self).validate_update(body)
+            update['status'] = status.lower()
 
         if attach_status:
-            valid = True
             update['attach_status'] = attach_status.lower()
-            if update['attach_status'] not in self.valid_attach_status:
-                raise exc.HTTPBadRequest(
-                    explanation=_("Must specify a valid attach status"))
 
         if migration_status:
-            valid = True
             update['migration_status'] = migration_status.lower()
-            if update['migration_status'] not in self.valid_migration_status:
-                raise exc.HTTPBadRequest(
-                    explanation=_("Must specify a valid migration status"))
             if update['migration_status'] == 'none':
                 update['migration_status'] = None
 
-        if not valid:
-            raise exc.HTTPBadRequest(
-                explanation=_("Must specify 'status', 'attach_status' "
-                              "or 'migration_status' for update."))
         return update
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-force_detach')
+    @validation.schema(admin_actions.force_detach)
     def _force_detach(self, req, id, body):
         """Roll back a bad detach after the volume been disconnected."""
         context = req.environ['cinder.context']
         # Not found exception will be handled at the wsgi level
         volume = self._get(context, id)
         self.authorize(context, 'force_detach', target_obj=volume)
-        try:
-            connector = body['os-force_detach'].get('connector', None)
-        except AttributeError:
-            msg = _("Invalid value '%s' for "
-                    "os-force_detach.") % body['os-force_detach']
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        connector = body['os-force_detach'].get('connector', None)
+
         try:
             self.volume_api.terminate_connection(context, volume, connector)
         except exception.VolumeBackendAPIException as error:
@@ -242,6 +198,8 @@ class VolumeAdminController(AdminController):
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-migrate_volume')
+    @validation.schema(admin_actions.migrate_volume, '2.0', '3.15')
+    @validation.schema(admin_actions.migrate_volume_v316, '3.16')
     def _migrate_volume(self, req, id, body):
         """Migrate a volume to the specified host."""
         context = req.environ['cinder.context']
@@ -252,12 +210,15 @@ class VolumeAdminController(AdminController):
 
         cluster_name, host = common.get_cluster_host(req, params,
                                                      mv.VOLUME_MIGRATE_CLUSTER)
-        force_host_copy = utils.get_bool_param('force_host_copy', params)
-        lock_volume = utils.get_bool_param('lock_volume', params)
+        force_host_copy = strutils.bool_from_string(params.get(
+            'force_host_copy', False), strict=True)
+        lock_volume = strutils.bool_from_string(params.get(
+            'lock_volume', False), strict=True)
         self.volume_api.migrate_volume(context, volume, host, cluster_name,
                                        force_host_copy, lock_volume)
 
     @wsgi.action('os-migrate_volume_completion')
+    @validation.schema(admin_actions.migrate_volume_completion)
     def _migrate_volume_completion(self, req, id, body):
         """Complete an in-progress migration."""
         context = req.environ['cinder.context']
@@ -265,11 +226,7 @@ class VolumeAdminController(AdminController):
         volume = self._get(context, id)
         self.authorize(context, 'migrate_volume_completion', target_obj=volume)
         params = body['os-migrate_volume_completion']
-        try:
-            new_volume_id = params['new_volume']
-        except KeyError:
-            raise exc.HTTPBadRequest(
-                explanation=_("Must specify 'new_volume'"))
+        new_volume_id = params['new_volume']
         # Not found exception will be handled at the wsgi level
         new_volume = self._get(context, new_volume_id)
         error = params.get('error', False)
@@ -282,7 +239,12 @@ class SnapshotAdminController(AdminController):
     """AdminController for Snapshots."""
 
     collection = 'snapshots'
-    valid_status = fields.SnapshotStatus.ALL
+
+    @validation.schema(admin_actions.reset_status_snapshot)
+    def validate_update(self, req, body):
+        status = body['os-reset_status']['status']
+        update = {'status': status.lower()}
+        return update
 
     def _update(self, *args, **kwargs):
         context = args[0]
@@ -305,10 +267,6 @@ class BackupAdminController(AdminController):
 
     collection = 'backups'
 
-    valid_status = set(['available',
-                        'error'
-                        ])
-
     def _get(self, *args, **kwargs):
         return self.backup_api.get(*args, **kwargs)
 
@@ -317,10 +275,12 @@ class BackupAdminController(AdminController):
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-reset_status')
+    @validation.schema(admin_actions.reset_status_backup)
     def _reset_status(self, req, id, body):
         """Reset status on the resource."""
         context = req.environ['cinder.context']
-        update = self.validate_update(body['os-reset_status'])
+        status = body['os-reset_status']['status']
+        update = {'status': status.lower()}
         msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
                         'update': update})

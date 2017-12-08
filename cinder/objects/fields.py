@@ -165,5 +165,42 @@ class VolumeAttachStatusField(BaseEnumField):
     AUTO_TYPE = VolumeAttachStatus()
 
 
+class VolumeStatus(BaseCinderEnum):
+    CREATING = 'creating'
+    AVAILABLE = 'available'
+    DELETING = 'deleting'
+    ERROR = 'error'
+    ERROR_DELETING = 'error_deleting'
+    ERROR_MANAGING = 'error_managing'
+    MANAGING = 'managing'
+    ATTACHING = 'attaching'
+    IN_USE = 'in-use'
+    DETACHING = 'detaching'
+    MAINTENANCE = 'maintenance'
+
+    ALL = (CREATING, AVAILABLE, DELETING, ERROR, ERROR_DELETING,
+           ERROR_MANAGING, MANAGING, ATTACHING, IN_USE, DETACHING,
+           MAINTENANCE)
+
+
+class VolumeStatusField(BaseEnumField):
+    AUTO_TYPE = VolumeStatus()
+
+
+class VolumeMigrationStatus(BaseCinderEnum):
+    MIGRATING = 'migrating'
+    ERROR = 'error'
+    SUCCESS = 'success'
+    COMPLETING = 'completing'
+    NONE = 'none'
+    STARTING = 'starting'
+
+    ALL = (MIGRATING, ERROR, SUCCESS, COMPLETING, NONE, STARTING)
+
+
+class VolumeMigrationStatusField(BaseEnumField):
+    AUTO_TYPE = VolumeStatus()
+
+
 class DictOfNullableField(fields.AutoTypedField):
     AUTO_TYPE = fields.Dict(fields.FieldType(), nullable=True)
