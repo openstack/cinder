@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added "backend_state: up/down" in response body of service list if
+    context is admin. This feature will help operators or cloud management
+    system to get the backend device state in every service.
+    If device state is *down*, specify that storage device has got some
+    problems. Give more information to locate bugs quickly.

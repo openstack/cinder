@@ -191,7 +191,13 @@ def fake_utcnow(with_timezone=False):
     return datetime.datetime(2012, 10, 29, 13, 42, 11, tzinfo=tzinfo)
 
 
+def fake_get_pools(ctxt, filters=None):
+    return [{"name": "host1", "capabilities": {"backend_state": "up"}},
+            {"name": "host2", "capabilities": {"backend_state": "down"}}]
+
+
 @ddt.ddt
+@mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_pools', fake_get_pools)
 @mock.patch('cinder.db.service_get_all', fake_service_get_all)
 @mock.patch('cinder.db.service_get', fake_service_get)
 @mock.patch('oslo_utils.timeutils.utcnow', fake_utcnow)
@@ -327,6 +333,63 @@ class ServicesTest(test.TestCase):
                                   'status': 'enabled', 'state': 'down',
                                   'updated_at': datetime.datetime(
                                       2012, 9, 18, 8, 3, 38)},
+                                 {'binary': 'cinder-scheduler',
+                                  'cluster': None,
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'enabled', 'state': 'down',
+                                  'updated_at': None},
+                                 ]}
+        self.assertEqual(response, res_dict)
+
+    def test_services_list_with_backend_state(self):
+        req = FakeRequest(version=mv.BACKEND_STATE_REPORT)
+        res_dict = self.controller.index(req)
+
+        response = {'services': [{'binary': 'cinder-scheduler',
+                                  'cluster': None,
+                                  'host': 'host1', 'zone': 'cinder',
+                                  'status': 'disabled', 'state': 'up',
+                                  'updated_at': datetime.datetime(
+                                      2012, 10, 29, 13, 42, 2)},
+                                 {'binary': 'cinder-volume',
+                                  'cluster': None,
+                                  'host': 'host1', 'zone': 'cinder',
+                                  'status': 'disabled', 'state': 'up',
+                                  'updated_at': datetime.datetime(
+                                      2012, 10, 29, 13, 42, 5),
+                                  'backend_state': 'up'},
+                                 {'binary': 'cinder-scheduler',
+                                  'cluster': 'cluster1',
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'enabled', 'state': 'down',
+                                  'updated_at': datetime.datetime(
+                                      2012, 9, 19, 6, 55, 34)},
+                                 {'binary': 'cinder-volume',
+                                  'cluster': 'cluster1',
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'disabled', 'state': 'down',
+                                  'updated_at': datetime.datetime(
+                                      2012, 9, 18, 8, 3, 38),
+                                  'backend_state': 'down'},
+                                 {'binary': 'cinder-volume',
+                                  'cluster': 'cluster2',
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'disabled', 'state': 'down',
+                                  'updated_at': datetime.datetime(
+                                      2012, 10, 29, 13, 42, 5),
+                                  'backend_state': 'down'},
+                                 {'binary': 'cinder-volume',
+                                  'cluster': 'cluster2',
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'enabled', 'state': 'down',
+                                  'updated_at': datetime.datetime(
+                                      2012, 9, 18, 8, 3, 38),
+                                  'backend_state': 'down'},
                                  {'binary': 'cinder-scheduler',
                                   'cluster': None,
                                   'host': 'host2',
