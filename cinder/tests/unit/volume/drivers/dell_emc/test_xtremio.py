@@ -266,6 +266,7 @@ class CommonData(object):
     test_snapshot = D()
     test_snapshot.update({'name': 'snapshot1',
                           'size': 1,
+                          'volume_size': 1,
                           'id': '192eb39b-6c2f-420c-bae3-3cfd117f0002',
                           'volume_name': 'vol-vol1',
                           'volume_id': '192eb39b-6c2f-420c-bae3-3cfd117f0001',
@@ -448,6 +449,52 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
         self.driver.create_snapshot(self.data.test_snapshot)
         self.driver.create_volume_from_snapshot(self.data.test_volume2,
                                                 self.data.test_snapshot)
+
+    def test_volume_from_snapshot_and_resize(self, req):
+        req.side_effect = xms_request
+        xms_data['volumes'] = {}
+        self.driver.create_volume(self.data.test_volume)
+        clone_volume = self.data.test_clone.copy()
+        clone_volume['size'] = 2
+        self.driver.create_snapshot(self.data.test_snapshot)
+        with mock.patch.object(self.driver,
+                               'extend_volume') as extend:
+            self.driver.create_volume_from_snapshot(clone_volume,
+                                                    self.data.test_snapshot)
+            extend.assert_called_once_with(clone_volume, clone_volume['size'])
+
+    def test_volume_from_snapshot_and_resize_fail(self, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
+        vol = xms_data['volumes'][1]
+
+        def failed_extend(obj_type='volumes', method='GET', data=None,
+                          *args, **kwargs):
+            if method == 'GET':
+                return {'content': vol}
+            elif method == 'POST':
+                return {'links': [{'href': 'volume/2'}]}
+            elif method == 'PUT':
+                if 'name' in data:
+                    return
+                raise exception.VolumeBackendAPIException('Failed Clone')
+
+        self.driver.create_snapshot(self.data.test_snapshot)
+        req.side_effect = failed_extend
+        self.driver.db = mock.Mock()
+        (self.driver.db.
+         image_volume_cache_get_by_volume_id.return_value) = mock.MagicMock()
+        clone = self.data.test_clone.copy()
+        clone['size'] = 2
+
+        with mock.patch.object(self.driver,
+                               'delete_volume') as delete:
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver.create_volume_from_snapshot,
+                              clone,
+                              self.data.test_snapshot)
+            self.assertTrue(delete.called)
+
 
 # ##### Clone Volume #####
     def test_clone_volume(self, req):
