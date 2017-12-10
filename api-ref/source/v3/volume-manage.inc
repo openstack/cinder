@@ -40,13 +40,13 @@ Request
    - volume: volume
    - description: description
    - availability_zone: availability_zone
-   - bootable: bootable
+   - bootable: bootable_1
    - volume_type: volume_type
-   - name: volume_name
+   - name: volume_name_1
    - host: host_mutex
    - cluster: cluster_mutex
    - ref: ref
-   - metadata: metadata
+   - metadata: metadata_10
 
 Request Example
 ---------------
