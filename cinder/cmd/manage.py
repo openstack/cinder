@@ -411,8 +411,15 @@ class ConfigCommands(object):
 class GetLogCommands(object):
     """Get logging information."""
 
+    deprecation_msg = ('DEPRECATED: The log commands are deprecated '
+                       'since Queens and are not maintained. They will be '
+                       'removed in an upcoming release.')
+
     def errors(self):
         """Get all of the errors from the log files."""
+
+        print(self.deprecation_msg)
+
         error_found = 0
         if CONF.log_dir:
             logs = [x for x in os.listdir(CONF.log_dir) if x.endswith('.log')]
@@ -436,6 +443,9 @@ class GetLogCommands(object):
           help='Number of entries to list (default: %(default)d)')
     def syslog(self, num_entries=10):
         """Get <num_entries> of the cinder syslog events."""
+
+        print(self.deprecation_msg)
+
         entries = int(num_entries)
         count = 0
         log_file = ''
