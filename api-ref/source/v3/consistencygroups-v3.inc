@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Consistency groups
-==================
+Consistency groups (DEPRECATED)
+===============================
 
 Consistency groups enable you to create snapshots at the exact same
 point in time from multiple volumes. For example, a database might

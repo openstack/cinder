@@ -1,0 +1,6 @@
+---
+deprecations:
+  - |
+    The Consistency Group APIs have now been marked as deprecated and
+    will be removed in a future release. Generic Volume Group APIs should
+    be used instead.

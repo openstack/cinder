@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Consistency group snapshots
-===========================
+Consistency group snapshots (DEPRECATED)
+========================================
 
 Lists all, lists all with details, shows details for, creates, and
 deletes consistency group snapshots.

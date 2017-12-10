@@ -16,6 +16,7 @@
 """The consistencygroups api."""
 
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import strutils
 from six.moves import http_client
 import webob
@@ -33,6 +34,8 @@ from cinder.policies import groups as group_policy
 from cinder.volume import group_types
 
 LOG = logging.getLogger(__name__)
+DEPRECATE_CG_API_MSG = ("Consistency Group APIs are deprecated. "
+                        "Use Generic Volume Group APIs instead.")
 
 
 class ConsistencyGroupsController(wsgi.Controller):
@@ -46,6 +49,7 @@ class ConsistencyGroupsController(wsgi.Controller):
 
     def show(self, req, id):
         """Return data about the given consistency group."""
+        versionutils.report_deprecated_feature(LOG, DEPRECATE_CG_API_MSG)
         LOG.debug('show called for member %s', id)
         context = req.environ['cinder.context']
 
@@ -56,6 +60,7 @@ class ConsistencyGroupsController(wsgi.Controller):
 
     def delete(self, req, id, body):
         """Delete a consistency group."""
+        versionutils.report_deprecated_feature(LOG, DEPRECATE_CG_API_MSG)
         LOG.debug('delete called for member %s', id)
         context = req.environ['cinder.context']
         force = False
@@ -84,10 +89,12 @@ class ConsistencyGroupsController(wsgi.Controller):
 
     def index(self, req):
         """Returns a summary list of consistency groups."""
+        versionutils.report_deprecated_feature(LOG, DEPRECATE_CG_API_MSG)
         return self._get_consistencygroups(req, is_detail=False)
 
     def detail(self, req):
         """Returns a detailed list of consistency groups."""
+        versionutils.report_deprecated_feature(LOG, DEPRECATE_CG_API_MSG)
         return self._get_consistencygroups(req, is_detail=True)
 
     def _get(self, context, id):
@@ -129,6 +136,7 @@ class ConsistencyGroupsController(wsgi.Controller):
     @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Create a new consistency group."""
+        versionutils.report_deprecated_feature(LOG, DEPRECATE_CG_API_MSG)
         LOG.debug('Creating new consistency group %s', body)
         self.assert_valid_body(body, 'consistencygroup')
 
@@ -179,6 +187,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         this does not require volume_types as the "create"
         API above.
         """
+        versionutils.report_deprecated_feature(LOG, DEPRECATE_CG_API_MSG)
         LOG.debug('Creating new consistency group %s.', body)
         self.assert_valid_body(body, 'consistencygroup-from-src')
 
@@ -267,6 +276,7 @@ class ConsistencyGroupsController(wsgi.Controller):
             }
 
         """
+        versionutils.report_deprecated_feature(LOG, DEPRECATE_CG_API_MSG)
         LOG.debug('Update called for consistency group %s.', id)
         if not body:
             msg = _("Missing request body.")

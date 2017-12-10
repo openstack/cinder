@@ -16,6 +16,7 @@
 """The cgsnapshots api."""
 
 from oslo_log import log as logging
+from oslo_log import versionutils
 import six
 from six.moves import http_client
 import webob
@@ -30,6 +31,8 @@ from cinder import group as group_api
 from cinder.i18n import _
 
 LOG = logging.getLogger(__name__)
+DEPRECATE_CGSNAP_API_MSG = ("Consistency Group Snapshot APIs are deprecated. "
+                            "Use Generic Volume Group Snapshot APIs instead.")
 
 
 class CgsnapshotsController(wsgi.Controller):
@@ -43,6 +46,7 @@ class CgsnapshotsController(wsgi.Controller):
 
     def show(self, req, id):
         """Return data about the given cgsnapshot."""
+        versionutils.report_deprecated_feature(LOG, DEPRECATE_CGSNAP_API_MSG)
         LOG.debug('show called for member %s', id)
         context = req.environ['cinder.context']
 
@@ -53,6 +57,7 @@ class CgsnapshotsController(wsgi.Controller):
 
     def delete(self, req, id):
         """Delete a cgsnapshot."""
+        versionutils.report_deprecated_feature(LOG, DEPRECATE_CGSNAP_API_MSG)
         LOG.debug('delete called for member %s', id)
         context = req.environ['cinder.context']
 
@@ -74,10 +79,12 @@ class CgsnapshotsController(wsgi.Controller):
 
     def index(self, req):
         """Returns a summary list of cgsnapshots."""
+        versionutils.report_deprecated_feature(LOG, DEPRECATE_CGSNAP_API_MSG)
         return self._get_cgsnapshots(req, is_detail=False)
 
     def detail(self, req):
         """Returns a detailed list of cgsnapshots."""
+        versionutils.report_deprecated_feature(LOG, DEPRECATE_CGSNAP_API_MSG)
         return self._get_cgsnapshots(req, is_detail=True)
 
     def _get_cg(self, context, id):
@@ -112,6 +119,7 @@ class CgsnapshotsController(wsgi.Controller):
     @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Create a new cgsnapshot."""
+        versionutils.report_deprecated_feature(LOG, DEPRECATE_CGSNAP_API_MSG)
         LOG.debug('Creating new cgsnapshot %s', body)
         self.assert_valid_body(body, 'cgsnapshot')
 
