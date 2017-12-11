@@ -595,14 +595,8 @@ class Replication(object):
         self._switch_source_and_target_volume(luns, backend_id)
 
     def start_group_pprc_failover(self, luns, backend_id):
-        # unlike host failover, group failover needs to fetch changes from
-        # target volumes to source volumes after group is failed over.
         self._mm_manager.do_pprc_failover(luns, True)
         self._switch_source_and_target_volume(luns, backend_id)
-        sample_luns = self._get_sample_luns(luns)
-        for lun in sample_luns:
-            self._mm_manager.create_pprc_path(lun, True)
-        self._mm_manager.do_pprc_failback(luns, True)
 
     def _get_sample_luns(self, luns):
         # choose sample lun according to position.
@@ -639,10 +633,13 @@ class Replication(object):
 
     @proxy.logger
     def start_group_pprc_failback(self, luns, backend_id):
-        # NOTE: unlike failover host, after group is failed over,
-        # source and target clients are not swapped.
         LOG.debug("Failback group starts, backend id is %s.", backend_id)
+        sample_luns = self._get_sample_luns(luns)
+        for lun in sample_luns:
+            self._mm_manager.create_pprc_path(lun, True)
+        self._mm_manager.do_pprc_failback(luns, True)
         self.start_group_pprc_failover(luns, backend_id)
+        self._mm_manager.do_pprc_failback(luns, True)
         LOG.debug("Failback group ends, backend id is %s.", backend_id)
 
     def _get_expected_luns(self, luns, state, ignored_state=None):
