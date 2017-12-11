@@ -15,12 +15,12 @@
 
 import contextlib
 import functools
-import unittest
 
 import mock
 from oslo_utils import units
 
 from cinder import exception
+from cinder import test
 from cinder.tests.unit.volume.drivers.dell_emc.unity \
     import fake_exception as ex
 from cinder.tests.unit.volume.drivers.dell_emc.unity import test_client
@@ -329,8 +329,9 @@ class IdMatcher(object):
 ########################
 
 @mock.patch.object(adapter, 'storops_ex', new=ex)
-class CommonAdapterTest(unittest.TestCase):
+class CommonAdapterTest(test.TestCase):
     def setUp(self):
+        super(CommonAdapterTest, self).setUp()
         self.adapter = mock_adapter(adapter.CommonAdapter)
 
     def test_get_managed_pools(self):
@@ -686,8 +687,9 @@ class CommonAdapterTest(unittest.TestCase):
             self.adapter.normalize_config(config)
 
 
-class FCAdapterTest(unittest.TestCase):
+class FCAdapterTest(test.TestCase):
     def setUp(self):
+        super(FCAdapterTest, self).setUp()
         self.adapter = mock_adapter(adapter.FCAdapter)
 
     def test_setup(self):
@@ -799,8 +801,9 @@ class FCAdapterTest(unittest.TestCase):
             self.adapter.validate_ports(['spa_iom*', 'spc_invalid'])
 
 
-class ISCSIAdapterTest(unittest.TestCase):
+class ISCSIAdapterTest(test.TestCase):
     def setUp(self):
+        super(ISCSIAdapterTest, self).setUp()
         self.adapter = mock_adapter(adapter.ISCSIAdapter)
 
     def test_iscsi_protocol(self):
