@@ -3,8 +3,8 @@
 Group type specs
 ================
 
-Create group specs for a group type
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Create or update group specs for a group type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/group_types/{group_type_id}/group_specs
 
@@ -131,7 +131,7 @@ Update one specific group spec for a group type
 Update a group spec for a group type,
 
 
-Normal response codes: 202
+Normal response codes: 200
 
 Error response codes: itemNotFound(404), forbidden(403)
 
@@ -146,6 +146,11 @@ Request
    - spec_id: spec_id
    - spec: spec_value
 
+Request Example
+---------------
+
+.. literalinclude:: ./samples/group-type-specs-update-request.json
+   :language: javascript
 
 Response Parameters
 -------------------
