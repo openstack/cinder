@@ -770,12 +770,10 @@ class VolumeCastTask(flow_utils.CinderTask):
             # before creating volume, we schedule this request to scheduler
             # service with the desired backend information.
             snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
-            request_spec['resource_backend'] = vol_utils.extract_host(
-                snapshot.volume.host)
+            request_spec['resource_backend'] = snapshot.volume.host
         elif source_volid:
             source_volume_ref = objects.Volume.get_by_id(context, source_volid)
-            request_spec['resource_backend'] = vol_utils.extract_host(
-                source_volume_ref.host)
+            request_spec['resource_backend'] = source_volume_ref.host
 
         self.scheduler_rpcapi.create_volume(
             context,
