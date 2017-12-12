@@ -1984,7 +1984,10 @@ class VolumeManager(manager.CleanableManager,
                 src_vol.volume_type_id,
                 dest_vol.volume_type_id):
             attach_encryptor = True
-        properties = utils.brick_get_connector_properties()
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
+        properties = utils.brick_get_connector_properties(use_multipath,
+                                                          enforce_multipath)
 
         dest_remote = remote in ['dest', 'both']
         dest_attach_info = self._attach_volume(
