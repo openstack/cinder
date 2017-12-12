@@ -493,7 +493,10 @@ class TestCinderManageCmd(test.TestCase):
             get_log_cmds = cinder_manage.GetLogCommands()
             get_log_cmds.errors()
 
-            self.assertEqual(expected_out, fake_out.getvalue())
+            out_lines = fake_out.getvalue().splitlines(True)
+
+            self.assertTrue(out_lines[0].startswith('DEPRECATED'))
+            self.assertEqual(expected_out, out_lines[1])
 
     @mock.patch('six.moves.builtins.open')
     @mock.patch('os.listdir')
@@ -504,13 +507,18 @@ class TestCinderManageCmd(test.TestCase):
         with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
             open.return_value = six.StringIO(
                 '[ ERROR ] fake-error-message')
-            expected_out = ('fake-dir/fake-error.log:-\n'
-                            'Line 1 : [ ERROR ] fake-error-message\n')
+            expected_out = ['fake-dir/fake-error.log:-\n',
+                            'Line 1 : [ ERROR ] fake-error-message\n']
 
             get_log_cmds = cinder_manage.GetLogCommands()
             get_log_cmds.errors()
 
-            self.assertEqual(expected_out, fake_out.getvalue())
+            out_lines = fake_out.getvalue().splitlines(True)
+
+            self.assertTrue(out_lines[0].startswith('DEPRECATED'))
+            self.assertEqual(expected_out[0], out_lines[1])
+            self.assertEqual(expected_out[1], out_lines[2])
+
             open.assert_called_once_with('fake-dir/fake-error.log', 'r')
             listdir.assert_called_once_with(CONF.log_dir)
 

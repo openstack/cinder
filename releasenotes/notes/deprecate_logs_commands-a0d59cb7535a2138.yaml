@@ -1,0 +1,6 @@
+---
+
+deprecations:
+  - |
+    Deprecate the "cinder-manage logs" commands.  These will be removed
+    in a later release.
