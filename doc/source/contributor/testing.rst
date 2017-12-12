@@ -95,18 +95,15 @@ Running a subset of tests using tox
 One common activity is to just run a single test, you can do this with tox
 simply by specifying to just run py27 or py35 tests against a single test::
 
-    tox -epy27 -- -n cinder.tests.unit.test_volume.AvailabilityZoneTestCase.test_list_availability_zones_cached
+    tox -epy27 -- cinder.tests.unit.volume.test_availability_zone.AvailabilityZoneTestCase.test_list_availability_zones_cached
 
 Or all tests in the test_volume.py file::
 
-    tox -epy27 -- -n cinder.tests.unit.test_volume
+    tox -epy27 -- cinder.tests.unit.volume.test_volume
 
 You may also use regular expressions to run any matching tests::
 
     tox -epy27 -- test_volume
-
-Additionally, when running a single test, or test-file, the `-n` argument is no
-longer required, however it may perform faster if included.
 
 For more information on these options and details about stestr, please see the
 `stestr documentation <http://stestr.readthedocs.io/en/latest/MANUAL.html>`_.
