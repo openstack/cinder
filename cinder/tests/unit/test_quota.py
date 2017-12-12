@@ -177,7 +177,7 @@ class QuotaIntegrationTestCase(test.TestCase):
                                           fake.CONSISTENCY_GROUP_ID)
         usages = db.quota_usage_get_all_by_project(self.context,
                                                    self.project_id)
-        self.assertEqual(1, usages['snapshots']['in_use'])
+        self.assertEqual(2, usages['snapshots']['in_use'])
 
     def test_too_many_snapshots_of_type(self):
         resource = 'snapshots_%s' % self.volume_type_name

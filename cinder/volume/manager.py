@@ -3879,13 +3879,7 @@ class VolumeManager(manager.CleanableManager,
         for snapshot in snapshots:
             # Get reservations
             try:
-                if CONF.no_snapshot_gb_quota:
-                    reserve_opts = {'snapshots': -1}
-                else:
-                    reserve_opts = {
-                        'snapshots': -1,
-                        'gigabytes': -snapshot.volume_size,
-                    }
+                reserve_opts = {'snapshots': -1}
                 volume_ref = objects.Volume.get_by_id(context,
                                                       snapshot.volume_id)
                 QUOTAS.add_volume_type_opts(context,
