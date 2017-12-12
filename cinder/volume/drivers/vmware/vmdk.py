@@ -240,7 +240,17 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # 2.0.0 - performance enhancements
     #       - new config option 'vmware_adapter_type'
     #       - new extra-spec option 'vmware:adapter_type'
-    VERSION = '2.0.0'
+    # 3.0.0 - vCenter storage profile ID caching
+    #         support for cloning attached volume
+    #         optimize volume creation from image for vCenter datastore based
+    #         glance backend
+    #         add 'managed by OpenStack Cinder' info to volumes in the backend
+    #         support for vSphere template as volume snapshot format
+    #         support for snapshot of attached volumes
+    #         add storage profile ID to connection info
+    #         support for revert-to-snapshot
+    #         improve scalability of querying volumes in backend (bug 1600754)
+    VERSION = '3.0.0'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
