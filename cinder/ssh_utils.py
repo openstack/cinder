@@ -136,16 +136,8 @@ class SSHPool(pools.Pool):
                 msg = _("Specify a password or private_key")
                 raise exception.CinderException(msg)
 
-            # Paramiko by default sets the socket timeout to 0.1 seconds,
-            # ignoring what we set through the sshclient. This doesn't help for
-            # keeping long lived connections. Hence we have to bypass it, by
-            # overriding it after the transport is initialized. We are setting
-            # the sockettimeout to None and setting a keepalive packet so that,
-            # the server will keep the connection open. All that does is send
-            # a keepalive packet every ssh_conn_timeout seconds.
             if self.conn_timeout:
                 transport = ssh.get_transport()
-                transport.sock.settimeout(None)
                 transport.set_keepalive(self.conn_timeout)
             return ssh
         except Exception as e:
