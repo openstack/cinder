@@ -146,7 +146,9 @@ Shows details for a QoS specification.
 
 Normal response codes: 200
 
-Error response codes: 413,405,404,403,401,400,503
+Error response codes: Request Entity Too Large(413), badMethod(405),
+itemNotFound(404), forbidden(403), unauthorized(401), badRequest(400),
+serviceUnavailable(503)
 
 
 Request
