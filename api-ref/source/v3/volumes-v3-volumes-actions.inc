@@ -111,7 +111,7 @@ Revert a volume to its latest snapshot, this API only support reverting a detach
 
 Normal response codes: 202
 
-Error response codes: 400, 404
+Error response codes: 400(HTTPBadRequest), 403(HTTPForbidden), 409(HTTPConflict)
 
 Request
 -------
