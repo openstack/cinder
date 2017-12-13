@@ -932,9 +932,11 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         self.internal_context.user_id = 'abc123'
         self.internal_context.project_id = 'def456'
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     def test_create_from_image_clone_image_and_skip_cache(
-            self, mock_get_internal_context, mock_create_from_img_dl,
-            mock_create_from_src, mock_handle_bootable, mock_fetch_img):
+            self, mock_check_space, mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
         self.mock_driver.clone_image.return_value = (None, True)
         volume = fake_volume.fake_volume_obj(self.ctxt,
                                              host='host@backend#pool')
@@ -957,6 +959,8 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                                    image_meta,
                                    self.mock_image_service)
 
+        self.assertTrue(mock_check_space.called)
+
         # Make sure clone_image is always called even if the cache is enabled
         self.assertTrue(self.mock_driver.clone_image.called)
 
@@ -974,8 +978,9 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         )
 
     @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.check_available_space')
     def test_create_from_image_cannot_use_cache(
-            self, mock_qemu_info, mock_get_internal_context,
+            self, mock_check_space, mock_qemu_info, mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
         mock_get_internal_context.return_value = None
@@ -1003,6 +1008,8 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                                    image_id,
                                    image_meta,
                                    self.mock_image_service)
+
+        self.assertTrue(mock_check_space.called)
 
         # Make sure clone_image is always called
         self.assertTrue(self.mock_driver.clone_image.called)
@@ -1276,8 +1283,9 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         self.assertFalse(self.mock_cache.create_cache_entry.called)
 
     @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.check_available_space')
     def test_create_from_image_no_internal_context(
-            self, mock_qemu_info, mock_get_internal_context,
+            self, mock_check_space, mock_qemu_info, mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
         self.mock_driver.clone_image.return_value = (None, False)
@@ -1305,6 +1313,8 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                                    image_id,
                                    image_meta,
                                    self.mock_image_service)
+
+        self.assertTrue(mock_check_space.called)
 
         # Make sure clone_image is always called
         self.assertTrue(self.mock_driver.clone_image.called)
