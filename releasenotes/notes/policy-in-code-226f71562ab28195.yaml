@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Cinder now support policy in code, which means if users don't need to
+    modify any of the default policy rules, they do not need a policy file.
+    Users can modify/generate a `policy.yaml` file which will override specific
+    policy rules from their defaults.
+other:
+  - |
+    Default `policy.json` file is now removed as Cinder now uses default
+    policies. A policy file is only needed if overriding one of the defaults.

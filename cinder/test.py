@@ -28,7 +28,6 @@ import uuid
 import fixtures
 import mock
 from oslo_concurrency import lockutils
-from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 from oslo_log.fixture import logging_error as log_fixture
 import oslo_messaging
@@ -39,7 +38,7 @@ from oslo_utils import timeutils
 import six
 import testtools
 
-from cinder.common import config  # noqa Need to register global_opts
+from cinder.common import config
 from cinder import context
 from cinder import coordination
 from cinder.db import migration
@@ -54,7 +53,7 @@ from cinder.tests.unit import fake_notifier
 from cinder.volume import utils
 
 
-CONF = cfg.CONF
+CONF = config.CONF
 
 _DB_CACHE = None
 SESSION_CONFIGURED = False
