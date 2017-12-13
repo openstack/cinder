@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    The SMBFS driver now supports the 'snapshot attach' feature. Special care
+    must be taken when attaching snapshots though, as writing to a snapshot
+    will corrupt the differencing image chain.
