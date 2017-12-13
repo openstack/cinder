@@ -1,5 +1,7 @@
 ---
 features:
   - |
-    New option to delete XtremIO initiator groups after the last volume was
-    detached from them, can be enabled by setting xtremio_clean_unused_ig to True
+    Added new option to delete XtremIO initiator groups after the last volume
+    was detached from them. Cleanup can be enabled by setting
+    ``xtremio_clean_unused_ig`` to ``True`` under the backend settings in
+    cinder.conf.
