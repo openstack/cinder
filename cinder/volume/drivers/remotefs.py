@@ -985,6 +985,19 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         active_fpath = os.path.join(vol_dir, active_fname)
         return active_fpath
 
+    def _get_snapshot_backing_file(self, snapshot):
+        info_path = self._local_path_volume_info(snapshot.volume)
+        snap_info = self._read_info_file(info_path)
+        vol_dir = self._local_volume_dir(snapshot.volume)
+
+        forward_file = snap_info[snapshot.id]
+        forward_path = os.path.join(vol_dir, forward_file)
+
+        # Find the file which backs this file, which represents the point
+        # in which this snapshot was created.
+        img_info = self._qemu_img_info(forward_path)
+        return img_info.backing_file
+
     def _snapshots_exist(self, volume):
         if not volume.provider_location:
             return False
