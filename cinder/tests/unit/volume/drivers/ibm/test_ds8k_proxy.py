@@ -1125,6 +1125,22 @@ class DS8KProxyTest(test.TestCase):
         self.assertRaises(exception.InvalidParameterValue,
                           FakeDS8KCommonHelper, self.configuration, None)
 
+    @ddt.data('25- 27-', '-25- 27', '25-27 122', '25, 26', '25-#28')
+    def test_get_lss_ids_for_cg_1(self, lss_range_for_cg):
+        """lss_range_for_cg should has the right format."""
+        self.configuration.lss_range_for_cg = lss_range_for_cg
+        self.assertRaises(exception.InvalidParameterValue,
+                          FakeDS8KCommonHelper, self.configuration, None)
+
+    def test_get_lss_ids_for_cg_2(self):
+        """get value from lss_range_for_cg"""
+        self.configuration.lss_range_for_cg = '25- 27   30 32 85-88 EF'
+        cmn_helper = FakeDS8KCommonHelper(self.configuration, None)
+        lss_ids = cmn_helper._get_lss_ids_for_cg()
+        test_lss_ids = set(['25', '26', '27', '30', '32',
+                            '85', '86', '87', '88', 'EF'])
+        self.assertEqual(test_lss_ids, lss_ids)
+
     @mock.patch.object(helper.DS8KCommonHelper, 'get_systems')
     def test_verify_version_of_8_0_1(self, mock_get_systems):
         """8.0.1 should not use this driver."""
