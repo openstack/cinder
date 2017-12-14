@@ -37,7 +37,7 @@ from cinder.objects import fields
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
-
+from cinder.volume import utils as volume_utils
 
 try:
     import rados
@@ -1388,6 +1388,52 @@ class RBDDriver(driver.CloneableImageVD,
                                         'size': image_size})
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
+
+    def _get_image_status(self, image_name):
+        args = ['rbd', 'status',
+                '--pool', self.configuration.rbd_pool,
+                '--format=json',
+                image_name]
+        args.extend(self._ceph_args())
+        out, _ = self._execute(*args)
+        return json.loads(out)
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        manageable_volumes = []
+        cinder_ids = [resource['id'] for resource in cinder_volumes]
+
+        with RADOSClient(self) as client:
+            for image_name in self.RBDProxy().list(client.ioctx):
+                image_id = volume_utils.extract_id_from_volume_name(image_name)
+                with RBDVolumeProxy(self, image_name, read_only=True) as image:
+                    try:
+                        image_info = {
+                            'reference': {'source-name': image_name},
+                            'size': int(math.ceil(
+                                float(image.size()) / units.Gi)),
+                            'cinder_id': None,
+                            'extra_info': None
+                        }
+                        if image_id in cinder_ids:
+                            image_info['cinder_id'] = image_id
+                            image_info['safe_to_manage'] = False
+                            image_info['reason_not_safe'] = 'already managed'
+                        elif len(self._get_image_status(
+                                image_name)['watchers']) > 0:
+                            # If the num of watchers of image is >= 1, then the
+                            # image is considered to be used by client(s).
+                            image_info['safe_to_manage'] = False
+                            image_info['reason_not_safe'] = 'volume in use'
+                        else:
+                            image_info['safe_to_manage'] = True
+                            image_info['reason_not_safe'] = None
+                        manageable_volumes.append(image_info)
+                    except self.rbd.ImageNotFound:
+                        LOG.debug("Image %s is not found.", image_name)
+
+        return volume_utils.paginate_entries_list(
+            manageable_volumes, marker, limit, offset, sort_keys, sort_dirs)
 
     def unmanage(self, volume):
         pass
