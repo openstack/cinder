@@ -4337,13 +4337,11 @@ class VolumeManager(manager.CleanableManager,
         connection_info = conn_data.copy()
         connection_info.update(conn_info)
         values = {'volume_id': volume.id,
-                  'attach_status': 'attaching', }
+                  'attach_status': 'attaching',
+                  'connector': jsonutils.dumps(connector)}
 
+        # TODO(mriedem): Use VolumeAttachment.save() here.
         self.db.volume_attachment_update(ctxt, attachment.id, values)
-        self.db.attachment_specs_update_or_create(
-            ctxt,
-            attachment.id,
-            connector)
 
         connection_info['attachment_id'] = attachment.id
         return connection_info
@@ -4420,12 +4418,7 @@ class VolumeManager(manager.CleanableManager,
                               attachment, force=False):
         """Remove a volume connection, but leave attachment."""
         utils.require_driver_initialized(self.driver)
-
-        # TODO(jdg): Add an object method to cover this
-        connector = self.db.attachment_specs_get(
-            context,
-            attachment.id)
-
+        connector = attachment.connector
         try:
             shared_connections = self.driver.terminate_connection(volume,
                                                                   connector,

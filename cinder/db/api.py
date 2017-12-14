@@ -1799,19 +1799,19 @@ class Condition(object):
 
 
 def attachment_specs_get(context, attachment_id):
-    """Get all specs for an attachment."""
+    """DEPRECATED: Get all specs for an attachment."""
     return IMPL.attachment_specs_get(context, attachment_id)
 
 
 def attachment_specs_delete(context, attachment_id, key):
-    """Delete the given attachment specs item."""
+    """DEPRECATED: Delete the given attachment specs item."""
     return IMPL.attachment_specs_delete(context, attachment_id, key)
 
 
 def attachment_specs_update_or_create(context,
                                       attachment_id,
                                       specs):
-    """Create or update attachment specs.
+    """DEPRECATED: Create or update attachment specs.
 
     This adds or modifies the key/value pairs specified in the attachment
     specs dict argument.
