@@ -15,7 +15,6 @@ import uuid
 import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-import webob
 
 from cinder.api import extensions
 from cinder.api import microversions as mv
@@ -225,7 +224,8 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            res_dict = self.controller.update_all(req, self.req_id, expected)
+            res_dict = self.controller.update_all(req, self.req_id,
+                                                  body=expected)
             self.assertEqual(expected, res_dict)
             get_volume.assert_called_once_with(fake_context, self.req_id)
 
@@ -244,7 +244,8 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            res_dict = self.controller.update(req, self.req_id, 'key1', body)
+            res_dict = self.controller.update(req, self.req_id, 'key1',
+                                              body=body)
             expected = {'meta': {'key1': 'value1'}}
             self.assertEqual(expected, res_dict)
             get_volume.assert_called_once_with(fake_context, self.req_id)
@@ -256,8 +257,8 @@ class VolumeMetaDataTest(test.TestCase):
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
         body = {"meta": {"key": None}}
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, self.req_id, body=body)
 
     def test_update_items_value_none(self):
         self.mock_object(db, 'volume_metadata_update',
@@ -268,8 +269,8 @@ class VolumeMetaDataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, self.req_id, body=body)
 
 
 class VolumeMetaDataTestNoMicroversion(v2_test.VolumeMetaDataTest):

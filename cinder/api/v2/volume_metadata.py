@@ -18,6 +18,8 @@ import webob
 
 from cinder.api import common
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volume_metadata as metadata
+from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
 from cinder import volume
@@ -46,8 +48,8 @@ class Controller(wsgi.Controller):
         context = req.environ['cinder.context']
         return {'metadata': self._get_metadata(context, volume_id)}
 
+    @validation.schema(metadata.create)
     def create(self, req, volume_id, body):
-        self.assert_valid_body(body, 'metadata')
         context = req.environ['cinder.context']
         metadata = body['metadata']
 
@@ -56,8 +58,8 @@ class Controller(wsgi.Controller):
                                                     use_create=True)
         return {'metadata': new_metadata}
 
+    @validation.schema(metadata.update)
     def update(self, req, volume_id, id, body):
-        self.assert_valid_body(body, 'meta')
         meta_item = body['meta']
 
         if id not in meta_item:
@@ -76,8 +78,8 @@ class Controller(wsgi.Controller):
 
         return {'meta': meta_item}
 
+    @validation.schema(metadata.create)
     def update_all(self, req, volume_id, body):
-        self.assert_valid_body(body, 'metadata')
         metadata = body['metadata']
         context = req.environ['cinder.context']
 

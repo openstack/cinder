@@ -24,7 +24,9 @@ import webob
 
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volume_metadata as metadata
 from cinder.api.v2 import volume_metadata as volume_meta_v2
+from cinder.api import validation
 
 
 class Controller(volume_meta_v2.Controller):
@@ -55,6 +57,7 @@ class Controller(volume_meta_v2.Controller):
         return metadata
 
     @wsgi.extends
+    @validation.schema(metadata.update)
     def update(self, req, volume_id, id, body):
         req_version = req.api_version_request
         if req_version.matches(mv.ETAGS):
@@ -62,9 +65,10 @@ class Controller(volume_meta_v2.Controller):
                 return webob.Response(
                     status_int=http_client.PRECONDITION_FAILED)
         return super(Controller, self).update(req, volume_id,
-                                              id, body)
+                                              id, body=body)
 
     @wsgi.extends
+    @validation.schema(metadata.create)
     def update_all(self, req, volume_id, body):
         req_version = req.api_version_request
         if req_version.matches(mv.ETAGS):
@@ -72,7 +76,7 @@ class Controller(volume_meta_v2.Controller):
                 return webob.Response(
                     status_int=http_client.PRECONDITION_FAILED)
         return super(Controller, self).update_all(req, volume_id,
-                                                  body)
+                                                  body=body)
 
 
 def create_resource():

@@ -268,7 +268,7 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            res_dict = self.controller.create(req, self.req_id, body)
+            res_dict = self.controller.create(req, self.req_id, body=body)
             self.assertEqual(body, res_dict)
 
     @mock.patch.object(db, 'volume_metadata_update')
@@ -292,7 +292,7 @@ class VolumeMetaDataTest(test.TestCase):
             get_volume.return_value = fake_volume
             self.assertRaises(exception.InvalidVolume,
                               self.controller.create,
-                              req, self.req_id, body)
+                              req, self.req_id, body=body)
 
     @mock.patch.object(db, 'volume_metadata_update')
     @mock.patch.object(db, 'volume_metadata_get')
@@ -324,7 +324,7 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            res_dict = self.controller.create(req, self.req_id, body)
+            res_dict = self.controller.create(req, self.req_id, body=body)
             self.assertEqual(expected, res_dict)
 
     def test_create_empty_body(self):
@@ -334,8 +334,8 @@ class VolumeMetaDataTest(test.TestCase):
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, None)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, self.req_id, body=None)
 
     def test_create_metadata_keys_value_none(self):
         self.mock_object(db, 'volume_metadata_update',
@@ -344,8 +344,8 @@ class VolumeMetaDataTest(test.TestCase):
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
         body = {"meta": {"key": None}}
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, self.req_id, body=body)
 
     def test_create_item_empty_key(self):
         self.mock_object(db, 'volume_metadata_update',
@@ -356,8 +356,8 @@ class VolumeMetaDataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, self.req_id, body=body)
 
     def test_create_item_key_too_long(self):
         self.mock_object(db, 'volume_metadata_update',
@@ -368,9 +368,9 @@ class VolumeMetaDataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.create,
-                          req, self.req_id, body)
+                          req, self.req_id, body=body)
 
     def test_create_nonexistent_volume(self):
         self.mock_object(volume.api.API, 'get',
@@ -386,7 +386,7 @@ class VolumeMetaDataTest(test.TestCase):
         body = {"metadata": {"key9": "value9"}}
         req.body = jsonutils.dump_as_bytes(body)
         self.assertRaises(exception.VolumeNotFound,
-                          self.controller.create, req, self.req_id, body)
+                          self.controller.create, req, self.req_id, body=body)
 
     @mock.patch.object(db, 'volume_metadata_update')
     def test_update_all(self, metadata_update):
@@ -409,7 +409,8 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            res_dict = self.controller.update_all(req, self.req_id, expected)
+            res_dict = self.controller.update_all(req, self.req_id,
+                                                  body=expected)
             self.assertEqual(expected, res_dict)
             get_volume.assert_called_once_with(fake_context, self.req_id)
 
@@ -436,7 +437,7 @@ class VolumeMetaDataTest(test.TestCase):
             get_volume.return_value = fake_volume
             self.assertRaises(exception.InvalidVolume,
                               self.controller.update_all, req,
-                              self.req_id, expected)
+                              self.req_id, body=expected)
             self.assertFalse(metadata_update.called)
             get_volume.assert_called_once_with(fake_context, self.req_id)
 
@@ -473,7 +474,7 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            res_dict = self.controller.update_all(req, self.req_id, body)
+            res_dict = self.controller.update_all(req, self.req_id, body=body)
             self.assertEqual(expected, res_dict)
             get_volume.assert_called_once_with(fake_context, self.req_id)
 
@@ -492,7 +493,8 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            res_dict = self.controller.update_all(req, self.req_id, expected)
+            res_dict = self.controller.update_all(req, self.req_id,
+                                                  body=expected)
             self.assertEqual(expected, res_dict)
             get_volume.assert_called_once_with(fake_context, self.req_id)
 
@@ -505,9 +507,9 @@ class VolumeMetaDataTest(test.TestCase):
         expected = {'meta': {}}
         req.body = jsonutils.dump_as_bytes(expected)
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update_all, req, self.req_id,
-                          expected)
+                          body=expected)
 
     def test_update_all_malformed_data(self):
         self.mock_object(db, 'volume_metadata_update',
@@ -518,9 +520,9 @@ class VolumeMetaDataTest(test.TestCase):
         expected = {'metadata': ['asdf']}
         req.body = jsonutils.dump_as_bytes(expected)
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update_all, req, self.req_id,
-                          expected)
+                          body=expected)
 
     def test_update_all_nonexistent_volume(self):
         self.mock_object(db, 'volume_get', return_volume_nonexistent)
@@ -531,7 +533,7 @@ class VolumeMetaDataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
 
         self.assertRaises(exception.VolumeNotFound,
-                          self.controller.update_all, req, '100', body)
+                          self.controller.update_all, req, '100', body=body)
 
     @mock.patch.object(db, 'volume_metadata_update')
     def test_update_item(self, metadata_update):
@@ -548,7 +550,8 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            res_dict = self.controller.update(req, self.req_id, 'key1', body)
+            res_dict = self.controller.update(req, self.req_id, 'key1',
+                                              body=body)
             expected = {'meta': {'key1': 'value1'}}
             self.assertEqual(expected, res_dict)
             get_volume.assert_called_once_with(fake_context, self.req_id)
@@ -562,9 +565,9 @@ class VolumeMetaDataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update,
-                          req, self.req_id, 'key1', body)
+                          req, self.req_id, 'key1', body=body)
 
     @mock.patch.object(db, 'volume_metadata_update')
     def test_update_item_volume_maintenance(self, metadata_update):
@@ -583,7 +586,7 @@ class VolumeMetaDataTest(test.TestCase):
             get_volume.return_value = fake_volume
             self.assertRaises(exception.InvalidVolume,
                               self.controller.update, req,
-                              self.req_id, 'key1', body)
+                              self.req_id, 'key1', body=body)
             self.assertFalse(metadata_update.called)
             get_volume.assert_called_once_with(fake_context, self.req_id)
 
@@ -599,7 +602,7 @@ class VolumeMetaDataTest(test.TestCase):
 
         self.assertRaises(exception.VolumeNotFound,
                           self.controller.update, req, self.req_id, 'key1',
-                          body)
+                          body=body)
 
     def test_update_item_empty_body(self):
         self.mock_object(db, 'volume_metadata_update',
@@ -608,9 +611,9 @@ class VolumeMetaDataTest(test.TestCase):
         req.method = 'PUT'
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update, req, self.req_id, 'key1',
-                          None)
+                          body=None)
 
     @mock.patch.object(db, 'volume_metadata_update')
     def test_update_item_empty_key(self, metadata_update):
@@ -627,11 +630,10 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            self.assertRaises(webob.exc.HTTPBadRequest,
+            self.assertRaises(exception.ValidationError,
                               self.controller.update, req, self.req_id,
-                              '', body)
+                              '', body=body)
             self.assertFalse(metadata_update.called)
-            get_volume.assert_called_once_with(fake_context, self.req_id)
 
     @mock.patch.object(db, 'volume_metadata_update')
     def test_update_item_key_too_long(self, metadata_update):
@@ -648,11 +650,10 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
+            self.assertRaises(exception.ValidationError,
                               self.controller.update,
-                              req, self.req_id, ("a" * 260), body)
+                              req, self.req_id, ("a" * 260), body=body)
             self.assertFalse(metadata_update.called)
-            get_volume.assert_called_once_with(fake_context, self.req_id)
 
     @mock.patch.object(db, 'volume_metadata_update')
     def test_update_item_value_too_long(self, metadata_update):
@@ -669,11 +670,10 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
+            self.assertRaises(exception.ValidationError,
                               self.controller.update,
-                              req, self.req_id, "key1", body)
+                              req, self.req_id, "key1", body=body)
             self.assertFalse(metadata_update.called)
-            get_volume.assert_called_once_with(fake_context, self.req_id)
 
     def test_update_item_too_many_keys(self):
         self.mock_object(db, 'volume_metadata_update',
@@ -684,9 +684,9 @@ class VolumeMetaDataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update, req, self.req_id, 'key1',
-                          body)
+                          body=body)
 
     def test_update_item_body_uri_mismatch(self):
         self.mock_object(db, 'volume_metadata_update',
@@ -699,7 +699,7 @@ class VolumeMetaDataTest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update, req, self.req_id, 'bad',
-                          body)
+                          body=body)
 
     @mock.patch.object(db, 'volume_metadata_update')
     def test_invalid_metadata_items_on_create(self, metadata_update):
@@ -718,8 +718,9 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
-                              self.controller.create, req, self.req_id, data)
+            self.assertRaises(exception.ValidationError,
+                              self.controller.create, req, self.req_id,
+                              body=data)
 
         # test for long value
         data = {"metadata": {"key": "v" * 260}}
@@ -729,8 +730,9 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
-                              self.controller.create, req, self.req_id, data)
+            self.assertRaises(exception.ValidationError,
+                              self.controller.create, req, self.req_id,
+                              body=data)
 
         # test for empty key.
         data = {"metadata": {"": "value1"}}
@@ -740,5 +742,6 @@ class VolumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            self.assertRaises(webob.exc.HTTPBadRequest,
-                              self.controller.create, req, self.req_id, data)
+            self.assertRaises(exception.ValidationError,
+                              self.controller.create, req, self.req_id,
+                              body=data)
