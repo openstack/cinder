@@ -466,6 +466,8 @@ class BackupManager(manager.ThreadPoolManager):
                     'actual_status': actual_status})
             backup.status = fields.BackupStatus.AVAILABLE
             backup.save()
+            self.db.volume_update(context, volume_id,
+                                  {'status': 'error_restoring'})
             raise exception.InvalidVolume(reason=err)
 
         expected_status = fields.BackupStatus.RESTORING
