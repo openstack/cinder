@@ -38,6 +38,7 @@ import collections
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import strutils
 
 from cinder import exception
 from cinder.i18n import _
@@ -200,10 +201,11 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
                           '%(conn)s.\n', {'vol': volume,
                                           'conn': connector})
 
+        # properties may contain chap secret so must be masked
         LOG.debug('leave: initialize_connection:\n volume: %(vol)s\n '
                   'connector: %(conn)s\n properties: %(prop)s',
                   {'vol': volume.id, 'conn': connector,
-                   'prop': properties})
+                   'prop': strutils.mask_password(properties)})
 
         return {'driver_volume_type': 'iscsi', 'data': properties, }
 
@@ -285,11 +287,12 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
                               discovery_auth_method='CHAP',
                               discovery_auth_username=connector['initiator'],
                               discovery_auth_password=chap_secret)
+        # properties may contain chap secret so must be masked
         LOG.debug('leave: _get_single_iscsi_data:\n volume: %(vol)s\n '
                   'connector: %(conn)s\n lun_id: %(lun_id)s\n '
                   'properties: %(prop)s',
                   {'vol': volume.id, 'conn': connector, 'lun_id': lun_id,
-                   'prop': properties})
+                   'prop': strutils.mask_password(properties)})
         return properties
 
     def _get_multi_iscsi_data(self, volume, connector, lun_id, properties,
@@ -335,11 +338,12 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
+        # properties may contain chap secret so must be masked
         LOG.debug('leave: _get_multi_iscsi_data:\n volume: %(vol)s\n '
                   'connector: %(conn)s\n lun_id: %(lun_id)s\n '
                   'properties: %(prop)s',
                   {'vol': volume.id, 'conn': connector, 'lun_id': lun_id,
-                   'prop': properties})
+                   'prop': strutils.mask_password(properties)})
 
         return properties
 

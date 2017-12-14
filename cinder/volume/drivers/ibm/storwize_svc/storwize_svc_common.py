@@ -163,12 +163,14 @@ class StorwizeSSH(object):
         return CLIResponse(raw, ssh_cmd=ssh_cmd, delim=delim,
                            with_header=with_header)
 
-    def run_ssh_assert_no_output(self, ssh_cmd):
+    def run_ssh_assert_no_output(self, ssh_cmd, log_cmd=None):
         """Run an SSH command and assert no output returned."""
         out, err = self._run_ssh(ssh_cmd)
         if len(out.strip()) != 0:
+            if not log_cmd:
+                log_cmd = ' '.join(ssh_cmd)
             msg = (_('Expected no output from CLI command %(cmd)s, '
-                     'got %(out)s.') % {'cmd': ' '.join(ssh_cmd), 'out': out})
+                     'got %(out)s.') % {'cmd': log_cmd, 'out': out})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -256,7 +258,8 @@ class StorwizeSSH(object):
 
     def add_chap_secret(self, secret, host):
         ssh_cmd = ['svctask', 'chhost', '-chapsecret', secret, '"%s"' % host]
-        self.run_ssh_assert_no_output(ssh_cmd)
+        log_cmd = 'svctask chhost -chapsecret *** %s' % host
+        self.run_ssh_assert_no_output(ssh_cmd, log_cmd)
 
     def lsiscsiauth(self):
         ssh_cmd = ['svcinfo', 'lsiscsiauth', '-delim', '!']
