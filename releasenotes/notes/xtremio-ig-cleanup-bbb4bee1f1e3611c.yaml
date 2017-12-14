@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    New option to delete XtremIO initiator groups after the last volume was
+    detached from them, can be enabled by setting xtremio_clean_unused_ig to True

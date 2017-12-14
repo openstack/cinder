@@ -330,9 +330,10 @@ class BaseXtremIODriverTestCase(test.TestCase):
                                 max_over_subscription_ratio=20.0,
                                 xtremio_volumes_per_glance_cache=100,
                                 driver_ssl_cert_verify=True,
-                                driver_ssl_cert_path= '/test/path/root_ca.crt',
+                                driver_ssl_cert_path='/test/path/root_ca.crt',
                                 xtremio_array_busy_retry_count=5,
-                                xtremio_array_busy_retry_interval=5)
+                                xtremio_array_busy_retry_interval=5,
+                                xtremio_clean_unused_ig=False)
 
         def safe_get(key):
             return getattr(self.config, key)
@@ -664,11 +665,27 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
     def test_terminate_connection(self, req):
         req.side_effect = xms_request
         self.driver.create_volume(self.data.test_volume)
-        self.driver.create_volume(self.data.test_volume2)
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
+        i1 = xms_data['initiators'][1]
+        i1['ig-id'] = ['', i1['ig-id'], 1]
         self.driver.terminate_connection(self.data.test_volume,
                                          self.data.connector)
+        self.assertEqual(1, len(xms_data['initiator-groups']))
+
+    def test_terminate_connection_clean_ig(self, req):
+        self.driver.clean_ig = True
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
+        self.driver.initialize_connection(self.data.test_volume,
+                                          self.data.connector)
+        i1 = xms_data['initiators'][1]
+        i1['ig-id'] = ['', i1['ig-id'], 1]
+        xms_data['initiator-groups'][1]['num-of-vols'] = 0
+        # lun mapping list is a list of triplets (IG OID, TG OID, lun number)
+        self.driver.terminate_connection(self.data.test_volume,
+                                         self.data.connector)
+        self.assertEqual(0, len(xms_data['initiator-groups']))
 
     def test_terminate_connection_fail_on_bad_volume(self, req):
         req.side_effect = xms_request
