@@ -17,15 +17,15 @@
 from six.moves import http_client
 import webob
 
-from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import group_specs
+from cinder.api import validation
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.policies import group_types as policy
 from cinder import rpc
-from cinder import utils
 from cinder.volume import group_types
 
 
@@ -55,16 +55,13 @@ class GroupTypeSpecsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_TYPE)
     @wsgi.response(http_client.ACCEPTED)
-    def create(self, req, group_type_id, body=None):
+    @validation.schema(group_specs.create)
+    def create(self, req, group_type_id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.SPEC_POLICY)
-        self.assert_valid_body(body, 'group_specs')
 
         self._check_type(context, group_type_id)
         specs = body['group_specs']
-        self._check_key_names(specs.keys())
-        utils.validate_dictionary_string_length(specs)
-
         db.group_type_specs_update_or_create(context,
                                              group_type_id,
                                              specs)
@@ -75,22 +72,15 @@ class GroupTypeSpecsController(wsgi.Controller):
         return body
 
     @wsgi.Controller.api_version(mv.GROUP_TYPE)
-    def update(self, req, group_type_id, id, body=None):
+    @validation.schema(group_specs.update)
+    def update(self, req, group_type_id, id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.SPEC_POLICY)
 
-        if not body:
-            expl = _('Request body empty')
-            raise webob.exc.HTTPBadRequest(explanation=expl)
         self._check_type(context, group_type_id)
         if id not in body:
             expl = _('Request body and URI mismatch')
             raise webob.exc.HTTPBadRequest(explanation=expl)
-        if len(body) > 1:
-            expl = _('Request body contains too many items')
-            raise webob.exc.HTTPBadRequest(explanation=expl)
-        self._check_key_names(body.keys())
-        utils.validate_dictionary_string_length(body)
 
         db.group_type_specs_update_or_create(context,
                                              group_type_id,
@@ -136,13 +126,6 @@ class GroupTypeSpecsController(wsgi.Controller):
                       'group_type_specs.delete',
                       notifier_info)
         return webob.Response(status_int=http_client.ACCEPTED)
-
-    def _check_key_names(self, keys):
-        if not common.validate_key_names(keys):
-            expl = _('Key names can only contain alphanumeric characters, '
-                     'underscores, periods, colons and hyphens.')
-
-            raise webob.exc.HTTPBadRequest(explanation=expl)
 
 
 def create_resource():
