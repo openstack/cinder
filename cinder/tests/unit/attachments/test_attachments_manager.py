@@ -197,3 +197,54 @@ class AttachmentManagerTestCase(test.TestCase):
             mock_db_meta_delete.called_once_with(self.context, vref.id,
                                                  'attached_mode')
         _test()
+
+    def test_connection_terminate_no_connector_force_false(self):
+        # Tests that calling _connection_terminate with an attachment that
+        # does not have a connector will not call the driver and return None
+        # if the force flag is False.
+        attachment = mock.MagicMock(connector={})
+        with mock.patch.object(self.manager.driver, '_initialized',
+                               create=True, new=True):
+            with mock.patch.object(self.manager.driver,
+                                   'terminate_connection') as term_conn:
+                has_shared_connection = self.manager._connection_terminate(
+                    self.context, mock.sentinel.volume, attachment)
+                self.assertIsNone(has_shared_connection)
+                term_conn.assert_not_called()
+
+    def test_connection_terminate_no_connector_force_true(self):
+        # Tests that calling _connection_terminate with an attachment that
+        # does not have a connector will call the driver when force is True.
+        volume = mock.MagicMock()
+        attachment = mock.MagicMock(connector={})
+        with mock.patch.object(self.manager.driver, '_initialized',
+                               create=True, new=True):
+            with mock.patch.object(self.manager.driver,
+                                   'terminate_connection') as term_conn:
+                has_shared_connection = self.manager._connection_terminate(
+                    self.context, volume, attachment, force=True)
+                self.assertFalse(has_shared_connection)
+                term_conn.assert_called_once_with(volume, {}, force=True)
+
+    @mock.patch('cinder.volume.manager.VolumeManager.'
+                '_notify_about_volume_usage')
+    @mock.patch('cinder.volume.manager.VolumeManager._connection_terminate',
+                return_value=None)
+    @mock.patch('cinder.db.volume_detached')
+    @mock.patch('cinder.db.volume_admin_metadata_delete')
+    def test_do_attachment_delete_none_shared_connection(self, mock_meta_del,
+                                                         mock_vol_detached,
+                                                         mock_conn_term,
+                                                         mock_notify):
+        # Tests that _do_attachment_delete does not call remove_export
+        # if _connection_terminate returns None indicating there is nothing
+        # to consider for the export.
+        volume = mock.MagicMock()
+        attachment = mock.MagicMock()
+        with mock.patch.object(self.manager.driver, '_initialized',
+                               create=True, new=True):
+            with mock.patch.object(self.manager.driver,
+                                   'remove_export') as remove_export:
+                self.manager._do_attachment_delete(
+                    self.context, volume, attachment)
+                remove_export.assert_not_called()

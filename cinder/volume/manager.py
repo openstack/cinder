@@ -4416,9 +4416,24 @@ class VolumeManager(manager.CleanableManager,
 
     def _connection_terminate(self, context, volume,
                               attachment, force=False):
-        """Remove a volume connection, but leave attachment."""
+        """Remove a volume connection, but leave attachment.
+
+        Exits early if the attachment does not have a connector and returns
+        None to indicate shared connections are irrelevant.
+        """
         utils.require_driver_initialized(self.driver)
         connector = attachment.connector
+        if not connector and not force:
+            # It's possible to attach a volume to a shelved offloaded server
+            # in nova, and a shelved offloaded server is not on a compute host,
+            # which means the attachment was made without a host connector,
+            # so if we don't have a connector we can't terminate a connection
+            # that was never actually made to the storage backend, so just
+            # log a message and exit.
+            LOG.debug('No connector for attachment %s; skipping storage '
+                      'backend terminate_connection call.', attachment.id)
+            # None indicates we don't know and don't care.
+            return None
         try:
             shared_connections = self.driver.terminate_connection(volume,
                                                                   connector,
@@ -4471,7 +4486,7 @@ class VolumeManager(manager.CleanableManager,
                       {'attachment_id': attachment.id},
                       resource=vref)
             self.driver.detach_volume(context, vref, attachment)
-            if not has_shared_connection:
+            if has_shared_connection is not None and not has_shared_connection:
                 self.driver.remove_export(context.elevated(), vref)
         except Exception:
             # FIXME(jdg): Obviously our volume object is going to need some
