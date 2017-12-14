@@ -1043,7 +1043,7 @@ extra_specs_1:
     include capabilities, capacity, compression, and so on, depending
     on the storage driver in use.
   in: body
-  required: true
+  required: false
   type: object
 fail_reason:
   description: |
@@ -1833,6 +1833,12 @@ name_9:
     The consistency group name.
   in: body
   required: true
+  type: string
+name_10:
+  description: |
+    The name of the volume type.
+  in: body
+  required: false
   type: string
 name_optional:
   description: |
