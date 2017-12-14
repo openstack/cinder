@@ -25,10 +25,10 @@ import functools
 import itertools
 import re
 import sys
-import time
 import uuid
 
 from oslo_config import cfg
+from oslo_db import api as oslo_db_api
 from oslo_db import exception as db_exc
 from oslo_db import options
 from oslo_db.sqlalchemy import enginefacade
@@ -226,24 +226,6 @@ def require_backup_exists(f):
             raise exception.BackupNotFound(backup_id=backup_id)
         return f(context, backup_id, *args, **kwargs)
     return wrapper
-
-
-def _retry_on_deadlock(f):
-    """Decorator to retry a DB API call if Deadlock was received."""
-    @functools.wraps(f)
-    def wrapped(*args, **kwargs):
-        while True:
-            try:
-                return f(*args, **kwargs)
-            except db_exc.DBDeadlock:
-                LOG.warning("Deadlock detected when running "
-                            "'%(func_name)s': Retrying...",
-                            dict(func_name=f.__name__))
-                # Retry!
-                time.sleep(0.5)
-                continue
-    functools.update_wrapper(wrapped, f)
-    return wrapped
 
 
 def handle_db_data_error(f):
@@ -567,7 +549,7 @@ def service_create(context, values):
 
 
 @require_admin_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def service_update(context, service_id, values):
     if 'disabled' in values:
         values = values.copy()
@@ -796,7 +778,7 @@ def cluster_create(context, values):
 
 
 @require_admin_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def cluster_update(context, id, values):
     """Set the given properties on an cluster and update it.
 
@@ -1214,7 +1196,7 @@ def _get_quota_usages_by_resource(context, session, resource):
 
 
 @require_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def quota_usage_update_resource(context, old_res, new_res):
     session = get_session()
     with session.begin():
@@ -1225,7 +1207,7 @@ def quota_usage_update_resource(context, old_res, new_res):
 
 
 @require_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def quota_reserve(context, resources, quotas, deltas, expire,
                   until_refresh, max_age, project_id=None,
                   is_allocated_reserve=False):
@@ -1419,7 +1401,7 @@ def _dict_with_usage_id(usages):
 
 
 @require_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def reservation_commit(context, reservations, project_id=None):
     session = get_session()
     with session.begin():
@@ -1441,7 +1423,7 @@ def reservation_commit(context, reservations, project_id=None):
 
 
 @require_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def reservation_rollback(context, reservations, project_id=None):
     session = get_session()
     with session.begin():
@@ -1470,7 +1452,7 @@ def quota_destroy_by_project(*args, **kwargs):
 
 
 @require_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def quota_destroy_all_by_project(context, project_id, only_quotas=False):
     """Destroy all quotas associated with a project.
 
@@ -1512,7 +1494,7 @@ def quota_destroy_all_by_project(context, project_id, only_quotas=False):
 
 
 @require_admin_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def reservation_expire(context):
     session = get_session()
     with session.begin():
@@ -1704,7 +1686,7 @@ def volume_data_get_for_project(context, project_id,
 
 
 @require_admin_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def volume_destroy(context, volume_id):
     session = get_session()
     now = timeutils.utcnow()
@@ -2079,7 +2061,7 @@ def volume_attachment_get_all_by_project(context, project_id, filters=None,
 
 
 @require_admin_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def attachment_destroy(context, attachment_id):
     """Destroy the specified attachment record."""
     utcnow = timeutils.utcnow()
@@ -2915,7 +2897,7 @@ def volume_metadata_get(context, volume_id):
 
 @require_context
 @require_volume_exists
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def volume_metadata_delete(context, volume_id, key, meta_type):
     if meta_type == common.METADATA_TYPES.user:
         (_volume_user_metadata_get_query(context, volume_id).
@@ -2938,7 +2920,7 @@ def volume_metadata_delete(context, volume_id, key, meta_type):
 
 @require_context
 @handle_db_data_error
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def volume_metadata_update(context, volume_id, metadata, delete, meta_type):
     if meta_type == common.METADATA_TYPES.user:
         return _volume_user_metadata_update(context,
@@ -2987,7 +2969,7 @@ def volume_admin_metadata_get(context, volume_id):
 
 @require_admin_context
 @require_volume_exists
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def volume_admin_metadata_delete(context, volume_id, key):
     _volume_admin_metadata_get_query(context, volume_id).\
         filter_by(key=key).\
@@ -2997,7 +2979,7 @@ def volume_admin_metadata_delete(context, volume_id, key):
 
 
 @require_admin_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def volume_admin_metadata_update(context, volume_id, metadata, delete,
                                  add=True, update=True):
     return _volume_admin_metadata_update(context, volume_id, metadata, delete,
@@ -3025,7 +3007,7 @@ def snapshot_create(context, values):
 
 
 @require_admin_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def snapshot_destroy(context, snapshot_id):
     utcnow = timeutils.utcnow()
     session = get_session()
@@ -3376,7 +3358,7 @@ def snapshot_metadata_get(context, snapshot_id):
 
 @require_context
 @require_snapshot_exists
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def snapshot_metadata_delete(context, snapshot_id, key):
     _snapshot_metadata_get_query(context, snapshot_id).\
         filter_by(key=key).\
@@ -3402,7 +3384,7 @@ def _snapshot_metadata_get_item(context, snapshot_id, key, session=None):
 @require_context
 @require_snapshot_exists
 @handle_db_data_error
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def snapshot_metadata_update(context, snapshot_id, metadata, delete):
     session = get_session()
     with session.begin():
@@ -4110,7 +4092,7 @@ def volume_type_qos_specs_get(context, type_id):
 
 
 @require_admin_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def volume_type_destroy(context, id):
     utcnow = timeutils.utcnow()
     session = get_session()
@@ -4148,7 +4130,7 @@ def volume_type_destroy(context, id):
 
 
 @require_admin_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def group_type_destroy(context, id):
     session = get_session()
     with session.begin():
@@ -5322,7 +5304,7 @@ def _backup_metadata_get_item(context, backup_id, key, session=None):
 @require_context
 @require_backup_exists
 @handle_db_data_error
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def backup_metadata_update(context, backup_id, metadata, delete):
     session = get_session()
     with session.begin():
@@ -5435,7 +5417,7 @@ def transfer_create(context, values):
 
 
 @require_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def transfer_destroy(context, transfer_id):
     utcnow = timeutils.utcnow()
     session = get_session()
@@ -7036,7 +7018,7 @@ def _check_is_not_multitable(values, model):
 
 
 @require_context
-@_retry_on_deadlock
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def conditional_update(context, model, values, expected_values, filters=(),
                        include_deleted='no', project_only=False, order=None):
     """Compare-and-swap conditional update SQLAlchemy implementation."""
