@@ -18,6 +18,7 @@ import collections
 import hashlib
 import inspect
 import json
+import math
 import os
 import re
 import shutil
@@ -764,10 +765,8 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                 }
             if not re.match(backing_file_template, info.backing_file,
                             re.IGNORECASE):
-                msg = _("File %(path)s has invalid backing file "
-                        "%(bfile)s, aborting.") % {'path': path,
-                                                   'bfile': info.backing_file}
-                raise exception.RemoteFSException(msg)
+                raise exception.RemoteFSInvalidBackingFile(
+                    path=path, backing_file=info.backing_file)
 
             info.backing_file = os.path.basename(info.backing_file)
 
@@ -1780,3 +1779,193 @@ class RevertToSnapshotMixin(object):
         # this class.
         self._delete(snapshot_path)
         self._do_create_snapshot(snapshot, backing_filename, snapshot_path)
+
+
+class RemoteFSManageableVolumesMixin(object):
+    _SUPPORTED_IMAGE_FORMATS = ['raw', 'qcow2']
+    _MANAGEABLE_IMAGE_RE = None
+
+    def _get_manageable_vol_location(self, existing_ref):
+        if 'source-name' not in existing_ref:
+            reason = _('The existing volume reference '
+                       'must contain "source-name".')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+
+        vol_remote_path = os.path.normcase(
+            os.path.normpath(existing_ref['source-name']))
+
+        for mounted_share in self._mounted_shares:
+            # We don't currently attempt to resolve hostnames. This could
+            # be troublesome for some distributed shares, which may have
+            # hostnames resolving to multiple addresses.
+            norm_share = os.path.normcase(os.path.normpath(mounted_share))
+            head, match, share_rel_path = vol_remote_path.partition(norm_share)
+            if not (match and share_rel_path.startswith(os.path.sep)):
+                continue
+
+            mountpoint = self._get_mount_point_for_share(mounted_share)
+            vol_local_path = os.path.join(mountpoint,
+                                          share_rel_path.lstrip(os.path.sep))
+
+            LOG.debug("Found mounted share referenced by %s.",
+                      vol_remote_path)
+
+            if os.path.isfile(vol_local_path):
+                LOG.debug("Found volume %(path)s on share %(share)s.",
+                          dict(path=vol_local_path, share=mounted_share))
+                return dict(share=mounted_share,
+                            mountpoint=mountpoint,
+                            vol_local_path=vol_local_path,
+                            vol_remote_path=vol_remote_path)
+            else:
+                LOG.error("Could not find volume %s on the "
+                          "specified share.", vol_remote_path)
+                break
+
+        raise exception.ManageExistingInvalidReference(
+            existing_ref=existing_ref, reason=_('Volume not found.'))
+
+    def _get_managed_vol_expected_path(self, volume, volume_location):
+        # This may be overridden by the drivers.
+        return os.path.join(volume_location['mountpoint'],
+                            volume.name)
+
+    def _is_volume_manageable(self, volume_path, already_managed=False):
+        unmanageable_reason = None
+
+        if already_managed:
+            return False, _('Volume already managed.')
+
+        try:
+            img_info = self._qemu_img_info(volume_path, volume_name=None)
+        except exception.RemoteFSInvalidBackingFile:
+            return False, _("Backing file present.")
+        except Exception:
+            return False, _("Failed to open image.")
+
+        # We're double checking as some drivers do not validate backing
+        # files through '_qemu_img_info'.
+        if img_info.backing_file:
+            return False, _("Backing file present.")
+
+        if img_info.file_format not in self._SUPPORTED_IMAGE_FORMATS:
+            unmanageable_reason = _(
+                "Unsupported image format: '%s'.") % img_info.file_format
+            return False, unmanageable_reason
+
+        return True, None
+
+    def manage_existing(self, volume, existing_ref):
+        LOG.info('Managing volume %(volume_id)s with ref %(ref)s',
+                 {'volume_id': volume.id, 'ref': existing_ref})
+
+        vol_location = self._get_manageable_vol_location(existing_ref)
+        vol_local_path = vol_location['vol_local_path']
+
+        manageable, unmanageable_reason = self._is_volume_manageable(
+            vol_local_path)
+
+        if not manageable:
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=unmanageable_reason)
+
+        expected_vol_path = self._get_managed_vol_expected_path(
+            volume, vol_location)
+
+        self._set_rw_permissions(vol_local_path)
+
+        # This should be the last thing we do.
+        if expected_vol_path != vol_local_path:
+            LOG.info("Renaming imported volume image %(src)s to %(dest)s",
+                     dict(src=vol_location['vol_local_path'],
+                          dest=expected_vol_path))
+            os.rename(vol_location['vol_local_path'],
+                      expected_vol_path)
+
+        return {'provider_location': vol_location['share']}
+
+    def _get_rounded_manageable_image_size(self, image_path):
+        image_size = image_utils.qemu_img_info(
+            image_path, run_as_root=self._execute_as_root).virtual_size
+        return int(math.ceil(float(image_size) / units.Gi))
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        vol_location = self._get_manageable_vol_location(existing_ref)
+        volume_path = vol_location['vol_local_path']
+        return self._get_rounded_manageable_image_size(volume_path)
+
+    def unmanage(self, volume):
+        pass
+
+    def _get_manageable_volume(self, share, volume_path, managed_volume=None):
+        manageable, unmanageable_reason = self._is_volume_manageable(
+            volume_path, already_managed=managed_volume is not None)
+        size_gb = None
+        if managed_volume:
+            # We may not be able to query in-use images.
+            size_gb = managed_volume.size
+        else:
+            try:
+                size_gb = self._get_rounded_manageable_image_size(volume_path)
+            except Exception:
+                manageable = False
+                unmanageable_reason = (unmanageable_reason or
+                                       _("Failed to get size."))
+
+        mountpoint = self._get_mount_point_for_share(share)
+        norm_mountpoint = os.path.normcase(os.path.normpath(mountpoint))
+        norm_vol_path = os.path.normcase(os.path.normpath(volume_path))
+
+        ref = norm_vol_path.replace(norm_mountpoint, share).replace('\\', '/')
+        manageable_volume = {
+            'reference': {'source-name': ref},
+            'size': size_gb,
+            'safe_to_manage': manageable,
+            'reason_not_safe': unmanageable_reason,
+            'cinder_id': managed_volume.id if managed_volume else None,
+            'extra_info': None,
+        }
+        return manageable_volume
+
+    def _get_share_manageable_volumes(self, share, managed_volumes):
+        manageable_volumes = []
+        mount_path = self._get_mount_point_for_share(share)
+
+        for dir_path, dir_names, file_names in os.walk(mount_path):
+            for file_name in file_names:
+                file_name = os.path.normcase(file_name)
+                img_path = os.path.join(dir_path, file_name)
+                # In the future, we may have the regex filtering images
+                # as a config option.
+                if (not self._MANAGEABLE_IMAGE_RE or
+                        self._MANAGEABLE_IMAGE_RE.match(file_name)):
+                    managed_volume = managed_volumes.get(
+                        os.path.splitext(file_name)[0])
+                    try:
+                        manageable_volume = self._get_manageable_volume(
+                            share, img_path, managed_volume)
+                        manageable_volumes.append(manageable_volume)
+                    except Exception as exc:
+                        LOG.error(
+                            "Failed to get manageable volume info: "
+                            "'%(image_path)s'. Exception: %(exc)s.",
+                            dict(image_path=img_path, exc=exc))
+        return manageable_volumes
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        manageable_volumes = []
+        managed_volumes = {vol.name: vol for vol in cinder_volumes}
+
+        for share in self._mounted_shares:
+            try:
+                manageable_volumes += self._get_share_manageable_volumes(
+                    share, managed_volumes)
+            except Exception as exc:
+                LOG.error("Failed to get manageable volumes for "
+                          "share %(share)s. Exception: %(exc)s.",
+                          dict(share=share, exc=exc))
+
+        return volume_utils.paginate_entries_list(
+            manageable_volumes, marker, limit, offset, sort_keys, sort_dirs)

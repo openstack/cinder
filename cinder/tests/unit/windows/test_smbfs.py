@@ -285,7 +285,7 @@ class WindowsSmbFsTestCase(test.TestCase):
 
         extensions = [
             ".%s" % ext
-            for ext in self._smbfs_driver._SUPPORTED_IMAGE_FORMATS]
+            for ext in self._smbfs_driver._VALID_IMAGE_EXTENSIONS]
         possible_paths = [self._FAKE_VOLUME_PATH + ext
                           for ext in extensions]
         mock_exists.assert_has_calls(
@@ -816,3 +816,15 @@ class WindowsSmbFsTestCase(test.TestCase):
 
         mock_type = drv._get_vhd_type(qemu_subformat=False)
         self.assertEqual(mock_type, 3)
+
+    def test_get_managed_vol_expected_path(self):
+        self._vhdutils.get_vhd_format.return_value = 'vhdx'
+        vol_location = dict(vol_local_path=mock.sentinel.image_path,
+                            mountpoint=self._FAKE_MNT_POINT)
+
+        path = self._smbfs_driver._get_managed_vol_expected_path(
+            self.volume, vol_location)
+        self.assertEqual(self._FAKE_VOLUME_PATH, path)
+
+        self._vhdutils.get_vhd_format.assert_called_once_with(
+            mock.sentinel.image_path)

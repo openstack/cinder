@@ -14,6 +14,7 @@
 #    under the License.
 
 import os
+import re
 import sys
 
 from os_brick.remotefs import windows_remotefs as remotefs_brick
@@ -95,6 +96,7 @@ CONF.set_default('reserved_percentage', 5)
 @interface.volumedriver
 class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
                          remotefs_drv.RemoteFSPoolMixin,
+                         remotefs_drv.RemoteFSManageableVolumesMixin,
                          remotefs_drv.RemoteFSSnapDriverDistributed):
     VERSION = VERSION
 
@@ -113,8 +115,13 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
 
     _MINIMUM_QEMU_IMG_VERSION = '1.6'
 
-    _SUPPORTED_IMAGE_FORMATS = [_DISK_FORMAT_VHD, _DISK_FORMAT_VHDX]
-    _VALID_IMAGE_EXTENSIONS = _SUPPORTED_IMAGE_FORMATS
+    _SUPPORTED_IMAGE_FORMATS = [_DISK_FORMAT_VHD,
+                                _DISK_FORMAT_VHD_LEGACY,
+                                _DISK_FORMAT_VHDX]
+    _VALID_IMAGE_EXTENSIONS = [_DISK_FORMAT_VHD, _DISK_FORMAT_VHDX]
+    _MANAGEABLE_IMAGE_RE = re.compile(
+        '.*\.(?:%s)$' % '|'.join(_VALID_IMAGE_EXTENSIONS),
+        re.IGNORECASE)
 
     _always_use_temp_snap_when_cloning = False
     _thin_provisioning_support = True
@@ -277,7 +284,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         return local_path_template
 
     def _lookup_local_volume_path(self, volume_path_template):
-        for ext in self._SUPPORTED_IMAGE_FORMATS:
+        for ext in self._VALID_IMAGE_EXTENSIONS:
             volume_path = (volume_path_template + '.' + ext
                            if ext else volume_path_template)
             if os.path.exists(volume_path):
@@ -295,7 +302,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
 
         if volume_path:
             ext = os.path.splitext(volume_path)[1].strip('.').lower()
-            if ext in self._SUPPORTED_IMAGE_FORMATS:
+            if ext in self._VALID_IMAGE_EXTENSIONS:
                 volume_format = ext
             else:
                 # Hyper-V relies on file extensions so we're enforcing them.
@@ -611,3 +618,13 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
             vhd_type = self._vhd_type_mapping[prov_type]
 
         return vhd_type
+
+    def _get_managed_vol_expected_path(self, volume, volume_location):
+        fmt = self._vhdutils.get_vhd_format(volume_location['vol_local_path'])
+        return os.path.join(volume_location['mountpoint'],
+                            volume.name + ".%s" % fmt).lower()
+
+    def _set_rw_permissions(self, path):
+        # The SMBFS driver does not manage file permissions. We chose
+        # to let this up to the deployer.
+        pass

@@ -1001,6 +1001,10 @@ class RemoteFSNoSuitableShareFound(RemoteFSException):
     message = _("There is no share which can host %(volume_size)sG")
 
 
+class RemoteFSInvalidBackingFile(VolumeDriverException):
+    message = _("File %(path)s has invalid backing file %(backing_file)s.")
+
+
 # NFS driver
 class NfsException(RemoteFSException):
     message = _("Unknown NFS exception")
