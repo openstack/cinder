@@ -20,7 +20,6 @@ from cinder.api.contrib import used_limits
 from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
-from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -111,7 +110,7 @@ class UsedLimitsTestCase(test.TestCase):
         res = wsgi.ResponseObject(obj)
 
         # unallow user to access used limits
-        _mock_policy_authorize.side_effect = exception.NotAuthorized
+        _mock_policy_authorize.return_value = False
 
         self.controller.index(fake_req, res)
         abs_limits = res.obj['limits']['absolute']
