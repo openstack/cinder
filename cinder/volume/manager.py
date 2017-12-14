@@ -65,6 +65,7 @@ from cinder.i18n import _
 from cinder.image import cache as image_cache
 from cinder.image import glance
 from cinder.image import image_utils
+from cinder.keymgr import migration as key_migration
 from cinder import manager
 from cinder.message import api as message_api
 from cinder.message import message_field
@@ -494,6 +495,10 @@ class VolumeManager(manager.CleanableManager,
         # Keep the image tmp file clean when init host.
         backend_name = vol_utils.extract_host(self.service_topic_queue)
         image_utils.cleanup_temporary_file(backend_name)
+
+        # Migrate any ConfKeyManager keys based on fixed_key to the currently
+        # configured key manager.
+        self._add_to_threadpool(key_migration.migrate_fixed_key, volumes)
 
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)

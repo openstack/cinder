@@ -25,9 +25,12 @@ import re
 import time
 import uuid
 
+from castellan.common.credentials import keystone_password
 from castellan.common import exception as castellan_exception
+from castellan import key_manager as castellan_key_manager
 import eventlet
 from eventlet import tpool
+from keystoneauth1 import loading as ks_loading
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -913,6 +916,23 @@ def delete_encryption_key(context, key_manager, encryption_key_id):
         key_manager.delete(context, encryption_key_id)
     except castellan_exception.ManagedObjectNotFoundError:
         pass
+    except castellan_exception.KeyManagerError:
+        LOG.info("First attempt to delete key id %s failed, retrying with "
+                 "cinder's service context.", encryption_key_id)
+        conf = CONF
+        ks_loading.register_auth_conf_options(conf, 'keystone_authtoken')
+        service_context = keystone_password.KeystonePassword(
+            password=conf.keystone_authtoken.password,
+            auth_url=conf.keystone_authtoken.auth_url,
+            username=conf.keystone_authtoken.username,
+            user_domain_name=conf.keystone_authtoken.user_domain_name,
+            project_name=conf.keystone_authtoken.project_name,
+            project_domain_name=conf.keystone_authtoken.project_domain_name)
+        try:
+            castellan_key_manager.API(conf).delete(service_context,
+                                                   encryption_key_id)
+        except castellan_exception.ManagedObjectNotFoundError:
+            pass
 
 
 def clone_encryption_key(context, key_manager, encryption_key_id):

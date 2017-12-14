@@ -268,3 +268,15 @@ class VolumeInitHostTestCase(base.BaseVolumeTestCase):
             mock.ANY, filters={'cluster_name': cluster})
         snap_get_all_mock.assert_called_once_with(
             mock.ANY, filters={'cluster_name': cluster})
+
+    @mock.patch('cinder.keymgr.migration.migrate_fixed_key')
+    @mock.patch('cinder.volume.manager.VolumeManager._get_my_volumes')
+    @mock.patch('cinder.manager.ThreadPoolManager._add_to_threadpool')
+    def test_init_host_key_migration(self,
+                                     mock_add_threadpool,
+                                     mock_get_my_volumes,
+                                     mock_migrate_fixed_key):
+
+        self.volume.init_host(service_id=self.service_id)
+        mock_add_threadpool.assert_called_once_with(mock_migrate_fixed_key,
+                                                    mock_get_my_volumes())
