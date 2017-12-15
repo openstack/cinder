@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The old deprecated ``hp3par*`` options have been removed.
+    Use the ``hpe3par*`` instead of them.
