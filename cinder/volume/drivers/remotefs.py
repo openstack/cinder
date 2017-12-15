@@ -48,8 +48,7 @@ LOG = logging.getLogger(__name__)
 nas_opts = [
     cfg.StrOpt('nas_host',
                default='',
-               help='IP address or Hostname of NAS system.',
-               deprecated_name='nas_ip'),
+               help='IP address or Hostname of NAS system.'),
     cfg.StrOpt('nas_login',
                default='admin',
                help='User name to connect to NAS system.'),
