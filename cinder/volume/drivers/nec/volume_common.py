@@ -69,9 +69,6 @@ mstorage_opts = [
     cfg.StrOpt('nec_ismview_dir',
                default='/tmp/nec/cinder',
                help='Output path of iSMview file.'),
-    cfg.StrOpt('nec_ldset_for_controller_node',
-               default='',
-               help='M-Series Storage LD Set name for Controller Node.'),
     cfg.IntOpt('nec_ssh_pool_port_number',
                default=22,
                help='Port number of ssh pool.'),
@@ -241,8 +238,6 @@ class MStorageVolumeCommon(object):
             'pool_actual_free_capacity':
                 confobj.safe_get('nec_actual_free_capacity'),
             'ldset_name': confobj.safe_get('nec_ldset'),
-            'ldset_controller_node_name':
-                confobj.safe_get('nec_ldset_for_controller_node'),
             'ld_name_format': confobj.safe_get('nec_ldname_format'),
             'ld_backupname_format':
                 confobj.safe_get('nec_backup_ldname_format'),
@@ -316,22 +311,9 @@ class MStorageVolumeCommon(object):
 
         return volformat % ldname
 
-    def get_ldset(self, ldsets, metadata=None):
+    def get_ldset(self, ldsets):
         ldset = None
-        if metadata is not None and 'ldset' in metadata:
-            ldset_meta = metadata['ldset']
-            LOG.debug('ldset(metadata)=%s.', ldset_meta)
-            for tldset in ldsets.values():
-                if tldset['ldsetname'] == ldset_meta:
-                    ldset = ldsets[ldset_meta]
-                    LOG.debug('ldset information(metadata specified)=%s.',
-                              ldset)
-                    break
-            if ldset is None:
-                msg = _('Logical Disk Set could not be found.')
-                LOG.error(msg)
-                raise exception.NotFound(msg)
-        elif self._properties['ldset_name'] == '':
+        if self._properties['ldset_name'] == '':
             nldset = len(ldsets)
             if nldset == 0:
                 msg = _('Logical Disk Set could not be found.')

@@ -1,0 +1,4 @@
+---
+upgrade:
+  - In NEC driver, the deprecated configuration parameter
+    `ldset_controller_node_name` was deleted.
