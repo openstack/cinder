@@ -17,10 +17,12 @@ Tests for Backup NFS driver.
 
 """
 import bz2
+import ddt
 import filecmp
 import hashlib
 import os
 import shutil
+import stat
 import tempfile
 import threading
 import zlib
@@ -39,7 +41,6 @@ from cinder.i18n import _
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
-from cinder import utils
 
 CONF = cfg.CONF
 
@@ -56,8 +57,10 @@ FAKE_BACKUP_ID_REST = fake.BACKUP_ID[4:]
 UPDATED_CONTAINER_NAME = os.path.join(FAKE_BACKUP_ID_PART1,
                                       FAKE_BACKUP_ID_PART2,
                                       FAKE_BACKUP_ID)
+FAKE_EGID = 1234
 
 
+@ddt.ddt
 class BackupNFSShareTestCase(test.TestCase):
 
     def setUp(self):
@@ -74,8 +77,20 @@ class BackupNFSShareTestCase(test.TestCase):
         self.assertRaises(exception.InvalidConfigurationValue,
                           driver.check_for_setup_error)
 
-    @mock.patch.object(remotefs_brick, 'RemoteFsClient')
-    def test_init_backup_repo_path(self, mock_remotefs_client_class):
+    @mock.patch('os.getegid', return_value=FAKE_EGID)
+    @mock.patch('cinder.utils.get_file_gid')
+    @mock.patch('cinder.utils.get_file_mode')
+    @ddt.data((FAKE_EGID, 0),
+              (FAKE_EGID, stat.S_IWGRP),
+              (6666, 0),
+              (6666, stat.S_IWGRP))
+    @ddt.unpack
+    def test_init_backup_repo_path(self,
+                                   file_gid,
+                                   file_mode,
+                                   mock_get_file_mode,
+                                   mock_get_file_gid,
+                                   mock_getegid):
         self.override_config('backup_share', FAKE_BACKUP_SHARE)
         self.override_config('backup_mount_point_base',
                              FAKE_BACKUP_MOUNT_POINT_BASE)
@@ -83,24 +98,42 @@ class BackupNFSShareTestCase(test.TestCase):
         mock_remotefsclient.get_mount_point = mock.Mock(
             return_value=FAKE_BACKUP_PATH)
         self.mock_object(nfs.NFSBackupDriver, 'check_for_setup_error')
-        mock_remotefs_client_class.return_value = mock_remotefsclient
-        self.mock_object(utils, 'get_root_helper')
+        self.mock_object(remotefs_brick, 'RemoteFsClient',
+                         return_value=mock_remotefsclient)
+
         with mock.patch.object(nfs.NFSBackupDriver, '_init_backup_repo_path'):
             driver = nfs.NFSBackupDriver(self.ctxt)
+
+        mock_get_file_gid.return_value = file_gid
+        mock_get_file_mode.return_value = file_mode
+        mock_execute = self.mock_object(driver, '_execute')
 
         path = driver._init_backup_repo_path()
 
         self.assertEqual(FAKE_BACKUP_PATH, path)
-        utils.get_root_helper.called_once()
-        mock_remotefs_client_class.assert_called_once_with(
-            'nfs',
-            utils.get_root_helper(),
-            nfs_mount_point_base=FAKE_BACKUP_MOUNT_POINT_BASE,
-            nfs_mount_options=None
-        )
         mock_remotefsclient.mount.assert_called_once_with(FAKE_BACKUP_SHARE)
         mock_remotefsclient.get_mount_point.assert_called_once_with(
             FAKE_BACKUP_SHARE)
+
+        mock_execute_calls = []
+        if file_gid != FAKE_EGID:
+            mock_execute_calls.append(
+                mock.call('chgrp',
+                          FAKE_EGID,
+                          path,
+                          root_helper=driver._root_helper,
+                          run_as_root=True))
+
+        if not (file_mode & stat.S_IWGRP):
+            mock_execute_calls.append(
+                mock.call('chmod',
+                          'g+w',
+                          path,
+                          root_helper=driver._root_helper,
+                          run_as_root=True))
+
+        mock_execute.assert_has_calls(mock_execute_calls, any_order=True)
+        self.assertEqual(len(mock_execute_calls), mock_execute.call_count)
 
 
 def fake_md5(arg):
@@ -164,13 +197,10 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self.addCleanup(self.volume_file.close)
         self.override_config('backup_share', FAKE_BACKUP_SHARE)
         self.override_config('backup_mount_point_base',
-                             '/tmp')
+                             FAKE_BACKUP_MOUNT_POINT_BASE)
         self.override_config('backup_file_size', 52428800)
-        mock_remotefsclient = mock.Mock()
-        mock_remotefsclient.get_mount_point = mock.Mock(
-            return_value=self.temp_dir)
-        self.mock_object(remotefs_brick, 'RemoteFsClient',
-                         return_value=mock_remotefsclient)
+        self.mock_object(nfs.NFSBackupDriver, '_init_backup_repo_path',
+                         return_value=self.temp_dir)
         # Remove tempdir.
         self.addCleanup(shutil.rmtree, self.temp_dir)
         self.size_volume_file = 0
