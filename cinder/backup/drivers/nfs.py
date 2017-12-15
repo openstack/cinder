@@ -16,7 +16,11 @@
 
 """Implementation of a backup service that uses NFS storage as the backend."""
 
+import os
+import stat
+
 from os_brick.remotefs import remotefs as remotefs_brick
+from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 from oslo_log import log as logging
 
@@ -54,6 +58,8 @@ class NFSBackupDriver(posix.PosixBackupDriver):
         self.backup_mount_point_base = CONF.backup_mount_point_base
         self.backup_share = CONF.backup_share
         self.mount_options = CONF.backup_mount_options
+        self._execute = putils.execute
+        self._root_helper = utils.get_root_helper()
         backup_path = self._init_backup_repo_path()
         LOG.debug("Using NFS backup repository: %s", backup_path)
         super(NFSBackupDriver, self).__init__(context,
@@ -71,11 +77,29 @@ class NFSBackupDriver(posix.PosixBackupDriver):
     def _init_backup_repo_path(self):
         remotefsclient = remotefs_brick.RemoteFsClient(
             'nfs',
-            utils.get_root_helper(),
+            self._root_helper,
             nfs_mount_point_base=self.backup_mount_point_base,
             nfs_mount_options=self.mount_options)
         remotefsclient.mount(self.backup_share)
-        return remotefsclient.get_mount_point(self.backup_share)
+
+        # Ensure we can write to this share
+        mount_path = remotefsclient.get_mount_point(self.backup_share)
+
+        group_id = os.getegid()
+        current_group_id = utils.get_file_gid(mount_path)
+        current_mode = utils.get_file_mode(mount_path)
+
+        if group_id != current_group_id:
+            cmd = ['chgrp', group_id, mount_path]
+            self._execute(*cmd, root_helper=self._root_helper,
+                          run_as_root=True)
+
+        if not (current_mode & stat.S_IWGRP):
+            cmd = ['chmod', 'g+w', mount_path]
+            self._execute(*cmd, root_helper=self._root_helper,
+                          run_as_root=True)
+
+        return mount_path
 
 
 def get_backup_driver(context):
