@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The old deprecated ``netapp_eseries_host_type`` option has been removed.
+    Use the ``netapp_host_type`` instead.
