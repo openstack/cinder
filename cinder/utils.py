@@ -431,6 +431,13 @@ def temporary_chown(path, owner_uid=None):
 
     :params owner_uid: UID of temporary owner (defaults to current user)
     """
+
+    if os.name == 'nt':
+        LOG.debug("Skipping chown for %s as this operation is "
+                  "not available on Windows.", path)
+        yield
+        return
+
     if owner_uid is None:
         owner_uid = os.getuid()
 

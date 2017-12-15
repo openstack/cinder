@@ -275,6 +275,10 @@ class BackupManager(manager.ThreadPoolManager):
         try:
             temp_snapshot = objects.Snapshot.get_by_id(
                 ctxt, backup.temp_snapshot_id)
+            # We may want to consider routing those calls through the
+            # cinder API.
+            temp_snapshot.status = fields.SnapshotStatus.DELETING
+            temp_snapshot.save()
             self.volume_rpcapi.delete_snapshot(ctxt, temp_snapshot)
         except exception.SnapshotNotFound:
             LOG.debug("Could not find temp snapshot %(snap)s to clean "
@@ -432,12 +436,12 @@ class BackupManager(manager.ThreadPoolManager):
                 if (isinstance(device_path, six.string_types) and
                         not os.path.isdir(device_path)):
                     if backup_device.secure_enabled:
-                        with open(device_path) as device_file:
+                        with open(device_path, 'rb') as device_file:
                             updates = backup_service.backup(
                                 backup, tpool.Proxy(device_file))
                     else:
                         with utils.temporary_chown(device_path):
-                            with open(device_path) as device_file:
+                            with open(device_path, 'rb') as device_file:
                                 updates = backup_service.backup(
                                     backup, tpool.Proxy(device_file))
                 # device_path is already file-like so no need to open it
@@ -551,15 +555,16 @@ class BackupManager(manager.ThreadPoolManager):
         # with native threads proxy-wrapping the device file object.
         try:
             device_path = attach_info['device']['path']
+            open_mode = 'rb+' if os.name == 'nt' else 'wb'
             if (isinstance(device_path, six.string_types) and
                     not os.path.isdir(device_path)):
                 if secure_enabled:
-                    with open(device_path, 'wb') as device_file:
+                    with open(device_path, open_mode) as device_file:
                         backup_service.restore(backup, volume.id,
                                                tpool.Proxy(device_file))
                 else:
                     with utils.temporary_chown(device_path):
-                        with open(device_path, 'wb') as device_file:
+                        with open(device_path, open_mode) as device_file:
                             backup_service.restore(backup, volume.id,
                                                    tpool.Proxy(device_file))
             # device_path is already file-like so no need to open it
@@ -987,7 +992,8 @@ class BackupManager(manager.ThreadPoolManager):
             protocol,
             use_multipath=use_multipath,
             device_scan_attempts=device_scan_attempts,
-            conn=conn)
+            conn=conn,
+            expect_raw_disk=True)
         vol_handle = connector.connect_volume(conn['data'])
 
         return {'conn': conn, 'device': vol_handle, 'connector': connector}

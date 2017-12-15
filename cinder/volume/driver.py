@@ -1255,6 +1255,7 @@ class BaseVD(object):
                     temp_snap_ref.destroy()
 
         temp_snap_ref.status = fields.SnapshotStatus.AVAILABLE
+        temp_snap_ref.progress = '100%'
         temp_snap_ref.save()
         return temp_snap_ref
 

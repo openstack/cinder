@@ -32,6 +32,7 @@ import mock
 from oslo_config import cfg
 from swiftclient import client as swift
 
+from cinder.backup import chunkeddriver
 from cinder.backup.drivers import swift as swift_dr
 from cinder import context
 from cinder import db
@@ -873,3 +874,71 @@ class BackupSwiftTestCase(test.TestCase):
 
         self.assertEqual('none', result[0])
         self.assertEqual(already_compressed_data, result[1])
+
+
+class WindowsBackupSwiftTestCase(BackupSwiftTestCase):
+    # We're running all the parent class tests, while doing
+    # some patching in order to simulate Windows behavior.
+    def setUp(self):
+        self._mock_utilsfactory = mock.Mock()
+
+        platform_patcher = mock.patch('sys.platform', 'win32')
+        platform_patcher.start()
+        self.addCleanup(platform_patcher.stop)
+
+        super(WindowsBackupSwiftTestCase, self).setUp()
+
+        read = self.volume_file.read
+
+        def win32_read(sz):
+            # We're simulating the Windows behavior.
+            if self.volume_file.tell() > fake_get_size():
+                raise IOError()
+            return read(sz)
+
+        read_patcher = mock.patch.object(
+            self.volume_file, 'read', win32_read)
+        read_patcher.start()
+        self.addCleanup(read_patcher.stop)
+
+        def fake_get_size(*args, **kwargs):
+            pos = self.volume_file.tell()
+            sz = self.volume_file.seek(0, 2)
+            self.volume_file.seek(pos)
+            return sz
+
+        self._disk_size_getter_mocker = mock.patch.object(
+            swift_dr.SwiftBackupDriver,
+            '_get_win32_phys_disk_size',
+            fake_get_size)
+
+        self._disk_size_getter_mocker.start()
+        self.addCleanup(self._disk_size_getter_mocker.stop)
+
+    def test_invalid_chunk_size(self):
+        self.flags(backup_swift_object_size=1000)
+        # We expect multiples of 4096
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          swift_dr.SwiftBackupDriver,
+                          self.ctxt)
+
+    @mock.patch.object(chunkeddriver, 'os_win_utilsfactory', create=True)
+    def test_get_phys_disk_size(self, mock_utilsfactory):
+        # We're patching this method in setUp, so we need to
+        # retrieve the original one. Note that we'll get an unbound
+        # method.
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        get_disk_size = self._disk_size_getter_mocker.temp_original
+
+        disk_utils = mock_utilsfactory.get_diskutils.return_value
+        disk_utils.get_device_number_from_device_name.return_value = (
+            mock.sentinel.dev_num)
+        disk_utils.get_disk_size.return_value = mock.sentinel.disk_size
+
+        disk_size = get_disk_size(service, mock.sentinel.disk_path)
+
+        self.assertEqual(mock.sentinel.disk_size, disk_size)
+        disk_utils.get_device_number_from_device_name.assert_called_once_with(
+            mock.sentinel.disk_path)
+        disk_utils.get_disk_size.assert_called_once_with(
+            mock.sentinel.dev_num)

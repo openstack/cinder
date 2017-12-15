@@ -25,6 +25,7 @@ import abc
 import hashlib
 import json
 import os
+import sys
 
 import eventlet
 from oslo_config import cfg
@@ -40,6 +41,9 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
 from cinder.volume import utils as volume_utils
+
+if sys.platform == 'win32':
+    from os_win import utilsfactory as os_win_utilsfactory
 
 LOG = logging.getLogger(__name__)
 
@@ -115,6 +119,13 @@ class ChunkedBackupDriver(driver.BackupDriver):
         self.compressor = \
             self._get_compressor(CONF.backup_compression_algorithm)
         self.support_force_delete = True
+
+        if sys.platform == 'win32' and self.chunk_size_bytes % 4096:
+            # The chunk size must be a multiple of the sector size. In order
+            # to fail out early and avoid attaching the disks, we'll just
+            # enforce the chunk size to be a multiple of 4096.
+            err = _("Invalid chunk size. It must be a multiple of 4096.")
+            raise exception.InvalidConfigurationValue(message=err)
 
     def _get_object_writer(self, container, object_name, extra_metadata=None):
         """Return writer proxy-wrapped to execute methods in native thread."""
@@ -453,6 +464,12 @@ class ChunkedBackupDriver(driver.BackupDriver):
                                                extra_usage_info=
                                                object_meta)
 
+    def _get_win32_phys_disk_size(self, disk_path):
+        win32_diskutils = os_win_utilsfactory.get_diskutils()
+        disk_number = win32_diskutils.get_device_number_from_device_name(
+            disk_path)
+        return win32_diskutils.get_disk_size(disk_number)
+
     def backup(self, backup, volume_file, backup_metadata=True):
         """Backup the given volume.
 
@@ -487,6 +504,13 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 err = _('Volume size increased since the last '
                         'backup. Do a full backup.')
                 raise exception.InvalidBackup(reason=err)
+
+        if sys.platform == 'win32':
+            # When dealing with Windows physical disks, we need the exact
+            # size of the disk. Attempting to read passed this boundary will
+            # lead to an IOError exception. At the same time, we cannot
+            # seek to the end of file.
+            win32_disk_size = self._get_win32_phys_disk_size(volume_file.name)
 
         (object_meta, object_sha256, extra_metadata, container,
          volume_size_bytes) = self._prepare_backup(backup)
@@ -526,7 +550,14 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 LOG.debug('Cancel the backup process of %s.', backup.id)
                 break
             data_offset = volume_file.tell()
-            data = volume_file.read(self.chunk_size_bytes)
+
+            if sys.platform == 'win32':
+                read_bytes = min(self.chunk_size_bytes,
+                                 win32_disk_size - data_offset)
+            else:
+                read_bytes = self.chunk_size_bytes
+            data = volume_file.read(read_bytes)
+
             if data == b'':
                 break
 
