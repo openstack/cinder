@@ -17,7 +17,7 @@ storage node, you must prepare the storage device.
 
      .. code-block:: console
 
-        # yum install lvm2
+        # yum install lvm2 device-mapper-persistent-data
 
      .. end
 
