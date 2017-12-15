@@ -15,7 +15,7 @@ storage node, you must prepare the storage device.
 
    .. code-block:: console
 
-      # apt install lvm2
+      # apt install lvm2 thin-provisioning-tools
 
    .. end
 
