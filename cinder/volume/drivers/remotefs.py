@@ -986,6 +986,9 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
         return not utils.paths_normcase_equal(active_fpath, base_vol_path)
 
+    def _is_volume_attached(self, volume):
+        return volume.attach_status == fields.VolumeAttachStatus.ATTACHED
+
     def _create_cloned_volume(self, volume, src_vref):
         LOG.info('Cloning volume %(src)s to volume %(dst)s',
                  {'src': src_vref.id,
@@ -1073,10 +1076,10 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         :returns: None
 
         """
-
         LOG.debug('Deleting %(type)s snapshot %(snap)s of volume %(vol)s',
                   {'snap': snapshot.id, 'vol': snapshot.volume.id,
-                   'type': ('online' if snapshot.volume.status == 'in-use'
+                   'type': ('online'
+                            if self._is_volume_attached(snapshot.volume)
                             else 'offline')})
 
         volume_status = snapshot.volume.status
@@ -1129,7 +1132,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         # Find what file has this as its backing file
         active_file = self.get_active_image_from_info(snapshot.volume)
 
-        if volume_status == 'in-use':
+        if self._is_volume_attached(snapshot.volume):
             # Online delete
             context = snapshot._context
 
@@ -1385,7 +1388,8 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
         LOG.debug('Creating %(type)s snapshot %(snap)s of volume %(vol)s',
                   {'snap': snapshot.id, 'vol': snapshot.volume.id,
-                   'type': ('online' if snapshot.volume.status == 'in-use'
+                   'type': ('online'
+                            if self._is_volume_attached(snapshot.volume)
                             else 'offline')})
 
         status = snapshot.volume.status
@@ -1405,7 +1409,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             snapshot.volume)
         new_snap_path = self._get_new_snap_path(snapshot)
 
-        if status == 'in-use':
+        if self._is_volume_attached(snapshot.volume):
             self._create_snapshot_online(snapshot,
                                          backing_filename,
                                          new_snap_path)
