@@ -389,6 +389,10 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(volumes.c.shared_targets.type,
                               self.BOOL_TYPE)
 
+    def _check_116(self, engine, data):
+        volume_attachment = db_utils.get_table(engine, 'volume_attachment')
+        self.assertIn('connector', volume_attachment.c)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
         self.assert_each_foreign_key_is_part_of_an_index()

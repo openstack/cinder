@@ -31,7 +31,8 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
     # Version 1.0: Initial version
     # Version 1.1: Added volume relationship
     # Version 1.2: Added connection_info attribute
-    VERSION = '1.2'
+    # Version 1.3: Added the connector attribute.
+    VERSION = '1.3'
 
     OPTIONAL_FIELDS = ['volume']
     obj_extra_fields = ['project_id', 'volume_host']
@@ -50,7 +51,8 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
         'attach_mode': fields.StringField(nullable=True),
 
         'volume': fields.ObjectField('Volume', nullable=False),
-        'connection_info': c_fields.DictOfNullableField(nullable=True)
+        'connection_info': c_fields.DictOfNullableField(nullable=True),
+        'connector': c_fields.DictOfNullableField(nullable=True)
     }
 
     @property
@@ -70,6 +72,8 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
         super(VolumeAttachment, self).obj_make_compatible(primitive,
                                                           target_version)
         target_version = versionutils.convert_version_to_tuple(target_version)
+        if target_version < (1, 3):
+            primitive.pop('connector', None)
         if target_version < (1, 2):
             primitive.pop('connection_info', None)
 
@@ -85,9 +89,10 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
             value = db_attachment.get(name)
             if isinstance(field, fields.IntegerField):
                 value = value or 0
-            if name == 'connection_info':
-                attachment.connection_info = jsonutils.loads(
-                    value) if value else None
+            if name in ('connection_info', 'connector'):
+                # Both of these fields are nullable serialized json dicts.
+                setattr(attachment, name,
+                        jsonutils.loads(value) if value else None)
             else:
                 attachment[name] = value
         if 'volume' in expected_attrs:
@@ -95,6 +100,24 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
             if db_volume:
                 attachment.volume = objects.Volume._from_db_object(
                     context, objects.Volume(), db_volume)
+
+        # This is an online data migration which we should remove when enough
+        # time has passed and we have a blocker schema migration to check to
+        # make sure that the attachment_specs table is empty. Operators should
+        # run the "cinder-manage db online_data_migrations" CLI to force the
+        # migration on-demand.
+        # TODO(mriedem): Need a hook for the online_data_migration CLI to query
+        # the database for all attachment_specs entries and migrate their
+        # related volume_attachment records using this object.
+        connector = db.attachment_specs_get(context, attachment.id)
+        if connector:
+            # Update ourselves and delete the attachment_specs.
+            attachment.connector = connector
+            attachment.save()
+            # TODO(mriedem): Really need a delete-all method for this.
+            for spec_key in connector:
+                db.attachment_specs_delete(
+                    context, attachment.id, spec_key)
 
         attachment._context = context
         attachment.obj_reset_changes()
@@ -121,11 +144,19 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
         if properties is not None:
             updates['connection_info'] = jsonutils.dumps(properties)
 
+    @staticmethod
+    def _convert_connector_to_db_format(updates):
+        connector = updates.pop('connector', None)
+        if connector is not None:
+            updates['connector'] = jsonutils.dumps(connector)
+
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
             if 'connection_info' in updates:
                 self._convert_connection_info_to_db_format(updates)
+            if 'connector' in updates:
+                self._convert_connector_to_db_format(updates)
             if 'volume' in updates:
                 raise exception.ObjectActionError(action='save',
                                                   reason=_('volume changed'))

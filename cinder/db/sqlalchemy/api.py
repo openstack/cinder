@@ -2109,7 +2109,7 @@ def _attachment_specs_query(context, attachment_id, session=None):
 
 @require_context
 def attachment_specs_get(context, attachment_id):
-    """Fetch the attachment_specs for the specified attachment record."""
+    """DEPRECATED: Fetch the attachment_specs for the specified attachment."""
     rows = _attachment_specs_query(context, attachment_id).\
         all()
 
@@ -2119,7 +2119,7 @@ def attachment_specs_get(context, attachment_id):
 
 @require_context
 def attachment_specs_delete(context, attachment_id, key):
-    """Delete attachment_specs for the specified attachment record."""
+    """DEPRECATED: Delete attachment_specs for the specified attachment."""
     session = get_session()
     with session.begin():
         _attachment_specs_get_item(context,
@@ -2156,7 +2156,7 @@ def _attachment_specs_get_item(context,
 def attachment_specs_update_or_create(context,
                                       attachment_id,
                                       specs):
-    """Update attachment_specs for the specified attachment record."""
+    """DEPRECATED: Update attachment_specs for the specified attachment."""
     session = get_session()
     with session.begin():
         spec_ref = None
