@@ -39,7 +39,6 @@ logging.register_options(CONF)
 core_opts = [
     cfg.StrOpt('state_path',
                default='/var/lib/cinder',
-               deprecated_name='pybasedir',
                help="Top-level directory for maintaining cinder's state"), ]
 
 CONF.register_cli_opts(core_opts)
