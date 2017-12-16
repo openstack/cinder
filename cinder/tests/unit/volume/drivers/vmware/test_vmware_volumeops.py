@@ -1184,9 +1184,32 @@ class VolumeOpsTestCase(test.TestCase):
     def test_clone_backing_with_empty_folder(self):
         self._test_clone_backing('linked', None)
 
+    def _create_controller_device(self, controller_type):
+        dev = mock.Mock()
+        dev.__class__.__name__ = controller_type
+        return dev
+
+    def test_get_controller(self):
+        disk = self._create_disk_device('foo.vmdk')
+        controller1 = self._create_controller_device(
+            volumeops.ControllerType.LSI_LOGIC)
+        controller2 = self._create_controller_device(
+            volumeops.ControllerType.PARA_VIRTUAL)
+        self.session.invoke_api.return_value = [disk, controller1, controller2]
+
+        backing = mock.sentinel.backing
+        ret = self.vops._get_controller(
+            backing, volumeops.VirtualDiskAdapterType.PARA_VIRTUAL)
+        self.assertEqual(controller2, ret)
+        self.session.invoke_api.assert_called_once_with(
+            vim_util, 'get_object_property', self.session.vim, backing,
+            'config.hardware.device')
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_controller', return_value=None)
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 '_create_specs_for_disk_add')
-    def test_attach_disk_to_backing(self, create_spec):
+    def test_attach_disk_to_backing(self, create_spec, get_controller):
         reconfig_spec = mock.Mock()
         self.session.vim.client.factory.create.return_value = reconfig_spec
         disk_add_config_specs = mock.Mock()
@@ -1204,10 +1227,48 @@ class VolumeOpsTestCase(test.TestCase):
                                          adapter_type, profile_id,
                                          vmdk_ds_file_path)
 
+        get_controller.assert_called_once_with(backing, adapter_type)
         self.assertEqual(disk_add_config_specs, reconfig_spec.deviceChange)
         create_spec.assert_called_once_with(
             size_in_kb, disk_type, adapter_type, profile_id,
             vmdk_ds_file_path=vmdk_ds_file_path)
+        self.session.invoke_api.assert_called_once_with(self.session.vim,
+                                                        "ReconfigVM_Task",
+                                                        backing,
+                                                        spec=reconfig_spec)
+        self.session.wait_for_task.assert_called_once_with(task)
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_controller')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_create_virtual_disk_config_spec')
+    def test_attach_disk_to_backing_existing_controller(
+            self, create_disk_spec, get_controller):
+        key = mock.sentinel.key
+        controller = mock.Mock(key=key)
+        get_controller.return_value = controller
+
+        reconfig_spec = mock.Mock()
+        self.session.vim.client.factory.create.return_value = reconfig_spec
+        disk_spec = mock.Mock()
+        create_disk_spec.return_value = disk_spec
+        task = mock.Mock()
+        self.session.invoke_api.return_value = task
+
+        backing = mock.Mock()
+        size_in_kb = units.Ki
+        disk_type = "thin"
+        adapter_type = "ide"
+        profile_id = mock.sentinel.profile_id
+        vmdk_ds_file_path = mock.sentinel.vmdk_ds_file_path
+        self.vops.attach_disk_to_backing(backing, size_in_kb, disk_type,
+                                         adapter_type, profile_id,
+                                         vmdk_ds_file_path)
+
+        get_controller.assert_called_once_with(backing, adapter_type)
+        self.assertEqual([disk_spec], reconfig_spec.deviceChange)
+        create_disk_spec.assert_called_once_with(
+            size_in_kb, disk_type, key, profile_id, vmdk_ds_file_path)
         self.session.invoke_api.assert_called_once_with(self.session.vim,
                                                         "ReconfigVM_Task",
                                                         backing,

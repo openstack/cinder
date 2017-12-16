@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    VMware VMDK driver now supports changing adpater type using retype.
+    To change the adapter type, set ``vmware:adapter_type`` in the
+    new volume type.
