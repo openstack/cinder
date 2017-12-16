@@ -22,18 +22,19 @@ Cinder Volume driver for Fujitsu ETERNUS DX S3 series.
 import ast
 import base64
 import hashlib
-import six
 import time
-from xml.etree.ElementTree import parse
 
-from cinder import exception
-from cinder.i18n import _
-from cinder.volume import configuration as conf
+from defusedxml import ElementTree as ET
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import units
+import six
+
+from cinder import exception
+from cinder.i18n import _
+from cinder.volume import configuration as conf
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
@@ -1099,7 +1100,7 @@ class FJDXCommon(object):
         LOG.debug("_get_drvcfg, input[%(filename)s][%(tagname)s].",
                   {'filename': filename, 'tagname': tagname})
 
-        tree = parse(filename)
+        tree = ET.parse(filename)
         elem = tree.getroot()
 
         ret = None

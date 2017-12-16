@@ -19,7 +19,7 @@ import hashlib
 import math
 import time
 
-from lxml import etree
+from defusedxml import lxml as etree
 from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import units

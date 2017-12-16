@@ -14,14 +14,11 @@
 #    under the License.
 
 import base64
-try:
-    import xml.etree.cElementTree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
 
 from ddt import data
 from ddt import ddt
 from ddt import unpack
+from defusedxml import cElementTree as ET
 import eventlet
 import mock
 from oslo_config import cfg

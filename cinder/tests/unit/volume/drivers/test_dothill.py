@@ -16,8 +16,7 @@
 #
 """Unit tests for OpenStack Cinder DotHill driver."""
 
-
-from lxml import etree
+from defusedxml import lxml as etree
 import mock
 import requests
 
@@ -205,7 +204,7 @@ class TestDotHillClient(test.TestCase):
                                      RequestException("error")]
         mock_requests_get.return_value = m
         ret = self.client._api_request('/path')
-        self.assertTrue(type(ret) == etree._Element)
+        self.assertTrue(type(ret) == etree.RestrictedElement)
         self.assertRaises(exception.DotHillConnectionError,
                           self.client._api_request,
                           '/path')
