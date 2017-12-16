@@ -385,8 +385,8 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
             0, 1, self.fake_volumes_dir, ('foo', 'bar'),
             check_exit_code=False,
             old_name=None,
-            portals_ips=[self.configuration.iscsi_ip_address],
-            portals_port=self.configuration.iscsi_port)
+            portals_ips=[self.configuration.target_ip_address],
+            portals_port=self.configuration.target_port)
 
     @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_create_iscsi_target_retry(self):

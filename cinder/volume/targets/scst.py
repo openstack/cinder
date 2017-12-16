@@ -28,7 +28,7 @@ class SCSTAdm(iscsi.ISCSITarget):
         super(SCSTAdm, self).__init__(*args, **kwargs)
         self.volumes_dir = self.configuration.safe_get('volumes_dir')
         self.iscsi_target_prefix = self.configuration.safe_get(
-            'iscsi_target_prefix')
+            'target_prefix')
         self.target_name = self.configuration.safe_get('scst_target_iqn_name')
         self.target_driver = self.configuration.safe_get('scst_target_driver')
         self.chap_username = self.configuration.safe_get('chap_username')
@@ -231,12 +231,12 @@ class SCSTAdm(iscsi.ISCSITarget):
         return tid
 
     def _iscsi_location(self, ip, target, iqn, lun=None):
-        return "%s:%s,%s %s %s" % (ip, self.configuration.iscsi_port,
+        return "%s:%s,%s %s %s" % (ip, self.configuration.target_port,
                                    target, iqn, lun)
 
     def _get_iscsi_name(self, volume):
         if self.target_name is None:
-            return "%s%s" % (self.configuration.iscsi_target_prefix,
+            return "%s%s" % (self.configuration.target_prefix,
                              volume['name'])
         else:
             return self.target_name
@@ -296,7 +296,7 @@ class SCSTAdm(iscsi.ISCSITarget):
 
         data = {}
         data['location'] = self._iscsi_location(
-            self.configuration.iscsi_ip_address, tid, iscsi_name, lun)
+            self.configuration.target_ip_address, tid, iscsi_name, lun)
         LOG.debug('Set provider_location to: %s', data['location'])
         data['auth'] = self._iscsi_authentication(
             'CHAP', *chap_auth)

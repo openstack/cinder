@@ -790,7 +790,7 @@ class DrbdManageIscsiDriver(DrbdManageBaseDriver):
     def __init__(self, *args, **kwargs):
         super(DrbdManageIscsiDriver, self).__init__(*args, **kwargs)
         target_driver = self.target_mapping[
-            self.configuration.safe_get('iscsi_helper')]
+            self.configuration.safe_get('target_helper')]
 
         LOG.debug('Attempting to initialize DRBD driver with the '
                   'following target_driver: %s',

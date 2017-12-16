@@ -465,9 +465,9 @@ class SynoCommonTestCase(test.TestCase):
     def setup_configuration(self):
         config = mock.Mock(spec=conf.Configuration)
         config.use_chap_auth = False
-        config.iscsi_protocol = 'iscsi'
-        config.iscsi_ip_address = IP
-        config.iscsi_port = 3260
+        config.target_protocol = 'iscsi'
+        config.target_ip_address = IP
+        config.target_port = 3260
         config.synology_admin_port = 5000
         config.synology_username = 'admin'
         config.synology_password = 'admin'
@@ -475,7 +475,7 @@ class SynoCommonTestCase(test.TestCase):
         config.synology_one_time_pass = '123456'
         config.synology_pool_name = POOL_NAME
         config.volume_dd_blocksize = 1
-        config.iscsi_target_prefix = 'iqn.2000-01.com.synology:'
+        config.target_prefix = 'iqn.2000-01.com.synology:'
         config.chap_username = 'abcd'
         config.chap_password = 'qwerty'
         config.reserved_percentage = 0
@@ -489,7 +489,7 @@ class SynoCommonTestCase(test.TestCase):
     @mock.patch.object(common, 'APIRequest')
     def test___init__(self, _request, _get_node_uuid):
         self.conf.safe_get = (mock.Mock(side_effect=[
-            self.conf.iscsi_ip_address,
+            self.conf.target_ip_address,
             '',
             '']))
 
@@ -818,7 +818,7 @@ class SynoCommonTestCase(test.TestCase):
             'success': True
         }
         trg_name = self.common.TARGET_NAME_PREFIX + VOLUME['id']
-        iqn = self.conf.iscsi_target_prefix + trg_name
+        iqn = self.conf.target_prefix + trg_name
         self.conf.use_chap_auth = True
         self.common.exec_webapi = mock.Mock(return_value=out)
         self.conf.safe_get = (
@@ -826,7 +826,7 @@ class SynoCommonTestCase(test.TestCase):
                       self.conf.use_chap_auth,
                       'abcd',
                       'qwerty',
-                      self.conf.iscsi_target_prefix]))
+                      self.conf.target_prefix]))
         result = self.common._target_create(VOLUME['id'])
         (self.common.exec_webapi.
             assert_called_with('SYNO.Core.ISCSI.Target',
@@ -848,12 +848,12 @@ class SynoCommonTestCase(test.TestCase):
             'success': True
         }
         trg_name = self.common.TARGET_NAME_PREFIX + VOLUME['id']
-        iqn = self.conf.iscsi_target_prefix + trg_name
+        iqn = self.conf.target_prefix + trg_name
         self.common.exec_webapi = mock.Mock(return_value=out)
         self.conf.safe_get = (
             mock.Mock(side_effect=[
                       self.conf.use_chap_auth,
-                      self.conf.iscsi_target_prefix]))
+                      self.conf.target_prefix]))
         result = self.common._target_create(VOLUME['id'])
         (self.common.exec_webapi.
             assert_called_with('SYNO.Core.ISCSI.Target',
@@ -880,9 +880,9 @@ class SynoCommonTestCase(test.TestCase):
         self.conf.safe_get = (
             mock.Mock(side_effect=[
                       self.conf.use_chap_auth,
-                      self.conf.iscsi_target_prefix,
+                      self.conf.target_prefix,
                       self.conf.use_chap_auth,
-                      self.conf.iscsi_target_prefix]))
+                      self.conf.target_prefix]))
 
         self.assertRaises(exception.VolumeDriverException,
                           self.common._target_create,
@@ -1287,11 +1287,11 @@ class SynoCommonTestCase(test.TestCase):
 
     def test_get_ip(self):
         result = self.common.get_ip()
-        self.assertEqual(self.conf.iscsi_ip_address, result)
+        self.assertEqual(self.conf.target_ip_address, result)
 
     def test_get_provider_location(self):
         self.common.get_ip = (
-            mock.Mock(return_value=self.conf.iscsi_ip_address))
+            mock.Mock(return_value=self.conf.target_ip_address))
         self.conf.safe_get = (
             mock.Mock(return_value=['10.0.0.2', '10.0.0.3']))
         expected = ('10.0.0.1:3260;10.0.0.2:3260;10.0.0.3:3260' +

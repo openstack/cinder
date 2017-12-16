@@ -42,7 +42,7 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
         properties['volume_id'] = volume['id']
 
         dpl_server = self.configuration.san_ip
-        dpl_iscsi_port = self.configuration.iscsi_port
+        dpl_iscsi_port = self.configuration.target_port
         ret, output = self.dpl.assign_vdev(self._conver_uuid2hex(
             volume['id']), connector['initiator'].lower(), volume['id'],
             '%s:%d' % (dpl_server, dpl_iscsi_port), 0)

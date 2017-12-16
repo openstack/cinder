@@ -118,7 +118,7 @@ class FlashSystemISCSIDriverTestCase(test.TestCase):
                            'san_password': 'password',
                            'flashsystem_connection_protocol': 'iSCSI',
                            'flashsystem_multihostmap_enabled': True,
-                           'iscsi_ip_address': '192.168.1.10',
+                           'target_ip_address': '192.168.1.10',
                            'flashsystem_iscsi_portid': 1}
 
         self.connector = {

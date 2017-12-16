@@ -3510,7 +3510,7 @@ class HPE3PARCommon(object):
             self._client_conf['hpe3par_iscsi_chap_enabled'] = (
                 conf.get('hpe3par_iscsi_chap_enabled'))
             self._client_conf['iscsi_ip_address'] = (
-                conf.get('iscsi_ip_address'))
+                conf.get('target_ip_address'))
             self._client_conf['iscsi_port'] = conf.get('iscsi_port')
         else:
             self._client_conf['hpe3par_cpg'] = (
@@ -3532,8 +3532,8 @@ class HPE3PARCommon(object):
             self._client_conf['hpe3par_iscsi_chap_enabled'] = (
                 self.config.hpe3par_iscsi_chap_enabled)
             self._client_conf['iscsi_ip_address'] = (
-                self.config.iscsi_ip_address)
-            self._client_conf['iscsi_port'] = self.config.iscsi_port
+                self.config.target_ip_address)
+            self._client_conf['iscsi_port'] = self.config.target_port
 
     def _get_cpg_from_cpg_map(self, cpg_map, target_cpg):
         ret_target_cpg = None

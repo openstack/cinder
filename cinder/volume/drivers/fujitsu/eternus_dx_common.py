@@ -1985,7 +1985,7 @@ class FJDXCommon(object):
 
         iscsi_properties_list = []
         iscsiip_list = self._get_drvcfg('EternusISCSIIP', multiple=True)
-        iscsi_port = self.configuration.iscsi_port
+        iscsi_port = self.configuration.target_port
 
         LOG.debug('_get_eternus_iscsi_properties, iplist: %s.', iscsiip_list)
 

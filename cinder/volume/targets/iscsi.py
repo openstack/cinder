@@ -36,9 +36,9 @@ class ISCSITarget(driver.Target):
     def __init__(self, *args, **kwargs):
         super(ISCSITarget, self).__init__(*args, **kwargs)
         self.iscsi_target_prefix = \
-            self.configuration.safe_get('iscsi_target_prefix')
+            self.configuration.safe_get('target_prefix')
         self.iscsi_protocol = \
-            self.configuration.safe_get('iscsi_protocol')
+            self.configuration.safe_get('target_protocol')
         self.protocol = 'iSCSI'
         self.volumes_dir = self.configuration.safe_get('volumes_dir')
 
@@ -111,7 +111,7 @@ class ISCSITarget(driver.Target):
             # others like LIO use 0.
             if (self.configuration.volume_driver ==
                     'cinder.volume.drivers.lvm.ThinLVMVolumeDriver' and
-                    self.configuration.iscsi_helper == 'tgtadm'):
+                    self.configuration.target_helper == 'tgtadm'):
                 lun = 1
             else:
                 lun = 0
@@ -170,23 +170,23 @@ class ISCSITarget(driver.Target):
             return None
 
         for target in out.splitlines():
-            if (self.configuration.safe_get('iscsi_ip_address') in target
+            if (self.configuration.safe_get('target_ip_address') in target
                     and volume_id in target):
                 return target
         return None
 
     def _get_portals_config(self):
         # Prepare portals configuration
-        portals_ips = ([self.configuration.iscsi_ip_address]
+        portals_ips = ([self.configuration.target_ip_address]
                        + self.configuration.iscsi_secondary_ip_addresses or [])
 
         return {'portals_ips': portals_ips,
-                'portals_port': self.configuration.iscsi_port}
+                'portals_port': self.configuration.target_port}
 
     def create_export(self, context, volume, volume_path):
         """Creates an export for a logical volume."""
         # 'iscsi_name': 'iqn.2010-10.org.openstack:volume-00000001'
-        iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
+        iscsi_name = "%s%s" % (self.configuration.target_prefix,
                                volume['name'])
         iscsi_target, lun = self._get_target_and_lun(context, volume)
 
@@ -210,7 +210,7 @@ class ISCSITarget(driver.Target):
                                        **portals_config)
         data = {}
         data['location'] = self._iscsi_location(
-            self.configuration.iscsi_ip_address, tid, iscsi_name, lun,
+            self.configuration.target_ip_address, tid, iscsi_name, lun,
             self.configuration.iscsi_secondary_ip_addresses)
         LOG.debug('Set provider_location to: %s', data['location'])
         data['auth'] = self._iscsi_authentication(
@@ -246,7 +246,7 @@ class ISCSITarget(driver.Target):
 
     def ensure_export(self, context, volume, volume_path):
         """Recreates an export for a logical volume."""
-        iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
+        iscsi_name = "%s%s" % (self.configuration.target_prefix,
                                volume['name'])
 
         chap_auth = self._get_target_chap_auth(context, volume)
@@ -301,7 +301,7 @@ class ISCSITarget(driver.Target):
 
     def _iscsi_location(self, ip, target, iqn, lun=None, ip_secondary=None):
         ip_secondary = ip_secondary or []
-        port = self.configuration.iscsi_port
+        port = self.configuration.target_port
         portals = map(lambda x: "%s:%s" % (x, port), [ip] + ip_secondary)
         return ("%(portals)s,%(target)s %(iqn)s %(lun)s"
                 % ({'portals': ";".join(portals),

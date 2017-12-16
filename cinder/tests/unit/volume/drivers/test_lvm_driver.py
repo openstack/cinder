@@ -85,7 +85,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
         self.configuration.volume_clear = 'zero'
         self.configuration.volume_clear_size = 0
         self.configuration.lvm_type = 'thin'
-        self.configuration.iscsi_helper = 'tgtadm'
+        self.configuration.target_helper = 'tgtadm'
         lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
                                          vg_obj=vg_obj, db=db)
 
@@ -877,9 +877,9 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
     def setUp(self):
         super(LVMISCSITestCase, self).setUp()
         self.configuration = mock.Mock(conf.Configuration)
-        self.configuration.iscsi_target_prefix = 'iqn.2010-10.org.openstack:'
-        self.configuration.iscsi_ip_address = '0.0.0.0'
-        self.configuration.iscsi_port = 3260
+        self.configuration.target_prefix = 'iqn.2010-10.org.openstack:'
+        self.configuration.target_ip_address = '0.0.0.0'
+        self.configuration.target_port = 3260
 
     def _attach_volume(self):
         """Attach volumes to an instance."""
@@ -906,7 +906,7 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
             cinder.volume.targets.tgt.TgtAdm(
                 configuration=self.configuration)
 
-        ret = ("%s dummy" % CONF.iscsi_ip_address, '')
+        ret = ("%s dummy" % CONF.target_ip_address, '')
         with mock.patch('cinder.utils.execute',
                         return_value=ret):
             volume = {"name": "dummy",

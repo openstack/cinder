@@ -37,7 +37,7 @@ def set_defaults(conf):
     conf.set_default('volume_driver',
                      'cinder.tests.fake_driver.FakeLoggingVolumeDriver',
                      group=configuration.SHARED_CONF_GROUP)
-    conf.set_default('iscsi_helper', 'fake')
+    conf.set_default('target_helper', 'fake')
     conf.set_default('rpc_backend', 'cinder.openstack.common.rpc.impl_fake')
     conf.set_default('connection', 'sqlite://', group='database')
     conf.set_default('sqlite_synchronous', False, group='database')

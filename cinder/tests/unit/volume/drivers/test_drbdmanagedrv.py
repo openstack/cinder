@@ -289,7 +289,7 @@ class DrbdManageFakeDriver(object):
 class DrbdManageIscsiTestCase(test.TestCase):
 
     def _fake_safe_get(self, key):
-        if key == 'iscsi_helper':
+        if key == 'target_helper':
             return 'fake'
 
         if key.endswith('_policy'):

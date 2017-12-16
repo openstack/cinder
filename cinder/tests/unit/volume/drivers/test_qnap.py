@@ -611,7 +611,7 @@ def create_configuration(
     configuration.san_iscsi_ip = san_iscsi_ip
     configuration.qnap_poolname = poolname
     configuration.safe_get.return_value = 'QNAP'
-    configuration.iscsi_ip_address = '1.2.3.4'
+    configuration.target_ip_address = '1.2.3.4'
     configuration.qnap_storage_protocol = 'iscsi'
     configuration.reserved_percentage = 0
     configuration.use_chap_auth = False

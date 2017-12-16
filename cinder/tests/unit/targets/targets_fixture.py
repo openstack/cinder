@@ -29,8 +29,8 @@ class TargetDriverFixture(test.TestCase):
         self.configuration = conf.Configuration(None)
         self.configuration.append_config_values = mock.Mock(return_value=0)
         self.configuration.safe_get = mock.Mock(side_effect=self.fake_safe_get)
-        self.configuration.iscsi_ip_address = '10.9.8.7'
-        self.configuration.iscsi_port = 3260
+        self.configuration.target_ip_address = '10.9.8.7'
+        self.configuration.target_port = 3260
 
         self.fake_volumes_dir = tempfile.mkdtemp()
         fileutils.ensure_tree(self.fake_volumes_dir)
@@ -71,8 +71,8 @@ class TargetDriverFixture(test.TestCase):
              'id': self.fake_volume_id,
              'volume_type_id': None,
              'provider_location': ('%(ip)s:%(port)d%(iqn)svolume-%(vol)s 2' %
-                                   {'ip': self.configuration.iscsi_ip_address,
-                                    'port': self.configuration.iscsi_port,
+                                   {'ip': self.configuration.target_ip_address,
+                                    'port': self.configuration.target_port,
                                     'iqn': self.iscsi_target_prefix,
                                     'vol': self.fake_volume_id}),
              'provider_auth': 'CHAP stack-1-a60e2611875f40199931f2'
@@ -107,7 +107,7 @@ class TargetDriverFixture(test.TestCase):
     def fake_safe_get(self, value):
         if value == 'volumes_dir':
             return self.fake_volumes_dir
-        elif value == 'iscsi_protocol':
-            return self.configuration.iscsi_protocol
-        elif value == 'iscsi_target_prefix':
+        elif value == 'target_protocol':
+            return self.configuration.target_protocol
+        elif value == 'target_prefix':
             return self.iscsi_target_prefix

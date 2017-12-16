@@ -650,8 +650,8 @@ class HPE3PARBaseDriver(test.TestCase):
         configuration.hpe3par_api_url = 'https://1.1.1.1/api/v1'
         configuration.hpe3par_cpg = [HPE3PAR_CPG, HPE3PAR_CPG2]
         configuration.hpe3par_cpg_snap = HPE3PAR_CPG_SNAP
-        configuration.iscsi_ip_address = '1.1.1.2'
-        configuration.iscsi_port = '1234'
+        configuration.target_ip_address = '1.1.1.2'
+        configuration.target_port = '1234'
         configuration.san_ip = HPE3PAR_SAN_IP
         configuration.san_login = HPE3PAR_USER_NAME
         configuration.san_password = HPE3PAR_USER_PASS
@@ -8022,7 +8022,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
     def test_invalid_iscsi_ip(self):
         config = self.setup_configuration()
         config.hpe3par_iscsi_ips = ['10.10.220.250', '10.10.220.251']
-        config.iscsi_ip_address = '10.10.10.10'
+        config.target_ip_address = '10.10.10.10'
         mock_conf = {
             'getPorts.return_value': {
                 'members': [

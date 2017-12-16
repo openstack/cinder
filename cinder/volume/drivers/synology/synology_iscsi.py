@@ -157,7 +157,7 @@ class SynoISCSIDriver(driver.ISCSIDriver):
             with excutils.save_and_reraise_exception():
                 LOG.exception('Failed to initialize_connection.')
 
-        volume_type = self.configuration.safe_get('iscsi_protocol') or 'iscsi'
+        volume_type = self.configuration.safe_get('target_protocol') or 'iscsi'
 
         return {
             'driver_volume_type': volume_type,

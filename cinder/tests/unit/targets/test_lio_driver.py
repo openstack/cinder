@@ -332,8 +332,8 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
                                            self.fake_volumes_dir)
 
         loc = (u'%(ip)s:%(port)d,3 %(prefix)s%(name)s 2' %
-               {'ip': self.configuration.iscsi_ip_address,
-                'port': self.configuration.iscsi_port,
+               {'ip': self.configuration.target_ip_address,
+                'port': self.configuration.target_port,
                 'prefix': self.iscsi_target_prefix,
                 'name': self.testvol_2['name']})
 
@@ -350,5 +350,5 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
             2,
             self.fake_volumes_dir,
             (mock.sentinel.user, mock.sentinel.pwd),
-            portals_ips=[self.configuration.iscsi_ip_address],
-            portals_port=self.configuration.iscsi_port)
+            portals_ips=[self.configuration.target_ip_address],
+            portals_port=self.configuration.target_port)

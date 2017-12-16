@@ -755,7 +755,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         LOG.debug('slotid_list: %s', slotid_list)
         target_portals = []
         target_portals.append(
-            self.configuration.iscsi_ip_address + ':' + iscsi_port)
+            self.configuration.target_ip_address + ':' + iscsi_port)
         # target_iqns.append(target_iqn)
         for index, eth in enumerate(eth_list):
             # TS NAS do not have slot_id
@@ -769,7 +769,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 target_iqns.append(
                     target_iqn[:-2] + '.' + slotid_list[index])
 
-            if eth == self.configuration.iscsi_ip_address:
+            if eth == self.configuration.target_ip_address:
                 continue
             target_portals.append(eth + ':' + iscsi_port)
 
@@ -892,7 +892,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
 
         properties = {}
         properties['target_discovered'] = False
-        properties['target_portal'] = (self.configuration.iscsi_ip_address +
+        properties['target_portal'] = (self.configuration.target_ip_address +
                                        ':' + iscsi_port)
         properties['target_iqn'] = target_iqn
         LOG.debug('properties[target_iqn]: %s', properties['target_iqn'])
@@ -911,7 +911,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
             LOG.debug('properties: %s', properties)
 
         provider_location = '%(host)s:%(port)s,1 %(name)s %(tgt_lun)s' % {
-            'host': self.configuration.iscsi_ip_address,
+            'host': self.configuration.target_ip_address,
             'port': iscsi_port,
             'name': target_iqn,
             'tgt_lun': target_lun_id,
@@ -956,7 +956,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
 
         properties = {}
         properties['target_discovered'] = False
-        properties['target_portal'] = (self.configuration.iscsi_ip_address +
+        properties['target_portal'] = (self.configuration.target_ip_address +
                                        ':' + self.iscsi_port)
         properties['target_iqn'] = iqn
         properties['target_lun'] = target_lun_id
