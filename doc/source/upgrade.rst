@@ -109,8 +109,8 @@ Plan your upgrade
   You can clean them up using ``cinder-manage service remove <binary> <host>``
   command.
 
-* Assumed service upgrade order is cinder-api, cinder-scheduler, cinder-volume
-  and finally cinder-backup.
+* Assumed service upgrade order is cinder-scheduler, cinder-volume,
+  cinder-backup and finally cinder-api.
 
 Rolling upgrade process
 '''''''''''''''''''''''
@@ -136,30 +136,15 @@ Before maintenance window
 During maintenance window
 """""""""""""""""""""""""
 
-1. cinder-api services should go first. In HA deployment you're typically
-   running them behind a load balancer (e.g. HAProxy), so you need to take one
-   service instance out of the balancer, shut it down, upgrade the code and
-   dependencies, and start the service again. Then you can plug it back into
-   the load balancer. Cinder's internal mechanisms will make sure that new
-   c-api will detect that it's running with older versions and will downgrade
-   any communication.
+1. The first service is cinder-scheduler. It is load-balanced by the message
+   queue, so the only thing you need to worry about is to shut it down
+   gracefully (using ``SIGTERM`` signal) to make sure it will finish all the
+   requests being processed before shutting down. Then you should upgrade the
+   code and restart the service.
 
-   .. note::
+2. Repeat first step for all of your cinder-scheduler services.
 
-     You may want to start another instance of older c-api to handle the load
-     while you're upgrading your original services.
-
-2. Then you should repeat first step for all of the cinder-api services.
-
-3. Next service is cinder-scheduler. It is load-balanced by the message queue,
-   so the only thing you need to worry about is to shut it down gracefully
-   (using ``SIGTERM`` signal) to make sure it will finish all the requests
-   being processed before shutting down. Then you should upgrade the code and
-   restart the service.
-
-4. Repeat third step for all of your cinder-scheduler services.
-
-5. Then you proceed to upgrade cinder-volume services. The problem here is that
+3. Then you proceed to upgrade cinder-volume services. The problem here is that
    due to Active/Passive character of this service, you're unable to run
    multiple instances of cinder-volume managing a single volume backend. This
    means that there will be a moment when you won't have any cinder-volume in
@@ -183,9 +168,9 @@ During maintenance window
      it using ``host`` option in ``cinder.conf``), so both will be listening on
      the same message queue and will accept the same messages.
 
-6. Repeat fifth step for all cinder-volume services.
+4. Repeat third step for all cinder-volume services.
 
-7. Now we should proceed with (optional) cinder-backup services. You should
+5. Now we should proceed with (optional) cinder-backup services. You should
    upgrade them in the same manner like cinder-scheduler.
 
    .. note::
@@ -205,6 +190,20 @@ During maintenance window
      with Mitaka version. If you're still keeping that coupling, then your
      upgrade strategy for cinder-backup should be more similar to how
      cinder-volume is upgraded.
+
+6. cinder-api services should go last. In HA deployment you're typically
+   running them behind a load balancer (e.g. HAProxy), so you need to take one
+   service instance out of the balancer, shut it down, upgrade the code and
+   dependencies, and start the service again. Then you can plug it back into
+   the load balancer.
+
+   .. note::
+
+     You may want to start another instance of older c-api to handle the load
+     while you're upgrading your original services.
+
+7. Then you should repeat step 6 for all of the cinder-api services.
+
 
 After maintenance window
 """"""""""""""""""""""""
