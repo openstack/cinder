@@ -1437,7 +1437,12 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         for acc in accounts:
             vols = self._get_volumes_for_account(acc['accountID'],
-                                                 volume['name_id'])
+                                                 volume.name_id)
+            # Check for migration magic here
+            if (not vols and (volume.name_id != volume.id)):
+                vols = self._get_volumes_for_account(acc['accountID'],
+                                                     volume.id)
+
             if vols:
                 sf_vol = vols[0]
                 break
@@ -1488,9 +1493,9 @@ class SolidFireDriver(san.SanISCSIDriver):
                                             params,
                                             version='6.0')
                     return
-        # Make sure it's not "old style" using clones as snaps
-        LOG.debug("Snapshot not found, checking old style clones.")
-        self.delete_volume(snapshot)
+        LOG.warning(
+            "Snapshot %s not found, old style clones may not be deleted.",
+            snapshot.id)
 
     def create_snapshot(self, snapshot):
         sfaccount = self._get_sfaccount(snapshot['project_id'])
