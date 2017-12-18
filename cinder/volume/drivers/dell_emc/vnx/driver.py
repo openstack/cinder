@@ -77,9 +77,10 @@ class VNXDriver(driver.ManageableVD,
           10.1.0 - Add QoS support
           10.2.0 - Add replication group support
           11.0.0 - Fix failure of migration during cloning
+          12.0.0 - Add `volume revert to snapshot` support
     """
 
-    VERSION = '11.00.00'
+    VERSION = '12.00.00'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_VNX_CI"
@@ -140,6 +141,10 @@ class VNXDriver(driver.ManageableVD,
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
         self.adapter.delete_snapshot(snapshot)
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Reverts a volume to a snapshot"""
+        self.adapter.restore_snapshot(volume, snapshot)
 
     def ensure_export(self, context, volume):
         """Driver entry point to get the export info for an existing volume."""

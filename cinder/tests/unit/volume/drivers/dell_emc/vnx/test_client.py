@@ -310,6 +310,10 @@ class TestClient(test.TestCase):
         client.modify_snapshot('snap_name', True, True)
 
     @res_mock.patch_client
+    def test_restore_snapshot(self, client, mocked):
+        client.restore_snapshot('lun-id', 'snap_name')
+
+    @res_mock.patch_client
     def test_create_cg_snapshot(self, client, mocked):
         snap = client.create_cg_snapshot('cg_snap_name', 'cg_name')
         self.assertIsNotNone(snap)

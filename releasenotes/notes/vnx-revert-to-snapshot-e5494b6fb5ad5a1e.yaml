@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added support to revert a volume to a snapshot with the Dell EMC VNX
+    driver.

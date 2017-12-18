@@ -337,6 +337,10 @@ class Client(object):
         snap.modify(allow_rw=allow_rw, auto_delete=auto_delete,
                     keep_for=None)
 
+    def restore_snapshot(self, lun_id, snap_name):
+        lun = self.get_lun(lun_id=lun_id)
+        lun.restore_snap(snap_name)
+
     def create_consistency_group(self, cg_name, lun_id_list=None):
         try:
             cg = self.vnx.create_cg(name=cg_name, members=lun_id_list)

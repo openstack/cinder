@@ -619,6 +619,13 @@ class TestCommonAdapter(test.TestCase):
                                      mocked_input):
         common_adapter.delete_snapshot(mocked_input['snapshot'])
 
+    @res_mock.mock_driver_input
+    @res_mock.patch_common_adapter
+    def test_restore_snapshot_adapter(self, common_adapter, _ignore,
+                                      mocked_input):
+        common_adapter.restore_snapshot(mocked_input['volume'],
+                                        mocked_input['snapshot'])
+
     @res_mock.patch_common_adapter
     def test_create_cgsnapshot(self, common_adapter, _):
         common_adapter.do_create_cgsnap = mock.Mock(

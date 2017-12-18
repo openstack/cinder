@@ -207,6 +207,10 @@ test_create_snapshot_adapter:
 test_delete_snapshot_adapter:
   snapshot: *snapshot_base
 
+test_restore_snapshot_adapter:
+  volume: *volume_base
+  snapshot: *snapshot_base
+
 test_do_create_cgsnap: &cg_snap_and_snaps
   cg_snap: *cg_snapshot_base
   snap1: *snapshot_base
