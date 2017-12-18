@@ -275,6 +275,32 @@ not efficient since a cloned volume will be created during backup.
 An effective approach to backups is to create a snapshot for the volume and
 connect this snapshot to the Block Storage host for volume backup.
 
+IPv6 support
+~~~~~~~~~~~~
+
+This driver can support IPv6-based control path and data path.
+
+For control path, please follow below steps:
+
+- Enable Unity's Unipshere IPv6 address.
+- Configure the IPv6 network to make sure that cinder node can access Unishpere
+  via IPv6 address.
+- Change Cinder config file ``/etc/cinder/cinder.conf``. Make the ``san_ip``
+  as Unisphere IPv6 address. For example, ``san_ip = [fd99:f17b:37d0::100]``.
+- Restart the Cinder service to make new configuration take effect.
+
+**Note**: The IPv6 support on control path depends on the fix of cpython
+`bug 32185 <https://bugs.python.org/issue32185>`__. Please make sure your
+Python's version includes this bug's fix.
+
+For data path, please follow below steps:
+
+- On Unity, Create iSCSI interface with IPv6 address.
+- Configure the IPv6 network to make sure that you can ``ping``
+  the Unity's iSCSI IPv6 address from the Cinder node.
+- If you create a volume using Cinder and attach it to a VM,
+  the connection between this VM and volume will be IPv6-based iSCSI.
+
 Troubleshooting
 ~~~~~~~~~~~~~~~
 

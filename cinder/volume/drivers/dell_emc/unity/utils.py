@@ -136,6 +136,9 @@ def extract_fc_uids(connector):
 
 
 def convert_ip_to_portal(ip):
+    is_ipv6_without_brackets = ':' in ip and ip[-1] != ']'
+    if is_ipv6_without_brackets:
+        return '[%s]:3260' % ip
     return '%s:3260' % ip
 
 
