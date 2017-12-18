@@ -95,3 +95,11 @@ class VolumeUnmanageTest(test.TestCase):
         self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
         db.volume_destroy(self.ctxt, vol.id)
         db.snapshot_destroy(self.ctxt, snap.id)
+
+    def test_unmanage_encrypted_volume_denied(self):
+        vol = utils.create_volume(
+            self.ctxt,
+            encryption_key_id='7a98391f-6619-46af-bd00-5862a3f7f1bd')
+        res = self._get_resp(vol.id)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
+        db.volume_destroy(self.ctxt, vol.id)

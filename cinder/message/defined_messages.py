@@ -27,6 +27,7 @@ class EventIds(object):
     UNABLE_TO_ALLOCATE = 'VOLUME_000002'
     ATTACH_READONLY_VOLUME = 'VOLUME_000003'
     IMAGE_FROM_VOLUME_OVER_QUOTA = 'VOLUME_000004'
+    UNMANAGE_ENCRYPTED_VOLUME_UNSUPPORTED = 'VOLUME_000005'
 
 
 event_id_message_map = {
@@ -40,6 +41,8 @@ event_id_message_map = {
     EventIds.IMAGE_FROM_VOLUME_OVER_QUOTA: _(
         "Failed to copy volume to image as image quota has been met. Please "
         "delete images or have your limit increased, then try again."),
+    EventIds.UNMANAGE_ENCRYPTED_VOLUME_UNSUPPORTED: _(
+        "Unmanaging encrypted volumes is not supported."),
 }
 
 

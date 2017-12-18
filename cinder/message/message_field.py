@@ -36,12 +36,15 @@ class Action(object):
     COPY_VOLUME_TO_IMAGE = ('003', _('copy volume to image'))
     UPDATE_ATTACHMENT = ('004', _('update attachment'))
     COPY_IMAGE_TO_VOLUME = ('005', _('copy image to volume'))
+    UNMANAGE_VOLUME = ('006', _('unmanage volume'))
 
     ALL = (SCHEDULE_ALLOCATE_VOLUME,
            ATTACH_VOLUME,
            COPY_VOLUME_TO_IMAGE,
            UPDATE_ATTACHMENT,
-           COPY_IMAGE_TO_VOLUME)
+           COPY_IMAGE_TO_VOLUME,
+           UNMANAGE_VOLUME
+           )
 
 
 class Detail(object):
@@ -62,6 +65,9 @@ class Detail(object):
     NOT_ENOUGH_SPACE_FOR_IMAGE = ('007',
                                   _("Image used for creating volume exceeds "
                                     "available space."))
+    UNMANAGE_ENC_NOT_SUPPORTED = (
+        '008',
+        _("Unmanaging encrypted volumes is not supported."))
 
     ALL = (UNKNOWN_ERROR,
            DRIVER_NOT_INITIALIZED,
@@ -69,7 +75,9 @@ class Detail(object):
            FAILED_TO_UPLOAD_VOLUME,
            VOLUME_ATTACH_MODE_INVALID,
            QUOTA_EXCEED,
-           NOT_ENOUGH_SPACE_FOR_IMAGE)
+           NOT_ENOUGH_SPACE_FOR_IMAGE,
+           UNMANAGE_ENC_NOT_SUPPORTED,
+           )
 
     # Exception and detail mappings
     EXCEPTION_DETAIL_MAPPINGS = {
@@ -79,7 +87,8 @@ class Detail(object):
         QUOTA_EXCEED: ['ImageLimitExceeded',
                        'BackupLimitExceeded',
                        'SnapshotLimitExceeded'],
-        NOT_ENOUGH_SPACE_FOR_IMAGE: ['ImageTooBig']
+        NOT_ENOUGH_SPACE_FOR_IMAGE: ['ImageTooBig'],
+        UNMANAGE_ENC_NOT_SUPPORTED: ['UnmanageEncVolNotSupported'],
     }
 
 
