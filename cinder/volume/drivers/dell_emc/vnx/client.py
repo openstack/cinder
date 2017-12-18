@@ -733,3 +733,8 @@ class Client(object):
 
     def filter_sg(self, attached_lun_id):
         return self.vnx.get_sg().shadow_copy(attached_lun=attached_lun_id)
+
+    def set_max_luns_per_sg(self, max_luns):
+        """Sets max LUNs per storage group."""
+        storops.vnx.resource.sg.VNXStorageGroup.set_max_luns_per_sg(max_luns)
+        LOG.info('Set max LUNs per storage group to %s.', max_luns)

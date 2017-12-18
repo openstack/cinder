@@ -576,3 +576,9 @@ class TestClient(test.TestCase):
     @res_mock.patch_client
     def test_add_lun_to_ioclass(self, client, mocked):
         client.add_lun_to_ioclass('test_ioclass', 1)
+
+    @res_mock.patch_client
+    def test_set_max_luns_per_sg(self, client, mocked):
+        with utils.patch_vnxstoragegroup as patch_sg:
+            client.set_max_luns_per_sg(300)
+            patch_sg.set_max_luns_per_sg.assert_called_with(300)
