@@ -1,0 +1,4 @@
+---
+fixes:
+  - Quota validations are now forced for all APIs. skip_validation flag is
+    now removed from the request body for the quota-set update API.

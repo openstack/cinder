@@ -211,21 +211,6 @@ class QuotaSetsController(wsgi.Controller):
 
         self.assert_valid_body(body, 'quota_set')
 
-        # TODO(wxy): Change "skip_validation"'s default value to  False in
-        # Queens.
-        # Get the optional argument 'skip_validation' from body,
-        # if skip_validation is False, then validate existing resource.
-        skip_flag = body.get('skip_validation', True)
-        if not strutils.is_valid_boolstr(skip_flag):
-            msg = _("Invalid value '%s' for skip_validation.") % skip_flag
-            raise exception.InvalidParameterValue(err=msg)
-        skip_flag = strutils.bool_from_string(skip_flag)
-        if skip_flag:
-            LOG.warning("It's unsafe to skip validating the existing "
-                        "resource's quota when updating it. Cinder will force "
-                        "validate it in Queens, please try to use "
-                        "skip_validation=False for quota updating now.")
-
         bad_keys = []
 
         # NOTE(ankit): Pass #1 - In this loop for body['quota_set'].items(),
@@ -280,10 +265,7 @@ class QuotaSetsController(wsgi.Controller):
                 body['quota_set'][key], key, min_value=-1,
                 max_value=db.MAX_INT)
 
-            # Can't skip the validation of nested quotas since it could mess up
-            # hierarchy if parent limit is less than childrens' current usage
-            if not skip_flag or use_nested_quotas:
-                self._validate_existing_resource(key, value, quota_values)
+            self._validate_existing_resource(key, value, quota_values)
 
             if use_nested_quotas:
                 try:

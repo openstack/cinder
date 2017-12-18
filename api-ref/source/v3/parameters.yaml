@@ -2370,13 +2370,6 @@ size:
   in: body
   required: true
   type: integer
-skip_validation:
-  description: |
-    If set to false, the quota value can't be set lower than the in_use quota.
-    Default is True.
-  in: body
-  required: false
-  type: boolean
 snapshot:
   description: |
     A partial representation of a snapshot used in

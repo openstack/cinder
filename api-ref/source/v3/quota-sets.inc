@@ -130,7 +130,6 @@ Request
    - gigabytes: gigabytes
    - gigabytes_{volume_type}: gigabytes_for_type
    - backup_gigabytes: backup_gigabytes
-   - skip_validation: skip_validation
 
 Request Example
 ---------------
