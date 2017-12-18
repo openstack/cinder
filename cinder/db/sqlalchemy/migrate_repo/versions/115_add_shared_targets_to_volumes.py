@@ -21,7 +21,5 @@ def upgrade(migrate_engine):
 
     # NOTE(jdg):  We use a default of True because it's harmless for a device
     # that does NOT use shared_targets to be treated as if it does
-    shared_targets = Column('shared_targets',
-                            Boolean,
-                            default=True)
-    volumes.create_column(shared_targets)
+    if not hasattr(volumes.c, 'shared_targets'):
+        volumes.create_column(Column('shared_targets', Boolean, default=True))
