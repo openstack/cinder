@@ -193,21 +193,21 @@ Install and configure components
      `example architecture <https://docs.openstack.org/install-guide/overview.html#example-architecture>`_.
 
 
-    * In the ``[lvm]`` section, configure the LVM back end with the
-      LVM driver, ``cinder-volumes`` volume group, iSCSI protocol,
-      and appropriate iSCSI service:
+   * In the ``[lvm]`` section, configure the LVM back end with the
+     LVM driver, ``cinder-volumes`` volume group, iSCSI protocol,
+     and appropriate iSCSI service:
 
-      .. path /etc/cinder/cinder.conf
-      .. code-block:: ini
+     .. path /etc/cinder/cinder.conf
+     .. code-block:: ini
 
-         [lvm]
-         # ...
-         volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
-         volume_group = cinder-volumes
-         iscsi_protocol = iscsi
-         iscsi_helper = tgtadm
+        [lvm]
+        # ...
+        volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
+        volume_group = cinder-volumes
+        iscsi_protocol = iscsi
+        iscsi_helper = tgtadm
 
-      .. end
+     .. end
 
    * In the ``[DEFAULT]`` section, enable the LVM back end:
 

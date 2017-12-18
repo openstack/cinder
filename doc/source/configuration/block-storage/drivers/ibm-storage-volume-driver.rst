@@ -77,10 +77,10 @@ man-in-the-middle (MITM) attacks by following these rules:
   (``XIV-CA.pem``). The certificate files should be copied to one of the following
   directories:
 
-    * ``/etc/ssl/certs``
-    * ``/etc/ssl/certs/xiv``
-    * ``/etc/pki``
-    * ``/etc/pki/xiv``
+  * ``/etc/ssl/certs``
+  * ``/etc/ssl/certs/xiv``
+  * ``/etc/pki``
+  * ``/etc/pki/xiv``
 
 If you are using your own certificates, copy them to the same directories
 with the prefix "XIV" and in the ``.pem`` format. For example: XIV-my_cert.pem.
@@ -197,33 +197,33 @@ QoS class types:
 
 To define a QoS class:
 
- 1. Create the QoS class:
+1. Create the QoS class:
 
-    .. code-block:: console
+   .. code-block:: console
 
-         cinder qos-create <class_name> <class_specs: bw=#, iops=#>
+        cinder qos-create <class_name> <class_specs: bw=#, iops=#>
 
- 2. Create a type:
+2. Create a type:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        cinder type-create type_<qos_class_name>
+       cinder type-create type_<qos_class_name>
 
- 3. Associate the QoS class with the type:
+3. Associate the QoS class with the type:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        cinder qos-associate <qos uuid> <type uuid>
+       cinder qos-associate <qos uuid> <type uuid>
 
- 4. Announce that the type is supporting QoS:
+4. Announce that the type is supporting QoS:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        cinder type-key <type_name or UUID> set QoS_support=True
+       cinder type-key <type_name or UUID> set QoS_support=True
 
- 5. Create a volume:
+5. Create a volume:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        cinder create 1 --volume-type <type_name>
+       cinder create 1 --volume-type <type_name>
 
