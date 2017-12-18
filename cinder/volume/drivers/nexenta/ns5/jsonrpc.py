@@ -72,21 +72,21 @@ class RESTCaller(object):
             response = getattr(
                 self.__proxy.session, self.__method)(url, **kwargs)
         except requests.exceptions.ConnectionError:
-            self.handle_failover()
-            LOG.debug('ConnectionError call to NS: %s %s, data: %s',
+            LOG.debug('ConnectionError on call to NS: %s %s, data: %s',
                       self.__proxy.url, self.__method, data)
+            self.handle_failover()
             url = self.get_full_url(args[0])
             response = getattr(
                 self.__proxy.session, self.__method)(url, **kwargs)
         try:
             check_error(response)
         except exception.NexentaException as exc:
-            if (exc.msg['source'] == 'zpool' and
-                    exc.msg['code'] == 'ENOENT'):
+            if exc.msg['code'] == 'ENOENT':
+                LOG.debug('NexentaException on call to NS: %s %s, data: %s',
+                          url, self.__method, data)
+                LOG.debug('returned message: %s', exc)
                 self.handle_failover()
                 url = self.get_full_url(args[0])
-                LOG.debug('NexentaException call to NS: %s %s, data: %s',
-                          url, self.__method, data)
                 response = getattr(
                     self.__proxy.session, self.__method)(url, **kwargs)
             else:
@@ -105,7 +105,19 @@ class RESTCaller(object):
                 time.sleep(1)
                 response = self.__proxy.session.get(
                     url, verify=self.__proxy.verify)
-                check_error(response)
+                try:
+                    check_error(response)
+                except exception.NexentaException as exc:
+                    if exc.msg['code'] == 'ENOENT':
+                        LOG.debug('NexentaException on call to NS: %s %s, '
+                                  'data: %s', url, self.__method, data)
+                        LOG.debug('returned message: %s', exc)
+                        self.handle_failover()
+                        url = self.get_full_url(args[0])
+                        response = getattr(
+                            self.__proxy.session, self.__method)(url, **kwargs)
+                    else:
+                        raise
                 LOG.debug("Got response: %(code)s %(reason)s", {
                     'code': response.status_code,
                     'reason': response.reason})

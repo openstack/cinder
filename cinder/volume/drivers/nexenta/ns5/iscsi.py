@@ -160,7 +160,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             url = 'storage/volumes/%s?snapshots=true' % path
             self.nef.delete(url)
         except exception.NexentaException as exc:
-            if 'Failed to destroy snap' in exc.kwargs['message']['message']:
+            if 'Failed to destroy snap' in exc.msg['message']:
                 url = 'storage/snapshots?parent=%s' % path
                 snap_list = []
                 snap_map = {}
