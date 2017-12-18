@@ -558,7 +558,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
     def test_update_key_size_non_integer(self):
         update_body = {"encryption": {'key_size': 'abc'}}
-        msg = 'key_size must be an integer.'
+        msg = 'key_size must be an integer'
         self._encryption_update_bad_body(update_body, msg)
 
     def test_update_item_invalid_body(self):
