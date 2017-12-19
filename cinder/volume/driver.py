@@ -992,6 +992,11 @@ class BaseVD(object):
                     raise exception.VolumeBackendAPIException(data=ex_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
 
+            # Add encrypted flag to connection_info if not set in the driver.
+            if conn['data'].get('encrypted') is None:
+                encrypted = bool(volume.encryption_key_id)
+                conn['data']['encrypted'] = encrypted
+
         try:
             attach_info = self._connect_device(conn)
         except Exception as exc:
