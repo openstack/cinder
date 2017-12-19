@@ -1104,7 +1104,7 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.assertEqual('1.1.1.1:3260  0', v['provider_location'])
 
             configured_svip = '9.9.9.9:6500'
-            sfv.active_cluster_info['svip'] = configured_svip
+            sfv.active_cluster['svip'] = configured_svip
             v = sfv._get_model_info(sfaccount, 1)
             self.assertEqual('%s  0' % configured_svip, v['provider_location'])
 
@@ -1969,7 +1969,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                               'fake-mvip'}]
         ctxt = None
         type_id = '290edb2a-f5ea-11e5-9ce9-5e5517507c66'
-        fake_type = {'extra_specs': {'replication': 'enabled'}}
+        fake_type = {'extra_specs': {'replication_enabled': '<is> True'}}
         with mock.patch.object(volume_types,
                                'get_volume_type',
                                return_value=fake_type):

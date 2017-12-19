@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add ability to call failover-host on a replication
+    enabled SF cluster a second time with host id = default
+    to initiate a failback to the default configured SolidFire
+    Cluster.
