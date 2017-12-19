@@ -433,6 +433,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                               fake_vol_name, basedir)
 
         mock_qemu_img_info.assert_called_with(mock.sentinel.image_path,
+                                              force_share=False,
                                               run_as_root=True)
 
     @ddt.data([None, '/fake_basedir'],

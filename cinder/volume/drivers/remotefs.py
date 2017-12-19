@@ -737,6 +737,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             json.dump(snap_info, f, indent=1, sort_keys=True)
 
     def _qemu_img_info_base(self, path, volume_name, basedir,
+                            force_share=False,
                             run_as_root=False):
         """Sanitize image_utils' qemu_img_info.
 
@@ -746,6 +747,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         run_as_root = run_as_root or self._execute_as_root
 
         info = image_utils.qemu_img_info(path,
+                                         force_share=force_share,
                                          run_as_root=run_as_root)
         if info.image:
             info.image = os.path.basename(info.image)

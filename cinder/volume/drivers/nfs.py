@@ -126,7 +126,8 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         active_vol = self.get_active_image_from_info(volume)
         volume_dir = self._local_volume_dir(volume)
         path_to_vol = os.path.join(volume_dir, active_vol)
-        info = self._qemu_img_info(path_to_vol, volume['name'])
+        info = self._qemu_img_info(path_to_vol,
+                                   volume['name'])
 
         data = {'export': volume.provider_location,
                 'name': active_vol}
@@ -533,6 +534,7 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
             path,
             volume_name,
             self.configuration.nfs_mount_point_base,
+            force_share=True,
             run_as_root=True)
 
     def _check_snapshot_support(self, setup_checking=False):
