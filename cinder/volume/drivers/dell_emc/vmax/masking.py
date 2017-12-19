@@ -40,24 +40,25 @@ class VMAXMasking(object):
         self.provision = provision.VMAXProvision(self.rest)
 
     def setup_masking_view(
-            self, serial_number, masking_view_dict, extra_specs):
+            self, serial_number, volume, masking_view_dict, extra_specs):
 
         @coordination.synchronized("emc-mv-{maskingview_name}")
         def do_get_or_create_masking_view_and_map_lun(maskingview_name):
             return self.get_or_create_masking_view_and_map_lun(
-                serial_number, maskingview_name, masking_view_dict,
+                serial_number, volume, maskingview_name, masking_view_dict,
                 extra_specs)
         return do_get_or_create_masking_view_and_map_lun(
             masking_view_dict[utils.MV_NAME])
 
     def get_or_create_masking_view_and_map_lun(
-            self, serial_number, maskingview_name, masking_view_dict,
+            self, serial_number, volume, maskingview_name, masking_view_dict,
             extra_specs):
         """Get or Create a masking view and add a volume to the storage group.
 
         Given a masking view dict either get or create a masking view and add
         the volume to the associated storage group.
         :param serial_number: the array serial number
+        :param volume: the volume object
         :param maskingview_name: the masking view name
         :param masking_view_dict: the masking view dict
         :param extra_specs: the extra specifications
@@ -112,7 +113,7 @@ class VMAXMasking(object):
 
             if rollback_dict['slo'] is not None:
                 self.check_if_rollback_action_for_masking_required(
-                    serial_number, device_id, masking_view_dict)
+                    serial_number, volume, device_id, masking_view_dict)
 
             else:
                 self._check_adding_volume_to_storage_group(
@@ -832,7 +833,7 @@ class VMAXMasking(object):
         return error_message
 
     def check_if_rollback_action_for_masking_required(
-            self, serial_number, device_id, rollback_dict):
+            self, serial_number, volume, device_id, rollback_dict):
         """Rollback action for volumes with an associated service level.
 
         We need to be able to return the volume to the default storage group
@@ -841,6 +842,7 @@ class VMAXMasking(object):
         the exception occurred. We also may need to clean up any unused
         initiator groups.
         :param serial_number: the array serial number
+        :param volume: the volume object
         :param device_id: the device id
         :param rollback_dict: the rollback dict
         :returns: error message -- string, or None
@@ -883,9 +885,10 @@ class VMAXMasking(object):
                     # Remove it from its current storage group and return it
                     # to its default masking view if slo is defined.
                     self.remove_and_reset_members(
-                        serial_number, device_id,
+                        serial_number, volume, device_id,
                         rollback_dict['volume_name'],
-                        rollback_dict['extra_specs'])
+                        rollback_dict['extra_specs'], True,
+                        rollback_dict['connector'])
                     message = (_("Rollback - Volume in another storage "
                                  "group besides default storage group."))
         except Exception as e:
@@ -1019,11 +1022,12 @@ class VMAXMasking(object):
 
     @coordination.synchronized("emc-vol-{device_id}")
     def remove_and_reset_members(
-            self, serial_number, device_id, volume_name, extra_specs,
-            reset=True, connector=None):
+            self, serial_number, volume, device_id, volume_name,
+            extra_specs, reset=True, connector=None):
         """This is called on a delete, unmap device or rollback.
 
         :param serial_number: the array serial number
+        :param volume: the volume object
         :param device_id: the volume device id
         :param volume_name: the volume name
         :param extra_specs: additional info
@@ -1031,33 +1035,48 @@ class VMAXMasking(object):
         :param connector: the connector object (optional)
         """
         self._cleanup_deletion(
-            serial_number, device_id, volume_name,
+            serial_number, volume, device_id, volume_name,
             extra_specs, connector, reset)
 
     def _cleanup_deletion(
-            self, serial_number, device_id, volume_name,
+            self, serial_number, volume, device_id, volume_name,
             extra_specs, connector, reset):
         """Prepare a volume for a delete operation.
 
         :param serial_number: the array serial number
+        :param volume: the volume object
         :param device_id: the volume device id
         :param volume_name: the volume name
         :param extra_specs: the extra specifications
         :param connector: the connector object
         """
         move = False
+        short_host_name = None
         storagegroup_names = (self.rest.get_storage_groups_from_volume(
             serial_number, device_id))
         if storagegroup_names:
             if len(storagegroup_names) == 1 and reset is True:
                 move = True
-            for sg_name in storagegroup_names:
-                self.remove_volume_from_sg(
-                    serial_number, device_id, volume_name, sg_name,
-                    extra_specs, connector, move)
+            elif connector is not None and reset is True:
+                short_host_name = self.utils.get_host_short_name(
+                    connector['host'])
+                move = True
+            if short_host_name:
+                for sg_name in storagegroup_names:
+                    if short_host_name in sg_name:
+                        self.remove_volume_from_sg(
+                            serial_number, device_id, volume_name, sg_name,
+                            extra_specs, connector, move)
+                        break
+            else:
+                for sg_name in storagegroup_names:
+                    self.remove_volume_from_sg(
+                        serial_number, device_id, volume_name, sg_name,
+                        extra_specs, connector, move)
         if reset is True and move is False:
             self.add_volume_to_default_storage_group(
-                serial_number, device_id, volume_name, extra_specs)
+                serial_number, device_id, volume_name,
+                extra_specs, volume=volume)
 
     def remove_volume_from_sg(
             self, serial_number, device_id, vol_name, storagegroup_name,
@@ -1386,7 +1405,7 @@ class VMAXMasking(object):
 
     def add_volume_to_default_storage_group(
             self, serial_number, device_id, volume_name,
-            extra_specs, src_sg=None):
+            extra_specs, src_sg=None, volume=None):
         """Return volume to its default storage group.
 
         :param serial_number: the array serial number
@@ -1394,6 +1413,7 @@ class VMAXMasking(object):
         :param volume_name: the volume name
         :param extra_specs: the extra specifications
         :param src_sg: the source storage group, if any
+        :param volume: the volume object
         """
         do_disable_compression = self.utils.is_compression_disabled(
             extra_specs)
@@ -1414,6 +1434,16 @@ class VMAXMasking(object):
             self._check_adding_volume_to_storage_group(
                 serial_number, device_id, storagegroup_name, volume_name,
                 extra_specs)
+        if volume:
+            # Need to check if the volume needs to be returned to a
+            # generic volume group. This may be necessary in a force-detach
+            # situation.
+            if volume.group_id is not None:
+                vol_grp_name = self.provision.get_or_create_volume_group(
+                    serial_number, volume.group, extra_specs)
+                self._check_adding_volume_to_storage_group(
+                    serial_number, device_id,
+                    vol_grp_name, volume_name, extra_specs)
 
     def get_or_create_default_storage_group(
             self, serial_number, srp, slo, workload, extra_specs,
