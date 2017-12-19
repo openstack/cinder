@@ -387,7 +387,7 @@ Response Example
 Update an encryption type for v2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  POST /v2/{project_id}/types/{volume_type_id}/encryption/{encryption_id}
+.. rest_method::  PUT /v2/{project_id}/types/{volume_type_id}/encryption/{encryption_id}
 
 Update an encryption type.
 
