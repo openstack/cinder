@@ -101,14 +101,14 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
                 attachment.volume = objects.Volume._from_db_object(
                     context, objects.Volume(), db_volume)
 
+        attachment._context = context
+        attachment.obj_reset_changes()
+
         # This is an online data migration which we should remove when enough
         # time has passed and we have a blocker schema migration to check to
         # make sure that the attachment_specs table is empty. Operators should
         # run the "cinder-manage db online_data_migrations" CLI to force the
         # migration on-demand.
-        # TODO(mriedem): Need a hook for the online_data_migration CLI to query
-        # the database for all attachment_specs entries and migrate their
-        # related volume_attachment records using this object.
         connector = db.attachment_specs_get(context, attachment.id)
         if connector:
             # Update ourselves and delete the attachment_specs.
@@ -119,8 +119,6 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
                 db.attachment_specs_delete(
                     context, attachment.id, spec_key)
 
-        attachment._context = context
-        attachment.obj_reset_changes()
         return attachment
 
     def obj_load_attr(self, attrname):
@@ -182,6 +180,8 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
             raise exception.ObjectActionError(action='create',
                                               reason=_('already created'))
         updates = self.cinder_obj_get_changes()
+        if 'connector' in updates:
+            self._convert_connector_to_db_format(updates)
         with self.obj_as_admin():
             db_attachment = db.volume_attach(self._context, updates)
         self._from_db_object(self._context, self, db_attachment)

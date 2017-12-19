@@ -1820,6 +1820,10 @@ def attachment_specs_update_or_create(context,
                                                   attachment_id,
                                                   specs)
 
+
+def attachment_specs_online_data_migration(context, max_count):
+    return IMPL.attachment_specs_online_data_migration(context, max_count)
+
 ###################
 
 

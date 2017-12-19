@@ -3458,3 +3458,73 @@ class DBAPIGroupTestCase(BaseTest):
             self.assertEqual(
                 new_cluster_name + groups[i].cluster_name[len(cluster_name):],
                 db_groups[i].cluster_name)
+
+
+class DBAPIAttachmentSpecsTestCase(BaseTest):
+    def test_attachment_specs_online_data_migration(self):
+        """Tests the online data migration initiated via cinder-manage"""
+        # Create five attachment records:
+        # 1. first attachment has specs but is deleted so it's ignored
+        # 2. second attachment is already migrated (no attachment_specs
+        #    entries) so it's ignored
+        # 3. the remaining attachments have specs so they are migrated in
+        #    in batches of 2
+
+        # Create an attachment record with specs and delete it.
+        attachment = objects.VolumeAttachment(
+            self.ctxt, attach_status='attaching', volume_id=fake.VOLUME_ID)
+        attachment.create()
+        # Create an attachment_specs entry for attachment.
+        connector = {'host': '127.0.0.1'}
+        db.attachment_specs_update_or_create(
+            self.ctxt, attachment.id, connector)
+        # Now delete the attachment which should also delete the specs.
+        attachment.destroy()
+        # Run the migration routine to see that there is nothing to migrate.
+        total, migrated = db.attachment_specs_online_data_migration(
+            self.ctxt, 50)
+        self.assertEqual(0, total)
+        self.assertEqual(0, migrated)
+
+        # Create a volume attachment with no specs (already migrated).
+        attachment = objects.VolumeAttachment(
+            self.ctxt, attach_status='attaching', volume_id=fake.VOLUME_ID,
+            connector=connector)
+        attachment.create()
+        # Run the migration routine to see that there is nothing to migrate.
+        total, migrated = db.attachment_specs_online_data_migration(
+            self.ctxt, 50)
+        self.assertEqual(0, total)
+        self.assertEqual(0, migrated)
+
+        # We have to create a real volume because of the joinedload in the
+        # DB API query to get the volume attachment.
+        volume = db.volume_create(self.ctxt, {'host': 'host1'})
+
+        # Now create three volume attachments with specs and migrate them
+        # in batches of 2 to show we are enforcing the limit.
+        for x in range(3):
+            attachment = objects.VolumeAttachment(
+                self.ctxt, attach_status='attaching', volume_id=volume['id'])
+            attachment.create()
+            # Create an attachment_specs entry for the attachment.
+            db.attachment_specs_update_or_create(
+                self.ctxt, attachment.id, connector)
+
+        # Migrate 2 at a time.
+        total, migrated = db.attachment_specs_online_data_migration(
+            self.ctxt, 2)
+        self.assertEqual(3, total)
+        self.assertEqual(2, migrated)
+
+        # This should complete the migration.
+        total, migrated = db.attachment_specs_online_data_migration(
+            self.ctxt, 2)
+        self.assertEqual(1, total)
+        self.assertEqual(1, migrated)
+
+        # Run it one more time to make sure there is nothing left.
+        total, migrated = db.attachment_specs_online_data_migration(
+            self.ctxt, 2)
+        self.assertEqual(0, total)
+        self.assertEqual(0, migrated)
