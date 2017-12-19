@@ -102,7 +102,7 @@ should be bind mounted into the Linux containers.
 
    Note that the user IDs present in the containers should match as that in the
    host machines. For example, the containers running cinder and glance
-   services should be priviledged containers.
+   services should be privileged containers.
 
 To use Spectrum Scale driver in this deployment mode, set the ``volume_driver``
 in the ``cinder.conf`` as:
