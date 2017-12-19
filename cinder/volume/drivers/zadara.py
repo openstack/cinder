@@ -18,7 +18,7 @@ Volume driver for Zadara Virtual Private Storage Array (VPSA).
 This driver requires VPSA with API version 15.07 or higher.
 """
 
-from lxml import etree
+from defusedxml import lxml as etree
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import strutils

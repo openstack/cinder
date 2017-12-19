@@ -23,11 +23,8 @@ import re
 import ssl
 import threading
 import time
-try:
-    import xml.etree.cElementTree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
 
+from defusedxml import cElementTree as ET
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging

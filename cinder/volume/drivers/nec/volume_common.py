@@ -15,11 +15,11 @@
 #    under the License.
 
 import errno
-from lxml import etree
 import os
 import re
 import traceback
 
+from defusedxml import lxml as etree
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
