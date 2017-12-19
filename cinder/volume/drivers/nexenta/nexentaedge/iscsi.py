@@ -218,6 +218,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 'clonePath': self.bucket_path + '/' + volume['name'],
                 'snapName': snapshot['name']
             })
+        if (('size' in volume) and (
+                volume['size'] > snapshot['volume_size'])):
+            self.extend_volume(volume, volume['size'])
 
     def create_snapshot(self, snapshot):
         self.restapi.post(

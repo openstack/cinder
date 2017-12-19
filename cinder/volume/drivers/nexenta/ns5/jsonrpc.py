@@ -85,9 +85,9 @@ class RESTCaller(object):
             response = getattr(
                 self.__proxy.session, self.__method)(url, **kwargs)
         except requests.exceptions.ConnectionError:
-            self.handle_failover()
-            LOG.debug('ConnectionError call to NS: %s %s, data: %s',
+            LOG.debug('ConnectionError on call to NS: %s %s, data: %s',
                       self.__proxy.url, self.__method, data)
+            self.handle_failover()
             url = self.get_full_url(args[0])
             response = getattr(
                 self.__proxy.session, self.__method)(url, **kwargs)
@@ -95,10 +95,11 @@ class RESTCaller(object):
             check_error(response)
         except exception.NexentaException as exc:
             if exc.kwargs['message']['code'] == 'ENOENT':
+                LOG.debug('NexentaException on call to NS: %s %s, data: %s',
+                          'returned message: %s',
+                          url, self.__method, data, exc.kwargs['message'])
                 self.handle_failover()
                 url = self.get_full_url(args[0])
-                LOG.debug('NexentaException call to NS: %s %s, data: %s',
-                          url, self.__method, data)
                 response = getattr(
                     self.__proxy.session, self.__method)(url, **kwargs)
             else:
@@ -121,11 +122,12 @@ class RESTCaller(object):
                     check_error(response)
                 except exception.NexentaException as exc:
                     if exc.kwargs['message']['code'] == 'ENOENT':
+                        LOG.debug(
+                            'NexentaException on call to NS: %s %s, data: %s'
+                            'returned message: %s',
+                            url, self.__method, data, exc.kwargs['message'])
                         self.handle_failover()
                         url = self.get_full_url(args[0])
-                        LOG.debug(
-                            'NexentaException call to NS: %s %s, data: %s',
-                            url, self.__method, data)
                         response = getattr(
                             self.__proxy.session, self.__method)(url, **kwargs)
                     else:
