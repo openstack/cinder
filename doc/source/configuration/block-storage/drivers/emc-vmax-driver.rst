@@ -523,7 +523,7 @@ Interval and Retries
 By default, ``interval`` and ``retries`` are ``3`` seconds and ``200`` retries
 respectively. These determine how long (``interval``) and how many times
 (``retries``) a user is willing to wait for a single Rest call,
-``3*200=600seconds``. Depending on usage, these may need to be overriden by
+``3*200=600seconds``. Depending on usage, these may need to be overridden by
 the user in the cinder.conf. For example, if performance is a factor, then the
 ``interval`` should be decreased to check the job status more frequently, and
 if multiple concurrent provisioning requests are issued then ``retries``

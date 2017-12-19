@@ -126,7 +126,7 @@ To create a volume type that enables replication using Live Volume:
 If QOS options are enabled on the Storage Center they can be enabled via extra
 specs. The name of the Volume QOS can be specified via the
 ``storagetype:volumeqos`` extra spec. Likewise the name of the Group QOS to
-use can be specificed via the ``storagetype:groupqos`` extra spec. Volumes
+use can be specified via the ``storagetype:groupqos`` extra spec. Volumes
 created with these extra specs set will be added to the specified QOS groups.
 
 To create a volume type that sets both Volume and Group QOS:

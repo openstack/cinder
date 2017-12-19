@@ -251,7 +251,7 @@ normal replication operation.  So they can be assigned in the model update and
 later on used by the driver, for example during the failover.
 
 To avoid using magic strings drivers must use values defined by the
-``ReplicationsSatus`` class in ``cinder/objects/fields.py`` file and
+``ReplicationStatus`` class in ``cinder/objects/fields.py`` file and
 these are:
 
 - ``ERROR``: When setting the replication failed on creation, retype, or
