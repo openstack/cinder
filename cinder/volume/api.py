@@ -1510,7 +1510,7 @@ class API(base.Base):
             msg = _('Volume %s status must be available or in-use, must not '
                     'be migrating, have snapshots, be replicated, be part of '
                     'a group and destination host/cluster must be different '
-                    'than the current one') % {'vol_id': volume.id}
+                    'than the current one') % volume.id
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
