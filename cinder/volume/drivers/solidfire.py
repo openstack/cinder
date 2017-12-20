@@ -769,7 +769,13 @@ class SolidFireDriver(san.SanISCSIDriver):
         # and over-ride any existing
         # extra-specs settings if present
         if qos_specs_id is not None:
-            kvs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
+            # Policy changes require admin context to get QoS specs
+            # at the object layer (base:get_by_id), we can either
+            # explicitly promote here, or pass in a context of None
+            # and let the qos_specs api get an admin context for us
+            # personally I prefer explicit, so here ya go.
+            admin_ctxt = context.get_admin_context()
+            kvs = qos_specs.get_qos_specs(admin_ctxt, qos_specs_id)['specs']
         else:
             kvs = specs
 
