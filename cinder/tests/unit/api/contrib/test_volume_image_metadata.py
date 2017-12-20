@@ -14,6 +14,7 @@
 
 import uuid
 
+from oslo_policy import policy as oslo_policy
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 from six.moves import http_client
@@ -25,6 +26,9 @@ from cinder import db
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
+from cinder.policies import base as base_policy
+from cinder.policies import volume_metadata as metadata_policy
+from cinder import policy
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -216,6 +220,26 @@ class VolumeImageMetadataTest(test.TestCase):
         self.assertEqual(fake_image_metadata,
                          jsonutils.loads(res.body)["metadata"])
 
+    def test_create_image_metadata_policy_not_authorized(self):
+        rules = {
+            metadata_policy.IMAGE_METADATA_POLICY: base_policy.RULE_ADMIN_API
+        }
+        policy.set_rules(oslo_policy.Rules.from_dict(rules))
+        self.addCleanup(policy.reset)
+
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, fake.VOLUME_ID), use_admin_context=False)
+
+        req.method = 'POST'
+        req.content_type = "application/json"
+        body = {"os-set_image_metadata": {
+            "metadata": {"image_name": "fake"}}
+        }
+        req.body = jsonutils.dump_as_bytes(body)
+
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.controller.create, req, fake.VOLUME_ID, None)
+
     def test_create_with_keys_case_insensitive(self):
         # If the keys in uppercase_and_lowercase, should return the one
         # which server added
@@ -319,6 +343,26 @@ class VolumeImageMetadataTest(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
         self.assertEqual(http_client.OK, res.status_int)
+
+    def test_delete_image_metadata_policy_not_authorized(self):
+        rules = {
+            metadata_policy.IMAGE_METADATA_POLICY: base_policy.RULE_ADMIN_API
+        }
+        policy.set_rules(oslo_policy.Rules.from_dict(rules))
+        self.addCleanup(policy.reset)
+
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, fake.VOLUME_ID), use_admin_context=False)
+
+        req.method = 'POST'
+        req.content_type = "application/json"
+        body = {"os-unset_image_metadata": {
+            "metadata": {"image_name": "fake"}}
+        }
+        req.body = jsonutils.dump_as_bytes(body)
+
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.controller.delete, req, fake.VOLUME_ID, None)
 
     def test_delete_meta_not_found(self):
         data = {"os-unset_image_metadata": {

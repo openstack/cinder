@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fix the following volume image metadata endpoints returning None following
+    policy enforcement failure:
+
+    * ``os-set_image_metadata``
+    * ``os-unset_image_metadata``
+
+    The endpoints will now correctly raise a 403 Forbidden instead.

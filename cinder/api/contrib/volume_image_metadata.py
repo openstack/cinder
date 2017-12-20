@@ -85,7 +85,7 @@ class VolumeImageMetadataController(wsgi.Controller):
     @wsgi.action("os-set_image_metadata")
     def create(self, req, id, body):
         context = req.environ['cinder.context']
-        if context.authorize(policy.IMAGE_METADATA_POLICY, fatal=False):
+        if context.authorize(policy.IMAGE_METADATA_POLICY):
             try:
                 metadata = body['os-set_image_metadata']['metadata']
             except (KeyError, TypeError):
@@ -128,7 +128,7 @@ class VolumeImageMetadataController(wsgi.Controller):
     def delete(self, req, id, body):
         """Deletes an existing image metadata."""
         context = req.environ['cinder.context']
-        if context.authorize(policy.IMAGE_METADATA_POLICY, fatal=False):
+        if context.authorize(policy.IMAGE_METADATA_POLICY):
             try:
                 key = body['os-unset_image_metadata']['key']
             except (KeyError, TypeError):
