@@ -28,7 +28,7 @@ class LioAdm(iscsi.ISCSITarget):
 
         # FIXME(jdg): modify executor to use the cinder-rtstool
         self.iscsi_target_prefix =\
-            self.configuration.safe_get('iscsi_target_prefix')
+            self.configuration.safe_get('target_prefix')
 
         self._verify_rtstool()
 

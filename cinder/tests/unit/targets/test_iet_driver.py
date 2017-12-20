@@ -196,7 +196,7 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
             self.target.create_iscsi_target.assert_called_once_with(
                 'iqn.2010-10.org.openstack:testvol',
                 1, 0, self.fake_volumes_dir, None,
-                portals_ips=[self.configuration.iscsi_ip_address],
-                portals_port=int(self.configuration.iscsi_port),
+                portals_ips=[self.configuration.target_ip_address],
+                portals_port=int(self.configuration.target_port),
                 check_exit_code=False,
                 old_name=None)

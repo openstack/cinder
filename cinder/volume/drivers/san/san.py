@@ -182,5 +182,5 @@ class SanISCSIDriver(SanDriver, driver.ISCSIDriver):
         super(SanISCSIDriver, self).__init__(*args, **kwargs)
 
     def _build_iscsi_target_name(self, volume):
-        return "%s%s" % (self.configuration.iscsi_target_prefix,
+        return "%s%s" % (self.configuration.target_prefix,
                          volume['name'])

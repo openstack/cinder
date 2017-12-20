@@ -84,8 +84,8 @@ class WindowsDriver(driver.ISCSIDriver):
             fail_if_none_found=True))
         LOG.debug("Available iSCSI portals: %s", available_portals)
 
-        iscsi_port = self.configuration.iscsi_port
-        iscsi_ips = ([self.configuration.iscsi_ip_address] +
+        iscsi_port = self.configuration.target_port
+        iscsi_ips = ([self.configuration.target_ip_address] +
                      self.configuration.iscsi_secondary_ip_addresses)
         requested_portals = {':'.join([iscsi_ip, str(iscsi_port)])
                              for iscsi_ip in iscsi_ips}
@@ -210,7 +210,7 @@ class WindowsDriver(driver.ISCSIDriver):
         pass
 
     def _get_target_name(self, volume):
-        return "%s%s" % (self.configuration.iscsi_target_prefix,
+        return "%s%s" % (self.configuration.target_prefix,
                          volume.name)
 
     def create_export(self, context, volume, connector):

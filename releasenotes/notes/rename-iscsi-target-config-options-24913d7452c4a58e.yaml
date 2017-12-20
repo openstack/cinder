@@ -1,0 +1,8 @@
+---
+deprecations:
+  - |
+    ``iscsi_ip_address``, ``iscsi_port``, ``target_helper``,
+    ``iscsi_target_prefix`` and ``iscsi_protocol`` config options are
+    deprecated in flavor of ``target_ip_address``, ``target_port``,
+    ``target_helper``, ``target_prefix`` and ``target_protocol`` accordingly.
+    Old config options will be removed in S release.

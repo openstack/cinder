@@ -23,7 +23,7 @@ class TestIserTgtDriver(tf.TargetDriverFixture):
 
     def setUp(self):
         super(TestIserTgtDriver, self).setUp()
-        self.configuration.iscsi_protocol = 'iser'
+        self.configuration.target_protocol = 'iser'
         self.target = tgt.TgtAdm(root_helper=utils.get_root_helper(),
                                  configuration=self.configuration)
 
@@ -47,7 +47,7 @@ class TestIserLioAdmDriver(tf.TargetDriverFixture):
     """Unit tests for the iSER LIO flow"""
     def setUp(self):
         super(TestIserLioAdmDriver, self).setUp()
-        self.configuration.iscsi_protocol = 'iser'
+        self.configuration.target_protocol = 'iser'
         with mock.patch.object(lio.LioAdm, '_verify_rtstool'):
             self.target = lio.LioAdm(root_helper=utils.get_root_helper(),
                                      configuration=self.configuration)

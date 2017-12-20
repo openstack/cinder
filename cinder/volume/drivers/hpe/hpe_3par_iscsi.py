@@ -191,7 +191,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         if len(temp_iscsi_ip) > 0:
             LOG.warning("Found invalid iSCSI IP address(s) in "
                         "configuration option(s) hpe3par_iscsi_ips or "
-                        "iscsi_ip_address '%s.'",
+                        "target_ip_address '%s.'",
                         (", ".join(temp_iscsi_ip)))
 
         if not len(iscsi_ip_list) > 0:

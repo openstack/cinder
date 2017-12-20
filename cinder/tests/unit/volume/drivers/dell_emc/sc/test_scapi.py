@@ -1679,8 +1679,8 @@ class DellSCSanAPITestCase(test.TestCase):
         # up.
         self.configuration.dell_sc_verify_cert = True
         self.configuration.dell_sc_api_port = 3033
-        self.configuration.iscsi_ip_address = '192.168.1.1'
-        self.configuration.iscsi_port = 3260
+        self.configuration.target_ip_address = '192.168.1.1'
+        self.configuration.target_port = 3260
         self._context = context.get_admin_context()
         self.apiversion = '2.0'
 
@@ -8421,8 +8421,8 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
         # up.
         self.configuration.dell_sc_verify_cert = True
         self.configuration.dell_sc_api_port = 3033
-        self.configuration.iscsi_ip_address = '192.168.1.1'
-        self.configuration.iscsi_port = 3260
+        self.configuration.target_ip_address = '192.168.1.1'
+        self.configuration.target_port = 3260
         self._context = context.get_admin_context()
         self.apiversion = '2.0'
 

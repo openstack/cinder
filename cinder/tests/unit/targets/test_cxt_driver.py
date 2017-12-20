@@ -70,7 +70,7 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
                     1,
                     0,
                     self.fake_volumes_dir,
-                    portals_ips=[self.configuration.iscsi_ip_address]))
+                    portals_ips=[self.configuration.target_ip_address]))
             self.assertTrue(mock_get.called)
             self.assertTrue(mock_execute.called)
             self.assertTrue(mock_get_targ.called)
@@ -136,7 +136,7 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
                     1,
                     0,
                     self.fake_volumes_dir,
-                    portals_ips=[self.configuration.iscsi_ip_address]))
+                    portals_ips=[self.configuration.target_ip_address]))
             self.assertTrue(mock_get.called)
             self.assertTrue(mock_get_targ.called)
             self.assertTrue(mock_execute.called)
@@ -181,5 +181,5 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
                 1, 0, self.fake_volumes_dir, fake_creds,
                 check_exit_code=False,
                 old_name=None,
-                portals_ips=[self.configuration.iscsi_ip_address],
-                portals_port=self.configuration.iscsi_port)
+                portals_ips=[self.configuration.target_ip_address],
+                portals_port=self.configuration.target_port)

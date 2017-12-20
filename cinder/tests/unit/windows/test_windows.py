@@ -73,8 +73,8 @@ class TestWindowsDriver(test.TestCase):
                              if portals_available else [])
 
         self._driver.configuration = mock.Mock()
-        self._driver.configuration.iscsi_port = iscsi_port
-        self._driver.configuration.iscsi_ip_address = requested_ips[0]
+        self._driver.configuration.target_port = iscsi_port
+        self._driver.configuration.target_ip_address = requested_ips[0]
         self._driver.configuration.iscsi_secondary_ip_addresses = (
             requested_ips[1:])
 
@@ -251,7 +251,7 @@ class TestWindowsDriver(test.TestCase):
     def test_get_target_name(self):
         volume = fake_volume.fake_volume_obj(mock.sentinel.fake_context)
         expected_target_name = "%s%s" % (
-            self._driver.configuration.iscsi_target_prefix,
+            self._driver.configuration.target_prefix,
             volume.name)
 
         target_name = self._driver._get_target_name(volume)

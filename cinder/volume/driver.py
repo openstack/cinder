@@ -48,16 +48,19 @@ volume_opts = [
                default=0,
                min=0, max=100,
                help='The percentage of backend capacity is reserved'),
-    cfg.StrOpt('iscsi_target_prefix',
+    cfg.StrOpt('target_prefix',
+               deprecated_name='iscsi_target_prefix',
                default='iqn.2010-10.org.openstack:',
                help='Prefix for iSCSI volumes'),
-    cfg.StrOpt('iscsi_ip_address',
+    cfg.StrOpt('target_ip_address',
+               deprecated_name='iscsi_ip_address',
                default='$my_ip',
                help='The IP address that the iSCSI daemon is listening on'),
     cfg.ListOpt('iscsi_secondary_ip_addresses',
                 default=[],
                 help='The list of secondary IP addresses of the iSCSI daemon'),
-    cfg.PortOpt('iscsi_port',
+    cfg.PortOpt('target_port',
+                deprecated_name='iscsi_port',
                 default=3260,
                 help='The port that the iSCSI daemon is listening on'),
     cfg.IntOpt('num_volume_device_scan_tries',
@@ -88,7 +91,8 @@ volume_opts = [
                help='The flag to pass to ionice to alter the i/o priority '
                     'of the process used to zero a volume after deletion, '
                     'for example "-c3" for idle only priority.'),
-    cfg.StrOpt('iscsi_helper',
+    cfg.StrOpt('target_helper',
+               deprecated_name='iscsi_helper',
                default='tgtadm',
                choices=['tgtadm', 'lioadm', 'scstadmin', 'iscsictl',
                         'ietadm', 'fake'],
@@ -131,7 +135,7 @@ volume_opts = [
                choices=['on', 'off'],
                help='Sets the behavior of the iSCSI target to either '
                     'perform write-back(on) or write-through(off). '
-                    'This parameter is valid if iscsi_helper is set '
+                    'This parameter is valid if target_helper is set '
                     'to tgtadm.'),
     cfg.StrOpt('iscsi_target_flags',
                default='',
@@ -139,7 +143,8 @@ volume_opts = [
                     'Only used for tgtadm to specify backing device flags '
                     'using bsoflags option. The specified string is passed '
                     'as is to the underlying tool.'),
-    cfg.StrOpt('iscsi_protocol',
+    cfg.StrOpt('target_protocol',
+               deprecated_name='iscsi_protocol',
                default='iscsi',
                choices=['iscsi', 'iser'],
                help='Determines the iSCSI protocol for new iSCSI volumes, '
@@ -2517,7 +2522,7 @@ class ISCSIDriver(VolumeDriver):
             return None
 
         for target in out.splitlines():
-            if (self.configuration.iscsi_ip_address in target
+            if (self.configuration.target_ip_address in target
                     and volume_name in target):
                 return target
         return None
@@ -2586,7 +2591,7 @@ class ISCSIDriver(VolumeDriver):
         except (IndexError, ValueError):
             if (self.configuration.volume_driver ==
                     'cinder.volume.drivers.lvm.ThinLVMVolumeDriver' and
-                    self.configuration.iscsi_helper == 'tgtadm'):
+                    self.configuration.target_helper == 'tgtadm'):
                 lun = 1
             else:
                 lun = 0
@@ -2692,7 +2697,7 @@ class ISCSIDriver(VolumeDriver):
         iscsi_properties = self._get_iscsi_properties(volume)
         return {
             'driver_volume_type':
-                self.configuration.safe_get('iscsi_protocol'),
+                self.configuration.safe_get('target_protocol'),
             'data': iscsi_properties
         }
 
@@ -2753,11 +2758,11 @@ class ISERDriver(ISCSIDriver):
         # for backward compatibility
         self.configuration.num_volume_device_scan_tries = \
             self.configuration.num_iser_scan_tries
-        self.configuration.iscsi_target_prefix = \
+        self.configuration.target_prefix = \
             self.configuration.iser_target_prefix
-        self.configuration.iscsi_ip_address = \
+        self.configuration.target_ip_address = \
             self.configuration.iser_ip_address
-        self.configuration.iscsi_port = self.configuration.iser_port
+        self.configuration.target_port = self.configuration.iser_port
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.

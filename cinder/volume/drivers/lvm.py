@@ -108,7 +108,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # the driver (control path), this way
         # different target drivers can be added (iscsi, FC etc)
         target_driver = \
-            self.target_mapping[self.configuration.safe_get('iscsi_helper')]
+            self.target_mapping[self.configuration.safe_get('target_helper')]
 
         LOG.debug('Attempting to initialize LVM driver with the '
                   'following target_driver: %s',

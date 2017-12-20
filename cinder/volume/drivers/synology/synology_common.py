@@ -409,9 +409,9 @@ class SynoCommon(object):
         self.vendor_name = 'Synology'
         self.driver_type = driver_type
         self.volume_backend_name = self._get_backend_name()
-        self.iscsi_port = self.config.safe_get('iscsi_port')
+        self.iscsi_port = self.config.safe_get('target_port')
 
-        api = APIRequest(self.config.iscsi_ip_address,
+        api = APIRequest(self.config.target_ip_address,
                          self.config.synology_admin_port,
                          self.config.synology_username,
                          self.config.synology_password,
@@ -665,7 +665,7 @@ class SynoCommon(object):
                              volutils.generate_password())
             provider_auth = ' '.join(('CHAP', chap_username, chap_password))
 
-        trg_prefix = self.config.safe_get('iscsi_target_prefix')
+        trg_prefix = self.config.safe_get('target_prefix')
         trg_name = (self.TARGET_NAME_PREFIX + '%s') % identifier
         iqn = trg_prefix + trg_name
 
@@ -961,7 +961,7 @@ class SynoCommon(object):
         return True
 
     def get_ip(self):
-        return self.config.iscsi_ip_address
+        return self.config.target_ip_address
 
     def get_provider_location(self, iqn, trg_id):
         portals = ['%(ip)s:%(port)d' % {'ip': self.get_ip(),
@@ -1020,7 +1020,7 @@ class SynoCommon(object):
         data = {}
         data['volume_backend_name'] = self.volume_backend_name
         data['vendor_name'] = self.vendor_name
-        data['storage_protocol'] = self.config.iscsi_protocol
+        data['storage_protocol'] = self.config.target_protocol
         data['consistencygroup_support'] = False
         data['QoS_support'] = False
         data['thin_provisioning_support'] = True
@@ -1034,7 +1034,7 @@ class SynoCommon(object):
         data['max_over_subscription_ratio'] = (self.config.
                                                max_over_subscription_ratio)
 
-        data['iscsi_ip_address'] = self.config.iscsi_ip_address
+        data['iscsi_ip_address'] = self.config.target_ip_address
         data['pool_name'] = self.config.synology_pool_name
         data['backend_info'] = ('%s:%s:%s' %
                                 (self.vendor_name,

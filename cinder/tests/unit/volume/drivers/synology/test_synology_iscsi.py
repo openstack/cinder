@@ -94,8 +94,8 @@ class SynoISCSIDriverTestCase(test.TestCase):
     def setup_configuration(self):
         config = mock.Mock(spec=conf.Configuration)
         config.use_chap_auth = False
-        config.iscsi_protocol = 'iscsi'
-        config.iscsi_ip_address = IP
+        config.target_protocol = 'iscsi'
+        config.target_ip_address = IP
         config.synology_admin_port = 5000
         config.synology_username = 'admin'
         config.synology_password = 'admin'
@@ -328,7 +328,7 @@ class SynoISCSIDriverTestCase(test.TestCase):
         iscsi_properties = {
             'target_discovered': False,
             'target_iqn': IQN,
-            'target_portal': '%s:3260' % self.conf.iscsi_ip_address,
+            'target_portal': '%s:3260' % self.conf.target_ip_address,
             'volume_id': VOLUME['id'],
             'access_mode': 'rw',
             'discard': False
@@ -341,7 +341,7 @@ class SynoISCSIDriverTestCase(test.TestCase):
         result = self.driver.initialize_connection(VOLUME, CONNECTOR)
 
         self.driver.common.get_iscsi_properties.assert_called_with(VOLUME)
-        self.conf.safe_get.assert_called_with('iscsi_protocol')
+        self.conf.safe_get.assert_called_with('target_protocol')
         self.assertEqual('iscsi', result['driver_volume_type'])
         self.assertDictEqual(iscsi_properties, result['data'])
 
