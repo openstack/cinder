@@ -217,8 +217,24 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                     ldset = tldset
                     break
             if ldset is None:
-                msg = _('Appropriate Logical Disk Set could not be found.')
-                raise exception.NotFound(msg)
+                if self._properties['auto_accesscontrol']:
+                    authname = connector['initiator'].strip()
+                    authname = authname.replace((":"), "")
+                    authname = authname.replace(("."), "")
+                    new_ldsetname = authname[-16:]
+                    ret = self._cli.addldset_iscsi(new_ldsetname, connector)
+                    if ret is False:
+                        msg = _('Appropriate Logical Disk Set'
+                                ' could not be found.')
+                        raise exception.NotFound(msg)
+                    xml = self._cli.view_all(self._properties['ismview_path'])
+                    pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+                        self.configs(xml))
+                    ldset = self._validate_iscsildset_exist(ldsets, connector)
+                else:
+                    msg = _('Appropriate Logical Disk Set could not be found.')
+                    raise exception.NotFound(msg)
+
         if len(ldset['portal_list']) < 1:
             msg = (_('Logical Disk Set `%s` has no portal.') %
                    ldset['ldsetname'])
@@ -240,8 +256,21 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                 if ldset is not None:
                     break
             if ldset is None:
-                msg = _('Appropriate Logical Disk Set could not be found.')
-                raise exception.NotFound(msg)
+                if self._properties['auto_accesscontrol']:
+                    new_ldsetname = connector['wwpns'][0][:16]
+                    ret = self._cli.addldset_fc(new_ldsetname, connector)
+                    if ret is False:
+                        msg = _('Appropriate Logical Disk Set'
+                                ' could not be found.')
+                        raise exception.NotFound(msg)
+                    xml = self._cli.view_all(self._properties['ismview_path'])
+                    pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+                        self.configs(xml))
+                    ldset = self._validate_fcldset_exist(ldsets, connector)
+                else:
+                    msg = _('Appropriate Logical Disk Set could not be found.')
+                    raise exception.NotFound(msg)
+
         return ldset
 
     def _enumerate_iscsi_portals(self, hostports, ldset, prefered_director=0):
@@ -819,6 +848,16 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         lvldn = self._select_ldnumber(used_ldns, max_ld_count)
 
         LOG.debug('configure backend.')
+        if not ldset['lds']:
+            LOG.debug('create and attach control volume.')
+            used_ldns.append(lvldn)
+            cvldn = self._select_ldnumber(used_ldns, max_ld_count)
+            self._cli.cvbind(lds[bvname]['pool_num'], cvldn)
+            self._cli.changeldname(cvldn,
+                                   self._properties['cv_name_format'] % cvldn)
+            self._cli.addldsetld(ldset['ldsetname'],
+                                 self._properties['cv_name_format'] % cvldn)
+
         self._cli.lvbind(bvname, lvname[3:], lvldn)
         self._cli.lvlink(svname[3:], lvname[3:])
         self._cli.addldsetld(ldset['ldsetname'], lvname)
@@ -882,6 +921,17 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         lvldn = self._select_ldnumber(used_ldns, max_ld_count)
 
         LOG.debug('configure backend.')
+        lun0 = [ld for (ldn, ld) in ldset['lds'].items() if ld['lun'] == 0]
+        if not lun0:
+            LOG.debug('create and attach control volume.')
+            used_ldns.append(lvldn)
+            cvldn = self._select_ldnumber(used_ldns, max_ld_count)
+            self._cli.cvbind(lds[bvname]['pool_num'], cvldn)
+            self._cli.changeldname(cvldn,
+                                   self._properties['cv_name_format'] % cvldn)
+            self._cli.addldsetld(ldset['ldsetname'],
+                                 self._properties['cv_name_format'] % cvldn, 0)
+
         self._cli.lvbind(bvname, lvname[3:], lvldn)
         self._cli.lvlink(svname[3:], lvname[3:])
 
@@ -889,6 +939,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         ldsetlds = ldset['lds']
         for ld in ldsetlds.values():
             luns.append(ld['lun'])
+        if 0 not in luns:
+            luns.append(0)
         target_lun = 0
         for lun in sorted(luns):
             if target_lun < lun:

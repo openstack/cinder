@@ -1048,25 +1048,54 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
             self._validate_ld_exist(
                 self.lds, self.vol.id, self._properties['ld_name_format'])
 
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
+                patch_execute)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
+                'view_all', new=mock.Mock())
     def test_validate_iscsildset_exist(self):
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
         ldset = self._validate_iscsildset_exist(self.ldsets, connector)
         self.assertEqual('LX:OpenStack0', ldset['ldsetname'])
-        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255XX"}
-        with self.assertRaisesRegexp(exception.NotFound,
-                                     'Appropriate Logical Disk Set'
-                                     ' could not be found.'):
-            self._validate_iscsildset_exist(self.ldsets, connector)
+        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f232XX"}
+        mock_data = {'ldsetname': 'LX:redhatd1d8e8f23',
+                     'protocol': 'iSCSI',
+                     'portal_list': ['1.1.1.1:3260', '2.2.2.2:3260'],
+                     'lds': {},
+                     'initiator_list':
+                         ['iqn.1994-05.com.redhat:d1d8e8f232XX']}
+        mock_ldset = {}
+        mock_ldset['LX:redhatd1d8e8f23'] = mock_data
+        mock_configs = mock.Mock()
+        self.configs = mock_configs
+        self.configs.return_value = None, None, mock_ldset, None, None, None
+        ldset = self._validate_iscsildset_exist(self.ldsets, connector)
+        self.assertEqual('LX:redhatd1d8e8f23', ldset['ldsetname'])
+        self.assertEqual('iqn.1994-05.com.redhat:d1d8e8f232XX',
+                         ldset['initiator_list'][0])
 
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
+                patch_execute)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
+                'view_all', new=mock.Mock())
     def test_validate_fcldset_exist(self):
         connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
         ldset = self._validate_fcldset_exist(self.ldsets, connector)
         self.assertEqual('LX:OpenStack1', ldset['ldsetname'])
         connector = {'wwpns': ["10000090FAA0786X", "10000090FAA0786Y"]}
-        with self.assertRaisesRegexp(exception.NotFound,
-                                     'Appropriate Logical Disk Set'
-                                     ' could not be found.'):
-            self._validate_fcldset_exist(self.ldsets, connector)
+        mock_data = {'ldsetname': 'LX:10000090FAA0786X',
+                     'lds': {},
+                     'protocol': 'FC',
+                     'wwpn': ["1000-0090-FAA0-786X", "1000-0090-FAA0-786Y"],
+                     'port': []}
+        mock_ldset = {}
+        mock_ldset['LX:10000090FAA0786X'] = mock_data
+        mock_configs = mock.Mock()
+        self.configs = mock_configs
+        self.configs.return_value = None, None, mock_ldset, None, None, None
+        ldset = self._validate_fcldset_exist(self.ldsets, connector)
+        self.assertEqual('LX:10000090FAA0786X', ldset['ldsetname'])
+        self.assertEqual('1000-0090-FAA0-786X', ldset['wwpn'][0])
+        self.assertEqual('1000-0090-FAA0-786Y', ldset['wwpn'][1])
 
     def test_enumerate_iscsi_portals(self):
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}

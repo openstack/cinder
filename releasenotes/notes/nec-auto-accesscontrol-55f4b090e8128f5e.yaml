@@ -1,0 +1,4 @@
+---
+upgrade:
+    Added automatic configuration of SAN access control for the NEC
+    volume driver.
