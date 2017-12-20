@@ -89,13 +89,6 @@ sf_opts = [
                     'This is required or deployments that have implemented '
                     'the use of VLANs for iSCSI networks in their cloud.'),
 
-    cfg.BoolOpt('sf_enable_volume_mapping',
-                default=True,
-                help='Create an internal mapping of volume IDs and account.  '
-                     'Optimizes lookups and performance at the expense of '
-                     'memory, very large deployments may want to consider '
-                     'setting to False.'),
-
     cfg.PortOpt('sf_api_port',
                 default=443,
                 help='SolidFire API port. Useful if the device api is behind '
