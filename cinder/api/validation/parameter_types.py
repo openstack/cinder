@@ -24,6 +24,8 @@ import unicodedata
 
 import six
 
+from cinder.common import constants
+
 
 def _is_printable(char):
     """determine if a unicode code point is printable.
@@ -232,3 +234,18 @@ service_id = {
 
 optional_uuid = {'oneOf': [{'type': 'null'},
                            {'type': 'string', 'format': 'uuid'}]}
+
+
+quota_class_set = {
+    'type': 'object',
+    'format': 'quota_class_set',
+    'patternProperties': {
+        '^[a-zA-Z0-9-_:. ]{1,255}$': {
+            'type': ['integer', 'string'],
+            'pattern': '^[0-9]*$', 'minimum': -1, 'minLength': 1,
+            'maximum': constants.DB_MAX_INT
+        }
+    },
+    'additionalProperties': False
+
+}
