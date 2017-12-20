@@ -2836,7 +2836,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             save_mock.assert_not_called()
 
     def test_volume_attach_attaching(self):
-        """Test volume_attach ."""
+        """Test volume_attach."""
 
         instance_uuid = '12345678-1234-5678-1234-567812345678'
         volume = tests_utils.create_volume(self.context, **self.volume_params)
