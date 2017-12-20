@@ -115,7 +115,8 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                                  'deleting', 'downloading']
 
         if volume_in_use:
-            self._fake_snapshot.volume.status = 'in-use'
+            self._fake_snapshot.volume.status = 'backing-up'
+            self._fake_snapshot.volume.attach_status = 'attached'
 
             self._driver._read_info_file.return_value = fake_info
 
@@ -281,7 +282,8 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             self._fake_snapshot.id = 'tmp-snap-%s' % self._fake_snapshot.id
 
         if volume_in_use:
-            self._fake_snapshot.volume.status = 'in-use'
+            self._fake_snapshot.volume.status = 'backing-up'
+            self._fake_snapshot.volume.attach_status = 'attached'
             expected_method_called = '_create_snapshot_online'
         else:
             self._fake_snapshot.volume.status = 'available'

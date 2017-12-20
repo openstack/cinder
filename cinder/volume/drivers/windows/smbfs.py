@@ -432,7 +432,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
                          backing_file_name)
 
     def _do_create_snapshot(self, snapshot, backing_file, new_snap_path):
-        if snapshot.volume.status == 'in-use':
+        if self._is_volume_attached(snapshot.volume):
             LOG.debug("Snapshot is in-use. Performing Nova "
                       "assisted creation.")
             return
@@ -458,8 +458,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         # NOTE(lpetrut): We're slightly diverging from the super class
         # workflow. The reason is that we cannot query in-use vhd/x images,
         # nor can we add or remove images from a vhd/x chain in this case.
-        volume_status = snapshot.volume.status
-        if volume_status != 'in-use':
+        if not self._is_volume_attached(snapshot.volume):
             return super(WindowsSmbfsDriver, self)._delete_snapshot(snapshot)
 
         info_path = self._local_path_volume_info(snapshot.volume)
