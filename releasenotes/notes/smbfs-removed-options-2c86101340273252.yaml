@@ -1,0 +1,7 @@
+---
+upgrades:
+  - |
+    The following config SMBFS volume driver options have been deprecated
+    and are now being removed: ``smbfs_allocation_info_file_path``,
+    ``smbfs_sparsed_volumes``, ``smbfs_used_ratio``, ``smbfs_oversub_ratio``.
+    Note that the equivalent generic options are available.
