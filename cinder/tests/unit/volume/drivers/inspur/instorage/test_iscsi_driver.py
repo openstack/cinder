@@ -165,6 +165,79 @@ class InStorageMCSISCSIDriverTestCase(test.TestCase):
                           volume_iSCSI, connector)
         term_conn.assert_called_once_with(volume_iSCSI, connector)
 
+    def test_instorage_initialize_iscsi_connection_multihost(self):
+        connector_a = {'host': 'instorage-mcs-host-a',
+                       'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                       'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                       'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+        # host-volume map return value
+        exp_path_a = {'driver_volume_type': 'iscsi',
+                      'data': {'target_discovered': False,
+                               'target_iqn':
+                                   'iqn.1982-01.com.inspur:1234.sim.node1',
+                               'target_portal': '1.234.56.78:3260',
+                               'target_lun': 0,
+                               'auth_method': 'CHAP',
+                               'discovery_auth_method': 'CHAP'}}
+
+        connector_b = {'host': 'instorage-mcs-host-b',
+                       'wwnns': ['30000090fa17311e', '30000090fa17311f'],
+                       'wwpns': ['ff00000000000002', 'ff00000000000003'],
+                       'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aab'}
+        # host-volume map return value
+        exp_path_b = {'driver_volume_type': 'iscsi',
+                      'data': {'target_discovered': False,
+                               'target_iqn':
+                                   'iqn.1982-01.com.inspur:1234.sim.node1',
+                               'target_portal': '1.234.56.78:3260',
+                               'target_lun': 1,
+                               'auth_method': 'CHAP',
+                               'discovery_auth_method': 'CHAP'}}
+
+        volume_iSCSI = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
+        vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
+        volume_iSCSI['volume_type_id'] = vol_type_iSCSI['id']
+
+        # Make sure that the volumes have been created
+        self._assert_vol_exists(volume_iSCSI['name'], True)
+
+        # check that the hosts not exist
+        ret = self.iscsi_driver._assistant.get_host_from_connector(
+            connector_a)
+        self.assertIsNone(ret)
+        ret = self.iscsi_driver._assistant.get_host_from_connector(
+            connector_b)
+        self.assertIsNone(ret)
+
+        # Initialize connection to map volume to host a
+        ret = self.iscsi_driver.initialize_connection(
+            volume_iSCSI, connector_a)
+        self.assertEqual(exp_path_a['driver_volume_type'],
+                         ret['driver_volume_type'])
+
+        # check host-volume map return value
+        for k, v in exp_path_a['data'].items():
+            self.assertEqual(v, ret['data'][k])
+
+        ret = self.iscsi_driver._assistant.get_host_from_connector(
+            connector_a)
+        self.assertIsNotNone(ret)
+
+        # Initialize connection to map volume to host b
+        ret = self.iscsi_driver.initialize_connection(
+            volume_iSCSI, connector_b)
+        self.assertEqual(exp_path_b['driver_volume_type'],
+                         ret['driver_volume_type'])
+
+        # check the return value
+        for k, v in exp_path_b['data'].items():
+            self.assertEqual(v, ret['data'][k])
+
+        ret = self.iscsi_driver._assistant.get_host_from_connector(
+            connector_b)
+        self.assertIsNotNone(ret)
+
     def test_instorage_initialize_iscsi_connection_single_path(self):
         # Test the return value for _get_iscsi_properties
 
