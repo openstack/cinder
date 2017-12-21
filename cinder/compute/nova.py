@@ -27,6 +27,7 @@ from requests import exceptions as request_exceptions
 
 from cinder.db import base
 from cinder import exception
+from cinder import service_auth
 
 nova_opts = [
     cfg.StrOpt('region_name',
@@ -106,6 +107,9 @@ def novaclient(context, privileged_user=False, timeout=None, api_version=None):
                                 token=context.auth_token,
                                 project_name=context.project_name,
                                 project_domain_id=context.project_domain_id)
+
+    if CONF.auth_strategy == 'keystone':
+        n_auth = service_auth.get_auth_plugin(context, auth=n_auth)
 
     keystone_session = ks_loading.load_session_from_conf_options(
         CONF,
