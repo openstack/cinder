@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The old deprecated ``nas_ip`` option has been removed.
+    Use the ``nas_host`` instead of it.
