@@ -1154,6 +1154,10 @@ class ISCSITargetDetachFailed(CinderException):
     message = _("Failed to detach iSCSI target for volume %(volume_id)s.")
 
 
+class TargetUpdateFailed(CinderException):
+    message = _("Failed to update target for volume %(volume_id)s.")
+
+
 class ISCSITargetHelperCommandFailed(CinderException):
     message = "%(error_message)s"
 
