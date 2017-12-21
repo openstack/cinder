@@ -1322,7 +1322,7 @@ class DellSCSanAPITestCase(test.TestCase):
           u'objectType': u'ScControllerPort'},
          u'status': u'Up',
          u'iscsiIpAddress': u'0.0.0.0',
-         u'Wwn': u'5000D31000FCBE36',
+         u'wWN': u'5000D31000FCBE36',
          u'name': u'5000D31000FCBE36',
          u'parent':
          {u'instanceId': u'64702.5764839588723736093.57',
@@ -3379,24 +3379,29 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_initiators',
                        return_value=WWNS)
-    def test_find_wwns_wwn_error(self,
-                                 mock_find_initiators,
-                                 mock_find_mappings,
-                                 mock_find_controller_port,
-                                 mock_close_connection,
-                                 mock_open_connection,
-                                 mock_init):
-        # Test case where ScControllerPort object has WWn instead of wwn for a
-        # property
+    def test_find_wwns_wwn_resilient(self,
+                                     mock_find_initiators,
+                                     mock_find_mappings,
+                                     mock_find_controller_port,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        # Test case where ScControllerPort object has wWN instead of wwn (as
+        # seen in some cases) for a property but we are still able to find it.
         lun, wwns, itmap = self.scapi.find_wwns(self.VOLUME,
                                                 self.SCSERVER)
         self.assertTrue(mock_find_initiators.called)
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_controller_port.called)
 
-        self.assertIsNone(lun, 'Incorrect LUN')
-        self.assertEqual([], wwns, 'WWNs is not empty')
-        self.assertEqual({}, itmap, 'WWN mapping not empty')
+        self.assertEqual(1, lun, 'Incorrect LUN')
+        expected_wwn = ['5000D31000FCBE36', '5000D31000FCBE36',
+                        '5000D31000FCBE36']
+        self.assertEqual(expected_wwn, wwns, 'WWNs incorrect')
+        expected_itmap = {'21000024FF30441C': ['5000D31000FCBE36'],
+                          '21000024FF30441D': ['5000D31000FCBE36',
+                                               '5000D31000FCBE36']}
+        self.assertEqual(expected_itmap, itmap, 'WWN mapping incorrect')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',

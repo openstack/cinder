@@ -1613,6 +1613,19 @@ class StorageCenterApi(object):
         LOG.debug('_find_controller_port: %s', controllerport)
         return controllerport
 
+    @staticmethod
+    def _get_wwn(controllerport):
+        """Return the WWN value of the controller port.
+
+        Usually the WWN key in the controller port is wwn or WWN, but there
+        are cases where the backend returns wWW, so we have to check all the
+        keys.
+        """
+        for key, value in controllerport.items():
+            if key.lower() == 'wwn':
+                return value
+        return None
+
     def find_wwns(self, scvolume, scserver):
         """Finds the lun and wwns of the mapped volume.
 
@@ -1638,7 +1651,7 @@ class StorageCenterApi(object):
             if controllerport is not None:
                 # This changed case at one point or another.
                 # Look for both keys.
-                wwn = controllerport.get('wwn', controllerport.get('WWN'))
+                wwn = self._get_wwn(controllerport)
                 if wwn:
                     serverhba = mapping.get('serverHba')
                     if serverhba:
