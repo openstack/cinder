@@ -1,9 +1,10 @@
 ---
 features:
   - |
-    Added support for Keystone middleware feature to pass service token along with the
-    user token for Cinder to Nova interaction. This will help get rid of user token
-    expiration issues during long running tasks e.g. creating volume snapshot.
-    To use this functionality a service user needs to be created first. Add the service
-    user configurations in ``cinder.conf`` under ``service_user`` group and set
-    ``send_service_user_token`` flag to ``True``.
+    Added support for Keystone middleware feature to pass service token along with
+    the user token for Cinder to Nova and Glance services. This will help get rid
+    of user token expiration issues during long running tasks e.g. creating volume
+    snapshot (Cinder->Nova) and creating volume from image (Cinder->Glance) etc.
+    To use this functionality a service user needs to be created first. Add the
+    service user configurations in ``cinder.conf`` under ``service_user`` group
+    and set ``send_service_user_token`` flag to ``True``.

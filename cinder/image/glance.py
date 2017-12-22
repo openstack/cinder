@@ -27,6 +27,7 @@ import sys
 import time
 
 import glanceclient.exc
+from keystoneauth1.loading import session as ks_session
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
@@ -37,6 +38,7 @@ from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
+from cinder import service_auth
 
 
 glance_opts = [
@@ -63,6 +65,8 @@ CONF = cfg.CONF
 CONF.register_opts(glance_opts)
 CONF.register_opts(glance_core_properties_opts)
 
+_SESSION = None
+
 LOG = logging.getLogger(__name__)
 
 
@@ -83,21 +87,28 @@ def _parse_image_ref(image_href):
 
 def _create_glance_client(context, netloc, use_ssl):
     """Instantiate a new glanceclient.Client object."""
-    params = {}
-    if use_ssl:
-        scheme = 'https'
-        # https specific params
-        params['insecure'] = CONF.glance_api_insecure
-        params['ssl_compression'] = CONF.glance_api_ssl_compression
-        params['cacert'] = CONF.glance_ca_certificates_file
-    else:
-        scheme = 'http'
+    params = {'global_request_id': context.global_id}
+
+    if use_ssl and CONF.auth_strategy == 'noauth':
+        params = {'insecure': CONF.glance_api_insecure,
+                  'cacert': CONF.glance_ca_certificates_file,
+                  'timeout': CONF.glance_request_timeout
+                  }
     if CONF.auth_strategy == 'keystone':
-        params['token'] = context.auth_token
-    if CONF.glance_request_timeout is not None:
-        params['timeout'] = CONF.glance_request_timeout
+        global _SESSION
+        if not _SESSION:
+            config_options = {'insecure': CONF.glance_api_insecure,
+                              'cacert': CONF.glance_ca_certificates_file,
+                              'timeout': CONF.glance_request_timeout
+                              }
+            _SESSION = ks_session.Session().load_from_options(**config_options)
+
+        auth = service_auth.get_auth_plugin(context)
+        params['auth'] = auth
+        params['session'] = _SESSION
+
+    scheme = 'https' if use_ssl else 'http'
     endpoint = '%s://%s' % (scheme, netloc)
-    params['global_request_id'] = context.global_id
     return glanceclient.Client('2', endpoint, **params)
 
 
