@@ -107,7 +107,10 @@ Revert volume to snapshot
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Revert a volume to its latest snapshot, this API only support reverting a detached volume.
+Revert a volume to its latest snapshot, this API only support reverting a detached volume,
+and the volume status must be ``available``.
+
+Available since API microversion ``3.40``.
 
 Normal response codes: 202
 
