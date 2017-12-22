@@ -646,6 +646,30 @@ def volume_service_uuids_online_data_migration(context, max_count):
     return total, updated
 
 
+@enginefacade.writer
+def attachment_specs_online_data_migration(context, max_count):
+    from cinder.objects import volume_attachment
+    # First figure out how many attachments have specs which need to be
+    # migrated, grouped by the attachment.id from the specs table.
+    session = get_session()
+    total = session.query(models.AttachmentSpecs.attachment_id).filter_by(
+        deleted=False).group_by(models.AttachmentSpecs.attachment_id).count()
+    # Now get the limited distinct set of attachment_ids to start migrating.
+    result = session.query(
+        models.AttachmentSpecs.attachment_id).filter_by(
+        deleted=False).group_by(models.AttachmentSpecs.attachment_id).limit(
+        max_count).all()
+    migrated = 0
+    # result is a list of tuples where the first item is the attachment_id
+    for attachment_id in result:
+        attachment_id = attachment_id[0]
+        # Loading the volume attachment object will migrate it's related
+        # attachment specs and delete those attachment specs.
+        volume_attachment.VolumeAttachment.get_by_id(context, attachment_id)
+        migrated += 1
+    return total, migrated
+
+
 ###################
 
 
