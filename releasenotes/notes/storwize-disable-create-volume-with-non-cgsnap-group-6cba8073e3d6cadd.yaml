@@ -1,0 +1,4 @@
+---
+features:
+  - Disable creating volume with non cg_snapshot group_id in
+    Storwize/SVC driver.
