@@ -101,6 +101,7 @@ class HPE3PARBaseDriver(test.TestCase):
     CLONE_ID = 'd03338a9-9115-48a3-8dfc-000000000000'
     VOLUME_TYPE_ID_REPLICATED = 'be9181f1-4040-46f2-8298-e7532f2bf9db'
     VOLUME_TYPE_ID_DEDUP = 'd03338a9-9115-48a3-8dfc-11111111111'
+    VOLUME_TYPE_ID_TIRAMISU = 'd03338a9-9115-48a3-8dfc-44444444444'
     VOL_TYPE_ID_DEDUP_COMPRESS = 'd03338a9-9115-48a3-8dfc-33333333333'
     VOLUME_TYPE_ID_FLASH_CACHE = 'd03338a9-9115-48a3-8dfc-22222222222'
     VOLUME_NAME = 'volume-' + VOLUME_ID
@@ -111,6 +112,7 @@ class HPE3PARBaseDriver(test.TestCase):
     VOLUME_3PAR_NAME = 'osv-0DM4qZEVSKON-DXN-NwVpw'
     SNAPSHOT_3PAR_NAME = 'oss-L4I73ONuTci9Fd4ceij-MQ'
     RCG_3PAR_NAME = 'rcg-0DM4qZEVSKON-DXN-N'
+    RCG_3PAR_GROUP_NAME = 'rcg-YET.38iJR1KQDyA50k'
     GROUP_ID = '6044fedf-c889-4752-900f-2039d247a5df'
     CONSIS_GROUP_NAME = 'vvs-YET.38iJR1KQDyA50kel3w'
     SRC_CONSIS_GROUP_ID = '7d7dfa02-ac6e-48cb-96af-8a0cd3008d47'
@@ -178,6 +180,16 @@ class HPE3PARBaseDriver(test.TestCase):
                          'host': FAKE_CINDER_HOST,
                          'volume_type': 'replicated',
                          'volume_type_id': VOLUME_TYPE_ID_REPLICATED}
+
+    volume_tiramisu = {'name': VOLUME_NAME,
+                       'id': VOLUME_ID,
+                       'display_name': 'Foo Volume',
+                       'replication_status': 'disabled',
+                       'provider_location': CLIENT_ID,
+                       'size': 2,
+                       'host': FAKE_CINDER_HOST,
+                       'volume_type': 'group_replication',
+                       'volume_type_id': VOLUME_TYPE_ID_TIRAMISU}
 
     replication_targets = [{'backend_id': REPLICATION_BACKEND_ID,
                             'cpg_map': HPE3PAR_CPG_MAP,
@@ -310,6 +322,17 @@ class HPE3PARBaseDriver(test.TestCase):
                                          'provisioning': 'dedup'},
                          'deleted_at': None,
                          'id': VOLUME_TYPE_ID_DEDUP}
+
+    volume_type_tiramisu = {'name': 'dedup',
+                            'deleted': False,
+                            'updated_at': None,
+                            'extra_specs': {'cpg': HPE3PAR_CPG2,
+                                            'hpe3par:group_replication':
+                                            '<is> True',
+                                            'replication_enabled': '<is> True',
+                                            'replication:mode': 'sync'},
+                            'deleted_at': None,
+                            'id': VOLUME_TYPE_ID_TIRAMISU}
 
     volume_type_flash_cache = {'name': 'flash-cache-on',
                                'deleted': False,
@@ -624,6 +647,12 @@ class HPE3PARBaseDriver(test.TestCase):
             self.host = 'fakehost@foo#OpenStackCPG'
             self.volume_type = None
             self.volume_type_id = None
+            self.volume = {'volume_type_id': self.volume_type_id,
+                           'host': self.host, 'id': self.id, 'volume_type':
+                           self.volume_type}
+
+        def get(self, parm):
+            return self.volume[parm]
 
     class fake_group_object(object):
         def __init__(self, grp_id='6044fedf-c889-4752-900f-2039d247a5df'):
@@ -633,6 +662,7 @@ class HPE3PARBaseDriver(test.TestCase):
             self.name = 'cg_name'
             self.group_snapshot_id = None
             self.host = 'fakehost@foo#OpenStackCPG'
+            self.is_replicated = False
             self.description = 'consistency group'
 
     class fake_group_snapshot_object(object):
@@ -4652,6 +4682,949 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 self.standard_logout)
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group_with_replication_enabled(self, cg_ss_enable,
+                                                   vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'sync'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        comment = Comment({
+            'group_id': self.GROUP_ID
+        })
+        mock_client.getRemoteCopyGroup.return_value = (
+            {'volumes': []})
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+            mock_client.getCPG.return_value = {'domain': None}
+            # create a group
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.volume_types = [self.volume_type_tiramisu]
+            backend_id = self.replication_targets[0]['backend_id']
+            exp_model_update = {'status': fields.GroupStatus.AVAILABLE,
+                                'replication_status':
+                                fields.ReplicationStatus.ENABLED}
+
+            model_update = \
+                self.driver.create_group(context.get_admin_context(), group)
+
+            expected = [
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.createRemoteCopyGroup(
+                    self.RCG_3PAR_GROUP_NAME,
+                    [{'targetName': backend_id,
+                      'mode': SYNC_MODE}], {}),
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
+                mock.call.createVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    domain=None,
+                    comment=comment)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+            self.assertEqual(exp_model_update, model_update)
+
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_delete_empty_group_with_replication_enabled(self, cg_ss_enable,
+                                                         vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'sync'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            mock_client.getCPG.return_value = {'domain': None}
+            mock_client.getRemoteCopyGroup.return_value = (
+                {'volumes': []})
+
+            # create a consistency group
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.volume_types = [self.volume_type_tiramisu]
+            group.status = fields.GroupStatus.DELETING
+
+            self.driver.delete_group(context.get_admin_context(), group, [])
+            expected = [
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
+                mock.call.stopRemoteCopy(self.RCG_3PAR_GROUP_NAME),
+                mock.call.removeRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
+                mock.call.deleteVolumeSet(
+                    self.CONSIS_GROUP_NAME)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_delete_group_with_replication_enabled(self, cg_ss_enable,
+                                                   vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'sync'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+
+        exp_volume_model_updates = [{'id': self.volume['id'],
+                                     'status': 'deleted'}]
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            mock_client.getCPG.return_value = {'domain': None}
+            mock_client.getRemoteCopyGroup.return_value = (
+                {'volumes': [{'name': self.VOLUME_3PAR_NAME}]})
+
+            # create a consistency group
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.volume_types = [self.volume_type_tiramisu]
+            group.status = fields.GroupStatus.DELETING
+
+            model_update, volume_model_updates = (
+                self.driver.delete_group(context.get_admin_context(),
+                                         group, [self.volume]))
+
+            expected = [
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
+                mock.call.stopRemoteCopy(self.RCG_3PAR_GROUP_NAME),
+                mock.call.removeVolumeFromRemoteCopyGroup(
+                    self.RCG_3PAR_GROUP_NAME, self.VOLUME_3PAR_NAME,
+                    removeFromTarget=True),
+                mock.call.removeRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
+                mock.call.deleteVolumeSet(
+                    self.CONSIS_GROUP_NAME),
+                mock.call.deleteVolume(self.VOLUME_3PAR_NAME)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+            self.assertEqual(exp_volume_model_updates, volume_model_updates)
+
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_enable_group_replication(self, cg_ss_enable, vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'sync'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+
+        mock_client.getVolumeSet.return_value = (
+            {'name': self.CONSIS_GROUP_NAME})
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.volume_types = [self.volume_type_tiramisu]
+
+            self.driver.enable_replication(context.get_admin_context(),
+                                           group, [self.volume])
+
+            expected = [
+                mock.call.getVolumeSet(self.CONSIS_GROUP_NAME),
+                mock.call.startRemoteCopy(self.RCG_3PAR_GROUP_NAME)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_disable_group_replication(self, cg_ss_enable, vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'sync'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+
+        mock_client.getVolumeSet.return_value = (
+            {'name': self.CONSIS_GROUP_NAME})
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.volume_types = [self.volume_type_tiramisu]
+
+            self.driver.disable_replication(context.get_admin_context(),
+                                            group, [self.volume])
+
+            expected = [
+                mock.call.getVolumeSet(self.CONSIS_GROUP_NAME),
+                mock.call.stopRemoteCopy(self.RCG_3PAR_GROUP_NAME)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_failover_replication_on_group(self, _mock_volume_types):
+        # periodic vs. sync is not relevant when conducting a failover. We
+        # will just use periodic.
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'hpe3par:group_replication': '<is> True',
+                'volume_type': self.volume_type_tiramisu}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+            valid_backend_id = (
+                self.replication_targets[0]['backend_id'])
+
+            # create a group
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.volume_types = [self.volume_type_tiramisu]
+
+            volumes = [self.volume_tiramisu]
+
+            expected_model = [{'id': self.VOLUME_ID,
+                               'replication_status':
+                               fields.ReplicationStatus.FAILED_OVER,
+                               'provider_location': self.CLIENT_ID,
+                               'replication_driver_data':
+                               self.REPLICATION_CLIENT_ID}]
+
+            exp_model_update = {
+                'replication_status': fields.ReplicationStatus.FAILED_OVER}
+
+            model_update, return_model = self.driver.failover_replication(
+                context.get_admin_context(),
+                group,
+                volumes,
+                valid_backend_id)
+
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_GROUP_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual(expected_model, return_model)
+            self.assertEqual(exp_model_update, model_update)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_failback_replication_on_group(self, _mock_volume_types):
+        # Managed vs. unmanaged and periodic vs. sync are not relevant when
+        # failing back a volume.
+        # We will use managed and periodic as the default.
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'hpe3par:group_replication': '<is> True',
+                'volume_type': self.volume_type_tiramisu}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            volume = self.volume_tiramisu.copy()
+            volume['replication_status'] = 'failed-over'
+            volume['replication_driver_data'] = self.REPLICATION_CLIENT_ID
+
+            # create a group
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.volume_types = [self.volume_type_tiramisu]
+
+            expected_model = [{'id': self.VOLUME_ID,
+                               'replication_status':
+                               fields.ReplicationStatus.ENABLED,
+                               'provider_location': self.CLIENT_ID,
+                               'replication_driver_data':
+                               self.REPLICATION_CLIENT_ID}]
+
+            exp_model_update = {
+                'replication_status': fields.ReplicationStatus.ENABLED}
+
+            model_update, return_model = self.driver.failover_replication(
+                context.get_admin_context(),
+                group,
+                [volume],
+                'default')
+
+            self.assertEqual(expected_model, return_model)
+            self.assertEqual(exp_model_update, model_update)
+
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_update_replication_enabled_group_add_vol(self, _mock_volume_types,
+                                                      cg_ss_enable,
+                                                      vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'sync'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'sync',
+                'hpe3par:group_replication': '<is> True',
+                'volume_type': self.volume_type_tiramisu}}
+
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_client.getRemoteCopyGroup.return_value = (
+            {'volumes': [{'name': self.VOLUME_3PAR_NAME}]})
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            # create a group
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.replication_status = fields.ReplicationStatus.ENABLED
+            group.volume_types = [self.volume_type_tiramisu]
+
+            exp_add_volume = [{'id': self.volume_tiramisu['id'],
+                               'replication_status':
+                               fields.ReplicationStatus.ENABLED}]
+            # add a volume to the consistency group
+            model_update, add_volume, remove_volume = \
+                self.driver.update_group(context.get_admin_context(), group,
+                                         add_volumes=[self.volume_tiramisu],
+                                         remove_volumes=[])
+
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_GROUP_NAME),
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
+                mock.call.addVolumeToRemoteCopyGroup(
+                    self.RCG_3PAR_GROUP_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    [{'secVolumeName': self.VOLUME_3PAR_NAME,
+                      'targetName': 'target'}],
+                    optional={'volumeAutoCreation': True}),
+                mock.call.addVolumeToVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    self.VOLUME_3PAR_NAME),
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
+                mock.call.startRemoteCopy(self.RCG_3PAR_GROUP_NAME)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual(exp_add_volume, add_volume)
+
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_update_replication_enabled_group_remove_vol(
+            self, _mock_volume_types, cg_ss_enable, vol_ss_enable):
+
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'sync'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'sync',
+                'hpe3par:group_replication': '<is> True',
+                'volume_type': self.volume_type_tiramisu}}
+
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_client.getRemoteCopyGroup.return_value = (
+            {'volumes': [{'name': self.VOLUME_3PAR_NAME}]})
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            # create a group
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.replication_status = fields.ReplicationStatus.ENABLED
+            group.volume_types = [self.volume_type_tiramisu]
+
+            exp_remove_volume = [{'id': self.volume_tiramisu['id'],
+                                  'replication_status': None}]
+            # add a volume to the consistency group
+            model_update, add_volume, remove_volume = \
+                self.driver.update_group(context.get_admin_context(), group,
+                                         add_volumes=[],
+                                         remove_volumes=[self.volume_tiramisu])
+
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_GROUP_NAME),
+                mock.call.removeVolumeFromRemoteCopyGroup(
+                    self.RCG_3PAR_GROUP_NAME, self.VOLUME_3PAR_NAME,
+                    removeFromTarget=True),
+                mock.call.removeVolumeFromVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    self.VOLUME_3PAR_NAME),
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
+                mock.call.startRemoteCopy(self.RCG_3PAR_GROUP_NAME)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual(exp_remove_volume, remove_volume)
+
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_volume_with_tiramisu_volume_type(self, _mock_volume_types,
+                                                     vol_ss_enable):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        vol_ss_enable.return_value = True
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'hpe3par:group_replication': '<is> True',
+                'replication:sync_period': '900',
+                'volume_type': self.volume_type_tiramisu}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client:
+
+            mock_create_client.return_value = mock_client
+            return_model = self.driver.create_volume(self.volume_replicated)
+
+            expected = [
+                mock.call.createVolume(
+                    self.VOLUME_3PAR_NAME,
+                    HPE3PAR_CPG,
+                    2048, {
+                        'comment': mock.ANY,
+                        'tpvv': True,
+                        'tdvv': False,
+                        'snapCPG': HPE3PAR_CPG_SNAP})]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual({'provider_location': self.CLIENT_ID},
+                             return_model)
+
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_volume_with_tiramisu_volume_type_and_added_in_group(
+            self, _mock_volume_types, vol_ss_enable):
+
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        vol_ss_enable.return_value = True
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'sync'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_client.getRemoteCopyGroup.return_value = (
+            {'volumes': [{'name': self.VOLUME_3PAR_NAME}]})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'sync',
+                'hpe3par:group_replication': '<is> True',
+                'volume_type': self.volume_type_tiramisu}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+
+            mock_replication_client.return_value = mock_replicated_client
+            mock_create_client.return_value = mock_client
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.replication_status = fields.ReplicationStatus.ENABLED
+            group.volume_types = [self.volume_type_tiramisu]
+            volume = self.volume_tiramisu.copy()
+            volume['group'] = group
+            volume['group_id'] = group.id
+
+            return_model = self.driver.create_volume(volume)
+
+            expected = [
+                mock.call.createVolume(
+                    self.VOLUME_3PAR_NAME, HPE3PAR_CPG, 2048,
+                    {'comment': mock.ANY,
+                     'tpvv': True,
+                     'tdvv': False,
+                     'snapCPG': HPE3PAR_CPG_SNAP}),
+                mock.call.stopRemoteCopy(self.RCG_3PAR_GROUP_NAME),
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
+                mock.call.addVolumeToRemoteCopyGroup(
+                    self.RCG_3PAR_GROUP_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    [{'secVolumeName': self.VOLUME_3PAR_NAME,
+                      'targetName': 'target'}],
+                    optional={'volumeAutoCreation': True}),
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
+                mock.call.startRemoteCopy(self.RCG_3PAR_GROUP_NAME),
+                mock.call.addVolumeToVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    self.VOLUME_3PAR_NAME)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual({'provider_location': self.CLIENT_ID,
+                              'replication_status':
+                              fields.ReplicationStatus.ENABLED},
+                             return_model)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_revert_to_snapshot_of_volume_in_group(self, _mock_volume_types):
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'hpe3par:group_replication': '<is> True',
+                'volume_type': self.volume_type_replicated}}
+
+        mock_client = self.setup_driver()
+        mock_client.isOnlinePhysicalCopy.return_value = False
+        mock_client.getStorageSystemInfo.return_value = mock.ANY
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            volume = self.volume_tiramisu.copy()
+
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.replication_status = fields.ReplicationStatus.ENABLED
+            group.volume_types = [self.volume_type_tiramisu]
+            volume['group'] = group
+
+            self.driver.revert_to_snapshot(
+                self.ctxt,
+                volume,
+                self.snapshot)
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_GROUP_NAME),
+                mock.call.isOnlinePhysicalCopy(self.VOLUME_3PAR_NAME),
+                mock.call.promoteVirtualCopy(
+                    'oss-L4I73ONuTci9Fd4ceij-MQ',
+                    optional={'allowRemoteCopyParent': True}),
+                mock.call.startRemoteCopy(self.RCG_3PAR_GROUP_NAME)
+            ]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_failover_host_with_group_exist(self, _mock_volume_types):
+        # periodic vs. sync is not relevant when conducting a failover. We
+        # will just use periodic.
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'hpe3par:group_replication': '<is> True',
+                'volume_type': self.volume_type_tiramisu}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+            valid_backend_id = (
+                self.replication_targets[0]['backend_id'])
+
+            # create a group
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.volume_types = [self.volume_type_tiramisu]
+
+            volume = self.volume_tiramisu.copy()
+            volume['group'] = group
+            volume['group_id'] = group.id
+
+            group_model = {
+                'group_id': group.id,
+                'updates': {'replication_status':
+                            fields.ReplicationStatus.FAILED_OVER}}
+
+            expected_model = (self.REPLICATION_BACKEND_ID,
+                              [{'updates': {
+                                'id': self.VOLUME_ID,
+                                'replication_status':
+                                fields.ReplicationStatus.FAILED_OVER,
+                                'provider_location':
+                                self.CLIENT_ID,
+                                'replication_driver_data':
+                                self.REPLICATION_CLIENT_ID},
+                                'volume_id': self.VOLUME_ID}],
+                              [group_model])
+            return_model = self.driver.failover_host(
+                context.get_admin_context(), [volume],
+                valid_backend_id, [group])
+
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_GROUP_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual(expected_model, return_model)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_replication_failback_with_group_exist(self, _mock_volume_types):
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'hpe3par:group_replication': '<is> True',
+                'volume_type': self.volume_type_tiramisu}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            # create a group
+            group = self.fake_group_object()
+            group.is_replicated = True
+            group.volume_types = [self.volume_type_tiramisu]
+
+            volume = self.volume_tiramisu.copy()
+            volume['group'] = group
+            volume['group_id'] = group.id
+            volume['replication_status'] = 'failed-over'
+            volume['replication_driver_data'] = self.REPLICATION_CLIENT_ID
+
+            group_model = {
+                'group_id': group.id,
+                'updates': {'replication_status':
+                            fields.ReplicationStatus.ENABLED}}
+
+            expected_model = (None,
+                              [{'updates': {'id': self.VOLUME_ID,
+                                            'replication_status':
+                                            fields.ReplicationStatus.ENABLED,
+                                            'provider_location':
+                                            self.CLIENT_ID,
+                                            'replication_driver_data':
+                                            self.REPLICATION_CLIENT_ID},
+                                'volume_id': self.VOLUME_ID}],
+                              [group_model])
+
+            return_model = self.driver.failover_host(
+                context.get_admin_context(), [volume], 'default', [group])
+
+            self.assertEqual(expected_model, return_model)
+
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'get_volume_settings_from_type')
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'create_group')
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_group_with_replication_from_src_group(
+            self, _mock_type, _src_group, cg_ss_enable, vol_ss_enable,
+            typ_info):
+
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'sync'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        mock_client.getRemoteCopyGroup.return_value = (
+            {'volumes': [{'name': self.VOLUME_3PAR_NAME}]})
+        mock_client.getCPG.return_value = {'domain': None}
+
+        type_info = {'cpg': 'OpenStackCPG',
+                     'tpvv': True,
+                     'tdvv': False,
+                     'snap_cpg': 'OpenStackCPG',
+                     'hpe3par_keys': {'group_replication': '<is> True'}}
+
+        _mock_type.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'sync',
+                'hpe3par:group_replication': '<is> True',
+                'volume_type': self.volume_type_tiramisu}}
+
+        typ_info.return_value = type_info
+        source_volume = self.volume_src_cg
+
+        group_snap_optional = (
+            {'expirationHours': 1})
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            group = self.fake_group_object()
+            _src_group.return_value = group
+            group.is_replicated = True
+
+            source_grp = self.fake_group_object(
+                grp_id=self.SRC_CONSIS_GROUP_ID)
+            source_grp.is_replicated = True
+
+            expected = [
+                mock.call.createSnapshotOfVolumeSet(
+                    mock.ANY,
+                    self.SRC_CONSIS_GROUP_NAME,
+                    optional=group_snap_optional),
+                mock.call.stopRemoteCopy(self.RCG_3PAR_GROUP_NAME),
+                mock.call.copyVolume(
+                    mock.ANY,
+                    self.VOLUME_NAME_3PAR,
+                    HPE3PAR_CPG,
+                    {'snapCPG': HPE3PAR_CPG, 'online': True,
+                     'tpvv': mock.ANY, 'tdvv': mock.ANY}),
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
+                mock.call.addVolumeToRemoteCopyGroup(
+                    self.RCG_3PAR_GROUP_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    [{'secVolumeName': self.VOLUME_3PAR_NAME,
+                      'targetName': 'target'}],
+                    optional={'volumeAutoCreation': True}),
+                mock.call.addVolumeToVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    self.VOLUME_NAME_3PAR),
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
+                mock.call.startRemoteCopy(self.RCG_3PAR_GROUP_NAME)]
+
+            # Create a consistency group from a source consistency group.
+            self.driver.create_group_from_src(
+                context.get_admin_context(), group,
+                [self.volume_tiramisu], source_group=source_grp,
+                source_vols=[source_volume])
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'get_volume_settings_from_type')
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
@@ -5258,7 +6231,9 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             # Test a successful failover.
             expected_model = (self.REPLICATION_BACKEND_ID,
                               [{'updates': {'replication_status':
-                                            'failed-over'},
+                                            'failed-over',
+                                            'replication_driver_data':
+                                            self.REPLICATION_CLIENT_ID},
                                 'volume_id': self.VOLUME_ID}],
                               [])
             return_model = self.driver.failover_host(
@@ -5316,7 +6291,9 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 'default')
             expected_model = (None,
                               [{'updates': {'replication_status':
-                                            'available'},
+                                            'available',
+                                            'replication_driver_data':
+                                            self.CLIENT_ID},
                                 'volume_id': self.VOLUME_ID}],
                               [])
             self.assertEqual(expected_model, return_model)

@@ -257,11 +257,12 @@ class HPE3PARCommon(object):
         3.0.39 - Add support for revert to snapshot.
         4.0.0 - Code refactor.
         4.0.1 - Added check to modify host after volume detach. bug #1730720
+        4.0.2 - Added Tiramisu feature on 3PAR.
 
 
     """
 
-    VERSION = "4.0.1"
+    VERSION = "4.0.2"
 
     stats = {}
 
@@ -315,7 +316,7 @@ class HPE3PARCommon(object):
                     'priority']
     qos_priority_level = {'low': 1, 'normal': 2, 'high': 3}
     hpe3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs',
-                          'flash_cache', 'compression']
+                          'flash_cache', 'compression', 'group_replication']
 
     def __init__(self, config, active_backend_id=None):
         self.config = config
@@ -531,8 +532,13 @@ class HPE3PARCommon(object):
 
     def create_group(self, context, group):
         """Creates a group."""
-        if not volume_utils.is_group_a_cg_snapshot_type(group):
+
+        if (not volume_utils.is_group_a_cg_snapshot_type(group)
+                and not group.is_replicated):
             raise NotImplementedError()
+
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+
         if group.volume_type_ids is not None:
             for volume_type in group.volume_types:
                 allow_type = self.is_volume_group_snap_type(
@@ -552,10 +558,30 @@ class HPE3PARCommon(object):
         if group.group_snapshot_id is not None:
             extra['group_snapshot_id'] = group.group_snapshot_id
 
+        if group.is_replicated:
+            LOG.debug("Group: %(group)s is a replication group.",
+                      {'group': group.id})
+            # Check replication configuration on each volume type
+            self._check_replication_configuration_on_volume_types(
+                group.volume_types)
+
+            # Check hpe3par:group_replication flag in each volume type.
+            self._check_tiramisu_configuration_on_volume_types(
+                group.volume_types)
+
+            # Attributes of Remote must be same on each volume type
+            self._check_attributes_of_remote_per_volume_type(group)
+
+            # Create remote copy group
+            self._create_remote_copy_group_for_group(group)
+            # Start Remote copy
+            self._start_remote_copy_group(group)
+            model_update.update({
+                'replication_status': fields.ReplicationStatus.ENABLED})
+
         self.client.createVolumeSet(cg_name, domain=domain,
                                     comment=six.text_type(extra))
 
-        model_update = {'status': fields.GroupStatus.AVAILABLE}
         return model_update
 
     def create_group_from_src(self, context, group, volumes,
@@ -563,6 +589,10 @@ class HPE3PARCommon(object):
                               source_group=None, source_vols=None):
 
         self.create_group(context, group)
+        volumes_model_update = []
+        replication_flag = False
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+
         vvs_name = self._get_3par_vvs_name(group.id)
         if group_snapshot and snapshots:
             cgsnap_name = self._get_3par_snap_name(group_snapshot.id)
@@ -583,9 +613,14 @@ class HPE3PARCommon(object):
                                                   optional=optional)
             snap_base = temp_snap
 
+        if group.is_replicated:
+            replication_flag = True
+            # Stop remote copy, so we can add volumes in RCG.
+            self._stop_remote_copy_group(group)
+
         for i, volume in enumerate(volumes):
             snap_name = snap_base + "-" + six.text_type(i)
-            volume_name = self._get_3par_vol_name(volume.id)
+            volume_name = self._get_3par_vol_name(volume.get('id'))
             type_info = self.get_volume_settings_from_type(volume)
             cpg = type_info['cpg']
             snapcpg = type_info['snap_cpg']
@@ -602,16 +637,38 @@ class HPE3PARCommon(object):
                 optional['compression'] = compression
 
             self.client.copyVolume(snap_name, volume_name, cpg, optional)
+            if group.is_replicated:
+                # Add volume to remote copy group
+                self._add_vol_to_remote_copy_group(group, volume)
             self.client.addVolumeToVolumeSet(vvs_name, volume_name)
 
-        return None, None
+            volume_model_update = self._get_model_update(
+                volume.get('host'), cpg, replication=replication_flag,
+                provider_location=self.client.id)
+
+            if volume_model_update is not None:
+                volume_model_update.update({'id': volume['id']})
+                # Update volumes_model_update
+                volumes_model_update.append(volume_model_update)
+
+        if group.is_replicated:
+            # Start remote copy.
+            self._start_remote_copy_group(group)
+            model_update.update({
+                'replication_status': fields.ReplicationStatus.ENABLED})
+
+        return model_update, volumes_model_update
 
     def delete_group(self, context, group, volumes):
         """Deletes a group."""
 
+        if (not volume_utils.is_group_a_cg_snapshot_type(group)
+           and not group.is_replicated):
+            raise NotImplementedError()
+
+        if group.is_replicated:
+            self._remove_volumes_and_remote_copy_group(group, volumes)
         try:
-            if not volume_utils.is_group_a_cg_snapshot_type(group):
-                raise NotImplementedError()
             cg_name = self._get_3par_vvs_name(group.id)
             self.client.deleteVolumeSet(cg_name)
         except hpeexceptions.HTTPNotFound:
@@ -625,7 +682,7 @@ class HPE3PARCommon(object):
 
         volume_model_updates = []
         for volume in volumes:
-            volume_update = {'id': volume.id}
+            volume_update = {'id': volume.get('id')}
             try:
                 self.delete_volume(volume)
                 volume_update['status'] = 'deleted'
@@ -642,15 +699,42 @@ class HPE3PARCommon(object):
     def update_group(self, context, group, add_volumes=None,
                      remove_volumes=None):
         grp_snap_enable = volume_utils.is_group_a_cg_snapshot_type(group)
-        if not grp_snap_enable:
+        if not grp_snap_enable and not group.is_replicated:
             raise NotImplementedError()
+        add_volume = []
+        remove_volume = []
+        vol_rep_status = fields.ReplicationStatus.ENABLED
+
         volume_set_name = self._get_3par_vvs_name(group.id)
+
+        # If replication is enabled on a group then we need
+        # to stop RCG, so we can add/remove in/from RCG.
+        if group.is_replicated:
+            # Check replication status on a group.
+            self._check_rep_status_enabled_on_group(group)
+            # Stop remote copy.
+            self._stop_remote_copy_group(group)
+
+        # TODO(kushal) : we will use volume as object when we re-write
+        # the design for unit tests to use objects instead of dicts.
         for volume in add_volumes:
-            volume_name = self._get_3par_vol_name(volume.id)
+            volume_name = self._get_3par_vol_name(volume.get('id'))
             vol_snap_enable = self.is_volume_group_snap_type(
-                volume.volume_type)
+                volume.get('volume_type'))
             try:
-                if grp_snap_enable and vol_snap_enable:
+                if vol_snap_enable:
+                    self._check_replication_matched(volume, group)
+                    if group.is_replicated:
+                        # Add volume to remote copy group
+                        self._add_vol_to_remote_copy_group(group, volume)
+                        # We have introduced one flag hpe3par:group_replication
+                        # in extra_spec of volume_type,which denotes group
+                        # level replication on 3par,so when a volume from this
+                        # type is added into group we need to set
+                        # replication_status on a volume.
+                        update = {'id': volume.get('id'),
+                                  'replication_status': vol_rep_status}
+                        add_volume.append(update)
                     self.client.addVolumeToVolumeSet(volume_set_name,
                                                      volume_name)
                 else:
@@ -668,7 +752,15 @@ class HPE3PARCommon(object):
                 raise exception.InvalidInput(reason=msg)
 
         for volume in remove_volumes:
-            volume_name = self._get_3par_vol_name(volume.id)
+            volume_name = self._get_3par_vol_name(volume.get('id'))
+
+            if group.is_replicated:
+                # Remove a volume from remote copy group
+                self._remove_vol_from_remote_copy_group(
+                    group, volume)
+                update = {'id': volume.get('id'),
+                          'replication_status': None}
+                remove_volume.append(update)
             try:
                 self.client.removeVolumeFromVolumeSet(
                     volume_set_name, volume_name)
@@ -678,7 +770,11 @@ class HPE3PARCommon(object):
                 LOG.error(msg)
                 raise exception.InvalidInput(reason=msg)
 
-        return None, None, None
+        if group.is_replicated:
+            # Start remote copy.
+            self._start_remote_copy_group(group)
+
+        return None, add_volume, remove_volume
 
     def create_group_snapshot(self, context, group_snapshot, snapshots):
         """Creates a group snapshot."""
@@ -1055,7 +1151,13 @@ class HPE3PARCommon(object):
                        _convert_to_base=False):
         model_update = None
         rcg_name = self._get_3par_rcg_name(volume['id'])
-        is_volume_replicated = self._volume_of_replicated_type(volume)
+        is_volume_replicated = self._volume_of_replicated_type(
+            volume, hpe_tiramisu_check=True)
+        volume_part_of_group = (
+            self._volume_of_hpe_tiramisu_type_and_part_of_group(volume))
+        if volume_part_of_group:
+            group = volume.get('group')
+            rcg_name = self._get_3par_rcg_name_of_group(group.id)
         try:
             if _convert_to_base:
                 LOG.debug("Converting to base volume prior to growing.")
@@ -1064,14 +1166,16 @@ class HPE3PARCommon(object):
             # remote copy has to be stopped before the volume can be extended.
             failed_over = volume.get("replication_status", None)
             is_failed_over = failed_over == "failed-over"
-            if is_volume_replicated and not is_failed_over:
+            if ((is_volume_replicated or volume_part_of_group) and
+               not is_failed_over):
                 self.client.stopRemoteCopy(rcg_name)
             self.client.growVolume(volume_name, growth_size_mib)
-            if is_volume_replicated and not is_failed_over:
+            if ((is_volume_replicated or volume_part_of_group) and
+               not is_failed_over):
                 self.client.startRemoteCopy(rcg_name)
         except Exception as ex:
             # If the extend fails, we must restart remote copy.
-            if is_volume_replicated:
+            if is_volume_replicated or volume_part_of_group:
                 self.client.startRemoteCopy(rcg_name)
             with excutils.save_and_reraise_exception() as ex_ctxt:
                 if (not _convert_to_base and
@@ -1419,6 +1523,8 @@ class HPE3PARCommon(object):
                     'multiattach': False,
                     'consistent_group_snapshot_enabled': True,
                     'compression': compression_support,
+                    'consistent_group_replication_enabled':
+                        self._replication_enabled
                     }
 
             if remotecopy_support:
@@ -1879,6 +1985,10 @@ class HPE3PARCommon(object):
         if not snap_cpg:
             snap_cpg = cpg
 
+        # Check group level replication
+        hpe3par_tiramisu = (
+            self._get_key_value(hpe3par_keys, 'group_replication'))
+
         # if provisioning is not set use thin
         default_prov = self.valid_prov_values[0]
         prov_value = self._get_key_value(hpe3par_keys, 'provisioning',
@@ -1912,7 +2022,9 @@ class HPE3PARCommon(object):
         return {'hpe3par_keys': hpe3par_keys,
                 'cpg': cpg, 'snap_cpg': snap_cpg,
                 'vvs_name': vvs_name, 'qos': qos,
-                'tpvv': tpvv, 'tdvv': tdvv, 'volume_type': volume_type}
+                'tpvv': tpvv, 'tdvv': tdvv,
+                'volume_type': volume_type,
+                'group_replication': hpe3par_tiramisu}
 
     def get_volume_settings_from_type(self, volume, host=None):
         """Get 3PAR volume settings given a volume.
@@ -1954,7 +2066,9 @@ class HPE3PARCommon(object):
             comments = {'volume_id': volume['id'],
                         'name': volume['name'],
                         'type': 'OpenStack'}
-
+            # This flag denotes group level replication on
+            # hpe 3par.
+            hpe_tiramisu = False
             name = volume.get('display_name', None)
             if name:
                 comments['display_name'] = name
@@ -1975,14 +2089,11 @@ class HPE3PARCommon(object):
 
             consis_group_snap_type = False
             if volume_type is not None:
-                extra_specs = volume_type.get('extra_specs', None)
-                if extra_specs:
-                    gsnap_val = extra_specs.get(
-                        'consistent_group_snapshot_enabled', None)
-                    if gsnap_val is not None and gsnap_val == "<is> True":
-                        consis_group_snap_type = True
+                consis_group_snap_type = self.is_volume_group_snap_type(
+                    volume_type)
 
             cg_id = volume.get('group_id', None)
+            group = volume.get('group', None)
             if cg_id and consis_group_snap_type:
                 vvs_name = self._get_3par_vvs_name(cg_id)
 
@@ -2010,6 +2121,20 @@ class HPE3PARCommon(object):
                 extras['compression'] = compression
 
             self.client.createVolume(volume_name, cpg, capacity, extras)
+            # v2 replication check
+            replication_flag = False
+
+            if consis_group_snap_type:
+                if (self._volume_of_hpe_tiramisu_type(volume)):
+                    hpe_tiramisu = True
+
+            # Add volume to remote group.
+            if (group is not None and hpe_tiramisu):
+                if group.is_replicated:
+                    self._check_rep_status_enabled_on_group(group)
+                    self._add_vol_to_remote_group(group, volume)
+                    replication_flag = True
+
             if qos or vvs_name or flash_cache is not None:
                 try:
                     self._add_volume_to_volume_set(volume, volume_name,
@@ -2021,10 +2146,9 @@ class HPE3PARCommon(object):
                     LOG.error("Exception: %s", ex)
                     raise exception.CinderException(ex)
 
-            # v2 replication check
-            replication_flag = False
-            if self._volume_of_replicated_type(volume) and (
-               self._do_volume_replication_setup(volume)):
+            if (self._volume_of_replicated_type(volume,
+                                                hpe_tiramisu_check=True)
+               and self._do_volume_replication_setup(volume)):
                 replication_flag = True
 
         except hpeexceptions.HTTPConflict:
@@ -2046,7 +2170,8 @@ class HPE3PARCommon(object):
 
         return self._get_model_update(volume['host'], cpg,
                                       replication=replication_flag,
-                                      provider_location=self.client.id)
+                                      provider_location=self.client.id,
+                                      hpe_tiramisu=hpe_tiramisu)
 
     def _copy_volume(self, src_name, dest_name, cpg, snap_cpg=None,
                      tpvv=True, tdvv=False, compression=None):
@@ -2084,7 +2209,7 @@ class HPE3PARCommon(object):
         return None
 
     def _get_model_update(self, volume_host, cpg, replication=False,
-                          provider_location=None):
+                          provider_location=None, hpe_tiramisu=None):
         """Get model_update dict to use when we select a pool.
 
         The pools implementation uses a volume['host'] suffix of :poolname.
@@ -2110,7 +2235,7 @@ class HPE3PARCommon(object):
             model_update['host'] = host_and_pool
         if replication:
             model_update['replication_status'] = 'enabled'
-        if replication and provider_location:
+        if (replication or hpe_tiramisu) and provider_location:
             model_update['provider_location'] = provider_location
         if not model_update:
             model_update = None
@@ -2149,6 +2274,7 @@ class HPE3PARCommon(object):
             src_vol_name = self._get_3par_vol_name(src_vref['id'])
             back_up_process = False
             vol_chap_enabled = False
+            hpe_tiramisu = False
 
             # Check whether a volume is ISCSI and CHAP enabled on it.
             if self._client_conf['hpe3par_iscsi_chap_enabled']:
@@ -2208,13 +2334,18 @@ class HPE3PARCommon(object):
 
                 # v2 replication check
                 replication_flag = False
-                if self._volume_of_replicated_type(volume) and (
-                   self._do_volume_replication_setup(volume)):
+                if (self._volume_of_replicated_type(volume,
+                                                    hpe_tiramisu_check=True)
+                   and self._do_volume_replication_setup(volume)):
                     replication_flag = True
+
+                if self._volume_of_hpe_tiramisu_type(volume):
+                    hpe_tiramisu = True
 
                 return self._get_model_update(volume['host'], cpg,
                                               replication=replication_flag,
-                                              provider_location=self.client.id)
+                                              provider_location=self.client.id,
+                                              hpe_tiramisu=hpe_tiramisu)
             else:
                 # The size of the new volume is different, so we have to
                 # copy the volume and wait.  Do the resize after the copy
@@ -2253,7 +2384,7 @@ class HPE3PARCommon(object):
         # v2 replication check
         # If the volume type is replication enabled, we want to call our own
         # method of deconstructing the volume and its dependencies
-        if self._volume_of_replicated_type(volume):
+        if self._volume_of_replicated_type(volume, hpe_tiramisu_check=True):
             replication_status = volume.get('replication_status', None)
             if replication_status and replication_status == "failed-over":
                 self._delete_replicated_failed_over_volume(volume)
@@ -2428,9 +2559,13 @@ class HPE3PARCommon(object):
                     LOG.error("Exception: %s", ex)
                     raise exception.CinderException(ex)
 
+            if self._volume_of_hpe_tiramisu_type(volume):
+                model_update['provider_location'] = self.client.id
+
             # v2 replication check
-            if self._volume_of_replicated_type(volume) and (
-               self._do_volume_replication_setup(volume)):
+            if (self._volume_of_replicated_type(volume,
+                                                hpe_tiramisu_check=True)
+               and self._do_volume_replication_setup(volume)):
                 model_update['replication_status'] = 'enabled'
                 model_update['provider_location'] = self.client.id
 
@@ -3096,10 +3231,16 @@ class HPE3PARCommon(object):
         volume_name = self._get_3par_vol_name(volume['id'])
         snapshot_name = self._get_3par_snap_name(snapshot['id'])
         rcg_name = self._get_3par_rcg_name(volume['id'])
+        volume_part_of_group = (
+            self._volume_of_hpe_tiramisu_type_and_part_of_group(volume))
+        if volume_part_of_group:
+            group = volume.get('group')
+            rcg_name = self._get_3par_rcg_name_of_group(group.id)
 
         optional = {}
-        replication_flag = self._volume_of_replicated_type(volume)
-        if replication_flag:
+        replication_flag = self._volume_of_replicated_type(
+            volume, hpe_tiramisu_check=True)
+        if replication_flag or volume_part_of_group:
             LOG.debug("Found replicated volume: %(volume)s.",
                       {'volume': volume_name})
             optional['allowRemoteCopyParent'] = True
@@ -3118,7 +3259,7 @@ class HPE3PARCommon(object):
 
         self.client.promoteVirtualCopy(snapshot_name, optional=optional)
 
-        if replication_flag:
+        if replication_flag or volume_part_of_group:
             try:
                 self.client.startRemoteCopy(rcg_name)
             except Exception as ex:
@@ -3177,8 +3318,11 @@ class HPE3PARCommon(object):
         return existing_vluns
 
     # v2 replication methods
-    def failover_host(self, context, volumes, secondary_backend_id):
+    def failover_host(self, context, volumes, secondary_backend_id, groups):
         """Force failover to a secondary replication target."""
+        volume_update_list = []
+        group_update_list = []
+
         # Ensure replication is enabled before we try and failover.
         if not self._replication_enabled:
             msg = _("Issuing a fail-over failed because replication is "
@@ -3186,11 +3330,19 @@ class HPE3PARCommon(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
+        # We are removing volumes which are part of group,
+        # So creating volume_copy before doing that.
+        # After failover/failback operation,making volumes as like
+        # previous with the help of volume_copy.
+        volumes_copy = []
+        volumes_copy[:] = volumes
+
         # Check to see if the user requested to failback.
         if (secondary_backend_id and
-                secondary_backend_id == self.FAILBACK_VALUE):
-            volume_update_list = self._replication_failback(volumes)
-            target_id = None
+           secondary_backend_id == self.FAILBACK_VALUE):
+                failover = False
+                target_id = None
+                group_target_id = self.FAILBACK_VALUE
         else:
             # Find the failover target.
             failover_target = None
@@ -3203,12 +3355,41 @@ class HPE3PARCommon(object):
                         "to failover.")
                 LOG.error(msg)
                 raise exception.InvalidReplicationTarget(reason=msg)
-
+            failover = True
             target_id = failover_target['backend_id']
+            group_target_id = target_id
+
+        if groups:
+            for group in groups:
+                vol_list = []
+                vols_obj = []
+                for index, vol in enumerate(volumes):
+                    if vol.get('group_id') == group.id:
+                        vols_obj.append(vol)
+                        vol_list.append(volumes[index])
+
+                for vol_obj in vols_obj:
+                    # Remove volumes which are part of a group.
+                    volumes.remove(vol_obj)
+
+                grp_update, vol_updates = (
+                    self.failover_replication(
+                        None, group, vol_list, group_target_id, host=True))
+                group_update_list.append({'group_id': group.id,
+                                          'updates': grp_update})
+                volume_update_list += vol_updates
+
+        # user requested failback.
+        if not failover:
+            vol_updates = self._replication_failback(volumes)
+            volume_update_list += vol_updates
+
+        # user requested failover.
+        else:
             # For each volume, if it is replicated, we want to fail it over.
-            volume_update_list = []
             for volume in volumes:
-                if self._volume_of_replicated_type(volume):
+                if self._volume_of_replicated_type(volume,
+                                                   hpe_tiramisu_check=True):
                     try:
                         # Try and stop remote-copy on main array. We eat the
                         # exception here because when an array goes down, the
@@ -3227,7 +3408,9 @@ class HPE3PARCommon(object):
                             remote_rcg_name, self.RC_ACTION_CHANGE_TO_PRIMARY)
                         volume_update_list.append(
                             {'volume_id': volume['id'],
-                             'updates': {'replication_status': 'failed-over'}})
+                             'updates': {'replication_status': 'failed-over',
+                                         'replication_driver_data':
+                                         failover_target['id']}})
                     except Exception as ex:
                         LOG.error("There was a problem with the failover "
                                   "(%(error)s) and it was unsuccessful. "
@@ -3249,7 +3432,8 @@ class HPE3PARCommon(object):
                         {'volume_id': volume['id'],
                          'updates': {'status': 'error'}})
 
-        return target_id, volume_update_list
+        volumes[:] = volumes_copy
+        return target_id, volume_update_list, group_update_list
 
     def _replication_failback(self, volumes):
         # Make sure the proper steps on the backend have been completed before
@@ -3264,10 +3448,12 @@ class HPE3PARCommon(object):
         # Update the volumes status to available.
         volume_update_list = []
         for volume in volumes:
-            if self._volume_of_replicated_type(volume):
+            if self._volume_of_replicated_type(volume,
+                                               hpe_tiramisu_check=True):
                 volume_update_list.append(
                     {'volume_id': volume['id'],
-                     'updates': {'replication_status': 'available'}})
+                     'updates': {'replication_status': 'available',
+                                 'replication_driver_data': self.client.id}})
             else:
                 # Upon failing back, we can move the non-replicated volumes
                 # back into available state.
@@ -3286,28 +3472,16 @@ class HPE3PARCommon(object):
         """
         try:
             for volume in volumes:
-                if self._volume_of_replicated_type(volume):
+                if self._volume_of_replicated_type(volume,
+                                                   hpe_tiramisu_check=True):
                     location = volume.get('provider_location')
                     remote_rcg_name = self._get_3par_remote_rcg_name(
                         volume['id'],
                         location)
                     rcg = self.client.getRemoteCopyGroup(remote_rcg_name)
+                    if not self._are_targets_in_their_natural_direction(rcg):
+                        return False
 
-                    # Make sure all targets are in their natural direction.
-                    targets = rcg['targets']
-                    for target in targets:
-                        if target['roleReversed'] or (
-                           target['state'] != self.RC_GROUP_STARTED):
-                            return False
-
-                    # Make sure all volumes are fully synced.
-                    volumes = rcg['volumes']
-                    for volume in volumes:
-                        remote_volumes = volume['remoteVolumes']
-                        for remote_volume in remote_volumes:
-                            if remote_volume['syncStatus'] != (
-                               self.SYNC_STATUS_COMPLETED):
-                                return False
         except Exception:
             # If there was a problem, we will return false so we can
             # log an error in the parent function.
@@ -3425,13 +3599,13 @@ class HPE3PARCommon(object):
     def is_volume_group_snap_type(self, volume_type):
         consis_group_snap_type = False
         if volume_type:
-            extra_specs = volume_type.extra_specs
+            extra_specs = volume_type.get('extra_specs')
             if 'consistent_group_snapshot_enabled' in extra_specs:
                 gsnap_val = extra_specs['consistent_group_snapshot_enabled']
                 consis_group_snap_type = (gsnap_val == "<is> True")
         return consis_group_snap_type
 
-    def _volume_of_replicated_type(self, volume):
+    def _volume_of_replicated_type(self, volume, hpe_tiramisu_check=None):
         replicated_type = False
         volume_type_id = volume.get('volume_type_id')
         if volume_type_id:
@@ -3441,6 +3615,49 @@ class HPE3PARCommon(object):
             if extra_specs and 'replication_enabled' in extra_specs:
                 rep_val = extra_specs['replication_enabled']
                 replicated_type = (rep_val == "<is> True")
+
+            if hpe_tiramisu_check and replicated_type:
+                hpe3par_tiramisu = self._get_hpe3par_tiramisu_value(
+                    volume_type)
+                if hpe3par_tiramisu:
+                    replicated_type = False
+
+        return replicated_type
+
+    def _volume_of_hpe_tiramisu_type(self, volume):
+        hpe_tiramisu_type = False
+        replicated_type = False
+        volume_type_id = volume.get('volume_type_id')
+        if volume_type_id:
+            volume_type = self._get_volume_type(volume_type_id)
+
+            extra_specs = volume_type.get('extra_specs')
+            if extra_specs and 'replication_enabled' in extra_specs:
+                rep_val = extra_specs['replication_enabled']
+                replicated_type = (rep_val == "<is> True")
+
+            if replicated_type:
+                hpe3par_tiramisu = self._get_hpe3par_tiramisu_value(
+                    volume_type)
+                if hpe3par_tiramisu:
+                    hpe_tiramisu_type = True
+
+        return hpe_tiramisu_type
+
+    def _volume_of_hpe_tiramisu_type_and_part_of_group(self, volume):
+        volume_part_of_group = False
+        hpe_tiramisu_type = self._volume_of_hpe_tiramisu_type(volume)
+        if hpe_tiramisu_type:
+            if volume.get('group'):
+                volume_part_of_group = True
+        return volume_part_of_group
+
+    def _is_volume_type_replicated(self, volume_type):
+        replicated_type = False
+        extra_specs = volume_type.get('extra_specs')
+        if extra_specs and 'replication_enabled' in extra_specs:
+            rep_val = extra_specs['replication_enabled']
+            replicated_type = (rep_val == "<is> True")
 
         return replicated_type
 
@@ -3785,6 +4002,632 @@ class HPE3PARCommon(object):
                 self.client.removeVolumeFromVolumeSet(vvset_name,
                                                       volume_name)
 
+    def _get_3par_rcg_name_of_group(self, group_id):
+        rcg_name = self._encode_name(group_id)
+        rcg = "rcg-%s" % rcg_name
+        return rcg[:22]
+
+    def _get_3par_remote_rcg_name_of_group(self, group_id, provider_location):
+        return self._get_3par_rcg_name_of_group(group_id) + ".r" + (
+            six.text_type(provider_location))
+
+    def _get_hpe3par_tiramisu_value(self, volume_type):
+        hpe3par_tiramisu = False
+        hpe3par_keys = self._get_keys_by_volume_type(volume_type)
+        if hpe3par_keys.get('group_replication'):
+            hpe3par_tiramisu = (
+                hpe3par_keys['group_replication'] == "<is> True")
+
+        return hpe3par_tiramisu
+
+    def _stop_remote_copy_group(self, group):
+        # Stop remote copy.
+        rcg_name = self._get_3par_rcg_name_of_group(group.id)
+        try:
+            self.client.stopRemoteCopy(rcg_name)
+        except Exception:
+            LOG.debug("Stopping remote copy group on group: %(group_id)s is "
+                      "failed", {'group_id': group.id})
+
+    def _start_remote_copy_group(self, group):
+        # Start remote copy.
+        rcg_name = self._get_3par_rcg_name_of_group(group.id)
+        rcg = self.client.getRemoteCopyGroup(rcg_name)
+        if not rcg['volumes']:
+            return
+        try:
+            self.client.startRemoteCopy(rcg_name)
+        except Exception as ex:
+            msg = (_("There was an error starting remote copy: %s.") %
+                   six.text_type(ex))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def _check_rep_status_enabled_on_group(self, group):
+        """Check replication status for group.
+
+        Group status must be enabled before proceeding with certain
+        operations.
+        :param group: the group object
+        :raises: InvalidInput
+        """
+        if group.is_replicated:
+            if group.replication_status != fields.ReplicationStatus.ENABLED:
+                msg = (_('Replication status should be %(status)s for '
+                         'replication-enabled group: %(group)s.')
+                       % {'status': fields.ReplicationStatus.ENABLED,
+                          'group': group.id})
+                LOG.error(msg)
+                raise exception.InvalidInput(reason=msg)
+
+            if not self._replication_enabled:
+                host_backend = volume_utils.extract_host(group.host, 'backend')
+                msg = _("replication is not properly configured on backend: "
+                        "(backend)%s") % {'backend': host_backend}
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            LOG.debug('Replication is not enabled on group %s, '
+                      'skip status check.', group.id)
+
+    def _get_replication_mode_from_volume(self, volume):
+        volume_type = self._get_volume_type(volume["volume_type_id"])
+        replication_mode_num = (
+            self._get_replication_mode_from_volume_type(volume_type))
+
+        return replication_mode_num
+
+    def _get_replication_mode_from_volume_type(self, volume_type):
+        # Default replication mode is PERIODIC
+        replication_mode_num = self.PERIODIC
+        extra_specs = volume_type.get("extra_specs")
+        if extra_specs:
+            replication_mode = extra_specs.get(
+                self.EXTRA_SPEC_REP_MODE, self.DEFAULT_REP_MODE)
+
+            replication_mode_num = self._get_remote_copy_mode_num(
+                replication_mode)
+
+        return replication_mode_num
+
+    def _get_replication_sync_period_from_volume(self, volume):
+        volume_type = self._get_volume_type(volume["volume_type_id"])
+        replication_sync_period = (
+            self._get_replication_sync_period_from_volume_type(volume_type))
+
+        return replication_sync_period
+
+    def _get_replication_sync_period_from_volume_type(self, volume_type):
+        # Default replication sync period is 900s
+        replication_sync_period = self.DEFAULT_SYNC_PERIOD
+        rep_mode = self.DEFAULT_REP_MODE
+        extra_specs = volume_type.get("extra_specs")
+        if extra_specs:
+            replication_sync_period = extra_specs.get(
+                self.EXTRA_SPEC_REP_SYNC_PERIOD, self.DEFAULT_SYNC_PERIOD)
+
+            replication_sync_period = int(replication_sync_period)
+            if not self._is_replication_mode_correct(rep_mode,
+                                                     replication_sync_period):
+                msg = _("The replication mode was not configured "
+                        "correctly in the volume type extra_specs. "
+                        "If replication:mode is periodic, "
+                        "replication:sync_period must also be specified "
+                        "and be between 300 and 31622400 seconds.")
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        return replication_sync_period
+
+    def _check_replication_matched(self, volume, group):
+        """Check volume type and group type.
+
+        This will make sure they do not conflict with each other.
+        :param volume: volume to be checked
+        :param extra_specs: the extra specifications
+        :raises: InvalidInput
+        """
+
+        vol_is_re = self._volume_of_replicated_type(volume)
+        group_is_re = group.is_replicated
+
+        if not (vol_is_re == group_is_re):
+            msg = _('Replication should be enabled or disabled for both '
+                    'volume or group. Volume replication status: '
+                    '%(vol_status)s, group replication status: '
+                    '%(group_status)s') % {
+                        'vol_status': vol_is_re, 'group_status': group_is_re}
+            raise exception.InvalidInput(reason=msg)
+
+    def _remove_vol_from_remote_copy_group(self, group, volume):
+        rcg_name = self._get_3par_rcg_name_of_group(group.id)
+        vol_name = self._get_3par_vol_name(volume.get('id'))
+
+        try:
+            # Delete volume from remote copy group on secondary array.
+            self.client.removeVolumeFromRemoteCopyGroup(
+                rcg_name, vol_name, removeFromTarget=True)
+        except Exception as ex:
+            # Start RCG even if we fail to remove volume from it.
+            self._start_remote_copy_group(group)
+            msg = (_("There was an error removing a volume: %(volume)s from "
+                     "Group: %(group)s : %(err)s") %
+                   {'volume': volume.get('id'), 'group': group.id,
+                    'err': six.text_type(ex)})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def _add_vol_to_remote_group(self, group, volume):
+        # Stop remote copy, so we can add volumes in RCG.
+        self._stop_remote_copy_group(group)
+        # Add a volume to RCG
+        self._add_vol_to_remote_copy_group(group, volume)
+        # Start RCG
+        self._start_remote_copy_group(group)
+
+    def _add_vol_to_remote_copy_group(self, group, volume):
+        rcg_name = self._get_3par_rcg_name_of_group(group.id)
+        try:
+            rcg = self.client.getRemoteCopyGroup(rcg_name)
+            # If volumes are not present in RCG, which means we need to set,
+            # RCG attributes.
+            if not len(rcg['volumes']):
+                self._set_rcg_attributes(volume, rcg_name)
+
+            self._add_vol_to_remote(volume, rcg_name)
+            # If replication mode is periodic then set sync period on RCG.
+            self._set_rcg_sync_period(volume, rcg_name)
+        except Exception as ex:
+            # Start RCG even if we fail to add volume to it
+            self._start_remote_copy_group(group)
+            msg = (_("There was an error adding a volume: %(volume)s to "
+                     "Group: %(group)s : %(err)s") %
+                   {'volume': volume.get('id'), 'group': group.id,
+                    'err': six.text_type(ex)})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def _set_rcg_sync_period(self, volume, rcg_name):
+        sync_targets = []
+        replication_mode_num = self._get_replication_mode_from_volume(volume)
+        replication_sync_period = (
+            self._get_replication_sync_period_from_volume(volume))
+        if not (replication_mode_num == self.PERIODIC):
+            return
+
+        rcg = self.client.getRemoteCopyGroup(rcg_name)
+
+        # Check and see if we are in periodic mode. If we are, update
+        # Remote Copy Group to have a sync period.
+        if len(rcg['volumes']) and rcg.get('syncPeriod'):
+            if replication_sync_period != int(rcg.get('syncPeriod')):
+                for target in self._replication_targets:
+                    if target['replication_mode'] == replication_mode_num:
+                        sync_target = {'targetName': target['backend_id'],
+                                       'syncPeriod': replication_sync_period}
+                        sync_targets.append(sync_target)
+
+                opt = {'targets': sync_targets}
+
+                try:
+                    self.client.modifyRemoteCopyGroup(rcg_name, opt)
+                except Exception as ex:
+                    msg = (_("There was an error setting the sync period for "
+                             "the remote copy group: %s.") %
+                           six.text_type(ex))
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+
+    def _set_rcg_attributes(self, volume, rcg_name):
+        rcg_targets = []
+        vol_settings = self.get_volume_settings_from_type(volume)
+        local_cpg = vol_settings['cpg']
+        replication_mode_num = self._get_replication_mode_from_volume(volume)
+
+        for target in self._replication_targets:
+            if target['replication_mode'] == replication_mode_num:
+                cpg = self._get_cpg_from_cpg_map(target['cpg_map'],
+                                                 local_cpg)
+                rcg_target = {'targetName': target['backend_id'],
+                              'remoteUserCPG': cpg,
+                              'remoteSnapCPG': cpg}
+                rcg_targets.append(rcg_target)
+
+        optional = {'localSnapCPG': vol_settings['snap_cpg'],
+                    'localUserCPG': local_cpg,
+                    'targets': rcg_targets}
+
+        try:
+            self.client.modifyRemoteCopyGroup(rcg_name, optional)
+        except Exception as ex:
+            msg = (_("There was an error modifying the remote copy "
+                     "group: %s.") %
+                   six.text_type(ex))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def _add_vol_to_remote(self, volume, rcg_name):
+        # Add a volume to remote copy group.
+        rcg_targets = []
+        vol_name = self._get_3par_vol_name(volume.get('id'))
+        replication_mode_num = self._get_replication_mode_from_volume(volume)
+        for target in self._replication_targets:
+            if target['replication_mode'] == replication_mode_num:
+                rcg_target = {'targetName': target['backend_id'],
+                              'secVolumeName': vol_name}
+                rcg_targets.append(rcg_target)
+        optional = {'volumeAutoCreation': True}
+        try:
+            self.client.addVolumeToRemoteCopyGroup(rcg_name, vol_name,
+                                                   rcg_targets,
+                                                   optional=optional)
+        except Exception as ex:
+            msg = (_("There was an error adding the volume to the remote "
+                     "copy group: %s.") %
+                   six.text_type(ex))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def _is_group_in_remote_copy_group(self, group):
+        rcg_name = self._get_3par_rcg_name_of_group(group.id)
+        try:
+            self.client.getRemoteCopyGroup(rcg_name)
+            return True
+        except hpeexceptions.HTTPNotFound:
+            return False
+
+    def _remove_volumes_and_remote_copy_group(self, group, volumes):
+        if not self._is_group_in_remote_copy_group(group):
+            return True
+
+        rcg_name = self._get_3par_rcg_name_of_group(group.id)
+        # Stop remote copy.
+        try:
+            self.client.stopRemoteCopy(rcg_name)
+        except Exception:
+            pass
+
+        for volume in volumes:
+            vol_name = self._get_3par_vol_name(volume.get('id'))
+            # Delete volume from remote copy group on secondary array.
+            try:
+                self.client.removeVolumeFromRemoteCopyGroup(
+                    rcg_name, vol_name, removeFromTarget=True)
+            except Exception:
+                pass
+
+        # Delete remote copy group on main array.
+        try:
+            self.client.removeRemoteCopyGroup(rcg_name)
+        except Exception as ex:
+            msg = (_("There was an error deleting RCG %(rcg_name)s: "
+                     "%(error)s.") % {'rcg_name': rcg_name, 'error': ex})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def _check_tiramisu_configuration_on_volume_types(self, volume_types):
+        for volume_type in volume_types:
+            self._check_tiramisu_configuration_on_volume_type(volume_type)
+
+    def _check_tiramisu_configuration_on_volume_type(self, volume_type):
+        hpe3par_tiramisu = self._get_hpe3par_tiramisu_value(volume_type)
+        if not hpe3par_tiramisu:
+            msg = _("hpe3par:group_replication is not set on volume type: "
+                    "(id)%s") % {'id': volume_type.get('id')}
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return hpe3par_tiramisu
+
+    def _check_replication_configuration_on_volume_types(self, volume_types):
+        for volume_type in volume_types:
+            replicated_type = self._is_volume_type_replicated(volume_type)
+            if not replicated_type:
+                msg = _("replication is not set on volume type: "
+                        "(id)%s") % {'id': volume_type.get('id')}
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+    def _check_attributes_of_remote_per_volume_type(self, group):
+        rep_modes = []
+        rep_sync_periods = []
+
+        for volume_type in group.volume_types:
+            replication_mode_num = (
+                self._get_replication_mode_from_volume_type(volume_type))
+            rep_modes.append(replication_mode_num)
+
+            if replication_mode_num == self.PERIODIC:
+                rep_sync_period = (
+                    self._get_replication_sync_period_from_volume_type(
+                        volume_type))
+                rep_sync_periods.append(rep_sync_period)
+
+        # Check attributes of Remote on all volume types are same or not?
+        if not (all(x == rep_modes[0] for x in rep_modes) and
+           all(y == rep_sync_periods[0] for y in rep_sync_periods)):
+
+            msg = _("replication mode or replication sync period must be same "
+                    "on each volume type of Group:(id)%s") % {'id': group.id}
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def _create_remote_copy_group_for_group(self, group):
+        # Create remote copy group on main array.
+        host_backend = volume_utils.extract_host(group.host, 'backend')
+        rcg_targets = []
+        optional = {}
+        if not self._replication_enabled:
+            msg = _("replication is not properly configured on backend: "
+                    "(backend)%s") % {'backend': host_backend}
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        rcg_name = self._get_3par_rcg_name_of_group(group.id)
+        replication_mode_num = (
+            self._get_replication_mode_from_volume_type(group.volume_types[0]))
+
+        for target in self._replication_targets:
+            if (target['replication_mode'] == replication_mode_num):
+
+                rcg_target = {'targetName': target['backend_id'],
+                              'mode': target['replication_mode']}
+                rcg_targets.append(rcg_target)
+
+        pool = volume_utils.extract_host(group.host, level='pool')
+        domain = self.get_domain(pool)
+        if domain:
+            optional = {"domain": domain}
+        try:
+            self.client.createRemoteCopyGroup(rcg_name, rcg_targets,
+                                              optional)
+        except Exception as ex:
+            msg = (_("There was an error creating the remote copy "
+                     "group: %s.") %
+                   six.text_type(ex))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def _are_targets_in_their_natural_direction(self, rcg):
+
+        targets = rcg['targets']
+        for target in targets:
+            if target['roleReversed'] or (
+               target['state'] != self.RC_GROUP_STARTED):
+                return False
+
+        # Make sure all volumes are fully synced.
+        volumes = rcg['volumes']
+        for volume in volumes:
+            remote_volumes = volume['remoteVolumes']
+            for remote_volume in remote_volumes:
+                if remote_volume['syncStatus'] != (
+                   self.SYNC_STATUS_COMPLETED):
+                    return False
+        return True
+
+    def _group_failover_replication(self, failover_target, group,
+                                    provider_location):
+        rcg_name = self._get_3par_rcg_name_of_group(group.id)
+        try:
+            # Try and stop remote-copy on main array. We eat the
+            # exception here because when an array goes down, the
+            # groups will stop automatically.
+            self.client.stopRemoteCopy(rcg_name)
+        except Exception:
+            pass
+
+        try:
+            # Failover to secondary array.
+            remote_rcg_name = self._get_3par_remote_rcg_name_of_group(
+                group.id, provider_location)
+            cl = self._create_replication_client(failover_target)
+            cl.recoverRemoteCopyGroupFromDisaster(
+                remote_rcg_name, self.RC_ACTION_CHANGE_TO_PRIMARY)
+        except Exception as ex:
+            msg = (_("There was a problem with the failover: "
+                     "(%(error)s) and it was unsuccessful.") %
+                   {'err': six.text_type(ex)})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        finally:
+            self._destroy_replication_client(cl)
+
+    def _group_failback_replication(self, failback_target, group,
+                                    provider_location):
+        remote_rcg_name = self._get_3par_remote_rcg_name_of_group(
+            group.id, provider_location)
+        try:
+            cl = self._create_replication_client(failback_target)
+            remote_rcg = cl.getRemoteCopyGroup(remote_rcg_name)
+        except Exception as ex:
+            msg = (_("There was a problem with the failback: "
+                     "(%(error)s) and it was unsuccessful.") %
+                   {'err': six.text_type(ex)})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        finally:
+            self._destroy_replication_client(cl)
+
+        if not self._are_targets_in_their_natural_direction(remote_rcg):
+            msg = _("The host is not ready to be failed back. Please "
+                    "resynchronize the volumes and resume replication on the "
+                    "3PAR backends.")
+            LOG.error(msg)
+            raise exception.InvalidReplicationTarget(reason=msg)
+
+    def enable_replication(self, context, group, volumes):
+        """Enable replication for a group.
+
+        :param context: the context
+        :param group: the group object
+        :param volumes: the list of volumes
+        :returns: model_update, None
+        """
+
+        model_update = {}
+        if not group.is_replicated:
+            raise NotImplementedError()
+
+        if not volumes:
+            # Return if empty group
+            return model_update, None
+
+        try:
+            vvs_name = self._get_3par_vvs_name(group.id)
+            rcg_name = self._get_3par_rcg_name_of_group(group.id)
+
+            # Check VV and RCG exist on 3par,
+            # if RCG exist then start RCG
+            self.client.getVolumeSet(vvs_name)
+            self.client.startRemoteCopy(rcg_name)
+        except hpeexceptions.HTTPNotFound as ex:
+            # The remote-copy group does not exist or
+            # set does not exist.
+            if (ex.get_code() == 187 or ex.get_code() == 102):
+                raise exception.GroupNotFound(group_id=group.id)
+        except hpeexceptions.HTTPForbidden as ex:
+            # The remote-copy group has already been started.
+            if ex.get_code() == 215:
+                pass
+        except Exception as ex:
+            model_update.update({
+                'replication_status': fields.ReplicationStatus.ERROR})
+            LOG.error("Error enabling replication on group %(group)s. "
+                      "Exception received: %(e)s.",
+                      {'group': group.id, 'e': ex})
+
+        return model_update, None
+
+    def disable_replication(self, context, group, volumes):
+        """Disable replication for a group.
+
+        :param context: the context
+        :param group: the group object
+        :param volumes: the list of volumes
+        :returns: model_update, None
+        """
+
+        model_update = {}
+        if not group.is_replicated:
+            raise NotImplementedError()
+
+        if not volumes:
+            # Return if empty group
+            return model_update, None
+
+        try:
+            vvs_name = self._get_3par_vvs_name(group.id)
+            rcg_name = self._get_3par_rcg_name_of_group(group.id)
+
+            # Check VV and RCG exist on 3par,
+            # if RCG exist then stop RCG
+            self.client.getVolumeSet(vvs_name)
+            self.client.stopRemoteCopy(rcg_name)
+        except hpeexceptions.HTTPNotFound as ex:
+            # The remote-copy group does not exist or
+            # set does not exist.
+            if (ex.get_code() == 187 or ex.get_code() == 102):
+                raise exception.GroupNotFound(group_id=group.id)
+
+        except Exception as ex:
+            model_update.update({
+                'replication_status': fields.ReplicationStatus.ERROR})
+            LOG.error("Error disabling replication on group %(group)s. "
+                      "Exception received: %(e)s.",
+                      {'group': group.id, 'e': ex})
+
+        return model_update, None
+
+    def failover_replication(self, context, group, volumes,
+                             secondary_backend_id=None, host=False):
+        """Failover replication for a group.
+
+        :param context: the context
+        :param group: the group object
+        :param volumes: the list of volumes
+        :param secondary_backend_id: the secondary backend id - default None
+        :param host: flag to indicate if whole host is being failed over
+        :returns: model_update, None
+        """
+
+        model_update = {}
+        vol_model_updates = []
+        failover_target = None
+        failback_target = None
+        rep_data = None
+        if not group.is_replicated:
+            raise NotImplementedError()
+
+        if not volumes:
+            # Return if empty group
+            return model_update, vol_model_updates
+
+        if not self._replication_enabled:
+            msg = _("Issuing a fail-over failed because replication is "
+                    "not properly configured.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        try:
+            provider_location = volumes[0].get('provider_location')
+            replication_driver_data = volumes[0].get('replication_driver_data')
+
+            failover = False if secondary_backend_id == 'default' else True
+
+            if failover:
+                # Find the failover target.
+                for target in self._replication_targets:
+                    if target['backend_id'] == secondary_backend_id:
+                        failover_target = target
+                        break
+                if not failover_target:
+                    msg = _("A valid secondary target MUST be specified "
+                            "in order to failover.")
+                    LOG.error(msg)
+                    raise exception.InvalidReplicationTarget(reason=msg)
+
+                self._group_failover_replication(failover_target, group,
+                                                 provider_location)
+                model_update.update({
+                    'replication_status':
+                        fields.ReplicationStatus.FAILED_OVER})
+                vol_rep_status = fields.ReplicationStatus.FAILED_OVER
+            else:
+                # Find the failback target.
+                for target in self._replication_targets:
+                    if target['id'] == replication_driver_data:
+                        failback_target = target
+                        break
+                if not failback_target:
+                    msg = _("A valid target is not found "
+                            "in order to failback.")
+                    LOG.error(msg)
+                    raise exception.InvalidReplicationTarget(reason=msg)
+                self._group_failback_replication(failback_target, group,
+                                                 provider_location)
+                model_update.update({
+                    'replication_status': fields.ReplicationStatus.ENABLED})
+                vol_rep_status = fields.ReplicationStatus.ENABLED
+
+        except Exception as ex:
+            model_update.update({
+                'replication_status': fields.ReplicationStatus.ERROR})
+            vol_rep_status = fields.ReplicationStatus.ERROR
+            LOG.error("Error failover replication on group %(group)s. "
+                      "Exception received: %(e)s.",
+                      {'group': group.id, 'e': ex})
+
+        rep_data = target['id']
+        for vol in volumes:
+            loc = vol.get('provider_location')
+            update = {'id': vol.get('id'),
+                      'replication_status': vol_rep_status,
+                      'provider_location': loc,
+                      'replication_driver_data': rep_data}
+            if host:
+                update = {'volume_id': vol.get('id'), 'updates': update}
+            vol_model_updates.append(update)
+        return model_update, vol_model_updates
+
     class TaskWaiter(object):
         """TaskWaiter waits for task to be not active and returns status."""
 
@@ -3832,21 +4675,23 @@ class ReplicateVolumeTask(flow_utils.CinderTask):
                 rep_val = extra_specs['replication_enabled']
                 new_replicated_type = (rep_val == "<is> True")
 
-        if common._volume_of_replicated_type(volume) and new_replicated_type:
+        if (common._volume_of_replicated_type(volume, hpe_tiramisu_check=True)
+           and new_replicated_type):
             # Retype from replication enabled to replication enable.
             common._do_volume_replication_destroy(volume, retype=True)
             common._do_volume_replication_setup(
                 volume,
                 retype=True,
                 dist_type_id=new_type_id)
-        elif (not common._volume_of_replicated_type(volume)
-              and new_replicated_type):
+        elif (not common._volume_of_replicated_type(volume,
+              hpe_tiramisu_check=True) and new_replicated_type):
             # Retype from replication disabled to replication enable.
             common._do_volume_replication_setup(
                 volume,
                 retype=True,
                 dist_type_id=new_type_id)
-        elif common._volume_of_replicated_type(volume):
+        elif common._volume_of_replicated_type(volume,
+                                               hpe_tiramisu_check=True):
             # Retype from replication enabled to replication disable.
             common._do_volume_replication_destroy(volume, retype=True)
 

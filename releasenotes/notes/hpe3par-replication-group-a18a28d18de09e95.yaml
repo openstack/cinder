@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added replication group support in HPE 3PAR cinder driver.

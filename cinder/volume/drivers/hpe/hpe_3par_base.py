@@ -55,10 +55,11 @@ class HPE3PARDriverBase(driver.ManageableVD,
         1.0.0 - Initial base driver
         1.0.1 - Adds consistency group capability in generic volume groups.
         1.0.2 - Adds capability.
+        1.0.3 - Added Tiramisu feature on 3PAR.
 
     """
 
-    VERSION = "1.0.2"
+    VERSION = "1.0.3"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARDriverBase, self).__init__(*args, **kwargs)
@@ -189,7 +190,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
     def create_group(self, context, group):
         common = self._login()
         try:
-            common.create_group(context, group)
+            return common.create_group(context, group)
         finally:
             self._logout(common)
 
@@ -346,15 +347,61 @@ class HPE3PARDriverBase(driver.ManageableVD,
             self._logout(common)
 
     @utils.trace
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Force failover to a secondary replication target."""
         common = self._login(timeout=30)
         try:
             # Update the active_backend_id in the driver and return it.
-            active_backend_id, volume_updates = common.failover_host(
-                context, volumes, secondary_id)
+            active_backend_id, volume_updates, group_update_list = (
+                common.failover_host(
+                    context, volumes, secondary_id, groups))
             self._active_backend_id = active_backend_id
-            return active_backend_id, volume_updates, []
+            return active_backend_id, volume_updates, group_update_list
+        finally:
+            self._logout(common)
+
+    def enable_replication(self, context, group, volumes):
+        """Enable replication for a group.
+
+        :param context: the context
+        :param group: the group object
+        :param volumes: the list of volumes
+        :returns: model_update, None
+        """
+        common = self._login()
+        try:
+            return common.enable_replication(context, group, volumes)
+        finally:
+            self._logout(common)
+
+    def disable_replication(self, context, group, volumes):
+        """Disable replication for a group.
+
+        :param context: the context
+        :param group: the group object
+        :param volumes: the list of volumes
+        :returns: model_update, None
+        """
+        common = self._login()
+        try:
+            return common.disable_replication(context, group, volumes)
+        finally:
+            self._logout(common)
+
+    def failover_replication(self, context, group, volumes,
+                             secondary_backend_id=None):
+        """Failover replication for a group.
+
+        :param context: the context
+        :param group: the group object
+        :param volumes: the list of volumes
+        :param secondary_backend_id: the secondary backend id - default None
+        :returns: model_update, vol_model_updates
+        """
+        common = self._login()
+        try:
+            return common.failover_replication(
+                context, group, volumes, secondary_backend_id)
         finally:
             self._logout(common)
 
