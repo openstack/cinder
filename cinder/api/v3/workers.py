@@ -59,9 +59,11 @@ class WorkerController(wsgi.Controller):
             resource_type = resource_type.title()
             types = cleanable.CinderCleanableObject.cleanable_resource_types
             if resource_type not in types:
-                msg = (_('Resource type %s not valid, must be ') %
-                       resource_type)
-                msg = utils.build_or_str(types, msg + '%s.')
+                valid_types = utils.build_or_str(types)
+                msg = _('Resource type %(resource_type)s not valid,'
+                        ' must be %(valid_types)s')
+                msg = msg % {"resource_type": resource_type,
+                             "valid_types": valid_types}
                 raise exception.InvalidInput(reason=msg)
             params['resource_type'] = resource_type
 
