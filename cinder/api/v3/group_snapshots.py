@@ -24,7 +24,9 @@ from webob import exc
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import group_snapshots as snapshot
 from cinder.api.v3.views import group_snapshots as group_snapshot_views
+from cinder.api import validation
 from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _
@@ -146,20 +148,15 @@ class GroupSnapshotsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_SNAPSHOTS)
     @wsgi.response(http_client.ACCEPTED)
+    @validation.schema(snapshot.create)
     def create(self, req, body):
         """Create a new group_snapshot."""
         LOG.debug('Creating new group_snapshot %s', body)
-        self.assert_valid_body(body, 'group_snapshot')
 
         context = req.environ['cinder.context']
         group_snapshot = body['group_snapshot']
-        self.validate_name_and_description(group_snapshot)
 
-        try:
-            group_id = group_snapshot['group_id']
-        except KeyError:
-            msg = _("'group_id' must be specified")
-            raise exc.HTTPBadRequest(explanation=msg)
+        group_id = group_snapshot['group_id']
 
         group = self.group_snapshot_api.get(context, group_id)
         self._check_default_cgsnapshot_type(group.group_type_id)
@@ -184,6 +181,7 @@ class GroupSnapshotsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_SNAPSHOT_RESET_STATUS)
     @wsgi.action("reset_status")
+    @validation.schema(snapshot.reset_status)
     def reset_status(self, req, id, body):
         return self._reset_status(req, id, body)
 
@@ -191,10 +189,7 @@ class GroupSnapshotsController(wsgi.Controller):
         """Reset status on group snapshots"""
 
         context = req.environ['cinder.context']
-        try:
-            status = body['reset_status']['status'].lower()
-        except (TypeError, KeyError):
-            raise exc.HTTPBadRequest(explanation=_("Must specify 'status'"))
+        status = body['reset_status']['status'].lower()
 
         LOG.debug("Updating group '%(id)s' with "
                   "'%(update)s'", {'id': id,

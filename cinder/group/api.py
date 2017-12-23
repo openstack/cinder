@@ -925,12 +925,6 @@ class API(base.Base):
         """Reset status of group snapshot"""
 
         context.authorize(gsnap_action_policy.RESET_STATUS)
-        if status not in c_fields.GroupSnapshotStatus.ALL:
-            msg = _("Group snapshot status: %(status)s is invalid, "
-                    "valid statuses are: "
-                    "%(valid)s.") % {'status': status,
-                                     'valid': c_fields.GroupSnapshotStatus.ALL}
-            raise exception.InvalidGroupSnapshotStatus(reason=msg)
         field = {'updated_at': timeutils.utcnow(),
                  'status': status}
         gsnapshot.update(field)

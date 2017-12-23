@@ -150,3 +150,7 @@ extra_specs = {
     },
     'additionalProperties': False
 }
+
+group_snapshot_status = {
+    'type': 'string', 'format': 'group_snapshot_status'
+}
