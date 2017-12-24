@@ -1077,12 +1077,14 @@ Volume replication support
 Configure the source and target arrays
 --------------------------------------
 
-#. Configure a synchronous SRDF group between the chosen source and target
+#. Configure an SRDF group between the chosen source and target
    arrays for the VMAX cinder driver to use. The source array must correspond
-   with the ``<Array>`` entry in the VMAX XML file.
+   with the 'vmax_array' entry in the cinder.conf (or the ``<Array>`` entry
+   in the VMAX XML file for legacy setups).
 #. Select both the director and the ports for the SRDF emulation to use on
    both sides. Bear in mind that network topology is important when choosing
-   director endpoints. Currently, the only supported mode is `Synchronous`.
+   director endpoints. Supported modes are `Synchronous`, `Asynchronous`,
+   and `Metro`.
 
    .. note::
 
@@ -1095,10 +1097,16 @@ Configure the source and target arrays
       be automatically failed over to the target array, but administrator
       intervention would be required to either; configure the target (remote)
       array as local to the current Unisphere server (if it is a stand-alone
-      server), or enter the details to the XML file of a second Unisphere
-      server, which is locally connected to the target array (for example, the
-      embedded management Unisphere server of the target array), and restart
-      the cinder volume service.
+      server), or enter the details of a second Unisphere server to the
+      ``cinder.conf``, which is locally connected to the target array (for
+      example, the embedded management Unisphere server of the target array),
+      and restart the cinder volume service.
+
+   .. note::
+
+      If you are setting up an SRDF/Metro configuration, it is recommended that
+      you configure a Witness or vWitness for bias management. Please see
+      https://www.emc.com/collateral/technical-documentation/h14556-vmax3-srdf-metro-overview-and-best-practices-tech-note.pdf
 
 #. Enable replication in ``/etc/cinder/cinder.conf``.
    To enable the replication functionality in VMAX cinder driver, it is
@@ -1109,17 +1117,14 @@ Configure the source and target arrays
    value pairs.
 
    .. code-block:: console
-      
-      [DEFAULT]
+
       enabled_backends = VMAX_FC_REPLICATION
-
-   .. code-block:: console
-
       [VMAX_FC_REPLICATION]
       volume_driver = cinder.volume.drivers.dell_emc.vmax_fc.VMAXFCDriver
       cinder_dell_emc_config_file = /etc/cinder/cinder_dell_emc_config_VMAX_FC_REPLICATION.xml
       volume_backend_name = VMAX_FC_REPLICATION
-      replication_device = target_device_id:000197811111, remote_port_group:os-failover-pg, remote_pool:SRP_1, rdf_group_label: 28_11_07, allow_extend:False
+      replication_device = target_device_id:000197811111, remote_port_group:os-failover-pg, remote_pool:SRP_1, rdf_group_label: 28_11_07,
+                           allow_extend:False, mode:Metro, metro_use_bias:False, allow_delete_metro:False
 
    * ``target_device_id`` is a unique VMAX array serial number of the target
      array. For full failover functionality, the source and target VMAX arrays
@@ -1130,9 +1135,12 @@ Configure the source and target arrays
      of a failover. Make sure that this portgroup contains either all FC or
      all iSCSI port groups (for a given back end), as appropriate for the
      configured driver (iSCSI or FC).
+
    * ``remote_pool`` is the unique pool name for the given target array.
-   * ``rdf_group_label`` is the name of a VMAX SRDF group (Synchronous) that
-     has been pre-configured between the source and target arrays.
+
+   * ``rdf_group_label`` is the name of a VMAX SRDF group that has been pre-configured
+     between the source and target arrays.
+
    * ``allow_extend`` is a flag for allowing the extension of replicated volumes.
      To extend a volume in an SRDF relationship, this relationship must first be
      broken, both the source and target volumes are then independently extended,
@@ -1143,8 +1151,21 @@ Configure the source and target arrays
         As the SRDF link must be severed, due caution should be exercised when
         performing this operation. If absolutely necessary, only one source and
         target pair should be extended at a time.
-        In Queens, the underlying VMAX architecture will support extending
-        source and target volumes without having to sever links.
+
+     .. note::
+        It is not currently possible to extend SRDF/Metro protected volumes.
+
+   * ``mode`` is the required replication mode. Options are 'Synchronous',
+     'Asynchronous', and 'Metro'. This defaults to 'Synchronous'.
+
+   * ``metro_use_bias`` is a flag to indicate if 'bias' protection should be
+     used instead of Witness. This defaults to False.
+
+   * ``allow_delete_metro`` is a flag to indicate if metro devices can be deleted.
+     All Metro devices in an RDF group need to be managed together, so in order to delete
+     one of the pairings, the whole group needs to be first suspended. Because of this,
+     we require this flag to be explicitly set. This flag defaults to False.
+
 
    .. note::
       Service Level and Workload: An attempt will be made to create a storage
@@ -1177,13 +1198,17 @@ Volume replication interoperability with other features
 
 Most features are supported, except for the following:
 
-* There is no OpenStack Generic Volume Group support for replication-enabled
-  VMAX volumes.
+* Replication Group operations are available for volumes in Synchronous mode only.
 
 * Storage-assisted retype operations on replication-enabled VMAX volumes
   (moving from a non-replicated type to a replicated-type and vice-versa.
   Moving to another service level/workload combination, for example) are
   not supported.
+
+* It is not currently possible to extend SRDF/Metro protected volumes.
+  If a bigger volume size is required for a SRDF/Metro protected volume, this can be
+  achieved by cloning the original volume and choosing a larger size for the new
+  cloned volume.
 
 * The image volume cache functionality is supported (enabled by setting
   ``image_volume_cache_enabled = True``), but one of two actions must be taken
@@ -1194,7 +1219,8 @@ Most features are supported, except for the following:
     For example, if the minimum size disk to hold an image is 5GB, create
     the first boot volume as 5GB.
   * Alternatively, ensure that the ``allow_extend`` option in the
-    ``replication_device parameter`` is set to ``True``.
+    ``replication_device parameter`` is set to ``True`` (Please note that it is
+    not possible to extend SRDF/Metro protected volumes).
 
   This is because the initial boot volume is created at the minimum required
   size for the requested image, and then extended to the user specified size.
@@ -1217,6 +1243,33 @@ using the same command and specifying ``--backend_id default``:
 .. code-block:: console
 
    $ cinder failover-host cinder_host@VMAX_FC_REPLICATION --backend_id default
+
+.. note::
+
+   Failover and Failback operations are not applicable in Metro configurations.
+
+
+Asynchonous and Metro replication management groups
+---------------------------------------------------
+
+Asynchronous and Metro volumes in an RDF session, i.e. belonging to an SRDF
+group, must be managed together for RDF operations (although there is a
+``consistency exempt`` option for creating and deleting pairs in an Async
+group). To facilitate this management, we create an internal RDF management
+storage group on the backend. It is crucial for correct management that the
+volumes in this storage group directly correspond to the volumes in the RDF
+group. For this reason, it is imperative that the RDF group specified in the
+``cinder.conf`` is for the exclusive use by this cinder backend.
+
+
+Metro support
+-------------
+
+SRDF/Metro is a High Availabilty solution. It works by masking both sides of
+the RDF relationship to the host, and presenting all paths to the host,
+appearing that they all point to the one device. In order to the do this,
+there needs to be multipath software running to manage writing to the multiple
+paths.
 
 
 Volume retype -  storage assisted volume migration
@@ -1243,9 +1296,12 @@ Generic volume group support
 
 Generic volume group operations are performed through the CLI using API
 version 3.1x of the cinder API. Generic volume groups are multi-purpose
-groups which can be used for various features. The only feature supported
-currently by the VMAX plugin is the ability to take group snapshots which
-are consistent based on the group specs. Generic volume groups are a
+groups which can be used for various features. The VMAX plugin supports
+consistent group snapshots and replication groups. Consistent group
+snapshots allows the user to take group snapshots which
+are consistent based on the group specs. Replication groups allow for
+tenant facing APIs to enable and disable replication, and to failover
+and failback, a group of volumes. Generic volume groups are a
 replacement for the consistency groups.
 
 Consistent group snapshot
@@ -1255,9 +1311,10 @@ For creating a consistent group snapshot, a group-spec, having the key
 ``consistent_group_snapshot_enabled`` set to ``<is> True``, should be set
 on the group. Similarly the same key should be set on any volume type which
 is specified while creating the group. The VMAX plugin doesn't support
-creating/managing a group which doesn't have this group-spec set. If this key
-is not set on the group-spec then the generic volume group will be
-created/managed by cinder (not the VMAX plugin).
+creating/managing a group which doesn't have this (or replication group spec,
+see below) group-spec set. If one of these keys are not set on the group-spec,
+then the generic volume group will be created/managed by cinder (not the VMAX
+plugin).
 
 .. note::
 
@@ -1268,6 +1325,26 @@ created/managed by cinder (not the VMAX plugin).
 
    For creating consistent group snapshots, no changes are required to be
    done to the ``/etc/cinder/policy.json``.
+
+Replication Groups
+------------------
+
+To create a replication group, a group-spec, having the key
+``consistent_group_replication_enabled`` set to ``<is> True``, should be set
+on the group. Any volume types sepcified while creating the group must also
+be replication-enabled, i.e. have the the extra spec 'replication-enabled' set
+to ``<is> True``. Please note that only Synchronous replication is supported
+for use with Replication Groups. When a volume is created into a replication
+group, replication is on by default. The "disable_replication" api suspends
+I/O traffic on the devices, but does NOT remove replication for the group.
+The "enable_replication" api resumes I/O traffic on the RDF links. The
+"failover_group" api allows a group to be failed over and back without
+failing over the entire host. See below for usage.
+
+.. note::
+
+   A generic volume group can be both consistent group snapshot enabled and
+   consistent group replication enabled.
 
 Storage Group Names
 -------------------
@@ -1379,6 +1456,31 @@ Operations
 .. code-block:: console
 
    cinder --os-volume-api-version 3.13 group-delete --delete-volumes GROUP
+
+- Enable group replication
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.38 group-enable-replication GROUP
+
+- Disable group replication
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.38 group-disable-replication GROUP
+
+- Failover group
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.38 group-failover-replication GROUP
+
+- Failback group
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.38 group-failover-replication GROUP /
+       --secondary-backend-id default
 
 
 Oversubscription support
@@ -1726,3 +1828,163 @@ Once unmanaged from OpenStack, the volume can still be retrieved using its
 device ID or OpenStack volume ID. Within Unisphere you will also notice that
 the 'OS-' prefix has been removed, this is another visual indication that
 the volume is no longer managed by OpenStack.
+
+
+Manage/Unmanage Snapshots
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Users can manage VMAX SnapVX snapshots into OpenStack if the source volume
+already exists in Cinder. Similarly, users will be able to unmanage OpenStack
+snapshots to remove them from Cinder but keep them on the storage backend.
+
+Set-up, restrictions and requirements:
+
+#. No additional settings or configuration is required to support this
+   functionality.
+
+#. Manage/Unmanage snapshots requires SnapVX functionality support on VMAX.
+
+#. Manage/Unmanage Snapshots in OpenStack Cinder is only supported at present
+   through Cinder CLI commands.
+
+#. It is only possible to manage or unmanage one snapshot at a time in Cinder.
+
+#. This functionality is not to be confused with the similarly named
+   ``manage and unmanage snapshots`` which details setting attributes of a
+   given snapshot in Cinder.
+
+Manage SnapVX Snapshot
+----------------------
+
+It is possible to manage VMAX SnapVX snapshots into OpenStack, where the
+source volume from which the snapshot is taken already exists in, and is
+managed by OpenStack Cinder. The source volume may have been created in
+OpenStack Cinder, or it may have been managed in to OpenStack Cinder also.
+With the support of managing SnapVX snapshots included in OpenStack Queens,
+the restriction around managing SnapVX source volumes has been removed.
+
+.. note::
+
+   It is not possible to manage into OpenStack SnapVX linked target volumes,
+   or volumes which exist in a replication session.
+
+
+Requirements/Restrictions:
+
+#. The SnapVX source volume must be present in and managed by Cinder.
+
+#. The SnapVX snapshot name must not begin with ``OS-``.
+
+#. The SnapVX snapshot source volume must not be in a failed-over state.
+
+#. Managing a SnapVX snapshot will only be allowed if the snapshot has no
+   linked target volumes.
+
+#. Managing a SnapVX snapshot which is smaller than the source volume is
+   permitted as it is supported for create new volumes and restore from
+   snapshot (the remainder of volume size is zeroed out).
+
+
+Command Structure:
+
+#. Identify your SnapVX snapshot for management on the VMAX, note the name.
+
+#. Ensure the source volume is already managed into OpenStack Cinder, note
+   the device ID.
+
+#. Using the Cinder CLI, use the following command structure to manage a
+   Snapshot into OpenStack Cinder:
+
+
+.. code-block:: console
+
+   $ cinder snapshot-manage --id-type source-name
+                            [--name <name>]
+                            [--description <description>]
+                            [--metadata [<key=value> [<key=value> ...]]]
+                            <volume> <identifier>
+
+Positional arguments:
+
+- <volume> - Cinder volume which already exists in volume backend
+
+- <identifier> - Name of existing snapshot
+
+Optional arguments:
+
+- --name <name> - Snapshot name (Default=None)
+
+- --description <description> - Snapshot description (Default=None)
+
+- --metadata [<key=value> [<key=value> ...]]
+  Metadata key=value pairs (Default=None)
+
+Example:
+
+.. code-block:: console
+
+   $ cinder snapshot-manage --name SnapshotManaged
+                            --description "Managed Queens Feb18"
+                            0021A VMAXSnapshot
+
+Where:
+
+- The name in OpenStack after managing the SnapVX snapshot will be
+  ``SnapshotManaged``.
+
+- The snapshot will have the description ``Managed Queens Feb18``.
+
+- The source volume device ID is ``0021A``.
+
+- The name of the SnapVX snapshot on the VMAX backend is ``VMAXSnapshot``.
+
+Outcome:
+
+After the process of managing the Snapshot has completed, the SnapVX snapshot
+on the VMAX backend will be prefixed by the letters ``OS-``, leaving the
+snapshot in this example named ``OS-VMAXSnapshot``. The associated snapshot
+managed by Cinder will be present for use under the name ``SnapshotManaged``.
+
+
+Unmanage Cinder Snapshot
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Unmanaging a snapshot in Cinder is the process whereby the snapshot is removed
+from and no longer managed by Cinder, but it still exists on the storage
+backend. Unmanaging a SnapVX snapshot in OpenStack Cinder follows this
+behaviour, whereby after unmanaging a VMAX SnapVX snapshot from Cinder, the
+snapshot is removed from OpenStack but is still present for use on the VMAX
+backend.
+
+Requirements/Restrictions:
+
+- The SnapVX source volume must not be in a failed over state.
+
+Command Structure:
+
+Identify the SnapVX snapshot you want to unmanage from OpenStack cinder, note
+the snapshot name or ID as specified by Cinder. Using the Cinder CLI use the
+following command structure to unmanage the SnapVX snapshot from Cinder:
+
+.. code-block:: console
+
+   $ cinder snapshot-unmanage <snapshot>
+
+Positional arguments:
+
+- <snapshot> - Cinder snapshot name or ID.
+
+Example:
+
+.. code-block:: console
+
+   $ cinder snapshot-unmanage SnapshotManaged
+
+Where:
+
+- The SnapVX snapshot name in OpenStack Cinder is SnapshotManaged.
+
+After the process of unmanaging the SnapVX snapshot in Cinder, the snapshot on
+the VMAX backend will have the ``OS-`` prefix removed to indicate it is no
+longer OpenStack managed. In the example above, the snapshot after unmanaging
+from OpenStack will be named ``VMAXSnapshot`` on the storage backend.
