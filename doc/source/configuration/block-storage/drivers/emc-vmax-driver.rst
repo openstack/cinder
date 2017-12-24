@@ -1602,3 +1602,124 @@ nodes. The following were also used in live migration.
 
 #. Run the command on Step 4 on Host A to confirm that the instance is
    created through virsh.
+
+
+Manage and Unmanage Volumes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Managing volumes in OpenStack is the process whereby a volume which exists
+on the storage device is imported into OpenStack to be made available for use
+in the OpenStack environment.  For a volume to be valid for managing into
+OpenStack, the following prerequisites must be met:
+
+- The volume exists in a Cinder managed pool
+
+- The volume is not part of a Masking View
+
+- The volume is not part of an SRDF relationship
+
+- The volume is configured as a TDEV (thin device)
+
+- The volume is set to FBA emulation
+
+
+For a volume to exist in a Cinder managed pool, it must reside in in the same
+Storage Resource Pool (SRP) as the backend which is configured for use in
+OpenStack. Specifying the pool correctly can be entered manually as it follows
+the same format:
+
+.. code-block:: console
+
+   Pool format: <service_level>+<workload_type>+<srp>+<array_id>
+   Pool example 1: Diamond+DSS+SRP_1+111111111111
+   Pool example 2: Diamond+SRP_1+111111111111
+
+
+.. table:: **Pool values**
+
+ +----------------+-------------------------------------------------------------+
+ |  Key           | Value                                                       |
+ +================+=============================================================+
+ |  service_level | The service level of the volume to be managed               |
+ +----------------+-------------------------------------------------------------+
+ |  workload      | The workload of the volume to be managed                    |
+ +----------------+-------------------------------------------------------------+
+ |  SRP           | The Storage Resource Pool configured for use by the backend |
+ +----------------+-------------------------------------------------------------+
+ |  array_id      | The VMAX serial number (12 digit numerical)                 |
+ +----------------+-------------------------------------------------------------+
+
+
+Manage Volumes
+--------------
+
+With your pool name defined you can now manage the volume into OpenStack, this
+is possible with the CLI command ``cinder manage``. The bootable parameter is
+optional in the command, if the volume to be managed into OpenStack is not
+bootable leave this parameter out. OpenStack will also determine the size of
+the value when it is managed so there is no need to specify the volume size.
+
+Command format:
+
+.. code-block:: console
+
+   $ cinder manage --name <new_volume_name> --volume-type <vmax_vol_type> \
+     --availability-zone <av_zone> <--bootable> <host> <identifier>
+
+Command Example:
+
+.. code-block:: console
+
+   $ cinder manage --name vmax_managed_volume --volume-type VMAX_ISCSI_DIAMOND \
+     --availability-zone nova demo@VMAX_ISCSI_DIAMOND#Diamond+SRP_1+111111111111 031D8
+
+After the above command has been run, the volume will be available for use in
+the same way as any other OpenStack VMAX volume.
+
+.. note::
+
+   An unmanaged volume with a prefix of 'OS-' in its identifier name cannot be
+   managed into OpenStack, as this is a reserved keyword for managed volumes.
+   If the identifier name has this prefix, an exception will be thrown by the
+   VMAX driver on a manage operation.
+
+
+Managing Volumes with Replication Enabled
+-----------------------------------------
+
+Whilst it is not possible to manage volumes into OpenStack that are part of a
+SRDF relationship, it is possible to manage a volume into OpenStack and
+enable replication at the same time. This is done by having a replication
+enabled VMAX volume type (for more information see section Volume Replication
+& SRDF/S) during the manage volume process you specify the replication volume
+type as the chosen volume type. Once managed, replication will be enabled for
+that volume.
+
+
+Unmanage Volume
+---------------
+
+Unmanaging a volume is not the same as deleting a volume. When a volume is
+deleted from OpenStack, it is also deleted from the VMAX at the same time.
+Unmanaging a volume is the process whereby a volume is removed from OpenStack
+but it remains for further use on the VMAX. The volume can also be managed
+back into OpenStack at a later date using the process discussed in the
+previous section. Unmanaging volume is carried out using the Cinder
+unmanage CLI command:
+
+Command format:
+
+.. code-block:: console
+
+   $ cinder unmanage <volume_name/volume_id>
+
+Command example:
+
+.. code-block:: console
+
+   $ cinder unmanage vmax_test_vol
+
+Once unmanaged from OpenStack, the volume can still be retrieved using its
+device ID or OpenStack volume ID. Within Unisphere you will also notice that
+the 'OS-' prefix has been removed, this is another visual indication that
+the volume is no longer managed by OpenStack.
