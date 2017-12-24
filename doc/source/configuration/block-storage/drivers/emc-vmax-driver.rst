@@ -111,6 +111,10 @@ VMAX drivers also support the following features:
    This means volumes added to any newly created storage groups will be
    compressed.
 
+
+VMAX Driver Integration
+~~~~~~~~~~~~~~~~~~~~~~~
+
 #. Install iSCSI Utilities (for iSCSI drivers only).
 
    #. Download and configure the Cinder node as an iSCSI initiator.
@@ -163,7 +167,7 @@ VMAX drivers also support the following features:
    VMAX). See ``Unisphere for VMAX 8.4.0 Installation Guide`` at
    ``support.emc.com``.
 
-#. Configure Block Storage
+#. Configure Block Storage in cinder.conf
 
    Add the following entries to ``/etc/cinder/cinder.conf``:
 
@@ -189,6 +193,8 @@ VMAX drivers also support the following features:
    containing additional settings. Note that the file name is in the format
    ``/etc/cinder/cinder_dell_emc_config_[confGroup].xml``.
 
+#. Create Volume Types
+
    Once the ``cinder.conf`` and EMC-specific configuration files have been
    created, :command:`openstack` commands need to be issued in order to
    create and associate OpenStack volume types with the declared
@@ -201,72 +207,61 @@ VMAX drivers also support the following features:
    There is also the option to assign a port group to a volume type by
    setting the ``storagetype:portgroupname`` extra specification.
 
-``ServiceLevel``
-   The Service Level manages the underlying storage to provide expected
-   performance. Setting the ``ServiceLevel`` to ``NONE`` means that non-FAST
-   managed storage groups will be created instead (storage groups not
-   associated with any service level).
+   .. note::
 
-``Workload``
-   When a workload type is added, the latency range is reduced due to the
-   added information. Setting the ``Workload`` to ``NONE`` means the latency
-   range will be the widest for its Service Level type. Please note that you
-   cannot set a Workload without a Service Level.
+      Run the command cinder get-pools --detail to query for the pool
+      information. This should list all the available Service Level and Workload
+      combinations available for the SRP as pools belonging to the same backend.
+      You can create many volume types for different service level and workload
+      types using the same backend.
 
-.. note::
+      ``ServiceLevel``
+      The Service Level manages the underlying storage to provide expected
+      performance. Setting the ``ServiceLevel`` to ``NONE`` means that non-FAST
+      managed storage groups will be created instead (storage groups not
+      associated with any service level).
 
-   Run the command cinder get-pools --detail to query for the pool
-   information. This should list all the available Service Level and Workload
-   combinations available for the SRP as pools belonging to the same backend.
-   You can create many volume types for different service level and workload
-   types using the same backend.
-
-``Port Groups``
-   Port groups refer to VMAX port groups that have been pre-configured to
-   expose volumes managed by this backend. Each supplied port group should
-   have sufficient number and distribution of ports (across directors and
-   switches) as to ensure adequate bandwidth and failure protection for the
-   volume connections. PortGroups can contain one or more port groups of
-   either iSCSI or FC ports. Make sure that any PortGroups provided contain
-   either all FC or all iSCSI port groups (for a given back end), as
-   appropriate for the configured driver (iSCSI or FC). Port groups can be
-   assigned as an extra spec, or can be provided in the xml file.
-   Port groups provided as the extra spec are selected first.
-
-.. note::
-
-   Create as many volume types as the number of Service Level and Workload
-   (available) combinations which you are going to use for provisioning
-   volumes. The pool_name is the additional property which has to be set and
-   is of the format: ``<ServiceLevel>+<Workload>+<SRP>+<Array ID>``. This
-   can be obtained from the output of the ``cinder get-pools--detail``.
-
-.. code-block:: console
-
-   $ openstack volume type create VMAX_ISCI_SILVER_OLTP
-   $ openstack volume type set --property volume_backend_name=ISCSI_backend \
-                               --property pool_name=Silver+OLTP+SRP_1+000197800123 \
-                               --property storagetype:portgroupname=OS-PG2 \
-                               VMAX_ ISCI_SILVER_OLTP
-   $ openstack volume type create VMAX_FC_DIAMOND_DSS
-   $ openstack volume type set --property volume_backend_name=FC_backend \
-                               --property pool_name=Diamond+DSS+SRP_1+000197800123 \
-                                --property port_group_name=OS-PG1 \
-                               VMAX_FC_DIAMOND_DSS
+      ``Workload``
+      When a workload type is added, the latency range is reduced due to the
+      added information. Setting the ``Workload`` to ``NONE`` means the latency
+      range will be the widest for its Service Level type. Please note that you
+      cannot set a Workload without a Service Level.
 
 
-By issuing these commands, the Block Storage volume type
-``VMAX_ISCSI_SILVER_OLTP`` is associated with the ``ISCSI_backend``, a Silver
-Service Level, and an OLTP workload.
+   .. note::
 
-The type ``VMAX_FC_DIAMOND_DSS`` is associated with the ``FC_backend``, a
-Diamond Service Level, and a DSS workload.
+      It is possible to create as many volume types as the number of Service Level
+      and Workload(available) combination for provisioning volumes. The pool_name
+      is the additional property which has to be set and is of the format:
+      ``<ServiceLevel>+<Workload>+<SRP>+<Array ID>``.
+      This can be obtained from the output of the ``cinder get-pools--detail``.
 
-.. note::
+   .. code-block:: console
 
-   VMAX Hybrid supports Optimized, Diamond, Platinum, Gold, Silver, Bronze,
-   and NONE service levels. VMAX All Flash supports Diamond and NONE. Both
-   support DSS_REP, DSS, OLTP_REP, OLTP, and NONE workloads.
+      $ openstack volume type create VMAX_ISCSI_SILVER_OLTP
+      $ openstack volume type set --property volume_backend_name=ISCSI_backend \
+                                  --property pool_name=Silver+OLTP+SRP_1+000197800123 \
+                                  --property storagetype:portgroupname=OS-PG2 \
+                                  VMAX_ISCSI_SILVER_OLTP
+      $ openstack volume type create VMAX_FC_DIAMOND_DSS
+      $ openstack volume type set --property volume_backend_name=FC_backend \
+                                  --property pool_name=Diamond+DSS+SRP_1+000197800123 \
+                                  --property storagetype:portgroupname=OS-PG1 \
+                                  VMAX_FC_DIAMOND_DSS
+
+
+   By issuing these commands, the Block Storage volume type
+   ``VMAX_ISCSI_SILVER_OLTP`` is associated with the ``ISCSI_backend``, a Silver
+   Service Level, and an OLTP workload.
+
+   The type ``VMAX_FC_DIAMOND_DSS`` is associated with the ``FC_backend``, a
+   Diamond Service Level, and a DSS workload.
+
+   .. note::
+
+      VMAX Hybrid supports Optimized, Diamond, Platinum, Gold, Silver, Bronze,
+      and NONE service levels. VMAX All Flash supports Diamond and NONE. Both
+      support DSS_REP, DSS, OLTP_REP, OLTP, and NONE workloads.
 
 #. Create an XML file
 
@@ -276,53 +271,58 @@ Diamond Service Level, and a DSS workload.
    Add the following lines to the XML file:
 
 
-.. code-block:: xml
+   .. code-block:: xml
 
-   <?xml version="1.0" encoding="UTF-8" ?>
-   <EMC>
-      <RestServerIp>1.1.1.1</RestServerIp>
-      <RestServerPort>8443</RestServerPort>
-      <RestUserName>smc</RestUserName>
-      <RestPassword>smc</RestPassword>
-      <PortGroups>
-         <PortGroup>OS-PORTGROUP1-PG</PortGroup>
-         <PortGroup>OS-PORTGROUP2-PG</PortGroup>
-      </PortGroups>
-      <Array>111111111111</Array>
-      <SRP>SRP_1</SRP>
-      <SSLVerify>/path/to/sslcert</SSLVerify>
-   </EMC>
+      <?xml version="1.0" encoding="UTF-8" ?>
+      <EMC>
+         <RestServerIp>1.1.1.1</RestServerIp>
+         <RestServerPort>8443</RestServerPort>
+         <RestUserName>smc</RestUserName>
+         <RestPassword>smc</RestPassword>
+         <PortGroups>
+            <PortGroup>OS-PORTGROUP1-PG</PortGroup>
+            <PortGroup>OS-PORTGROUP2-PG</PortGroup>
+         </PortGroups>
+         <Array>111111111111</Array>
+         <SRP>SRP_1</SRP>
+         <SSLVerify>/path/to/sslcert</SSLVerify>
+      </EMC>
 
-Where:
+   Where:
 
-``RestServerIp``
-   IP address of the Unisphere server.
+   ``RestServerIp``
+      IP address of the Unisphere server.
 
-``RestServerPort``
-   Port number of the Unisphere server.
+   ``RestServerPort``
+      Port number of the Unisphere server.
 
-``RestUserName`` and ``RestPassword``
-   Credentials for the Unisphere server.
+   ``RestUserName`` and ``RestPassword``
+      Credentials for the Unisphere server.
 
-``PortGroups``
-   Supplies the names of VMAX port groups that have been pre-configured to
-   expose volumes managed by this array. Port groups can be supplied in the
-   XML file, or can be specified as an extra spec on a volume type for more
-   control. Please see above section on port groups. When a dynamic masking
-   view is created by the VMAX driver, if there is no port group specified
-   as an extra specification, the port group is chosen randomly from the
-   PortGroup list, to evenly distribute load across the set of groups
-   provided.
+   ``PortGroups``
+      Supplies the names of VMAX port groups that have been pre-configured to
+      expose volumes managed by this array. Port groups can be supplied in the
+      XML file, or can be specified as an extra spec on a volume type for more
+      control. Please see above section on port groups. When a dynamic masking
+      view is created by the VMAX driver, if there is no port group specified
+      as an extra specification, the port group is chosen randomly from the
+      PortGroup list, to evenly distribute load across the set of groups
+      provided.
 
-``Array``
-   Unique VMAX array serial number.
+      .. note::
 
-``SRP``
-   The name of the storage resource pool for the given array.
+         There is also the option to assign a port group to a volume type by
+         setting the ``storagetype:portgroupname`` extra specification.
 
-``SSLVerify``
-   The path to the ``ca_cert.pem`` file of the Unisphere instance below, or
-   ``True`` if the SSL cert has been added to the bundle - see ``SSL support``.
+   ``Array``
+      Unique VMAX array serial number.
+
+   ``SRP``
+      The name of the storage resource pool for the given array.
+
+   ``SSLVerify``
+      The path to the ``ca_cert.pem`` file of the Unisphere instance below, or
+      ``True`` if the SSL cert has been added to the bundle - see ``SSL support``.
 
 
 Upgrading from SMI-S based driver to RESTAPI based driver
@@ -456,6 +456,10 @@ Masking views are dynamically created by the VMAX FC and iSCSI drivers using
 the following naming conventions. ``[protocol]`` is either ``I`` for volumes
 attached over iSCSI or ``F`` for volumes attached over Fiber Channel.
 
+.. code-block:: text
+
+   OS-[shortHostName]-[protocol]-[portgroup_name]-MV
+
 Initiator group names
 ---------------------
 
@@ -530,7 +534,7 @@ if multiple concurrent provisioning requests are issued then ``retries``
 should be increased so calls will not timeout prematurely.
 
 In the example below, the driver checks every 3 seconds for the status of the
-job. It will continue checking for 150 retries before it times out.
+job. It will continue checking for 200 retries before it times out.
 
 Add the following lines to the VMAX backend in the cinder.conf:
 
@@ -547,10 +551,10 @@ Add the following lines to the VMAX backend in the cinder.conf:
 QoS (Quality of Service) support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Quality of service (QOS) has traditionally been associated with network
+Quality of service (QoS) has traditionally been associated with network
 bandwidth usage. Network administrators set limitations on certain networks
 in terms of bandwidth usage for clients. This enables them to provide a
-tiered level of service based on cost. The Nova/cinder QOS offer similar
+tiered level of service based on cost. The Nova/cinder QoS offer similar
 functionality based on volume type setting limits on host storage bandwidth
 per service offering. Each volume type is tied to specific QoS attributes
 some of which are unique to each storage vendor. In the hypervisor, the QoS
@@ -709,14 +713,55 @@ above.
 Libvirt includes an extra xml flag within the <disk> section called iotune
 that is responsible for rate limitation. To confirm that, first get the
 ``OS-EXT-SRV-ATTR:instance_name`` value of the server instance
-i.e. instance-00000005. We then run the following command using the
+i.e. instance-00000003.
+
+.. code-block:: console
+
+   $ openstack server show <serverid>
+
+   +-------------------------------------+-----------------------------------------------------------------+
+   | Field                               | Value                                                           |
+   +-------------------------------------+-----------------------------------------------------------------+
+   | OS-DCF:diskConfig                   | AUTO                                                            |
+   | OS-EXT-AZ:availability_zone         | nova                                                            |
+   | OS-EXT-SRV-ATTR:host                | myhost                                                          |
+   | OS-EXT-SRV-ATTR:hypervisor_hostname | myhost                                                          |
+   | OS-EXT-SRV-ATTR:instance_name       | instance-00000003                                               |
+   | OS-EXT-STS:power_state              | Running                                                         |
+   | OS-EXT-STS:task_state               | None                                                            |
+   | OS-EXT-STS:vm_state                 | active                                                          |
+   | OS-SRV-USG:launched_at              | 2017-11-02T08:15:42.000000                                      |
+   | OS-SRV-USG:terminated_at            | None                                                            |
+   | accessIPv4                          |                                                                 |
+   | accessIPv6                          |                                                                 |
+   | addresses                           | private=fd21:99c2:73f3:0:f816:3eff:febe:30ed, 10.0.0.3          |
+   | config_drive                        |                                                                 |
+   | created                             | 2017-11-02T08:15:34Z                                            |
+   | flavor                              | m1.tiny (1)                                                     |
+   | hostId                              | e7b8312581f9fbb8508587d45c0b6fb4dc86102c632ed1f3a6a49d42        |
+   | id                                  | 0ef0ff4c-dbda-4dc7-b8ed-45d2fc2f31db                            |
+   | image                               | cirros-0.3.5-x86_64-disk (b7c220f5-2408-4296-9e58-fc5a41cb7e9d) |
+   | key_name                            | myhostname                                                      |
+   | name                                | myhosthame                                                      |
+   | progress                            | 0                                                               |
+   | project_id                          | bae4b97a0d8b42c28a5add483981e5db                                |
+   | properties                          |                                                                 |
+   | security_groups                     | name='default'                                                  |
+   | status                              | ACTIVE                                                          |
+   | updated                             | 2017-11-02T08:15:42Z                                            |
+   | user_id                             | 7bccf456740546799a7e20457f13c38b                                |
+   | volumes_attached                    |                                                                 |
+   +-------------------------------------+-----------------------------------------------------------------+
+
+We then run the following command using the
 ``OS-EXT-SRV-ATTR:instance_name`` retrieved above.
 
 .. code-block:: console
 
-   $ virsh dumpxml instance-00000005 | grep -1 "total_bytes_sec\|total_iops_sec"
+   $ virsh dumpxml instance-00000003 | grep -1 "total_bytes_sec\|total_iops_sec"
 
-The outcome is shown below
+The output of the command contains the xml below. It is found between the
+``<disk>`` start and end tag.
 
 .. code-block:: xml
 
@@ -928,9 +973,10 @@ On Compute (nova) node, add the following flag in the ``[libvirt]`` section of
 
 .. code-block:: ini
 
-   iscsi_use_multipath = True
+   volume_use_multipath = True
 
-On cinder controller node, set the multipath flag to true in
+On cinder controller node, iSCSI MPIO can be set globally in the
+[DEFAULT] section or set individually in the VMAX backend stanza in
 :file:`/etc/cinder/cinder.conf`:
 
 .. code-block:: ini
@@ -967,40 +1013,6 @@ Verify you have multiple initiators available on the compute node for I/O
       sdc                                          8:16   0     3G  0 disk
       ..360000970000196700531533030383039 (dm-6) 252:6    0     3G  0 mpath
       vda
-
-
-Workload Planner (WLP)
-~~~~~~~~~~~~~~~~~~~~~~
-
-VMAX Hybrid allows you to manage application storage by using Service Level
-(SL) using policy based automation. The VMAX Hybrid comes with
-up to 6 SL policies defined. Each has a
-set of workload characteristics that determine the drive types and mixes
-which will be used for the SL. All storage in the VMAX Array is virtually
-provisioned, and all of the pools are created in containers called Storage
-Resource Pools (SRP). Typically there is only one SRP, however there can be
-more. Therefore, it is the same pool we will provision to but we can provide
-different SLO/Workload combinations.
-
-The SL capacity is retrieved by interfacing with Unisphere Workload Planner
-(WLP). If you do not set up this relationship then the capacity retrieved is
-that of the entire SRP. This can cause issues as it can never be an accurate
-representation of what storage is available for any given SL and Workload
-combination.
-
-Enabling WLP on Unisphere
--------------------------
-
-#. To enable WLP on Unisphere, click on the
-   :menuselection:`array-->Performance-->Settings`.
-#. Set both the :guilabel:`Real Time` and the :guilabel:`Root Cause Analysis`.
-#. Click :guilabel:`Register`.
-
-.. note::
-
-   This should be set up ahead of time (allowing for several hours of data
-   collection), so that the Unisphere for VMAX Performance Analyzer can
-   collect rated metrics for each of the supported element types.
 
 
 All Flash compression support
@@ -1040,18 +1052,7 @@ Use case 1 - Compression disabled create, attach, detach, and delete volume
    it should also be deleted.
 
 
-Use case 2 - Compression disabled create, delete snapshot and delete volume
----------------------------------------------------------------------------
-
-#. Repeat steps 1-5 of Use case 1.
-#. Create a snapshot. The volume should now exist in
-   ``OS-<srp>-<servicelevel>-<workload>-CD-SG``.
-#. Delete the snapshot. The volume should be removed from
-   ``OS-<srp>-<servicelevel>-<workload>-CD-SG``.
-#. Delete the volume. If this volume is the last volume in
-   ``OS-<srp>-<servicelevel>-<workload>-CD-SG``, it should also be deleted.
-
-Use case 3 - Retype from compression disabled to compression enabled
+Use case 2 - Retype from compression disabled to compression enabled
 --------------------------------------------------------------------
 
 #. Repeat steps 1-4 of Use case 1.
@@ -1108,8 +1109,12 @@ Configure the source and target arrays
    value pairs.
 
    .. code-block:: console
-
+      
+      [DEFAULT]
       enabled_backends = VMAX_FC_REPLICATION
+
+   .. code-block:: console
+
       [VMAX_FC_REPLICATION]
       volume_driver = cinder.volume.drivers.dell_emc.vmax_fc.VMAXFCDriver
       cinder_dell_emc_config_file = /etc/cinder/cinder_dell_emc_config_VMAX_FC_REPLICATION.xml
@@ -1163,7 +1168,7 @@ Configure the source and target arrays
 
    .. code-block:: console
 
-      $ openstack volume type set --property replication_enabled = "<is> True" \
+      $ openstack volume type set --property replication_enabled="<is> True" \
                             VMAX_FC_REPLICATION
 
 
@@ -1204,16 +1209,14 @@ host command to failover to the configured target:
 
 .. code-block:: console
 
-   $ cinder failover-host cinder_host@VMAX_FC_REPLICATION#Diamond+SRP_1+000192800111
+   $ cinder failover-host cinder_host@VMAX_FC_REPLICATION
 
 If the primary array becomes available again, you can initiate a failback
 using the same command and specifying ``--backend_id default``:
 
 .. code-block:: console
 
-   $ cinder failover-host \
-     cinder_host@VMAX_FC_REPLICATION#Diamond+SRP_1+000192800111 \
-     --backend_id default
+   $ cinder failover-host cinder_host@VMAX_FC_REPLICATION --backend_id default
 
 
 Volume retype -  storage assisted volume migration
@@ -1309,7 +1312,7 @@ Operations
 
 .. code-block:: console
 
-   cinder --os-volume-api-version 3.11 group-type-key GROUP_TYPE set consistent_group_snapshot_enabled= "<is> True"
+   cinder --os-volume-api-version 3.11 group-type-key GROUP_TYPE set consistent_group_snapshot_enabled="<is> True"
 
 - List group types and group specs:
 
