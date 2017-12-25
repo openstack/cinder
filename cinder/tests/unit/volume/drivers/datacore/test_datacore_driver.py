@@ -18,10 +18,12 @@ from __future__ import division
 
 import abc
 import mock
+
 from oslo_utils import units
 
 from cinder import exception as cinder_exception
 from cinder.tests.unit import fake_constants
+from cinder.tests.unit import utils as testutils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.datacore import driver as datacore_driver
 from cinder.volume.drivers.datacore import exception as datacore_exception
@@ -195,6 +197,7 @@ class DataCoreVolumeDriverTestCase(object):
 
     def setUp(self):
         super(DataCoreVolumeDriverTestCase, self).setUp()
+        self.override_config('datacore_disk_failed_delay', 0)
         self.mock_client = mock.Mock()
         self.mock_client.get_servers.return_value = SERVERS
         self.mock_client.get_disk_pools.return_value = DISK_POOLS
@@ -228,7 +231,7 @@ class DataCoreVolumeDriverTestCase(object):
         config.san_ip = '127.0.0.1'
         config.san_login = 'dcsadmin'
         config.san_password = 'password'
-        config.datacore_api_timeout = 300
+        config.datacore_api_timeout = 0
         return config
 
     def test_do_setup(self):
@@ -442,12 +445,13 @@ class DataCoreVolumeDriverTestCase(object):
                           driver.create_volume,
                           volume)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_create_volume_await_online_timed_out(self):
         virtual_disk = VIRTUAL_DISKS[1]
         self.mock_client.create_virtual_disk_ex2.return_value = virtual_disk
 
         config = self.setup_default_configuration()
-        config.datacore_disk_failed_delay = 1
         driver = self.init_driver(config)
         volume = VOLUME.copy()
         self.assertRaises(cinder_exception.VolumeDriverException,
@@ -488,6 +492,8 @@ class DataCoreVolumeDriverTestCase(object):
         volume['provider_location'] = virtual_disk.Id
         driver.delete_volume(volume)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_create_snapshot(self):
         virtual_disk = VIRTUAL_DISKS[0]
         virtual_disk_snapshot = VIRTUAL_DISK_SNAPSHOTS[0]
@@ -514,6 +520,8 @@ class DataCoreVolumeDriverTestCase(object):
                           driver.create_snapshot,
                           snapshot)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_create_snapshot_await_migrated_timed_out(self):
         virtual_disk = VIRTUAL_DISKS[0]
         virtual_disk_snapshot = VIRTUAL_DISK_SNAPSHOTS[1]
@@ -535,6 +543,8 @@ class DataCoreVolumeDriverTestCase(object):
         snapshot['provider_location'] = virtual_disk.Id
         driver.delete_snapshot(snapshot)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_create_volume_from_snapshot(self):
         virtual_disk = VIRTUAL_DISKS[0]
         self.mock_client.set_virtual_disk_size.return_value = virtual_disk
@@ -548,6 +558,8 @@ class DataCoreVolumeDriverTestCase(object):
         result = driver.create_volume_from_snapshot(volume, snapshot)
         self.assertIn('provider_location', result)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_create_volume_from_snapshot_mirrored_disk_type_specified(self):
         virtual_disk = VIRTUAL_DISKS[0]
         self.mock_client.set_virtual_disk_size.return_value = virtual_disk
@@ -563,6 +575,8 @@ class DataCoreVolumeDriverTestCase(object):
         result = driver.create_volume_from_snapshot(volume, snapshot)
         self.assertIn('provider_location', result)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_create_volume_from_snapshot_on_failed_pool(self):
         virtual_disk = VIRTUAL_DISKS[0]
         self.mock_client.set_virtual_disk_size.return_value = virtual_disk
@@ -581,6 +595,8 @@ class DataCoreVolumeDriverTestCase(object):
                           volume,
                           snapshot)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_create_volume_from_snapshot_await_online_timed_out(self):
         virtual_disk = VIRTUAL_DISKS[0]
         snapshot_virtual_disk = VIRTUAL_DISKS[1]
@@ -598,6 +614,8 @@ class DataCoreVolumeDriverTestCase(object):
                           volume,
                           snapshot)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_create_cloned_volume(self):
         virtual_disk = VIRTUAL_DISKS[0]
         self.mock_client.set_virtual_disk_size.return_value = virtual_disk
@@ -611,6 +629,8 @@ class DataCoreVolumeDriverTestCase(object):
         result = driver.create_cloned_volume(volume, src_vref)
         self.assertIn('provider_location', result)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_create_cloned_volume_mirrored_disk_type_specified(self):
         virtual_disk = VIRTUAL_DISKS[0]
         self.mock_client.set_virtual_disk_size.return_value = virtual_disk
@@ -626,6 +646,8 @@ class DataCoreVolumeDriverTestCase(object):
         result = driver.create_cloned_volume(volume, src_vref)
         self.assertIn('provider_location', result)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_create_cloned_volume_on_failed_pool(self):
         virtual_disk = VIRTUAL_DISKS[0]
         self.mock_client.set_virtual_disk_size.return_value = virtual_disk
@@ -644,6 +666,8 @@ class DataCoreVolumeDriverTestCase(object):
                           volume,
                           src_vref)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_create_cloned_volume_await_online_timed_out(self):
         virtual_disk = VIRTUAL_DISKS[0]
         snapshot_virtual_disk = VIRTUAL_DISKS[1]

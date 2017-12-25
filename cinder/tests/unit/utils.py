@@ -404,9 +404,9 @@ def create_qos(ctxt, testcase_instance=None, **kwargs):
 
 
 class ZeroIntervalLoopingCall(loopingcall.FixedIntervalLoopingCall):
-    def start(self, interval, **kwargs):
-        kwargs['initial_delay'] = 0
-        return super(ZeroIntervalLoopingCall, self).start(0, **kwargs)
+    def start(self, interval, initial_delay=None, stop_on_exception=True):
+        return super(ZeroIntervalLoopingCall, self).start(
+            0, 0, stop_on_exception)
 
 
 def replace_obj_loader(testcase, obj):
