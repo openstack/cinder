@@ -662,7 +662,7 @@ has_dependent_backups:
 host:
   description: |
     The OpenStack Block Storage host where the
-    existing volume resides.
+    existing volume resides. Host format is ``host@backend``.
   in: body
   required: true
   type: string
@@ -1270,6 +1270,7 @@ os-unset_image_metadata:
 os-vol-host-attr:host:
   description: |
     Current back-end of the volume.
+    Host format is ``host@backend#pool``.
   in: body
   required: true
   type: string
