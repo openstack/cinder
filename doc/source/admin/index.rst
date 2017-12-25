@@ -28,6 +28,23 @@ Amazon EC2 Elastic Block Storage (EBS) offering.
    blockstorage-manage-volumes.rst
    blockstorage-troubleshoot.rst
    generalized_filters.rst
+   blockstorage-backup-disks.rst
+   blockstorage-boot-from-volume.rst
+   blockstorage-consistency-groups.rst
+   blockstorage-driver-filter-weighing.rst
+   blockstorage-get-capabilities.rst
+   blockstorage-groups.rst
+   blockstorage-image-volume-cache.rst
+   blockstorage-lio-iscsi-support.rst
+   blockstorage-multi-backend.rst
+   blockstorage-nfs-backend.rst
+   blockstorage-over-subscription.rst
+   blockstorage-ratelimit-volume-copy-bandwidth.rst
+   blockstorage-volume-backed-image.rst
+   blockstorage-volume-backups-export-import.rst
+   blockstorage-volume-backups.rst
+   blockstorage-volume-migration.rst
+   blockstorage-volume-number-weigher.rst
 
 .. _`Storage Decisions`: https://docs.openstack.org/arch-design/design-storage/design-storage-arch.html
 .. _`OpenStack Operations Guide`: https://wiki.openstack.org/wiki/OpsGuide
