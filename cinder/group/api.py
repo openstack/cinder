@@ -315,6 +315,10 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
+                    volumes = objects.VolumeList.get_all_by_generic_group(
+                        context, group.id)
+                    for vol in volumes:
+                        vol.destroy()
                     group.destroy()
                 finally:
                     LOG.error("Error occurred when creating group "
@@ -392,6 +396,10 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
+                    volumes = objects.VolumeList.get_all_by_generic_group(
+                        context, group.id)
+                    for vol in volumes:
+                        vol.destroy()
                     group.destroy()
                 finally:
                     LOG.error("Error occurred when creating "
