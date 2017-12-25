@@ -115,6 +115,7 @@ class SnapshotMetaDataTest(test.TestCase):
         self.mock_object(volume.api.API, 'get', fake_get)
         self.mock_object(cinder.db, 'snapshot_get', return_snapshot)
         self.mock_object(self.volume_api, 'update_snapshot_metadata')
+        self.patch('cinder.objects.volume.Volume.refresh')
 
         self.ext_mgr = extensions.ExtensionManager()
         self.ext_mgr.extensions = {}
