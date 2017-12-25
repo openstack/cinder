@@ -49,7 +49,6 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.configuration.sf_template_account_name = 'openstack-vtemplate'
         self.configuration.sf_allow_template_caching = False
         self.configuration.sf_svip = None
-        self.configuration.sf_enable_volume_mapping = True
         self.configuration.sf_volume_prefix = 'UUID-'
         self.configuration.sf_enable_vag = False
         self.configuration.replication_device = []
