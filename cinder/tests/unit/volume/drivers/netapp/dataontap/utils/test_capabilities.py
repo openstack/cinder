@@ -272,8 +272,9 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         self.zapi_client.get_flexvol.assert_called_once_with(
             flexvol_name=fake_client.VOLUME_NAMES[0])
 
-    def test_get_ssc_dedupe_info(self):
-
+    @ddt.data([], ['netapp_dedup'], ['netapp_compression'])
+    def test_get_ssc_dedupe_info(self, invalid_extra_specs):
+        self.ssc_library.invalid_extra_specs = invalid_extra_specs
         self.mock_object(
             self.ssc_library.zapi_client, 'get_flexvol_dedupe_info',
             return_value=fake_client.VOLUME_DEDUPE_INFO_SSC)
@@ -281,13 +282,20 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         result = self.ssc_library._get_ssc_dedupe_info(
             fake_client.VOLUME_NAMES[0])
 
-        expected = {
-            'netapp_dedup': 'true',
-            'netapp_compression': 'false',
-        }
+        if invalid_extra_specs:
+            expected = {
+                'netapp_dedup': 'false',
+                'netapp_compression': 'false',
+            }
+            self.zapi_client.get_flexvol_dedupe_info.assert_not_called()
+        else:
+            expected = {
+                'netapp_dedup': 'true',
+                'netapp_compression': 'false',
+            }
+            self.zapi_client.get_flexvol_dedupe_info.assert_called_once_with(
+                fake_client.VOLUME_NAMES[0])
         self.assertEqual(expected, result)
-        self.zapi_client.get_flexvol_dedupe_info.assert_called_once_with(
-            fake_client.VOLUME_NAMES[0])
 
     def test_get_ssc_encryption_info(self):
 
@@ -320,8 +328,9 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         self.zapi_client.is_flexvol_mirrored.assert_called_once_with(
             fake_client.VOLUME_NAMES[0], fake.SSC_VSERVER)
 
-    def test_get_ssc_aggregate_info(self):
-
+    @ddt.data([], ['netapp_raid_type'])
+    def test_get_ssc_aggregate_info(self, invalid_extra_specs):
+        self.ssc_library.invalid_extra_specs = invalid_extra_specs
         self.mock_object(
             self.ssc_library.zapi_client, 'get_aggregate',
             return_value=fake_client.AGGR_INFO_SSC)
@@ -332,19 +341,29 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         result = self.ssc_library._get_ssc_aggregate_info(
             fake_client.VOLUME_AGGREGATE_NAME)
 
-        expected = {
-            'netapp_disk_type': fake_client.AGGREGATE_DISK_TYPES,
-            'netapp_raid_type': fake_client.AGGREGATE_RAID_TYPE,
-            'netapp_hybrid_aggregate': 'true',
-        }
+        if invalid_extra_specs:
+            expected = {
+                'netapp_disk_type': None,
+                'netapp_raid_type': None,
+                'netapp_hybrid_aggregate': None,
+            }
+            self.zapi_client.get_aggregate.assert_not_called()
+            self.zapi_client.get_aggregate_disk_types.assert_not_called()
+        else:
+            expected = {
+                'netapp_disk_type': fake_client.AGGREGATE_DISK_TYPES,
+                'netapp_raid_type': fake_client.AGGREGATE_RAID_TYPE,
+                'netapp_hybrid_aggregate': 'true',
+            }
+            self.zapi_client.get_aggregate.assert_called_once_with(
+                fake_client.VOLUME_AGGREGATE_NAME)
+            self.zapi_client.get_aggregate_disk_types.assert_called_once_with(
+                fake_client.VOLUME_AGGREGATE_NAME)
+
         self.assertEqual(expected, result)
-        self.zapi_client.get_aggregate.assert_called_once_with(
-            fake_client.VOLUME_AGGREGATE_NAME)
-        self.zapi_client.get_aggregate_disk_types.assert_called_once_with(
-            fake_client.VOLUME_AGGREGATE_NAME)
 
     def test_get_ssc_aggregate_info_not_found(self):
-
+        self.ssc_library.invalid_extra_specs = ['netapp_raid_type']
         self.mock_object(
             self.ssc_library.zapi_client, 'get_aggregate', return_value={})
         self.mock_object(
@@ -478,3 +497,12 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             'netapp_compression': 'true',
         }
         self.assertEqual(expected, result)
+
+    @ddt.data([], ['netapp_dedup'], ['netapp_compression'])
+    def test_cluster_user_supported(self, invalid_extra_specs):
+        self.ssc_library.invalid_extra_specs = invalid_extra_specs
+
+        if invalid_extra_specs:
+            self.assertFalse(self.ssc_library.cluster_user_supported())
+        else:
+            self.assertTrue(self.ssc_library.cluster_user_supported())

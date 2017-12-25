@@ -54,9 +54,9 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
                 self.avg_processor_busy_base_counter_name = 'cpu_elapsed_time'
             else:
                 self.avg_processor_busy_base_counter_name = 'cpu_elapsed_time1'
-            LOG.exception('Could not get performance base counter '
-                          'name. Performance-based scheduler '
-                          'functions may not be available.')
+            LOG.warning('Could not get performance base counter '
+                        'name. Performance-based scheduler '
+                        'functions may not be available.')
 
     def update_performance_cache(self, ssc_pools):
         """Called periodically to update per-pool node utilization metrics."""
