@@ -30,7 +30,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - pool_name: pool_name
-   - description: description
+   - description: description_10
    - volume_backend_name: volume_backend_name
    - namespace: namespace
    - visibility: visibility

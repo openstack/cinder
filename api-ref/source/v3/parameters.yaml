@@ -853,12 +853,6 @@ description:
   in: body
   required: false
   type: string
-description_1:
-  description: |
-    The consistency group snapshot description.
-  in: body
-  required: true
-  type: string
 description_10:
   description: |
     The capabilities description.
@@ -901,18 +895,6 @@ description_16:
   in: body
   required: true
   type: string
-description_2:
-  description: |
-    The description of the consistency group.
-  in: body
-  required: false
-  type: string
-description_3:
-  description: |
-    The description of the consistency group.
-  in: body
-  required: true
-  type: string
 description_4:
   description: |
     A description for the snapshot. Default is
@@ -947,6 +929,30 @@ description_8:
 description_9:
   description: |
     The volume description.
+  in: body
+  required: true
+  type: string
+description_cg_snapshot_false:
+  description: |
+    The consistency group snapshot description.
+  in: body
+  required: false
+  type: string
+description_cg_snapshot_true:
+  description: |
+    The consistency group snapshot description.
+  in: body
+  required: true
+  type: string
+description_group_false:
+  description: |
+    The group description.
+  in: body
+  required: false
+  type: string
+description_group_true:
+  description: |
+    The group description.
   in: body
   required: true
   type: string

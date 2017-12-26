@@ -35,7 +35,7 @@ Request
 
    - project_id: project_id_path
    - snapshot: snapshot_1
-   - description: description
+   - description: description_4
    - metadata: metadata_7
    - name: name_5
    - ref: ref

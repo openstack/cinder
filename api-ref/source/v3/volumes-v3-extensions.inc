@@ -33,7 +33,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - updated: updated
-   - description: description
+   - description: description_7
    - links: links
    - namespace: namespace
    - alias: alias

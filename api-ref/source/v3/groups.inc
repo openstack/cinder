@@ -78,7 +78,7 @@ Request
 
    - project_id: project_id_path
    - group: group
-   - description: description
+   - description: description_group_false
    - availability_zone: availability_zone
    - group_type: group_type
    - volume_types: volume_types
@@ -117,7 +117,7 @@ Response Parameters
 
    - group: group
    - status: status_8
-   - description: description
+   - description: description_group_true
    - availability_zone: availability_zone
    - created_at: created_at
    - group_type: group_type
@@ -152,7 +152,7 @@ Request
 
    - project_id: project_id_path
    - create-from-src: create-from-src
-   - description: description
+   - description: description_group_false
    - group_snapshot_id: group_snapshot_id_1
    - source_group_id: source_group_id
    - name: group_name
@@ -226,7 +226,7 @@ Response Parameters
 
    - groups: groups
    - status: status_8
-   - description: description
+   - description: description_group_true
    - availability_zone: availability_zone
    - created_at: created_at
    - group_type: group_type
@@ -262,7 +262,7 @@ Request
    - group_id: group_id
    - group: group
    - remove_volumes: remove_volumes
-   - description: description
+   - description: description_group_false
    - add_volumes: add_volumes
    - name: group_name
 
