@@ -3,22 +3,24 @@ Dell EMC VMAX iSCSI and FC drivers
 ==================================
 
 The Dell EMC VMAX drivers, ``VMAXISCSIDriver`` and ``VMAXFCDriver``, support
-the use of Dell EMC VMAX storage arrays with Block Storage. They both provide
-equivalent functions and differ only in support for their respective host
-attachment methods.
+the use of Dell EMC VMAX storage arrays with the Cinder Block Storage project.
+They both provide equivalent functions and differ only in support for their
+respective host attachment methods.
 
 The drivers perform volume operations by communicating with the back-end VMAX
-storage. They use the Requests HTTP library to communicate with a Unisphere
-for VMAX instance, using a RESTAPI interface in the backend to perform VMAX
-storage operations.
+storage management software. They use the Requests HTTP library to communicate
+with a Unisphere for VMAX instance, using a RESTAPI interface in the backend
+to perform VMAX storage operations.
 
 System requirements
 ~~~~~~~~~~~~~~~~~~~
 
-The Cinder driver supports the VMAX-3 series and VMAX All-Flash arrays.
+The Dell EMC VMAX Cinder driver supports the VMAX-3 hybrid series and VMAX
+All-Flash arrays.
 
-Solutions Enabler 8.4.0.7 or later, and Unisphere for VMAX 8.4.0.15 or later
-are required.
+The array operating system software, Solutions Enabler 8.4.0.7 or later, and
+Unisphere for VMAX 8.4.0.15 or later are required to run Dell EMC VMAX Cinder
+driver.
 
 You can download Solutions Enabler and Unisphere from the Dell EMC's support
 web site (login is required). See the ``Solutions Enabler 8.4.0 Installation
@@ -28,7 +30,8 @@ at ``support.emc.com``.
 Required VMAX software suites for OpenStack
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-There are five Software Suites available for the VMAX All Flash and Hybrid:
+There are five Dell EMC Software Suites sold with the VMAX All Flash and
+Hybrid arrays:
 
 - Base Suite
 - Advanced Suite
@@ -36,11 +39,11 @@ There are five Software Suites available for the VMAX All Flash and Hybrid:
 - Remote Replication Suite
 - Total Productivity Pack
 
-OpenStack requires the Advanced Suite and the Local Replication Suite
-or the Total Productivity Pack (it includes the Advanced Suite and the
-Local Replication Suite) for the VMAX All Flash and Hybrid.
+The Dell EMC VMAX Cinder driver requires the Advanced Suite and the Local
+Replication Suite or the Total Productivity Pack (it includes the Advanced
+Suite and the Local Replication Suite) for the VMAX All Flash and Hybrid.
 
-Using the Remote Replication functionality will also require the Remote
+Using VMAX Remote Replication functionality will also require the Remote
 Replication Suite.
 
 The storage system also requires a Unisphere for VMAX (SMC) eLicence.
@@ -91,8 +94,9 @@ VMAX drivers support these operations:
 -  Modify generic volume group (add and remove volumes)
 -  Create generic volume group from source
 -  Live Migration
--  Volume replication
+-  Volume replication SRDF/S, SRDF/A and SRDF Metro
 -  Quality of service (QoS)
+-  Manage and unmanage volumes and snapshots
 
 VMAX drivers also support the following features:
 
@@ -169,6 +173,68 @@ VMAX Driver Integration
 
 #. Configure Block Storage in cinder.conf
 
+   .. note::
+
+      For security and backend uniformity, the use of the XML file for VMAX
+      backend configuration has been deprecation in Queens. While the xml file
+      usage will still be supported, a warning will be issued on its impending
+      deprecation.
+
+   +-----------------+------------------------+---------+----------+----------------------+
+   |  VMAX parameter | cinder.conf parameter  | Default | Required | Description          |
+   +=================+========================+=========+==========+======================+
+   |  RestServerIp   | san_ip                 | "       | Yes      | IP address of the    |
+   |                 |                        |         |          | Unisphere server     |
+   +-----------------+------------------------+---------+----------+----------------------+
+   |  RestServerPort | san_rest_port          | 8443    | No       | Port of the          |
+   |                 |                        |         |          | Unisphere server     |
+   +-----------------+------------------------+---------+----------+----------------------+
+   |  RestUserName   | san_login              | 'admin' | Yes      | Username of the      |
+   |                 |                        |         |          | Unisphere server     |
+   +-----------------+------------------------+---------+----------+----------------------+
+   |  RestPassword   | san_password           | "       | Yes      | Password of the      |
+   |                 |                        |         |          | Unisphere server     |
+   +-----------------+------------------------+---------+----------+----------------------+
+   |  Array          | vmax_array             | None    | Yes      | Unique VMAX array    |
+   |                 |                        |         |          | serial number        |
+   +-----------------+------------------------+---------+----------+----------------------+
+   |  SRP            | vmax_srp               | None    | Yes      | Name of the          |
+   |                 |                        |         |          | storage resource pool|
+   +-----------------+------------------------+---------+----------+----------------------+
+   |  PortGroups     | vmax_port_groups       | None    | Yes      | The name(s) of VMAX  |
+   |                 |                        |         |          | port group(s)        |
+   +-----------------+------------------------+---------+----------+----------------------+
+   |  SSLVerify      | driver_ssl_cert_verify | False   | No       | The path to the      |
+   |                 | driver_ssl_cert_path   | None    | No       | ``ca_cert.pem``      |
+   +-----------------+------------------------+---------+----------+----------------------+
+
+   .. note::
+
+      VMAX ``PortGroups`` must be pre-configured to expose volumes managed
+      by the array. Port groups can be supplied in the ``cinder.conf``, or
+      can be specified as an extra spec ``storagetype:portgroupname`` on a
+      volume type. The latter gives the user more control. When a dynamic
+      masking view is created by the VMAX driver, if there is no port group
+      specified as an extra specification, the port group is chosen randomly
+      from the PortGroup list, to evenly distribute load across the set of
+      groups provided.
+
+   .. note::
+
+      Service Level and workload can be added to the cinder.conf when the
+      backend is the default case and there is no associated volume type.
+      This not a recommended configuration as it is too restrictive.
+
+      +-----------------+------------------------+---------+----------+
+      |  VMAX parameter | cinder.conf parameter  | Default | Required |
+      +=================+========================+=========+==========+
+      |  ServiceLevel   | vmax_service_level     | None    | No       |
+      +-----------------+------------------------+---------+----------+
+      |  Workload       | vmax_workload          | None    | No       |
+      +-----------------+------------------------+---------+----------+
+
+   Configure Block Storage in cinder.conf
+
    Add the following entries to ``/etc/cinder/cinder.conf``:
 
    .. code-block:: ini
@@ -177,28 +243,35 @@ VMAX Driver Integration
 
       [CONF_GROUP_ISCSI]
       volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
-      cinder_dell_emc_config_file = /etc/cinder/cinder_dell_emc_config_CONF_GROUP_ISCSI.xml
-      volume_backend_name = ISCSI_backend
+      volume_backend_name = VMAX_ISCSI_DIAMOND
+      vmax_port_groups = [OS-ISCSI-PG]
+      san_ip = 10.60.141.97
+      san_login = smc
+      san_password = smc
+      vmax_array = 000197800128
+      vmax_srp = SRP_1
 
 
       [CONF_GROUP_FC]
       volume_driver = cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver
-      cinder_dell_emc_config_file = /etc/cinder/cinder_dell_emc_config_CONF_GROUP_FC.xml
-      volume_backend_name = FC_backend
+      volume_backend_name = VMAX_ISCSI_DIAMOND
+      vmax_port_groups = [OS-ISCSI-PG]
+      san_ip = 10.60.141.97
+      san_login = smc
+      san_password = smc
+      vmax_array = 000197800128
+      vmax_srp = SRP_1
 
    In this example, two back-end configuration groups are enabled:
    ``CONF_GROUP_ISCSI`` and ``CONF_GROUP_FC``. Each configuration group has a
-   section describing unique parameters for connections, drivers, the
-   ``volume_backend_name``, and the name of the EMC-specific configuration file
-   containing additional settings. Note that the file name is in the format
-   ``/etc/cinder/cinder_dell_emc_config_[confGroup].xml``.
+   section describing unique parameters for connections, drivers and the
+   ``volume_backend_name``.
 
 #. Create Volume Types
 
-   Once the ``cinder.conf`` and EMC-specific configuration files have been
-   created, :command:`openstack` commands need to be issued in order to
-   create and associate OpenStack volume types with the declared
-   ``volume_backend_names``:
+   Once the ``cinder.conf`` has been updated,  :command:`openstack` commands
+   need to be issued in order to create and associate OpenStack volume types
+   with the declared ``volume_backend_names``.
 
    Additionally, each volume type will need an associated ``pool_name`` - an
    extra specification indicating the service level/ workload combination to
@@ -206,27 +279,6 @@ VMAX Driver Integration
 
    There is also the option to assign a port group to a volume type by
    setting the ``storagetype:portgroupname`` extra specification.
-
-   .. note::
-
-      Run the command cinder get-pools --detail to query for the pool
-      information. This should list all the available Service Level and Workload
-      combinations available for the SRP as pools belonging to the same backend.
-      You can create many volume types for different service level and workload
-      types using the same backend.
-
-      ``ServiceLevel``
-      The Service Level manages the underlying storage to provide expected
-      performance. Setting the ``ServiceLevel`` to ``NONE`` means that non-FAST
-      managed storage groups will be created instead (storage groups not
-      associated with any service level).
-
-      ``Workload``
-      When a workload type is added, the latency range is reduced due to the
-      added information. Setting the ``Workload`` to ``NONE`` means the latency
-      range will be the widest for its Service Level type. Please note that you
-      cannot set a Workload without a Service Level.
-
 
    .. note::
 
@@ -257,72 +309,30 @@ VMAX Driver Integration
    The type ``VMAX_FC_DIAMOND_DSS`` is associated with the ``FC_backend``, a
    Diamond Service Level, and a DSS workload.
 
+   The ``ServiceLevel`` manages the underlying storage to provide expected
+   performance. Setting the ``ServiceLevel`` to ``NONE`` means that non-FAST
+   managed storage groups will be created instead (storage groups not
+   associated with any service level). If ``ServiceLevel`` is ``NONE`` then
+   ``Workload`` must be ``NONE``.
+
+   .. code-block:: console
+
+      openstack volume type set --property pool_name=NONE+NONE+SRP_1+000197800123
+
+   When a ``Workload`` is added, the latency range is reduced due to the
+   added information. Setting the ``Workload`` to ``NONE`` means the latency
+   range will be the widest for its Service Level type. Please note that you
+   cannot set a Workload without a Service Level.
+
+   .. code-block:: console
+
+      openstack volume type set --property pool_name=Diamond+NONE+SRP_1+000197800123
+
    .. note::
 
       VMAX Hybrid supports Optimized, Diamond, Platinum, Gold, Silver, Bronze,
       and NONE service levels. VMAX All Flash supports Diamond and NONE. Both
       support DSS_REP, DSS, OLTP_REP, OLTP, and NONE workloads.
-
-#. Create an XML file
-
-   Create the ``/etc/cinder/cinder_dell_emc_config_CONF_GROUP_ISCSI.xml``
-   file. You do not need to restart the service for this change.
-
-   Add the following lines to the XML file:
-
-
-   .. code-block:: xml
-
-      <?xml version="1.0" encoding="UTF-8" ?>
-      <EMC>
-         <RestServerIp>1.1.1.1</RestServerIp>
-         <RestServerPort>8443</RestServerPort>
-         <RestUserName>smc</RestUserName>
-         <RestPassword>smc</RestPassword>
-         <PortGroups>
-            <PortGroup>OS-PORTGROUP1-PG</PortGroup>
-            <PortGroup>OS-PORTGROUP2-PG</PortGroup>
-         </PortGroups>
-         <Array>111111111111</Array>
-         <SRP>SRP_1</SRP>
-         <SSLVerify>/path/to/sslcert</SSLVerify>
-      </EMC>
-
-   Where:
-
-   ``RestServerIp``
-      IP address of the Unisphere server.
-
-   ``RestServerPort``
-      Port number of the Unisphere server.
-
-   ``RestUserName`` and ``RestPassword``
-      Credentials for the Unisphere server.
-
-   ``PortGroups``
-      Supplies the names of VMAX port groups that have been pre-configured to
-      expose volumes managed by this array. Port groups can be supplied in the
-      XML file, or can be specified as an extra spec on a volume type for more
-      control. Please see above section on port groups. When a dynamic masking
-      view is created by the VMAX driver, if there is no port group specified
-      as an extra specification, the port group is chosen randomly from the
-      PortGroup list, to evenly distribute load across the set of groups
-      provided.
-
-      .. note::
-
-         There is also the option to assign a port group to a volume type by
-         setting the ``storagetype:portgroupname`` extra specification.
-
-   ``Array``
-      Unique VMAX array serial number.
-
-   ``SRP``
-      The name of the storage resource pool for the given array.
-
-   ``SSLVerify``
-      The path to the ``ca_cert.pem`` file of the Unisphere instance below, or
-      ``True`` if the SSL cert has been added to the bundle - see ``SSL support``.
 
 
 Upgrading from SMI-S based driver to RESTAPI based driver
@@ -339,9 +349,6 @@ following the setup instructions above, are supported with a few exceptions:
 #. Consistency groups are deprecated in Pike. Generic Volume Groups are
    supported from Pike onwards.
 
-#. Please note that the Pike release of VMAX cinder drivers will be the last
-   release which supports Hybrid VMAX3 Arrays.
-
 
 SSL support
 ~~~~~~~~~~~
@@ -356,12 +363,11 @@ SSL support
    Where ``my_unisphere_host`` is the hostname of the unisphere instance and
    ``ca_cert.pem`` is the name of the .pem file.
 
-#. Add this path to the <SSLVerify> tag in
-   ``/etc/cinder/cinder_dell_emc_config_<conf_group>.xml``
+#. Add this path to the ``cinder.conf`` under the backend stanza
 
    .. code-block:: console
 
-      <SSLVerify>/path/to/ca_cert.pem</SSLVerify>
+      driver_ssl_cert_path = /path/to/ca_cert.pem
 
    ``OR`` follow the steps below:
 
@@ -388,9 +394,8 @@ SSL support
 
          # sudo update-ca-certificates
 
-#. Ensure ``<SSLVerify>`` tag in
-   ``/etc/cinder/cinder_dell_emc_config_<conf_group>.xml`` is set to True OR
-   the path defined in step 1.
+#. Ensure ``driver_ssl_cert_verify`` is set to ``True`` in cinder.conf backend
+   stanza ``OR`` the path defined in step 1.
 
 
 .. note::
@@ -1988,3 +1993,117 @@ After the process of unmanaging the SnapVX snapshot in Cinder, the snapshot on
 the VMAX backend will have the ``OS-`` prefix removed to indicate it is no
 longer OpenStack managed. In the example above, the snapshot after unmanaging
 from OpenStack will be named ``VMAXSnapshot`` on the storage backend.
+
+
+CHAP Authentication Support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This supports one way initiator CHAP authentication functionality into the
+VMAX backend. With CHAP one-way authentication, the storage array challenges
+the host during the initial link negotiation process and expects to receive
+a valid credential and CHAP secret in response. When challenged, the host
+transmits a CHAP credential and CHAP secret to the storage array. The storage
+array looks for this credential and CHAP secret which stored in the host
+initiator's initiator group (IG) information in the ACLX database. Once a
+positive authentication occurs, the storage array sends an acceptance message
+to the host. However, if the storage array fails to find any record of the
+credential/secret pair, it sends a rejection message, and the link is closed.
+
+Assumptions, Restrictions and Pre-Requisites
+--------------------------------------------
+
+#. The host initiator IQN is required along with the credentials the host
+   initiator will use to log into the storage array with. The same credentials
+   should be used in a multi node system if connecting to the same array.
+
+#. Enable one way CHAP authentication for the iscsi initiator on the storage
+   array using SYMCLI. Template and example shown below. For the purpose of
+   this setup, the credential/secret used would be openstack/openstack with
+   iscsi initiator of iqn.1991-05.com.company.lcseb130
+
+   .. code-block:: console
+
+      $ symaccess -sid <SymmID> -iscsi <iscsi>
+                  enable chap |
+                  disable chap |
+                  set chap -cred <Credential> -secret <Secret>
+
+      $ symaccess -sid 128 \
+                  -iscsi iqn.1991-05.com.company.lcseb130 \
+                  set chap -cred openstack  -secret openstack
+
+
+
+Settings and Configuration
+--------------------------
+
+#. Set the configuration in the VMAX backend group in cinder.conf using the
+   following parameters and restart cinder.
+
+   +-----------------------+-------------------------+-------------------+
+   | Configuration options | Value required for CHAP | Required for CHAP |
+   +=======================+=========================+===================+
+   |  use_chap_auth        | True                    | Yes               |
+   +-----------------------+-------------------------+-------------------+
+   |  chap_username        | openstack               | Yes               |
+   +-----------------------+-------------------------+-------------------+
+   |  chap_password        | openstack               | Yes               |
+   +-----------------------+-------------------------+-------------------+
+
+   .. code-block:: ini
+
+      [VMAX_ISCSI_DIAMOND]
+      image_volume_cache_enabled = True
+      volume_clear = zero
+      volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
+      volume_backend_name = VMAX_ISCSI_DIAMOND
+      san_ip = 10.60.141.97
+      san_login = smc
+      san_password = smc
+      vmax_srp = SRP_1
+      vmax_array = 000197800128
+      vmax_port_groups = [OS-ISCSI-PG]
+      use_chap_auth = True
+      chap_username = openstack
+      chap_password = openstack
+
+
+Usage
+-----
+
+#. Using SYMCLI, enable CHAP authentication for a host initiator as described
+   above, but do not set ``use_chap_auth``, ``chap_username`` or
+   ``chap_password`` in ``cinder.conf``. Create a bootable volume.
+
+   .. code-block:: console
+
+      openstack volume create --size 1 \
+                              --image <image_name> \
+                              --type <VOLUME_TYPE> \
+                              test
+
+#. Boot instance named test_server using the volume created above:
+
+   .. code-block:: console
+
+      openstack server create --volume test \
+                              --flavor m1.small \
+                              --nic net-id=private \
+                              test_server
+
+#. Verify the volume operation succeeds but the boot instance fails as
+   CHAP authentication fails.
+
+#. Update the ``cinder.conf`` with ``use_chap_auth`` set to true and
+   ``chap_username`` and ``chap_password`` set with the correct
+   credentials.
+
+#. Rerun ``openstack server create``
+
+#. Verify that the boot instance operation ran correctly and the volume is
+   accessible.
+
+
+
+#. Verify that both the volume and boot instance operations ran successfully
+   and the user is able to access the volume.
