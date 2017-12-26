@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The old deprecated ``pybasedir`` option has been removed.
+    Use the ``state_path`` instead.
