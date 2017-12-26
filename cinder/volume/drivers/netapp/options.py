@@ -156,7 +156,6 @@ netapp_san_opts = [
                      ' will access a LUN exported from Data ONTAP; it is'
                      ' assigned to the LUN at the time it is created.')),
     cfg.StrOpt('netapp_host_type',
-               deprecated_name='netapp_eseries_host_type',
                help=('This option defines the type of operating system for'
                      ' all initiators that can access a LUN. This information'
                      ' is used when mapping LUNs to individual hosts or'
