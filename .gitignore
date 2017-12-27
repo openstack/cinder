@@ -9,6 +9,7 @@
 !.mailmap
 !.testr.conf
 !.zuul.yaml
+!.travis.yml
 .*.sw?
 AUTHORS
 Authors
