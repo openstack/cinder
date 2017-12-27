@@ -69,6 +69,7 @@ from oslo_utils import timeutils
 
 # Need to register global_opts
 from cinder.common import config  # noqa
+from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder.db import migration as db_migration
@@ -92,7 +93,8 @@ def _get_non_shared_target_hosts(ctxt):
     rpc.init(CONF)
     rpcapi = volume_rpcapi.VolumeAPI()
 
-    services = objects.ServiceList.get_all_by_topic(ctxt, 'cinder-volume')
+    services = objects.ServiceList.get_all_by_topic(ctxt,
+                                                    constants.VOLUME_TOPIC)
     for service in services:
         capabilities = rpcapi.get_capabilities(ctxt, service.host, True)
         if not capabilities.get('shared_targets', True):

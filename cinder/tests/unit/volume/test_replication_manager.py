@@ -121,7 +121,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
 
         mock_db_get_all.return_value = [fake_service.fake_service_obj(
             self.context,
-            binary='cinder-volume')]
+            binary=constants.VOLUME_BINARY)]
         mock_db_update.return_value = None
         volume_api = cinder.volume.api.API()
         self.assertRaises(exception.InvalidInput,
@@ -138,7 +138,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
         """Test replication freeze_host."""
 
         service = fake_service.fake_service_obj(self.context,
-                                                binary='cinder-volume')
+                                                binary=constants.VOLUME_BINARY)
         mock_get_all.return_value = [service]
         mock_freeze.return_value = True
         volume_api = cinder.volume.api.API()
@@ -155,7 +155,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
 
         mock_get_all.return_value = [fake_service.fake_service_obj(
             self.context,
-            binary='cinder-volume')]
+            binary=constants.VOLUME_BINARY)]
         mock_db_update.return_value = None
         volume_api = cinder.volume.api.API()
         self.assertRaises(exception.InvalidInput,
@@ -172,7 +172,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
         """Test replication thaw_host."""
 
         service = fake_service.fake_service_obj(self.context,
-                                                binary='cinder-volume')
+                                                binary=constants.VOLUME_BINARY)
         mock_get_all.return_value = [service]
         mock_thaw.return_value = True
         volume_api = cinder.volume.api.API()
@@ -189,7 +189,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
 
         mock_get_all.return_value = [fake_service.fake_service_obj(
             self.context,
-            binary='cinder-volume')]
+            binary=constants.VOLUME_BINARY)]
         mock_db_update.return_value = None
         volume_api = cinder.volume.api.API()
         self.assertRaises(exception.InvalidInput,
@@ -463,7 +463,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
                                      secondary_id=None):
         host = vol_utils.extract_host(self.manager.host)
         utils.create_service(self.context, {'host': host,
-                                            'binary': 'cinder-volume'})
+                                            'binary': constants.VOLUME_BINARY})
         for volume in in_volumes:
             utils.create_volume(self.context, self.manager.host, **volume)
 

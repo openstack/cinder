@@ -22,6 +22,7 @@ import webob
 from cinder.api import microversions as mv
 from cinder.api.v3 import router as router_v3
 from cinder.api.v3 import workers
+from cinder.common import constants
 from cinder import context
 from cinder import objects
 from cinder import test
@@ -30,13 +31,13 @@ from cinder.tests.unit import fake_constants as fake
 
 
 SERVICES = (
-    [objects.Service(id=1, host='host1', binary='cinder-volume',
+    [objects.Service(id=1, host='host1', binary=constants.VOLUME_BINARY,
                      cluster_name='mycluster'),
-     objects.Service(id=2, host='host2', binary='cinder-volume',
+     objects.Service(id=2, host='host2', binary=constants.VOLUME_BINARY,
                      cluster_name='mycluster')],
-    [objects.Service(id=3, host='host3', binary='cinder-volume',
+    [objects.Service(id=3, host='host3', binary=constants.VOLUME_BINARY,
                      cluster_name='mycluster'),
-     objects.Service(id=4, host='host4', binary='cinder-volume',
+     objects.Service(id=4, host='host4', binary=constants.VOLUME_BINARY,
                      cluster_name='mycluster')],
 )
 

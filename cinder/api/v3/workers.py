@@ -19,6 +19,7 @@ from oslo_utils import uuidutils
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v3.views import workers as workers_view
+from cinder.common import constants
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
@@ -43,7 +44,7 @@ class WorkerController(wsgi.Controller):
             msg = _('Invalid filter keys: %s') % ', '.join(invalid_keys)
             raise exception.InvalidInput(reason=msg)
 
-        if params.get('binary') not in (None, 'cinder-volume',
+        if params.get('binary') not in (None, constants.VOLUME_BINARY,
                                         'cinder-scheduler'):
             msg = _('binary must be empty or set to cinder-volume or '
                     'cinder-scheduler')

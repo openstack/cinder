@@ -37,6 +37,7 @@ from cinder.cmd import rtstool as cinder_rtstool
 from cinder.cmd import scheduler as cinder_scheduler
 from cinder.cmd import volume as cinder_volume
 from cinder.cmd import volume_usage_audit
+from cinder.common import constants
 from cinder import context
 from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
@@ -173,10 +174,10 @@ class TestCinderVolumeCmd(test.TestCase):
         log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
         get_launcher.assert_called_once_with()
-        c1 = mock.call(binary='cinder-volume', host='host@backend1',
+        c1 = mock.call(binary=constants.VOLUME_BINARY, host='host@backend1',
                        service_name='backend1', coordination=True,
                        cluster=None)
-        c2 = mock.call(binary='cinder-volume', host='host@backend2',
+        c2 = mock.call(binary=constants.VOLUME_BINARY, host='host@backend2',
                        service_name='backend2', coordination=True,
                        cluster=None)
         service_create.assert_has_calls([c1, c2])
@@ -2052,8 +2053,8 @@ class TestVolumeSharedTargetsOnlineMigration(test.TestCase):
         # Need a service to query
         values = {
             'host': 'host1@lvm-driver1',
-            'binary': 'cinder-volume',
-            'topic': 'cinder-volume',
+            'binary': constants.VOLUME_BINARY,
+            'topic': constants.VOLUME_TOPIC,
             'uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'}
         utils.create_service(ctxt, values)
 
@@ -2090,8 +2091,8 @@ class TestVolumeSharedTargetsOnlineMigration(test.TestCase):
 
         values = {
             'host': 'host1@lvm-driver1',
-            'binary': 'cinder-volume',
-            'topic': 'cinder-volume',
+            'binary': constants.VOLUME_BINARY,
+            'topic': constants.VOLUME_TOPIC,
             'uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'}
         utils.create_service(ctxt, values)
 

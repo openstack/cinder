@@ -15,6 +15,7 @@
 
 import mock
 
+from cinder.common import constants
 from cinder import service
 from cinder import test
 
@@ -30,7 +31,7 @@ class SetupProfilerTestCase(test.TestCase):
     def test_profiler_not_present(self):
         service.profiler = None
         service.LOG.debug = mock.MagicMock()
-        service.setup_profiler("cinder-volume", "localhost")
+        service.setup_profiler(constants.VOLUME_BINARY, "localhost")
         service.LOG.debug.assert_called_once_with("osprofiler is not present")
 
     @mock.patch("cinder.service.context")
@@ -38,15 +39,15 @@ class SetupProfilerTestCase(test.TestCase):
         service.CONF.profiler.enabled = True
         return_value = {"Meaning Of Life": 42}
         context.get_admin_context().to_dict.return_value = return_value
-        service.setup_profiler("cinder-volume", "localhost")
+        service.setup_profiler(constants.VOLUME_BINARY, "localhost")
         service.osprofiler_initializer.init_from_conf.assert_called_once_with(
             conf=service.CONF,
             context=return_value,
             project="cinder",
-            service="cinder-volume",
+            service=constants.VOLUME_BINARY,
             host="localhost")
 
     def test_profiler_disabled(self):
         service.CONF.profiler.enabled = False
-        service.setup_profiler("cinder-volume", "localhost")
+        service.setup_profiler(constants.VOLUME_BINARY, "localhost")
         service.osprofiler_initializer.init_from_conf.assert_not_called()

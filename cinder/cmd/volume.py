@@ -45,6 +45,7 @@ i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config  # noqa
+from cinder.common import constants
 from cinder.db import api as session
 from cinder.i18n import _
 from cinder import service
@@ -93,7 +94,7 @@ def main():
             try:
                 server = service.Service.create(host=host,
                                                 service_name=backend,
-                                                binary='cinder-volume',
+                                                binary=constants.VOLUME_BINARY,
                                                 coordination=True,
                                                 cluster=cluster)
             except Exception:

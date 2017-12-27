@@ -21,6 +21,7 @@ import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
+from cinder.common import constants
 from cinder import db
 from cinder import exception
 from cinder import objects
@@ -356,7 +357,7 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
     def test_freeze_host(self):
         service = fake_service.fake_service_obj(self.context,
                                                 host='fake_host',
-                                                binary='cinder-volume')
+                                                binary=constants.VOLUME_BINARY)
         self._test_rpc_api('freeze_host',
                            rpc_method='call',
                            server='fake_host',
@@ -366,7 +367,7 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
     def test_thaw_host(self):
         service = fake_service.fake_service_obj(self.context,
                                                 host='fake_host',
-                                                binary='cinder-volume')
+                                                binary=constants.VOLUME_BINARY)
         self._test_rpc_api('thaw_host',
                            rpc_method='call',
                            server='fake_host',

@@ -24,6 +24,7 @@ from oslo_service import loopingcall
 from oslo_utils import timeutils
 import oslo_versionedobjects
 
+from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -496,7 +497,7 @@ def create_service(ctxt, values=None):
 def default_cluster_values():
     return {
         'name': 'cluster_name',
-        'binary': 'cinder-volume',
+        'binary': constants.VOLUME_BINARY,
         'disabled': False,
         'disabled_reason': None,
         'deleted': False,

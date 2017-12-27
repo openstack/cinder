@@ -1686,7 +1686,7 @@ class API(base.Base):
         # cluster itself is also up.
         try:
             service = objects.Service.get_by_id(elevated, None, host=svc_host,
-                                                binary='cinder-volume',
+                                                binary=constants.VOLUME_BINARY,
                                                 cluster_name=svc_cluster)
         except exception.ServiceNotFound:
             with excutils.save_and_reraise_exception():

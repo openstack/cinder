@@ -52,6 +52,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.sql import sqltypes
 
 from cinder.api import common
+from cinder.common import constants
 from cinder.common import sqlalchemyutils
 from cinder import db
 from cinder.db.sqlalchemy import models
@@ -626,7 +627,7 @@ def volume_service_uuids_online_data_migration(context, max_count):
     vol_refs = query.limit(max_count).all()
 
     service_refs = model_query(context, models.Service).filter_by(
-        topic="cinder-volume").limit(max_count).all()
+        topic=constants.VOLUME_TOPIC).limit(max_count).all()
 
     # build a map to access the service uuid by host
     svc_map = {}

@@ -138,7 +138,7 @@ class VolumeAPI(rpc.RPCAPI):
     RPC_API_VERSION = '3.15'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
-    BINARY = 'cinder-volume'
+    BINARY = constants.VOLUME_BINARY
 
     def _get_cctxt(self, host=None, version=None, **kwargs):
         if host:
