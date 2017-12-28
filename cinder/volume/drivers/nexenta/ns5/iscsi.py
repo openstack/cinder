@@ -394,6 +394,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         volume_path = self._get_volume_path(volume)
         lpt = self.configuration.nexenta_luns_per_target
         tg = ''
+        target_name = ''
         map_dict = {}
         # Check whether the volume is exported
         url = 'san/lunMappings'
@@ -416,7 +417,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             # Find correct TG with lowest LUNs
             for m in data:
                 map_dict.setdefault(m['targetGroup'], []).append(m)
-            target_name = ''
             while not target_name and map_dict:
                 tg = min({k: v for k, v in map_dict.items() if k.startswith(
                     self.configuration.nexenta_target_group_prefix)} or '')
@@ -428,7 +428,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
 
         if not target_name:
             # Create new target and TG
-            target_name = self.target_prefix + '+' + uuid.uuid4().hex
+            target_name = self.target_prefix + '-' + uuid.uuid4().hex
             url = 'san/iscsi/targets'
             portals = []
             if self.portals:
