@@ -120,10 +120,12 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         3.0.15 - Adds consistency group capability in generic volume groups.
         3.0.16 - Get host from os-brick connector. bug #1690244
         4.0.0 - Adds base class.
+        4.0.1 - Update CHAP on host record when volume is migrated
+                to new compute host. bug # 1737181
 
     """
 
-    VERSION = "4.0.0"
+    VERSION = "4.0.1"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -488,32 +490,20 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
                                                     [connector['initiator']],
                                                     domain,
                                                     persona_id)
-            self._set_3par_chaps(common, hostname, volume, username, password)
-            host = common._get_3par_host(hostname)
         else:
             if 'iSCSIPaths' not in host or len(host['iSCSIPaths']) < 1:
                 self._modify_3par_iscsi_host(
                     common, hostname,
                     connector['initiator'])
-                self._set_3par_chaps(
-                    common,
-                    hostname,
-                    volume,
-                    username,
-                    password)
-                host = common._get_3par_host(hostname)
             elif (not host['initiatorChapEnabled'] and
                     common._client_conf['hpe3par_iscsi_chap_enabled']):
                 LOG.warning("Host exists without CHAP credentials set and "
                             "has iSCSI attachments but CHAP is enabled. "
                             "Updating host with new CHAP credentials.")
-                self._set_3par_chaps(
-                    common,
-                    hostname,
-                    volume,
-                    username,
-                    password)
 
+        # set/update the chap details for the host
+        self._set_3par_chaps(common, hostname, volume, username, password)
+        host = common._get_3par_host(hostname)
         return host, username, password
 
     def _do_export(self, common, volume, connector):
