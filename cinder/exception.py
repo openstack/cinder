@@ -1211,6 +1211,12 @@ class XtremIOSnapshotsLimitExceeded(VolumeDriverException):
     message = _("Exceeded the limit of snapshots per volume")
 
 
+# StorPool driver
+class StorPoolConfigurationInvalid(CinderException):
+    message = _("Invalid parameter %(param)s in the %(section)s section "
+                "of the /etc/storpool.conf file: %(error)s")
+
+
 # DOTHILL drivers
 class DotHillInvalidBackend(VolumeDriverException):
     message = _("Backend doesn't exist (%(backend)s)")
