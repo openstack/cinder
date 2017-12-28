@@ -115,7 +115,7 @@ class InStorageMCSISCSIDriver(instorage_common.InStorageMCSCommonDriver,
 
         lun_id = self._assistant.map_vol_to_host(volume_name,
                                                  host_name,
-                                                 False)
+                                                 True)
 
         try:
             properties = self._get_single_iscsi_data(volume, connector,
