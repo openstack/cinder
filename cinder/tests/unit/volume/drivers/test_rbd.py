@@ -1757,22 +1757,6 @@ class RBDTestCase(test.TestCase):
                           self.driver.failover_host,
                           self.context, volumes, None, [])
 
-    def test_failover_volume_non_replicated(self):
-        self.volume_a.replication_status = fields.ReplicationStatus.DISABLED
-        remote = {'name': 'name', 'user': 'user', 'conf': 'conf',
-                  'pool': 'pool'}
-        expected = {
-            'volume_id': self.volume_a.id,
-            'updates': {
-                'status': 'error',
-                'previous_status': self.volume_a.status,
-                'replication_status': fields.ReplicationStatus.NOT_CAPABLE,
-            }
-        }
-        res = self.driver._failover_volume(
-            self.volume_a, remote, False, fields.ReplicationStatus.FAILED_OVER)
-        self.assertEqual(expected, res)
-
     @ddt.data(True, False)
     @mock.patch.object(driver.RBDDriver, '_exec_on_volume',
                        side_effect=Exception)

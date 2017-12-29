@@ -1026,7 +1026,7 @@ class RBDDriver(driver.CloneableImageVD,
     def _failover_volume(self, volume, remote, is_demoted, replication_status):
         """Process failover for a volume.
 
-        There are 3 different cases that will return different update values
+        There are 2 different cases that will return different update values
         for the volume:
 
         - Volume has replication enabled and failover succeeded: Set
@@ -1034,31 +1034,23 @@ class RBDDriver(driver.CloneableImageVD,
         - Volume has replication enabled and failover fails: Set status to
           error, replication status to failover-error, and store previous
           status in previous_status field.
-        - Volume replication is disabled: Set status to error, and store
-          status in previous_status field.
         """
         # Failover is allowed when volume has it enabled or it has already
         # failed over, because we may want to do a second failover.
-        if self._is_replicated_type(volume.volume_type):
-            vol_name = utils.convert_str(volume.name)
-            try:
-                self._exec_on_volume(vol_name, remote,
-                                     'mirror_image_promote', not is_demoted)
+        vol_name = utils.convert_str(volume.name)
+        try:
+            self._exec_on_volume(vol_name, remote,
+                                 'mirror_image_promote', not is_demoted)
 
-                return {'volume_id': volume.id,
-                        'updates': {'replication_status': replication_status}}
-            except Exception as e:
-                replication_status = fields.ReplicationStatus.FAILOVER_ERROR
-                LOG.error('Failed to failover volume %(volume)s with '
-                          'error: %(error)s.',
-                          {'volume': volume.name, 'error': e})
-        else:
-            replication_status = fields.ReplicationStatus.NOT_CAPABLE
-            LOG.debug('Skipping failover for non replicated volume '
-                      '%(volume)s with status: %(status)s',
-                      {'volume': volume.name, 'status': volume.status})
+            return {'volume_id': volume.id,
+                    'updates': {'replication_status': replication_status}}
+        except Exception as e:
+            replication_status = fields.ReplicationStatus.FAILOVER_ERROR
+            LOG.error('Failed to failover volume %(volume)s with '
+                      'error: %(error)s.',
+                      {'volume': volume.name, 'error': e})
 
-        # Failover did not happen
+        # Failover failed
         error_result = {
             'volume_id': volume.id,
             'updates': {
@@ -1076,7 +1068,7 @@ class RBDDriver(driver.CloneableImageVD,
         try_demoting = True
         for volume in volumes:
             demoted = False
-            if try_demoting and self._is_replicated_type(volume.volume_type):
+            if try_demoting:
                 vol_name = utils.convert_str(volume.name)
                 try:
                     self._exec_on_volume(vol_name, self._active_config,
