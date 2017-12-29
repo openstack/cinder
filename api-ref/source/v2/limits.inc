@@ -22,7 +22,7 @@ for the item is infinite.
 
 Normal response codes: 200
 
-Error response codes: 403
+Error response codes: forbidden(403)
 
 Request
 -------

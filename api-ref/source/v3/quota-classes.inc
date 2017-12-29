@@ -17,7 +17,7 @@ resource exists, then the default value will be reported.
 
 Normal response codes: 200
 
-Error response codes: 403, 404
+Error response codes: forbidden(403), itemNotFound(404)
 
 
 Request
@@ -61,7 +61,7 @@ exist, then the API will create one.
 
 Normal response codes: 200
 
-Error response codes: 400, 403, 404
+Error response codes: badRequest(400), forbidden(403), itemNotFound(404)
 
 
 Request
