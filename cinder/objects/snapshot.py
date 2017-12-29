@@ -228,7 +228,8 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
         self.obj_reset_changes()
 
     def destroy(self):
-        updated_values = db.snapshot_destroy(self._context, self.id)
+        with self.obj_as_admin():
+            updated_values = db.snapshot_destroy(self._context, self.id)
         self.update(updated_values)
         self.obj_reset_changes(updated_values.keys())
 
