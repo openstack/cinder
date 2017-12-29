@@ -53,7 +53,7 @@ Response Parameters
 
    - cgsnapshot: cgsnapshot
    - status: status
-   - description: description
+   - description: description_cg_snapshot_true
    - created_at: created_at
    - consistencygroup_id: consistencygroup_id
    - id: id
@@ -91,7 +91,7 @@ Response Parameters
 
    - cgsnapshots: cgsnapshots
    - status: status
-   - description: description
+   - description: description_cg_snapshot_true
    - created_at: created_at
    - consistencygroup_id: consistencygroup_id
    - id: id
@@ -160,7 +160,7 @@ Request
    - cgsnapshot: cgsnapshot
    - name: name_5
    - consistencygroup_id: consistencygroup_id
-   - description: description
+   - description: description_cg_snapshot_false
 
 Request Example
 ---------------
@@ -174,7 +174,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - status: status
-   - description: description
+   - description: description_cg_snapshot_true
    - created_at: created_at
    - consistencygroup_id: consistencygroup_id
    - id: id
