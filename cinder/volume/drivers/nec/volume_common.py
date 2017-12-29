@@ -96,6 +96,12 @@ mstorage_opts = [
     cfg.IntOpt('nec_iscsi_portals_per_cont',
                default=1,
                help='Number of iSCSI portals.'),
+    cfg.BoolOpt('nec_auto_accesscontrol',
+                default=True,
+                help='Configure access control automatically.'),
+    cfg.StrOpt('nec_cv_ldname_format',
+               default='LX:__ControlVolume_%xh',
+               help='M-Series Storage Control Volume name format.'),
 ]
 
 FLAGS.register_opts(mstorage_opts, group=configuration.SHARED_CONF_GROUP)
@@ -147,7 +153,7 @@ def convert_to_id(value62):
 class MStorageVolumeCommon(object):
     """M-Series Storage volume common class."""
 
-    VERSION = '1.9.2'
+    VERSION = '1.10.1'
     WIKI_NAME = 'NEC_Cinder_CI'
 
     def do_setup(self, context):
@@ -250,7 +256,9 @@ class MStorageVolumeCommon(object):
                 confobj.safe_get('nec_ssh_pool_port_number'),
             'diskarray_name': confobj.safe_get('nec_diskarray_name'),
             'queryconfig_view': confobj.safe_get('nec_queryconfig_view'),
-            'portal_number': confobj.safe_get('nec_iscsi_portals_per_cont')
+            'portal_number': confobj.safe_get('nec_iscsi_portals_per_cont'),
+            'auto_accesscontrol': confobj.safe_get('nec_auto_accesscontrol'),
+            'cv_name_format': confobj.safe_get('nec_cv_ldname_format')
         }
 
     def _set_properties(self):
