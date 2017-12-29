@@ -15,12 +15,15 @@
 
 """The volume types manage extension."""
 
+from oslo_utils import strutils
 import six
 from six.moves import http_client
 import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volume_types as volume_types_schema
+from cinder.api import validation
 from cinder.api.views import types as views_types
 from cinder import exception
 from cinder.i18n import _
@@ -48,32 +51,17 @@ class VolumeTypesManageController(wsgi.Controller):
         rpc.get_notifier('volumeType').info(context, method, payload)
 
     @wsgi.action("create")
+    @validation.schema(volume_types_schema.create)
     def _create(self, req, body):
         """Creates a new volume type."""
         context = req.environ['cinder.context']
         context.authorize(policy.MANAGE_POLICY)
-
-        self.assert_valid_body(body, 'volume_type')
-
         vol_type = body['volume_type']
-        name = vol_type.get('name', None)
+        name = vol_type['name']
         description = vol_type.get('description')
         specs = vol_type.get('extra_specs', {})
-        utils.validate_dictionary_string_length(specs)
-        is_public = utils.get_bool_param('os-volume-type-access:is_public',
-                                         vol_type, True)
-
-        if name is None or len(name.strip()) == 0:
-            msg = _("Volume type name can not be empty.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        utils.check_string_length(name, 'Type name',
-                                  min_length=1, max_length=255)
-
-        if description is not None:
-            utils.check_string_length(description, 'Type description',
-                                      min_length=0, max_length=255)
-
+        is_public = vol_type.get('os-volume-type-access:is_public', True)
+        is_public = strutils.bool_from_string(is_public, strict=True)
         try:
             volume_types.create(context,
                                 name,
@@ -98,39 +86,18 @@ class VolumeTypesManageController(wsgi.Controller):
         return self._view_builder.show(req, vol_type)
 
     @wsgi.action("update")
+    @validation.schema(volume_types_schema.update)
     def _update(self, req, id, body):
         # Update description for a given volume type.
         context = req.environ['cinder.context']
         context.authorize(policy.MANAGE_POLICY)
-
-        self.assert_valid_body(body, 'volume_type')
-
         vol_type = body['volume_type']
         description = vol_type.get('description')
         name = vol_type.get('name')
         is_public = vol_type.get('is_public')
 
-        # Name and description can not be both None.
-        # If name specified, name can not be empty.
-        if name and len(name.strip()) == 0:
-            msg = _("Volume type name can not be empty.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        if name is None and description is None and is_public is None:
-            msg = _("Specify volume type name, description, is_public or "
-                    "a combination thereof.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
         if is_public is not None:
-            is_public = utils.get_bool_param('is_public', vol_type)
-
-        if name:
-            utils.check_string_length(name, 'Type name',
-                                      min_length=1, max_length=255)
-
-        if description is not None:
-            utils.check_string_length(description, 'Type description',
-                                      min_length=0, max_length=255)
+            is_public = strutils.bool_from_string(is_public, strict=True)
 
         try:
             volume_types.update(context, id, name, description,
