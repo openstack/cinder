@@ -12,13 +12,17 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+import ddt
 import mock
 from oslo_serialization import jsonutils
 from six.moves import http_client
 import webob
 
+from cinder.api.contrib import snapshot_actions
+from cinder.api import microversions as mv
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
@@ -36,12 +40,14 @@ def fake_snapshot_get(context, snapshot_id):
     return snapshot
 
 
+@ddt.ddt
 class SnapshotActionsTest(test.TestCase):
 
     def setUp(self):
         super(SnapshotActionsTest, self).setUp()
         self.user_ctxt = context.RequestContext(
             fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+        self.controller = snapshot_actions.SnapshotActionsController()
 
     @mock.patch('cinder.db.snapshot_update', autospec=True)
     @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
@@ -88,3 +94,42 @@ class SnapshotActionsTest(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+
+    @mock.patch('cinder.db.snapshot_update', autospec=True)
+    @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
+                side_effect=fake_snapshot_get)
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    def test_update_snapshot_valid_progress(self, metadata_get, *args):
+        body = {'os-update_snapshot_status':
+                {'status': fields.SnapshotStatus.AVAILABLE,
+                 'progress': '50%'}}
+        req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
+            fake.PROJECT_ID, fake.SNAPSHOT_ID))
+        req.method = "POST"
+        req.body = jsonutils.dump_as_bytes(body)
+        req.headers["content-type"] = "application/json"
+
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
+
+    @ddt.data(({'os-update_snapshot_status':
+               {'status': fields.SnapshotStatus.AVAILABLE,
+                'progress': '50'}}, exception.InvalidInput),
+              ({'os-update_snapshot_status':
+               {'status': fields.SnapshotStatus.AVAILABLE,
+                'progress': '103%'}}, exception.InvalidInput),
+              ({'os-update_snapshot_status':
+               {'status': fields.SnapshotStatus.AVAILABLE,
+                'progress': "   "}}, exception.InvalidInput),
+              ({'os-update_snapshot_status':
+               {'status': fields.SnapshotStatus.AVAILABLE,
+                'progress': 50}}, exception.ValidationError))
+    @ddt.unpack
+    def test_update_snapshot_invalid_progress(self, body, exception_class):
+        req = webob.Request.blank('/v3/%s/snapshots/%s/action' % (
+            fake.PROJECT_ID, fake.SNAPSHOT_ID))
+        req.api_version_request = mv.get_api_version(mv.BASE_VERSION)
+        self.assertRaises(exception_class,
+                          self.controller._update_snapshot_status,
+                          req, body=body)

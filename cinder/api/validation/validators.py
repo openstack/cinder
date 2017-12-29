@@ -171,6 +171,21 @@ def _validate_status(param_value):
     return True
 
 
+@jsonschema.FormatChecker.cls_checks('progress')
+def _validate_progress(progress):
+    if progress:
+        try:
+            integer = int(progress[:-1])
+        except ValueError:
+            msg = _('progress must be an integer percentage')
+            raise exception.InvalidInput(reason=msg)
+        if integer < 0 or integer > 100 or progress[-1] != '%':
+            msg = _('progress must be an integer percentage between'
+                    ' 0 and 100')
+            raise exception.InvalidInput(reason=msg)
+    return True
+
+
 @jsonschema.FormatChecker.cls_checks('base64')
 def _validate_base64_format(instance):
     try:
