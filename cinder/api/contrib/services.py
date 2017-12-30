@@ -101,7 +101,7 @@ class ServiceController(wsgi.Controller):
 
             if detailed:
                 ret_fields['disabled_reason'] = svc.disabled_reason
-                if svc.binary == "cinder-volume":
+                if svc.binary == constants.VOLUME_BINARY:
                     ret_fields['replication_status'] = svc.replication_status
                     ret_fields['active_backend_id'] = svc.active_backend_id
                     ret_fields['frozen'] = svc.frozen

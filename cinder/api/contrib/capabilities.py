@@ -18,6 +18,7 @@ import oslo_messaging
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import capabilities as capabilities_view
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -41,7 +42,7 @@ class CapabilitiesController(wsgi.Controller):
         """Return capabilities list of given backend."""
         context = req.environ['cinder.context']
         context.authorize(policy.CAPABILITIES_POLICY)
-        filters = {'host_or_cluster': id, 'binary': 'cinder-volume'}
+        filters = {'host_or_cluster': id, 'binary': constants.VOLUME_BINARY}
         services = objects.ServiceList.get_all(context, filters)
         if not services:
             msg = (_("Can't find service: %s") % id)

@@ -16,6 +16,7 @@
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v3.views import clusters as clusters_view
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -30,7 +31,7 @@ class ClusterController(wsgi.Controller):
     replication_fields = {'replication_status', 'frozen', 'active_backend_id'}
 
     @wsgi.Controller.api_version(mv.CLUSTER_SUPPORT)
-    def show(self, req, id, binary='cinder-volume'):
+    def show(self, req, id, binary=constants.VOLUME_BINARY):
         """Return data for a given cluster name with optional binary."""
         # Let the wsgi middleware convert NotAuthorized exceptions
         context = req.environ['cinder.context']
@@ -111,7 +112,7 @@ class ClusterController(wsgi.Controller):
         if not name:
             raise exception.MissingRequired(element='name')
 
-        binary = body.get('binary', 'cinder-volume')
+        binary = body.get('binary', constants.VOLUME_BINARY)
 
         # Let wsgi handle NotFound exception
         cluster = objects.Cluster.get_by_id(context, None, binary=binary,

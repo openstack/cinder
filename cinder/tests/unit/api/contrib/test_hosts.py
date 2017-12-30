@@ -21,6 +21,7 @@ from oslo_utils import timeutils
 import webob.exc
 
 from cinder.api.contrib import hosts as os_hosts
+from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.objects import service
@@ -113,9 +114,9 @@ class HostTestCase(test.TestCase):
         hosts = os_hosts._list_hosts(self.req)
         self.assertEqual(LIST_RESPONSE, hosts)
 
-        cinder_hosts = os_hosts._list_hosts(self.req, 'cinder-volume')
+        cinder_hosts = os_hosts._list_hosts(self.req, constants.VOLUME_BINARY)
         expected = [host for host in LIST_RESPONSE
-                    if host['service'] == 'cinder-volume']
+                    if host['service'] == constants.VOLUME_BINARY]
         self.assertEqual(expected, cinder_hosts)
 
     def test_list_hosts_with_zone(self):
@@ -158,8 +159,8 @@ class HostTestCase(test.TestCase):
     def test_show_host(self, mock_get_host):
         host = 'test_host'
         test_service = service.Service(id=1, host=host,
-                                       binary='cinder-volume',
-                                       topic='cinder-volume')
+                                       binary=constants.VOLUME_BINARY,
+                                       topic=constants.VOLUME_TOPIC)
         mock_get_host.return_value = test_service
 
         ctxt1 = context.RequestContext(project_id=fake_constants.PROJECT_ID,

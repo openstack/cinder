@@ -63,7 +63,7 @@ class BaseAdminTest(test.TestCase):
     def _create_volume(self, context, updates=None):
         db_volume = {'status': 'available',
                      'host': 'test',
-                     'binary': 'cinder-volume',
+                     'binary': constants.VOLUME_BINARY,
                      'availability_zone': 'fake_zone',
                      'attach_status': fields.VolumeAttachStatus.DETACHED}
         if updates:
@@ -98,9 +98,9 @@ class AdminActionsTest(BaseAdminTest):
 
         def _get_minimum_rpc_version_mock(ctxt, binary):
             binary_map = {
-                'cinder-volume': rpcapi.VolumeAPI,
-                'cinder-backup': backup_rpcapi.BackupAPI,
-                'cinder-scheduler': scheduler_rpcapi.SchedulerAPI,
+                constants.VOLUME_BINARY: rpcapi.VolumeAPI,
+                constants.BACKUP_BINARY: backup_rpcapi.BackupAPI,
+                constants.SCHEDULER_BINARY: scheduler_rpcapi.SchedulerAPI,
             }
             return binary_map[binary].RPC_API_VERSION
 
@@ -501,12 +501,12 @@ class AdminActionsTest(BaseAdminTest):
         db.service_create(self.ctx,
                           {'host': 'test',
                            'topic': constants.VOLUME_TOPIC,
-                           'binary': 'cinder-volume',
+                           'binary': constants.VOLUME_BINARY,
                            'created_at': timeutils.utcnow()})
         db.service_create(self.ctx,
                           {'host': 'test2',
                            'topic': constants.VOLUME_TOPIC,
-                           'binary': 'cinder-volume',
+                           'binary': constants.VOLUME_BINARY,
                            'created_at': timeutils.utcnow()})
         db.service_create(self.ctx,
                           {'host': 'clustered_host',

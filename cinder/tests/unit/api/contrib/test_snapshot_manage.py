@@ -21,6 +21,7 @@ from six.moves import http_client
 from six.moves.urllib.parse import urlencode
 import webob
 
+from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder import objects
@@ -120,14 +121,14 @@ class SnapshotManageTest(test.TestCase):
         """
         mock_db.return_value = fake_service.fake_service_obj(
             self._admin_ctxt,
-            binary='cinder-volume')
+            binary=constants.VOLUME_BINARY)
         body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
         self.assertEqual(http_client.ACCEPTED, res.status_int, res)
 
         # Check the db.service_get was called with correct arguments.
         mock_db.assert_called_once_with(
-            mock.ANY, None, host='fake_host', binary='cinder-volume',
+            mock.ANY, None, host='fake_host', binary=constants.VOLUME_BINARY,
             cluster_name=None)
 
         # Check the create_snapshot_in_db was called with correct arguments.

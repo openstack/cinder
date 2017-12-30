@@ -27,6 +27,7 @@ import six
 from sqlalchemy.sql import operators
 
 from cinder.api import common
+from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
@@ -166,13 +167,13 @@ class DBAPIServiceTestCase(BaseTest):
         # Force create one entry with no UUID
         sqlalchemy_api.service_create(self.ctxt, {
             'host': 'host1',
-            'binary': 'cinder-volume',
+            'binary': constants.VOLUME_BINARY,
             'topic': 'volume', })
 
         # Create another one with a valid UUID
         sqlalchemy_api.service_create(self.ctxt, {
             'host': 'host2',
-            'binary': 'cinder-volume',
+            'binary': constants.VOLUME_BINARY,
             'topic': 'volume',
             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'})
 
@@ -186,15 +187,15 @@ class DBAPIServiceTestCase(BaseTest):
     def test_service_uuid_migrations_with_limit(self):
         sqlalchemy_api.service_create(self.ctxt, {
             'host': 'host1',
-            'binary': 'cinder-volume',
+            'binary': constants.VOLUME_BINARY,
             'topic': 'volume', })
         sqlalchemy_api.service_create(self.ctxt, {
             'host': 'host2',
-            'binary': 'cinder-volume',
+            'binary': constants.VOLUME_BINARY,
             'topic': 'volume', })
         sqlalchemy_api.service_create(self.ctxt, {
             'host': 'host3',
-            'binary': 'cinder-volume',
+            'binary': constants.VOLUME_BINARY,
             'topic': 'volume', })
         # Run the migration and verify that we updated 1 entry
         total, updated = db.service_uuids_online_data_migration(
@@ -474,8 +475,8 @@ class DBAPIServiceTestCase(BaseTest):
         # Need a service to query
         values = {
             'host': 'host1@lvm-driver1',
-            'binary': 'cinder-volume',
-            'topic': 'cinder-volume'}
+            'binary': constants.VOLUME_BINARY,
+            'topic': constants.VOLUME_TOPIC}
         utils.create_service(self.ctxt, values)
 
         # Run the migration and verify that we updated 1 entry
@@ -496,8 +497,8 @@ class DBAPIServiceTestCase(BaseTest):
 
         values = {
             'host': 'host1@lvm-driver1',
-            'binary': 'cinder-volume',
-            'topic': 'cinder-volume',
+            'binary': constants.VOLUME_BINARY,
+            'topic': constants.VOLUME_TOPIC,
             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}
         utils.create_service(self.ctxt, values)
 
