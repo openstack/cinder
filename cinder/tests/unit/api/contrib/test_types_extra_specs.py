@@ -15,6 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
@@ -63,6 +64,7 @@ def fake_volume_type_extra_specs():
     return specs
 
 
+@ddt.ddt
 class VolumeTypesExtraSpecsTest(test.TestCase):
 
     def setUp(self):
@@ -130,8 +132,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertRaises(exception.VolumeTypeExtraSpecsNotFound,
                           self.controller.delete, req, fake.VOLUME_ID, 'key6')
 
-    @mock.patch('cinder.utils.check_string_length')
-    def test_create(self, mock_check):
+    def test_create(self):
         self.mock_object(cinder.db,
                          'volume_type_extra_specs_update_or_create',
                          return_create_volume_type_extra_specs)
@@ -139,17 +140,15 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
         self.assertEqual(0, len(self.notifier.notifications))
         req = fakes.HTTPRequest.blank(self.api_path)
-        res_dict = self.controller.create(req, fake.VOLUME_ID, body)
+        res_dict = self.controller.create(req, fake.VOLUME_ID, body=body)
         self.assertEqual(1, len(self.notifier.notifications))
         self.assertIn('created_at', self.notifier.notifications[0]['payload'])
         self.assertIn('updated_at', self.notifier.notifications[0]['payload'])
-        self.assertTrue(mock_check.called)
         self.assertEqual('value1', res_dict['extra_specs']['key1'])
 
     @mock.patch.object(cinder.db, 'volume_type_extra_specs_update_or_create')
-    @mock.patch('cinder.utils.check_string_length')
     def test_create_key_allowed_chars(
-            self, mock_check, volume_type_extra_specs_update_or_create):
+            self, volume_type_extra_specs_update_or_create):
         mock_return_value = {"key1": "value1",
                              "key2": "value2",
                              "key3": "value3",
@@ -163,16 +162,14 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual(0, len(self.notifier.notifications))
 
         req = fakes.HTTPRequest.blank(self.api_path)
-        res_dict = self.controller.create(req, fake.VOLUME_ID, body)
+        res_dict = self.controller.create(req, fake.VOLUME_ID, body=body)
         self.assertEqual(1, len(self.notifier.notifications))
-        self.assertTrue(mock_check.called)
         self.assertEqual('value1',
                          res_dict['extra_specs']['other_alphanum.-_:'])
 
     @mock.patch.object(cinder.db, 'volume_type_extra_specs_update_or_create')
-    @mock.patch('cinder.utils.check_string_length')
     def test_create_too_many_keys_allowed_chars(
-            self, mock_check, volume_type_extra_specs_update_or_create):
+            self, volume_type_extra_specs_update_or_create):
         mock_return_value = {"key1": "value1",
                              "key2": "value2",
                              "key3": "value3",
@@ -188,9 +185,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual(0, len(self.notifier.notifications))
 
         req = fakes.HTTPRequest.blank(self.api_path)
-        res_dict = self.controller.create(req, fake.VOLUME_ID, body)
+        res_dict = self.controller.create(req, fake.VOLUME_ID, body=body)
         self.assertEqual(1, len(self.notifier.notifications))
-        self.assertTrue(mock_check.called)
         self.assertEqual('value1',
                          res_dict['extra_specs']['other_alphanum.-_:'])
         self.assertEqual('value2',
@@ -198,8 +194,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual('value3',
                          res_dict['extra_specs']['other3_alphanum.-_:'])
 
-    @mock.patch('cinder.utils.check_string_length')
-    def test_update_item(self, mock_check):
+    def test_update_item(self):
         self.mock_object(cinder.db,
                          'volume_type_extra_specs_update_or_create',
                          return_create_volume_type_extra_specs)
@@ -207,11 +202,11 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
         self.assertEqual(0, len(self.notifier.notifications))
         req = fakes.HTTPRequest.blank(self.api_path + '/key1')
-        res_dict = self.controller.update(req, fake.VOLUME_ID, 'key1', body)
+        res_dict = self.controller.update(req, fake.VOLUME_ID, 'key1',
+                                          body=body)
         self.assertEqual(1, len(self.notifier.notifications))
         self.assertIn('created_at', self.notifier.notifications[0]['payload'])
         self.assertIn('updated_at', self.notifier.notifications[0]['payload'])
-        self.assertTrue(mock_check.called)
 
         self.assertEqual('value1', res_dict['key1'])
 
@@ -222,8 +217,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         body = {"key1": "value1", "key2": "value2"}
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key1')
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          req, fake.VOLUME_ID, 'key1', body)
+        self.assertRaises(exception.ValidationError, self.controller.update,
+                          req, fake.VOLUME_ID, 'key1', body=body)
 
     def test_update_item_body_uri_mismatch(self):
         self.mock_object(cinder.db,
@@ -233,15 +228,16 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank(self.api_path + '/bad')
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          req, fake.VOLUME_ID, 'bad', body)
+                          req, fake.VOLUME_ID, 'bad', body=body)
 
     def _extra_specs_empty_update(self, body):
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s/extra_specs' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE_ID))
         req.method = 'POST'
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, req, fake.VOLUME_ID, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.update, req, fake.VOLUME_ID,
+                          body=body)
 
     def test_update_no_body(self):
         self._extra_specs_empty_update(body=None)
@@ -254,8 +250,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
             fake.PROJECT_ID, fake.VOLUME_TYPE_ID))
         req.method = 'POST'
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, fake.VOLUME_ID, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, fake.VOLUME_ID,
+                          body=body)
 
     def test_create_no_body(self):
         self._extra_specs_create_bad_body(body=None)
@@ -295,10 +292,23 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
             self.assertRaises(webob.exc.HTTPBadRequest,
                               self.controller.create,
                               req,
-                              fake.VOLUME_ID, body)
+                              fake.VOLUME_ID, body=body)
 
             # Again but with conf set to allow modification
             CONF.set_default('allow_inuse_volume_type_modification', True)
-            res_dict = self.controller.create(req, fake.VOLUME_ID, body)
+            res_dict = self.controller.create(req, fake.VOLUME_ID, body=body)
             self.assertEqual({'extra_specs': {'key1': 'value1'}},
                              res_dict)
+
+    @ddt.data({'extra_specs': {'a' * 256: 'a'}},
+              {'extra_specs': {'a': 'a' * 256}},
+              {'extra_specs': {'': 'a'}},
+              {'extra_specs': {'     ': 'a'}})
+    def test_create_with_invalid_extra_specs(self, body):
+        req = fakes.HTTPRequest.blank('/v2/%s/types/%s/extra_specs' % (
+            fake.PROJECT_ID, fake.VOLUME_TYPE_ID))
+        req.method = 'POST'
+
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, fake.VOLUME_ID,
+                          body=body)
