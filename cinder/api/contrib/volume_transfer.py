@@ -21,9 +21,10 @@ from webob import exc
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volume_transfer
+from cinder.api import validation
 from cinder.api.views import transfers as transfer_view
 from cinder import exception
-from cinder.i18n import _
 from cinder import transfer as transferAPI
 
 LOG = logging.getLogger(__name__)
@@ -74,25 +75,18 @@ class VolumeTransferController(wsgi.Controller):
         return transfers
 
     @wsgi.response(http_client.ACCEPTED)
+    @validation.schema(volume_transfer.create)
     def create(self, req, body):
         """Create a new volume transfer."""
         LOG.debug('Creating new volume transfer %s', body)
-        self.assert_valid_body(body, 'transfer')
 
         context = req.environ['cinder.context']
         transfer = body['transfer']
 
-        try:
-            volume_id = transfer['volume_id']
-        except KeyError:
-            msg = _("Incorrect request body format")
-            raise exc.HTTPBadRequest(explanation=msg)
+        volume_id = transfer['volume_id']
 
         name = transfer.get('name', None)
         if name is not None:
-            self.validate_string_length(name, 'Transfer name',
-                                        min_length=1, max_length=255,
-                                        remove_whitespaces=True)
             name = name.strip()
 
         LOG.info("Creating transfer of volume %s",
@@ -109,20 +103,15 @@ class VolumeTransferController(wsgi.Controller):
         return transfer
 
     @wsgi.response(http_client.ACCEPTED)
+    @validation.schema(volume_transfer.accept)
     def accept(self, req, id, body):
         """Accept a new volume transfer."""
         transfer_id = id
         LOG.debug('Accepting volume transfer %s', transfer_id)
-        self.assert_valid_body(body, 'accept')
 
         context = req.environ['cinder.context']
         accept = body['accept']
-
-        try:
-            auth_key = accept['auth_key']
-        except KeyError:
-            msg = _("Incorrect request body format")
-            raise exc.HTTPBadRequest(explanation=msg)
+        auth_key = accept['auth_key']
 
         LOG.info("Accepting transfer %s", transfer_id)
 
