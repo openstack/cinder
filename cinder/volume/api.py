@@ -670,7 +670,7 @@ class API(base.Base):
         return snapshots
 
     def reserve_volume(self, context, volume):
-        context.authorize(vol_action_policy.RETYPE_POLICY, target_obj=volume)
+        context.authorize(vol_action_policy.RESERVE_POLICY, target_obj=volume)
         expected = {'multiattach': volume.multiattach,
                     'status': (('available', 'in-use') if volume.multiattach
                                else 'available')}
