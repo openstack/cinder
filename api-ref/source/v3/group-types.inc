@@ -29,6 +29,7 @@ Request
    - group_type: group_type
    - name: name_16
    - description: description_12
+   - is_public: is_public_2
 
 Request Example
 ---------------
@@ -183,6 +184,7 @@ Request
    - group_type: group_type
    - name: name_16
    - description: description_12
+   - is_public: is_public_2
    - group_specs: group_specs
 
 Request Example
