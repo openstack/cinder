@@ -244,6 +244,30 @@ class AttachmentsAPITestCase(test.TestCase):
         self.assertRaises(exception.ValidationError,
                           self.controller.create, req, body=fake_body)
 
+    @mock.patch('cinder.volume.api.API._attachment_reserve')
+    def test_create_attachment_in_use_volume_multiattach_false(self,
+                                                               mock_reserve):
+        """Negative test for creating an attachment on an in-use volume."""
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments' %
+                                      fake.PROJECT_ID,
+                                      version=mv.NEW_ATTACH)
+        body = {
+            "attachment":
+                {
+                    "connector": None,
+                    "instance_uuid": fake.UUID1,
+                    "volume_uuid": self.volume1.id
+                },
+        }
+        mock_reserve.side_effect = (
+            exception.InvalidVolume(
+                reason="Volume %s status must be available or "
+                       "downloading" % self.volume1.id))
+        # Note that if we were using the full WSGi stack, the
+        # ResourceExceptionHandler would convert this to an HTTPBadRequest.
+        self.assertRaises(exception.InvalidVolume,
+                          self.controller.create, req, body=body)
+
     @ddt.data(False, True)
     def test_list_attachments(self, is_detail):
         url = '/v3/%s/attachments' % fake.PROJECT_ID
