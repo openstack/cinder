@@ -19,13 +19,17 @@ RULE_ADMIN_OR_OWNER = 'rule:admin_or_owner'
 RULE_ADMIN_API = 'rule:admin_api'
 
 rules = [
-    policy.RuleDefault('context_is_admin', 'role:admin'),
+    policy.RuleDefault('context_is_admin', 'role:admin',
+                       description="Decides what is required for the "
+                                   "'is_admin:True' check to succeed."),
     policy.RuleDefault('admin_or_owner',
                        'is_admin:True or (role:admin and '
-                       'is_admin_project:True) or  project_id:%(project_id)s'),
+                       'is_admin_project:True) or project_id:%(project_id)s',
+                       description="Default rule for most non-Admin APIs."),
     policy.RuleDefault('admin_api',
                        'is_admin:True or (role:admin and '
-                       'is_admin_project:True)'),
+                       'is_admin_project:True)',
+                       description="Default rule for most Admin APIs."),
 ]
 
 
