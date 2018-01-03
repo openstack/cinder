@@ -21,6 +21,8 @@ from oslo_log import log as logging
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volume_image_metadata
+from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
 from cinder.policies import volume_metadata as policy
@@ -83,14 +85,11 @@ class VolumeImageMetadataController(wsgi.Controller):
                 self._add_image_metadata(context, volumes)
 
     @wsgi.action("os-set_image_metadata")
+    @validation.schema(volume_image_metadata.set_image_metadata)
     def create(self, req, id, body):
         context = req.environ['cinder.context']
         if context.authorize(policy.IMAGE_METADATA_POLICY):
-            try:
-                metadata = body['os-set_image_metadata']['metadata']
-            except (KeyError, TypeError):
-                msg = _("Malformed request body.")
-                raise webob.exc.HTTPBadRequest(explanation=msg)
+            metadata = body['os-set_image_metadata']['metadata']
             new_metadata = self._update_volume_image_metadata(context,
                                                               id,
                                                               metadata,
@@ -125,27 +124,20 @@ class VolumeImageMetadataController(wsgi.Controller):
         return {'metadata': self._get_image_metadata(context, id)[1]}
 
     @wsgi.action("os-unset_image_metadata")
+    @validation.schema(volume_image_metadata.unset_image_metadata)
     def delete(self, req, id, body):
         """Deletes an existing image metadata."""
         context = req.environ['cinder.context']
         if context.authorize(policy.IMAGE_METADATA_POLICY):
-            try:
-                key = body['os-unset_image_metadata']['key']
-            except (KeyError, TypeError):
-                msg = _("Malformed request body.")
-                raise webob.exc.HTTPBadRequest(explanation=msg)
+            key = body['os-unset_image_metadata']['key']
 
-            if key:
-                vol, metadata = self._get_image_metadata(context, id)
-                if key not in metadata:
-                    raise exception.GlanceMetadataNotFound(id=id)
+            vol, metadata = self._get_image_metadata(context, id)
+            if key not in metadata:
+                raise exception.GlanceMetadataNotFound(id=id)
 
-                self.volume_api.delete_volume_metadata(
-                    context, vol, key,
-                    meta_type=common.METADATA_TYPES.image)
-            else:
-                msg = _("The key cannot be None.")
-                raise webob.exc.HTTPBadRequest(explanation=msg)
+            self.volume_api.delete_volume_metadata(
+                context, vol, key,
+                meta_type=common.METADATA_TYPES.image)
 
             return webob.Response(status_int=http_client.OK)
 
