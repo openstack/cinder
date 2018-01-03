@@ -45,3 +45,6 @@ infi.dtypes.iqn # PSF
 
 # DataCore SANsymphony
 websocket-client>=0.32.0 # LGPLv2+
+
+# Storpool
+storpool # Apache-2.0
