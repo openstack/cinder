@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    The reserve volume API was incorrectly enforcing "volume:retype" policy
+    action. It has been corrected to "volume_extension:volume_actions:reserve".
