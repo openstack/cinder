@@ -574,6 +574,90 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         self.assertEqual(expected, ret)
 
     @mock.patch.object(storagecenter_api.SCApi,
+                       'find_volume')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'unmap_all')
+    @mock.patch.object(storagecenter_fc.SCFCDriver,
+                       '_is_live_vol')
+    def test_force_detach(self, mock_is_live_vol, mock_unmap_all,
+                          mock_find_volume, mock_close_connection,
+                          mock_open_connection, mock_init):
+        mock_is_live_vol.return_value = False
+        scvol = {'instandId': '12345.1'}
+        mock_find_volume.return_value = scvol
+        mock_unmap_all.return_value = True
+        volume = {'id': fake.VOLUME_ID}
+        res = self.driver.force_detach(volume)
+        mock_unmap_all.assert_called_once_with(scvol)
+        expected = {'driver_volume_type': 'fibre_channel',
+                    'data': {}}
+        self.assertEqual(expected, res)
+        mock_unmap_all.assert_called_once_with(scvol)
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'find_volume')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'unmap_all')
+    @mock.patch.object(storagecenter_fc.SCFCDriver,
+                       '_is_live_vol')
+    def test_force_detach_fail(self, mock_is_live_vol, mock_unmap_all,
+                               mock_find_volume, mock_close_connection,
+                               mock_open_connection, mock_init):
+        mock_is_live_vol.return_value = False
+        scvol = {'instandId': '12345.1'}
+        mock_find_volume.return_value = scvol
+        mock_unmap_all.return_value = False
+        volume = {'id': fake.VOLUME_ID}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.force_detach, volume)
+        mock_unmap_all.assert_called_once_with(scvol)
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'find_volume')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'unmap_all')
+    @mock.patch.object(storagecenter_fc.SCFCDriver,
+                       '_is_live_vol')
+    @mock.patch.object(storagecenter_fc.SCFCDriver,
+                       'terminate_secondary')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'get_live_volume')
+    def test_force_detach_lv(self, mock_get_live_volume,
+                             mock_terminate_secondary, mock_is_live_vol,
+                             mock_unmap_all, mock_find_volume,
+                             mock_close_connection, mock_open_connection,
+                             mock_init):
+        mock_is_live_vol.return_value = True
+        scvol = {'instandId': '12345.1'}
+        mock_find_volume.return_value = scvol
+        sclivevol = {'instandId': '12345.1.0'}
+        mock_get_live_volume.return_value = sclivevol
+        mock_terminate_secondary.return_value = True
+        volume = {'id': fake.VOLUME_ID}
+        mock_unmap_all.return_value = True
+        res = self.driver.force_detach(volume)
+        mock_unmap_all.assert_called_once_with(scvol)
+        expected = {'driver_volume_type': 'fibre_channel', 'data': {}}
+        self.assertEqual(expected, res)
+        self.assertEqual(1, mock_terminate_secondary.call_count)
+        mock_unmap_all.assert_called_once_with(scvol)
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'find_volume')
+    @mock.patch.object(storagecenter_fc.SCFCDriver,
+                       '_is_live_vol')
+    def test_force_detach_vol_not_found(self,
+                                        mock_is_live_vol, mock_find_volume,
+                                        mock_close_connection,
+                                        mock_open_connection, mock_init):
+        mock_is_live_vol.return_value = False
+        mock_find_volume.return_value = None
+        volume = {'id': fake.VOLUME_ID}
+        res = self.driver.force_detach(volume)
+        expected = {'driver_volume_type': 'fibre_channel', 'data': {}}
+        self.assertEqual(expected, res)
+
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
     @mock.patch.object(storagecenter_api.SCApi,
@@ -610,6 +694,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         expected = {'driver_volume_type': 'fibre_channel',
                     'data': {}}
         self.assertEqual(expected, res, 'Unexpected return data')
+
+    @mock.patch.object(storagecenter_fc.SCFCDriver,
+                       'force_detach')
+    def test_terminate_connection_none_connector(self, mock_force_detach,
+                                                 mock_close_connection,
+                                                 mock_open_connection,
+                                                 mock_init):
+        volume = {'id': fake.VOLUME_ID}
+        self.driver.terminate_connection(volume, None)
+        mock_force_detach.assert_called_once_with(volume)
 
     @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',

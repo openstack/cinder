@@ -75,14 +75,6 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
             self.configuration.safe_get('volume_backend_name') or 'Dell-FC'
         self.storage_protocol = 'FC'
 
-    def validate_connector(self, connector):
-        """Fail if connector doesn't contain all the data needed by driver.
-
-        Do a check on the connector and ensure that it has wwnns, wwpns.
-        """
-        self.validate_connector_has_setting(connector, 'wwpns')
-        self.validate_connector_has_setting(connector, 'wwnns')
-
     @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
@@ -203,8 +195,47 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
                      'wwns': wwns})
         return None, [], {}
 
+    def force_detach(self, volume):
+        """Breaks all volume server connections including to the live volume.
+
+        :param volume: volume to be detached
+        :raises VolumeBackendAPIException: On failure to sever connections.
+        """
+        with self._client.open_connection() as api:
+            volume_name = volume.get('id')
+            provider_id = volume.get('provider_id')
+            try:
+                islivevol = self._is_live_vol(volume)
+                scvolume = api.find_volume(volume_name, provider_id, islivevol)
+                if scvolume:
+                    rtn = api.unmap_all(scvolume)
+                    # If this fails we blow up.
+                    if not rtn:
+                        raise exception.VolumeBackendAPIException(
+                            _('Terminate connection failed'))
+                    # If there is a livevol we just take a shot at
+                    # disconnecting.
+                    if islivevol:
+                        sclivevolume = api.get_live_volume(provider_id)
+                        if sclivevolume:
+                            self.terminate_secondary(api, sclivevolume, None)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.error('Failed to terminates %(vol)s connections.',
+                              {'vol': volume_name})
+
+        # We don't know the servers that were involved so we just return
+        # the most basic of data.
+        info = {'driver_volume_type': 'fibre_channel',
+                'data': {}}
+        return info
+
     @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, force=False, **kwargs):
+        # Special case
+        if connector is None:
+            return self.force_detach(volume)
+
         # Grab some quick info.
         volume_name = volume.get('id')
         provider_id = volume.get('provider_id')

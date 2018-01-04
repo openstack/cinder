@@ -4231,6 +4231,125 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertFalse(mock_delete.called)
         self.assertTrue(res)
 
+    @mock.patch.object(storagecenter_api.HttpClient,
+                       'delete')
+    @mock.patch.object(storagecenter_api.HttpClient,
+                       'get')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_mapping_profiles')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_get_json')
+    def test_unmap_all(self, mock_get_json, mock_find_mapping_profiles,
+                       mock_get, mock_delete, mock_close_connection,
+                       mock_open_connection, mock_init):
+        mock_delete.return_value = self.RESPONSE_200
+        mock_get.return_value = self.RESPONSE_200
+        mock_find_mapping_profiles.return_value = [
+            {'instanceId': '12345.0.1',
+             'server': {'instanceId': '12345.100', 'instanceName': 'Srv1'}},
+            {'instanceId': '12345.0.2',
+             'server': {'instanceId': '12345.101', 'instanceName': 'Srv2'}},
+            {'instanceId': '12345.0.3',
+             'server': {'instanceId': '12345.102', 'instanceName': 'Srv3'}},
+        ]
+        # server, result pairs
+        mock_get_json.side_effect = [
+            {'instanceId': '12345.100', 'instanceName': 'Srv1',
+             'type': 'Physical'},
+            {'result': True},
+            {'instanceId': '12345.101', 'instanceName': 'Srv2',
+             'type': 'Physical'},
+            {'result': True},
+            {'instanceId': '12345.102', 'instanceName': 'Srv3',
+             'type': 'Physical'},
+            {'result': True}
+        ]
+        vol = {'instanceId': '12345.0', 'name': 'vol1'}
+        res = self.scapi.unmap_all(vol)
+        # Success and 3 delete calls
+        self.assertTrue(res)
+        self.assertEqual(3, mock_delete.call_count)
+
+    @mock.patch.object(storagecenter_api.HttpClient,
+                       'delete')
+    @mock.patch.object(storagecenter_api.HttpClient,
+                       'get')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_mapping_profiles')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_get_json')
+    def test_unmap_all_with_remote(self, mock_get_json,
+                                   mock_find_mapping_profiles, mock_get,
+                                   mock_delete, mock_close_connection,
+                                   mock_open_connection, mock_init):
+        mock_delete.return_value = self.RESPONSE_200
+        mock_get.return_value = self.RESPONSE_200
+        mock_find_mapping_profiles.return_value = [
+            {'instanceId': '12345.0.1',
+             'server': {'instanceId': '12345.100', 'instanceName': 'Srv1'}},
+            {'instanceId': '12345.0.2',
+             'server': {'instanceId': '12345.101', 'instanceName': 'Srv2'}},
+            {'instanceId': '12345.0.3',
+             'server': {'instanceId': '12345.102', 'instanceName': 'Srv3'}},
+        ]
+        # server, result pairs
+        mock_get_json.side_effect = [
+            {'instanceId': '12345.100', 'instanceName': 'Srv1',
+             'type': 'Physical'},
+            {'result': True},
+            {'instanceId': '12345.101', 'instanceName': 'Srv2',
+             'type': 'RemoteStorageCenter'},
+            {'instanceId': '12345.102', 'instanceName': 'Srv3',
+             'type': 'Physical'},
+            {'result': True}
+        ]
+        vol = {'instanceId': '12345.0', 'name': 'vol1'}
+        res = self.scapi.unmap_all(vol)
+        # Should succeed but call delete only twice
+        self.assertTrue(res)
+        self.assertEqual(2, mock_delete.call_count)
+
+    @mock.patch.object(storagecenter_api.HttpClient,
+                       'delete')
+    @mock.patch.object(storagecenter_api.HttpClient,
+                       'get')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_mapping_profiles')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_get_json')
+    def test_unmap_all_fail(self, mock_get_json, mock_find_mapping_profiles,
+                            mock_get, mock_delete, mock_close_connection,
+                            mock_open_connection, mock_init):
+        mock_delete.return_value = self.RESPONSE_400
+        mock_get.return_value = self.RESPONSE_200
+        mock_find_mapping_profiles.return_value = [
+            {'instanceId': '12345.0.1',
+             'server': {'instanceId': '12345.100', 'instanceName': 'Srv1'}},
+            {'instanceId': '12345.0.2',
+             'server': {'instanceId': '12345.101', 'instanceName': 'Srv2'}},
+            {'instanceId': '12345.0.3',
+             'server': {'instanceId': '12345.102', 'instanceName': 'Srv3'}},
+        ]
+        # server, result pairs
+        mock_get_json.side_effect = [
+            {'instanceId': '12345.100', 'instanceName': 'Srv1',
+             'type': 'Physical'}
+        ]
+        vol = {'instanceId': '12345.0', 'name': 'vol1'}
+        res = self.scapi.unmap_all(vol)
+        self.assertFalse(res)
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_mapping_profiles')
+    def test_unmap_all_no_profiles(self, mock_find_mapping_profiles,
+                                   mock_close_connection, mock_open_connection,
+                                   mock_init):
+        mock_find_mapping_profiles.return_value = []
+        vol = {'instanceId': '12345.0', 'name': 'vol1'}
+        res = self.scapi.unmap_all(vol)
+        # Should exit with success.
+        self.assertTrue(res)
+
     @mock.patch.object(storagecenter_api.SCApi,
                        '_get_json',
                        return_value=[{'a': 1}, {'a': 2}])
