@@ -1439,8 +1439,9 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli.cmd.host_connectivity_list.return_value = (
             HOST_CONNECTIVITY_LIST)
         fc_targets = p._get_fc_targets(host)
-        self.assertEqual(FC_TARGETS_OPTIMIZED_WITH_HOST, fc_targets,
-                         "FC targets are different from the expected")
+        six.assertCountEqual(self,
+                             FC_TARGETS_OPTIMIZED_WITH_HOST, fc_targets,
+                             "FC targets are different from the expected")
 
     def test_get_fc_targets_returns_host_all_wwpns_list(self):
         driver = mock.MagicMock()
@@ -1459,8 +1460,9 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli.cmd.host_connectivity_list.return_value = (
             HOST_CONNECTIVITY_LIST_UNKNOWN_HOST)
         fc_targets = p._get_fc_targets(host)
-        self.assertEqual(FC_TARGETS_OPTIMIZED, fc_targets,
-                         "FC targets are different from the expected")
+        six.assertCountEqual(self,
+                             FC_TARGETS_OPTIMIZED, fc_targets,
+                             "FC targets are different from the expected")
 
     def test_define_ports_returns_sorted_wwpns_list(self):
         driver = mock.MagicMock()
