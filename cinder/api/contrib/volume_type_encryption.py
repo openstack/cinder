@@ -20,16 +20,14 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volume_type_encryption
+from cinder.api import validation
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.policies import volume_type as policy
 from cinder import rpc
-from cinder import utils
 from cinder.volume import volume_types
-
-
-CONTROL_LOCATION = ['front-end', 'back-end']
 
 
 class VolumeTypeEncryptionController(wsgi.Controller):
@@ -48,28 +46,6 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         volume_types.get_volume_type(context, type_id)
 
-    def _check_encryption_input(self, encryption, create=True):
-        if encryption.get('key_size') is not None:
-            encryption['key_size'] = utils.validate_integer(
-                encryption['key_size'], 'key_size',
-                min_value=0, max_value=db.MAX_INT)
-
-        if create:
-            msg = None
-            if 'provider' not in encryption.keys():
-                msg = _('provider must be defined')
-            elif 'control_location' not in encryption.keys():
-                msg = _('control_location must be defined')
-
-            if msg is not None:
-                raise exception.InvalidInput(reason=msg)
-
-        # Check control location
-        if 'control_location' in encryption.keys():
-            if encryption['control_location'] not in CONTROL_LOCATION:
-                msg = _("Valid control location are: %s") % CONTROL_LOCATION
-                raise exception.InvalidInput(reason=msg)
-
     def _encrypted_type_in_use(self, context, volume_type_id):
         volume_list = db.volume_type_encryption_volume_get(context,
                                                            volume_type_id)
@@ -87,16 +63,19 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         self._check_type(context, type_id)
         return self._get_volume_type_encryption(context, type_id)
 
-    def create(self, req, type_id, body=None):
+    @validation.schema(volume_type_encryption.create)
+    def create(self, req, type_id, body):
         """Create encryption specs for an existing volume type."""
         context = req.environ['cinder.context']
         context.authorize(policy.ENCRYPTION_POLICY)
 
+        key_size = body['encryption'].get('key_size')
+        if key_size is not None:
+            body['encryption']['key_size'] = int(key_size)
+
         if self._encrypted_type_in_use(context, type_id):
             expl = _('Cannot create encryption specs. Volume type in use.')
             raise webob.exc.HTTPBadRequest(explanation=expl)
-
-        self.assert_valid_body(body, 'encryption')
 
         self._check_type(context, type_id)
 
@@ -106,24 +85,21 @@ class VolumeTypeEncryptionController(wsgi.Controller):
 
         encryption_specs = body['encryption']
 
-        self._check_encryption_input(encryption_specs)
-
         db.volume_type_encryption_create(context, type_id, encryption_specs)
         notifier_info = dict(type_id=type_id, specs=encryption_specs)
         notifier = rpc.get_notifier('volumeTypeEncryption')
         notifier.info(context, 'volume_type_encryption.create', notifier_info)
         return body
 
-    def update(self, req, type_id, id, body=None):
+    @validation.schema(volume_type_encryption.update)
+    def update(self, req, type_id, id, body):
         """Update encryption specs for a given volume type."""
         context = req.environ['cinder.context']
         context.authorize(policy.ENCRYPTION_POLICY)
 
-        self.assert_valid_body(body, 'encryption')
-
-        if len(body) > 1:
-            expl = _('Request body contains too many items.')
-            raise webob.exc.HTTPBadRequest(explanation=expl)
+        key_size = body['encryption'].get('key_size')
+        if key_size is not None:
+            body['encryption']['key_size'] = int(key_size)
 
         self._check_type(context, type_id)
 
@@ -132,7 +108,6 @@ class VolumeTypeEncryptionController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=expl)
 
         encryption_specs = body['encryption']
-        self._check_encryption_input(encryption_specs, create=False)
 
         db.volume_type_encryption_update(context, type_id, encryption_specs)
         notifier_info = dict(type_id=type_id, id=id)

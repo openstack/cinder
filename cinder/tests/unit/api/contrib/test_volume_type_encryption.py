@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-
 from oslo_serialization import jsonutils
 from six.moves import http_client
 import webob
@@ -24,7 +22,6 @@ from cinder import db
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
-from cinder import utils
 
 
 def return_volume_type_encryption(context, volume_type_id):
@@ -36,8 +33,7 @@ def fake_volume_type_encryption():
         'cipher': 'fake_cipher',
         'control_location': 'front-end',
         'key_size': 256,
-        'provider': 'fake_provider',
-        'volume_type_id': fake.VOLUME_TYPE_ID
+        'provider': 'fake_provider'
     }
     return values
 
@@ -162,8 +158,8 @@ class VolumeTypeEncryptionTest(test.TestCase):
         body = {"encryption": {'cipher': cipher,
                                'control_location': control_location,
                                'key_size': key_size,
-                               'provider': provider,
-                               'volume_type_id': volume_type['id']}}
+                               'provider': provider
+                               }}
 
         self.assertEqual(0, len(self.notifier.notifications))
         res = self._get_response(volume_type)
@@ -189,8 +185,6 @@ class VolumeTypeEncryptionTest(test.TestCase):
                          res_dict['encryption']['control_location'])
         self.assertEqual(key_size, res_dict['encryption']['key_size'])
         self.assertEqual(provider, res_dict['encryption']['provider'])
-        self.assertEqual(volume_type['id'],
-                         res_dict['encryption']['volume_type_id'])
 
         # check database
         encryption = db.volume_type_encryption_get(context.get_admin_context(),
@@ -199,16 +193,8 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self.assertEqual(cipher, encryption['cipher'])
         self.assertEqual(key_size, encryption['key_size'])
         self.assertEqual(provider, encryption['provider'])
-        self.assertEqual(volume_type['id'], encryption['volume_type_id'])
 
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
-
-    def test_create_json(self):
-        with mock.patch.object(utils,
-                               'validate_integer') as mock_validate_integer:
-            mock_validate_integer.return_value = 128
-            self._create('fake_cipher', 'front-end', 128, 'fake_encryptor')
-            self.assertTrue(mock_validate_integer.called)
 
     def test_create_invalid_volume_type(self):
         volume_type = self._default_volume_type
@@ -270,8 +256,8 @@ class VolumeTypeEncryptionTest(test.TestCase):
         body = {"encryption": {'cipher': 'cipher',
                                'key_size': 128,
                                'control_location': 'front-end',
-                               'provider': 'fake_provider',
-                               'volume_type_id': volume_type['id']}}
+                               'provider': 'fake_provider'
+                               }}
 
         # Try to create encryption specs for a volume type
         # with a volume.
@@ -291,8 +277,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         db.volume_destroy(context.get_admin_context(), fake.VOLUME_ID)
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
-    def _encryption_create_bad_body(self, body,
-                                    msg='Create body is not valid.'):
+    def _encryption_create_bad_body(self, body):
 
         volume_type = self._default_volume_type
         db.volume_type_create(context.get_admin_context(), volume_type)
@@ -302,31 +287,40 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        expected = {
-            'badRequest': {
-                'code': http_client.BAD_REQUEST,
-                'message': (msg)
-            }
-        }
-        self.assertEqual(expected, res_dict)
+        self.assertEqual(http_client.BAD_REQUEST,
+                         res_dict['badRequest']['code'])
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
     def test_create_no_body(self):
-        msg = "Missing required element 'encryption' in request body."
-        self._encryption_create_bad_body(body=None, msg=msg)
+        self._encryption_create_bad_body(body=None)
 
     def test_create_malformed_entity(self):
         body = {'encryption': 'string'}
-        msg = "Missing required element 'encryption' in request body."
-        self._encryption_create_bad_body(body=body, msg=msg)
+        self._encryption_create_bad_body(body=body)
 
     def test_create_negative_key_size(self):
         body = {"encryption": {'cipher': 'cipher',
                                'key_size': -128,
                                'provider': 'fake_provider',
-                               'volume_type_id': fake.VOLUME_TYPE_ID}}
-        msg = 'key_size must be >= 0'
-        self._encryption_create_bad_body(body=body, msg=msg)
+                               'control_location': 'front-end'
+                               }}
+        self._encryption_create_bad_body(body=body)
+
+    def test_create_with_minimum_key_size(self):
+        body = {"encryption": {'cipher': 'cipher',
+                               'key_size': '-1',
+                               'provider': 'fake_provider',
+                               'control_location': 'front-end'
+                               }}
+        self._encryption_create_bad_body(body=body)
+
+    def test_create_with_maximum_key_size(self):
+        body = {"encryption": {'cipher': 'cipher',
+                               'key_size': '12345678788',
+                               'provider': 'fake_provider',
+                               'control_location': 'front-end'
+                               }}
+        self._encryption_create_bad_body(body=body)
 
     def test_create_none_key_size(self):
         self._create('fake_cipher', 'front-end', None, 'fake_encryptor')
@@ -334,17 +328,17 @@ class VolumeTypeEncryptionTest(test.TestCase):
     def test_create_invalid_control_location(self):
         body = {"encryption": {'cipher': 'cipher',
                                'control_location': 'fake_control',
-                               'provider': 'fake_provider',
-                               'volume_type_id': fake.VOLUME_TYPE_ID}}
-        msg = ("Invalid input received: Valid control location are: "
-               "['front-end', 'back-end']")
-        self._encryption_create_bad_body(body=body, msg=msg)
+                               'provider': 'fake_provider'
+                               }}
+        self._encryption_create_bad_body(body=body)
 
     def test_create_no_provider(self):
-        body = {"encryption": {'cipher': 'cipher',
-                               'volume_type_id': fake.VOLUME_TYPE_ID}}
-        msg = ("Invalid input received: provider must be defined")
-        self._encryption_create_bad_body(body=body, msg=msg)
+        body = {"encryption": {'cipher': 'cipher'}}
+        self._encryption_create_bad_body(body=body)
+
+    def test_create_no_control_location(self):
+        body = {"encryption": {'provider': 'fake_provider'}}
+        self._encryption_create_bad_body(body=body)
 
     def test_delete(self):
         volume_type = self._default_volume_type
@@ -359,8 +353,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         body = {"encryption": {'cipher': 'cipher',
                                'key_size': 128,
                                'control_location': 'front-end',
-                               'provider': 'fake_provider',
-                               'volume_type_id': volume_type['id']}}
+                               'provider': 'fake_provider'}}
 
         # Create, and test that get returns something
         res = self._get_response(volume_type, req_method='POST',
@@ -398,8 +391,8 @@ class VolumeTypeEncryptionTest(test.TestCase):
         body = {"encryption": {'cipher': 'cipher',
                                'key_size': 128,
                                'control_location': 'front-end',
-                               'provider': 'fake_provider',
-                               'volume_type_id': volume_type['id']}}
+                               'provider': 'fake_provider'
+                               }}
 
         # Create encryption with volume type, and test with GET
         res = self._get_response(volume_type, req_method='POST',
@@ -486,17 +479,14 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self.assertEqual(expected, jsonutils.loads(res.body))
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
-    @mock.patch('cinder.utils.validate_integer')
-    def test_update_item(self, mock_validate_integer):
-        mock_validate_integer.return_value = 512
+    def test_update_item(self):
         volume_type = self._default_volume_type
 
         # Create Encryption Specs
         create_body = {"encryption": {'cipher': 'cipher',
                                       'control_location': 'front-end',
                                       'key_size': 128,
-                                      'provider': 'fake_provider',
-                                      'volume_type_id': volume_type['id']}}
+                                      'provider': 'fake_provider'}}
         self._create_type_and_encryption(volume_type, create_body)
 
         # Update Encryption Specs
@@ -521,11 +511,10 @@ class VolumeTypeEncryptionTest(test.TestCase):
         # Confirm Encryption Specs
         self.assertEqual(512, res_dict['key_size'])
         self.assertEqual('fake_provider2', res_dict['provider'])
-        self.assertTrue(mock_validate_integer.called)
 
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
-    def _encryption_update_bad_body(self, update_body, msg):
+    def _encryption_update_bad_body(self, update_body):
 
         # Create Volume Type and Encryption
         volume_type = self._default_volume_type
@@ -539,36 +528,26 @@ class VolumeTypeEncryptionTest(test.TestCase):
                               fake.ENCRYPTION_KEY_ID)
         res_dict = jsonutils.loads(res.body)
 
-        expected = {
-            'badRequest': {
-                'code': http_client.BAD_REQUEST,
-                'message': (msg)
-            }
-        }
-
         # Confirm Failure
-        self.assertEqual(expected, res_dict)
+        self.assertEqual(http_client.BAD_REQUEST,
+                         res_dict['badRequest']['code'])
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
     def test_update_too_many_items(self):
         update_body = {"encryption": {'key_size': 512},
                        "encryption2": {'key_size': 256}}
-        msg = 'Request body contains too many items.'
-        self._encryption_update_bad_body(update_body, msg)
+        self._encryption_update_bad_body(update_body)
 
     def test_update_key_size_non_integer(self):
         update_body = {"encryption": {'key_size': 'abc'}}
-        msg = 'key_size must be an integer'
-        self._encryption_update_bad_body(update_body, msg)
+        self._encryption_update_bad_body(update_body)
 
     def test_update_item_invalid_body(self):
         update_body = {"key_size": "value1"}
-        msg = "Missing required element 'encryption' in request body."
-        self._encryption_update_bad_body(update_body, msg)
+        self._encryption_update_bad_body(update_body)
 
     def _encryption_empty_update(self, update_body):
-        msg = "Missing required element 'encryption' in request body."
-        self._encryption_update_bad_body(update_body, msg)
+        self._encryption_update_bad_body(update_body)
 
     def test_update_no_body(self):
         self._encryption_empty_update(update_body=None)

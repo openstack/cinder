@@ -23,6 +23,7 @@ import re
 
 import jsonschema
 from jsonschema import exceptions as jsonschema_exc
+from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import six
@@ -369,6 +370,15 @@ def _validate_backup_status(param_value):
                 "%(valid)s.") % {'status': param_value,
                                  'valid': valid_status}
         raise exception.InvalidParameterValue(err=msg)
+    return True
+
+
+@jsonschema.FormatChecker.cls_checks('key_size')
+def _validate_key_size(param_value):
+    if param_value is not None:
+        if not strutils.is_int_like(param_value):
+            raise exception.InvalidInput(reason=(
+                _('key_size must be an integer.')))
     return True
 
 
