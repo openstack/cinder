@@ -2371,12 +2371,26 @@ service_status:
   in: body
   required: true
   type: string
+service_uuid:
+  description: |
+    A unique identifier that's used to indicate what node the volume-service
+    for a particular volume is being serviced by.
+  in: body
+  required: true
+  type: string
 services:
   description: |
     A list of service objects.
   in: body
   required: true
   type: array
+shared_targets:
+  description: |
+    An indicator whether the back-end hosting the volume utilizes
+    shared_targets or not. Default=True.
+  in: body
+  required: true
+  type: boolean
 size:
   description: |
     The size of the volume, in gibibytes (GiB).
