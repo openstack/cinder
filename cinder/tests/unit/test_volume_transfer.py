@@ -17,6 +17,7 @@ import mock
 from oslo_utils import timeutils
 
 from cinder import context
+from cinder import db
 from cinder import exception
 from cinder import objects
 from cinder import quota
@@ -67,6 +68,16 @@ class VolumeTransferTestCase(test.TestCase):
                           self.ctxt, volume.id, 'Description')
         volume = objects.Volume.get_by_id(self.ctxt, volume.id)
         self.assertEqual('in-use', volume['status'], 'Unexpected state')
+
+    def test_transfer_invalid_encrypted_volume(self):
+        tx_api = transfer_api.API()
+        volume = utils.create_volume(self.ctxt, updated_at=self.updated_at)
+        db.volume_update(self.ctxt,
+                         volume.id,
+                         {'encryption_key_id': fake.ENCRYPTION_KEY_ID})
+        self.assertRaises(exception.InvalidVolume,
+                          tx_api.create,
+                          self.ctxt, volume.id, 'Description')
 
     @mock.patch('cinder.volume.utils.notify_about_volume_usage')
     def test_transfer_accept_invalid_authkey(self, mock_notify):
