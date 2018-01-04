@@ -589,6 +589,11 @@ class LVMVolumeDriver(driver.VolumeDriver):
         """Extend an existing volume's size."""
         self.vg.extend_volume(volume['name'],
                               self._sizestr(new_size))
+        try:
+            self.target_driver.extend_target(volume)
+        except Exception:
+            LOG.exception('Error extending target after volume resize.')
+            raise exception.TargetUpdateFailed(volume_id=volume.id)
 
     def manage_existing(self, volume, existing_ref):
         """Manages an existing LV.

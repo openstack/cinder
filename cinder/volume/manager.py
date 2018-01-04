@@ -2591,6 +2591,9 @@ class VolumeManager(manager.CleanableManager,
         self._notify_about_volume_usage(context, volume, "resize.start")
         try:
             self.driver.extend_volume(volume, new_size)
+        except exception.TargetUpdateFailed:
+            # We just want to log this but continue on with quota commit
+            LOG.warning('Volume extended but failed to update target.')
         except Exception:
             LOG.exception("Extend volume failed.",
                           resource=volume)

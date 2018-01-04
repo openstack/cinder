@@ -111,9 +111,13 @@ class TgtAdm(iscsi.ISCSITarget):
         return iscsi_target, lun
 
     @utils.retry(putils.ProcessExecutionError)
-    def _do_tgt_update(self, name):
-        (out, err) = utils.execute('tgt-admin', '--update', name,
-                                   run_as_root=True)
+    def _do_tgt_update(self, name, force=False):
+        args = ['tgt-admin', '--update', name]
+        if force:
+            # Note: force may fail if there is active IO, but retry decorator
+            # should allow it to succeed on second attempt
+            args.append('-f')
+        (out, err) = utils.execute(*args, run_as_root=True)
         LOG.debug("StdOut from tgt-admin --update: %s", out)
         LOG.debug("StdErr from tgt-admin --update: %s", err)
 

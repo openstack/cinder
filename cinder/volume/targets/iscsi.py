@@ -327,6 +327,17 @@ class ISCSITarget(driver.Target):
         except exception.NotFound:
             LOG.debug('Failed to get CHAP auth from DB for %s.', volume['id'])
 
+    def extend_target(self, volume):
+        """Reinitializes a target after the LV has been extended.
+
+        Note: This will cause IO disruption in most cases.
+        """
+        iscsi_name = "%s%s" % (self.configuration.target_prefix,
+                               volume['name'])
+
+        if volume.volume_attachment:
+            self._do_tgt_update(iscsi_name, force=True)
+
     @abc.abstractmethod
     def _get_target_and_lun(self, context, volume):
         """Get iscsi target and lun."""
@@ -347,6 +358,9 @@ class ISCSITarget(driver.Target):
 
     @abc.abstractmethod
     def _get_target(self, iqn):
+        pass
+
+    def _do_tgt_update(self, name, force=False):
         pass
 
 
