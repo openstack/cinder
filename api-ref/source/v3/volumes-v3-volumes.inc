@@ -347,7 +347,8 @@ Response Parameters
    - created_at: created_at
    - os-volume-replication:driver_data: os-volume-replication:driver_data
    - volume_type: volume_type
-
+   - service_uuid: service_uuid
+   - shared_targets: shared_targets
 
 
 Response Example
