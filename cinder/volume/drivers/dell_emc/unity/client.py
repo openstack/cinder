@@ -315,3 +315,7 @@ class UnityClient(object):
     def get_pool_name(self, lun_name):
         lun = self.system.get_lun(name=lun_name)
         return lun.pool_name
+
+    def restore_snapshot(self, snap_name):
+        snap = self.get_snap(snap_name)
+        return snap.restore(delete_backup=True)

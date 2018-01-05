@@ -96,12 +96,16 @@ class MockAdapter(object):
     def terminate_connection_snapshot(snapshot, connector):
         return {'snapshot': snapshot, 'connector': connector}
 
+    @staticmethod
+    def restore_snapshot(volume, snapshot):
+        return True
 
 ########################
 #
 #   Start of Tests
 #
 ########################
+
 
 class UnityDriverTest(unittest.TestCase):
     @staticmethod
@@ -256,3 +260,9 @@ class UnityDriverTest(unittest.TestCase):
         conn_info = self.driver.terminate_connection_snapshot(
             snapshot, self.get_connector())
         self.assertEqual(snapshot, conn_info['snapshot'])
+
+    def test_restore_snapshot(self):
+        snapshot = self.get_snapshot()
+        volume = self.get_volume()
+        r = self.driver.revert_to_snapshot(None, volume, snapshot)
+        self.assertTrue(r)

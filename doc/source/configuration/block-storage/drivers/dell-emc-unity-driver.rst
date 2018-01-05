@@ -13,11 +13,9 @@ Prerequisites
 +-------------------+----------------+
 |    Software       |    Version     |
 +===================+================+
-| Unity OE          | 4.1.X          |
+| Unity OE          | 4.1.X or newer |
 +-------------------+----------------+
-| OpenStack         | Ocata          |
-+-------------------+----------------+
-| storops           | 0.4.2 or newer |
+| storops           | 0.5.7 or newer |
 +-------------------+----------------+
 
 
@@ -34,6 +32,7 @@ Supported operations
 - Migrate a volume.
 - Get volume statistics.
 - Efficient non-disruptive volume backup.
+- Revert a volume to a snapshot.
 
 Driver configuration
 ~~~~~~~~~~~~~~~~~~~~

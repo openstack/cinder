@@ -24,6 +24,13 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
 
+from cinder import exception
+from cinder.i18n import _
+from cinder import utils as cinder_utils
+from cinder.volume.drivers.dell_emc.unity import client
+from cinder.volume.drivers.dell_emc.unity import utils
+from cinder.volume import utils as vol_utils
+
 storops = importutils.try_import('storops')
 if storops:
     from storops import exception as storops_ex
@@ -31,12 +38,6 @@ else:
     # Set storops_ex to be None for unit test
     storops_ex = None
 
-from cinder import exception
-from cinder.i18n import _
-from cinder import utils as cinder_utils
-from cinder.volume.drivers.dell_emc.unity import client
-from cinder.volume.drivers.dell_emc.unity import utils
-from cinder.volume import utils as vol_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -109,10 +110,10 @@ class VolumeParams(object):
         self._io_limit_policy = value
 
     def __eq__(self, other):
-        return (self.volume_id == other.volume_id
-                and self.name == other.name
-                and self.size == other.size
-                and self.io_limit_policy == other.io_limit_policy)
+        return (self.volume_id == other.volume_id and
+                self.name == other.name and
+                self.size == other.size and
+                self.io_limit_policy == other.io_limit_policy)
 
 
 class CommonAdapter(object):
@@ -660,6 +661,10 @@ class CommonAdapter(object):
     def terminate_connection_snapshot(self, snapshot, connector):
         snap = self.client.get_snap(snapshot.name)
         return self._terminate_connection(snap, connector)
+
+    @cinder_utils.trace
+    def restore_snapshot(self, volume, snapshot):
+        return self.client.restore_snapshot(snapshot.name)
 
 
 class ISCSIAdapter(CommonAdapter):

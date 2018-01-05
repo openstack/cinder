@@ -192,6 +192,9 @@ class MockClient(object):
     def system(self):
         return self._system
 
+    def restore_snapshot(self, snap_name):
+        return test_client.MockResource(name="back_snap")
+
 
 class MockLookupService(object):
     @staticmethod
@@ -685,6 +688,11 @@ class CommonAdapterTest(test.TestCase):
             config = MockConfig()
             config.unity_io_ports = ['', '   ']
             self.adapter.normalize_config(config)
+
+    def test_restore_snapshot(self):
+        volume = MockOSResource(id='1', name='vol_1')
+        snapshot = MockOSResource(id='2', name='snap_1')
+        self.adapter.restore_snapshot(volume, snapshot)
 
 
 class FCAdapterTest(test.TestCase):
