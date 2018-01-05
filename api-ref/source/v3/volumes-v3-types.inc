@@ -3,14 +3,6 @@
 Volume types (types)
 ====================
 
-
-Update a volume type
-~~~~~~~~~~~~~~~~~~~~
-
-.. rest_method::  PUT /v3/{project_id}/types/{volume_type_id}
-
-Updates a volume type.
-
 To create an environment with multiple-storage back ends, you must
 specify a volume type. The API spawns Block Storage volume back
 ends as children to ``cinder-volume``, and keys them from a unique
@@ -23,6 +15,14 @@ For information about how to use volume types to create multiple-
 storage back ends, see `Configure multiple-storage back ends
 <https://docs.openstack.org/cinder/latest/admin
 /blockstorage-multi-backend.html>`_.
+
+
+Update a volume type
+~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  PUT /v3/{project_id}/types/{volume_type_id}
+
+Updates a volume type.
 
 
 Normal response codes: 200
@@ -45,7 +45,6 @@ Request Example
 
 .. literalinclude:: ./samples/volume-type-update-request.json
    :language: javascript
-
 
 
 Response Parameters
@@ -92,7 +91,6 @@ Request Example
 
 .. literalinclude:: ./samples/volume-type-extra-specs-create-update-request.json
    :language: javascript
-
 
 
 Response Parameters
@@ -329,20 +327,6 @@ Create a volume type
 
 Creates a volume type.
 
-To create an environment with multiple-storage back ends, you must
-specify a volume type. Block Storage volume back ends are spawned
-as children to ``cinder-volume``, and they are keyed from a unique
-queue. They are named ``cinder-volume.HOST.BACKEND``. For example,
-``cinder-volume.ubuntu.lvmdriver``. When a volume is created, the
-scheduler chooses an appropriate back end to handle the request
-based on the volume type.
-
-For information about how to use volume types to create multiple-
-storage back ends, see `Configure multiple-storage back ends
-<https://docs.openstack.org/cinder/latest/admin
-/blockstorage-multi-backend.html>`_.
-
-
 Normal response codes: 200
 
 
@@ -384,12 +368,11 @@ Response Example
 .. literalinclude:: ./samples/volume-type-create-response.json
    :language: javascript
 
+
 Show an encryption type
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/types/{volume_type_id}/encryption
-
-Show an encryption type.
 
 To show an encryption type for an existing volume type.
 
@@ -458,9 +441,7 @@ Response Example
 Delete an encryption type
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{project_id}/types/{volume_type_id}/encryption/{encryption_id}
-
-Delete an encryption type.
+.. rest_method::  DELETE /v3/{project_id}/types/{volume_type_id}/encryption/{encryption_id}
 
 To delete an encryption type for an existing volume type.
 
@@ -481,8 +462,6 @@ Create an encryption type
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/types/{volume_type_id}/encryption
-
-Creates an encryption type.
 
 To create an encryption type for an existing volume type.
 
@@ -533,8 +512,6 @@ Update an encryption type
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v3/{project_id}/types/{volume_type_id}/encryption/{encryption_id}
-
-Update an encryption type.
 
 To update an encryption type for an existing volume type.
 
