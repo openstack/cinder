@@ -6902,25 +6902,39 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
         self.driver._active_backend_id = None
-        replication_licensed.side_effect = [False, True, True, True]
+        replication_licensed.side_effect = [False, True, True, True, True]
 
         self.driver._get_storwize_config()
         self.assertEqual(self.driver._helpers,
                          self.driver._master_backend_helpers)
-        self.assertEqual(self.driver._replica_enabled, False)
+        self.assertFalse(self.driver._replica_enabled)
 
         self.driver._get_storwize_config()
         self.assertEqual(self.driver._replica_target, self.rep_target)
-        self.assertEqual(self.driver._replica_enabled, True)
+        self.assertTrue(self.driver._replica_enabled)
 
         self.driver._active_backend_id = self.rep_target['backend_id']
         self.driver._get_storwize_config()
         self.assertEqual(self.driver._helpers,
                          self.driver._aux_backend_helpers)
-        self.assertEqual(self.driver._replica_enabled, True)
+        self.assertTrue(self.driver._replica_enabled)
 
         self.driver._active_backend_id = None
         self.driver._get_storwize_config()
+
+        with mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                               '_update_storwize_state') as update_state:
+            update_state.side_effect = [
+                exception.VolumeBackendAPIException(data='CMMVC6372W'),
+                exception.VolumeBackendAPIException(data='CMMVC6372W'), None]
+            self.driver._active_backend_id = None
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver._get_storwize_config)
+            self.driver._active_backend_id = self.rep_target['backend_id']
+            self.driver._get_storwize_config()
+        self.assertEqual(self.driver._helpers,
+                         self.driver._aux_backend_helpers)
+        self.assertTrue(self.driver._replica_enabled)
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'create_vdisk')
@@ -7861,39 +7875,19 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         volumes = [mm_vol, gm_vol, gm_vol1, gm_vol2, gmcv_vol]
         expected_list = [{'updates': {'replication_status':
-                                      fields.ReplicationStatus.FAILED_OVER,
-                                      'previous_status': mm_vol['status'],
-                                      'status': 'available',
-                                      'attach_status':
-                                          fields.VolumeAttachStatus.DETACHED},
+                                      fields.ReplicationStatus.FAILED_OVER},
                           'volume_id': mm_vol['id']},
                          {'updates': {'replication_status':
-                                      fields.ReplicationStatus.FAILED_OVER,
-                                      'previous_status': gm_vol['status'],
-                                      'status': 'available',
-                                      'attach_status':
-                                          fields.VolumeAttachStatus.DETACHED},
+                                      fields.ReplicationStatus.FAILED_OVER},
                           'volume_id': gm_vol['id']},
                          {'updates': {'replication_status':
-                                      fields.ReplicationStatus.FAILED_OVER,
-                                      'previous_status': gm_vol1['status'],
-                                      'status': 'in-use',
-                                      'attach_status':
-                                          fields.VolumeAttachStatus.ATTACHED},
+                                      fields.ReplicationStatus.FAILED_OVER},
                           'volume_id': gm_vol1['id']},
                          {'updates': {'replication_status':
-                                      fields.ReplicationStatus.FAILED_OVER,
-                                      'previous_status': gm_vol2['status'],
-                                      'status': 'available',
-                                      'attach_status':
-                                          fields.VolumeAttachStatus.DETACHED},
+                                      fields.ReplicationStatus.FAILED_OVER},
                           'volume_id': gm_vol2['id']},
                          {'updates': {'replication_status':
-                                      fields.ReplicationStatus.FAILED_OVER,
-                                      'previous_status': gmcv_vol['status'],
-                                      'status': 'in-use',
-                                      'attach_status':
-                                          fields.VolumeAttachStatus.ATTACHED},
+                                      fields.ReplicationStatus.FAILED_OVER},
                           'volume_id': gmcv_vol['id']}
                          ]
 
@@ -7930,24 +7924,15 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         volumes.extend(vols2)
         expected_list1 = [{'updates': {'replication_status':
                                        fields.ReplicationStatus.FAILED_OVER,
-                                       'previous_status': mm_vol1['status'],
-                                       'status': 'available',
-                                       'attach_status':
-                                           fields.VolumeAttachStatus.DETACHED},
+                                       'status': 'available'},
                            'volume_id': mm_vol1['id']},
                           {'updates': {'replication_status':
                                        fields.ReplicationStatus.FAILED_OVER,
-                                       'previous_status': mm_vol2['status'],
-                                       'status': 'available',
-                                       'attach_status':
-                                           fields.VolumeAttachStatus.DETACHED},
+                                       'status': 'in-use'},
                            'volume_id': mm_vol2['id']},
                           {'updates': {'replication_status':
                                        fields.ReplicationStatus.FAILED_OVER,
-                                       'previous_status': gm_vol3['status'],
-                                       'status': 'in-use',
-                                       'attach_status':
-                                           fields.VolumeAttachStatus.ATTACHED},
+                                       'status': 'available'},
                            'volume_id': gm_vol3['id']}]
         expected_list.extend(expected_list1)
         grp_expected = [{'group_id': group1.id,
@@ -8124,39 +8109,19 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         volumes = [mm_vol, gm_vol, gm_vol1, gm_vol2, gmcv_vol]
         failover_expect = [{'updates': {'replication_status':
-                                        fields.ReplicationStatus.FAILED_OVER,
-                                        'previous_status': mm_vol['status'],
-                                        'status': 'available',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.DETACHED},
+                                        fields.ReplicationStatus.FAILED_OVER},
                             'volume_id': mm_vol['id']},
                            {'updates': {'replication_status':
-                                        fields.ReplicationStatus.FAILED_OVER,
-                                        'previous_status': gm_vol['status'],
-                                        'status': 'available',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.DETACHED},
+                                        fields.ReplicationStatus.FAILED_OVER},
                             'volume_id': gm_vol['id']},
                            {'updates': {'replication_status':
-                                        fields.ReplicationStatus.FAILED_OVER,
-                                        'previous_status': gm_vol1['status'],
-                                        'status': 'in-use',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.ATTACHED},
+                                        fields.ReplicationStatus.FAILED_OVER},
                             'volume_id': gm_vol1['id']},
                            {'updates': {'replication_status':
-                                        fields.ReplicationStatus.FAILED_OVER,
-                                        'previous_status': gm_vol2['status'],
-                                        'status': 'available',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.DETACHED},
+                                        fields.ReplicationStatus.FAILED_OVER},
                             'volume_id': gm_vol2['id']},
                            {'updates': {'replication_status':
-                                        fields.ReplicationStatus.FAILED_OVER,
-                                        'previous_status': gmcv_vol['status'],
-                                        'status': 'available',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.DETACHED},
+                                        fields.ReplicationStatus.FAILED_OVER},
                             'volume_id': gmcv_vol['id']}
                            ]
         group1 = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
@@ -8193,24 +8158,15 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         volumes.extend(vols2)
         expected_list1 = [{'updates': {'replication_status':
                                        fields.ReplicationStatus.FAILED_OVER,
-                                       'previous_status': mm_vol1['status'],
-                                       'status': 'available',
-                                       'attach_status':
-                                           fields.VolumeAttachStatus.DETACHED},
+                                       'status': 'available'},
                            'volume_id': mm_vol1['id']},
                           {'updates': {'replication_status':
                                        fields.ReplicationStatus.FAILED_OVER,
-                                       'previous_status': mm_vol2['status'],
-                                       'status': 'available',
-                                       'attach_status':
-                                           fields.VolumeAttachStatus.DETACHED},
+                                       'status': 'in-use'},
                            'volume_id': mm_vol2['id']},
                           {'updates': {'replication_status':
                                        fields.ReplicationStatus.FAILED_OVER,
-                                       'previous_status': gm_vol3['status'],
-                                       'status': 'in-use',
-                                       'attach_status':
-                                           fields.VolumeAttachStatus.ATTACHED},
+                                       'status': 'available'},
                            'volume_id': gm_vol3['id']}]
         failover_expect.extend(expected_list1)
         grp_expected = [{'group_id': group1.id,
@@ -8253,60 +8209,31 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         gmcv_vol['status'] = 'available'
         gmcv_vol['previous_status'] = ''
         failback_expect = [{'updates': {'replication_status':
-                                        fields.ReplicationStatus.ENABLED,
-                                        'previous_status': mm_vol['status'],
-                                        'status': 'available',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.DETACHED},
+                                        fields.ReplicationStatus.ENABLED},
                             'volume_id': mm_vol['id']},
                            {'updates': {'replication_status':
-                                        fields.ReplicationStatus.ENABLED,
-                                        'previous_status': gm_vol['status'],
-                                        'status': 'in-use',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.ATTACHED},
+                                        fields.ReplicationStatus.ENABLED},
                             'volume_id': gm_vol['id']},
                            {'updates': {'replication_status':
-                                        fields.ReplicationStatus.ENABLED,
-                                        'previous_status': gm_vol1['status'],
-                                        'status': 'in-use',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.ATTACHED},
+                                        fields.ReplicationStatus.ENABLED},
                             'volume_id': gm_vol1['id']},
                            {'updates': {'replication_status':
-                                        fields.ReplicationStatus.ENABLED,
-                                        'previous_status': gm_vol2['status'],
-                                        'status': 'in-use',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.ATTACHED},
+                                        fields.ReplicationStatus.ENABLED},
                             'volume_id': gm_vol2['id']},
                            {'updates': {'replication_status':
-                                        fields.ReplicationStatus.ENABLED,
-                                        'previous_status': gmcv_vol['status'],
-                                        'status': 'available',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.DETACHED},
+                                        fields.ReplicationStatus.ENABLED},
                             'volume_id': gmcv_vol['id']},
                            {'updates': {'replication_status':
                                         fields.ReplicationStatus.ENABLED,
-                                        'previous_status': 'available',
-                                        'status': 'available',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.DETACHED},
+                                        'status': 'available'},
                             'volume_id': mm_vol1['id']},
                            {'updates': {'replication_status':
                                         fields.ReplicationStatus.ENABLED,
-                                        'previous_status': 'in-use',
-                                        'status': 'available',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.DETACHED},
+                                        'status': 'in-use'},
                             'volume_id': mm_vol2['id']},
                            {'updates': {'replication_status':
                                         fields.ReplicationStatus.ENABLED,
-                                        'previous_status': 'available',
-                                        'status': 'in-use',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.ATTACHED},
+                                        'status': 'available'},
                             'volume_id': gm_vol3['id']}]
         grp_expected = [{'group_id': group1.id,
                          'updates':
@@ -8371,11 +8298,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         rep_data1 = json.dumps({'previous_status': gmcv_vol['status']})
 
         failover_expect = [{'updates': {'replication_status':
-                                        fields.ReplicationStatus.FAILED_OVER,
-                                        'previous_status': gm_vol['status'],
-                                        'status': 'available',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.DETACHED},
+                                        fields.ReplicationStatus.FAILED_OVER},
                             'volume_id': gm_vol['id']},
                            {'updates': {'status': 'error',
                                         'replication_driver_data': rep_data0},
@@ -8407,11 +8330,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             {'previous_status': 'error'})
         gm_vol['status'] = 'in-use'
         gm_vol['previous_status'] = 'in-use'
-        failback_expect = [{'updates': {'replication_status': 'enabled',
-                                        'previous_status': gm_vol['status'],
-                                        'status': 'in-use',
-                                        'attach_status':
-                                        fields.VolumeAttachStatus.ATTACHED},
+        failback_expect = [{'updates': {'replication_status':
+                                        fields.ReplicationStatus.ENABLED},
                             'volume_id': gm_vol['id']},
                            {'updates': {'status': 'error',
                                         'replication_driver_data': ''},
@@ -8969,18 +8889,21 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         mm_vol1, model_update = self._create_test_volume(self.mm_type)
         self.driver.update_group(self.ctxt, group, [mm_vol1], [])
         rccg_name = self.driver._get_rccg_name(group)
-        rccg = self.driver._helpers.get_rccg(rccg_name)
         self.sim._rccg_state_transition('wait',
                                         self.sim._rcconsistgrp_list[rccg_name])
 
-        rccg['primary'] = 'aux'
-        model_update = self.driver._rep_grp_failover(self.ctxt, rccg, group)
-        self.assertIsNone(model_update)
+        self.sim._rcconsistgrp_list[rccg_name]['primary'] = 'aux'
+        model_update = self.driver._rep_grp_failover(self.ctxt, group)
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+            model_update)
         self.assertFalse(switchrccg.called)
 
-        rccg['primary'] = 'master'
-        model_update = self.driver._rep_grp_failback(self.ctxt, rccg, group)
-        self.assertIsNone(model_update)
+        self.sim._rcconsistgrp_list[rccg_name]['primary'] = 'master'
+        model_update = self.driver._rep_grp_failback(self.ctxt, group)
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.ENABLED},
+            model_update)
         self.assertFalse(switchrccg.called)
 
         self.driver.delete_group(self.ctxt, group, [])
@@ -9010,22 +8933,13 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                         self.sim._rcconsistgrp_list[rccg_name])
         expected_list = [{'id': vol1['id'],
                           'replication_status':
-                              fields.ReplicationStatus.FAILED_OVER,
-                          'previous_status': vol1['status'],
-                          'status': 'available',
-                          'attach_status': fields.VolumeAttachStatus.DETACHED},
+                              fields.ReplicationStatus.FAILED_OVER},
                          {'id': vol2['id'],
                           'replication_status':
-                              fields.ReplicationStatus.FAILED_OVER,
-                          'previous_status': vol2['status'],
-                          'status': 'available',
-                          'attach_status': fields.VolumeAttachStatus.DETACHED},
+                              fields.ReplicationStatus.FAILED_OVER},
                          {'id': vol3['id'],
                           'replication_status':
-                              fields.ReplicationStatus.FAILED_OVER,
-                          'previous_status': vol3['status'],
-                          'status': 'in-use',
-                          'attach_status': fields.VolumeAttachStatus.ATTACHED}]
+                              fields.ReplicationStatus.FAILED_OVER}]
 
         model_update, volumes_model_update = self.driver.failover_replication(
             self.ctxt, group, vols, self.rep_target['backend_id'])
@@ -9042,8 +8956,10 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         group.replication_status = fields.ReplicationStatus.FAILED_OVER
         model_update, volumes_model_update = self.driver.failover_replication(
             self.ctxt, group, vols, None)
-        self.assertIsNone(model_update)
-        self.assertIsNone(volumes_model_update)
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+            model_update)
+        self.assertEqual(expected_list, volumes_model_update)
         self.assertIsNone(self.driver._active_backend_id)
         self.assertEqual(self.driver._master_backend_helpers,
                          self.driver._helpers)
@@ -9105,25 +9021,13 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                         self.sim._rcconsistgrp_list[rccg_name])
         failover_expect = [{'id': vol1['id'],
                             'replication_status':
-                                fields.ReplicationStatus.FAILED_OVER,
-                            'previous_status': vol1['status'],
-                            'status': 'available',
-                            'attach_status':
-                                fields.VolumeAttachStatus.DETACHED},
+                                fields.ReplicationStatus.FAILED_OVER},
                            {'id': vol2['id'],
                             'replication_status':
-                                fields.ReplicationStatus.FAILED_OVER,
-                            'previous_status': vol2['status'],
-                            'status': 'available',
-                            'attach_status':
-                                fields.VolumeAttachStatus.DETACHED},
+                                fields.ReplicationStatus.FAILED_OVER},
                            {'id': vol3['id'],
                             'replication_status':
-                                fields.ReplicationStatus.FAILED_OVER,
-                            'previous_status': vol3['status'],
-                            'status': 'in-use',
-                            'attach_status':
-                                fields.VolumeAttachStatus.ATTACHED}]
+                                fields.ReplicationStatus.FAILED_OVER}]
 
         model_update, volumes_model_update = self.driver.failover_replication(
             self.ctxt, group, vols, self.rep_target['backend_id'])
@@ -9140,8 +9044,10 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         group.replication_status = fields.ReplicationStatus.FAILED_OVER
         model_update, volumes_model_update = self.driver.failover_replication(
             self.ctxt, group, vols, None)
-        self.assertIsNone(model_update)
-        self.assertIsNone(volumes_model_update)
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+            model_update)
+        self.assertEqual(failover_expect, volumes_model_update)
         self.assertIsNone(self.driver._active_backend_id)
         self.assertEqual(self.driver._master_backend_helpers,
                          self.driver._helpers)
@@ -9158,25 +9064,13 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         vol3['previous_status'] = 'in-use'
         failback_expect = [{'id': vol1['id'],
                             'replication_status':
-                                fields.ReplicationStatus.ENABLED,
-                            'previous_status': vol1['status'],
-                            'status': 'available',
-                            'attach_status':
-                                fields.VolumeAttachStatus.DETACHED},
+                                fields.ReplicationStatus.ENABLED},
                            {'id': vol2['id'],
                             'replication_status':
-                                fields.ReplicationStatus.ENABLED,
-                            'previous_status': vol2['status'],
-                            'status': 'in-use',
-                            'attach_status':
-                                fields.VolumeAttachStatus.ATTACHED},
+                                fields.ReplicationStatus.ENABLED},
                            {'id': vol3['id'],
                             'replication_status':
-                                fields.ReplicationStatus.ENABLED,
-                            'previous_status': vol3['status'],
-                            'status': 'in-use',
-                            'attach_status':
-                                fields.VolumeAttachStatus.ATTACHED}]
+                                fields.ReplicationStatus.ENABLED}]
         self.driver._active_backend_id = self.rep_target['backend_id']
 
         model_update, volumes_model_update = self.driver.failover_replication(
@@ -9191,8 +9085,10 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         group.replication_status = fields.ReplicationStatus.ENABLED
         model_update, volumes_model_update = self.driver.failover_replication(
             self.ctxt, group, vols, 'default')
-        self.assertIsNone(model_update)
-        self.assertIsNone(volumes_model_update)
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.ENABLED},
+            model_update)
+        self.assertEqual(failback_expect, volumes_model_update)
         rccg = self.driver._helpers.get_rccg(rccg_name)
         self.assertEqual('master', rccg['primary'])
 
@@ -9236,3 +9132,77 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         self.driver._sync_with_aux_grp(self.ctxt, rccg_name)
         startrccg.assert_called_with(rccg_name, 'aux')
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_host_from_connector')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'check_vol_mapped_to_host')
+    def test_get_map_info_from_connector(self, is_mapped, get_host_from_conn):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        is_mapped.side_effect = [False, False, False, False, False]
+        get_host_from_conn.side_effect = [None, 'fake-host',
+                                          'master-host',
+                                          exception.VolumeBackendAPIException,
+                                          'master-host', None, None,
+                                          'aux-host']
+        non_rep_vol, model_update = self._create_test_volume(
+            self.non_replica_type)
+        non_rep_vol['status'] = 'in-use'
+        mm_vol, model_update = self._create_test_volume(self.mm_type)
+        mm_vol['status'] = 'in-use'
+        connector = {}
+
+        (info, host_name, vol_name, backend_helper,
+         node_state) = self.driver._get_map_info_from_connector(
+            mm_vol, connector, iscsi=False)
+        self.assertEqual(info, {})
+        self.assertIsNone(host_name)
+        self.assertEqual(vol_name, mm_vol.name)
+        self.assertEqual(self.driver._master_backend_helpers,
+                         backend_helper)
+        self.assertEqual(self.driver._master_state,
+                         node_state)
+
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver._get_map_info_from_connector,
+                          non_rep_vol, connector, False)
+
+        (info, host_name, vol_name, backend_helper,
+         node_state) = self.driver._get_map_info_from_connector(
+            non_rep_vol, connector, iscsi=False)
+        self.assertEqual(info['driver_volume_type'], 'fibre_channel')
+        self.assertEqual(host_name, 'fake-host')
+        self.assertEqual(vol_name, non_rep_vol.name)
+        self.assertEqual(self.driver._master_backend_helpers,
+                         backend_helper)
+        self.assertEqual(self.driver._master_state,
+                         node_state)
+
+        (info, host_name, vol_name, backend_helper,
+         node_state) = self.driver._get_map_info_from_connector(
+            mm_vol, connector, iscsi=True)
+        self.assertEqual(info['driver_volume_type'], 'iscsi')
+        self.assertIsNone(host_name)
+        self.assertIsNone(vol_name)
+        self.assertIsNone(backend_helper)
+        self.assertIsNone(node_state)
+
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver._get_map_info_from_connector,
+                          mm_vol, connector, False)
+
+        (info, host_name, vol_name, backend_helper,
+         node_state) = self.driver._get_map_info_from_connector(
+            mm_vol, connector, iscsi=False)
+        self.assertEqual(info['driver_volume_type'], 'fibre_channel')
+        self.assertEqual(host_name, 'aux-host')
+        self.assertEqual(vol_name,
+                         storwize_const.REPLICA_AUX_VOL_PREFIX + mm_vol.name)
+        self.assertEqual(self.driver._aux_backend_helpers, backend_helper)
+        self.assertEqual(self.driver._aux_state, node_state)
