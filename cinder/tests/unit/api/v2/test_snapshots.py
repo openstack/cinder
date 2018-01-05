@@ -111,6 +111,25 @@ class SnapshotApiTest(test.TestCase):
         self.assertIn('updated_at', resp_dict['snapshot'])
         db.volume_destroy(self.ctx, volume.id)
 
+    def test_snapshot_create_with_null_validate(self):
+
+        volume = utils.create_volume(self.ctx)
+        snapshot = {
+            "volume_id": volume.id,
+            "force": False,
+            "name": None,
+            "description": None
+        }
+
+        body = dict(snapshot=snapshot)
+        req = fakes.HTTPRequest.blank('/v2/snapshots')
+        resp_dict = self.controller.create(req, body=body)
+
+        self.assertIn('snapshot', resp_dict)
+        self.assertIsNone(resp_dict['snapshot']['name'])
+        self.assertIsNone(resp_dict['snapshot']['description'])
+        db.volume_destroy(self.ctx, volume.id)
+
     @ddt.data(True, 'y', 'true', 'yes', '1', 'on')
     def test_snapshot_create_force(self, force_param):
         volume = utils.create_volume(self.ctx, status='in-use')
@@ -237,6 +256,43 @@ class SnapshotApiTest(test.TestCase):
         }
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
+
+    @mock.patch.object(volume.api.API, "update_snapshot",
+                       side_effect=v2_fakes.fake_snapshot_update)
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    def test_snapshot_update_with_null_validate(
+            self, snapshot_get_by_id, volume_get,
+            snapshot_metadata_get, update_snapshot):
+        snapshot = {
+            'id': UUID,
+            'volume_id': fake.VOLUME_ID,
+            'status': fields.SnapshotStatus.AVAILABLE,
+            'created_at': "2014-01-01 00:00:00",
+            'volume_size': 100,
+            'name': 'Default name',
+            'description': 'Default description',
+            'expected_attrs': ['metadata'],
+        }
+        ctx = context.RequestContext(fake.PROJECT_ID, fake.USER_ID, True)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_get_by_id.return_value = snapshot_obj
+        volume_get.return_value = fake_volume_obj
+
+        updates = {
+            "name": None,
+            "description": None,
+        }
+        body = {"snapshot": updates}
+        req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
+        res_dict = self.controller.update(req, UUID, body=body)
+
+        self.assertEqual(fields.SnapshotStatus.AVAILABLE,
+                         res_dict['snapshot']['status'])
+        self.assertIsNone(res_dict['snapshot']['name'])
+        self.assertIsNone(res_dict['snapshot']['description'])
 
     def test_snapshot_update_missing_body(self):
         body = {}

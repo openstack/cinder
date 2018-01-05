@@ -164,7 +164,7 @@ extra_specs_with_null['patternProperties'][
 
 
 name_allow_zero_min_length = {
-    'type': 'string', 'minLength': 0, 'maxLength': 255
+    'type': ['string', 'null'], 'minLength': 0, 'maxLength': 255
 }
 
 

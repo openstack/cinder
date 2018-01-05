@@ -245,3 +245,20 @@ class BackupsControllerAPITestCase(test.TestCase):
             self.assertNotIn('metadata', backup_get)
         else:
             self.assertIn('metadata', backup_get)
+
+    def test_backup_update_with_null_validate(self):
+        backup = test_utils.create_backup(
+            self.ctxt,
+            status=fields.BackupStatus.AVAILABLE)
+        req = self._fake_update_request(fake.BACKUP_ID)
+
+        updates = {
+            "name": None,
+        }
+        body = {"backup": updates}
+        self.controller.update(req,
+                               backup.id,
+                               body=body)
+
+        backup.refresh()
+        self.assertEqual(fields.BackupStatus.AVAILABLE, backup.status)

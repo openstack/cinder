@@ -1006,6 +1006,70 @@ class BackupsAPITestCase(test.TestCase):
         volume.destroy()
 
     @mock.patch('cinder.db.service_get_all')
+    def test_create_backup_with_null_validate(self, _mock_service_get_all):
+        _mock_service_get_all.return_value = [
+            {'availability_zone': 'fake_az', 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
+
+        volume = utils.create_volume(self.context, size=5)
+
+        body = {"backup": {"name": None,
+                           "description": None,
+                           "volume_id": volume.id,
+                           "container": "Nonebackups",
+                           "snapshot_id": None,
+                           }
+                }
+        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_context))
+
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertIn('id', res_dict['backup'])
+        _mock_service_get_all.assert_called_once_with(mock.ANY,
+                                                      disabled=False,
+                                                      topic='cinder-backup')
+        volume.destroy()
+
+    @mock.patch('cinder.db.service_get_all')
+    def test_create_backup_with_metadata_null_validate(
+            self, _mock_service_get_all):
+        _mock_service_get_all.return_value = [
+            {'availability_zone': 'fake_az', 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
+
+        volume = utils.create_volume(self.context, size=1)
+
+        body = {"backup": {"volume_id": volume.id,
+                           "container": "Nonebackups",
+                           "metadata": None,
+                           }
+                }
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers = mv.get_mv_header(mv.BACKUP_METADATA)
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_context))
+
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertIn('id', res_dict['backup'])
+        _mock_service_get_all.assert_called_once_with(mock.ANY,
+                                                      disabled=False,
+                                                      topic='cinder-backup')
+        volume.destroy()
+
+    @mock.patch('cinder.db.service_get_all')
     def test_is_backup_service_enabled(self, _mock_service_get_all):
 
         testhost = 'test_host'
@@ -1466,6 +1530,29 @@ class BackupsAPITestCase(test.TestCase):
                                      res_dict['restore']['volume_id'])
         # Ensure that the original volume name wasn't overridden
         self.assertEqual(orig_vol_name, restored_vol['display_name'])
+
+    @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
+    def test_restore_backup_with_null_validate(self, _mock_get_backup_host):
+        _mock_get_backup_host.return_value = 'testhost'
+        backup = utils.create_backup(self.context,
+                                     status=fields.BackupStatus.AVAILABLE,
+                                     size=1, host='testhost')
+        # need to create the volume referenced below first
+        volume = utils.create_volume(self.context, size=1)
+
+        body = {"restore": {"name": None,
+                            "volume_id": volume.id}}
+        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+                                  fake.PROJECT_ID, backup.id))
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_context))
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(backup.id, res_dict['restore']['backup_id'])
 
     @mock.patch('cinder.backup.api.API.restore')
     def test_restore_backup_with_InvalidInput(self,

@@ -35,7 +35,7 @@ create = {
                 'incremental': parameter_types.boolean,
                 'force': parameter_types.boolean,
                 'name': parameter_types.name_allow_zero_min_length,
-                'snapshot_id': parameter_types.uuid,
+                'snapshot_id': parameter_types.uuid_allow_null,
             },
             'required': ['volume_id'],
             'additionalProperties': False,
@@ -48,7 +48,7 @@ create = {
 
 create_backup_v343 = copy.deepcopy(create)
 create_backup_v343['properties']['backup']['properties'][
-    'metadata'] = parameter_types.extra_specs
+    'metadata'] = parameter_types.metadata_allows_null
 
 
 update = {
@@ -80,7 +80,7 @@ restore = {
             'type': ['object', 'null'],
             'properties': {
                 'name': parameter_types.name_allow_zero_min_length,
-                'volume_id': parameter_types.uuid
+                'volume_id': parameter_types.uuid_allow_null
             },
             'additionalProperties': False,
         },
