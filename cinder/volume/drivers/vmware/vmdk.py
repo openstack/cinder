@@ -250,7 +250,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     #         add storage profile ID to connection info
     #         support for revert-to-snapshot
     #         improve scalability of querying volumes in backend (bug 1600754)
-    VERSION = '3.0.0'
+    # 3.1.0 - support adapter type change using retype
+    VERSION = '3.1.0'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
@@ -1554,6 +1555,20 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                             {'backing': backing,
                                              'new_name': tmp_name,
                                              'old_name': volume['name']})
+
+        adapter_type = self._get_adapter_type(volume)
+        new_adapter_type = self._get_extra_spec_adapter_type(new_type['id'])
+        if new_adapter_type != adapter_type:
+            LOG.debug("Changing volume: %(name)s adapter type from "
+                      "%(adapter_type)s to %(new_adapter_type)s.",
+                      {'name': volume['name'],
+                       'adapter_type': adapter_type,
+                       'new_adapter_type': new_adapter_type})
+            disk_device = self.volumeops._get_disk_device(backing)
+            self.volumeops.detach_disk_from_backing(backing, disk_device)
+            self.volumeops.attach_disk_to_backing(
+                backing, disk_device.capacityInKB, new_disk_type,
+                new_adapter_type, None, disk_device.backing.fileName)
 
         # Update the backing's storage profile if needed.
         if need_profile_change:

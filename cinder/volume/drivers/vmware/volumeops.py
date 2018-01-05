@@ -1235,6 +1235,18 @@ class VMwareVolumeOps(object):
                   reconfig_task)
         self._session.wait_for_task(reconfig_task)
 
+    def _get_controller(self, backing, adapter_type):
+        devices = self._session.invoke_api(vim_util,
+                                           'get_object_property',
+                                           self._session.vim,
+                                           backing,
+                                           'config.hardware.device')
+
+        controller_type = ControllerType.get_controller_type(adapter_type)
+        for device in devices:
+            if device.__class__.__name__ == controller_type:
+                return device
+
     def attach_disk_to_backing(self, backing, size_in_kb, disk_type,
                                adapter_type, profile_id, vmdk_ds_file_path):
         """Attach an existing virtual disk to the backing VM.
@@ -1256,12 +1268,23 @@ class VMwareVolumeOps(object):
                    'adapter_type': adapter_type})
         cf = self._session.vim.client.factory
         reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
-        specs = self._create_specs_for_disk_add(
-            size_in_kb,
-            disk_type,
-            adapter_type,
-            profile_id,
-            vmdk_ds_file_path=vmdk_ds_file_path)
+
+        controller = self._get_controller(backing, adapter_type)
+        if controller:
+            disk_spec = self._create_virtual_disk_config_spec(
+                size_in_kb,
+                disk_type,
+                controller.key,
+                profile_id,
+                vmdk_ds_file_path)
+            specs = [disk_spec]
+        else:
+            specs = self._create_specs_for_disk_add(
+                size_in_kb,
+                disk_type,
+                adapter_type,
+                profile_id,
+                vmdk_ds_file_path=vmdk_ds_file_path)
         reconfig_spec.deviceChange = specs
         self._reconfigure_backing(backing, reconfig_spec)
         LOG.debug("Backing VM: %s reconfigured with new disk.", backing)

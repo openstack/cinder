@@ -1238,10 +1238,22 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_storage_profile')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
     @mock.patch.object(VMDK_DRIVER, '_select_datastore')
+    @mock.patch.object(
+        VMDK_DRIVER, '_get_adapter_type', return_value='lsiLogic')
+    @mock.patch.object(
+        VMDK_DRIVER, '_get_extra_spec_adapter_type', return_value='lsiLogic')
     def test_retype_with_diff_profile_and_ds_compliance(
-            self, select_datastore, ds_sel, get_extra_spec_storage_profile,
-            get_storage_profile, get_extra_spec_disk_type, get_disk_type,
-            vops, in_use):
+            self,
+            _get_extra_spec_adapter_type,
+            _get_adapter_type,
+            select_datastore,
+            ds_sel,
+            get_extra_spec_storage_profile,
+            get_storage_profile,
+            get_extra_spec_disk_type,
+            get_disk_type,
+            vops,
+            in_use):
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
 
@@ -1337,8 +1349,14 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_select_datastore')
     @mock.patch.object(VMDK_DRIVER, '_get_dc')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
+    @mock.patch.object(
+        VMDK_DRIVER, '_get_adapter_type', return_value='lsiLogic')
+    @mock.patch.object(
+        VMDK_DRIVER, '_get_extra_spec_adapter_type', return_value='lsiLogic')
     def test_retype_with_diff_extra_spec_and_vol_snapshot(
             self,
+            get_extra_spec_adapter_type,
+            get_adapter_type,
             get_volume_group_folder,
             get_dc,
             select_datastore,
@@ -1418,8 +1436,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
     @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
+    @mock.patch.object(VMDK_DRIVER, '_get_adapter_type')
+    @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_adapter_type')
     def _test_retype_with_diff_extra_spec_and_ds_compliance(
             self,
+            get_extra_spec_adapter_type,
+            get_adapter_type,
             delete_temp_backing,
             generate_uuid,
             get_volume_group_folder,
@@ -1475,6 +1497,17 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             new_backing = mock.sentinel.new_backing
             vops.clone_backing.return_value = new_backing
 
+        adapter_type = 'lsiLogic'
+        get_adapter_type.return_value = adapter_type
+        new_adapter_type = 'paraVirtual'
+        get_extra_spec_adapter_type.return_value = new_adapter_type
+
+        capacity = self.VOL_SIZE * units.Mi
+        filename = mock.sentinel.filename
+        disk_backing = mock.Mock(filename=filename)
+        disk_device = mock.Mock(capacityInKB=capacity, backing=disk_backing)
+        vops._get_disk_device.return_value = disk_device
+
         context = mock.sentinel.context
         volume = self._create_volume_dict(status='retyping')
         new_type = {'id': 'f04a65e0-d10c-4db7-b4a5-f933d57aa2b5'}
@@ -1510,6 +1543,11 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             vops.update_backing_disk_uuid.assert_called_once_with(
                 new_backing, volume['id'])
             delete_temp_backing.assert_called_once_with(backing)
+            vops.detach_disk_from_backing.assert_called_once_with(
+                new_backing, disk_device)
+            vops.attach_disk_to_backing.assert_called_once_with(
+                new_backing, disk_device.capacityInKB, new_disk_type,
+                new_adapter_type, None, disk_device.backing.fileName)
             vops.change_backing_profile.assert_called_once_with(new_backing,
                                                                 new_profile_id)
 
