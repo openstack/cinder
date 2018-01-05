@@ -20,6 +20,8 @@ from oslo_utils import strutils
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import quotas
+from cinder.api import validation
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
@@ -32,7 +34,7 @@ LOG = logging.getLogger(__name__)
 
 QUOTAS = quota.QUOTAS
 GROUP_QUOTAS = quota.GROUP_QUOTAS
-NON_QUOTA_KEYS = ['tenant_id', 'id']
+NON_QUOTA_KEYS = quota.NON_QUOTA_KEYS
 
 
 class QuotaSetsController(wsgi.Controller):
@@ -190,6 +192,7 @@ class QuotaSetsController(wsgi.Controller):
         quotas = self._get_quotas(context, target_project_id, usage)
         return self._format_quota_set(target_project_id, quotas)
 
+    @validation.schema(quotas.update_quota)
     def update(self, req, id, body):
         """Update Quota for a particular tenant
 
@@ -208,22 +211,6 @@ class QuotaSetsController(wsgi.Controller):
                           target={'project_id': target_project_id})
         self.validate_string_length(id, 'quota_set_name',
                                     min_length=1, max_length=255)
-
-        self.assert_valid_body(body, 'quota_set')
-
-        bad_keys = []
-
-        # NOTE(ankit): Pass #1 - In this loop for body['quota_set'].items(),
-        # we figure out if we have any bad keys.
-        for key, value in body['quota_set'].items():
-            if (key not in QUOTAS and key not in GROUP_QUOTAS and key not in
-                    NON_QUOTA_KEYS):
-                bad_keys.append(key)
-                continue
-
-        if len(bad_keys) > 0:
-            msg = _("Bad key(s) in quota set: %s") % ",".join(bad_keys)
-            raise webob.exc.HTTPBadRequest(explanation=msg)
 
         # Saving off this value since we need to use it multiple times
         use_nested_quotas = QUOTAS.using_nested_quotas()
@@ -244,7 +231,7 @@ class QuotaSetsController(wsgi.Controller):
                                                  target_project.id,
                                                  parent_id)
 
-        # NOTE(ankit): Pass #2 - In this loop for body['quota_set'].keys(),
+        # NOTE(ankit): Pass #1 - In this loop for body['quota_set'].keys(),
         # we validate the quota limits to ensure that we can bail out if
         # any of the items in the set is bad. Meanwhile we validate value
         # to ensure that the value can't be lower than number of existing
@@ -260,25 +247,22 @@ class QuotaSetsController(wsgi.Controller):
         for key in body['quota_set'].keys():
             if key in NON_QUOTA_KEYS:
                 continue
-
-            value = utils.validate_integer(
-                body['quota_set'][key], key, min_value=-1,
-                max_value=db.MAX_INT)
-
-            self._validate_existing_resource(key, value, quota_values)
+            self._validate_existing_resource(key, body['quota_set'][key],
+                                             quota_values)
 
             if use_nested_quotas:
                 try:
                     reservations += self._update_nested_quota_allocated(
-                        context, target_project, quota_values, key, value)
+                        context, target_project, quota_values, key,
+                        body['quota_set'][key])
                 except exception.OverQuota as e:
                     if reservations:
                         db.reservation_rollback(context, reservations)
                     raise webob.exc.HTTPBadRequest(explanation=e.msg)
 
-            valid_quotas[key] = value
+            valid_quotas[key] = body['quota_set'][key]
 
-        # NOTE(ankit): Pass #3 - At this point we know that all the keys and
+        # NOTE(ankit): Pass #2 - At this point we know that all the keys and
         # values are valid and we can iterate and update them all in one shot
         # without having to worry about rolling back etc as we have done
         # the validation up front in the 2 loops above.

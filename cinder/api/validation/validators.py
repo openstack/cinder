@@ -28,10 +28,17 @@ from oslo_utils import uuidutils
 import six
 import webob.exc
 
+from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields as c_fields
+from cinder import quota
 from cinder import utils
+
+
+QUOTAS = quota.QUOTAS
+GROUP_QUOTAS = quota.GROUP_QUOTAS
+NON_QUOTA_KEYS = quota.NON_QUOTA_KEYS
 
 
 def _soft_validate_additional_properties(
@@ -207,6 +214,28 @@ def _validate_disabled_reason(param_value):
     _validate_string_length(param_value, 'disabled_reason',
                             mandatory=False, min_length=1, max_length=255,
                             remove_whitespaces=True)
+    return True
+
+
+@jsonschema.FormatChecker.cls_checks('quota_set')
+def _validate_quota_set(quota_set):
+    bad_keys = []
+    for key, value in quota_set.items():
+        if (key not in QUOTAS and key not in GROUP_QUOTAS and key not in
+                NON_QUOTA_KEYS):
+            bad_keys.append(key)
+            continue
+
+        if key in NON_QUOTA_KEYS:
+            continue
+
+        utils.validate_integer(value, key, min_value=-1,
+                               max_value=db.MAX_INT)
+
+    if len(bad_keys) > 0:
+        msg = _("Bad key(s) in quota set: %s") % ", ".join(bad_keys)
+        raise exception.InvalidInput(reason=msg)
+
     return True
 
 
