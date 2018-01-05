@@ -589,6 +589,17 @@ class MStorageISMCLI(object):
         LOG.debug('snap/state:%s.', query_status)
         return query_status
 
+    def get_bvname(self, svname):
+        cmd = ('iSMsc_query -sv %s -svflg ld -summary | '
+               'while builtin read line;do '
+               'if [[ "$line" =~ "LD Name" ]]; '
+               'then builtin echo "$line";fi;done'
+               % svname[3:])
+        out, err, status = self._execute(cmd)
+
+        query_status = out[15:39].strip()
+        return query_status
+
     def set_io_limit(self, ldname, specs, force_delete=True):
         if specs['upperlimit'] is not None:
             upper = int(specs['upperlimit'], 10)
