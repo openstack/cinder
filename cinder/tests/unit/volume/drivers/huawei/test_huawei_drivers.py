@@ -2633,6 +2633,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                           self.driver.delete_volume, self.replica_volume)
 
     @ddt.data(FAKE_POOLS_UNSUPPORT_REPORT, FAKE_POOLS_SUPPORT_REPORT)
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     def test_migrate_volume_success_no_data(self, pool_data):
         self.driver.support_func = pool_data
         task_info = {"data": [{"ENDTIME": "1436816174",
@@ -4141,6 +4143,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           common_driver.wait_second_access, pair_id, access_rw)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     def test_wait_replica_ready(self):
         normal_status = {
             'RUNNINGSTATUS': constants.REPLICA_RUNNING_STATUS_NORMAL,
