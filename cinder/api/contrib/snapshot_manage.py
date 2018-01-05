@@ -14,14 +14,14 @@
 
 from oslo_log import log as logging
 from six.moves import http_client
-from webob import exc
 
 from cinder.api.contrib import resource_common_manage
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import snapshot_manage
+from cinder.api import validation
 from cinder.api.views import manageable_snapshots as list_manageable_view
 from cinder.api.views import snapshots as snapshot_views
-from cinder.i18n import _
 from cinder.policies import manageable_snapshots as policy
 from cinder import volume as cinder_volume
 
@@ -39,6 +39,7 @@ class SnapshotManageController(wsgi.Controller):
         self._list_manageable_view = list_manageable_view.ViewBuilder()
 
     @wsgi.response(http_client.ACCEPTED)
+    @validation.schema(snapshot_manage.create)
     def create(self, req, body):
         """Instruct Cinder to manage a storage snapshot object.
 
@@ -85,20 +86,7 @@ class SnapshotManageController(wsgi.Controller):
         context = req.environ['cinder.context']
         context.authorize(policy.MANAGE_POLICY)
 
-        self.assert_valid_body(body, 'snapshot')
-
         snapshot = body['snapshot']
-
-        # Check that the required keys are present, return an error if they
-        # are not.
-        required_keys = ('ref', 'volume_id')
-        missing_keys = set(required_keys) - set(snapshot.keys())
-
-        if missing_keys:
-            msg = _("The following elements are required: "
-                    "%s") % ', '.join(missing_keys)
-            raise exc.HTTPBadRequest(explanation=msg)
-
         # Check whether volume exists
         volume_id = snapshot['volume_id']
         # Not found exception will be handled at the wsgi level

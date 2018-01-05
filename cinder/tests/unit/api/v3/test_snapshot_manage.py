@@ -80,7 +80,8 @@ class SnapshotManageTest(test.TestCase):
             self._admin_ctxt,
             binary=constants.VOLUME_BINARY)
 
-        body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
+        body = {'snapshot': {'volume_id': fake.VOLUME_ID,
+                             'ref': {'fake_ref': "fake_val"}}}
         res = self._get_resp_post(body)
         self.assertEqual(http_client.ACCEPTED, res.status_int, res)
 

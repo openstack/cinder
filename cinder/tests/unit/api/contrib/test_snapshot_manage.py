@@ -122,7 +122,10 @@ class SnapshotManageTest(test.TestCase):
         mock_db.return_value = fake_service.fake_service_obj(
             self._admin_ctxt,
             binary=constants.VOLUME_BINARY)
-        body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
+
+        body = {'snapshot': {'volume_id': fake.VOLUME_ID,
+                             'ref': {'fake_key': 'fake_ref'}}}
+
         res = self._get_resp_post(body)
         self.assertEqual(http_client.ACCEPTED, res.status_int, res)
 
@@ -142,7 +145,7 @@ class SnapshotManageTest(test.TestCase):
         # correct arguments.
         self.assertEqual(1, mock_rpcapi.call_count)
         args = mock_rpcapi.call_args[0]
-        self.assertEqual('fake_ref', args[2])
+        self.assertEqual({u'fake_key': u'fake_ref'}, args[2])
 
     @mock.patch('cinder.objects.service.Service.is_up',
                 return_value=True,
@@ -155,7 +158,8 @@ class SnapshotManageTest(test.TestCase):
         """Test manage snapshot failure due to disabled service."""
         mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt,
                                                              disabled=True)
-        body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
+        body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': {
+            'fake_key': 'fake_ref'}}}
         res = self._get_resp_post(body)
         self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
         self.assertEqual(exception.ServiceUnavailable.message,
@@ -173,7 +177,8 @@ class SnapshotManageTest(test.TestCase):
                                      mock_rpcapi, mock_is_up):
         """Test manage snapshot failure due to down service."""
         mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt)
-        body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
+        body = {'snapshot': {'volume_id': fake.VOLUME_ID,
+                             'ref': {'fake_key': 'fake_ref'}}}
         res = self._get_resp_post(body)
         self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
         self.assertEqual(exception.ServiceUnavailable.message,
@@ -202,10 +207,9 @@ class SnapshotManageTest(test.TestCase):
 
     def test_manage_snapshot_error_volume_id(self):
         """Test correct failure when volume can't be found."""
-        body = {'snapshot': {'volume_id': 'error_volume_id',
-                             'ref': 'fake_ref'}}
+        body = {'snapshot': {'volume_id': 'error_volume_id', 'ref': {}}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
 
     def _get_resp_get(self, host, detailed, paging, admin=True):
         """Helper to execute a GET os-snapshot-manage API call."""
