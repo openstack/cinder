@@ -311,6 +311,22 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                           self.context, request_spec,
                           filter_properties=filter_properties)
 
+    def test_retry_revert_consumed_capacity(self):
+        sched = fakes.FakeFilterScheduler()
+        request_spec = {'volume_type': {'name': 'LVM_iSCSI'},
+                        'volume_properties': {'project_id': 1,
+                                              'size': 2}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
+        retry = dict(num_attempts=1, backends=['fake_backend_name'])
+        filter_properties = dict(retry=retry)
+
+        with mock.patch.object(
+                sched.host_manager,
+                'revert_volume_consumed_capacity') as mock_revert:
+            sched._schedule(self.context, request_spec,
+                            filter_properties=filter_properties)
+            mock_revert.assert_called_once_with('fake_backend_name', 2)
+
     def test_add_retry_backend(self):
         retry = dict(num_attempts=1, backends=[])
         filter_properties = dict(retry=retry)
