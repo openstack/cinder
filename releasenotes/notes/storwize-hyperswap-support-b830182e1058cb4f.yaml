@@ -1,0 +1,5 @@
+---
+features:
+  - Added hyperswap volume and group support in Storwize cinder driver.
+    Storwize/svc versions prior to 7.6 do not support this feature.
+
