@@ -170,7 +170,8 @@ class AttachmentsController(wsgi.Controller):
                                                   volume_ref,
                                                   instance_uuid,
                                                   connector=connector))
-        except exception.NotAuthorized:
+        except (exception.NotAuthorized,
+                exception.InvalidVolume):
             raise
         except exception.CinderException as ex:
             err_msg = _(
