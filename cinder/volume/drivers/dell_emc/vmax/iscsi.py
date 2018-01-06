@@ -17,6 +17,7 @@ ISCSI Drivers for Dell EMC VMAX arrays based on REST.
 
 """
 from oslo_log import log as logging
+from oslo_utils import strutils
 import six
 
 from cinder import exception
@@ -260,12 +261,11 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
             volume, ip_and_iqn, is_multipath, host_lun_id)
 
         LOG.info("iSCSI properties are: %(props)s",
-                 {'props': iscsi_properties})
+                 {'props': strutils.mask_dict_password(iscsi_properties)})
         return {'driver_volume_type': 'iscsi',
                 'data': iscsi_properties}
 
-    @staticmethod
-    def vmax_get_iscsi_properties(volume, ip_and_iqn,
+    def vmax_get_iscsi_properties(self, volume, ip_and_iqn,
                                   is_multipath, host_lun_id):
         """Gets iscsi configuration.
 
@@ -305,15 +305,13 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
                  {'properties': properties})
         LOG.info("ISCSI volume is: %(volume)s.", {'volume': volume})
 
-        if hasattr(volume, 'provider_auth'):
-            auth = volume.provider_auth
-
-            if auth is not None:
-                (auth_method, auth_username, auth_secret) = auth.split()
-
-                properties['auth_method'] = auth_method
-                properties['auth_username'] = auth_username
-                properties['auth_password'] = auth_secret
+        if self.configuration.safe_get('use_chap_auth'):
+            LOG.info("Chap authentication enabled.")
+            properties['auth_method'] = 'CHAP'
+            properties['auth_username'] = self.configuration.safe_get(
+                'chap_username')
+            properties['auth_password'] = self.configuration.safe_get(
+                'chap_password')
 
         return properties
 

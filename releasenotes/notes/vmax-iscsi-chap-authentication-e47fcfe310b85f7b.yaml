@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add chap authentication support for the vmax backend.

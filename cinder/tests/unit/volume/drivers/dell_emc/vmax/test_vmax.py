@@ -876,6 +876,12 @@ class FakeConfiguration(object):
                 self.vmax_port_groups = value
             elif key == 'vmax_array':
                 self.vmax_array = value
+            elif key == 'use_chap_auth':
+                self.use_chap_auth = value
+            elif key == 'chap_username':
+                self.chap_username = value
+            elif key == 'chap_password':
+                self.chap_password = value
 
     def safe_get(self, key):
         try:
@@ -4978,7 +4984,14 @@ class VMAXISCSITest(test.TestCase):
 
     def test_vmax_get_iscsi_properties_auth(self):
         vol = deepcopy(self.data.test_volume)
-        vol.provider_auth = "auth_method auth_username auth_secret"
+        backup_conf = self.common.configuration
+        configuration = FakeConfiguration(
+            None, 'ISCSITests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_rest_port=8443, use_chap_auth=True,
+            chap_username='auth_username', chap_password='auth_secret',
+            vmax_port_groups=[self.data.port_group_name_i])
+        self.driver.configuration = configuration
         ip_and_iqn = [{'ip': self.data.ip, 'iqn': self.data.initiator},
                       {'ip': self.data.ip, 'iqn': self.data.iqn}]
         host_lun_id = self.data.iscsi_device_info['hostlunid']
@@ -4993,12 +5006,13 @@ class VMAXISCSITest(test.TestCase):
             'target_portal': ip_and_iqn[0]['ip'] + ":3260",
             'target_lun': host_lun_id,
             'volume_id': self.data.test_volume.id,
-            'auth_method': 'auth_method',
+            'auth_method': 'CHAP',
             'auth_username': 'auth_username',
             'auth_password': 'auth_secret'}
         iscsi_properties = self.driver.vmax_get_iscsi_properties(
             vol, ip_and_iqn, True, host_lun_id)
         self.assertEqual(ref_properties, iscsi_properties)
+        self.driver.configuration = backup_conf
 
     def test_terminate_connection(self):
         with mock.patch.object(self.common, 'terminate_connection'):
