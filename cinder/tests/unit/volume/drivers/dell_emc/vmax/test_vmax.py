@@ -88,6 +88,7 @@ class VMAXCommonData(object):
     group_snapshot_name = 'Grp_snapshot'
     target_group_name = 'Grp_target'
     storagegroup_name_with_id = 'GrpId_group_name'
+    rdf_managed_async_grp = "OS-%s-async-rdf-sg" % rdf_group_name
 
     # connector info
     wwpn1 = "123456789012345"
@@ -244,6 +245,7 @@ class VMAXCommonData(object):
     rep_extra_specs['interval'] = 0
     rep_extra_specs['retries'] = 0
     rep_extra_specs['srp'] = srp2
+    rep_extra_specs['rep_mode'] = 'Synchronous'
 
     test_volume_type_1 = volume_type.VolumeType(
         id='2b06255d-f5f0-4520-a953-b029196add6a', name='abc',
@@ -1259,11 +1261,8 @@ class VMAXUtilsTest(test.TestCase):
         rep_config1 = self.utils.get_replication_config(rep_device_list1)
         self.assertEqual(self.data.remote_array, rep_config1['array'])
         # Success, allow_extend true
-        rep_device_list2 = [{'target_device_id': self.data.remote_array,
-                             'remote_pool': self.data.srp,
-                             'rdf_group_label': self.data.rdf_group_name,
-                             'remote_port_group': self.data.port_group_name_f,
-                             'allow_extend': 'true'}]
+        rep_device_list2 = rep_device_list1
+        rep_device_list2[0]['allow_extend'] = 'true'
         rep_config2 = self.utils.get_replication_config(rep_device_list2)
         self.assertTrue(rep_config2['allow_extend'])
         # No rep_device_list
@@ -1275,6 +1274,11 @@ class VMAXUtilsTest(test.TestCase):
                              'remote_pool': self.data.srp}]
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.utils.get_replication_config, rep_device_list4)
+        # Success, mode is async
+        rep_device_list5 = rep_device_list2
+        rep_device_list5[0]['mode'] = 'async'
+        rep_config5 = self.utils.get_replication_config(rep_device_list5)
+        self.assertEqual(utils.REP_ASYNC, rep_config5['mode'])
 
     def test_is_volume_failed_over(self):
         vol = deepcopy(self.data.test_volume)
@@ -1391,6 +1395,17 @@ class VMAXUtilsTest(test.TestCase):
             self.assertRaises(exception.InvalidInput,
                               self.utils.check_rep_status_enabled,
                               self.data.test_group)
+
+    def test_get_replication_prefix(self):
+        async_prefix = self.utils.get_replication_prefix(utils.REP_ASYNC)
+        self.assertEqual('-RA', async_prefix)
+        sync_prefix = self.utils.get_replication_prefix(utils.REP_SYNC)
+        self.assertEqual('-RE', sync_prefix)
+
+    def test_get_async_rdf_managed_grp_name(self):
+        rep_config = {'rdf_group_label': self.data.rdf_group_name}
+        grp_name = self.utils.get_async_rdf_managed_grp_name(rep_config)
+        self.assertEqual(self.data.rdf_managed_async_grp, grp_name)
 
 
 class VMAXRestTest(test.TestCase):
@@ -2556,8 +2571,18 @@ class VMAXRestTest(test.TestCase):
                     'device_id': self.data.device_id2}
         rdf_dict = self.rest.create_rdf_device_pair(
             self.data.array, self.data.device_id, self.data.rdf_group_no,
-            self.data.device_id2, self.data.remote_array, "OS-2",
+            self.data.device_id2, self.data.remote_array,
             self.data.extra_specs)
+        self.assertEqual(ref_dict, rdf_dict)
+
+    def test_create_rdf_device_pair_async(self):
+        ref_dict = {'array': self.data.remote_array,
+                    'device_id': self.data.device_id2}
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs[utils.REP_MODE] = utils.REP_ASYNC
+        rdf_dict = self.rest.create_rdf_device_pair(
+            self.data.array, self.data.device_id, self.data.rdf_group_no,
+            self.data.device_id2, self.data.remote_array, extra_specs)
         self.assertEqual(ref_dict, rdf_dict)
 
     def test_modify_rdf_device_pair(self):
@@ -2669,6 +2694,22 @@ class VMAXRestTest(test.TestCase):
         self.assertFalse(is_next_gen)
         is_next_gen2 = self.rest.is_next_gen_array(self.data.array_herc)
         self.assertTrue(is_next_gen2)
+
+    @mock.patch.object(rest.VMAXRest, 'are_vols_rdf_paired',
+                       side_effect=[('', '', 'syncinprog'),
+                                    ('', '', 'consistent'),
+                                    exception.CinderException])
+    def test_wait_for_rdf_consistent_state(self, mock_paired):
+        self.rest.wait_for_rdf_consistent_state(
+            self.data.array, self.data.remote_array,
+            self.data.device_id, self.data.device_id2,
+            self.data.extra_specs)
+        self.assertEqual(2, mock_paired.call_count)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.rest.wait_for_rdf_consistent_state,
+                          self.data.array, self.data.remote_array,
+                          self.data.device_id, self.data.device_id2,
+                          self.data.extra_specs)
 
 
 class VMAXProvisionTest(test.TestCase):
@@ -2921,6 +2962,16 @@ class VMAXProvisionTest(test.TestCase):
                     split=True)
                 del_rdf.assert_called_once_with(
                     array, device_id, rdf_group_name)
+
+    def test_delete_rdf_pair_async(self):
+        with mock.patch.object(
+                self.provision.rest, 'delete_rdf_pair') as mock_del_rdf:
+            extra_specs = deepcopy(self.data.extra_specs)
+            extra_specs[utils.REP_MODE] = utils.REP_ASYNC
+            self.provision.delete_rdf_pair(
+                self.data.array, self.data.device_id,
+                self.data.rdf_group_no, extra_specs)
+            mock_del_rdf.assert_called_once()
 
     def test_failover_volume(self):
         array = self.data.array
@@ -3197,7 +3248,7 @@ class VMAXCommonTest(test.TestCase):
                                         extra_specs, self.data.connector)
             mock_rm.assert_called_once_with(
                 array, volume, device_id, volume_name,
-                extra_specs, True, self.data.connector)
+                extra_specs, True, self.data.connector, async_grp=None)
 
     def test_unmap_lun(self):
         array = self.data.array
@@ -3209,7 +3260,8 @@ class VMAXCommonTest(test.TestCase):
         with mock.patch.object(self.common, '_remove_members'):
             self.common._unmap_lun(volume, connector)
             self.common._remove_members.assert_called_once_with(
-                array, volume, device_id, extra_specs, connector)
+                array, volume, device_id, extra_specs,
+                connector, async_grp=None)
 
     def test_unmap_lun_not_mapped(self):
         volume = self.data.test_volume
@@ -3230,7 +3282,7 @@ class VMAXCommonTest(test.TestCase):
         with mock.patch.object(self.common, '_remove_members'):
             self.common._unmap_lun(volume, None)
             self.common._remove_members.assert_called_once_with(
-                array, volume, device_id, extra_specs, None)
+                array, volume, device_id, extra_specs, None, async_grp=None)
 
     def test_initialize_connection_already_mapped(self):
         volume = self.data.test_volume
@@ -4367,16 +4419,18 @@ class VMAXCommonTest(test.TestCase):
 
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=True)
-    @mock.patch.object(volume_utils, 'is_group_a_type',
-                       side_effect=[False, False])
+    @mock.patch.object(volume_utils, 'is_group_a_type', return_value=False)
     def test_create_group(self, mock_type, mock_cg_type):
         ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
         model_update = self.common.create_group(None, self.data.test_group_1)
         self.assertEqual(ref_model_update, model_update)
 
-    def test_create_group_exception(self):
+    @mock.patch.object(provision.VMAXProvision, 'create_volume_group',
+                       side_effect=exception.CinderException)
+    @mock.patch.object(volume_utils, 'is_group_a_type', return_value=False)
+    def test_create_group_exception(self, mock_type, mock_create):
         context = None
-        group = self.data.test_group_snapshot_failed
+        group = self.data.test_group_failed
         with mock.patch.object(
                 volume_utils, 'is_group_a_cg_snapshot_type',
                 return_value=True):
@@ -5591,15 +5645,16 @@ class VMAXMaskingTest(test.TestCase):
     def test_cleanup_deletion(self, mock_add, mock_remove_vol, mock_get_sg):
         self.mask._cleanup_deletion(
             self.data.array, self.data.test_volume, self.device_id,
-            self.volume_name, self.extra_specs, None, True)
+            self.volume_name, self.extra_specs, None, True, None)
         mock_add.assert_not_called()
         self.mask._cleanup_deletion(
             self.data.array, self.data.test_volume, self.device_id,
-            self.volume_name, self.extra_specs, self.data.connector, True)
+            self.volume_name, self.extra_specs,
+            self.data.connector, True, None)
         mock_add.assert_not_called()
         self.mask._cleanup_deletion(
             self.data.array, self.data.test_volume, self.device_id,
-            self.volume_name, self.extra_specs, None, True)
+            self.volume_name, self.extra_specs, None, True, None)
         mock_add.assert_called_once_with(
             self.data.array, self.device_id,
             self.volume_name, self.extra_specs, volume=self.data.test_volume)
@@ -6000,6 +6055,17 @@ class VMAXCommonReplicationTest(test.TestCase):
         self.extra_specs = deepcopy(self.data.extra_specs_rep_enabled)
         self.extra_specs['retries'] = 0
         self.extra_specs['interval'] = 0
+        self.extra_specs['rep_mode'] = 'Synchronous'
+        self.async_rep_device = {
+            'target_device_id': self.data.remote_array,
+            'remote_port_group': self.data.port_group_name_f,
+            'remote_pool': self.data.srp2,
+            'rdf_group_label': self.data.rdf_group_name,
+            'allow_extend': 'True', 'mode': 'async'}
+        async_configuration = FakeConfiguration(
+            self.fake_xml, config_group,
+            replication_device=self.async_rep_device)
+        self.async_driver = fc.VMAXFCDriver(configuration=async_configuration)
 
     def test_get_replication_info(self):
         self.common._get_replication_info()
@@ -6506,14 +6572,17 @@ class VMAXCommonReplicationTest(test.TestCase):
 
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=False)
-    @mock.patch.object(volume_utils, 'is_group_a_type',
-                       side_effect=[True, True])
+    @mock.patch.object(volume_utils, 'is_group_a_type', return_value=True)
     def test_create_replicaton_group(self, mock_type, mock_cg_type):
         ref_model_update = {
             'status': fields.GroupStatus.AVAILABLE,
             'replication_status': fields.ReplicationStatus.ENABLED}
         model_update = self.common.create_group(None, self.data.test_group_1)
         self.assertEqual(ref_model_update, model_update)
+        # Replication mode is async
+        self.assertRaises(exception.InvalidInput,
+                          self.async_driver.common.create_group,
+                          None, self.data.test_group_1)
 
     def test_enable_replication(self):
         # Case 1: Group not replicated
@@ -6566,31 +6635,24 @@ class VMAXCommonReplicationTest(test.TestCase):
                              model_update['replication_status'])
 
     def test_failover_replication(self):
-        # Case 1: Group not replicated
-        with mock.patch.object(volume_utils, 'is_group_a_type',
-                               return_value=False):
-            self.assertRaises(NotImplementedError,
-                              self.common.failover_replication,
-                              None, self.data.test_group,
-                              [self.data.test_volume])
         with mock.patch.object(volume_utils, 'is_group_a_type',
                                return_value=True):
-            # Case 2: Empty group
+            # Case 1: Empty group
             model_update, __ = self.common.failover_replication(
                 None, self.data.test_group, [])
             self.assertEqual({}, model_update)
-            # Case 3: Successfully failed over
+            # Case 2: Successfully failed over
             model_update, __ = self.common.failover_replication(
                 None, self.data.test_group, [self.data.test_volume])
             self.assertEqual(fields.ReplicationStatus.FAILED_OVER,
                              model_update['replication_status'])
-            # Case 4: Successfully failed back
+            # Case 3: Successfully failed back
             model_update, __ = self.common.failover_replication(
                 None, self.data.test_group, [self.data.test_volume],
                 secondary_backend_id='default')
             self.assertEqual(fields.ReplicationStatus.ENABLED,
                              model_update['replication_status'])
-            # Case 5: Exception
+            # Case 4: Exception
             model_update, __ = self.common.failover_replication(
                 None, self.data.test_group_failed, [self.data.test_volume])
             self.assertEqual(fields.ReplicationStatus.ERROR,
@@ -6648,3 +6710,50 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.data.array, self.data.test_vol_grp_name,
             [self.data.device_id], self.extra_specs)
         mock_rm.assert_called_once()
+
+    @mock.patch.object(masking.VMAXMasking, 'add_volume_to_storage_group')
+    def test_add_volume_to_async_group(self, mock_add):
+        extra_specs = deepcopy(self.extra_specs)
+        extra_specs['rep_mode'] = utils.REP_ASYNC
+        self.async_driver.common._add_volume_to_async_rdf_managed_grp(
+            self.data.array, self.data.device_id, 'name',
+            self.data.remote_array, self.data.device_id2, extra_specs)
+        self.assertEqual(2, mock_add.call_count)
+
+    def test_add_volume_to_async_group_exception(self):
+        extra_specs = deepcopy(self.extra_specs)
+        extra_specs['rep_mode'] = utils.REP_ASYNC
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.async_driver.common._add_volume_to_async_rdf_managed_grp,
+            self.data.failed_resource, self.data.device_id, 'name',
+            self.data.remote_array, self.data.device_id2, extra_specs)
+
+    @mock.patch.object(common.VMAXCommon,
+                       '_add_volume_to_async_rdf_managed_grp')
+    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
+    def test_setup_volume_replication_async(self, mock_rm, mock_add):
+        extra_specs = deepcopy(self.extra_specs)
+        extra_specs['rep_mode'] = utils.REP_ASYNC
+        rep_status, rep_data = (
+            self.async_driver.common.setup_volume_replication(
+                self.data.array, self.data.test_volume,
+                self.data.device_id, extra_specs))
+        self.assertEqual(fields.ReplicationStatus.ENABLED, rep_status)
+        self.assertEqual({'array': self.data.remote_array,
+                          'device_id': self.data.device_id}, rep_data)
+        mock_add.assert_called_once()
+
+    @mock.patch.object(common.VMAXCommon, '_failover_replication',
+                       return_value=({}, {}))
+    @mock.patch.object(common.VMAXCommon, '_failover_volume',
+                       return_value={})
+    def test_failover_host_async(self, mock_fv, mock_fg):
+        volumes = [self.data.test_volume]
+        extra_specs = deepcopy(self.extra_specs)
+        extra_specs['rep_mode'] = utils.REP_ASYNC
+        with mock.patch.object(common.VMAXCommon, '_initial_setup',
+                               return_value=extra_specs):
+            self.async_driver.common.failover_host(volumes, None, [])
+        mock_fv.assert_not_called()
+        mock_fg.assert_called_once()

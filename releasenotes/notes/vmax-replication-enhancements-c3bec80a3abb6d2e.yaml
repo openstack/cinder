@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added asynchronous remote replication support in Dell EMC VMAX cinder driver.
+

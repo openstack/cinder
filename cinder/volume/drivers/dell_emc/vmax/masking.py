@@ -69,12 +69,13 @@ class VMAXMasking(object):
         volume_name = masking_view_dict[utils.VOL_NAME]
         masking_view_dict[utils.EXTRA_SPECS] = extra_specs
         device_id = masking_view_dict[utils.DEVICE_ID]
+        rep_mode = extra_specs.get(utils.REP_MODE, None)
         default_sg_name = self.utils.get_default_storage_group_name(
             masking_view_dict[utils.SRP],
             masking_view_dict[utils.SLO],
             masking_view_dict[utils.WORKLOAD],
             masking_view_dict[utils.DISABLECOMPRESSION],
-            masking_view_dict[utils.IS_RE])
+            masking_view_dict[utils.IS_RE], rep_mode)
 
         try:
             error_message = self._get_or_create_masking_view(
@@ -1023,7 +1024,7 @@ class VMAXMasking(object):
     @coordination.synchronized("emc-vol-{device_id}")
     def remove_and_reset_members(
             self, serial_number, volume, device_id, volume_name,
-            extra_specs, reset=True, connector=None):
+            extra_specs, reset=True, connector=None, async_grp=None):
         """This is called on a delete, unmap device or rollback.
 
         :param serial_number: the array serial number
@@ -1033,14 +1034,15 @@ class VMAXMasking(object):
         :param extra_specs: additional info
         :param reset: reset, return to original SG (optional)
         :param connector: the connector object (optional)
+        :param async_grp: the async rep group (optional)
         """
         self._cleanup_deletion(
             serial_number, volume, device_id, volume_name,
-            extra_specs, connector, reset)
+            extra_specs, connector, reset, async_grp)
 
     def _cleanup_deletion(
             self, serial_number, volume, device_id, volume_name,
-            extra_specs, connector, reset):
+            extra_specs, connector, reset, async_grp):
         """Prepare a volume for a delete operation.
 
         :param serial_number: the array serial number
@@ -1049,6 +1051,7 @@ class VMAXMasking(object):
         :param volume_name: the volume name
         :param extra_specs: the extra specifications
         :param connector: the connector object
+        :param async_grp: the async rep group
         """
         move = False
         short_host_name = None
@@ -1069,6 +1072,10 @@ class VMAXMasking(object):
                             extra_specs, connector, move)
                         break
             else:
+                if reset is True and async_grp is not None:
+                    for index, sg in enumerate(storagegroup_names):
+                        if sg == async_grp:
+                            storagegroup_names.pop(index)
                 for sg_name in storagegroup_names:
                     self.remove_volume_from_sg(
                         serial_number, device_id, volume_name, sg_name,
@@ -1418,10 +1425,11 @@ class VMAXMasking(object):
         do_disable_compression = self.utils.is_compression_disabled(
             extra_specs)
         rep_enabled = self.utils.is_replication_enabled(extra_specs)
+        rep_mode = extra_specs.get(utils.REP_MODE, None)
         storagegroup_name = self.get_or_create_default_storage_group(
             serial_number, extra_specs[utils.SRP], extra_specs[utils.SLO],
             extra_specs[utils.WORKLOAD], extra_specs, do_disable_compression,
-            rep_enabled)
+            rep_enabled, rep_mode)
         if src_sg is not None:
             # Need to lock the default storage group
             @coordination.synchronized("emc-sg-{default_sg_name}")
@@ -1447,7 +1455,7 @@ class VMAXMasking(object):
 
     def get_or_create_default_storage_group(
             self, serial_number, srp, slo, workload, extra_specs,
-            do_disable_compression=False, is_re=False):
+            do_disable_compression=False, is_re=False, rep_mode=None):
         """Get or create a default storage group.
 
         :param serial_number: the array serial number
@@ -1457,13 +1465,14 @@ class VMAXMasking(object):
         :param extra_specs: extra specifications
         :param do_disable_compression: flag for compression
         :param is_re: is replication enabled
+        :param rep_mode: flag to indicate replication mode
         :returns: storagegroup_name
         :raises: VolumeBackendAPIException
         """
         storagegroup, storagegroup_name = (
             self.rest.get_vmax_default_storage_group(
                 serial_number, srp, slo, workload, do_disable_compression,
-                is_re))
+                is_re, rep_mode))
         if storagegroup is None:
             self.provision.create_storage_group(
                 serial_number, storagegroup_name, srp, slo, workload,

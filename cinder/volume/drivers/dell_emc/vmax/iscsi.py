@@ -89,6 +89,7 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
               - Support for Generic Volume Group
         3.1.0 - Support for replication groups (Tiramisu)
               - Deprecate backend xml configuration
+              - Support for async replication (vmax-replication-enhancements)
     """
 
     VERSION = "3.1.0"
