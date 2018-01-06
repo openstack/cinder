@@ -577,7 +577,9 @@ class DS8KProxy(proxy.IBMStorageProxy):
             available_lss_pairs = set(pair for pair in lss_pairs_in_cache
                                       if pair[0] != excluded_lss)
         if not available_lss_pairs:
-            available_lss_pairs = self._find_lss_pair_for_cg(lun.group)
+            available_lss_pairs = self._find_lss_pair_for_cg(lun.group,
+                                                             excluded_lss,
+                                                             lun.is_snapshot)
 
         pool_lss_pair, lss_pair = self._find_pool_for_lss(available_lss_pairs)
         if pool_lss_pair:
@@ -606,47 +608,62 @@ class DS8KProxy(proxy.IBMStorageProxy):
                                      for lun in luns if lun.ds_id)
         return lss_pairs_in_group
 
-    def _find_lss_pair_for_cg(self, group):
+    def _find_lss_pair_for_cg(self, group, excluded_lss, is_snapshot):
         lss_pairs_used = set()
         ctxt = context.get_admin_context()
-        filters = {'host': group.host, 'status': 'available'}
-        groups = objects.GroupList.get_all(ctxt, filters=filters)
+        filters_groups = {'host': group.host, 'status': 'available'}
+        groups = objects.GroupList.get_all(ctxt, filters=filters_groups)
         for grp in groups:
             grp = Group(grp)
             if (grp.consisgroup_snapshot_enabled or
                     grp.consisgroup_replication_enabled):
                 lss_pairs_used |= self._get_lss_pairs_in_group(grp)
-        group_snapshots = (
-            objects.GroupSnapshotList.get_all(ctxt, filters=filters))
-        for grp in group_snapshots:
-            grp = Group(grp, True)
-            if (grp.consisgroup_snapshot_enabled or
-                    grp.consisgroup_replication_enabled):
-                lss_pairs_used |= self._get_lss_pairs_in_group(grp, True)
+                filters_group_snapshots = {'status': 'available'}
+                group_snapshots = objects.GroupSnapshotList.get_all_by_group(
+                    ctxt, grp.id, filters=filters_group_snapshots)
+                for sgrp in group_snapshots:
+                    sgrp = Group(sgrp, True)
+                    if (sgrp.consisgroup_snapshot_enabled or
+                            sgrp.consisgroup_replication_enabled):
+                        lss_pairs_used |= self._get_lss_pairs_in_group(sgrp,
+                                                                       True)
         # in order to keep one-to-one pprc mapping relationship, zip LSSs
         # which reserved by user.
-        if group.consisgroup_replication_enabled:
-            target_helper = self._replication.get_target_helper()
-            available_lss_pairs = zip(self._helper.backend['lss_ids_for_cg'],
-                                      target_helper.backend['lss_ids_for_cg'])
+        if not is_snapshot:
+            if group.consisgroup_replication_enabled:
+                target_helper = self._replication.get_target_helper()
+                source_lss_for_cg = self._helper.backend['lss_ids_for_cg']
+                target_lss_for_cg = target_helper.backend['lss_ids_for_cg']
+                available_lss_pairs = zip(source_lss_for_cg, target_lss_for_cg)
+            else:
+                available_lss_pairs = [(lss, None) for lss in
+                                       self._helper.backend['lss_ids_for_cg']]
+
+            source_lss_used = set()
+            for lss_pair in lss_pairs_used:
+                source_lss_used.add(lss_pair[0])
+            # in concurrency case, lss may be reversed in cache but the group
+            # has not been committed into DB.
+            for lss_pairs_set in self.consisgroup_cache.values():
+                source_lss_used |= set(
+                    lss_pair[0] for lss_pair in lss_pairs_set)
+
+            available_lss_pairs = [lss_pair for lss_pair in available_lss_pairs
+                                   if lss_pair[0] not in source_lss_used]
+            self._assert(available_lss_pairs,
+                         "All LSSs reserved for CG have been used out, "
+                         "please reserve more LSS for CG if there are still"
+                         "some empty LSSs left.")
         else:
-            available_lss_pairs = [(lss, None) for lss in
-                                   self._helper.backend['lss_ids_for_cg']]
-
-        source_lss_used = set()
-        for lss_pair in lss_pairs_used:
-            source_lss_used.add(lss_pair[0])
-        # in concurrency case, lss may be reversed in cache but the group has
-        # not been committed into DB.
-        for lss_pairs_set in self.consisgroup_cache.values():
-            source_lss_used |= set(lss_pair[0] for lss_pair in lss_pairs_set)
-
-        available_lss_pairs = [lss_pair for lss_pair in available_lss_pairs
-                               if lss_pair[0] not in source_lss_used]
-        self._assert(available_lss_pairs,
-                     "All LSSs reserved for CG have been used out, "
-                     "please reserve more LSS for CG if there are still"
-                     "some empty LSSs left.")
+            available_lss_pairs = set()
+            excluded_lss |= lss_pairs_used
+            for node in (0, 1):
+                available_lss_pairs |= {(self._helper._find_lss(
+                    node, excluded_lss), None)}
+            if not available_lss_pairs:
+                raise restclient.LssIDExhaustError(
+                    message=_('All LSS/LCU IDs for configured pools '
+                              'on storage are exhausted.'))
         LOG.debug('_find_lss_pair_for_cg: available LSSs for consistency '
                   'group are %s', available_lss_pairs)
         return available_lss_pairs

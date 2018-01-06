@@ -3168,6 +3168,40 @@ class DS8KProxyTest(test.TestCase):
         self.assertEqual('available', snapshots_model_update[0]['status'])
         self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
 
+    @mock.patch.object(eventlet, 'sleep')
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
+    def test_create_consistency_group_snapshot_not_in_lss_range_for_cg(
+            self, mock_get_flashcopy, mock_sleep):
+        """test a successful consistency group snapshot creation."""
+        self.configuration.lss_range_for_cg = '20-23'
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(group_type_id=group_type.id)
+        location = six.text_type({'vol_hex_id': '2000'})
+        volume = self._create_volume(provider_location=location,
+                                     group_id=group.id)
+        group_snapshot = (
+            self._create_group_snapshot(group_id=group.id,
+                                        group_type_id=group_type.id))
+        snapshot = self._create_snapshot(volume_id=volume.id,
+                                         group_snapshot_id=group_snapshot.id)
+
+        mock_get_flashcopy.side_effect = [[TEST_FLASHCOPY], {}]
+        model_update, snapshots_model_update = (
+            self.driver.create_group_snapshot(
+                self.ctxt, group_snapshot, [snapshot]))
+        location = ast.literal_eval(
+            snapshots_model_update[0]['provider_location'])
+        self.assertTrue(location['vol_hex_id'][:2] not in (20, 21, 22, 23))
+        self.assertEqual('available', snapshots_model_update[0]['status'])
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
+
     def test_delete_consistency_group_snapshot_sucessfully(self):
         """test a successful consistency group snapshot deletion."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
