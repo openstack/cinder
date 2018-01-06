@@ -12,11 +12,15 @@
 
 import mock
 from oslo_config import cfg
+from oslo_policy import policy as oslo_policy
 
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import objects
+from cinder.policies import attachments as attachment_policy
+from cinder.policies import base as base_policy
+from cinder import policy
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils as tests_utils
@@ -38,6 +42,9 @@ class AttachmentManagerTestCase(test.TestCase):
         self.project_id = fake.PROJECT3_ID
         self.context.project_id = self.project_id
         self.volume_api = volume_api.API()
+        self.user_context = context.RequestContext(
+            user_id=fake.USER_ID,
+            project_id=fake.PROJECT3_ID)
 
     def test_attachment_create_no_connector(self):
         """Test attachment_create no connector."""
@@ -237,3 +244,23 @@ class AttachmentManagerTestCase(test.TestCase):
                                         vref.id)
         self.assertEqual('reserved', vref.status)
         self.assertEqual(1, len(vref.volume_attachment))
+
+    def test_attachment_create_bootable_multiattach_policy(self):
+        """Test attachment_create no connector."""
+        volume_params = {'status': 'available'}
+
+        vref = tests_utils.create_volume(self.context, **volume_params)
+        vref.multiattach = True
+        vref.bootable = True
+        vref.status = 'in-use'
+
+        rules = {
+            attachment_policy.MULTIATTACH_BOOTABLE_VOLUME_POLICY: base_policy.RULE_ADMIN_API  # noqa
+        }
+        policy.set_rules(oslo_policy.Rules.from_dict(rules))
+        self.addCleanup(policy.reset)
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.volume_api.attachment_create,
+                          self.user_context,
+                          vref,
+                          fake.UUID2)

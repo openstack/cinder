@@ -29,6 +29,7 @@ HOST_ATTRIBUTE_POLICY = "volume_extension:volume_host_attribute"
 TENANT_ATTRIBUTE_POLICY = "volume_extension:volume_tenant_attribute"
 MIG_ATTRIBUTE_POLICY = "volume_extension:volume_mig_status_attribute"
 ENCRYPTION_METADATA_POLICY = "volume_extension:volume_encryption_metadata"
+MULTIATTACH_POLICY = "volume:multiattach"
 
 volumes_policies = [
     policy.DocumentedRuleDefault(
@@ -159,6 +160,16 @@ volumes_policies = [
             {
                 'method': 'GET',
                 'path': '/volumes/{volume_id}/encryption/{encryption_key}'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=MULTIATTACH_POLICY,
+        check_str=base.RULE_ADMIN_OR_OWNER,
+        description="Create multiattach capable volume.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/volumes'
             }
         ]),
 ]

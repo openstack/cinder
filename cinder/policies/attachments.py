@@ -21,6 +21,7 @@ from cinder.policies import base
 CREATE_POLICY = 'volume:attachment_create'
 UPDATE_POLICY = 'volume:attachment_update'
 DELETE_POLICY = 'volume:attachment_delete'
+MULTIATTACH_BOOTABLE_VOLUME_POLICY = 'volume:multiattach_bootable_volume'
 
 attachments_policies = [
     policy.DocumentedRuleDefault(
@@ -51,6 +52,16 @@ attachments_policies = [
             {
                 'method': 'DELETE',
                 'path': '/attachments/{attachment_id}'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=MULTIATTACH_BOOTABLE_VOLUME_POLICY,
+        check_str=base.RULE_ADMIN_OR_OWNER,
+        description="Allow multiattach of bootable volumes.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/attachments'
             }
         ]),
 ]
