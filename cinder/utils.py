@@ -1038,21 +1038,11 @@ def validate_integer(value, name, min_value=None, max_value=None):
     :param max_length: the max_length of the integer
     :returns: integer
     """
-    if not strutils.is_int_like(value):
-        raise webob.exc.HTTPBadRequest(explanation=(
-            _('%s must be an integer.') % name))
-    value = int(value)
-
-    if min_value is not None and value < min_value:
-        raise webob.exc.HTTPBadRequest(
-            explanation=(_('%(value_name)s must be >= %(min_value)d') %
-                         {'value_name': name, 'min_value': min_value}))
-    if max_value is not None and value > max_value:
-        raise webob.exc.HTTPBadRequest(
-            explanation=(_('%(value_name)s must be <= %(max_value)d') %
-                         {'value_name': name, 'max_value': max_value}))
-
-    return value
+    try:
+        value = strutils.validate_integer(value, name, min_value, max_value)
+        return value
+    except ValueError as e:
+        raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
 
 
 def validate_dictionary_string_length(specs):
