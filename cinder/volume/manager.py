@@ -1207,7 +1207,8 @@ class VolumeManager(manager.CleanableManager,
         if (volume.status == 'in-use' and not volume.multiattach
            and not volume.migration_status):
             raise exception.InvalidVolume(
-                reason=_("volume is already attached"))
+                reason=_("volume is already attached and multiple attachments "
+                         "are not enabled"))
 
         self._notify_about_volume_usage(context, volume,
                                         "attach.start")
