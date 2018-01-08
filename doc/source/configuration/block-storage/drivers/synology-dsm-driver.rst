@@ -77,8 +77,8 @@ established. Below is an example of a basic configuration:
 
    # Required settings
    volume_driver = cinder.volume.drivers.synology.synology_iscsi.SynoISCSIDriver
-   iscs_protocol = iscsi
-   iscsi_ip_address = DS_IP
+   target_protocol = iscsi
+   target_ip_address = DS_IP
    synology_admin_port = DS_PORT
    synology_username = DS_USER
    synology_password = DS_PW

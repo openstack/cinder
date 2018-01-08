@@ -460,7 +460,7 @@ class SynoCommonTestCase(test.TestCase):
         self.common.vendor_name = 'Synology'
         self.common.driver_type = 'iscsi'
         self.common.volume_backend_name = 'DiskStation'
-        self.common.iscsi_port = 3260
+        self.common.target_port = 3260
 
     def setup_configuration(self):
         config = mock.Mock(spec=conf.Configuration)
@@ -1355,7 +1355,7 @@ class SynoCommonTestCase(test.TestCase):
             'total_capacity_gb': 100,
             'provisioned_capacity_gb': 350,
             'max_over_subscription_ratio': 20,
-            'iscsi_ip_address': '10.0.0.1',
+            'target_ip_address': '10.0.0.1',
             'pool_name': 'volume1',
             'backend_info':
                 'Synology:iscsi:72003c93-2db2-4f00-a169-67c5eae86bb1'
