@@ -626,6 +626,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                 'description',
                                 volume_type=foo)
         self.assertEqual(foo['id'], vol['volume_type_id'])
+        self.assertTrue(vol['multiattach'])
 
     @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
     def test_create_volume_with_encrypted_volume_type_aes(self):

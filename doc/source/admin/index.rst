@@ -44,6 +44,7 @@ Amazon EC2 Elastic Block Storage (EBS) offering.
    blockstorage-volume-backups-export-import.rst
    blockstorage-volume-backups.rst
    blockstorage-volume-migration.rst
+   blockstorage-volume-multiattach.rst
    blockstorage-volume-number-weigher.rst
    blockstorage-report-backend-state.rst
 
