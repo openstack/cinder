@@ -2877,16 +2877,23 @@ class VMAXProvisionTest(test.TestCase):
         self.utils = self.common.utils
         self.rest = self.common.rest
 
-    def test_create_storage_group(self):
+    @mock.patch.object(rest.VMAXRest, 'create_storage_group',
+                       return_value=VMAXCommonData.storagegroup_name_f)
+    @mock.patch.object(rest.VMAXRest, 'get_storage_group',
+                       side_effect=[
+                           VMAXCommonData.storagegroup_name_f, None])
+    def test_create_storage_group(self, mock_get_sg, mock_create):
         array = self.data.array
         storagegroup_name = self.data.storagegroup_name_f
         srp = self.data.srp
         slo = self.data.slo
         workload = self.data.workload
         extra_specs = self.data.extra_specs
-        storagegroup = self.provision.create_storage_group(
-            array, storagegroup_name, srp, slo, workload, extra_specs)
-        self.assertEqual(storagegroup_name, storagegroup)
+        for x in range(0, 2):
+            storagegroup = self.provision.create_storage_group(
+                array, storagegroup_name, srp, slo, workload, extra_specs)
+            self.assertEqual(storagegroup_name, storagegroup)
+        mock_create.assert_called_once()
 
     def test_create_volume_from_sg(self):
         array = self.data.array
@@ -3234,14 +3241,15 @@ class VMAXProvisionTest(test.TestCase):
             mod_rdf.assert_called_once_with(
                 array, device_id, rdf_group_name, extra_specs)
 
-    def test_create_volume_group_success(self):
+    @mock.patch.object(rest.VMAXRest, 'get_storage_group',
+                       return_value=None)
+    def test_create_volume_group_success(self, mock_get_sg):
         array = self.data.array
         group_name = self.data.storagegroup_name_source
         extra_specs = self.data.extra_specs
         ref_value = self.data.storagegroup_name_source
-        storagegroup = self.provision.create_volume_group(array,
-                                                          group_name,
-                                                          extra_specs)
+        storagegroup = self.provision.create_volume_group(
+            array, group_name, extra_specs)
         self.assertEqual(ref_value, storagegroup)
 
     def test_create_group_replica(self):
