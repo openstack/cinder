@@ -5548,6 +5548,9 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         mock_client.getRemoteCopyGroup.return_value = (
             {'volumes': [{'name': self.VOLUME_3PAR_NAME}]})
         mock_client.getCPG.return_value = {'domain': None}
+        task_id = 1
+        mock_client.copyVolume.return_value = {'taskid': task_id}
+        mock_client.getTask.return_value = {'status': 1}
 
         type_info = {'cpg': 'OpenStackCPG',
                      'tpvv': True,
@@ -5598,6 +5601,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     HPE3PAR_CPG,
                     {'snapCPG': HPE3PAR_CPG, 'online': True,
                      'tpvv': mock.ANY, 'tdvv': mock.ANY}),
+                mock.call.getTask(task_id),
                 mock.call.getRemoteCopyGroup(self.RCG_3PAR_GROUP_NAME),
                 mock.call.addVolumeToRemoteCopyGroup(
                     self.RCG_3PAR_GROUP_NAME,
@@ -5733,6 +5737,8 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         cg_ss_enable.return_value = True
         vol_ss_enable.return_value = True
         mock_client = self.setup_driver()
+        task_id = 1
+        mock_client.copyVolume.return_value = {'taskid': task_id}
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
         volume = self.fake_volume_object()
         type_info = {'cpg': 'OpenStackCPG',
