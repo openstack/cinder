@@ -41,6 +41,7 @@ LOG = logging.getLogger(__name__)
 EAPINOTFOUND = '13005'
 ESIS_CLONE_NOT_LICENSED = '14956'
 ESNAPSHOTNOTALLOWED = '13023'
+EOBJECTNOTFOUND = '15661'
 
 
 class NaServer(object):
