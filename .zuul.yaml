@@ -7,9 +7,11 @@
         - cinder-tox-compliance
         - cinder-tox-bandit-baseline:
             voting: false
+        - nova-multiattach
     gate:
       jobs:
         - cinder-tox-compliance
+        - nova-multiattach
 
 - job:
     # Previously named legacy-tempest-dsvm-full-lio
