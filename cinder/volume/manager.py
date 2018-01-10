@@ -4387,6 +4387,13 @@ class VolumeManager(manager.CleanableManager,
             attachment_ref.volume_id,
             {'attached_mode': mode}, False)
 
+        # The prior seting of mode in the attachment_ref overrides any
+        # settings within the connector when dealing with read only
+        # attachment options
+        if mode != 'ro' and attachment_ref.attach_mode == 'ro':
+            connector['mode'] = 'ro'
+            mode = 'ro'
+
         try:
             if volume_metadata.get('readonly') == 'True' and mode != 'ro':
                 raise exception.InvalidVolumeAttachMode(mode=mode,
