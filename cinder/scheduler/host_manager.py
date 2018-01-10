@@ -335,6 +335,7 @@ class PoolState(BackendState):
 
     def update_from_volume_capability(self, capability, service=None):
         """Update information about a pool from its volume_node info."""
+        LOG.debug("Updating capabilities for %s: %s", self.host, capability)
         self.update_capabilities(capability, service)
         if capability:
             if self.updated and self.updated > capability['timestamp']:
@@ -355,13 +356,15 @@ class PoolState(BackendState):
             # provisioned_capacity_gb if it is not set.
             self.provisioned_capacity_gb = capability.get(
                 'provisioned_capacity_gb', self.allocated_capacity_gb)
-            self.max_over_subscription_ratio = capability.get(
-                'max_over_subscription_ratio',
-                CONF.max_over_subscription_ratio)
             self.thin_provisioning_support = capability.get(
                 'thin_provisioning_support', False)
             self.thick_provisioning_support = capability.get(
                 'thick_provisioning_support', False)
+
+            self.max_over_subscription_ratio = (
+                utils.calculate_max_over_subscription_ratio(
+                    capability, CONF.max_over_subscription_ratio))
+
             self.multiattach = capability.get('multiattach', False)
 
     def update_pools(self, capability):
@@ -756,7 +759,8 @@ class HostManager(object):
         allocated = pool["allocated_capacity_gb"]
         provisioned = pool["provisioned_capacity_gb"]
         reserved = pool["reserved_percentage"]
-        ratio = pool["max_over_subscription_ratio"]
+        ratio = utils.calculate_max_over_subscription_ratio(
+            pool, CONF.max_over_subscription_ratio)
         support = pool["thin_provisioning_support"]
 
         virtual_free = utils.calculate_virtual_free_capacity(

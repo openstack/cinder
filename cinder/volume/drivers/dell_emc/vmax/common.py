@@ -149,8 +149,9 @@ class VMAXCommon(object):
         self.retries = self.configuration.safe_get('retries')
         self.pool_info['backend_name'] = (
             self.configuration.safe_get('volume_backend_name'))
-        self.pool_info['max_over_subscription_ratio'] = (
-            self.configuration.safe_get('max_over_subscription_ratio'))
+        mosr = volume_utils.get_max_over_subscription_ratio(
+            self.configuration.safe_get('max_over_subscription_ratio'), True)
+        self.pool_info['max_over_subscription_ratio'] = mosr
         self.pool_info['reserved_percentage'] = (
             self.configuration.safe_get('reserved_percentage'))
         LOG.debug(
@@ -888,11 +889,6 @@ class VMAXCommon(object):
                     else:
                         pool['reserved_percentage'] = array_reserve_percent
 
-            if max_oversubscription_ratio and (
-                    0.0 < max_oversubscription_ratio < 1):
-                pool['max_over_subscription_ratio'] = (
-                    self.utils.get_default_oversubscription_ratio(
-                        max_oversubscription_ratio))
             pools.append(pool)
         pools = self.utils.add_legacy_pools(pools)
         data = {'vendor_name': "Dell EMC",

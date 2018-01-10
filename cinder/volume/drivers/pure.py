@@ -613,6 +613,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         a value, if not we will respect the configuration option for the
         max_over_subscription_ratio.
         """
+
         if (self.configuration.pure_automatic_max_oversubscription_ratio and
                 used_space != 0 and provisioned_space != 0):
             # If array is empty we can not calculate a max oversubscription
@@ -622,7 +623,9 @@ class PureBaseVolumeDriver(san.SanDriver):
             # presented based on current usage.
             thin_provisioning = provisioned_space / used_space
         else:
-            thin_provisioning = self.configuration.max_over_subscription_ratio
+            thin_provisioning = volume_utils.get_max_over_subscription_ratio(
+                self.configuration.max_over_subscription_ratio,
+                supports_auto=True)
 
         return thin_provisioning
 

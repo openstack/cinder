@@ -562,6 +562,34 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
         self.assertTrue(terminate_mock.called)
         self.assertEqual(3, exc.context.call_count)
 
+    @ddt.data({'cfg_value': '10', 'valid': True},
+              {'cfg_value': 'auto', 'valid': True},
+              {'cfg_value': '1', 'valid': True},
+              {'cfg_value': '1.2', 'valid': True},
+              {'cfg_value': '100', 'valid': True},
+              {'cfg_value': '20.15', 'valid': True},
+              {'cfg_value': 'True', 'valid': False},
+              {'cfg_value': 'False', 'valid': False},
+              {'cfg_value': '10.0.0', 'valid': False},
+              {'cfg_value': '0.00', 'valid': True},
+              {'cfg_value': 'anything', 'valid': False},)
+    @ddt.unpack
+    def test_auto_max_subscription_ratio_options(self, cfg_value, valid):
+        # This tests the max_over_subscription_ratio option as it is now
+        # checked by a regex
+        def _set_conf(config, value):
+            config.set_override('max_over_subscription_ratio', value)
+
+        config = conf.Configuration(None)
+        config.append_config_values(driver.volume_opts)
+
+        if valid:
+            _set_conf(config, cfg_value)
+            self.assertEqual(cfg_value, config.safe_get(
+                'max_over_subscription_ratio'))
+        else:
+            self.assertRaises(ValueError, _set_conf, config, cfg_value)
+
 
 class FibreChannelTestCase(BaseDriverTestCase):
     """Test Case for FibreChannelDriver."""

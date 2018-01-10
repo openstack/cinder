@@ -162,17 +162,20 @@ volume_opts = [
                 default=False,
                 help='Tell driver to use SSL for connection to backend '
                      'storage if the driver supports it.'),
-    cfg.FloatOpt('max_over_subscription_ratio',
-                 default=20.0,
-                 min=1,
-                 help='Float representation of the over subscription ratio '
-                      'when thin provisioning is involved. Default ratio is '
-                      '20.0, meaning provisioned capacity can be 20 times of '
-                      'the total physical capacity. If the ratio is 10.5, it '
-                      'means provisioned capacity can be 10.5 times of the '
-                      'total physical capacity. A ratio of 1.0 means '
-                      'provisioned capacity cannot exceed the total physical '
-                      'capacity. The ratio has to be a minimum of 1.0.'),
+    cfg.StrOpt('max_over_subscription_ratio',
+               default='20.0',
+               regex='^(auto|\d*\.\d+|\d+)$',
+               help='Representation of the over subscription ratio '
+                    'when thin provisioning is enabled. Default ratio is '
+                    '20.0, meaning provisioned capacity can be 20 times of '
+                    'the total physical capacity. If the ratio is 10.5, it '
+                    'means provisioned capacity can be 10.5 times of the '
+                    'total physical capacity. A ratio of 1.0 means '
+                    'provisioned capacity cannot exceed the total physical '
+                    'capacity. If ratio is \'auto\', Cinder will '
+                    'automatically calculate the ratio based on the '
+                    'provisioned capacity and the used space. If not set to '
+                    'auto, the ratio has to be a minimum of 1.0.'),
     cfg.StrOpt('scst_target_iqn_name',
                help='Certain ISCSI targets have predefined target names, '
                     'SCST target driver uses this name.'),

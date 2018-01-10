@@ -158,7 +158,7 @@ class HostManagerTestCase(test.TestCase):
         capab1 = {'pools': [{
                   'pool_name': 'pool1', 'thick_provisioning_support': True,
                   'thin_provisioning_support': False, 'total_capacity_gb': 10,
-                  'free_capacity_gb': 10, 'max_over_subscription_ratio': 1,
+                  'free_capacity_gb': 10, 'max_over_subscription_ratio': '1',
                   'provisioned_capacity_gb': 0, 'allocated_capacity_gb': 0,
                   'reserved_percentage': 0}]}
 
@@ -210,7 +210,7 @@ class HostManagerTestCase(test.TestCase):
         capab1 = {'pools': [{
                   'pool_name': 'pool1', 'thick_provisioning_support': True,
                   'thin_provisioning_support': False, 'total_capacity_gb': 10,
-                  'free_capacity_gb': 10, 'max_over_subscription_ratio': 1,
+                  'free_capacity_gb': 10, 'max_over_subscription_ratio': '1',
                   'provisioned_capacity_gb': 0, 'allocated_capacity_gb': 0,
                   'reserved_percentage': 0}]}
 
@@ -279,7 +279,7 @@ class HostManagerTestCase(test.TestCase):
         capab1 = {'pools': [{
                   'pool_name': 'pool1', 'thick_provisioning_support': True,
                   'thin_provisioning_support': False, 'total_capacity_gb': 10,
-                  'free_capacity_gb': 10, 'max_over_subscription_ratio': 1,
+                  'free_capacity_gb': 10, 'max_over_subscription_ratio': '1',
                   'provisioned_capacity_gb': 0, 'allocated_capacity_gb': 0,
                   'reserved_percentage': 0}]}
 
@@ -348,7 +348,7 @@ class HostManagerTestCase(test.TestCase):
         capab1 = {'pools': [{
                   'pool_name': 'pool1', 'thick_provisioning_support': True,
                   'thin_provisioning_support': False, 'total_capacity_gb': 10,
-                  'free_capacity_gb': 10, 'max_over_subscription_ratio': 1,
+                  'free_capacity_gb': 10, 'max_over_subscription_ratio': '1',
                   'provisioned_capacity_gb': 0, 'allocated_capacity_gb': 0,
                   'reserved_percentage': 0}]}
 
@@ -364,7 +364,7 @@ class HostManagerTestCase(test.TestCase):
         capab2 = {'pools': [{
                   'pool_name': 'pool1', 'thick_provisioning_support': True,
                   'thin_provisioning_support': False, 'total_capacity_gb': 10,
-                  'free_capacity_gb': 9, 'max_over_subscription_ratio': 1,
+                  'free_capacity_gb': 9, 'max_over_subscription_ratio': '1',
                   'provisioned_capacity_gb': 1, 'allocated_capacity_gb': 1,
                   'reserved_percentage': 0}]}
 
@@ -423,14 +423,14 @@ class HostManagerTestCase(test.TestCase):
         capab1 = {'pools': [{
                   'pool_name': 'pool1', 'thick_provisioning_support': True,
                   'thin_provisioning_support': False, 'total_capacity_gb': 10,
-                  'free_capacity_gb': 10, 'max_over_subscription_ratio': 1,
+                  'free_capacity_gb': 10, 'max_over_subscription_ratio': '1',
                   'provisioned_capacity_gb': 0, 'allocated_capacity_gb': 0,
                   'reserved_percentage': 0}]}
 
         capab2 = {'pools': [{
                   'pool_name': 'pool1', 'thick_provisioning_support': True,
                   'thin_provisioning_support': False, 'total_capacity_gb': 10,
-                  'free_capacity_gb': 9, 'max_over_subscription_ratio': 1,
+                  'free_capacity_gb': 9, 'max_over_subscription_ratio': '1',
                   'provisioned_capacity_gb': 1, 'allocated_capacity_gb': 1,
                   'reserved_percentage': 0}]}
 
@@ -862,7 +862,7 @@ class HostManagerTestCase(test.TestCase):
                           'free_capacity_gb': 28.01,
                           'allocated_capacity_gb': 2.0,
                           'provisioned_capacity_gb': 2.0,
-                          'max_over_subscription_ratio': 1.0,
+                          'max_over_subscription_ratio': '1.0',
                           'thin_provisioning_support': False,
                           'thick_provisioning_support': True,
                           'reserved_percentage': 5},
@@ -871,7 +871,7 @@ class HostManagerTestCase(test.TestCase):
                           'free_capacity_gb': 18.01,
                           'allocated_capacity_gb': 2.0,
                           'provisioned_capacity_gb': 2.0,
-                          'max_over_subscription_ratio': 2.0,
+                          'max_over_subscription_ratio': '2.0',
                           'thin_provisioning_support': True,
                           'thick_provisioning_support': False,
                           'reserved_percentage': 5}]}
@@ -881,7 +881,7 @@ class HostManagerTestCase(test.TestCase):
                            'free_capacity_gb': 28.01,
                            'allocated_capacity_gb': 2.0,
                            'provisioned_capacity_gb': 2.0,
-                           'max_over_subscription_ratio': 1.0,
+                           'max_over_subscription_ratio': '1.0',
                            'thin_provisioning_support': False,
                            'thick_provisioning_support': True,
                            'reserved_percentage': 5},
@@ -890,7 +890,7 @@ class HostManagerTestCase(test.TestCase):
                            'free_capacity_gb': 18.01,
                            'allocated_capacity_gb': 2.0,
                            'provisioned_capacity_gb': 2.0,
-                           'max_over_subscription_ratio': 2.0,
+                           'max_over_subscription_ratio': '2.0',
                            'thin_provisioning_support': True,
                            'thick_provisioning_support': False,
                            'reserved_percentage': 5}]
@@ -901,7 +901,7 @@ class HostManagerTestCase(test.TestCase):
                           'free_capacity_gb': 28.01,
                           'allocated_capacity_gb': 2.0,
                           'provisioned_capacity_gb': 2.0,
-                          'max_over_subscription_ratio': 2.0,
+                          'max_over_subscription_ratio': '2.0',
                           'thin_provisioning_support': True,
                           'thick_provisioning_support': False,
                           'reserved_percentage': 0},
@@ -910,7 +910,7 @@ class HostManagerTestCase(test.TestCase):
                           'free_capacity_gb': 18.01,
                           'allocated_capacity_gb': 2.0,
                           'provisioned_capacity_gb': 2.0,
-                          'max_over_subscription_ratio': 2.0,
+                          'max_over_subscription_ratio': '2.0',
                           'thin_provisioning_support': True,
                           'thick_provisioning_support': False,
                           'reserved_percentage': 5}]}
@@ -920,7 +920,7 @@ class HostManagerTestCase(test.TestCase):
                            'free_capacity_gb': 28.01,
                            'allocated_capacity_gb': 2.0,
                            'provisioned_capacity_gb': 2.0,
-                           'max_over_subscription_ratio': 2.0,
+                           'max_over_subscription_ratio': '2.0',
                            'thin_provisioning_support': True,
                            'thick_provisioning_support': False,
                            'reserved_percentage': 0}]
