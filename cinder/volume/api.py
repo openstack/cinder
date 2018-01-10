@@ -852,6 +852,7 @@ class API(base.Base):
                               group_snapshot_id=None):
         context.authorize(snapshot_policy.CREATE_POLICY)
 
+        utils.check_metadata_properties(metadata)
         if not volume.host:
             msg = _("The snapshot cannot be created because volume has "
                     "not been scheduled to any host.")
@@ -899,7 +900,6 @@ class API(base.Base):
                     context, e,
                     resource='snapshots',
                     size=volume.size)
-        utils.check_metadata_properties(metadata)
 
         snapshot = None
         try:
