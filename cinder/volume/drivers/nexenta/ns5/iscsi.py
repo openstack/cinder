@@ -377,13 +377,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         )
 
     def _check_target_and_portals(self, tg):
-        target_name = tg.replace(
-            self.configuration.nexenta_target_group_prefix,
-            self.configuration.nexenta_target_prefix)
-        target = self.nef.get('san/iscsi/targets/%s' % target_name)
-        for portal in target['portals']:
-            if portal['address'] == self.iscsi_host:
-                return target_name
+        members = self.nef.get('san/targetgroups/%s' % tg).get('members')
+        target_name = members[0] if members else ''
+        if target_name:
+            target = self.nef.get('san/iscsi/targets/%s' % target_name)
+            for portal in target['portals']:
+                if portal['address'] == self.iscsi_host:
+                    return target_name
         return ''
 
     def _do_export(self, _ctx, volume):
