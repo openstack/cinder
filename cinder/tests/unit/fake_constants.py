@@ -14,6 +14,7 @@
 
 attachment_id = '4dc3bb12-ad75-41b9-ab2c-7609e743e600'
 backup_id = '707844eb-6d8a-4ac1-8b98-618e1c0b3a3a'
+BACKUP_ID = backup_id
 backup2_id = '40e8462a-c9d8-462f-a810-b732a1790535'
 backup3_id = '30ae7641-017e-4221-a642-855687c8bd71'
 cgsnapshot_id = '5e34cce3-bc97-46b7-a127-5cfb95ef445d'
@@ -33,6 +34,7 @@ snapshot3_id = '454f9970-1e05-4193-a3ed-5c390c3faa18'
 user_id = 'c853ca26-e8ea-4797-8a52-ee124a013d0e'
 user2_id = '95f7b7ed-bd7f-426e-b05f-f1ffeb4f09df'
 volume_id = '1e5177e7-95e5-4a0f-b170-e45f4b469f6a'
+VOLUME_ID = volume_id
 volume2_id = '43a09914-e495-475f-b862-0bda3c8918e4'
 volume3_id = '1b1cf149-219c-44ac-aee3-13121a7f86a7'
 volume4_id = '904d4602-4301-4e9b-8df1-8133b51904e6'
