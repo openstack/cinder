@@ -312,6 +312,43 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                        mock.Mock(return_value=[]))
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
+                                 'nimble:perfpol-name': 'default',
+                                 'nimble:encryption': 'yes'}))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_create_volume_with_unicode(self):
+        self.mock_client_service.service.createVol.return_value = \
+            FAKE_CREATE_VOLUME_POSITIVE_RESPONSE
+        self.mock_client_service.service.getVolInfo.return_value = \
+            FAKE_GET_VOL_INFO_RESPONSE
+        self.mock_client_service.service.getNetConfig.return_value = \
+            FAKE_POSITIVE_NETCONFIG_RESPONSE
+        self.assertEqual({
+            'provider_location': '172.18.108.21:3260 iqn.test 0',
+            'provider_auth': None},
+            self.driver.create_volume({'name': 'testvolume',
+                                       'size': 1,
+                                       'volume_type_id': None,
+                                       'display_name': u'unicode_name',
+                                       'display_description': ''}))
+        self.mock_client_service.service.createVol.assert_called_once_with(
+            request={
+                'attr': {'snap-quota': sys.maxsize,
+                         'warn-level': 858993459,
+                         'name': 'testvolume', 'reserve': 0,
+                         'online': True, 'pool-name': 'default',
+                         'size': 1073741824, 'quota': 1073741824,
+                         'perfpol-name': 'default', 'description': '',
+                         'agent-type': 5, 'encryptionAttr': {'cipher': 3},
+                         'multi-initiator': 'false'},
+                'sid': 'a9b9aba7'})
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
+                       mock.Mock(type_id=FAKE_TYPE_ID, return_value={
                            'nimble:perfpol-name': 'default',
                            'nimble:encryption': 'yes',
                            'nimble:multi-initiator': 'false'}))
