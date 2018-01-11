@@ -202,7 +202,10 @@ class API(base.Base):
                group=None, group_snapshot=None, source_group=None,
                backup=None):
 
-        context.authorize(vol_policy.CREATE_FROM_IMAGE_POLICY)
+        if image_id:
+            context.authorize(vol_policy.CREATE_FROM_IMAGE_POLICY)
+        else:
+            context.authorize(vol_policy.CREATE_POLICY)
 
         # Check up front for legacy replication parameters to quick fail
         if source_replica:
