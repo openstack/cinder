@@ -386,14 +386,14 @@ class SscUtilsTestCase(test.TestCase):
             na_server = netapp_api.NaServer('127.0.0.1')
             fake_api_return = mock.Mock(return_value=[])
             self.mock_object(ssc_cmode.netapp_api, 'invoke_api',
-                             new_attr=fake_api_return)
+                             new=fake_api_return)
             ssc_cmode.query_cluster_vols_for_ssc(na_server, 'vserver',
                                                  volume)
         else:
             na_server = None
             fake_api_error = mock.Mock(side_effect=exception.InvalidInput)
             self.mock_object(ssc_cmode.netapp_api, 'invoke_api',
-                             new_attr=fake_api_error)
+                             new=fake_api_error)
             self.assertRaises(KeyError, ssc_cmode.query_cluster_vols_for_ssc,
                               na_server, 'vserver', volume)
 

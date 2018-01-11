@@ -1392,7 +1392,7 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
         drv._get_export_path.assert_called_with('vol_id')
         drv._check_share_can_hold_size.assert_called_with('share', 1)
         assert mock_cvrt_image.call_count == 1
-        assert drv._execute.call_count == 1
+        self.assertEqual(drv._execute.call_count, 2)
         assert drv._delete_file_at_path.call_count == 2
         drv._clone_file_dst_exists.call_count == 1
         drv._post_clone_image.assert_called_with(volume)
