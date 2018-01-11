@@ -1032,14 +1032,16 @@ mountpoint:
   in: body
   required: true
   type: string
-multiattach:
+multiattach_req:
   description: |
     To enable this volume to attach to more than one
     server, set this value to ``true``. Default is ``false``.
+    Note that support for multiattach volumes depends on the volume
+    type being used.
   in: body
   required: false
   type: boolean
-multiattach_1:
+multiattach_resp:
   description: |
     If true, this volume can attach to more than one
     instance.
