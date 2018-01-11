@@ -26,6 +26,7 @@ from xml.dom import minidom
 from oslo_log import log as logging
 
 from cinder import exception
+from cinder import objects
 from cinder import test
 from cinder.tests.unit import utils
 from cinder.volume import configuration as conf
@@ -54,13 +55,10 @@ hypermetro_devices = """{
 }
 """
 
-test_volume = {
-    'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
+test_volume = objects.Volume(**{
     'size': 2,
-    'volume_name': 'vol1',
     'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-    'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-    'provider_auth': None,
+    '_name_id': None,
     'project_id': 'project',
     'display_name': 'vol1',
     'display_description': 'test volume',
@@ -68,8 +66,10 @@ test_volume = {
     'host': 'ubuntu001@backend001#OpenStack_Pool',
     'provider_location': '11',
     'status': 'available',
+    'volume_attachment': objects.VolumeAttachmentList(),
     'admin_metadata': {'huawei_lun_wwn': '6643e8c1004c5f6723e9f454003'},
-}
+    'metadata': {},
+})
 
 fake_smartx_value = {'smarttier': 'true',
                      'smartcache': 'true',
@@ -89,24 +89,20 @@ fake_hypermetro_opts = {'hypermetro': 'true',
                         'thick_provisioning_support': False,
                         }
 
-hyper_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
-                'size': 2,
-                'volume_name': 'vol1',
-                'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                'provider_auth': None,
-                'project_id': 'project',
-                'display_name': 'vol1',
-                'display_description': 'test volume',
-                'volume_type_id': None,
-                'host': 'ubuntu@huawei#OpenStack_Pool',
-                'provider_location': '11',
-                'volume_metadata': [{'key': 'hypermetro_id',
-                                     'value': '1'},
-                                    {'key': 'remote_lun_id',
-                                     'value': '11'}],
-                'admin_metadata': {},
-                }
+hyper_volume = objects.Volume(**{
+    'size': 2,
+    'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+    '_name_id': None,
+    'project_id': 'project',
+    'display_name': 'vol1',
+    'display_description': 'test volume',
+    'volume_type_id': None,
+    'host': 'ubuntu@huawei#OpenStack_Pool',
+    'provider_location': '11',
+    'metadata': {'hypermetro_id': '1',
+                 'remote_lun_id': '11'},
+    'admin_metadata': {},
+})
 
 sync_replica_specs = {'replication_enabled': '<is> True',
                       'replication_type': '<in> sync'}
@@ -114,12 +110,10 @@ async_replica_specs = {'replication_enabled': '<is> True',
                        'replication_type': '<in> async'}
 
 TEST_PAIR_ID = "3400a30d844d0004"
-replication_volume = {
-    'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
+replication_volume = objects.Volume(**{
     'size': 2,
-    'volume_name': 'vol1',
     'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-    'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+    '_name_id': None,
     'provider_auth': None,
     'project_id': 'project',
     'display_name': 'vol1',
@@ -127,16 +121,14 @@ replication_volume = {
     'volume_type_id': None,
     'host': 'ubuntu@huawei#OpenStack_Pool',
     'provider_location': '11',
-    'admin_metadata': {'huawei_lun_wwn': '6643e8c1004c5f6723e9f454003'},
+    'admin_metadata': {},
+    'metadata': {},
     'replication_status': 'disabled',
     'replication_driver_data':
-        '{"pair_id": "%s", "rmt_lun_id": "1"}' % TEST_PAIR_ID,
-}
+        '{"pair_id": "3400a30d844d0004", "rmt_lun_id": "1"}',
+})
 
-test_snap = {
-    'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
-    'size': 1,
-    'volume_name': 'vol1',
+test_snap = objects.Snapshot(**{
     'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
     'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
     'provider_auth': None,
@@ -145,10 +137,14 @@ test_snap = {
     'display_description': 'test volume',
     'volume_type_id': None,
     'provider_location': '11',
-    'volume': {'provider_location': '12',
-               'admin_metadata': {
-                   'huawei_lun_wwn': '6643e8c1004c5f6723e9f454003'}},
-}
+    'volume': objects.Volume(**{
+        'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+        'provider_location': '12',
+        'metadata': {'hypermetro_id': '1',
+                     'remote_lun_id': '11'},
+        'admin_metadata': {},
+    }),
+})
 
 test_host = {'host': 'ubuntu001@backend001#OpenStack_Pool',
              'capabilities': {'smartcache': True,
@@ -975,7 +971,7 @@ FAKE_SYSTEM_VERSION_RESPONSE = """
         "code": 0
     },
     "data":{
-        "PRODUCTVERSION": "V100R001C10",
+        "PRODUCTVERSION": "V300R003C10",
         "wwn": "21003400a30d844d"
     }
 }
@@ -2043,19 +2039,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual('210235G7J20000000000', device_id)
 
     def test_check_volume_exist_on_array(self):
-        test_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
-                       'size': 2,
-                       'volume_name': 'vol1',
-                       'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                       'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                       'provider_auth': None,
-                       'project_id': 'project',
-                       'display_name': 'vol1',
-                       'display_description': 'test volume',
-                       'volume_type_id': None,
-                       'host': 'ubuntu001@backend001#OpenStack_Pool',
-                       'provider_location': None,
-                       }
         self.mock_object(rest_client.RestClient, 'get_lun_id_by_name',
                          mock.Mock(return_value=None))
         self.driver._check_volume_exist_on_array(
@@ -2063,55 +2046,26 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
 
     def test_create_volume_success(self):
         # Have pool info in the volume.
-        test_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
-                       'size': 2,
-                       'volume_name': 'vol1',
-                       'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                       'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                       'provider_auth': None,
-                       'project_id': 'project',
-                       'display_name': 'vol1',
-                       'display_description': 'test volume',
-                       'volume_type_id': None,
-                       'host': 'ubuntu001@backend001#OpenStack_Pool',
-                       'provider_location': '11',
-                       'admin_metadata': {},
-                       }
         lun_info = self.driver.create_volume(test_volume)
-        self.assertEqual('1', lun_info['provider_location'])
+        expected = {"huawei_lun_id": "1",
+                    "huawei_lun_wwn": "6643e8c1004c5f6723e9f454003"}
+        self.assertDictEqual(
+            expected, json.loads(lun_info['provider_location']))
 
         # No pool info in the volume.
-        test_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
-                       'size': 2,
-                       'volume_name': 'vol1',
-                       'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                       'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                       'provider_auth': None,
-                       'project_id': 'project',
-                       'display_name': 'vol1',
-                       'display_description': 'test volume',
-                       'volume_type_id': None,
-                       'host': 'ubuntu001@backend001',
-                       'provider_location': '11',
-                       'admin_metadata': {},
-                       }
+        test_volume.host = 'ubuntu001@backend001'
         lun_info = self.driver.create_volume(test_volume)
-        self.assertEqual('1', lun_info['provider_location'])
+        self.assertDictEqual(
+            expected, json.loads(lun_info['provider_location']))
 
     def test_delete_volume_success(self):
         self.driver.delete_volume(test_volume)
 
     def test_create_snapshot_success(self):
         lun_info = self.driver.create_snapshot(test_snap)
-        self.assertEqual(11, lun_info['provider_location'])
-
-        test_snap['volume']['provider_location'] = ''
-        lun_info = self.driver.create_snapshot(test_snap)
-        self.assertEqual(11, lun_info['provider_location'])
-
-        test_snap['volume']['provider_location'] = None
-        lun_info = self.driver.create_snapshot(test_snap)
-        self.assertEqual(11, lun_info['provider_location'])
+        self.assertDictEqual(
+            {"huawei_snapshot_id": 11},
+            json.loads(lun_info['provider_location']))
 
     def test_delete_snapshot_success(self):
         self.driver.delete_snapshot(test_snap)
@@ -2124,12 +2078,16 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.mock_object(replication.ReplicaCommonDriver, 'sync')
         model_update = self.driver.create_volume_from_snapshot(test_volume,
                                                                test_volume)
-        self.assertEqual('1', model_update['provider_location'])
+        expected = {"huawei_lun_id": "1",
+                    "huawei_lun_wwn": "6643e8c1004c5f6723e9f454003"}
+        self.assertDictEqual(
+            expected, json.loads(model_update['provider_location']))
 
         driver_data = {'pair_id': TEST_PAIR_ID,
+                       "rmt_lun_wwn": "6643e8c1004c5f6723e9f454003",
                        'rmt_lun_id': '1'}
-        driver_data = replication.to_string(driver_data)
-        self.assertEqual(driver_data, model_update['replication_driver_data'])
+        self.assertDictEqual(
+            driver_data, json.loads(model_update['replication_driver_data']))
         self.assertEqual('available', model_update['replication_status'])
 
     def test_initialize_connection_success(self):
@@ -2165,12 +2123,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                           self.driver.extend_volume, test_volume, 3)
 
     def test_extend_nonexistent_volume(self):
-        test_volume = {
-            'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
-            'size': 2,
-            'volume_name': 'vol1',
-            'id': '21ec7341-9256-497b-97d9-ef48edcf0635'
-        }
+        test_volume.provider_location = None
         self.mock_object(rest_client.RestClient,
                          'get_lun_id_by_name',
                          mock.Mock(return_value=None))
@@ -2212,19 +2165,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.driver.delete_snapshot(test_snap)
 
     def test_delete_snapshot_with_snapshot_nonexistent(self):
-        fake_snap = {
-            'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
-            'size': 1,
-            'volume_name': 'vol1',
-            'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-            'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-            'provider_auth': None,
-            'project_id': 'project',
-            'display_name': 'vol1',
-            'display_description': 'test volume',
-            'volume_type_id': None,
-            'provider_location': None, }
-        self.driver.delete_snapshot(fake_snap)
+        self.driver.delete_snapshot(test_snap)
 
     def test_initialize_connection_fail(self):
         self.driver.client.test_fail = True
@@ -2317,8 +2258,13 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                        return_value={'MAXIOPS': '100',
                                      'IOType': '2'})
     def test_create_smartqos(self, mock_qos_value):
+        self.mock_object(rest_client.RestClient, 'find_array_version',
+                         mock.Mock(return_value='V300R001C00'))
         lun_info = self.driver.create_volume(test_volume)
-        self.assertEqual('1', lun_info['provider_location'])
+        expected = {"huawei_lun_id": "1",
+                    "huawei_lun_wwn": "6643e8c1004c5f6723e9f454003"}
+        self.assertDictEqual(
+            expected, json.loads(lun_info['provider_location']))
 
     @ddt.data('front-end', 'back-end')
     @mock.patch.object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
@@ -2336,13 +2282,19 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                      mock_consumer,
                                      mock_qos_specs,
                                      mock_value_type):
+        self.mock_object(rest_client.RestClient, 'find_array_version',
+                         mock.Mock(return_value='V300R001C00'))
         self.mock_object(qos_specs, 'get_qos_specs',
-                         return_value={'specs': {'maxBandWidth': '100',
-                                                 'IOType': '0'},
-                                       'consumer': mock_consumer})
+                         mock.Mock(return_value={
+                             'specs': {'maxBandWidth': '100',
+                                       'IOType': '0'},
+                             'consumer': mock_consumer}))
 
-        lun_info = self.driver.create_volume(self.volume)
-        self.assertEqual('1', lun_info['provider_location'])
+        lun_info = self.driver.create_volume(test_volume)
+        expected = {"huawei_lun_id": "1",
+                    "huawei_lun_wwn": "6643e8c1004c5f6723e9f454003"}
+        self.assertDictEqual(
+            expected, json.loads(lun_info['provider_location']))
 
     @mock.patch.object(rest_client.RestClient, 'add_lun_to_partition')
     @mock.patch.object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
@@ -2356,7 +2308,10 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                      'partitionname': 'partition-test'})
     def test_create_smartx(self, mock_volume_types, mock_add_lun_to_partition):
         lun_info = self.driver.create_volume(test_volume)
-        self.assertEqual('1', lun_info['provider_location'])
+        expected = {"huawei_lun_id": "1",
+                    "huawei_lun_wwn": "6643e8c1004c5f6723e9f454003"}
+        self.assertDictEqual(
+            expected, json.loads(lun_info['provider_location']))
 
     def test_find_available_qos(self):
 
@@ -2425,10 +2380,13 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                        mock_pool_info,
                                        mock_all_pool_info,
                                        mock_login_return):
-        metadata = {"hypermetro_id": '11',
-                    "remote_lun_id": '1'}
+        metadata = {'huawei_lun_id': '1',
+                    'huawei_lun_wwn': '6643e8c1004c5f6723e9f454003',
+                    'hypermetro_id': '11',
+                    'remote_lun_id': '1'}
         lun_info = self.driver.create_volume(hyper_volume)
-        self.assertEqual(metadata, lun_info['metadata'])
+        self.assertDictEqual(
+            metadata, json.loads(lun_info['provider_location']))
 
     @mock.patch.object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
                        return_value=fake_hypermetro_opts)
@@ -2505,9 +2463,11 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                        return_value={'hypermetro_id': '3400a30d844d0007',
                                      'remote_lun_id': '1'})
     def test_hypermetro_none_map_info_fail(self, mock_metadata):
+        self.mock_object(rest_client.RestClient, 'find_array_version',
+                         mock.Mock(return_value='V300R001C00'))
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.metro.connect_volume_fc,
-                          test_volume,
+                          hyper_volume,
                           FakeConnector)
 
     @mock.patch.object(rest_client.RestClient, 'check_lun_exist',
@@ -2685,12 +2645,10 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         external_ref = {'source-name': 'LUN1'}
         model_update = self.driver.manage_existing(test_volume,
                                                    external_ref)
-        expected_val = {
-            'admin_metadata': {
-                'huawei_lun_wwn': '6643e8c1004c5f6723e9f454003'
-            },
-            'provider_location': 'ID1'}
-        self.assertEqual(expected_val, model_update)
+        expected_val = {"huawei_lun_id": "ID1",
+                        "huawei_lun_wwn": "6643e8c1004c5f6723e9f454003"}
+        self.assertDictEqual(
+            expected_val, json.loads(model_update['provider_location']))
 
     @ddt.data([[{'PRILUNID': 'ID1'}], []],
               [[{'PRILUNID': 'ID2'}], ['ID1', 'ID2']])
@@ -2787,12 +2745,11 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         }
         model_update = self.driver.manage_existing(test_volume,
                                                    external_ref)
-        expected_val = {
-            'admin_metadata': {
-                'huawei_lun_wwn': '6643e8c1004c5f6723e9f454003'
-            },
-            'provider_location': 'ID1'}
-        self.assertEqual(expected_val, model_update)
+        expected_val = {'huawei_lun_id': 'ID1',
+                        'huawei_lun_wwn': '6643e8c1004c5f6723e9f454003',
+                        }
+        self.assertDictEqual(
+            expected_val, json.loads(model_update['provider_location']))
 
     @ddt.data([None, 0], ['ID1', 1])
     @mock.patch.object(rest_client.RestClient, 'rename_lun')
@@ -2819,13 +2776,10 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                '_get_snapshot_info_by_ref',
                                return_value={'HEALTHSTATUS': '2',
                                              'PARENTID': '12'}):
-            test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf',
-                             'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                             'volume': {'provider_location': '12'}}
             external_ref = {'source-name': 'test1'}
             ex = self.assertRaises(exception.ManageExistingInvalidReference,
                                    self.driver.manage_existing_snapshot,
-                                   test_snapshot, external_ref)
+                                   test_snap, external_ref)
             self.assertIsNotNone(re.search('Snapshot status is not normal',
                                            ex.msg))
 
@@ -2841,13 +2795,10 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
     def test_manage_existing_snapshot_with_lungroup(self, mock_get_by_name,
                                                     mock_get_info):
         # Already in LUN group.
-        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                         'volume': {'provider_location': '12'}}
         external_ref = {'source-name': 'test1'}
         ex = self.assertRaises(exception.ManageExistingInvalidReference,
                                self.driver.manage_existing_snapshot,
-                               test_snapshot, external_ref)
+                               test_snap, external_ref)
         self.assertIsNotNone(re.search('Snapshot is exposed to initiator',
                                        ex.msg))
 
@@ -2873,21 +2824,19 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                               mock_get_info,
                                               mock_check_snapshot,
                                               mock_rename):
-        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                         'volume': {'provider_location': '12'}}
         external_ref = {'source-name': 'test1'}
-        model_update = self.driver.manage_existing_snapshot(test_snapshot,
+        model_update = self.driver.manage_existing_snapshot(test_snap,
                                                             external_ref)
-        self.assertEqual({'provider_location': 'ID1'}, model_update)
+        self.assertDictEqual(
+            {'huawei_snapshot_id': 'ID1'},
+            json.loads(model_update['provider_location']))
 
-        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                         'volume': {'provider_location': '12'}}
         external_ref = {'source-id': 'ID1'}
-        model_update = self.driver.manage_existing_snapshot(test_snapshot,
+        model_update = self.driver.manage_existing_snapshot(test_snap,
                                                             external_ref)
-        self.assertEqual({'provider_location': 'ID1'}, model_update)
+        self.assertDictEqual(
+            {'huawei_snapshot_id': 'ID1'},
+            json.loads(model_update['provider_location']))
 
     @mock.patch.object(rest_client.RestClient, 'get_snapshot_info',
                        return_value={'ID': 'ID1',
@@ -2901,12 +2850,9 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
     def test_manage_existing_snapshot_mismatch_lun(self, mock_get_by_name,
                                                    mock_get_info):
         external_ref = {'source-name': 'test1'}
-        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                         'volume': {'provider_location': '12'}}
         ex = self.assertRaises(exception.ManageExistingInvalidReference,
                                self.driver.manage_existing_snapshot,
-                               test_snapshot, external_ref)
+                               test_snap, external_ref)
         self.assertIsNotNone(re.search("Snapshot doesn't belong to volume",
                                        ex.msg))
 
@@ -2919,18 +2865,12 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                                        mock_get_info):
         external_ref = {'source-name': 'test1',
                         'source-id': 'ID1'}
-        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                         'volume': {'provider_location': '12'}}
-        size = self.driver.manage_existing_snapshot_get_size(test_snapshot,
+        size = self.driver.manage_existing_snapshot_get_size(test_snap,
                                                              external_ref)
         self.assertEqual(1, size)
 
         external_ref = {'source-name': 'test1'}
-        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
-                         'volume': {'provider_location': '12'}}
-        size = self.driver.manage_existing_snapshot_get_size(test_snapshot,
+        size = self.driver.manage_existing_snapshot_get_size(test_snap,
                                                              external_ref)
         self.assertEqual(1, size)
 
@@ -2968,9 +2908,10 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
 
         model_update = self.driver.create_volume(replication_volume)
         driver_data = {'pair_id': TEST_PAIR_ID,
+                       "rmt_lun_wwn": "6643e8c1004c5f6723e9f454003",
                        'rmt_lun_id': '1'}
-        driver_data = replication.to_string(driver_data)
-        self.assertEqual(driver_data, model_update['replication_driver_data'])
+        self.assertDictEqual(
+            driver_data, json.loads(model_update['replication_driver_data']))
         self.assertEqual('available', model_update['replication_status'])
 
     @ddt.data(
@@ -3157,7 +3098,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
     def test_failback_normal_volumes(self):
         volume = copy.deepcopy(test_volume)
         volume['status'] = 'error'
-        volume['metadata'] = {'old_status', 'available'}
+        volume['metadata'] = {'old_status': 'available'}
 
         driver = FakeISCSIStorage(configuration=self.configuration)
         driver.active_backend_id = REPLICA_BACKEND_ID
@@ -3200,12 +3141,14 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         v_id = volumes_update[0]['volume_id']
         v_update = volumes_update[0]['updates']
         self.assertEqual(replication_volume['id'], v_id)
-        self.assertEqual('1', v_update['provider_location'])
+        self.assertDictEqual({"huawei_lun_id": "1", "huawei_lun_wwn": None},
+                             json.loads(v_update['provider_location']))
         self.assertEqual('failed-over', v_update['replication_status'])
         new_drv_data = {'pair_id': TEST_PAIR_ID,
-                        'rmt_lun_id': replication_volume['provider_location']}
-        new_drv_data = replication.to_string(new_drv_data)
-        self.assertEqual(new_drv_data, v_update['replication_driver_data'])
+                        'rmt_lun_id': '11',
+                        'rmt_lun_wwn': None}
+        self.assertDictEqual(
+            new_drv_data, json.loads(v_update['replication_driver_data']))
 
     @ddt.data({}, {'pair_id': TEST_PAIR_ID})
     def test_failover_replica_volumes_invalid_drv_data(self, mock_drv_data):
@@ -3260,12 +3203,14 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         v_id = volumes_update[0]['volume_id']
         v_update = volumes_update[0]['updates']
         self.assertEqual(replication_volume['id'], v_id)
-        self.assertEqual('1', v_update['provider_location'])
+        self.assertDictEqual({"huawei_lun_id": "1", "huawei_lun_wwn": None},
+                             json.loads(v_update['provider_location']))
         self.assertEqual('available', v_update['replication_status'])
         new_drv_data = {'pair_id': TEST_PAIR_ID,
-                        'rmt_lun_id': replication_volume['provider_location']}
-        new_drv_data = replication.to_string(new_drv_data)
-        self.assertEqual(new_drv_data, v_update['replication_driver_data'])
+                        'rmt_lun_id': '11',
+                        'rmt_lun_wwn': None}
+        self.assertDictEqual(
+            new_drv_data, json.loads(v_update['replication_driver_data']))
 
     @ddt.data({}, {'pair_id': TEST_PAIR_ID})
     def test_failback_replica_volumes_invalid_drv_data(self, mock_drv_data):
@@ -3479,22 +3424,19 @@ class HuaweiFCDriverTestCase(test.TestCase):
 
     def test_create_volume_success(self):
         lun_info = self.driver.create_volume(test_volume)
-        self.assertEqual('1', lun_info['provider_location'])
+        expected = {"huawei_lun_id": "1",
+                    "huawei_lun_wwn": "6643e8c1004c5f6723e9f454003"}
+        self.assertDictEqual(
+            expected, json.loads(lun_info['provider_location']))
 
     def test_delete_volume_success(self):
         self.driver.delete_volume(test_volume)
 
     def test_create_snapshot_success(self):
+        expected = {"huawei_snapshot_id": 11}
         lun_info = self.driver.create_snapshot(test_snap)
-        self.assertEqual(11, lun_info['provider_location'])
-
-        test_snap['volume']['provider_location'] = ''
-        lun_info = self.driver.create_snapshot(test_snap)
-        self.assertEqual(11, lun_info['provider_location'])
-
-        test_snap['volume']['provider_location'] = None
-        lun_info = self.driver.create_snapshot(test_snap)
-        self.assertEqual(11, lun_info['provider_location'])
+        self.assertDictEqual(
+            expected, json.loads(lun_info['provider_location']))
 
     def test_delete_snapshot_success(self):
         self.driver.delete_snapshot(test_snap)
@@ -3502,7 +3444,10 @@ class HuaweiFCDriverTestCase(test.TestCase):
     def test_create_volume_from_snapsuccess(self):
         lun_info = self.driver.create_volume_from_snapshot(test_volume,
                                                            test_volume)
-        self.assertEqual('1', lun_info['provider_location'])
+        expected = {"huawei_lun_id": "1",
+                    "huawei_lun_wwn": "6643e8c1004c5f6723e9f454003"}
+        self.assertDictEqual(
+            expected, json.loads(lun_info['provider_location']))
 
     def test_initialize_connection_success(self):
         iscsi_properties = self.driver.initialize_connection(test_volume,
@@ -3531,8 +3476,6 @@ class HuaweiFCDriverTestCase(test.TestCase):
         self.driver.initialize_connection(hyper_volume, FakeConnector)
 
     def test_hypermetro_connection_success(self):
-        self.mock_object(rest_client.RestClient, 'find_array_version',
-                         mock.Mock(return_value='V300R003C00'))
         fc_properties = self.driver.initialize_connection(hyper_volume,
                                                           FakeConnector)
         self.assertEqual(1, fc_properties['data']['target_lun'])
@@ -3906,7 +3849,10 @@ class HuaweiFCDriverTestCase(test.TestCase):
     def test_multi_resturls_success(self):
         self.driver.client.test_multi_url_flag = True
         lun_info = self.driver.create_volume(test_volume)
-        self.assertEqual('1', lun_info['provider_location'])
+        expected = {"huawei_lun_id": "1",
+                    "huawei_lun_wwn": "6643e8c1004c5f6723e9f454003"}
+        self.assertDictEqual(
+            expected, json.loads(lun_info['provider_location']))
 
     def test_get_id_from_result(self):
         result = {}
@@ -3970,10 +3916,13 @@ class HuaweiFCDriverTestCase(test.TestCase):
                                        mock_volume_ready,
                                        mock_logout):
 
-        metadata = {"hypermetro_id": '11',
-                    "remote_lun_id": '1'}
+        metadata = {'huawei_lun_id': '1',
+                    'huawei_lun_wwn': '6643e8c1004c5f6723e9f454003',
+                    'hypermetro_id': '11',
+                    'remote_lun_id': '1'}
         lun_info = self.driver.create_volume(hyper_volume)
-        self.assertEqual(metadata, lun_info['metadata'])
+        self.assertDictEqual(
+            metadata, json.loads(lun_info['provider_location']))
 
     @mock.patch.object(rest_client.RestClient, 'call',
                        return_value={"data": [{"RUNNINGSTATUS": "27",
@@ -4161,7 +4110,8 @@ class HuaweiRestClientTestCase(test.TestCase):
         fake_res.status_code = 500
         fake_res.url = "http://fake-rest-url"
 
-        self.mock_object(self.client.session, 'post', return_value=fake_res)
+        self.mock_object(self.client.session, 'post',
+                         mock.Mock(return_value=fake_res))
         res = self.client.do_call("http://fake-rest-url", None, 'POST')
 
         expected = {"error": {"code": 500,
