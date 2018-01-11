@@ -26,13 +26,19 @@ from cinder.volume.drivers import infinidat
 TEST_WWN_1 = '00:11:22:33:44:55:66:77'
 TEST_WWN_2 = '11:11:22:33:44:55:66:77'
 
+TEST_IP_ADDRESS = '1.1.1.1'
+TEST_IQN = 'iqn.2012-07.org.fake:01'
+TEST_ISCSI_TCP_PORT = 3260
+
+TEST_TARGET_PORTAL = '{}:{}'.format(TEST_IP_ADDRESS, TEST_ISCSI_TCP_PORT)
+
 test_volume = mock.Mock(id=1, size=1, volume_type_id=1)
 test_snapshot = mock.Mock(id=2, volume=test_volume, volume_id='1')
 test_clone = mock.Mock(id=3, size=1)
 test_group = mock.Mock(id=4)
 test_snapgroup = mock.Mock(id=5, group=test_group)
 test_connector = dict(wwpns=[TEST_WWN_1],
-                      initiator='iqn.2012-07.org.fake:01')
+                      initiator=TEST_IQN)
 
 
 class FakeInfinisdkException(Exception):
@@ -89,7 +95,10 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self._mock_pool.get_free_physical_capacity.return_value = units.Gi
         self._mock_pool.get_physical_capacity.return_value = units.Gi
         self._mock_ns = mock.Mock()
-        self._mock_ns.get_ips.return_value = [mock.Mock(ip_address='1.1.1.1')]
+        self._mock_ns.get_ips.return_value = [
+            mock.Mock(ip_address=TEST_IP_ADDRESS, enabled=True)]
+        self._mock_ns.get_properties.return_value = mock.Mock(
+            iscsi_iqn=TEST_IQN, iscsi_tcp_port=TEST_ISCSI_TCP_PORT)
         self._mock_group = mock.Mock()
         self._mock_qos_policy = mock.Mock()
         result.volumes.safe_get.return_value = self._mock_volume
@@ -519,9 +528,23 @@ class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.do_setup, None)
 
+    def _assert_plurals(self, result, expected_length):
+        self.assertEqual(expected_length, len(result['data']['target_luns']))
+        self.assertEqual(expected_length, len(result['data']['target_iqns']))
+        self.assertEqual(expected_length,
+                         len(result['data']['target_portals']))
+        self.assertTrue(all(lun == 1 for lun in result['data']['target_luns']))
+        self.assertTrue(
+            all(iqn == test_connector['initiator'] for
+                iqn in result['data']['target_iqns']))
+
+        self.assertTrue(all(target_portal == TEST_TARGET_PORTAL for
+                            target_portal in result['data']['target_portals']))
+
     def test_initialize_connection(self):
         result = self.driver.initialize_connection(test_volume, test_connector)
         self.assertEqual(1, result['data']['target_lun'])
+        self._assert_plurals(result, 1)
 
     def test_initialize_netspace_does_not_exist(self):
         self._system.network_spaces.safe_get.return_value = None
@@ -548,9 +571,11 @@ class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
                                                         'netspace2']
         result = self.driver.initialize_connection(test_volume, test_connector)
         self.assertEqual(1, result['data']['target_lun'])
-        self.assertEqual(2, len(result['data']['target_luns']))
-        self.assertEqual(2, len(result['data']['target_iqns']))
-        self.assertEqual(2, len(result['data']['target_portals']))
+        self._assert_plurals(result, 2)
+
+    def test_initialize_connection_plurals(self):
+        result = self.driver.initialize_connection(test_volume, test_connector)
+        self._assert_plurals(result, 1)
 
     def test_terminate_connection(self):
         self.driver.terminate_connection(test_volume, test_connector)
