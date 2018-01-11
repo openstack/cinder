@@ -433,3 +433,7 @@ volume APIs.
     the volume was updated.
     But in 3.53, user will need to pass at least one valid parameter in the request
     body otherwise it will return 400 error.
+
+3.54
+----
+Add ``mode`` argument to attachment-create.
