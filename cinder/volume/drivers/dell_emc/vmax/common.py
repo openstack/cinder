@@ -249,6 +249,8 @@ class VMAXCommon(object):
         rep_driver_data = {}
         volume_id = volume.id
         extra_specs = self._initial_setup(volume)
+        if 'qos' in extra_specs:
+            del extra_specs['qos']
 
         # Volume_name naming convention is 'OS-UUID'.
         volume_name = self.utils.get_volume_element_name(volume_id)
@@ -465,6 +467,8 @@ class VMAXCommon(object):
         :param connector: the connector Object
         """
         extra_specs = self._initial_setup(volume)
+        if 'qos' in extra_specs:
+            del extra_specs['qos']
         rep_extra_specs = self._get_replication_extra_specs(
             extra_specs, self.rep_config)
         if self.utils.is_volume_failed_over(volume):
