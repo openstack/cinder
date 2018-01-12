@@ -90,7 +90,7 @@ VMAX drivers support these operations:
 -  Retype a volume (Host and storage assisted volume migration)
 -  Create a volume from a snapshot
 -  Create and delete generic volume group
--  Create and delete generice volume group snapshot
+-  Create and delete generic volume group snapshot
 -  Modify generic volume group (add and remove volumes)
 -  Create generic volume group from source
 -  Live Migration
@@ -107,6 +107,7 @@ VMAX drivers also support the following features:
 -  Service Level support
 -  SnapVX support
 -  Compression support(All Flash only)
+-  CHAP Authentication
 
 .. note::
 
@@ -118,31 +119,6 @@ VMAX drivers also support the following features:
 
 VMAX Driver Integration
 ~~~~~~~~~~~~~~~~~~~~~~~
-
-#. Install iSCSI Utilities (for iSCSI drivers only).
-
-   #. Download and configure the Cinder node as an iSCSI initiator.
-   #. Install the ``open-iscsi`` package.
-
-      -  On Ubuntu:
-
-         .. code-block:: console
-
-            # apt-get install open-iscsi
-
-      -  On openSUSE:
-
-         .. code-block:: console
-
-            # zypper install open-iscsi
-
-      -  On Red Hat Enterprise Linux, CentOS, and Fedora:
-
-         .. code-block:: console
-
-            # yum install scsi-target-utils.x86_64
-
-   #. Enable the iSCSI driver to start automatically.
 
 #. Download Solutions Enabler from ``support.emc.com`` and install it.
 
@@ -176,37 +152,37 @@ VMAX Driver Integration
    .. note::
 
       For security and backend uniformity, the use of the XML file for VMAX
-      backend configuration has been deprecation in Queens. While the xml file
+      backend configuration has been deprecated in Queens. While the xml file
       usage will still be supported, a warning will be issued on its impending
       deprecation.
 
-   +-----------------+------------------------+---------+----------+----------------------+
-   |  VMAX parameter | cinder.conf parameter  | Default | Required | Description          |
-   +=================+========================+=========+==========+======================+
-   |  RestServerIp   | san_ip                 | "       | Yes      | IP address of the    |
-   |                 |                        |         |          | Unisphere server     |
-   +-----------------+------------------------+---------+----------+----------------------+
-   |  RestServerPort | san_rest_port          | 8443    | No       | Port of the          |
-   |                 |                        |         |          | Unisphere server     |
-   +-----------------+------------------------+---------+----------+----------------------+
-   |  RestUserName   | san_login              | 'admin' | Yes      | Username of the      |
-   |                 |                        |         |          | Unisphere server     |
-   +-----------------+------------------------+---------+----------+----------------------+
-   |  RestPassword   | san_password           | "       | Yes      | Password of the      |
-   |                 |                        |         |          | Unisphere server     |
-   +-----------------+------------------------+---------+----------+----------------------+
-   |  Array          | vmax_array             | None    | Yes      | Unique VMAX array    |
-   |                 |                        |         |          | serial number        |
-   +-----------------+------------------------+---------+----------+----------------------+
-   |  SRP            | vmax_srp               | None    | Yes      | Name of the          |
-   |                 |                        |         |          | storage resource pool|
-   +-----------------+------------------------+---------+----------+----------------------+
-   |  PortGroups     | vmax_port_groups       | None    | Yes      | The name(s) of VMAX  |
-   |                 |                        |         |          | port group(s)        |
-   +-----------------+------------------------+---------+----------+----------------------+
-   |  SSLVerify      | driver_ssl_cert_verify | False   | No       | The path to the      |
-   |                 | driver_ssl_cert_path   | None    | No       | ``ca_cert.pem``      |
-   +-----------------+------------------------+---------+----------+----------------------+
+   +-----------------+------------------------+---------+----------+---------------------------+
+   |  VMAX parameter | cinder.conf parameter  | Default | Required | Description               |
+   +=================+========================+=========+==========+===========================+
+   |  RestServerIp   | san_ip                 | "       | Yes      | IP address of the         |
+   |                 |                        |         |          | Unisphere server          |
+   +-----------------+------------------------+---------+----------+---------------------------+
+   |  RestServerPort | san_rest_port          | 8443    | No       | Port of the               |
+   |                 |                        |         |          | Unisphere server          |
+   +-----------------+------------------------+---------+----------+---------------------------+
+   |  RestUserName   | san_login              | 'admin' | Yes      | Username of the           |
+   |                 |                        |         |          | Unisphere server          |
+   +-----------------+------------------------+---------+----------+---------------------------+
+   |  RestPassword   | san_password           | "       | Yes      | Password of the           |
+   |                 |                        |         |          | Unisphere server          |
+   +-----------------+------------------------+---------+----------+---------------------------+
+   |  Array          | vmax_array             | None    | Yes      | Unique VMAX array         |
+   |                 |                        |         |          | serial number             |
+   +-----------------+------------------------+---------+----------+---------------------------+
+   |  SRP            | vmax_srp               | None    | Yes      | Name of the               |
+   |                 |                        |         |          | storage resource pool     |
+   +-----------------+------------------------+---------+----------+---------------------------+
+   |  PortGroups     | vmax_port_groups       | None    | Yes      | The name(s) of VMAX       |
+   |                 |                        |         |          | port group(s)             |
+   +-----------------+------------------------+---------+----------+---------------------------+
+   |  SSLVerify      | driver_ssl_cert_verify | False   | No       | The path to the           |
+   |                 | driver_ssl_cert_path   | None    | No       | ``my_unisphere_host.pem`` |
+   +-----------------+------------------------+---------+----------+---------------------------+
 
    .. note::
 
@@ -245,21 +221,21 @@ VMAX Driver Integration
       volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
       volume_backend_name = VMAX_ISCSI_DIAMOND
       vmax_port_groups = [OS-ISCSI-PG]
-      san_ip = 10.60.141.97
-      san_login = smc
-      san_password = smc
-      vmax_array = 000197800128
+      san_ip = 10.10.10.10
+      san_login = my_username
+      san_password = my_password
+      vmax_array = 000123456789
       vmax_srp = SRP_1
 
 
       [CONF_GROUP_FC]
       volume_driver = cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver
-      volume_backend_name = VMAX_ISCSI_DIAMOND
-      vmax_port_groups = [OS-ISCSI-PG]
-      san_ip = 10.60.141.97
-      san_login = smc
-      san_password = smc
-      vmax_array = 000197800128
+      volume_backend_name = VMAX_FC_DIAMOND
+      vmax_port_groups = [OS-FC-PG]
+      san_ip = 10.10.10.10
+      san_login = my_username
+      san_password = my_password
+      vmax_array = 000123456789
       vmax_srp = SRP_1
 
    In this example, two back-end configuration groups are enabled:
@@ -292,12 +268,12 @@ VMAX Driver Integration
 
       $ openstack volume type create VMAX_ISCSI_SILVER_OLTP
       $ openstack volume type set --property volume_backend_name=ISCSI_backend \
-                                  --property pool_name=Silver+OLTP+SRP_1+000197800123 \
+                                  --property pool_name=Silver+OLTP+SRP_1+000123456789 \
                                   --property storagetype:portgroupname=OS-PG2 \
                                   VMAX_ISCSI_SILVER_OLTP
       $ openstack volume type create VMAX_FC_DIAMOND_DSS
       $ openstack volume type set --property volume_backend_name=FC_backend \
-                                  --property pool_name=Diamond+DSS+SRP_1+000197800123 \
+                                  --property pool_name=Diamond+DSS+SRP_1+000123456789 \
                                   --property storagetype:portgroupname=OS-PG1 \
                                   VMAX_FC_DIAMOND_DSS
 
@@ -310,29 +286,29 @@ VMAX Driver Integration
    Diamond Service Level, and a DSS workload.
 
    The ``ServiceLevel`` manages the underlying storage to provide expected
-   performance. Setting the ``ServiceLevel`` to ``NONE`` means that non-FAST
+   performance. Setting the ``ServiceLevel`` to ``None`` means that non-FAST
    managed storage groups will be created instead (storage groups not
-   associated with any service level). If ``ServiceLevel`` is ``NONE`` then
-   ``Workload`` must be ``NONE``.
+   associated with any service level). If ``ServiceLevel`` is ``None`` then
+   ``Workload`` must be ``None``.
 
    .. code-block:: console
 
-      openstack volume type set --property pool_name=NONE+NONE+SRP_1+000197800123
+      openstack volume type set --property pool_name=None+None+SRP_1+000123456789
 
    When a ``Workload`` is added, the latency range is reduced due to the
-   added information. Setting the ``Workload`` to ``NONE`` means the latency
+   added information. Setting the ``Workload`` to ``None`` means the latency
    range will be the widest for its Service Level type. Please note that you
    cannot set a Workload without a Service Level.
 
    .. code-block:: console
 
-      openstack volume type set --property pool_name=Diamond+NONE+SRP_1+000197800123
+      openstack volume type set --property pool_name=Diamond+None+SRP_1+000123456789
 
    .. note::
 
       VMAX Hybrid supports Optimized, Diamond, Platinum, Gold, Silver, Bronze,
-      and NONE service levels. VMAX All Flash supports Diamond and NONE. Both
-      support DSS_REP, DSS, OLTP_REP, OLTP, and NONE workloads.
+      and NONE service levels. VMAX All Flash supports Diamond and None. Both
+      support DSS_REP, DSS, OLTP_REP, OLTP, and None workloads.
 
 
 Upgrading from SMI-S based driver to RESTAPI based driver
@@ -358,16 +334,18 @@ SSL support
 
    .. code-block:: console
 
-      # openssl s_client -showcerts -connect my_unisphere_host:8443 </dev/null 2>/dev/null|openssl x509 -outform PEM >ca_cert.pem
+      # openssl s_client -showcerts \
+                         -connect my_unisphere_host:8443 </dev/null 2>/dev/null \
+                         | openssl x509 -outform PEM > my_unisphere_host.pem
 
    Where ``my_unisphere_host`` is the hostname of the unisphere instance and
-   ``ca_cert.pem`` is the name of the .pem file.
+   ``my_unisphere_host.pem`` is the name of the .pem file.
 
 #. Add this path to the ``cinder.conf`` under the backend stanza
 
    .. code-block:: console
 
-      driver_ssl_cert_path = /path/to/ca_cert.pem
+      driver_ssl_cert_path = /path/to/my_unisphere_host.pem
 
    ``OR`` follow the steps below:
 
@@ -376,7 +354,7 @@ SSL support
 
    .. code-block:: console
 
-      # cp ca_cert.pem /usr/share/ca-certificates/ca_cert.crt
+      # cp my_unisphere_host.pem /usr/share/ca-certificates/ca_cert.crt
 
 #. OPTIONAL: Update CA certificate database with the following commands:
 
@@ -524,7 +502,7 @@ Child storage groups:
 .. note::
 
    CD and RE are only set if compression is explicitly disabled or replication
-   explicitly enabled . see the compression and replication sections below.
+   explicitly enabled. See the compression and replication sections below.
 
 Interval and Retries
 --------------------
@@ -547,8 +525,13 @@ Add the following lines to the VMAX backend in the cinder.conf:
 
    [CONF_GROUP_ISCSI]
    volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
-   cinder_dell_emc_config_file = /etc/cinder/cinder_dell_emc_config_CONF_GROUP_ISCSI.xml
-   volume_backend_name = ISCSI_backend
+   volume_backend_name = VMAX_ISCSI_DIAMOND
+   vmax_port_groups = [OS-ISCSI-PG]
+   san_ip = 10.10.10.10
+   san_login = my_username
+   san_password = my_password
+   vmax_array = 000123456789
+   vmax_srp = SRP_1
    interval = 3
    retries = 200
 
@@ -563,14 +546,14 @@ tiered level of service based on cost. The Nova/cinder QoS offer similar
 functionality based on volume type setting limits on host storage bandwidth
 per service offering. Each volume type is tied to specific QoS attributes
 some of which are unique to each storage vendor. In the hypervisor, the QoS
-limits the following
+limits the following:
 
 - Limit by throughput - Total bytes/sec, read bytes/sec, write bytes/sec
 - Limit by IOPS - Total IOPS/sec, read IOPS/sec, write IOPS/sec
 
 QoS enforcement in cinder is done either at the hypervisor (front end),
-the storage subsystem (back end), or both. This document focuses on QoS
-limits that are enforced by either the VMAX backend or the hypervisor
+the storage subsystem (back end), or both. This section focuses on QoS
+limits that are enforced by either the VMAX backend and the hypervisor
 front end interchangeably or just back end (Vendor Specific). The VMAX driver
 offers support for Total bytes/sec limit in throughput and Total IOPS/sec
 limit of IOPS.
@@ -581,7 +564,7 @@ agnostic
 - total_iops_sec - Maximum IOPs (in I/Os per second). Valid values range from
   100 IO/Sec to 100,000 IO/sec.
 - total_bytes_sec - Maximum bandwidth (throughput) in bytes per second. Valid
-  values range from 1048576bytes (1MB) to 104857600000bytes (100, 000MB)
+  values range from 1048576 bytes (1MB) to 104857600000 bytes (100, 000MB)
 
 The VMAX driver offers the following attribute that is vendor specific to the
 VMAX and dependent on the total_iops_sec and/or total_bytes_sec being set.
@@ -627,19 +610,19 @@ Prerequisites - VMAX
                                     --property total_iops_sec=500 \
                                     --property total_bytes_sec=104857600 \
                                     --property DistributionType=Always \
-                                    SILVER
+                                    my_qos
 
 #. Associate QoS specs with specified volume type:
 
    .. code-block:: console
 
-      $ openstack volume qos associate SILVER VOLUME_TYPE
+      $ openstack volume qos associate my_qos my_volume_type
 
 #. Create volume with the volume type indicated above:
 
    .. code-block:: console
 
-      $ openstack volume create --size 1 --type VOLUME_TYPE TEST_VOLUME
+      $ openstack volume create --size 1 --type my_volume_type my_volume
 
 **Outcome - VMAX (storage group)**
 
@@ -682,25 +665,25 @@ Prerequisites - VMAX
                                     --property total_iops_sec=500 \
                                     --property total_bytes_sec=104857600 \
                                     --property DistributionType=Always \
-                                    SILVER
+                                    my_qos
 
 #. Associate QoS specifications with specified volume type:
 
    .. code-block:: console
 
-      $ openstack volume qos associate SILVER VOLUME_TYPE
+      $ openstack volume qos associate my_qos my_volume_type
 
 #. Create volume with the volume type indicated above:
 
    .. code-block:: console
 
-      $ openstack volume create --size 1 --type VOLUME_TYPE TEST_VOLUME
+      $ openstack volume create --size 1 --type my_volume_type my_volume
 
 #. Attach the volume created in step 3 to an instance
 
    .. code-block:: console
 
-      $ openstack server add volume TEST_VOLUME TEST_INSTANCE
+      $ openstack server add volume my_volume my_instance
 
 **Outcome - VMAX (storage group)**
 
@@ -805,19 +788,19 @@ Prerequisites - VMAX
                                     --property total_iops_sec=500 \
                                     --property total_bytes_sec=104857600 \
                                     --property DistributionType=Always \
-                                    SILVER
+                                    my_qos
 
 #. Associate QoS specifications with specified volume type:
 
    .. code-block:: console
 
-      $ openstack volume qos associate SILVER VOLUME_TYPE
+      $ openstack volume qos associate my_qos my_volume
 
 #. Create volume with the volume type indicated above:
 
    .. code-block:: console
 
-      $ openstack volume create --size 1 --type VOLUME_TYPE TEST_VOLUME
+      $ openstack volume create --size 1 --type my_volume_type my_volume
 
 **Outcome - VMAX (storage group)**
 
@@ -853,20 +836,20 @@ Prerequisites - VMAX
 
       $ openstack volume qos create --consumer back-end \
                                     --property DistributionType=Always \
-                                    SILVER
+                                    my_qos
 
 #. Associate QoS specifications with specified volume type:
 
    .. code-block:: console
 
-      $ openstack volume qos associate SILVER VOLUME_TYPE
+      $ openstack volume qos associate my_qos my_volume_type
 
 
 #. Create volume with the volume type indicated above:
 
    .. code-block:: console
 
-      $ openstack volume create --size 1 --type VOLUME_TYPE TEST_VOLUME
+      $ openstack volume create --size 1 --type my_volume_type my_volume
 
 **Outcome - VMAX (storage group)**
 
@@ -890,7 +873,6 @@ On Ubuntu:
 
 .. code-block:: console
 
-   # apt-get install open-iscsi           #ensure iSCSI is installed
    # apt-get install multipath-tools      #multipath modules
    # apt-get install sysfsutils sg3-utils #file system utilities
    # apt-get install scsitools            #SCSI tools
@@ -899,7 +881,6 @@ On openSUSE and SUSE Linux Enterprise Server:
 
 .. code-block:: console
 
-   # zipper install open-iscsi           #ensure iSCSI is installed
    # zipper install multipath-tools      #multipath modules
    # zipper install sysfsutils sg3-utils #file system utilities
    # zipper install scsitools            #SCSI tools
@@ -911,7 +892,6 @@ On Red Hat Enterprise Linux and CentOS:
    # yum install iscsi-initiator-utils   #ensure iSCSI is installed
    # yum install device-mapper-multipath #multipath modules
    # yum install sysfsutils sg3-utils    #file system utilities
-   # yum install scsitools               #SCSI tools
 
 
 Multipath configuration file
@@ -974,7 +954,7 @@ OpenStack configurations
 ------------------------
 
 On Compute (nova) node, add the following flag in the ``[libvirt]`` section of
-:file:`/etc/nova/nova.conf`:
+:file:`/etc/nova/nova.conf` and :file:`/etc/nova/nova-cpu.conf`:
 
 .. code-block:: ini
 
@@ -1000,7 +980,7 @@ Verify you have multiple initiators available on the compute node for I/O
 
    .. code-block:: console
 
-      $ multipath -ll
+      # multipath -ll
       mpath102 (360000970000196700531533030383039) dm-3 EMC,SYMMETRIX
       size=3G features='1 queue_if_no_path' hwhandler='0' wp=rw
       '-+- policy='round-robin 0' prio=1 status=active
@@ -1011,13 +991,125 @@ Verify you have multiple initiators available on the compute node for I/O
 
    .. code-block:: console
 
-      $ lsblk
+      # lsblk
       NAME                                       MAJ:MIN RM   SIZE RO TYPE  MOUNTPOINT
       sdb                                          8:0    0     3G  0 disk
       ..360000970000196700531533030383039 (dm-6) 252:6    0     3G  0 mpath
       sdc                                          8:16   0     3G  0 disk
       ..360000970000196700531533030383039 (dm-6) 252:6    0     3G  0 mpath
       vda
+
+
+CHAP Authentication Support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This supports one way initiator CHAP authentication functionality into the
+VMAX backend. With CHAP one-way authentication, the storage array challenges
+the host during the initial link negotiation process and expects to receive
+a valid credential and CHAP secret in response. When challenged, the host
+transmits a CHAP credential and CHAP secret to the storage array. The storage
+array looks for this credential and CHAP secret which stored in the host
+initiator's initiator group (IG) information in the ACLX database. Once a
+positive authentication occurs, the storage array sends an acceptance message
+to the host. However, if the storage array fails to find any record of the
+credential/secret pair, it sends a rejection message, and the link is closed.
+
+Assumptions, Restrictions and Pre-Requisites
+--------------------------------------------
+
+#. The host initiator IQN is required along with the credentials the host
+   initiator will use to log into the storage array with. The same credentials
+   should be used in a multi node system if connecting to the same array.
+
+#. Enable one way CHAP authentication for the iscsi initiator on the storage
+   array using SYMCLI. Template and example shown below. For the purpose of
+   this setup, the credential/secret used would be my_username/my_password
+   with iscsi initiator of iqn.1991-05.com.company.lcseb130
+
+   .. code-block:: console
+
+      # symaccess -sid <SymmID> -iscsi <iscsi>
+                  enable chap |
+                  disable chap |
+                  set chap -cred <Credential> -secret <Secret>
+
+      # symaccess -sid 128 \
+                  -iscsi iqn.1991-05.com.company.lcseb130 \
+                  set chap -cred my_username -secret my_password
+
+
+
+Settings and Configuration
+--------------------------
+
+#. Set the configuration in the VMAX backend group in cinder.conf using the
+   following parameters and restart cinder.
+
+   +-----------------------+-------------------------+-------------------+
+   | Configuration options | Value required for CHAP | Required for CHAP |
+   +=======================+=========================+===================+
+   |  use_chap_auth        | True                    | Yes               |
+   +-----------------------+-------------------------+-------------------+
+   |  chap_username        | my_username             | Yes               |
+   +-----------------------+-------------------------+-------------------+
+   |  chap_password        | my_password             | Yes               |
+   +-----------------------+-------------------------+-------------------+
+
+   .. code-block:: ini
+
+      [VMAX_ISCSI_DIAMOND]
+      image_volume_cache_enabled = True
+      volume_clear = zero
+      volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
+      volume_backend_name = VMAX_ISCSI_DIAMOND
+      san_ip = 10.10.10.10
+      san_login = my_u4v_username
+      san_password = my_u4v_password
+      vmax_srp = SRP_1
+      vmax_array = 000123456789
+      vmax_port_groups = [OS-ISCSI-PG]
+      use_chap_auth = True
+      chap_username = my_username
+      chap_password = my_password
+
+
+Usage
+-----
+
+#. Using SYMCLI, enable CHAP authentication for a host initiator as described
+   above, but do not set ``use_chap_auth``, ``chap_username`` or
+   ``chap_password`` in ``cinder.conf``. Create a bootable volume.
+
+   .. code-block:: console
+
+      openstack volume create --size 1 \
+                              --image <image_name> \
+                              --type <volume_type> \
+                              test
+
+#. Boot instance named test_server using the volume created above:
+
+   .. code-block:: console
+
+      openstack server create --volume test \
+                              --flavor m1.small \
+                              --nic net-id=private \
+                              test_server
+
+#. Verify the volume operation succeeds but the boot instance fails as
+   CHAP authentication fails.
+
+#. Update the ``cinder.conf`` with ``use_chap_auth`` set to true and
+   ``chap_username`` and ``chap_password`` set with the correct
+   credentials.
+
+#. Rerun ``openstack server create``
+
+#. Verify that the boot instance operation ran correctly and the volume is
+   accessible.
+
+#. Verify that both the volume and boot instance operations ran successfully
+   and the user is able to access the volume.
 
 
 All Flash compression support
@@ -1126,10 +1218,30 @@ Configure the source and target arrays
       enabled_backends = VMAX_FC_REPLICATION
       [VMAX_FC_REPLICATION]
       volume_driver = cinder.volume.drivers.dell_emc.vmax_fc.VMAXFCDriver
-      cinder_dell_emc_config_file = /etc/cinder/cinder_dell_emc_config_VMAX_FC_REPLICATION.xml
+      san_ip = 10.10.10.10
+      san_login = my_u4v_username
+      san_password = my_u4v_password
+      vmax_srp = SRP_1
+      vmax_array = 000123456789
+      vmax_port_groups = [OS-FC-PG]
+      use_chap_auth = True
+      chap_username = my_username
+      chap_password = my_password
       volume_backend_name = VMAX_FC_REPLICATION
-      replication_device = target_device_id:000197811111, remote_port_group:os-failover-pg, remote_pool:SRP_1, rdf_group_label: 28_11_07,
-                           allow_extend:False, mode:Metro, metro_use_bias:False, allow_delete_metro:False
+      replication_device = target_device_id:000197811111,
+                           remote_port_group:os-failover-pg,
+                           remote_pool:SRP_1,
+                           rdf_group_label: 28_11_07,
+                           allow_extend:False,
+                           mode:Metro,
+                           metro_use_bias:False,
+                           allow_delete_metro:False
+
+      .. note::
+
+         ``replication_device`` key value pairs will need to be on the same line
+         (separated by commas) in cinder.conf.  They are displayed on separated lines
+         above for readiblity.
 
    * ``target_device_id`` is a unique VMAX array serial number of the target
      array. For full failover functionality, the source and target VMAX arrays
@@ -1194,7 +1306,7 @@ Configure the source and target arrays
 
    .. code-block:: console
 
-      $ openstack volume type set --property replication_enabled="<is> True" \
+      # openstack volume type set --property replication_enabled="<is> True" \
                             VMAX_FC_REPLICATION
 
 
@@ -1240,22 +1352,22 @@ host command to failover to the configured target:
 
 .. code-block:: console
 
-   $ cinder failover-host cinder_host@VMAX_FC_REPLICATION
+   # cinder failover-host cinder_host@VMAX_FC_REPLICATION
 
 If the primary array becomes available again, you can initiate a failback
 using the same command and specifying ``--backend_id default``:
 
 .. code-block:: console
 
-   $ cinder failover-host cinder_host@VMAX_FC_REPLICATION --backend_id default
+   # cinder failover-host cinder_host@VMAX_FC_REPLICATION --backend_id default
 
 .. note::
 
    Failover and Failback operations are not applicable in Metro configurations.
 
 
-Asynchonous and Metro replication management groups
----------------------------------------------------
+Asynchronous and Metro replication management groups
+----------------------------------------------------
 
 Asynchronous and Metro volumes in an RDF session, i.e. belonging to an SRDF
 group, must be managed together for RDF operations (although there is a
@@ -1272,9 +1384,9 @@ Metro support
 
 SRDF/Metro is a High Availabilty solution. It works by masking both sides of
 the RDF relationship to the host, and presenting all paths to the host,
-appearing that they all point to the one device. In order to the do this,
-there needs to be multipath software running to manage writing to the multiple
-paths.
+appearing that they all point to the one device. In order to do this,
+there needs to be multipath software running to manage writing to the
+multiple paths.
 
 
 Volume retype -  storage assisted volume migration
@@ -1289,7 +1401,7 @@ retype, follow these steps:
    another, use volume retype with the migration-policy to on-demand. The
    target volume type should have the same volume_backend_name configured and
    should have the desired pool_name to which you are trying to retype to
-   (please above ``Setup VMAX Drivers`` for details).
+   (please refer to ``Setup VMAX Drivers`` for details).
 
    .. code-block:: console
 
@@ -1304,47 +1416,49 @@ version 3.1x of the cinder API. Generic volume groups are multi-purpose
 groups which can be used for various features. The VMAX plugin supports
 consistent group snapshots and replication groups. Consistent group
 snapshots allows the user to take group snapshots which
-are consistent based on the group specs. Replication groups allow for
+are consistent based on the group specs. Replication groups allow for/
 tenant facing APIs to enable and disable replication, and to failover
-and failback, a group of volumes. Generic volume groups are a
-replacement for the consistency groups.
+and failback, a group of volumes. Generic volume groups have replaced
+the deprecated consistency groups.
 
 Consistent group snapshot
 -------------------------
 
-For creating a consistent group snapshot, a group-spec, having the key
-``consistent_group_snapshot_enabled`` set to ``<is> True``, should be set
-on the group. Similarly the same key should be set on any volume type which
-is specified while creating the group. The VMAX plugin doesn't support
-creating/managing a group which doesn't have this (or replication group spec,
-see below) group-spec set. If one of these keys are not set on the group-spec,
-then the generic volume group will be created/managed by cinder (not the VMAX
-plugin).
+To create a consistent group snapshot, set a group-spec, having the key
+``consistent_group_snapshot_enabled`` set to ``<is> True`` on the group.
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.11 group-type-key GROUP_TYPE set consistent_group_snapshot_enabled="<is> True"
+
+Similarly the same key should be set on any volume type which is specified
+while creating the group.
+
+.. code-block:: console
+
+   # openstack volume type set --property replication_enabled="<is> True" /
+                           VMAX_REPLICATION
+
+If this key is not set on the group-spec or volume type, then the generic
+volume group will be created/managed by cinder (not the VMAX plugin).
 
 .. note::
 
    The consistent group snapshot should not be confused with the VMAX
-   consistency which primarily applies to SRDF.
+   consistency group which is an SRDF construct.
 
-.. note::
-
-   For creating consistent group snapshots, no changes are required to be
-   done to the ``/etc/cinder/policy.json``.
-
-Replication Groups
+Replication groups
 ------------------
 
-To create a replication group, a group-spec, having the key
-``consistent_group_replication_enabled`` set to ``<is> True``, should be set
-on the group. Any volume types sepcified while creating the group must also
-be replication-enabled, i.e. have the the extra spec 'replication-enabled' set
-to ``<is> True``. Please note that only Synchronous replication is supported
-for use with Replication Groups. When a volume is created into a replication
-group, replication is on by default. The "disable_replication" api suspends
-I/O traffic on the devices, but does NOT remove replication for the group.
-The "enable_replication" api resumes I/O traffic on the RDF links. The
-"failover_group" api allows a group to be failed over and back without
-failing over the entire host. See below for usage.
+As with Consistent group snapshot ``consistent_group_snapshot_enabled`` should
+be set to true on the group and the volume type for replication groups.
+Only Synchronous replication
+is supported for use with Replication Groups. When a volume is created into a
+replication group, replication is on by default. The ``disable_replication``
+api suspends I/O traffic on the devices, but does NOT remove replication for
+the group. The ``enable_replication`` api resumes I/O traffic on the RDF
+links. The "failover_group" api allows a group to be failed over and back
+without failing over the entire host. See below for usage.
 
 .. note::
 
@@ -1363,8 +1477,8 @@ name.
 
    TruncatedGroupName_GroupUUID or GroupUUID
 
-Operations
-----------
+Group type operations
+---------------------
 
 - Create a group type
 
@@ -1402,6 +1516,9 @@ Operations
 
    cinder --os-volume-api-version 3.11 group-specs-list
 
+Group operations
+----------------
+
 - Create a group:
 
 .. code-block:: console
@@ -1432,6 +1549,15 @@ Operations
 
    cinder --os-volume-api-version 3.13 group-update --add-volumes UUID1,UUID2 --remove-volumes UUID3,UUID4 GROUP
 
+- Delete a group
+
+.. code-block:: console
+
+   cinder --os-volume-api-version 3.13 group-delete --delete-volumes GROUP
+
+Group snapshot operations
+-------------------------
+
 - Create a group snapshot:
 
 .. code-block:: console
@@ -1456,11 +1582,8 @@ Operations
 
    $ cinder --os-volume-api-version 3.14 group-create-from-src --source-group SOURCE_GROUP --name GROUP
 
-- Delete a group
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.13 group-delete --delete-volumes GROUP
+Group replication operations
+----------------------------
 
 - Enable group replication
 
@@ -1512,10 +1635,10 @@ of live migration are:
   read-only devices such as CD-ROMs and Configuration Drive (config_drive).
 
 - Volume-backed live migration. Instances are backed by volumes rather than
-  ephemeral disk.  For VMAX volume-backed live migration on shared storage
+  ephemeral disk.  For VMAX volume-backed live migration, shared storage
   is required.
 
-The VMAX driver supports shared storage-based live migration.
+The VMAX driver supports shared volume-backed live migration.
 
 Architecture
 ------------
@@ -1635,7 +1758,6 @@ state_path in the nova.conf file) is the same on all hosts.
    writable by the Compute user on HostB and HostC. Please refer to the
    relevant OS documentation for further details.
    e.g. https://help.ubuntu.com/lts/serverguide/network-file-system.html
-   https://help.ubuntu.com/community/SettingUpNFSHowTo
 
 #. On all compute nodes, enable the 'execute/search' bit on your shared
    directory to allow qemu to be able to use the images within the
@@ -1732,6 +1854,10 @@ OpenStack, the following prerequisites must be met:
 
 - The volume is set to FBA emulation
 
+- The volume must a whole GB e.g. 5.5GB is not a valid size
+
+- The volume cannot be a snapvx target
+
 
 For a volume to exist in a Cinder managed pool, it must reside in in the same
 Storage Resource Pool (SRP) as the backend which is configured for use in
@@ -1800,10 +1926,10 @@ Managing Volumes with Replication Enabled
 Whilst it is not possible to manage volumes into OpenStack that are part of a
 SRDF relationship, it is possible to manage a volume into OpenStack and
 enable replication at the same time. This is done by having a replication
-enabled VMAX volume type (for more information see section Volume Replication
-& SRDF/S) during the manage volume process you specify the replication volume
-type as the chosen volume type. Once managed, replication will be enabled for
-that volume.
+enabled VMAX volume type (for more information see section Volume Replication)
+during the manage volume process you specify the replication volume type as
+the chosen volume type. Once managed, replication will be enabled for that
+volume.
 
 
 Unmanage Volume
@@ -1854,10 +1980,6 @@ Set-up, restrictions and requirements:
 
 #. It is only possible to manage or unmanage one snapshot at a time in Cinder.
 
-#. This functionality is not to be confused with the similarly named
-   ``manage and unmanage snapshots`` which details setting attributes of a
-   given snapshot in Cinder.
-
 Manage SnapVX Snapshot
 ----------------------
 
@@ -1885,10 +2007,6 @@ Requirements/Restrictions:
 #. Managing a SnapVX snapshot will only be allowed if the snapshot has no
    linked target volumes.
 
-#. Managing a SnapVX snapshot which is smaller than the source volume is
-   permitted as it is supported for create new volumes and restore from
-   snapshot (the remainder of volume size is zeroed out).
-
 
 Command Structure:
 
@@ -1907,11 +2025,11 @@ Command Structure:
                             [--name <name>]
                             [--description <description>]
                             [--metadata [<key=value> [<key=value> ...]]]
-                            <volume> <identifier>
+                            <device_id> <identifier>
 
 Positional arguments:
 
-- <volume> - Cinder volume which already exists in volume backend
+- <device_id> - the VMAX device id
 
 - <identifier> - Name of existing snapshot
 
@@ -1928,8 +2046,8 @@ Example:
 
 .. code-block:: console
 
-   $ cinder snapshot-manage --name SnapshotManaged
-                            --description "Managed Queens Feb18"
+   $ cinder snapshot-manage --name SnapshotManaged \
+                            --description "Managed Queens Feb18" \
                             0021A VMAXSnapshot
 
 Where:
@@ -1993,117 +2111,3 @@ After the process of unmanaging the SnapVX snapshot in Cinder, the snapshot on
 the VMAX backend will have the ``OS-`` prefix removed to indicate it is no
 longer OpenStack managed. In the example above, the snapshot after unmanaging
 from OpenStack will be named ``VMAXSnapshot`` on the storage backend.
-
-
-CHAP Authentication Support
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-This supports one way initiator CHAP authentication functionality into the
-VMAX backend. With CHAP one-way authentication, the storage array challenges
-the host during the initial link negotiation process and expects to receive
-a valid credential and CHAP secret in response. When challenged, the host
-transmits a CHAP credential and CHAP secret to the storage array. The storage
-array looks for this credential and CHAP secret which stored in the host
-initiator's initiator group (IG) information in the ACLX database. Once a
-positive authentication occurs, the storage array sends an acceptance message
-to the host. However, if the storage array fails to find any record of the
-credential/secret pair, it sends a rejection message, and the link is closed.
-
-Assumptions, Restrictions and Pre-Requisites
---------------------------------------------
-
-#. The host initiator IQN is required along with the credentials the host
-   initiator will use to log into the storage array with. The same credentials
-   should be used in a multi node system if connecting to the same array.
-
-#. Enable one way CHAP authentication for the iscsi initiator on the storage
-   array using SYMCLI. Template and example shown below. For the purpose of
-   this setup, the credential/secret used would be openstack/openstack with
-   iscsi initiator of iqn.1991-05.com.company.lcseb130
-
-   .. code-block:: console
-
-      $ symaccess -sid <SymmID> -iscsi <iscsi>
-                  enable chap |
-                  disable chap |
-                  set chap -cred <Credential> -secret <Secret>
-
-      $ symaccess -sid 128 \
-                  -iscsi iqn.1991-05.com.company.lcseb130 \
-                  set chap -cred openstack  -secret openstack
-
-
-
-Settings and Configuration
---------------------------
-
-#. Set the configuration in the VMAX backend group in cinder.conf using the
-   following parameters and restart cinder.
-
-   +-----------------------+-------------------------+-------------------+
-   | Configuration options | Value required for CHAP | Required for CHAP |
-   +=======================+=========================+===================+
-   |  use_chap_auth        | True                    | Yes               |
-   +-----------------------+-------------------------+-------------------+
-   |  chap_username        | openstack               | Yes               |
-   +-----------------------+-------------------------+-------------------+
-   |  chap_password        | openstack               | Yes               |
-   +-----------------------+-------------------------+-------------------+
-
-   .. code-block:: ini
-
-      [VMAX_ISCSI_DIAMOND]
-      image_volume_cache_enabled = True
-      volume_clear = zero
-      volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
-      volume_backend_name = VMAX_ISCSI_DIAMOND
-      san_ip = 10.60.141.97
-      san_login = smc
-      san_password = smc
-      vmax_srp = SRP_1
-      vmax_array = 000197800128
-      vmax_port_groups = [OS-ISCSI-PG]
-      use_chap_auth = True
-      chap_username = openstack
-      chap_password = openstack
-
-
-Usage
------
-
-#. Using SYMCLI, enable CHAP authentication for a host initiator as described
-   above, but do not set ``use_chap_auth``, ``chap_username`` or
-   ``chap_password`` in ``cinder.conf``. Create a bootable volume.
-
-   .. code-block:: console
-
-      openstack volume create --size 1 \
-                              --image <image_name> \
-                              --type <VOLUME_TYPE> \
-                              test
-
-#. Boot instance named test_server using the volume created above:
-
-   .. code-block:: console
-
-      openstack server create --volume test \
-                              --flavor m1.small \
-                              --nic net-id=private \
-                              test_server
-
-#. Verify the volume operation succeeds but the boot instance fails as
-   CHAP authentication fails.
-
-#. Update the ``cinder.conf`` with ``use_chap_auth`` set to true and
-   ``chap_username`` and ``chap_password`` set with the correct
-   credentials.
-
-#. Rerun ``openstack server create``
-
-#. Verify that the boot instance operation ran correctly and the volume is
-   accessible.
-
-
-
-#. Verify that both the volume and boot instance operations ran successfully
-   and the user is able to access the volume.
