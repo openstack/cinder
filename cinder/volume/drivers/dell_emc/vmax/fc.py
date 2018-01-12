@@ -86,6 +86,7 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         3.1.0 - Support for replication groups (Tiramisu)
               - Deprecate backend xml configuration
               - Support for async replication (vmax-replication-enhancements)
+              - Support for SRDF/Metro (vmax-replication-enhancements)
     """
 
     VERSION = "3.1.0"
@@ -228,7 +229,10 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         """
         device_info = self.common.initialize_connection(
             volume, connector)
-        return self.populate_data(device_info, volume, connector)
+        if device_info:
+            return self.populate_data(device_info, volume, connector)
+        else:
+            return {}
 
     def populate_data(self, device_info, volume, connector):
         """Populate data dict.
@@ -290,6 +294,7 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         loc = volume.provider_location
         name = ast.literal_eval(loc)
         host = connector['host']
+        zoning_mappings = {}
         try:
             array = name['array']
             device_id = name['device_id']
@@ -299,8 +304,9 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         LOG.debug("Start FC detach process for volume: %(volume)s.",
                   {'volume': volume.name})
 
-        masking_views = self.common.get_masking_views_from_volume(
-            array, device_id, host)
+        masking_views, is_metro = (
+            self.common.get_masking_views_from_volume(
+                array, volume, device_id, host))
         if masking_views:
             portgroup = (
                 self.common.get_port_group_from_masking_view(
@@ -321,10 +327,33 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
                                'target_wwns': target_wwns,
                                'init_targ_map': init_targ_map,
                                'array': array}
-        else:
+        if is_metro:
+            rep_data = volume.replication_driver_data
+            name = ast.literal_eval(rep_data)
+            try:
+                metro_array = name['array']
+                metro_device_id = name['device_id']
+            except KeyError:
+                LOG.error("Cannot get remote Metro device information "
+                          "for zone cleanup. Attempting terminate "
+                          "connection...")
+            else:
+                masking_views, __ = (
+                    self.common.get_masking_views_from_volume(
+                        metro_array, volume, metro_device_id, host))
+                if masking_views:
+                    metro_portgroup = (
+                        self.common.get_port_group_from_masking_view(
+                            metro_array, masking_views[0]))
+                    metro_ig = (
+                        self.common.get_initiator_group_from_masking_view(
+                            metro_array, masking_views[0]))
+                    zoning_mappings.update(
+                        {'metro_port_group': metro_portgroup,
+                         'metro_ig': metro_ig, 'metro_array': metro_array})
+        if not masking_views:
             LOG.warning("Volume %(volume)s is not in any masking view.",
                         {'volume': volume.name})
-            zoning_mappings = {}
         return zoning_mappings
 
     def _cleanup_zones(self, zoning_mappings):
@@ -333,25 +362,35 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         :param zoning_mappings: zoning mapping dict
         :returns: data - dict
         """
-        LOG.debug("Looking for masking views still associated with "
-                  "Port Group %s.", zoning_mappings['port_group'])
-        masking_views = self.common.get_common_masking_views(
-            zoning_mappings['array'], zoning_mappings['port_group'],
-            zoning_mappings['initiator_group'])
+        data = {'driver_volume_type': 'fibre_channel', 'data': {}}
+        try:
+            LOG.debug("Looking for masking views still associated with "
+                      "Port Group %s.", zoning_mappings['port_group'])
+            masking_views = self.common.get_common_masking_views(
+                zoning_mappings['array'], zoning_mappings['port_group'],
+                zoning_mappings['initiator_group'])
+        except (KeyError, ValueError, TypeError):
+            masking_views = []
 
         if masking_views:
             LOG.debug("Found %(numViews)d MaskingViews.",
                       {'numViews': len(masking_views)})
-            data = {'driver_volume_type': 'fibre_channel', 'data': {}}
         else:  # no masking views found
-            LOG.debug("No MaskingViews were found. Deleting zone.")
-            data = {'driver_volume_type': 'fibre_channel',
-                    'data': {'target_wwn': zoning_mappings['target_wwns'],
-                             'initiator_target_map':
-                                 zoning_mappings['init_targ_map']}}
+            # Check if there any Metro masking views
+            if zoning_mappings.get('metro_array'):
+                masking_views = self.common.get_common_masking_views(
+                    zoning_mappings['metro_array'],
+                    zoning_mappings['metro_port_group'],
+                    zoning_mappings['metro_ig'])
+            if not masking_views:
+                LOG.debug("No MaskingViews were found. Deleting zone.")
+                data = {'driver_volume_type': 'fibre_channel',
+                        'data': {'target_wwn': zoning_mappings['target_wwns'],
+                                 'initiator_target_map':
+                                     zoning_mappings['init_targ_map']}}
 
-            LOG.debug("Return FC data for zone removal: %(data)s.",
-                      {'data': data})
+                LOG.debug("Return FC data for zone removal: %(data)s.",
+                          {'data': data})
 
         return data
 
@@ -364,10 +403,12 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         """
         target_wwns, init_targ_map = [], {}
         initiator_wwns = connector['wwpns']
-        fc_targets = self.common.get_target_wwns_from_masking_view(
-            volume, connector)
+        fc_targets, metro_fc_targets = (
+            self.common.get_target_wwns_from_masking_view(
+                volume, connector))
 
         if self.zonemanager_lookup_service:
+            fc_targets.extend(metro_fc_targets)
             mapping = (
                 self.zonemanager_lookup_service.
                 get_device_mapping_from_network(initiator_wwns, fc_targets))
@@ -378,8 +419,9 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
                     init_targ_map[initiator] = map_d['target_port_wwn_list']
         else:  # No lookup service, pre-zoned case.
             target_wwns = fc_targets
+            fc_targets.extend(metro_fc_targets)
             for initiator in initiator_wwns:
-                init_targ_map[initiator] = target_wwns
+                init_targ_map[initiator] = fc_targets
 
         return list(set(target_wwns)), init_targ_map
 

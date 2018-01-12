@@ -324,7 +324,8 @@ class VMAXRest(object):
         return resource_object
 
     def get_resource(self, array, category, resource_type,
-                     resource_name=None, params=None, private=''):
+                     resource_name=None, params=None, private='',
+                     version=U4V_VERSION):
         """Get resource details from array.
 
         :param array: the array serial number
@@ -333,10 +334,11 @@ class VMAXRest(object):
         :param resource_name: the name of a specific resource
         :param params: query parameters
         :param private: empty string or '/private' if private url
+        :param version: None or specific version number if required
         :returns: resource object -- dict or None
         """
         target_uri = self._build_uri(array, category, resource_type,
-                                     resource_name, private)
+                                     resource_name, private, version=version)
         return self._get_request(target_uri, resource_type, params)
 
     def create_resource(self, array, category, resource_type, payload,
@@ -494,20 +496,6 @@ class VMAXRest(object):
         return self.get_resource(
             array, SLOPROVISIONING, 'storagegroup',
             resource_name=storage_group_name)
-
-    def get_storage_group_list(self, array, params=None):
-        """"Return a list of storage groups.
-
-        :param array: the array serial number
-        :param params: optional filter parameters
-        :returns: storage group list
-        """
-        sg_list = []
-        sg_details = self.get_resource(array, SLOPROVISIONING,
-                                       'storagegroup', params=params)
-        if sg_details:
-            sg_list = sg_details['storageGroupId']
-        return sg_list
 
     def get_num_vols_in_sg(self, array, storage_group_name):
         """Get the number of volumes in a storage group.
@@ -1271,7 +1259,7 @@ class VMAXRest(object):
             resource_name=initiator_group, params=params)
 
     def get_initiator(self, array, initiator_id):
-        """Retrieve initaitor details from the array.
+        """Retrieve initiator details from the array.
 
         :param array: the array serial number
         :param initiator_id: the initiator id
@@ -1282,14 +1270,15 @@ class VMAXRest(object):
             resource_name=initiator_id)
 
     def get_initiator_list(self, array, params=None):
-        """Retrieve initaitor list from the array.
+        """Retrieve initiator list from the array.
 
         :param array: the array serial number
         :param params: dict of optional params
         :returns: list of initiators
         """
-        init_dict = self.get_resource(
-            array, SLOPROVISIONING, 'initiator', params=params)
+        version = '90' if self.is_next_gen_array(array) else U4V_VERSION
+        init_dict = self.get_resource(array, SLOPROVISIONING, 'initiator',
+                                      params=params, version=version)
         try:
             init_list = init_dict['initiatorId']
         except KeyError:
@@ -1953,8 +1942,9 @@ class VMAXRest(object):
         :param extra_specs: the extra specs
         :returns: rdf_dict
         """
-        rep_mode = (extra_specs[utils.REP_MODE]
-                    if extra_specs.get(utils.REP_MODE) else utils.REP_SYNC)
+        rep_mode = extra_specs[utils.REP_MODE]
+        if rep_mode == utils.REP_METRO:
+            rep_mode = 'Active'
         payload = ({"deviceNameListSource": [{"name": device_id}],
                     "deviceNameListTarget": [{"name": target_device}],
                     "replicationMode": rep_mode,
@@ -1963,6 +1953,9 @@ class VMAXRest(object):
         if rep_mode == utils.REP_ASYNC:
             payload_update = self._get_async_payload_info(array, rdf_group_no)
             payload.update(payload_update)
+        elif rep_mode == 'Active':
+            payload = self.get_metro_payload_info(
+                array, payload, rdf_group_no, extra_specs)
         resource_type = ("rdf_group/%(rdf_num)s/volume"
                          % {'rdf_num': rdf_group_no})
         status_code, job = self.create_resource(array, REPLICATION,
@@ -1988,17 +1981,40 @@ class VMAXRest(object):
             payload_update = {'consExempt': 'true'}
         return payload_update
 
-    @coordination.synchronized('emc-rg-{rdf_group}')
+    def get_metro_payload_info(self, array, payload,
+                               rdf_group_no, extra_specs):
+        """Get the payload details for a metro active create pair.
+
+        :param array: the array serial number
+        :param payload: the payload
+        :param rdf_group_no: the rdf group number
+        :param extra_specs: the replication configuration
+        :return: updated payload
+        """
+        num_vols = 0
+        rdfg_details = self.get_rdf_group(array, rdf_group_no)
+        if rdfg_details is not None and rdfg_details.get('numDevices'):
+            num_vols = int(rdfg_details['numDevices'])
+        if num_vols == 0:
+            # First volume - set bias if required
+            if (extra_specs.get(utils.METROBIAS)
+                    and extra_specs[utils.METROBIAS] is True):
+                payload.update({'metroBias': 'true'})
+        else:
+            # Need to format subsequent volumes
+            payload['format'] = 'true'
+            payload.pop('establish')
+            payload['rdfType'] = 'NA'
+        return payload
+
     def modify_rdf_device_pair(
-            self, array, device_id, rdf_group, extra_specs,
-            split=False, suspend=False):
+            self, array, device_id, rdf_group, extra_specs, suspend=False):
         """Modify an rdf device pair.
 
         :param array: the array serial number
         :param device_id: the device id
         :param rdf_group: the rdf group
         :param extra_specs: the extra specs
-        :param split: flag to indicate "split" action
         :param suspend: flag to indicate "suspend" action
         """
         common_opts = {"force": 'false',
@@ -2006,14 +2022,11 @@ class VMAXRest(object):
                        "star": 'false',
                        "hop2": 'false',
                        "bypass": 'false'}
-        if split:
-            common_opts.update({"immediate": 'false'})
-            payload = {"action": "Split",
-                       "executionOption": "ASYNCHRONOUS",
-                       "split": common_opts}
-
-        elif suspend:
-            common_opts.update({"immediate": 'false', "consExempt": 'true'})
+        if suspend:
+            if (extra_specs.get(utils.REP_MODE)
+                    and extra_specs[utils.REP_MODE] == utils.REP_ASYNC):
+                common_opts.update({"immediate": 'false',
+                                    "consExempt": 'true'})
             payload = {"action": "Suspend",
                        "executionOption": "ASYNCHRONOUS",
                        "suspend": common_opts}
@@ -2034,7 +2047,6 @@ class VMAXRest(object):
         self.wait_for_job('Modify device pair', sc,
                           job, extra_specs)
 
-    @coordination.synchronized('emc-rg-{rdf_group}')
     def delete_rdf_pair(self, array, device_id, rdf_group):
         """Delete an rdf pair.
 
@@ -2199,7 +2211,10 @@ class VMAXRest(object):
                 elif (action.lower() in ["split", "failover", "suspend"] and
                       state.lower() in [utils.RDF_SYNC_STATE,
                                         utils.RDF_SYNCINPROG_STATE,
-                                        utils.RDF_CONSISTENT_STATE]):
+                                        utils.RDF_CONSISTENT_STATE,
+                                        utils.RDF_ACTIVE,
+                                        utils.RDF_ACTIVEACTIVE,
+                                        utils.RDF_ACTIVEBIAS]):
                     mod_rqd = True
                     break
         return mod_rqd
@@ -2219,6 +2234,14 @@ class VMAXRest(object):
                                           rdf_group_num, action)
         if mod_reqd:
             payload = {"executionOption": "ASYNCHRONOUS", "action": action}
+            if action.lower() == 'suspend':
+                payload['suspend'] = {"force": "true"}
+            elif action.lower() == 'establish':
+                metro_bias = (
+                    True if extra_specs.get(utils.METROBIAS)
+                    and extra_specs[utils.METROBIAS] is True else False)
+                payload['establish'] = {"metroBias": metro_bias,
+                                        "full": 'false'}
             resource_name = ('%(sg_name)s/rdf_group/%(rdf_num)s'
                              % {'sg_name': storagegroup_name,
                                 'rdf_num': rdf_group_num})

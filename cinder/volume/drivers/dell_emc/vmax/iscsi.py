@@ -91,6 +91,7 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         3.1.0 - Support for replication groups (Tiramisu)
               - Deprecate backend xml configuration
               - Support for async replication (vmax-replication-enhancements)
+              - Support for SRDF/Metro (vmax-replication-enhancements)
     """
 
     VERSION = "3.1.0"
@@ -238,7 +239,10 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         """
         device_info = self.common.initialize_connection(
             volume, connector)
-        return self.get_iscsi_dict(device_info, volume)
+        if device_info:
+            return self.get_iscsi_dict(device_info, volume)
+        else:
+            return {}
 
     def get_iscsi_dict(self, device_info, volume):
         """Populate iscsi dict to pass to nova.
@@ -247,6 +251,7 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         :param volume: volume object
         :returns: iscsi dict
         """
+        metro_ip_iqn, metro_host_lun = None, None
         try:
             ip_and_iqn = device_info['ip_and_iqn']
             is_multipath = device_info['is_multipath']
@@ -257,8 +262,14 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
                                  % {'e': six.text_type(e)})
             raise exception.VolumeBackendAPIException(data=exception_message)
 
+        if device_info.get('metro_ip_and_iqn'):
+            LOG.debug("Volume is Metro device...")
+            metro_ip_iqn = device_info['metro_ip_and_iqn']
+            metro_host_lun = device_info['metro_hostlunid']
+
         iscsi_properties = self.vmax_get_iscsi_properties(
-            volume, ip_and_iqn, is_multipath, host_lun_id)
+            volume, ip_and_iqn, is_multipath, host_lun_id,
+            metro_ip_iqn, metro_host_lun)
 
         LOG.info("iSCSI properties are: %(props)s",
                  {'props': strutils.mask_dict_password(iscsi_properties)})
@@ -266,7 +277,8 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
                 'data': iscsi_properties}
 
     def vmax_get_iscsi_properties(self, volume, ip_and_iqn,
-                                  is_multipath, host_lun_id):
+                                  is_multipath, host_lun_id,
+                                  metro_ip_iqn, metro_host_lun):
         """Gets iscsi configuration.
 
         We ideally get saved information in the volume entity, but fall back
@@ -286,15 +298,32 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         :param ip_and_iqn: list of ip and iqn dicts
         :param is_multipath: flag for multipath
         :param host_lun_id: the host lun id of the device
+        :param metro_ip_iqn: metro remote device ip and iqn, if applicable
+        :param metro_host_lun: metro remote host lun, if applicable
         :returns: properties
         """
         properties = {}
+        populate_plurals = False
         if len(ip_and_iqn) > 1 and is_multipath:
+            populate_plurals = True
+        elif len(ip_and_iqn) == 1 and is_multipath and metro_ip_iqn:
+            populate_plurals = True
+        if populate_plurals:
             properties['target_portals'] = ([t['ip'] + ":3260" for t in
                                              ip_and_iqn])
             properties['target_iqns'] = ([t['iqn'].split(",")[0] for t in
                                           ip_and_iqn])
             properties['target_luns'] = [host_lun_id] * len(ip_and_iqn)
+        if metro_ip_iqn:
+            LOG.info("Volume %(vol)s is metro-enabled - "
+                     "adding additional attachment information",
+                     {'vol': volume.name})
+            properties['target_portals'].extend(([t['ip'] + ":3260" for t in
+                                                 metro_ip_iqn]))
+            properties['target_iqns'].extend(([t['iqn'].split(",")[0] for t in
+                                              metro_ip_iqn]))
+            properties['target_luns'].extend(
+                [metro_host_lun] * len(metro_ip_iqn))
         properties['target_discovered'] = True
         properties['target_iqn'] = ip_and_iqn[0]['iqn'].split(",")[0]
         properties['target_portal'] = ip_and_iqn[0]['ip'] + ":3260"
@@ -318,15 +347,8 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector.
 
-        Return empty data if other volumes are in the same zone.
-        The FibreChannel ZoneManager doesn't remove zones
-        if there isn't an initiator_target_map in the
-        return of terminate_connection.
-
         :param volume: the volume object
         :param connector: the connector object
-        :returns: dict -- the target_wwns and initiator_target_map if the
-            zone is to be removed, otherwise empty
         """
         self.common.terminate_connection(volume, connector)
 
