@@ -13,16 +13,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.volume import base as volume_base
 from tempest.common import waiters
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib import decorators
 
+from cinder.tests.tempest.api.volume import base
+
 CONF = config.CONF
 
 
-class VolumesBackupsTest(volume_base.BaseVolumeTest):
+class VolumesBackupsTest(base.BaseVolumeTest):
 
     @classmethod
     def skip_checks(cls):
@@ -107,7 +108,7 @@ class VolumesBackupsTest(volume_base.BaseVolumeTest):
             wait_until='ACTIVE')
 
         # Delete VM
-        self.servers_client.delete_server(server['id'])
+        self.os_primary.servers_client.delete_server(server['id'])
         # Create incremental backup
         waiters.wait_for_volume_resource_status(self.volumes_client,
                                                 volume['id'], 'available')

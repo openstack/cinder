@@ -14,15 +14,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.volume import base as volume_base
 from tempest.common import waiters
 from tempest import config
 from tempest.lib.common.utils import data_utils
+from tempest.lib.common.utils import test_utils
+
+from cinder.tests.tempest.api.volume import base
 
 CONF = config.CONF
 
 
-class CinderUnicodeTest(volume_base.BaseVolumeTest):
+class CinderUnicodeTest(base.BaseVolumeTest):
 
     @classmethod
     def resource_setup(cls):
@@ -42,8 +44,11 @@ class CinderUnicodeTest(volume_base.BaseVolumeTest):
         kwargs['size'] = CONF.volume.volume_size
 
         volume = cls.volumes_client.create_volume(**kwargs)['volume']
-        cls.volumes.append(volume)
-
+        cls.addClassResourceCleanup(
+            cls.volumes_client.wait_for_resource_deletion, volume['id'])
+        cls.addClassResourceCleanup(test_utils.call_and_ignore_notfound_exc,
+                                    cls.volumes_client.delete_volume,
+                                    volume['id'])
         waiters.wait_for_volume_resource_status(cls.volumes_client,
                                                 volume['id'],
                                                 'available')
@@ -53,7 +58,7 @@ class CinderUnicodeTest(volume_base.BaseVolumeTest):
     def test_create_delete_unicode_volume_name(self):
         """Create a volume with a unicode name and view it."""
 
-        result = self.volumes_client.show_volume(self.volumes[0]['id'])
+        result = self.volumes_client.show_volume(self.volume['id'])
         fetched_volume = result['volume']
         self.assertEqual(fetched_volume['name'],
                          self.volume_name)

@@ -13,17 +13,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.volume import base as volume_base
 from tempest.common import waiters
 from tempest import config
 from tempest.lib import decorators
 
+from cinder.tests.tempest.api.volume import base
 from cinder.tests.tempest import cinder_clients
 
 CONF = config.CONF
 
 
-class VolumeRevertTests(volume_base.BaseVolumeTest):
+class VolumeRevertTests(base.BaseVolumeTest):
     min_microversion = '3.40'
 
     @classmethod
