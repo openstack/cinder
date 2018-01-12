@@ -1195,6 +1195,13 @@ class DS8KProxy(proxy.IBMStorageProxy):
     @proxy.logger
     def _add_volumes_into_consisgroup(self, grp, add_volumes):
         add_volumes_update = []
+        for vol in add_volumes:
+            if vol.status == 'in-use':
+                msg = (_("add volume %(vol)s into group %(grp)s failed "
+                         "since this volume is 'in-use' status")
+                       % {'vol': vol.id, 'grp': grp.id})
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
         new_add_luns, old_add_luns = (
             self._clone_lun_for_consisgroup(add_volumes, grp))
         for new_add_lun, old_add_lun in zip(new_add_luns, old_add_luns):
@@ -1208,6 +1215,13 @@ class DS8KProxy(proxy.IBMStorageProxy):
     def _remove_volumes_from_consisgroup(self, grp, add_volumes,
                                          remove_volumes):
         remove_volumes_update = []
+        for vol in remove_volumes:
+            if vol.status == 'in-use':
+                msg = (_("remove volume %(vol)s from group %(grp)s failed "
+                         "since this volume is 'in-use' status")
+                       % {'vol': vol.id, 'grp': grp.id})
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
         new_remove_luns, old_remove_luns = (
             self._clone_lun_for_consisgroup(remove_volumes))
         for new_remove_lun, old_remove_lun in zip(new_remove_luns,
