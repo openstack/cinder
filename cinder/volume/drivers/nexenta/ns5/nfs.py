@@ -185,9 +185,6 @@ class NexentaNfsDriver(nfs.NfsDriver):
                             {'vol': pool, 'folder': '/'.join(
                                 [fs, volume['name']])})
             raise
-        finally:
-            self._ensure_share_unmounted('%s:/%s/%s' % (
-                self.nas_host, self.share, volume['name']))
 
     def _ensure_share_unmounted(self, nfs_share, mount_path=None):
         """Ensure that NFS share is unmounted on the host.
@@ -340,6 +337,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
         :param volume: volume reference
         """
         pool, fs = self._get_share_datasets(self.share)
+        self._ensure_share_unmounted('%s:/%s/%s' % (
+            self.nas_host, self.share, volume['name']))
         url = 'storage/filesystems/%s' % '%2F'.join(
             [pool, fs, volume['name']])
 
@@ -400,8 +399,6 @@ class NexentaNfsDriver(nfs.NfsDriver):
                 'bs=%dM' % block_size_mb,
                 'count=%d' % block_count,
                 run_as_root=True)
-        self._ensure_share_unmounted('%s:/%s/%s' % (
-            self.nas_host, self.share, volume['name']))
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
