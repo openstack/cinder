@@ -18,6 +18,7 @@ import uuid
 from eventlet import greenthread
 from oslo_log import log as logging
 from oslo_utils import units
+from six.moves import urllib
 
 from cinder import context
 from cinder import db
@@ -377,7 +378,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         )
 
     def _check_target_and_portals(self, tg):
-        members = self.nef.get('san/targetgroups/%s' % tg).get('members')
+        members = self.nef.get('san/targetgroups/%s' % urllib.parse.quote(
+            tg, safe='')).get('members')
         target_name = members[0] if members else ''
         if target_name:
             target = self.nef.get('san/iscsi/targets/%s' % target_name)
@@ -404,7 +406,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                 if mapping['volume'] == volume_path:
                     # Found the right mapping
                     tg = mapping['targetGroup']
-                    tg_data = self.nef.get('san/targetgroups?name=%s' % tg)
+                    tg_data = self.nef.get(
+                        'san/targetgroups?name=%s' % urllib.parse.quote(
+                            tg, safe=''))
                     target_name = tg_data['data'][0]['members'][0]
                     provider_location = (
                         '%(host)s:%(port)s,1 %(name)s %(lun)s') % {

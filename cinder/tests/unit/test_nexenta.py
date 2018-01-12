@@ -67,8 +67,8 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.cfg.nexenta_rest_port = 2000
         self.cfg.nexenta_rest_protocol = 'http'
         self.cfg.nexenta_iscsi_target_portal_port = 3260
-        self.cfg.nexenta_target_prefix = 'iqn:'
-        self.cfg.nexenta_target_group_prefix = 'cinder/'
+        self.cfg.nexenta_target_prefix = 'iqn:cinder-'
+        self.cfg.nexenta_target_group_prefix = 'cinder-'
         self.cfg.nexenta_blocksize = '8K'
         self.cfg.nexenta_sparse = True
         self.cfg.nexenta_dataset_compression = 'on'
