@@ -683,12 +683,15 @@ class VMAXCommon(object):
             raise exception.VolumeBackendAPIException(data=exception_message)
         __, snapvx_src, __ = self.rest.is_vol_in_rep_session(array, device_id)
         if snapvx_src:
-            exception_message = (
-                _("The volume: %(volume)s is a snapshot source. Extending a "
-                  "volume with snapVx snapshots is not supported. Exiting...")
-                % {'volume': volume_name})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
+            if not self.rest.is_next_gen_array(array):
+                exception_message = (
+                    _("The volume: %(volume)s is a snapshot source. "
+                      "Extending a volume with snapVx snapshots is only "
+                      "supported on VMAX from HyperMaxOS version 5978 "
+                      "onwards. Exiting...") % {'volume': volume_name})
+                LOG.error(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
 
         if int(original_vol_size) > int(new_size):
             exception_message = (_(
@@ -2605,50 +2608,64 @@ class VMAXCommon(object):
         :param new_size: the new size the volume should be
         :param extra_specs: extra specifications
         """
-        if self.extend_replicated_vol is True:
+        ode_replication = False
+        if self.utils.is_replication_enabled(extra_specs):
+            if self.rest.is_next_gen_array(array):
+                # Check if remote array is next gen
+                __, remote_array = self.get_rdf_details(array)
+                if self.rest.is_next_gen_array(remote_array):
+                    ode_replication = True
+        if self.extend_replicated_vol is True or ode_replication is True:
             try:
                 (target_device, remote_array, rdf_group,
                  local_vol_state, pair_state) = (
-                    self.get_remote_target_device(array, volume, device_id))
-
-                # Volume must be removed from replication (storage) group
-                # before the replication relationship can be ended (cannot
-                # have a mix of replicated and non-replicated volumes as
-                # the SRDF groups become unmanageable).
-                self.masking.remove_and_reset_members(
-                    array, volume, device_id, volume_name, extra_specs, False)
-
-                # Repeat on target side
+                    self.get_remote_target_device(
+                        array, volume, device_id))
                 rep_extra_specs = self._get_replication_extra_specs(
                     extra_specs, self.rep_config)
-                self.masking.remove_and_reset_members(
-                    remote_array, volume, target_device, volume_name,
-                    rep_extra_specs, False)
+                if not ode_replication:
+                    # Volume must be removed from replication (storage) group
+                    # before the replication relationship can be ended (cannot
+                    # have a mix of replicated and non-replicated volumes as
+                    # the SRDF groups become unmanageable).
+                    self.masking.remove_and_reset_members(
+                        array, volume, device_id, volume_name,
+                        extra_specs, False)
 
-                LOG.info("Breaking replication relationship...")
-                self.provision.break_rdf_relationship(
-                    array, device_id, target_device,
-                    rdf_group, rep_extra_specs, pair_state)
+                    # Repeat on target side
+                    self.masking.remove_and_reset_members(
+                        remote_array, volume, target_device, volume_name,
+                        rep_extra_specs, False)
+
+                    LOG.info("Breaking replication relationship...")
+                    self.provision.break_rdf_relationship(
+                        array, device_id, target_device,
+                        rdf_group, rep_extra_specs, pair_state)
+
+                # Extend the target volume
+                LOG.info("Extending target volume...")
+                # Check to make sure the R2 device requires extending first...
+                r2_size = self.rest.get_size_of_device_on_array(
+                    remote_array, target_device)
+                if int(r2_size) < int(new_size):
+                    self.provision.extend_volume(remote_array, target_device,
+                                                 new_size, rep_extra_specs)
 
                 # Extend the source volume
                 LOG.info("Extending source volume...")
                 self.provision.extend_volume(
                     array, device_id, new_size, extra_specs)
 
-                # Extend the target volume
-                LOG.info("Extending target volume...")
-                self.provision.extend_volume(
-                    remote_array, target_device, new_size, rep_extra_specs)
+                if not ode_replication:
+                    # Re-create replication relationship
+                    LOG.info("Recreating replication relationship...")
+                    self.setup_volume_replication(
+                        array, volume, device_id, extra_specs, target_device)
 
-                # Re-create replication relationship
-                LOG.info("Recreating replication relationship...")
-                self.setup_volume_replication(
-                    array, volume, device_id, extra_specs, target_device)
-
-                # Check if volume needs to be returned to volume group
-                if volume.group_id:
-                    self._add_new_volume_to_volume_group(
-                        volume, device_id, volume_name, extra_specs)
+                    # Check if volume needs to be returned to volume group
+                    if volume.group_id:
+                        self._add_new_volume_to_volume_group(
+                            volume, device_id, volume_name, extra_specs)
 
             except Exception as e:
                 exception_message = (_("Error extending volume. "

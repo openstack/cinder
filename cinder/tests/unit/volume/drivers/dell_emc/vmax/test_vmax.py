@@ -3372,9 +3372,10 @@ class VMAXCommonTest(test.TestCase):
             self.common._unmap_lun.assert_called_once_with(
                 volume, connector)
 
+    @mock.patch.object(rest.VMAXRest, 'is_next_gen_array', return_value=True)
     @mock.patch.object(common.VMAXCommon, '_sync_check')
     @mock.patch.object(provision.VMAXProvision, 'extend_volume')
-    def test_extend_volume_success(self, mock_extend, mock_sync):
+    def test_extend_volume_success(self, mock_extend, mock_sync, mock_newgen):
         volume = self.data.test_volume
         array = self.data.array
         device_id = self.data.device_id
@@ -3382,7 +3383,13 @@ class VMAXCommonTest(test.TestCase):
         ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)
         ref_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         with mock.patch.object(self.rest, 'is_vol_in_rep_session',
-                               return_value=(False, False, None)):
+                               side_effect=[(False, False, None),
+                                            (False, True, None)]):
+            self.common.extend_volume(volume, new_size)
+            mock_extend.assert_called_once_with(
+                array, device_id, new_size, ref_extra_specs)
+        # Success, with snapshot, on new VMAX array
+            mock_extend.reset_mock()
             self.common.extend_volume(volume, new_size)
             mock_extend.assert_called_once_with(
                 array, device_id, new_size, ref_extra_specs)
@@ -6194,19 +6201,19 @@ class VMAXCommonReplicationTest(test.TestCase):
                 self.data.test_volume, self.data.connector)
             mock_es.assert_called_once_with(extra_specs, rep_config)
 
+    @mock.patch.object(rest.VMAXRest, 'is_vol_in_rep_session',
+                       return_value=(False, False, None))
+    @mock.patch.object(common.VMAXCommon, 'extend_volume_is_replicated')
     @mock.patch.object(common.VMAXCommon, '_sync_check')
-    def test_extend_volume_rep_enabled(self, mock_sync):
+    def test_extend_volume_rep_enabled(self, mock_sync, mock_ex_re,
+                                       mock_is_re):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         volume_name = self.data.test_volume.name
-        with mock.patch.object(self.rest, 'is_vol_in_rep_session',
-                               return_value=(False, False, None)):
-            with mock.patch.object(
-                    self.common, 'extend_volume_is_replicated') as mock_ex_re:
-                self.common.extend_volume(self.data.test_volume, '5')
-                mock_ex_re.assert_called_once_with(
-                    self.data.array, self.data.test_volume,
-                    self.data.device_id, volume_name, "5", extra_specs)
+        self.common.extend_volume(self.data.test_volume, '5')
+        mock_ex_re.assert_called_once_with(
+            self.data.array, self.data.test_volume,
+            self.data.device_id, volume_name, "5", extra_specs)
 
     def test_set_config_file_get_extra_specs_rep_enabled(self):
         extra_specs, _, _ = self.common._set_config_file_and_get_extra_specs(
@@ -6475,6 +6482,15 @@ class VMAXCommonReplicationTest(test.TestCase):
             'vol1', '5', self.data.extra_specs_rep_enabled)
         self.assertEqual(2, mock_remove.call_count)
         self.assertEqual(2, mock_extend.call_count)
+        mock_remove.reset_mock()
+        mock_extend.reset_mock()
+        with mock.patch.object(self.rest, 'is_next_gen_array',
+                               return_value=True):
+            self.common.extend_volume_is_replicated(
+                self.data.array, self.data.test_volume, self.data.device_id,
+                'vol1', '5', self.data.extra_specs_rep_enabled)
+            mock_remove.assert_not_called()
+            self.assertEqual(2, mock_extend.call_count)
 
     def test_extend_volume_is_replicated_exception(self):
         self.assertRaises(exception.VolumeBackendAPIException,
