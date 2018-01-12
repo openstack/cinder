@@ -258,11 +258,13 @@ class HPE3PARCommon(object):
         4.0.0 - Code refactor.
         4.0.1 - Added check to modify host after volume detach. bug #1730720
         4.0.2 - Added Tiramisu feature on 3PAR.
+        4.0.3 - Fixed create group from source functionality in case of
+                tiramisu. bug #1742092.
 
 
     """
 
-    VERSION = "4.0.2"
+    VERSION = "4.0.3"
 
     stats = {}
 
@@ -590,6 +592,8 @@ class HPE3PARCommon(object):
 
         self.create_group(context, group)
         volumes_model_update = []
+        task_id_list = []
+        volumes_cpg_map = []
         replication_flag = False
         model_update = {'status': fields.GroupStatus.AVAILABLE}
 
@@ -626,6 +630,7 @@ class HPE3PARCommon(object):
             snapcpg = type_info['snap_cpg']
             tpvv = type_info.get('tpvv', False)
             tdvv = type_info.get('tdvv', False)
+            volumes_cpg_map.append((volume, volume_name, cpg))
 
             compression = self.get_compression_policy(
                 type_info['hpe3par_keys'])
@@ -636,7 +641,27 @@ class HPE3PARCommon(object):
             if compression is not None:
                 optional['compression'] = compression
 
-            self.client.copyVolume(snap_name, volume_name, cpg, optional)
+            body = self.client.copyVolume(snap_name, volume_name, cpg,
+                                          optional)
+            task_id = body['taskid']
+            task_id_list.append((task_id, volume.get('id')))
+
+        # Only in case of replication, we are waiting for tasks to complete.
+        if group.is_replicated:
+            for task_id, vol_id in task_id_list:
+                task_status = self._wait_for_task_completion(task_id)
+                if task_status['status'] is not self.client.TASK_DONE:
+                    dbg = {'status': task_status, 'id': vol_id}
+                    msg = _('Copy volume task failed:  '
+                            'create_group_from_src_group '
+                            'id=%(id)s, status=%(status)s.') % dbg
+                    LOG.error(msg)
+                    raise exception.CinderException(msg)
+                else:
+                    LOG.debug('Online copy volume completed: '
+                              'create_group_from_src_group: id=%s.', vol_id)
+
+        for volume, volume_name, cpg in volumes_cpg_map:
             if group.is_replicated:
                 # Add volume to remote copy group
                 self._add_vol_to_remote_copy_group(group, volume)
@@ -647,7 +672,7 @@ class HPE3PARCommon(object):
                 provider_location=self.client.id)
 
             if volume_model_update is not None:
-                volume_model_update.update({'id': volume['id']})
+                volume_model_update.update({'id': volume.get('id')})
                 # Update volumes_model_update
                 volumes_model_update.append(volume_model_update)
 
