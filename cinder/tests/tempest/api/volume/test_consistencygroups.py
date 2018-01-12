@@ -14,23 +14,23 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.volume import base
 from tempest.common import waiters
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest import test
 
+from cinder.tests.tempest.api.volume import base
 from cinder.tests.tempest import cinder_clients
 
 CONF = config.CONF
 
 
-class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
-
+class ConsistencyGroupsV2Test(base.BaseVolumeTest):
     @classmethod
     def setup_clients(cls):
         cls._api_version = 2
         super(ConsistencyGroupsV2Test, cls).setup_clients()
+        cls.admin_volume_client = cls.os_admin.volumes_v2_client
 
         manager = cinder_clients.Manager(cls.os_adm)
         cls.consistencygroups_adm_client = manager.consistencygroups_adm_client
@@ -54,14 +54,14 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
     def _delete_cgsnapshot(self, cgsnapshot_id, cg_id):
         self.consistencygroups_adm_client.delete_cgsnapshot(cgsnapshot_id)
         vols = self.admin_volume_client.list_volumes(detail=True)['volumes']
-        snapshots = self.admin_snapshots_client.list_snapshots(
+        snapshots = self.os_admin.snapshots_v2_client.list_snapshots(
             detail=True)['snapshots']
         for vol in vols:
             for snap in snapshots:
                 if (vol['consistencygroup_id'] == cg_id and
                         vol['id'] == snap['volume_id']):
-                    self.snapshots_client.wait_for_resource_deletion(
-                        snap['id'])
+                    (self.snapshots_client.
+                     wait_for_resource_deletion(snap['id']))
         self.consistencygroups_adm_client.wait_for_cgsnapshot_deletion(
             cgsnapshot_id)
 
@@ -69,7 +69,7 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
     def test_consistencygroup_create_delete(self):
         # Create volume type
         name = data_utils.rand_name("volume-type")
-        volume_type = self.admin_volume_types_client.create_volume_type(
+        volume_type = self.os_admin.volume_types_v2_client.create_volume_type(
             name=name)['volume_type']
 
         # Create CG
@@ -106,7 +106,8 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
 
         # Clean up
         self._delete_consistencygroup(cg['id'])
-        self.admin_volume_types_client.delete_volume_type(volume_type['id'])
+        self.os_admin.volume_types_v2_client.delete_volume_type(
+            volume_type['id'])
 
     @test.idempotent_id('2134dd52-f333-4456-bb05-6cb0f009a44f')
     def test_consistencygroup_cgsnapshot_create_delete(self):
@@ -141,12 +142,13 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
             self.consistencygroups_adm_client.create_cgsnapshot)
         cgsnapshot = create_cgsnapshot(cg['id'],
                                        name=cgsnapshot_name)['cgsnapshot']
-        snapshots = self.admin_snapshots_client.list_snapshots(
+        snapshots = self.os_admin.snapshots_v2_client.list_snapshots(
             detail=True)['snapshots']
         for snap in snapshots:
             if volume['id'] == snap['volume_id']:
                 waiters.wait_for_volume_resource_status(
-                    self.admin_snapshots_client, snap['id'], 'available')
+                    self.os_admin.snapshots_v2_client,
+                    snap['id'], 'available')
         self.consistencygroups_adm_client.wait_for_cgsnapshot_status(
             cgsnapshot['id'], 'available')
         self.assertEqual(cgsnapshot_name, cgsnapshot['name'])
@@ -205,7 +207,7 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         for snap in snapshots:
             if volume['id'] == snap['volume_id']:
                 waiters.wait_for_volume_resource_status(
-                    self.admin_snapshots_client, snap['id'], 'available')
+                    self.os_admin.snapshots_v2_client, snap['id'], 'available')
         self.consistencygroups_adm_client.wait_for_cgsnapshot_status(
             cgsnapshot['id'], 'available')
         self.assertEqual(cgsnapshot_name, cgsnapshot['name'])
