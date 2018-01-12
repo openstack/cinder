@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Updated the parameter storwzie_preferred_host_site from StrOpt to DictOpt
+    in cinder back-end configuration, and removed it from volume type
+    configuration.
