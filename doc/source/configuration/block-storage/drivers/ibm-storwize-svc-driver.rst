@@ -584,12 +584,31 @@ A hyperswap volume is created with a volume-type that has the extra spec
 ``drivers:volume_topology`` set to ``hyperswap``.
 To support hyperswap volumes, IBM Storwize/SVC firmware version 7.6.0 or
 later is required.
+Add the following to the back-end configuration to specify the host preferred
+site for hyperswap volume.
+FC:
+
+.. code-block:: ini
+
+   storwize_preferred_host_site = site1:20000090fa17311e&ff00000000000001,
+                                  site2:20000089762sedce&ff00000000000000
+
+iSCSI:
+
+.. code-block:: ini
+
+   storwize_preferred_host_site = site1:iqn.1993-08.org.debian:01:eac5ccc1aaa&iqn.1993-08.org.debian:01:be53b7e236be,
+                                  site2:iqn.1993-08.org.debian:01:eac5ccc1bbb&iqn.1993-08.org.debian:01:abcdefg9876w
+
+The site1 and site2 are names of the two host sites used in Storwize
+storage. The WWPNs and IQNs are the connectors used for host mapping in
+Storwize.
 
 .. code-block:: console
 
    $ cinder type-create hyper_type
    $ cinder type-key hyper_type set drivers:volume_topology=hyperswap \
-     drivers:peer_pool=Pool_site2 drivers:host_site=site1
+     drivers:peer_pool=Pool_site2
 
 .. note::
 

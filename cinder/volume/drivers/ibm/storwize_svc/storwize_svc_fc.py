@@ -165,36 +165,24 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         else:
             volume_name, backend_helper, node_state = self._get_vol_sys_info(
                 volume)
-        opts = self._get_vdisk_params(volume.volume_type_id)
-        host_site = opts['host_site']
+
+        host_site = self._get_volume_host_site_from_conf(volume,
+                                                         connector)
+        is_hyper_volume = backend_helper.is_volume_hyperswap(volume_name)
+        # The host_site is necessary for hyperswap volume.
+        if is_hyper_volume and host_site is None:
+            msg = (_('There is no correct storwize_preferred_host_site '
+                     'configured for a hyperswap volume %s.') % volume.name)
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
 
         # Check if a host object is defined for this host name
         host_name = backend_helper.get_host_from_connector(connector)
         if host_name is None:
             # Host does not exist - add a new host to Storwize/SVC
-            # The host_site is necessary for hyperswap volume.
-            if backend_helper.is_volume_hyperswap(
-                    volume_name) and host_site is None:
-                msg = (_('There is no host_site configured for a hyperswap'
-                         ' volume %s.') % volume_name)
-                LOG.error(msg)
-                raise exception.VolumeDriverException(message=msg)
-
             host_name = backend_helper.create_host(connector, site=host_site)
-        else:
-            host_info = backend_helper.ssh.lshost(host=host_name)
-            if 'site_name' in host_info[0]:
-                if not host_info[0]['site_name'] and host_site:
-                    backend_helper.update_host(host_name, host_site)
-                elif host_info[0]['site_name']:
-                    ref_host_site = host_info[0]['site_name']
-                    if host_site and host_site != ref_host_site:
-                        msg = (_('The existing host site is %(ref_host_site)s,'
-                                 ' but the new host site is %(host_site)s.') %
-                               {'ref_host_site': ref_host_site,
-                                'host_site': host_site})
-                        LOG.error(msg)
-                        raise exception.VolumeDriverException(message=msg)
+        elif is_hyper_volume:
+            self._update_host_site_for_hyperswap_volume(host_name, host_site)
 
         volume_attributes = backend_helper.get_vdisk_attributes(volume_name)
         if volume_attributes is None:
