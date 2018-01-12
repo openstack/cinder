@@ -77,6 +77,7 @@ class VMAXCommonData(object):
     failed_resource = 'OS-failed-resource'
     fake_host = 'HostX@Backend#Diamond+DSS+SRP_1+000197800123'
     new_host = 'HostX@Backend#Silver+OLTP+SRP_1+000197800123'
+    none_host = 'HostX@Backend#Diamond+None+SRP_1+000197800123'
     version = '3.1.0'
     volume_wwn = '600000345'
     remote_array = '000197800124'
@@ -4647,6 +4648,17 @@ class VMAXCommonTest(test.TestCase):
         host4 = {'host': self.data.fake_host}
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host4, self.data.array,
+            self.data.srp, volume_name, False)
+        self.assertEqual(ref_return, return_val)
+
+    def test_is_valid_for_storage_assisted_migration_none(self):
+        device_id = self.data.device_id
+        host = {'host': self.data.none_host}
+        volume_name = self.data.test_volume.name
+        # Testing for 'NONE' Workload
+        ref_return = (True, 'Diamond', 'NONE')
+        return_val = self.common._is_valid_for_storage_assisted_migration(
+            device_id, host, self.data.array,
             self.data.srp, volume_name, False)
         self.assertEqual(ref_return, return_val)
 
