@@ -4434,13 +4434,19 @@ class VMAXCommonTest(test.TestCase):
                 device_id, host, self.data.array, self.data.srp,
                 volume_name, False)
             self.assertEqual(ref_return, return_val)
+        host = {'host': 'HostX@Backend#Silver+SRP_1+000197800123'}
+        ref_return = (True, 'Silver', 'NONE')
+        return_val = self.common._is_valid_for_storage_assisted_migration(
+            device_id, host, self.data.array,
+            self.data.srp, volume_name, False)
+        self.assertEqual(ref_return, return_val)
 
     def test_is_valid_for_storage_assisted_migration_false(self):
         device_id = self.data.device_id
         volume_name = self.data.test_volume.name
         ref_return = (False, None, None)
         # IndexError
-        host = {'host': 'HostX@Backend#Silver+SRP_1+000197800123'}
+        host = {'host': 'HostX@Backend#Silver+SRP_1+000197800123+dummy+data'}
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host, self.data.array,
             self.data.srp, volume_name, False)
