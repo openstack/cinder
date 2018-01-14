@@ -210,6 +210,24 @@ class SnapshotApiTest(test.TestCase):
         self.assertRaises(exception.ValidationError,
                           self.controller.create, req, body=body)
 
+    @ddt.data({"snapshot": {"description": "   sample description",
+                            "name": "   test"}},
+              {"snapshot": {"description": "sample description   ",
+                            "name": "test   "}},
+              {"snapshot": {"description": " sample description ",
+                            "name": "  test name  "}})
+    def test_snapshot_create_with_leading_trailing_spaces(self, body):
+        volume = utils.create_volume(self.ctx)
+        body['snapshot']['volume_id'] = volume.id
+        req = fakes.HTTPRequest.blank('/v2/snapshots')
+        resp_dict = self.controller.create(req, body=body)
+
+        self.assertEqual(body['snapshot']['display_name'].strip(),
+                         resp_dict['snapshot']['name'])
+        self.assertEqual(body['snapshot']['description'].strip(),
+                         resp_dict['snapshot']['description'])
+        db.volume_destroy(self.ctx, volume.id)
+
     @mock.patch.object(volume.api.API, "update_snapshot",
                        side_effect=v2_fakes.fake_snapshot_update)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
@@ -315,6 +333,54 @@ class SnapshotApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/snapshots/not-the-uuid')
         self.assertRaises(exception.SnapshotNotFound, self.controller.update,
                           req, 'not-the-uuid', body=body)
+
+    @mock.patch.object(volume.api.API, "update_snapshot",
+                       side_effect=v2_fakes.fake_snapshot_update)
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    def test_snapshot_update_with_leading_trailing_spaces(
+            self, snapshot_get_by_id, volume_get,
+            snapshot_metadata_get, update_snapshot):
+        snapshot = {
+            'id': UUID,
+            'volume_id': fake.VOLUME_ID,
+            'status': fields.SnapshotStatus.AVAILABLE,
+            'created_at': "2018-01-14 00:00:00",
+            'volume_size': 100,
+            'display_name': 'Default name',
+            'display_description': 'Default description',
+            'expected_attrs': ['metadata'],
+        }
+        ctx = context.RequestContext(fake.PROJECT_ID, fake.USER_ID, True)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_get_by_id.return_value = snapshot_obj
+        volume_get.return_value = fake_volume_obj
+
+        updates = {
+            "name": "     test     ",
+            "description": "     test     "
+        }
+        body = {"snapshot": updates}
+        req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
+        res_dict = self.controller.update(req, UUID, body=body)
+        expected = {
+            'snapshot': {
+                'id': UUID,
+                'volume_id': fake.VOLUME_ID,
+                'status': fields.SnapshotStatus.AVAILABLE,
+                'size': 100,
+                'created_at': datetime.datetime(2018, 1, 14, 0, 0, 0,
+                                                tzinfo=pytz.utc),
+                'updated_at': None,
+                'name': u'test',
+                'description': u'test',
+                'metadata': {},
+            }
+        }
+        self.assertEqual(expected, res_dict)
+        self.assertEqual(2, len(self.notifier.notifications))
 
     @mock.patch.object(volume.api.API, "delete_snapshot",
                        side_effect=v2_fakes.fake_snapshot_update)

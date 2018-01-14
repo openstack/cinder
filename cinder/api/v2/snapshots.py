@@ -121,6 +121,7 @@ class SnapshotsController(wsgi.Controller):
         force = strutils.bool_from_string(force, strict=True)
         LOG.info("Create snapshot from volume %s", volume_id)
 
+        self.validate_name_and_description(snapshot, check_length=False)
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in snapshot:
             snapshot['display_name'] = snapshot.pop('name')
@@ -148,6 +149,7 @@ class SnapshotsController(wsgi.Controller):
         """Update a snapshot."""
         context = req.environ['cinder.context']
         snapshot_body = body['snapshot']
+        self.validate_name_and_description(snapshot_body, check_length=False)
 
         if 'name' in snapshot_body:
             snapshot_body['display_name'] = snapshot_body.pop('name')

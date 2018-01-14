@@ -515,6 +515,46 @@ class BackupsAPITestCase(test.TestCase):
 
         volume.destroy()
 
+    @ddt.data({"backup": {"description": "   sample description",
+                          "name": "   test name"}},
+              {"backup": {"description": "sample description   ",
+                          "name": "test   "}},
+              {"backup": {"description": " sample description ",
+                          "name": "  test  "}})
+    @mock.patch('cinder.db.service_get_all')
+    def test_create_backup_name_description_with_leading_trailing_spaces(
+            self, body, _mock_service_get_all):
+        _mock_service_get_all.return_value = [
+            {'availability_zone': 'fake_az', 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': fake.BACKUP_ID}]
+
+        volume = utils.create_volume(self.context, size=5)
+        body['backup']['volume_id'] = volume.id
+        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_context))
+        res_dict = jsonutils.loads(res.body)
+
+        # create backup call doesn't return 'description' in response so get
+        # the created backup to assert name and description
+        req = webob.Request.blank('/v2/%s/backups/%s' % (
+                                  fake.PROJECT_ID, res_dict['backup']['id']))
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_context))
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual(body['backup']['name'].strip(),
+                         res_dict['backup']['name'])
+        self.assertEqual(body['backup']['description'].strip(),
+                         res_dict['backup']['description'])
+        volume.destroy()
+
     @mock.patch('cinder.db.service_get_all')
     def test_create_backup_with_metadata(self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
