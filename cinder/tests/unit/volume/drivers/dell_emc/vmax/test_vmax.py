@@ -507,9 +507,10 @@ class VMAXCommonData(object):
     srp_details = {"srpSloDemandId": ["Bronze", "Diamond", "Gold",
                                       "None", "Optimized", "Silver"],
                    "srpId": srp,
-                   "total_allocated_cap_gb": 5244.7,
+                   "total_used_cap_gb": 5244.7,
                    "total_usable_cap_gb": 20514.4,
                    "total_subscribed_cap_gb": 84970.1,
+                   "fba_used_capacity": 5244.7,
                    "reserved_cap_percent": 10}
 
     volume_details = [{"cap_gb": 2,
@@ -2994,7 +2995,7 @@ class VMAXProvisionTest(test.TestCase):
         array_info = self.common.pool_info['arrays_info'][0]
         ref_stats = (self.data.srp_details['total_usable_cap_gb'],
                      float(self.data.srp_details['total_usable_cap_gb']
-                           - self.data.srp_details['total_allocated_cap_gb']),
+                           - self.data.srp_details['total_used_cap_gb']),
                      self.data.srp_details['total_subscribed_cap_gb'],
                      self.data.srp_details['reserved_cap_percent'])
         stats = self.provision.get_srp_pool_stats(array, array_info)
