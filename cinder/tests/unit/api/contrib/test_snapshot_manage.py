@@ -147,6 +147,26 @@ class SnapshotManageTest(test.TestCase):
         args = mock_rpcapi.call_args[0]
         self.assertEqual({u'fake_key': u'fake_ref'}, args[2])
 
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
+    @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
+    @mock.patch('cinder.objects.service.Service.get_by_id')
+    def test_manage_snapshot_ok_with_metadata_null(
+            self, mock_db, mock_create_snapshot, mock_rpcapi):
+        mock_db.return_value = fake_service.fake_service_obj(
+            self._admin_ctxt,
+            binary=constants.VOLUME_BINARY)
+        body = {'snapshot': {'volume_id': fake.VOLUME_ID,
+                             'ref': {'fake_key': 'fake_ref'},
+                             'name': 'test',
+                             'description': 'test',
+                             'metadata': None}}
+
+        res = self._get_resp_post(body)
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        args = mock_create_snapshot.call_args[0]
+        # 5th argument of args is metadata.
+        self.assertIsNone(args[5])
+
     @mock.patch('cinder.objects.service.Service.is_up',
                 return_value=True,
                 new_callable=mock.PropertyMock)

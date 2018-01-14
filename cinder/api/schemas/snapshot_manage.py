@@ -28,7 +28,7 @@ create = {
             'type': 'object',
             'properties': {
                 "description": parameter_types.description,
-                "metadata": parameter_types.extra_specs,
+                "metadata": parameter_types.metadata_allows_null,
                 "name": parameter_types.name_allow_zero_min_length,
                 "volume_id": parameter_types.uuid,
                 "ref": {'type': ['object', 'null']},

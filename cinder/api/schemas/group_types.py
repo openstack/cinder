@@ -31,7 +31,7 @@ create = {
                 'name': parameter_types.name,
                 'description': parameter_types.description,
                 'is_public': parameter_types.boolean,
-                'group_specs': parameter_types.extra_specs,
+                'group_specs': parameter_types.metadata_allows_null,
             },
             'required': ['name'],
             'additionalProperties': False,
