@@ -48,16 +48,11 @@ update = {
         'group_type': {
             'type': 'object',
             'properties': {
-                'name': parameter_types.name,
+                'name': parameter_types.name_allow_zero_min_length,
                 'description': parameter_types.description,
                 'is_public': parameter_types.boolean,
             },
             'additionalProperties': False,
-            'anyOf': [
-                {'required': ['name']},
-                {'required': ['description']},
-                {'required': ['is_public']},
-            ]
         },
     },
     'required': ['group_type'],

@@ -102,6 +102,17 @@ class GroupTypesController(wsgi.Controller):
         if is_public is not None:
             is_public = strutils.bool_from_string(is_public, strict=True)
 
+        # If name specified, name can not be empty.
+        if name and len(name.strip()) == 0:
+            msg = _("Group type name can not be empty.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        # Name, description and is_public can not be None.
+        # Specify one of them, or a combination thereof.
+        if name is None and description is None and is_public is None:
+            msg = _("Specify group type name, description or "
+                    "a combination thereof.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
         try:
             group_types.update(context, id, name, description,
                                is_public=is_public)
