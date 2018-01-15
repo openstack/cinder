@@ -2660,7 +2660,7 @@ class ISCSIDriver(VolumeDriver):
         Example return value::
 
             {
-                'driver_volume_type': 'iscsi'
+                'driver_volume_type': 'iscsi',
                 'data': {
                     'target_discovered': True,
                     'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
@@ -2675,14 +2675,14 @@ class ISCSIDriver(VolumeDriver):
         "target_luns" are also populated::
 
             {
-                'driver_volume_type': 'iscsi'
+                'driver_volume_type': 'iscsi',
                 'data': {
                     'target_discovered': False,
                     'target_iqn': 'iqn.2010-10.org.openstack:volume1',
                     'target_iqns': ['iqn.2010-10.org.openstack:volume1',
                                     'iqn.2010-10.org.openstack:volume1-2'],
                     'target_portal': '10.0.0.1:3260',
-                    'target_portals': ['10.0.0.1:3260', '10.0.1.1:3260']
+                    'target_portals': ['10.0.0.1:3260', '10.0.1.1:3260'],
                     'target_lun': 1,
                     'target_luns': [1, 1],
                     'volume_id': 1,
@@ -2780,7 +2780,7 @@ class ISERDriver(ISCSIDriver):
                     'target_iqn':
                     'iqn.2010-10.org.iser.openstack:volume-00000001',
                     'target_portal': '127.0.0.0.1:3260',
-                    'volume_id': 1
+                    'volume_id': 1,
                 }
             }
 
@@ -2827,7 +2827,7 @@ class FibreChannelDriver(VolumeDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': '1234567890123',
-                    'discard': False
+                    'discard': False,
                 }
             }
 
@@ -2841,7 +2841,7 @@ class FibreChannelDriver(VolumeDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': ['1234567890123', '0987654321321'],
-                    'discard': False
+                    'discard': False,
                 }
             }
 
