@@ -1,0 +1,6 @@
+---
+features:
+  - Support transfer volume with snapshots by default in new V3 API
+    'v3/volume_transfers'. After microverison 3.55, if users don't want to
+    transfer snapshots, they could use the new optional argument
+    `no_snapshots=True` in request body of new transfer creation API.

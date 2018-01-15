@@ -38,6 +38,14 @@ volume_transfer_policies = [
             {
                 'method': 'GET',
                 'path': '/os-volume-transfer/detail'
+            },
+            {
+                'method': 'GET',
+                'path': '/volume_transfers'
+            },
+            {
+                'method': 'GET',
+                'path': '/volume_transfers/detail'
             }
         ]),
     policy.DocumentedRuleDefault(
@@ -48,6 +56,10 @@ volume_transfer_policies = [
             {
                 'method': 'POST',
                 'path': '/os-volume-transfer'
+            },
+            {
+                'method': 'POST',
+                'path': '/volume_transfers'
             }
         ]),
     policy.DocumentedRuleDefault(
@@ -58,6 +70,10 @@ volume_transfer_policies = [
             {
                 'method': 'GET',
                 'path': '/os-volume-transfer/{transfer_id}'
+            },
+            {
+                'method': 'GET',
+                'path': '/volume_transfers/{transfer_id}'
             }
         ]),
     policy.DocumentedRuleDefault(
@@ -68,6 +84,10 @@ volume_transfer_policies = [
             {
                 'method': 'POST',
                 'path': '/os-volume-transfer/{transfer_id}/accept'
+            },
+            {
+                'method': 'POST',
+                'path': '/volume_transfers/{transfer_id}/accept'
             }
         ]),
     policy.DocumentedRuleDefault(
@@ -78,6 +98,10 @@ volume_transfer_policies = [
             {
                 'method': 'DELETE',
                 'path': '/os-volume-transfer/{transfer_id}'
+            },
+            {
+                'method': 'DELETE',
+                'path': '/volume_transfers/{transfer_id}'
             }
         ]),
 ]

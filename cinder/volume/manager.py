@@ -1863,7 +1863,8 @@ class VolumeManager(manager.CleanableManager,
         LOG.info("Remove snapshot export completed successfully.",
                  resource=snapshot)
 
-    def accept_transfer(self, context, volume_id, new_user, new_project):
+    def accept_transfer(self, context, volume_id, new_user, new_project,
+                        no_snapshots=False):
         # NOTE(flaper87): Verify the driver is enabled
         # before going forward. The exception will be caught
         # and the volume status updated.

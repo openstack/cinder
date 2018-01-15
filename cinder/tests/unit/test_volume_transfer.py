@@ -306,3 +306,58 @@ class VolumeTransferTestCase(test.TestCase):
                           tx_api.get,
                           self.ctxt,
                           transfer['id'])
+
+    @mock.patch('cinder.volume.utils.notify_about_volume_usage')
+    def test_transfer_accept_with_snapshots(self, mock_notify):
+        svc = self.start_service('volume', host='test_host')
+        self.addCleanup(svc.stop)
+        tx_api = transfer_api.API()
+        volume = utils.create_volume(self.ctxt,
+                                     volume_type_id=fake.VOLUME_TYPE_ID,
+                                     updated_at=self.updated_at)
+        utils.create_volume_type(self.ctxt.elevated(),
+                                 id=fake.VOLUME_TYPE_ID, name="test_type")
+        utils.create_snapshot(self.ctxt, volume.id, status='available')
+        transfer = tx_api.create(self.ctxt, volume.id, 'Description')
+
+        # Get volume and snapshot quota before accept
+        self.ctxt.user_id = fake.USER2_ID
+        self.ctxt.project_id = fake.PROJECT2_ID
+        usages = db.quota_usage_get_all_by_project(self.ctxt,
+                                                   self.ctxt.project_id)
+        self.assertEqual(0, usages.get('volumes', {}).get('in_use', 0))
+        self.assertEqual(0, usages.get('snapshots', {}).get('in_use', 0))
+
+        tx_api.accept(self.ctxt, transfer['id'], transfer['auth_key'])
+        volume = objects.Volume.get_by_id(self.ctxt, volume.id)
+        self.assertEqual(fake.PROJECT2_ID, volume.project_id)
+        self.assertEqual(fake.USER2_ID, volume.user_id)
+
+        calls = [mock.call(self.ctxt, mock.ANY, "transfer.accept.start"),
+                 mock.call(self.ctxt, mock.ANY, "transfer.accept.end")]
+        mock_notify.assert_has_calls(calls)
+        # The notify_about_volume_usage is called twice at create(),
+        # and twice at accept().
+        self.assertEqual(4, mock_notify.call_count)
+
+        # Get volume and snapshot quota after accept
+        self.ctxt.user_id = fake.USER2_ID
+        self.ctxt.project_id = fake.PROJECT2_ID
+        usages = db.quota_usage_get_all_by_project(self.ctxt,
+                                                   self.ctxt.project_id)
+        self.assertEqual(1, usages.get('volumes', {}).get('in_use', 0))
+        self.assertEqual(1, usages.get('snapshots', {}).get('in_use', 0))
+
+    @mock.patch('cinder.volume.utils.notify_about_volume_usage')
+    def test_transfer_accept_with_snapshots_invalid(self, mock_notify):
+        svc = self.start_service('volume', host='test_host')
+        self.addCleanup(svc.stop)
+        tx_api = transfer_api.API()
+        volume = utils.create_volume(self.ctxt,
+                                     volume_type_id=fake.VOLUME_TYPE_ID,
+                                     updated_at=self.updated_at)
+        utils.create_volume_type(self.ctxt.elevated(),
+                                 id=fake.VOLUME_TYPE_ID, name="test_type")
+        utils.create_snapshot(self.ctxt, volume.id, status='deleting')
+        self.assertRaises(exception.InvalidSnapshot,
+                          tx_api.create, self.ctxt, volume.id, 'Description')

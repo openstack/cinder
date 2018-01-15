@@ -830,6 +830,7 @@ class Transfer(BASE, CinderBase):
     salt = Column(String(255))
     crypt_hash = Column(String(255))
     expires_at = Column(DateTime)
+    no_snapshots = Column(Boolean, default=False)
     volume = relationship(Volume, backref="transfer",
                           foreign_keys=volume_id,
                           primaryjoin='and_('

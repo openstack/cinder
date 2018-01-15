@@ -815,7 +815,8 @@ class API(base.Base):
                  resource=volume)
         self.unreserve_volume(context, volume)
 
-    def accept_transfer(self, context, volume, new_user, new_project):
+    def accept_transfer(self, context, volume, new_user, new_project,
+                        no_snapshots=False):
         context.authorize(vol_transfer_policy.ACCEPT_POLICY,
                           target_obj=volume)
         if volume['status'] == 'maintenance':
@@ -826,7 +827,8 @@ class API(base.Base):
         results = self.volume_rpcapi.accept_transfer(context,
                                                      volume,
                                                      new_user,
-                                                     new_project)
+                                                     new_project,
+                                                     no_snapshots=no_snapshots)
         LOG.info("Transfer volume completed successfully.",
                  resource=volume)
         return results

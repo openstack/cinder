@@ -14,6 +14,7 @@
 #    under the License.
 
 from cinder.api import common
+from cinder.api import microversions as mv
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -49,7 +50,7 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, transfer):
         """Detailed view of a single transfer."""
-        return {
+        detail_body = {
             'transfer': {
                 'id': transfer.get('id'),
                 'created_at': transfer.get('created_at'),
@@ -58,10 +59,15 @@ class ViewBuilder(common.ViewBuilder):
                 'links': self._get_links(request, transfer['id'])
             }
         }
+        req_version = request.api_version_request
+        if req_version.matches(mv.TRANSFER_WITH_SNAPSHOTS):
+            detail_body['transfer'].update({'no_snapshots':
+                                            transfer.get('no_snapshots')})
+        return detail_body
 
     def create(self, request, transfer):
         """Detailed view of a single transfer when created."""
-        return {
+        create_body = {
             'transfer': {
                 'id': transfer.get('id'),
                 'created_at': transfer.get('created_at'),
@@ -71,6 +77,11 @@ class ViewBuilder(common.ViewBuilder):
                 'links': self._get_links(request, transfer['id'])
             }
         }
+        req_version = request.api_version_request
+        if req_version.matches(mv.TRANSFER_WITH_SNAPSHOTS):
+            create_body['transfer'].update({'no_snapshots':
+                                            transfer.get('no_snapshots')})
+        return create_body
 
     def _list_view(self, func, request, transfers, origin_transfer_count):
         """Provide a view for a list of transfers."""

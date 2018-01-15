@@ -126,6 +126,7 @@ REST_API_VERSION_HISTORY = """
              parameter in the request body in order to update the volume.
              Also, additional parameters will not be allowed.
     * 3.54 - Add ``mode`` argument to attachment-create.
+    * 3.55 - Support transfer volume with snapshots
 """
 
 # The minimum and maximum versions of the API supported
@@ -133,7 +134,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.54"
+_MAX_API_VERSION = "3.55"
 _LEGACY_API_VERSION2 = "2.0"
 UPDATED = "2018-07-17T00:00:00Z"
 

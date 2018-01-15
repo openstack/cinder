@@ -1915,6 +1915,13 @@ new_type:
   in: body
   required: true
   type: string
+no_snapshots:
+  description: |
+    Transfer volume without snapshots.
+  in: body
+  required: false
+  min_version: 3.55
+  type: boolean
 object_count:
   description: |
     The number of objects in the backup.

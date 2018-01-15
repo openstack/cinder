@@ -93,7 +93,8 @@ class VolumeTransferController(wsgi.Controller):
                  volume_id)
 
         try:
-            new_transfer = self.transfer_api.create(context, volume_id, name)
+            new_transfer = self.transfer_api.create(context, volume_id, name,
+                                                    no_snapshots=False)
         # Not found exception will be handled at the wsgi level
         except exception.InvalidVolume as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
