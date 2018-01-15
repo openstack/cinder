@@ -35,6 +35,7 @@ from cinder import test
 from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import utils as test_utils
 from cinder.volume.drivers.dell_emc.vmax import common
 from cinder.volume.drivers.dell_emc.vmax import fc
 from cinder.volume.drivers.dell_emc.vmax import iscsi
@@ -2419,6 +2420,10 @@ class VMAXRestTest(test.TestCase):
                    "star": 'false', "force": 'false',
                    "exact": 'false', "remote": 'false',
                    "symforce": 'false', "nocopy": 'false'}
+        payload_restore = {"deviceNameListSource": [{"name": source_id}],
+                           "deviceNameListTarget": [{"name": source_id}],
+                           "action": "Restore",
+                           "star": 'false', "force": 'false'}
         with mock.patch.object(
             self.rest, 'modify_resource', return_value=(
                 202, self.data.job_list[0])) as mock_modify:
@@ -2438,6 +2443,15 @@ class VMAXRestTest(test.TestCase):
             self.rest.modify_resource.assert_called_once_with(
                 array, 'replication', 'snapshot', payload,
                 resource_name=snap_name, private='/private')
+            # restore
+            mock_modify.reset_mock()
+            payload["action"] = "Restore"
+            self.rest.modify_volume_snap(
+                array, source_id, "", snap_name,
+                extra_specs, unlink=False, restore=True)
+            self.rest.modify_resource.assert_called_once_with(
+                array, 'replication', 'snapshot', payload_restore,
+                resource_name=snap_name, private='/private')
             # none selected
             mock_modify.reset_mock()
             self.rest.modify_volume_snap(
@@ -2453,6 +2467,20 @@ class VMAXRestTest(test.TestCase):
         payload = {"deviceNameListSource": [{"name": source_device_id}]}
         with mock.patch.object(self.rest, 'delete_resource'):
             self.rest.delete_volume_snap(array, snap_name, source_device_id)
+            self.rest.delete_resource.assert_called_once_with(
+                array, 'replication', 'snapshot', snap_name,
+                payload=payload, private='/private')
+
+    def test_delete_volume_snap_restore(self):
+        array = self.data.array
+        snap_name = (self.data.volume_snap_vx
+                     ['snapshotSrcs'][0]['snapshotName'])
+        source_device_id = self.data.device_id
+        payload = {"deviceNameListSource": [{"name": source_device_id}],
+                   "restore": True}
+        with mock.patch.object(self.rest, 'delete_resource'):
+            self.rest.delete_volume_snap(
+                array, snap_name, source_device_id, restored=True)
             self.rest.delete_resource.assert_called_once_with(
                 array, 'replication', 'snapshot', snap_name,
                 payload=payload, private='/private')
@@ -2808,6 +2836,8 @@ class VMAXRestTest(test.TestCase):
         is_next_gen2 = self.rest.is_next_gen_array(self.data.array_herc)
         self.assertTrue(is_next_gen2)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=test_utils.ZeroIntervalLoopingCall)
     @mock.patch.object(rest.VMAXRest, 'are_vols_rdf_paired',
                        side_effect=[('', '', 'syncinprog'),
                                     ('', '', 'consistent'),
@@ -2849,7 +2879,6 @@ class VMAXProvisionTest(test.TestCase):
         configuration = FakeConfiguration(self.fake_xml, config_group)
         rest.VMAXRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
-        provision.UNLINK_INTERVAL = 0
         driver = iscsi.VMAXISCSIDriver(configuration=configuration)
         self.driver = driver
         self.common = self.driver.common
@@ -2949,6 +2978,8 @@ class VMAXProvisionTest(test.TestCase):
                     array, source_device_id, target_device_id,
                     snap_name, extra_specs, unlink=True))
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=test_utils.ZeroIntervalLoopingCall)
     def test_unlink_volume(self):
         with mock.patch.object(self.rest, 'modify_volume_snap') as mock_mod:
             self.provision._unlink_volume(
@@ -2959,6 +2990,8 @@ class VMAXProvisionTest(test.TestCase):
                 self.data.snap_location['snap_name'], self.data.extra_specs,
                 unlink=True)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=test_utils.ZeroIntervalLoopingCall)
     def test_unlink_volume_exception(self):
         with mock.patch.object(
                 self.rest, 'modify_volume_snap', side_effect=[
@@ -2977,7 +3010,70 @@ class VMAXProvisionTest(test.TestCase):
             self.provision.delete_volume_snap(
                 array, snap_name, source_device_id)
             self.provision.rest.delete_volume_snap.assert_called_once_with(
-                array, snap_name, source_device_id)
+                array, snap_name, source_device_id, False)
+
+    def test_delete_volume_snap_restore(self):
+        array = self.data.array
+        source_device_id = self.data.device_id
+        snap_name = self.data.snap_location['snap_name']
+        restored = True
+        with mock.patch.object(self.provision.rest, 'delete_volume_snap'):
+            self.provision.delete_volume_snap(
+                array, snap_name, source_device_id, restored)
+            self.provision.rest.delete_volume_snap.assert_called_once_with(
+                array, snap_name, source_device_id, True)
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=test_utils.ZeroIntervalLoopingCall)
+    def test_restore_complete(self):
+        array = self.data.array
+        source_device_id = self.data.device_id
+        snap_name = self.data.snap_location['snap_name']
+        extra_specs = self.data.extra_specs
+        with mock.patch.object(
+                self.provision, '_is_restore_complete',
+                return_value=True):
+            isrestored = self.provision.is_restore_complete(
+                array, source_device_id, snap_name, extra_specs)
+            self.assertTrue(isrestored)
+        with mock.patch.object(
+                self.provision, '_is_restore_complete',
+                side_effect=exception.CinderException):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.provision.is_restore_complete,
+                              array, source_device_id, snap_name, extra_specs)
+
+    def test_is_restore_complete(self):
+        array = self.data.array
+        source_device_id = self.data.device_id
+        snap_name = self.data.snap_location['snap_name']
+        snap_details = {
+            'linkedDevices':
+            [{'targetDevice': source_device_id, 'state': "Restored"}]}
+        with mock.patch.object(self.provision.rest,
+                               'get_volume_snap', return_value=snap_details):
+            isrestored = self.provision._is_restore_complete(
+                array, source_device_id, snap_name)
+            self.assertTrue(isrestored)
+        snap_details['linkedDevices'][0]['state'] = "Restoring"
+        with mock.patch.object(self.provision.rest,
+                               'get_volume_snap', return_value=snap_details):
+            isrestored = self.provision._is_restore_complete(
+                array, source_device_id, snap_name)
+            self.assertFalse(isrestored)
+
+    def test_revert_volume_snapshot(self):
+        array = self.data.array
+        source_device_id = self.data.device_id
+        snap_name = self.data.snap_location['snap_name']
+        extra_specs = self.data.extra_specs
+        with mock.patch.object(
+                self.provision.rest, 'modify_volume_snap', return_value=None):
+            self.provision.revert_volume_snapshot(
+                array, source_device_id, snap_name, extra_specs)
+            self.provision.rest.modify_volume_snap.assert_called_once_with(
+                array, source_device_id, "", snap_name,
+                extra_specs, restore=True)
 
     def test_extend_volume(self):
         array = self.data.array
@@ -4865,6 +4961,24 @@ class VMAXCommonTest(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.common.unmanage_snapshot,
                           self.data.test_snapshot_manage)
+
+    @mock.patch.object(provision.VMAXProvision, 'is_restore_complete',
+                       return_value=True)
+    @mock.patch.object(common.VMAXCommon, '_sync_check')
+    @mock.patch.object(provision.VMAXProvision,
+                       'revert_volume_snapshot')
+    def test_revert_to_snapshot(self, mock_revert, mock_sync, mock_complete):
+        volume = self.data.test_volume
+        snapshot = self.data.test_snapshot
+        array = self.data.array
+        device_id = self.data.device_id
+        snap_name = self.data.snap_location['snap_name']
+        extra_specs = deepcopy(self.data.extra_specs_intervals_set)
+        extra_specs['storagetype:portgroupname'] = (
+            self.data.port_group_name_f)
+        self.common.revert_to_snapshot(volume, snapshot)
+        mock_revert.assert_called_once_with(
+            array, device_id, snap_name, extra_specs)
 
 
 class VMAXFCTest(test.TestCase):
