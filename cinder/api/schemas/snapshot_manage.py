@@ -31,7 +31,7 @@ create = {
                 "metadata": parameter_types.metadata_allows_null,
                 "name": parameter_types.name_allow_zero_min_length,
                 "volume_id": parameter_types.uuid,
-                "ref": {'type': ['object', 'null']},
+                "ref": {'type': ['object', 'null', 'string']},
             },
             'required': ['ref', 'volume_id'],
             'additionalProperties': False,
