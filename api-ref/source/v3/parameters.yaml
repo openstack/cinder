@@ -194,6 +194,12 @@ volume_type:
   in: path
   required: false
   type: string
+volume_type_access:
+  description: |
+    The ID of Volume Type to be accessed by project.
+  in: path
+  required: true
+  type: string
 volume_type_id:
   description: |
     The UUID for an existing volume type.

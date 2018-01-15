@@ -30,7 +30,7 @@ Request
 
    - project: project
    - project_id: project_id_path
-   - volume_type: volume_type
+   - volume_type: volume_type_access
 
 Request Example
 ---------------
@@ -56,7 +56,7 @@ Request
 
    - project: project
    - project_id: project_id_path
-   - volume_type: volume_type
+   - volume_type: volume_type_access
 
 Request Example
 ---------------
@@ -82,7 +82,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - volume_type: volume_type
+   - volume_type: volume_type_access
 
 
 Response Parameters

@@ -122,7 +122,7 @@ Response Parameters
    - created_at: created_at
    - os-volume-replication:driver_data: os-volume-replication:driver_data
    - volumes: volumes
-   - volume_type: volume_type
+   - volume_type: volume_type_6
    - count: count
 
 
@@ -191,7 +191,7 @@ Request
    - backup_id: backup_id_1
    - name: name_13
    - imageRef: imageRef
-   - volume_type: volume_type
+   - volume_type: volume_type_2
    - metadata: metadata
    - consistencygroup_id: consistencygroup_id
    - OS-SCH-HNT:scheduler_hints: OS-SCH-HNT:scheduler_hints
@@ -230,7 +230,7 @@ Response Parameters
    - name: name_13
    - bootable: bootable_response
    - created_at: created_at
-   - volume_type: volume_type
+   - volume_type: volume_type_6
 
 Response Example
 ----------------
@@ -346,7 +346,7 @@ Response Parameters
    - bootable: bootable_response
    - created_at: created_at
    - os-volume-replication:driver_data: os-volume-replication:driver_data
-   - volume_type: volume_type
+   - volume_type: volume_type_6
    - service_uuid: service_uuid
    - shared_targets: shared_targets
 
@@ -417,7 +417,7 @@ Response Parameters
    - name: name_13
    - bootable: bootable_response
    - created_at: created_at
-   - volume_type: volume_type
+   - volume_type: volume_type_6
 
 
 
