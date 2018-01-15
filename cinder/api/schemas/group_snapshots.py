@@ -20,10 +20,6 @@ Schema for V3 Group Snapshots API.
 
 from cinder.api.validation import parameter_types
 
-
-name_optional = parameter_types.name
-name_optional['minLength'] = 0
-
 create = {
     'type': 'object',
     'properties': {
@@ -32,7 +28,7 @@ create = {
             'type': 'object',
             'properties': {
                 'group_id': parameter_types.uuid,
-                'name': name_optional,
+                'name': parameter_types.name_allow_zero_min_length,
                 'description': parameter_types.description,
             },
             'required': ['group_id'],

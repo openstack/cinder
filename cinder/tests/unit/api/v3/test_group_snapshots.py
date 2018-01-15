@@ -547,3 +547,21 @@ class GroupSnapshotsAPITestCase(test.TestCase):
         self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE,
                          g_snapshot.status)
         group_snapshot.destroy()
+
+    @mock.patch('cinder.db.volume_type_get')
+    @mock.patch('cinder.quota.VolumeTypeQuotaEngine.reserve')
+    def test_create_group_snapshot_with_null_validate(
+            self, mock_quota, mock_vol_type):
+        body = {"group_snapshot": {"name": None,
+                                   "description": None,
+                                   "group_id": self.group.id}}
+        req = fakes.HTTPRequest.blank('/v3/%s/group_snapshots' %
+                                      self.context.project_id,
+                                      version=mv.GROUP_SNAPSHOTS)
+        res_dict = self.controller.create(req, body=body)
+
+        self.assertIn('group_snapshot', res_dict)
+        self.assertIsNone(res_dict['group_snapshot']['name'])
+        group_snapshot = objects.GroupSnapshot.get_by_id(
+            context.get_admin_context(), res_dict['group_snapshot']['id'])
+        group_snapshot.destroy()
