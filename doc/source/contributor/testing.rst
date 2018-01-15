@@ -211,3 +211,31 @@ Therefore, it is preferable to use:
 .. rubric:: Footnotes
 
 .. [#f1] See :doc:`jenkins`.
+
+
+Debugging
+---------
+
+**Debugging unit tests**
+
+It is possible to attach a debugger to unit tests.
+
+First, modify the test you want to debug by adding the
+following to the test code itself:
+
+.. code-block:: python
+
+   import pdb
+   pdb.set_trace()
+
+Then run the unit test with pdb enabled:
+
+.. code-block:: bash
+
+   source .tox/py35/bin/activate
+   testr init
+   ostestr --pdb cinder.tests.unit.test_volume_utils
+   # or
+   ostestr -n cinder.tests.unit.test_volume_utils
+   # or
+   ostestr -n cinder/tests/unit/test_context.py
