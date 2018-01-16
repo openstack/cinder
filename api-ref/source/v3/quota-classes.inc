@@ -74,7 +74,7 @@ Request
    - gigabytes: maxTotalVolumeGigabytesOptional
    - snapshots: maxTotalSnapshotsOptional
    - volumes: maxTotalVolumesOptional
-   - volume-type: volume_type
+   - volume-type: volume_type_2
 
 Request Example
 ---------------
