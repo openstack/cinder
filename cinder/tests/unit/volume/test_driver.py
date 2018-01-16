@@ -343,6 +343,46 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
         db.volume_destroy(self.context, src_vol['id'])
         db.volume_destroy(self.context, dest_vol['id'])
 
+    @mock.patch(driver_name + '.initialize_connection')
+    @mock.patch(driver_name + '.create_export', return_value=None)
+    @mock.patch(driver_name + '._connect_device')
+    def test__attach_volume_encrypted(self, connect_mock, export_mock,
+                                      initialize_mock):
+        properties = {'host': 'myhost', 'ip': '192.168.1.43',
+                      'initiator': u'iqn.1994-05.com.redhat:d9be887375',
+                      'multipath': False, 'os_type': 'linux2',
+                      'platform': 'x86_64'}
+
+        data = {'target_discovered': True,
+                'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
+                'target_portal': '127.0.0.0.1:3260',
+                'volume_id': 1,
+                'discard': False}
+
+        passed_conn = {'driver_volume_type': 'iscsi', 'data': data.copy()}
+        initialize_mock.return_value = passed_conn
+
+        # _attach_volume adds the encrypted value based on the volume
+        expected_conn = {'driver_volume_type': 'iscsi', 'data': data.copy()}
+        expected_conn['data']['encrypted'] = True
+
+        volume = tests_utils.create_volume(
+            self.context, status='available',
+            size=2,
+            encryption_key_id=fake.ENCRYPTION_KEY_ID)
+
+        attach_info, vol = self.volume.driver._attach_volume(self.context,
+                                                             volume,
+                                                             properties)
+
+        export_mock.assert_called_once_with(self.context, volume, properties)
+        initialize_mock.assert_called_once_with(volume, properties)
+
+        connect_mock.assert_called_once_with(expected_conn)
+
+        self.assertEqual(connect_mock.return_value, attach_info)
+        self.assertEqual(volume, vol)
+
     @mock.patch.object(os_brick.initiator.connector,
                        'get_connector_properties')
     @mock.patch.object(image_utils, 'fetch_to_raw')
