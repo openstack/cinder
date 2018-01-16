@@ -168,6 +168,10 @@ class UnityUtilsTest(unittest.TestCase):
 
     def test_convert_ip_to_portal(self):
         self.assertEqual('1.2.3.4:3260', utils.convert_ip_to_portal('1.2.3.4'))
+        self.assertEqual('[fd27:2e95:e174::100]:3260',
+                         utils.convert_ip_to_portal('fd27:2e95:e174::100'))
+        self.assertEqual('[fd27:2e95:e174::100]:3260',
+                         utils.convert_ip_to_portal('[fd27:2e95:e174::100]'))
 
     def test_convert_to_itor_tgt_map(self):
         zone_mapping = {
