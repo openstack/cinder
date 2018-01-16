@@ -726,3 +726,6 @@ class Client(object):
     def add_lun_to_ioclass(self, ioclass_name, lun_id):
         ioclass = self.vnx.get_ioclass(name=ioclass_name)
         ioclass.add_lun(lun_id)
+
+    def filter_sg(self, attached_lun_id):
+        return self.vnx.get_sg().shadow_copy(attached_lun=attached_lun_id)

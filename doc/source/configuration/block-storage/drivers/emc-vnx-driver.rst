@@ -16,7 +16,7 @@ System requirements
 
 - VNX Operational Environment for Block version 5.32 or higher.
 - VNX Snapshot and Thin Provisioning license should be activated for VNX.
-- Python library ``storops`` to interact with VNX.
+- Python library ``storops`` version 0.5.7 or higher to interact with VNX.
 - Navisphere CLI v7.32 or higher is installed along with the driver.
 
 Supported operations
@@ -598,6 +598,13 @@ Obsolete extra specs
 
    - ``storagetype:provisioning``
    - ``storagetype:pool``
+
+Force detach
+------------
+
+The user could use `os-force_detach` action to detach a volume from all its attached hosts.
+For more detail, please refer to
+https://developer.openstack.org/api-ref/block-storage/v2/?expanded=force-detach-volume-detail#force-detach-volume
 
 
 Advanced features

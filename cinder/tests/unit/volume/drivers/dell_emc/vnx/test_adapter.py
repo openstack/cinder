@@ -1517,6 +1517,41 @@ class TestISCSIAdapter(test.TestCase):
         self.assertRaises(exception.InvalidConfigurationValue,
                           vnx_iscsi._normalize_config)
 
+    @res_mock.mock_driver_input
+    @res_mock.patch_iscsi_adapter
+    def test_terminate_connection(self, adapter, mocked_res, mocked_input):
+        cinder_volume = mocked_input['volume']
+        connector = mocked_input['connector']
+        adapter.remove_host_access = mock.Mock()
+        adapter.update_storage_group_if_required = mock.Mock()
+        adapter.build_terminate_connection_return_data = mock.Mock()
+        adapter.terminate_connection_cleanup = mock.Mock()
+
+        adapter.terminate_connection(cinder_volume, connector)
+        adapter.remove_host_access.assert_called_once()
+        adapter.update_storage_group_if_required.assert_called_once()
+        adapter.build_terminate_connection_return_data \
+            .assert_called_once()
+        adapter.terminate_connection_cleanup.assert_called_once()
+
+    @res_mock.mock_driver_input
+    @res_mock.patch_iscsi_adapter
+    def test_terminate_connection_force_detach(self, adapter, mocked_res,
+                                               mocked_input):
+        cinder_volume = mocked_input['volume']
+        connector = None
+        adapter.remove_host_access = mock.Mock()
+        adapter.update_storage_group_if_required = mock.Mock()
+        adapter.build_terminate_connection_return_data = mock.Mock()
+        adapter.terminate_connection_cleanup = mock.Mock()
+
+        adapter.terminate_connection(cinder_volume, connector)
+        adapter.remove_host_access.assert_called()
+        adapter.update_storage_group_if_required.assert_called()
+        adapter.build_terminate_connection_return_data \
+            .assert_not_called()
+        adapter.terminate_connection_cleanup.assert_called()
+
 
 class TestFCAdapter(test.TestCase):
     STORAGE_PROTOCOL = common.PROTOCOL_FC
@@ -1626,3 +1661,38 @@ class TestFCAdapter(test.TestCase):
         self.assertEqual({'wwn1': ['5006016636E01CB2']}, tgt_map)
         get_mapping.assert_called_once_with(
             ['wwn1', 'wwn2'], ['5006016636E01CB2'])
+
+    @res_mock.mock_driver_input
+    @res_mock.patch_iscsi_adapter
+    def test_terminate_connection(self, adapter, mocked_res, mocked_input):
+        cinder_volume = mocked_input['volume']
+        connector = mocked_input['connector']
+        adapter.remove_host_access = mock.Mock()
+        adapter.update_storage_group_if_required = mock.Mock()
+        adapter.build_terminate_connection_return_data = mock.Mock()
+        adapter.terminate_connection_cleanup = mock.Mock()
+
+        adapter.terminate_connection(cinder_volume, connector)
+        adapter.remove_host_access.assert_called_once()
+        adapter.update_storage_group_if_required.assert_called_once()
+        adapter.build_terminate_connection_return_data \
+            .assert_called_once()
+        adapter.terminate_connection_cleanup.assert_called_once()
+
+    @res_mock.mock_driver_input
+    @res_mock.patch_iscsi_adapter
+    def test_terminate_connection_force_detach(self, adapter, mocked_res,
+                                               mocked_input):
+        cinder_volume = mocked_input['volume']
+        connector = None
+        adapter.remove_host_access = mock.Mock()
+        adapter.update_storage_group_if_required = mock.Mock()
+        adapter.build_terminate_connection_return_data = mock.Mock()
+        adapter.terminate_connection_cleanup = mock.Mock()
+
+        adapter.terminate_connection(cinder_volume, connector)
+        adapter.remove_host_access.assert_called()
+        adapter.update_storage_group_if_required.assert_called()
+        adapter.build_terminate_connection_return_data \
+            .assert_not_called()
+        adapter.terminate_connection_cleanup.assert_called()
