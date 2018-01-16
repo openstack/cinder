@@ -5478,8 +5478,7 @@ def transfer_accept(context, transfer_id, user_id, project_id):
                     'status': 'awaiting-transfer'}
         update = {'status': 'available',
                   'user_id': user_id,
-                  'project_id': project_id,
-                  'updated_at': models.Volume.updated_at}
+                  'project_id': project_id}
         if not conditional_update(context, models.Volume, update, expected):
             msg = (_('Transfer %(transfer_id)s: Volume id %(volume_id)s '
                      'expected in awaiting-transfer state.')
