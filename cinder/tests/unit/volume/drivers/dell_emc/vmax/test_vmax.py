@@ -5010,6 +5010,16 @@ class VMAXCommonTest(test.TestCase):
         mock_revert.assert_called_once_with(
             array, device_id, snap_name, extra_specs)
 
+    def test_get_initiator_check_flag(self):
+        self.common.configuration.initiator_check = False
+        initiator_check = self.common._get_initiator_check_flag()
+        self.assertFalse(initiator_check)
+
+    def test_get_initiator_check_flag_true(self):
+        self.common.configuration.initiator_check = True
+        initiator_check = self.common._get_initiator_check_flag()
+        self.assertTrue(initiator_check)
+
 
 class VMAXFCTest(test.TestCase):
     def setUp(self):

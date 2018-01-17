@@ -164,13 +164,7 @@ class VMAXCommon(object):
 
         :returns:  flag
         """
-        conf_string = (self.configuration.safe_get('initiator_check'))
-        ret_val = False
-        string_true = "True"
-        if conf_string:
-            if conf_string.lower() == string_true.lower():
-                ret_val = True
-        return ret_val
+        return self.configuration.safe_get('initiator_check')
 
     def _get_replication_info(self):
         """Gather replication information, if provided."""
