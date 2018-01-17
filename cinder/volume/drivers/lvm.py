@@ -276,7 +276,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
             total_volumes=total_volumes,
             filter_function=self.get_filter_function(),
             goodness_function=self.get_goodness_function(),
-            multiattach=False
+            multiattach=False,
+            backend_state='up'
         ))
         data["pools"].append(single_pool)
         data["shared_targets"] = False

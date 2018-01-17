@@ -34,6 +34,7 @@ from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
 from cinder import volume
 from cinder.volume import rpcapi as volume_rpcapi
+from cinder.volume import utils as volume_utils
 
 
 CONF = cfg.CONF
@@ -73,6 +74,16 @@ class ServiceController(wsgi.Controller):
             filters['binary'] = req.GET['binary']
 
         services = objects.ServiceList.get_all(context, filters)
+        # Get backend state from scheduler
+        if req.api_version_request.matches(mv.BACKEND_STATE_REPORT):
+            backend_state_map = {}
+            scheduler_api = self.rpc_apis[constants.SCHEDULER_BINARY]
+            pools = scheduler_api.get_pools(context)
+            for pool in pools:
+                backend_name = volume_utils.extract_host(pool.get("name"))
+                back_state = pool.get('capabilities', {}).get('backend_state',
+                                                              'up')
+                backend_state_map[backend_name] = back_state
 
         svcs = []
         for svc in services:
@@ -94,6 +105,10 @@ class ServiceController(wsgi.Controller):
                           'zone': svc.availability_zone,
                           'status': active, 'state': art,
                           'updated_at': updated_at}
+
+            if (req.api_version_request.matches(mv.BACKEND_STATE_REPORT) and
+                    svc.binary == constants.VOLUME_BINARY):
+                ret_fields['backend_state'] = backend_state_map.get(svc.host)
 
             # On CLUSTER_SUPPORT we added cluster support
             if req.api_version_request.matches(mv.CLUSTER_SUPPORT):

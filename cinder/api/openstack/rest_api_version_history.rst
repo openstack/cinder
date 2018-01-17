@@ -390,3 +390,7 @@ Support create volume from backup.
 3.48
 ----
 Add ``shared_targets`` and ``service_uuid`` fields to volume.
+
+3.49
+----
+  Support report backend storage state in service list.
