@@ -583,17 +583,28 @@ class VMAXUtils(object):
         :param status: string value reflects the status of the member volume
         :returns: volume_model_updates - updated volumes
         """
-        LOG.info(
-            "Updating status for group: %(id)s.",
-            {'id': group_id})
+        LOG.info("Updating status for group: %(id)s.", {'id': group_id})
         if volumes:
             for volume in volumes:
                 volume_model_updates.append({'id': volume.id,
                                              'status': status})
         else:
-            LOG.info("No volume found for group: %(cg)s.",
-                     {'cg': group_id})
+            LOG.info("No volume found for group: %(cg)s.", {'cg': group_id})
         return volume_model_updates
+
+    @staticmethod
+    def get_grp_volume_model_update(volume, volume_dict, group_id):
+        """Create and return the volume model update on creation.
+
+        :param volume: volume object
+        :param volume_dict: the volume dict
+        :param group_id: consistency group id
+        :returns: model_update
+        """
+        LOG.info("Updating status for group: %(id)s.", {'id': group_id})
+        model_update = ({'id': volume.id, 'status': 'available',
+                         'provider_location': six.text_type(volume_dict)})
+        return model_update
 
     @staticmethod
     def update_extra_specs(extraspecs):
@@ -619,39 +630,21 @@ class VMAXUtils(object):
                       " the provided extra_specs.")
         return extraspecs
 
-    @staticmethod
-    def get_intervals_retries_dict(interval, retries):
-        """Get the default intervals and retries.
-
-        :param interval: Interval in seconds between retries
-        :param retries: Retry count
-        :returns: default_dict
-        """
-        default_dict = {}
-        default_dict[INTERVAL] = interval
-        default_dict[RETRIES] = retries
-        return default_dict
-
     def get_volume_group_utils(self, group, interval, retries):
         """Standard utility for generic volume groups.
 
         :param group: the generic volume group object to be created
         :param interval: Interval in seconds between retries
         :param retries: Retry count
-        :returns: array, extra specs dict list
+        :returns: array, intervals_retries_dict
         :raises: VolumeBackendAPIException
         """
         arrays = set()
-        extraspecs_dict_list = []
         # Check if it is a generic volume group instance
         if isinstance(group, Group):
             for volume_type in group.volume_types:
-                extraspecs_dict = (
-                    self._update_extra_specs_list(
-                        volume_type.extra_specs,
-                        volume_type.id, interval, retries))
-                extraspecs_dict_list.append(extraspecs_dict)
-                arrays.add(extraspecs_dict[EXTRA_SPECS][ARRAY])
+                extra_specs = self.update_extra_specs(volume_type.extra_specs)
+                arrays.add(extra_specs[ARRAY])
         else:
             msg = (_("Unable to get volume type ids."))
             LOG.error(msg)
@@ -669,25 +662,8 @@ class VMAXUtils(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         array = arrays.pop()
-        return array, extraspecs_dict_list
-
-    def _update_extra_specs_list(self, extraspecs, volumetype_id,
-                                 interval, retries):
-        """Update the extra specs list.
-
-        :param extraspecs: extraspecs
-        :param volumetype_Id: volume type identifier
-        :param interval: Interval in seconds between retries
-        :param retries: Retry count
-        :returns: extraspecs_dict_list
-        """
-        extraspecs_dict = {}
-        extraspecs = self.update_extra_specs(extraspecs)
-        extraspecs = self._update_intervals_and_retries(
-            extraspecs, interval, retries)
-        extraspecs_dict["volumeTypeId"] = volumetype_id
-        extraspecs_dict[EXTRA_SPECS] = extraspecs
-        return extraspecs_dict
+        intervals_retries_dict = {INTERVAL: interval, RETRIES: retries}
+        return array, intervals_retries_dict
 
     def update_volume_group_name(self, group):
         """Format id and name consistency group.
@@ -703,23 +679,6 @@ class VMAXUtils(object):
 
         group_name += group.id
         return group_name
-
-    @staticmethod
-    def _update_intervals_and_retries(extra_specs, interval, retries):
-        """Updates the extraSpecs with intervals and retries values.
-
-        :param extra_specs:
-        :param interval: Interval in seconds between retries
-        :param retries: Retry count
-        :returns: Updated extra_specs
-        """
-        extra_specs[INTERVAL] = interval
-        LOG.debug("The interval is set at: %(intervalInSecs)s.",
-                  {'intervalInSecs': interval})
-        extra_specs[RETRIES] = retries
-        LOG.debug("Retries are set at: %(retries)s.",
-                  {'retries': retries})
-        return extra_specs
 
     @staticmethod
     def add_legacy_pools(pools):
@@ -781,6 +740,7 @@ class VMAXUtils(object):
                 msg = (_('Replication status should be %s for '
                          'replication-enabled group.')
                        % fields.ReplicationStatus.ENABLED)
+                LOG.error(msg)
                 raise exception.InvalidInput(reason=msg)
         else:
             LOG.debug('Replication is not enabled on group %s, '

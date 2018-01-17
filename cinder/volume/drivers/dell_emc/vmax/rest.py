@@ -1541,7 +1541,8 @@ class VMAXRest(object):
 
     def modify_volume_snap(self, array, source_id, target_id, snap_name,
                            extra_specs, link=False, unlink=False,
-                           rename=False, new_snap_name=None, restore=False):
+                           rename=False, new_snap_name=None, restore=False,
+                           list_volume_pairs=None):
         """Modify a snapvx snapshot
 
         :param array: the array serial number
@@ -1554,9 +1555,9 @@ class VMAXRest(object):
         :param rename: Flag to indicate action = Rename
         :param new_snap_name: Optional new snapshot name
         :param restore: Flag to indicate action = Restore
+        :param list_volume_pairs: list of volume pairs to link, optional
         """
-        action = None
-        operation = ''
+        action, operation, payload = '', '', {}
         if link:
             action = "Link"
         elif unlink:
@@ -1575,8 +1576,16 @@ class VMAXRest(object):
                        "star": 'false', "force": 'false'}
         elif action in ('Link', 'Unlink'):
             operation = 'Modify snapVx relationship to target'
-            payload = {"deviceNameListSource": [{"name": source_id}],
-                       "deviceNameListTarget": [{"name": target_id}],
+            src_list, tgt_list = [], []
+            if list_volume_pairs:
+                for a, b in list_volume_pairs:
+                    src_list.append({'name': a})
+                    tgt_list.append({'name': b})
+            else:
+                src_list.append({'name': source_id})
+                tgt_list.append({'name': target_id})
+            payload = {"deviceNameListSource": src_list,
+                       "deviceNameListTarget": tgt_list,
                        "copy": 'true', "action": action,
                        "star": 'false', "force": 'false',
                        "exact": 'false', "remote": 'false',
@@ -1595,19 +1604,22 @@ class VMAXRest(object):
             self.wait_for_job(operation, status_code, job, extra_specs)
 
     def delete_volume_snap(self, array, snap_name,
-                           source_device_id, restored=False):
-        """Delete the snapshot of a volume.
+                           source_device_ids, restored=False):
+        """Delete the snapshot of a volume or volumes.
 
         :param array: the array serial number
         :param snap_name: the name of the snapshot
-        :param source_device_id: the source device id
+        :param source_device_ids: the source device ids
         :param restored: Flag to indicate terminate restore session
         """
+        device_list = []
+        if not isinstance(source_device_ids, list):
+            source_device_ids = [source_device_ids]
+        for dev in source_device_ids:
+            device_list.append({"name": dev})
+        payload = {"deviceNameListSource": device_list}
         if restored:
-            payload = {"deviceNameListSource": [{"name": source_device_id}],
-                       "restore": True}
-        else:
-            payload = {"deviceNameListSource": [{"name": source_device_id}]}
+            payload.update({"restore": True})
         return self.delete_resource(
             array, REPLICATION, 'snapshot', snap_name, payload=payload,
             private='/private')
@@ -2108,7 +2120,6 @@ class VMAXRest(object):
         :param storagegroup_name: the storage group name
         :returns: volume_list
         """
-        volume_list = None
         params = {"storageGroupId": storagegroup_name}
 
         volume_list = self.get_volume_list(array, params)
@@ -2133,50 +2144,6 @@ class VMAXRest(object):
             array, REPLICATION, resource_type, payload)
         self.wait_for_job('Create storage group snapVx', status_code,
                           job, extra_specs)
-
-    def modify_storagegroup_snap(
-            self, array, source_sg_id, target_sg_id, snap_name,
-            extra_specs, link=False, unlink=False):
-        """Link or unlink a snapVx to or from a target storagegroup.
-
-        :param array: the array serial number
-        :param source_sg_id: the source device id
-        :param target_sg_id: the target device id
-        :param snap_name: the snapshot name
-        :param extra_specs: extra specifications
-        :param link: Flag to indicate action = Link
-        :param unlink: Flag to indicate action = Unlink
-        """
-        payload = ''
-        if link:
-            payload = {"link": {"linkStorageGroupName": target_sg_id,
-                                "copy": "true"},
-                       "action": "Link"}
-        elif unlink:
-            payload = {"unlink": {"unlinkStorageGroupName": target_sg_id},
-                       "action": "Unlink"}
-
-        resource_name = ('%(sg_name)s/snapshot/%(snap_id)s/generation/0'
-                         % {'sg_name': source_sg_id, 'snap_id': snap_name})
-
-        status_code, job = self.modify_resource(
-            array, REPLICATION, 'storagegroup', payload,
-            resource_name=resource_name)
-
-        self.wait_for_job('Modify storagegroup snapVx relationship to target',
-                          status_code, job, extra_specs)
-
-    def delete_storagegroup_snap(self, array, snap_name, source_sg_id):
-        """Delete the snapshot of a storagegroup.
-
-        :param array: the array serial number
-        :param snap_name: the name of the snapshot
-        :param source_sg_id: the source device id
-        """
-        resource_name = ('%(sg_name)s/snapshot/%(snap_id)s/generation/0'
-                         % {'sg_name': source_sg_id, 'snap_id': snap_name})
-        return self.delete_resource(
-            array, REPLICATION, 'storagegroup', resource_name)
 
     def get_storagegroup_rdf_details(self, array, storagegroup_name,
                                      rdf_group_num):
