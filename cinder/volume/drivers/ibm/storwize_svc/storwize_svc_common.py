@@ -1077,8 +1077,8 @@ class StorwizeHelpers(object):
                     pass
             if iscsi:
                 if 'initiator' in connector:
-                    for iscsi in resp.select('iscsi_name'):
-                        if iscsi == connector['initiator']:
+                    for iscsi_name in resp.select('iscsi_name'):
+                        if iscsi_name == connector['initiator']:
                             host_name = name
                             found = True
                             break
