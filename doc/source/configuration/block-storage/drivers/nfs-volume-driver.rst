@@ -131,7 +131,6 @@ This example assumes access to the following NFS servers and mount points:
       volume-a8862558-e6d6-4648-b5df-bb84f31c8935
 
 This volume can also be attached and deleted just like other volumes.
-However, snapshotting is **not** supported.
 
 NFS driver notes
 ~~~~~~~~~~~~~~~~
