@@ -316,6 +316,12 @@ class FilterScheduler(driver.Scheduler):
             resource_type['extra_specs'].update(
                 multiattach='<is> True')
 
+        # Revert volume consumed capacity if it's a rescheduled request
+        retry = filter_properties.get('retry', {})
+        if retry.get('backends', []):
+            self.host_manager.revert_volume_consumed_capacity(
+                retry['backends'][-1],
+                request_spec['volume_properties']['size'])
         # Find our local list of acceptable backends by filtering and
         # weighing our options. we virtually consume resources on
         # it so subsequent selections can adjust accordingly.

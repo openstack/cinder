@@ -298,7 +298,7 @@ class BackendState(object):
         self.storage_protocol = capability.get('storage_protocol', None)
         self.updated = capability['timestamp']
 
-    def consume_from_volume(self, volume):
+    def consume_from_volume(self, volume, update_time=True):
         """Incrementally update host state from a volume."""
         volume_gb = volume['size']
         self.allocated_capacity_gb += volume_gb
@@ -311,7 +311,8 @@ class BackendState(object):
             pass
         else:
             self.free_capacity_gb -= volume_gb
-        self.updated = timeutils.utcnow()
+        if update_time:
+            self.updated = timeutils.utcnow()
 
     def __repr__(self):
         # FIXME(zhiteng) backend level free_capacity_gb isn't as
@@ -613,6 +614,14 @@ class HostManager(object):
                 LOG.info("Removing non-active backend: %(backend)s from "
                          "scheduler cache.", {'backend': backend_key})
             del self.backend_state_map[backend_key]
+
+    def revert_volume_consumed_capacity(self, pool_name, size):
+        for backend_key, state in self.backend_state_map.items():
+            for key in state.pools:
+                pool_state = state.pools[key]
+                if pool_name == '#'.join([backend_key, pool_state.pool_name]):
+                    pool_state.consume_from_volume({'size': -size},
+                                                   update_time=False)
 
     def get_all_backend_states(self, context):
         """Returns a dict of all the backends the HostManager knows about.
