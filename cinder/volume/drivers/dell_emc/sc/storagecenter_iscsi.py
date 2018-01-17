@@ -219,7 +219,40 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
                      'init': initiatorname})
         return data
 
+    def force_detach(self, volume):
+        """Breaks all volume server connections including to the live volume.
+
+        :param volume: volume to be detached
+        :raises VolumeBackendAPIException: On failure to sever connections.
+        """
+        with self._client.open_connection() as api:
+            volume_name = volume.get('id')
+            provider_id = volume.get('provider_id')
+            try:
+                rtn = False
+                islivevol = self._is_live_vol(volume)
+                scvolume = api.find_volume(volume_name, provider_id, islivevol)
+                if scvolume:
+                    rtn = api.unmap_all(scvolume)
+                    if rtn and islivevol:
+                        sclivevolume = api.get_live_volume(provider_id)
+                        if sclivevolume:
+                            rtn = self.terminate_secondary(api, sclivevolume,
+                                                           None)
+                return rtn
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.error('Failed to terminates %(vol)s connections.',
+                              {'vol': volume_name})
+        raise exception.VolumeBackendAPIException(
+            _('Terminate connection failed'))
+
     def terminate_connection(self, volume, connector, force=False, **kwargs):
+        # Special case
+        if connector is None:
+            return self.force_detach(volume)
+
+        # Normal terminate connection, then.
         # Grab some quick info.
         volume_name = volume.get('id')
         provider_id = volume.get('provider_id')
@@ -268,6 +301,8 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
             _('Terminate connection failed'))
 
     def terminate_secondary(self, api, sclivevolume, initiatorname):
+        # Only return False if we tried something and it failed.
+        rtn = True
         secondaryvol = api.get_volume(
             sclivevolume['secondaryVolume']['instanceId'])
         if secondaryvol:
@@ -275,8 +310,9 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
                 # Find our server.
                 secondary = api.find_server(
                     initiatorname, sclivevolume['secondaryScSerialNumber'])
-                return api.unmap_volume(secondaryvol, secondary)
+                rtn = api.unmap_volume(secondaryvol, secondary)
             else:
-                return api.unmap_all(secondaryvol)
+                rtn = api.unmap_all(secondaryvol)
         else:
             LOG.debug('terminate_secondary: secondary volume not found.')
+        return rtn

@@ -1993,10 +1993,51 @@ class SCApi(object):
         return rtn
 
     def unmap_all(self, scvolume):
-        volumeid = self._get_id(scvolume)
-        r = self.client.post('StorageCenter/ScVolume/%s/Unmap' % volumeid,
-                             {}, True)
-        return self._check_result(r)
+        """Unmaps a volume from all connections except SCs.
+
+        :param scvolume: The SC Volume object.
+        :return: Boolean
+        """
+        rtn = True
+        profiles = self._find_mapping_profiles(scvolume)
+        for profile in profiles:
+            # get our server
+            scserver = None
+            r = self.client.get('StorageCenter/ScServer/%s' %
+                                self._get_id(profile.get('server')))
+            if self._check_result(r):
+                scserver = self._get_json(r)
+            # We do not want to whack our replication or live volume
+            # connections. So anything other than a remote storage center
+            # is fair game.
+            if scserver and scserver['type'].upper() != 'REMOTESTORAGECENTER':
+                # we can whack the connection.
+                r = self.client.delete('StorageCenter/ScMappingProfile/%s'
+                                       % self._get_id(profile),
+                                       async_call=True)
+                if self._check_result(r):
+                    # Check our result in the json.
+                    result = self._get_json(r)
+                    # EM 15.1 and 15.2 return a boolean directly.
+                    # 15.3 on up return it in a dict under 'result'.
+                    if result is True or (type(result) is dict and
+                                          result.get('result')):
+                        LOG.info(
+                            'Volume %(vol)s unmapped from %(srv)s',
+                            {'vol': scvolume['name'],
+                             'srv': scserver['instanceName']})
+                        # yay, it is gone, carry on.
+                        continue
+
+                LOG.error('Unable to unmap %(vol)s from %(srv)s',
+                          {'vol': scvolume['name'],
+                           'srv': scserver['instanceName']})
+                # 1 failed unmap is as good as 100.
+                # Fail it and leave
+                rtn = False
+                break
+
+        return rtn
 
     def get_storage_usage(self):
         """Gets the storage usage object from the Dell backend.
