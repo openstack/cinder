@@ -3072,10 +3072,17 @@ class VMAXProvisionTest(test.TestCase):
         device_id = self.data.device_id
         new_size = '3'
         extra_specs = self.data.extra_specs
-        with mock.patch.object(self.provision.rest, 'extend_volume'):
+        with mock.patch.object(self.provision.rest, 'extend_volume'
+                               ) as mock_ex:
             self.provision.extend_volume(array, device_id, new_size,
                                          extra_specs)
-            self.provision.rest.extend_volume.assert_called_once_with(
+            mock_ex.assert_called_once_with(
+                array, device_id, new_size, extra_specs)
+            mock_ex.reset_mock()
+            # Pass in rdf group
+            self.provision.extend_volume(array, device_id, new_size,
+                                         extra_specs, self.data.rdf_group_no)
+            mock_ex.assert_called_once_with(
                 array, device_id, new_size, extra_specs)
 
     def test_get_srp_pool_stats(self):
@@ -3167,6 +3174,15 @@ class VMAXProvisionTest(test.TestCase):
         target_device = self.data.device_id2
         rdf_group_name = self.data.rdf_group_name
         rep_extra_specs = self.data.rep_extra_specs
+        # State is suspended
+        self.provision.break_rdf_relationship(
+            array, device_id, target_device,
+            rdf_group_name, rep_extra_specs, "Suspended")
+        mock_mod.assert_not_called()
+        mock_del.assert_called_once_with(
+            array, device_id, rdf_group_name)
+        mock_del.reset_mock()
+        # State is synchronized
         self.provision.break_rdf_relationship(
             array, device_id, target_device,
             rdf_group_name, rep_extra_specs, "Synchronized")

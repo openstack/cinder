@@ -2931,9 +2931,9 @@ class VMAXCommon(object):
         """Extend a replication-enabled volume.
 
         Cannot extend volumes in a synchronization pair where the source
-        and/or target arrays are running HyperMax versions < 5978, or for
-        Metro-enabled volumes. Must first break the relationship, extend
-        them separately, then recreate the pair.
+        and/or target arrays are running HyperMax versions < 5978. Must first
+        break the relationship, extend them separately, then recreate the
+        pair. Extending Metro protected volumes is not supported.
         :param array: the array serial number
         :param volume: the volume objcet
         :param device_id: the volume device id
@@ -2949,8 +2949,7 @@ class VMAXCommon(object):
             __, remote_array = self.get_rdf_details(array)
             if self.rest.is_next_gen_array(remote_array):
                 ode_replication = True
-        if (self.utils.is_metro_device(self.rep_config, extra_specs)
-                and not self.allow_delete_metro):
+        if self.utils.is_metro_device(self.rep_config, extra_specs):
             allow_extend = False
         if allow_extend is True or ode_replication is True:
             try:
@@ -2960,18 +2959,16 @@ class VMAXCommon(object):
                         array, volume, device_id))
                 rep_extra_specs = self._get_replication_extra_specs(
                     extra_specs, self.rep_config)
+                lock_rdf_group = rdf_group
                 if not ode_replication:
                     # Volume must be removed from replication (storage) group
                     # before the replication relationship can be ended (cannot
                     # have a mix of replicated and non-replicated volumes as
-                    # the SRDF groups become unmanageable), but
-                    # leave the vol in metro management group for now
-                    metro_grp = self.utils.get_async_rdf_managed_grp_name(
-                        self.rep_config) if self.utils.is_metro_device(
-                        self.rep_config, rep_extra_specs) else None
+                    # the SRDF groups become unmanageable)
+                    lock_rdf_group = None
                     self.masking.remove_and_reset_members(
                         array, volume, device_id, volume_name,
-                        extra_specs, False, async_grp=metro_grp)
+                        extra_specs, False)
 
                     # Repeat on target side
                     self.masking.remove_and_reset_members(
@@ -2979,17 +2976,9 @@ class VMAXCommon(object):
                         rep_extra_specs, False)
 
                     LOG.info("Breaking replication relationship...")
-                    if self.utils.is_metro_device(
-                            self.rep_config, rep_extra_specs):
-                        rep_extra_specs['allow_del_metro'] = (
-                            self.allow_delete_metro)
-                        self._cleanup_metro_target(
-                            array, device_id, target_device,
-                            rdf_group, rep_extra_specs)
-                    else:
-                        self.provision.break_rdf_relationship(
-                            array, device_id, target_device, rdf_group,
-                            rep_extra_specs, pair_state)
+                    self.provision.break_rdf_relationship(
+                        array, device_id, target_device, rdf_group,
+                        rep_extra_specs, pair_state)
 
                 # Extend the target volume
                 LOG.info("Extending target volume...")
@@ -2997,13 +2986,14 @@ class VMAXCommon(object):
                 r2_size = self.rest.get_size_of_device_on_array(
                     remote_array, target_device)
                 if int(r2_size) < int(new_size):
-                    self.provision.extend_volume(remote_array, target_device,
-                                                 new_size, rep_extra_specs)
+                    self.provision.extend_volume(
+                        remote_array, target_device, new_size,
+                        rep_extra_specs, lock_rdf_group)
 
                 # Extend the source volume
                 LOG.info("Extending source volume...")
                 self.provision.extend_volume(
-                    array, device_id, new_size, extra_specs)
+                    array, device_id, new_size, extra_specs, lock_rdf_group)
 
                 if not ode_replication:
                     # Re-create replication relationship
@@ -3026,9 +3016,9 @@ class VMAXCommon(object):
 
         else:
             exception_message = (_(
-                "Extending a replicated volume is not "
-                "permitted on this backend. Please contact "
-                "your administrator."))
+                "Extending a replicated volume is not permitted on this "
+                "backend. Please contact your administrator. Note that "
+                "you cannot extend SRDF/Metro protected volumes."))
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
