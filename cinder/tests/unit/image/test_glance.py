@@ -822,6 +822,7 @@ class TestGlanceImageServiceClient(test.TestCase):
     @mock.patch.object(ks_session.Session, 'load_from_options')
     def test_create_glance_client_with_protocol_http(
             self, mock_load, mock_get_auth_plugin):
+        glance._SESSION = None
         self.flags(auth_strategy='keystone')
         self.flags(glance_request_timeout=None)
 
@@ -850,6 +851,7 @@ class TestGlanceImageServiceClient(test.TestCase):
     @mock.patch.object(ks_session.Session, 'load_from_options')
     def test_create_glance_client_with_protocol_https(
             self, mock_load, mock_get_auth_plugin):
+        glance._SESSION = None
         self.flags(auth_strategy='keystone')
         self.flags(glance_request_timeout=60)
         self.flags(
