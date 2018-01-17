@@ -396,9 +396,9 @@ class SynoCommon(object):
     METADATA_DS_SNAPSHOT_UUID = 'ds_snapshot_UUID'
 
     def __init__(self, config, driver_type):
-        if not config.safe_get('iscsi_ip_address'):
+        if not config.safe_get('target_ip_address'):
             raise exception.InvalidConfigurationValue(
-                option='iscsi_ip_address',
+                option='target_ip_address',
                 value='')
         if not config.safe_get('synology_pool_name'):
             raise exception.InvalidConfigurationValue(
@@ -409,7 +409,7 @@ class SynoCommon(object):
         self.vendor_name = 'Synology'
         self.driver_type = driver_type
         self.volume_backend_name = self._get_backend_name()
-        self.iscsi_port = self.config.safe_get('target_port')
+        self.target_port = self.config.safe_get('target_port')
 
         api = APIRequest(self.config.target_ip_address,
                          self.config.synology_admin_port,
@@ -965,12 +965,12 @@ class SynoCommon(object):
 
     def get_provider_location(self, iqn, trg_id):
         portals = ['%(ip)s:%(port)d' % {'ip': self.get_ip(),
-                                        'port': self.iscsi_port}]
+                                        'port': self.target_port}]
         sec_ips = self.config.safe_get('iscsi_secondary_ip_addresses')
         for ip in sec_ips:
             portals.append('%(ip)s:%(port)d' %
                            {'ip': ip,
-                            'port': self.iscsi_port})
+                            'port': self.target_port})
 
         return '%s,%d %s 0' % (
             ';'.join(portals),
@@ -1034,7 +1034,7 @@ class SynoCommon(object):
         data['max_over_subscription_ratio'] = (self.config.
                                                max_over_subscription_ratio)
 
-        data['iscsi_ip_address'] = self.config.target_ip_address
+        data['target_ip_address'] = self.config.target_ip_address
         data['pool_name'] = self.config.synology_pool_name
         data['backend_info'] = ('%s:%s:%s' %
                                 (self.vendor_name,
@@ -1256,7 +1256,7 @@ class SynoCommon(object):
             'target_discovered': False,
             'target_iqn': iqn,
             'target_portal': '%(ip)s:%(port)d' % {'ip': self.get_ip(),
-                                                  'port': self.iscsi_port},
+                                                  'port': self.target_port},
             'volume_id': volume['id'],
             'access_mode': 'rw',
             'discard': False
@@ -1267,7 +1267,7 @@ class SynoCommon(object):
             for ip in ips:
                 target_portals.append('%(ip)s:%(port)d' %
                                       {'ip': ip,
-                                       'port': self.iscsi_port})
+                                       'port': self.target_port})
             iscsi_properties.update(target_portals=target_portals)
             count = len(target_portals)
             iscsi_properties.update(target_iqns=
