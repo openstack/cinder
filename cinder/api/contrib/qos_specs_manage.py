@@ -16,6 +16,7 @@
 """The QoS specs extension"""
 
 from oslo_log import log as logging
+from oslo_utils import timeutils
 import six
 from six.moves import http_client
 import webob
@@ -90,7 +91,9 @@ class QoSSpecsController(wsgi.Controller):
 
         try:
             spec = qos_specs.create(context, name, specs)
-            notifier_info = dict(name=name, specs=specs)
+            notifier_info = dict(name=name,
+                                 created_at=spec.created_at,
+                                 specs=specs)
             rpc.get_notifier('QoSSpecs').info(context,
                                               'qos_specs.create',
                                               notifier_info)
@@ -119,12 +122,16 @@ class QoSSpecsController(wsgi.Controller):
     def update(self, req, id, body=None):
         context = req.environ['cinder.context']
         context.authorize(policy.UPDATE_POLICY)
-
         self.assert_valid_body(body, 'qos_specs')
         specs = body['qos_specs']
         try:
+            spec = qos_specs.get_qos_specs(context, id)
+
             qos_specs.update(context, id, specs)
-            notifier_info = dict(id=id, specs=specs)
+            notifier_info = dict(id=id,
+                                 created_at=spec.created_at,
+                                 updated_at=timeutils.utcnow(),
+                                 specs=specs)
             rpc.get_notifier('QoSSpecs').info(context,
                                               'qos_specs.update',
                                               notifier_info)
@@ -164,10 +171,13 @@ class QoSSpecsController(wsgi.Controller):
         force = utils.get_bool_param('force', req.params)
         LOG.debug("Delete qos_spec: %(id)s, force: %(force)s",
                   {'id': id, 'force': force})
-
         try:
+            spec = qos_specs.get_qos_specs(context, id)
+
             qos_specs.delete(context, id, force)
-            notifier_info = dict(id=id)
+            notifier_info = dict(id=id,
+                                 created_at=spec.created_at,
+                                 deleted_at=timeutils.utcnow())
             rpc.get_notifier('QoSSpecs').info(context,
                                               'qos_specs.delete',
                                               notifier_info)
@@ -206,7 +216,10 @@ class QoSSpecsController(wsgi.Controller):
 
         try:
             qos_specs.delete_keys(context, id, keys)
-            notifier_info = dict(id=id)
+            spec = qos_specs.get_qos_specs(context, id)
+            notifier_info = dict(id=id,
+                                 created_at=spec.created_at,
+                                 updated_at=spec.updated_at)
             rpc.get_notifier('QoSSpecs').info(context, 'qos_specs.delete_keys',
                                               notifier_info)
         except exception.NotFound as err:
@@ -227,8 +240,11 @@ class QoSSpecsController(wsgi.Controller):
         LOG.debug("Get associations for qos_spec id: %s", id)
 
         try:
+            spec = qos_specs.get_qos_specs(context, id)
+
             associates = qos_specs.get_associations(context, id)
-            notifier_info = dict(id=id)
+            notifier_info = dict(id=id,
+                                 created_at=spec.created_at)
             rpc.get_notifier('QoSSpecs').info(context,
                                               'qos_specs.associations',
                                               notifier_info)
@@ -267,8 +283,11 @@ class QoSSpecsController(wsgi.Controller):
                   {'id': id, 'type_id': type_id})
 
         try:
+            spec = qos_specs.get_qos_specs(context, id)
+
             qos_specs.associate_qos_with_type(context, id, type_id)
-            notifier_info = dict(id=id, type_id=type_id)
+            notifier_info = dict(id=id, type_id=type_id,
+                                 created_at=spec.created_at)
             rpc.get_notifier('QoSSpecs').info(context,
                                               'qos_specs.associate',
                                               notifier_info)
@@ -316,8 +335,11 @@ class QoSSpecsController(wsgi.Controller):
                   {'id': id, 'type_id': type_id})
 
         try:
+            spec = qos_specs.get_qos_specs(context, id)
+
             qos_specs.disassociate_qos_specs(context, id, type_id)
-            notifier_info = dict(id=id, type_id=type_id)
+            notifier_info = dict(id=id, type_id=type_id,
+                                 created_at=spec.created_at)
             rpc.get_notifier('QoSSpecs').info(context,
                                               'qos_specs.disassociate',
                                               notifier_info)
@@ -346,8 +368,11 @@ class QoSSpecsController(wsgi.Controller):
         LOG.debug("Disassociate qos_spec: %s from all.", id)
 
         try:
+            spec = qos_specs.get_qos_specs(context, id)
+
             qos_specs.disassociate_all(context, id)
-            notifier_info = dict(id=id)
+            notifier_info = dict(id=id,
+                                 created_at=spec.created_at)
             rpc.get_notifier('QoSSpecs').info(context,
                                               'qos_specs.disassociate_all',
                                               notifier_info)

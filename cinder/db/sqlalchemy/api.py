@@ -62,7 +62,6 @@ from cinder.objects import fields
 from cinder import utils
 from cinder.volume import utils as vol_utils
 
-
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
@@ -4572,11 +4571,21 @@ def _qos_specs_get_all_ref(context, qos_specs_id, session=None,
 def _dict_with_children_specs(specs):
     """Convert specs list to a dict."""
     result = {}
+    update_time = None
     for spec in specs:
         # Skip deleted keys
         if not spec['deleted']:
+            # Add update time to specs list, in order to get the keyword
+            # 'updated_at' in specs info when printing logs.
+            if not update_time and spec['updated_at']:
+                update_time = spec['updated_at']
+            elif update_time and spec['updated_at']:
+                if (update_time -
+                        spec['updated_at']).total_seconds() < 0:
+                    update_time = spec['updated_at']
             result.update({spec['key']: spec['value']})
-
+    if update_time:
+        result.update({'updated_at': update_time})
     return result
 
 
@@ -4591,10 +4600,15 @@ def _dict_with_qos_specs(rows):
     result = []
     for row in rows:
         if row['key'] == 'QoS_Specs_Name':
-            member = {'name': row['value'], 'id': row['id']}
+            # Add create time for member, in order to get the keyword
+            # 'created_at' in the specs info when printing logs.
+            member = {'name': row['value'], 'id': row['id'],
+                      'created_at': row['created_at']}
             if row.specs:
                 spec_dict = _dict_with_children_specs(row.specs)
                 member['consumer'] = spec_dict.pop('consumer')
+                if spec_dict.get('updated_at'):
+                    member['updated_at'] = spec_dict.pop('updated_at')
                 member.update(dict(specs=spec_dict))
             result.append(member)
     return result
@@ -4811,7 +4825,6 @@ def qos_specs_update(context, qos_specs_id, updates):
             spec_ref.save(session=session)
 
         return specs
-
 
 ####################
 
