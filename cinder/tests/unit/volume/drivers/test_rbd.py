@@ -558,6 +558,33 @@ class RBDTestCase(test.TestCase):
                          RAISED_EXCEPTIONS)
 
     @common_mocks
+    @mock.patch.object(driver.RBDDriver, '_get_image_status')
+    def test_get_manageable_volumes(self, mock_get_image_status):
+        cinder_vols = [{'id': '00000000-0000-0000-0000-000000000000'}]
+        vols = ['volume-00000000-0000-0000-0000-000000000000', 'vol1', 'vol2']
+        self.mock_rbd.RBD.return_value.list.return_value = vols
+        image = self.mock_proxy.return_value.__enter__.return_value
+        image.size.side_effect = [2 * units.Gi, 4 * units.Gi, 6 * units.Gi]
+        mock_get_image_status.side_effect = [
+            {'watchers': []},
+            {'watchers': [{"address": "192.168.120.61:0\/3012034728",
+                           "client": 44431941, "cookie": 94077162321152}]}]
+        res = self.driver.get_manageable_volumes(
+            cinder_vols, None, 1000, 0, ['size'], ['asc'])
+        exp = [{'size': 2, 'reason_not_safe': 'already managed',
+                'extra_info': None, 'safe_to_manage': False,
+                'reference': {'source-name':
+                              'volume-00000000-0000-0000-0000-000000000000'},
+                'cinder_id': '00000000-0000-0000-0000-000000000000'},
+               {'size': 4, 'reason_not_safe': None,
+                'safe_to_manage': True, 'reference': {'source-name': 'vol1'},
+                'cinder_id': None, 'extra_info': None},
+               {'size': 6, 'reason_not_safe': 'volume in use',
+                'safe_to_manage': False, 'reference': {'source-name': 'vol2'},
+                'cinder_id': None, 'extra_info': None}]
+        self.assertEqual(exp, res)
+
+    @common_mocks
     def test_delete_backup_snaps(self):
         self.driver.rbd.Image.remove_snap = mock.Mock()
         with mock.patch.object(self.driver, '_get_backup_snaps') as \
