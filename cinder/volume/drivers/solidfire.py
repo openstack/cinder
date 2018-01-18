@@ -160,10 +160,11 @@ class SolidFireDriver(san.SanISCSIDriver):
           2.0.9 - Always purge on delete volume
           2.0.10 - Add response to debug on retryable errors
           2.0.11 - Add ability to failback replicating volumes
+          2.0.12 - Fix bug #1744005
 
     """
 
-    VERSION = '2.0.11'
+    VERSION = '2.0.12'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "NetApp_SolidFire_CI"
@@ -528,10 +529,6 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         return response
 
-    def _get_active_volumes_by_sfaccount(self, account_id, endpoint=None):
-        return [v for v in self._get_volumes_by_sfaccount(account_id, endpoint)
-                if v['status'] == "active"]
-
     def _get_volumes_by_sfaccount(self, account_id, endpoint=None):
         """Get all volumes on cluster for specified account."""
         params = {'accountID': account_id}
@@ -539,6 +536,61 @@ class SolidFireDriver(san.SanISCSIDriver):
             'ListVolumesForAccount',
             params,
             endpoint=endpoint)['result']['volumes']
+
+    def _get_volumes_for_account(self, sf_account_id, cinder_uuid=None):
+        # ListVolumesForAccount gives both Active and Deleted
+        # we require the solidfire accountID, uuid of volume
+        # is optional
+        vols = self._get_volumes_by_sfaccount(sf_account_id)
+        if cinder_uuid:
+            vlist = [v for v in vols if
+                     cinder_uuid in v['name']]
+        else:
+            vlist = [v for v in vols]
+        vlist = sorted(vlist, key=lambda k: k['volumeID'])
+        return vlist
+
+    def _get_sfvol_by_cinder_vref(self, vref):
+        sfvol = None
+        provider_id = vref.get('provider_id', None)
+        if provider_id:
+            try:
+                sf_vid, sf_aid, sf_cluster_id = provider_id.split(' ')
+            except ValueError:
+                LOG.warning("Invalid provider_id entry for volume: %s",
+                            vref.id)
+            else:
+                # So there shouldn't be any clusters out in the field that are
+                # running Element < 8.0, but just in case; we'll to a try
+                # block here and fall back to the old methods just to be safe
+                try:
+                    sfvol = self._issue_api_request(
+                        'ListVolumes',
+                        {'startVolumeID': sf_vid,
+                         'limit': 1},
+                        version='8.0')['result']['volumes'][0]
+                except Exception:
+                    pass
+        if not sfvol:
+            LOG.info("Failed to find volume by provider_id, "
+                     "attempting ListForAccount")
+            for account in self._get_sfaccounts_for_tenant(vref.project_id):
+                sfvols = self._issue_api_request(
+                    'ListVolumesForAccount',
+                    {'accountID': account['accountID']})['result']['volumes']
+                if len(sfvols) >= 1:
+                    sfvol = sfvols[0]
+                    break
+        if not sfvol:
+            # Hmmm, frankly if we get here there's a problem,
+            # but try one last trick
+            LOG.info("Failed to find volume by provider_id or account, "
+                     "attempting find by attributes.")
+            for v in sfvols:
+                if v['Attributes'].get('uuid', None):
+                    sfvol = v
+                    break
+        return sfvol
 
     def _get_sfaccount_by_name(self, sf_account_name, endpoint=None):
         """Get SolidFire account object by name."""
@@ -1077,19 +1129,6 @@ class SolidFireDriver(san.SanISCSIDriver):
                 raise exception.SolidFireDriverException(msg)
         return sf_account
 
-    def _get_volumes_for_account(self, sf_account_id, cinder_uuid=None):
-        # ListVolumesForAccount gives both Active and Deleted
-        # we require the solidfire accountID, uuid of volume
-        # is optional
-        vols = self._get_active_volumes_by_sfaccount(sf_account_id)
-        if cinder_uuid:
-            vlist = [v for v in vols if
-                     cinder_uuid in v['name']]
-        else:
-            vlist = [v for v in vols]
-        vlist = sorted(vlist, key=lambda k: k['volumeID'])
-        return vlist
-
     def _create_vag(self, iqn, vol_id=None):
         """Create a volume access group(vag).
 
@@ -1462,32 +1501,11 @@ class SolidFireDriver(san.SanISCSIDriver):
     def delete_volume(self, volume):
         """Delete SolidFire Volume from device.
 
-         SolidFire allows multiple volumes with same name,
-         volumeID is what's guaranteed unique.
+        SolidFire allows multiple volumes with same name,
+        volumeID is what's guaranteed unique.
 
         """
-        sf_vol = None
-        accounts = self._get_sfaccounts_for_tenant(volume['project_id'])
-        if accounts is None:
-            LOG.error("Account for Volume ID %s was not found on "
-                      "the SolidFire Cluster while attempting "
-                      "delete_volume operation!", volume['id'])
-            LOG.error("This usually means the volume was never "
-                      "successfully created.")
-            return
-
-        for acc in accounts:
-            vols = self._get_volumes_for_account(acc['accountID'],
-                                                 volume.name_id)
-            # Check for migration magic here
-            if (not vols and (volume.name_id != volume.id)):
-                vols = self._get_volumes_for_account(acc['accountID'],
-                                                     volume.id)
-
-            if vols:
-                sf_vol = vols[0]
-                break
-
+        sf_vol = self._get_sfvol_by_cinder_vref(volume)
         if sf_vol is not None:
             for vp in sf_vol.get('volumePairs', []):
                 LOG.debug("Deleting paired volume on remote cluster...")
