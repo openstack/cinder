@@ -72,8 +72,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - host: host_query
-   - binary: binary_query
+   - host: host_name_body
+   - binary: binary
 
 Request Example
 ---------------
@@ -120,7 +120,7 @@ Request
   - project_id: project_id_path
   - binary: binary
   - host: host_name_body
-  - disabled_reason: disabled_reason_body
+  - disabled_reason: disabled_reason_body_1
 
 Request Example
 ---------------
