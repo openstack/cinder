@@ -56,10 +56,11 @@ class HPE3PARDriverBase(driver.ManageableVD,
         1.0.1 - Adds consistency group capability in generic volume groups.
         1.0.2 - Adds capability.
         1.0.3 - Added Tiramisu feature on 3PAR.
+        1.0.4 - Fixed Volume migration for "in-use" volume. bug #1744021
 
     """
 
-    VERSION = "1.0.3"
+    VERSION = "1.0.4"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARDriverBase, self).__init__(*args, **kwargs)
@@ -303,10 +304,14 @@ class HPE3PARDriverBase(driver.ManageableVD,
     @utils.trace
     def migrate_volume(self, context, volume, host):
         if volume['status'] == 'in-use':
-            LOG.debug("3PAR %(protocol)s driver cannot migrate in-use volume "
-                      "to a host with storage_protocol=%(protocol)s",
-                      {'protocol': self.protocol})
-            return False, None
+            protocol = host['capabilities']['storage_protocol']
+            if protocol != self.protocol:
+                LOG.debug("3PAR %(protocol)s driver cannot migrate in-use "
+                          "volume to a host with "
+                          "storage_protocol=%(storage_protocol)s",
+                          {'protocol': self.protocol,
+                           'storage_protocol': protocol})
+                return False, None
 
         common = self._login()
         try:

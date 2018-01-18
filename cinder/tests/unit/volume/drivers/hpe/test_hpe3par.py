@@ -7720,6 +7720,36 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             self.assertEqual(self.FAKE_HOST, host['name'])
             self.assertEqual(3, len(host['FCPaths']))
 
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_migrate_fc_volume_attached_to_iscsi_protocol(self,
+                                                          _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+
+        protocol = "iSCSI"
+
+        volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
+                  'volume_type_id': None,
+                  'id': HPE3PARBaseDriver.CLONE_ID,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'status': 'in-use',
+                  'host': HPE3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HPE3PARBaseDriver.VOLUME_ID}
+
+        loc_info = 'HPE3PARDriver:1234567:CPG-FC1'
+        host = {'host': 'stack@3parfc1',
+                'capabilities': {'location_info': loc_info,
+                                 'storage_protocol': protocol}}
+
+        result = self.driver.migrate_volume(context.get_admin_context(),
+                                            volume, host)
+
+        self.assertIsNotNone(result)
+        self.assertEqual((False, None), result)
+        expected = []
+        mock_client.assert_has_calls(expected)
+
     def test_migrate_volume_attached(self):
         self.migrate_volume_attached()
 
