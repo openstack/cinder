@@ -113,6 +113,7 @@ REST_API_VERSION_HISTORY = """
     * 3.47 - Support create volume from backup.
     * 3.48 - Add ``shared_targets`` and ``service_uuid`` fields to volume.
     * 3.49 - Support report backend storage state in service list.
+    * 3.50 - Add multiattach capability
 """
 
 # The minimum and maximum versions of the API supported
@@ -120,7 +121,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.49"
+_MAX_API_VERSION = "3.50"
 _LEGACY_API_VERSION2 = "2.0"
 UPDATED = "2017-09-19T20:18:14Z"
 

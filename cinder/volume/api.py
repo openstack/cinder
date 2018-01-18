@@ -349,6 +349,8 @@ class API(base.Base):
                 # Refresh the object here, otherwise things ain't right
                 vref = objects.Volume.get_by_id(
                     context, vref['id'])
+                vref.multiattach = self._is_multiattach(volume_type)
+                vref.save()
                 LOG.info("Create volume request issued successfully.",
                          resource=vref)
                 return vref
@@ -1620,14 +1622,14 @@ class API(base.Base):
 
         # Support specifying volume type by ID or name
         try:
-            vol_type = (
+            new_type = (
                 volume_types.get_by_name_or_id(context.elevated(), new_type))
         except exception.InvalidVolumeType:
             msg = _('Invalid volume_type passed: %s.') % new_type
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-        vol_type_id = vol_type['id']
+        new_type_id = new_type['id']
 
         # NOTE(jdg): We check here if multiattach is involved in either side
         # of the retype, we can't change multiattach on an in-use volume
@@ -1636,12 +1638,11 @@ class API(base.Base):
         # have to get through scheduling if all the conditions are met, we
         # should consider an up front capabilities check to give fast feedback
         # rather than "No hosts found" and error status
-
         src_is_multiattach = volume.multiattach
         tgt_is_multiattach = False
-        if (vol_type and
-                self._is_multiattach(vol_type)):
-            tgt_is_multiattach = True
+
+        if new_type:
+            tgt_is_multiattach = self._is_multiattach(new_type)
 
         if src_is_multiattach != tgt_is_multiattach:
             if volume.status != "available":
@@ -1657,7 +1658,7 @@ class API(base.Base):
         # early as possible, but won't commit until we change the type. We
         # pass the reservations onward in case we need to roll back.
         reservations = quota_utils.get_volume_type_reservation(
-            context, volume, vol_type_id, reserve_vol_type_only=True)
+            context, volume, new_type_id, reserve_vol_type_only=True)
 
         # Get old reservations
         try:
@@ -1685,12 +1686,12 @@ class API(base.Base):
                     'migration_status': self.AVAILABLE_MIGRATION_STATUS,
                     'consistencygroup_id': (None, ''),
                     'group_id': (None, ''),
-                    'volume_type_id': db.Not(vol_type_id)}
+                    'volume_type_id': db.Not(new_type_id)}
 
         # We don't support changing QoS at the front-end yet for in-use volumes
         # TODO(avishay): Call Nova to change QoS setting (libvirt has support
         # - virDomainSetBlockIoTune() - Nova does not have support yet).
-        filters = [db.volume_qos_allows_retype(vol_type_id)]
+        filters = [db.volume_qos_allows_retype(new_type_id)]
 
         updates = {'status': 'retyping',
                    'previous_status': objects.Volume.model.status}
@@ -1708,7 +1709,7 @@ class API(base.Base):
 
         request_spec = {'volume_properties': volume,
                         'volume_id': volume.id,
-                        'volume_type': vol_type,
+                        'volume_type': new_type,
                         'migration_policy': migration_policy,
                         'quota_reservations': reservations,
                         'old_reservations': old_reservations}
@@ -1716,6 +1717,8 @@ class API(base.Base):
         self.scheduler_rpcapi.retype(context, volume,
                                      request_spec=request_spec,
                                      filter_properties={})
+        volume.multiattach = tgt_is_multiattach
+        volume.save()
         LOG.info("Retype volume request issued successfully.",
                  resource=volume)
 
