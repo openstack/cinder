@@ -2999,6 +2999,43 @@ class DS8KProxyTest(test.TestCase):
                           self.driver.delete_group,
                           self.ctxt, group, [volume])
 
+    def test_add_in_use_vol_into_group_by_using_update_group(self):
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        volume = self._create_volume(provider_location=location,
+                                     status='in-use')
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.update_group,
+                          self.ctxt, group, [volume], [])
+
+    def test_remove_in_use_vol_from_group_by_using_update_group(self):
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        volume = self._create_volume(provider_location=location,
+                                     status='in-use',
+                                     group_id=group.id)
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.update_group,
+                          self.ctxt, group, [], [volume])
+
     def test_update_replication_group_is_not_implemented(self):
         """update replication group is not implemented."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
