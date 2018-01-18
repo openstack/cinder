@@ -366,15 +366,14 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             target_portals.append(self._get_iscsi_portal(netspace))
             target_iqns.append(netspace.get_properties().iscsi_iqn)
             target_luns.append(lun)
+
         result_data = dict(target_discovered=True,
                            target_portal=target_portals[0],
                            target_iqn=target_iqns[0],
-                           target_lun=target_luns[0])
-        if len(target_portals) > 1:
-            # multiple network spaces defined
-            result_data.update(dict(target_portals=target_portals,
-                                    target_iqns=target_iqns,
-                                    target_luns=target_luns))
+                           target_lun=target_luns[0],
+                           target_portals=target_portals,
+                           target_iqns=target_iqns,
+                           target_luns=target_luns)
         if self.configuration.use_chap_auth:
             result_data.update(dict(auth_method='CHAP',
                                     auth_username=chap_username,
