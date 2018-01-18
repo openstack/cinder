@@ -54,6 +54,7 @@ from cinder.volume import driver
 from cinder.volume import manager as vol_manager
 from cinder.volume import rpcapi as volume_rpcapi
 import cinder.volume.targets.tgt
+from cinder.volume import volume_types
 
 
 QUOTAS = quota.QUOTAS
@@ -605,6 +606,26 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                    'description',
                                    volume_type=db_vol_type)
         self.assertEqual(db_vol_type.get('id'), volume['volume_type_id'])
+
+    def test_create_volume_with_multiattach_volume_type(self):
+        """Test volume creation with multiattach volume type."""
+        elevated = context.get_admin_context()
+        volume_api = cinder.volume.api.API()
+
+        especs = dict(multiattach="<is> True")
+        volume_types.create(elevated,
+                            "multiattach-type",
+                            especs,
+                            description="test-multiattach")
+        foo = objects.VolumeType.get_by_name_or_id(elevated,
+                                                   "multiattach-type")
+
+        vol = volume_api.create(self.context,
+                                1,
+                                'admin-vol',
+                                'description',
+                                volume_type=foo)
+        self.assertEqual(foo['id'], vol['volume_type_id'])
 
     @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
     def test_create_volume_with_encrypted_volume_type_aes(self):

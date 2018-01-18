@@ -193,6 +193,10 @@ class API(base.Base):
         return (volume['migration_status'] not in
                 self.AVAILABLE_MIGRATION_STATUS)
 
+    def _is_multiattach(self, volume_type):
+        specs = getattr(volume_type, 'extra_specs', {})
+        return specs.get('multiattach', 'False') == '<is> True'
+
     def create(self, context, size, name, description, snapshot=None,
                image_id=None, volume_type=None, metadata=None,
                availability_zone=None, source_volume=None,
@@ -284,6 +288,9 @@ class API(base.Base):
             availability_zones.add(CONF.storage_availability_zone)
 
         utils.check_metadata_properties(metadata)
+
+        if (volume_type and self._is_multiattach(volume_type)):
+            context.authorize(vol_policy.MULTIATTACH_POLICY)
 
         create_what = {
             'context': context,
@@ -1622,6 +1629,30 @@ class API(base.Base):
 
         vol_type_id = vol_type['id']
 
+        # NOTE(jdg): We check here if multiattach is involved in either side
+        # of the retype, we can't change multiattach on an in-use volume
+        # because there's things the hypervisor needs when attaching, so
+        # we just disallow retype of in-use volumes in this case.  You still
+        # have to get through scheduling if all the conditions are met, we
+        # should consider an up front capabilities check to give fast feedback
+        # rather than "No hosts found" and error status
+
+        src_is_multiattach = volume.multiattach
+        tgt_is_multiattach = False
+        if (vol_type and
+                self._is_multiattach(vol_type)):
+            tgt_is_multiattach = True
+
+        if src_is_multiattach != tgt_is_multiattach:
+            if volume.status != "available":
+                msg = _('Invalid volume_type passed, retypes affecting '
+                        'multiattach are only allowed on available volumes, '
+                        'the specified volume however currently has a status '
+                        'of: %s.') % volume.status
+                LOG.info(msg)
+                raise exception.InvalidInput(reason=msg)
+            context.authorize(vol_policy.MULTIATTACH_POLICY)
+
         # We're checking here in so that we can report any quota issues as
         # early as possible, but won't commit until we change the type. We
         # pass the reservations onward in case we need to roll back.
@@ -2021,6 +2052,14 @@ class API(base.Base):
         # creation of other new reserves/attachments while in this state
         # so we avoid contention issues with shared connections
 
+        # Multiattach of bootable volumes is a special case with it's own
+        # policy, check that here right off the bat
+        if (vref.get('multiattach', False) and
+                vref.status == 'in-use' and
+                vref.bootable):
+            context.authorize(
+                attachment_policy.MULTIATTACH_BOOTABLE_VOLUME_POLICY)
+
         # FIXME(JDG):  We want to be able to do things here like reserve a
         # volume for Nova to do BFV WHILE the volume may be in the process of
         # downloading image, we add downloading here; that's easy enough but
@@ -2032,6 +2071,7 @@ class API(base.Base):
                     'status': (('available', 'in-use', 'downloading')
                                if vref.multiattach
                                else ('available', 'downloading'))}
+
         result = vref.conditional_update({'status': 'reserved'}, expected)
 
         if not result:
