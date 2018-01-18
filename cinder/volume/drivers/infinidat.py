@@ -381,6 +381,26 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         return dict(driver_volume_type='iscsi',
                     data=result_data)
 
+    def _get_ports_from_connector(self, infinidat_volume, connector):
+        if connector is None:
+            # If no connector was provided it is a force-detach - remove all
+            # host connections for the volume
+            if self._protocol == 'FC':
+                port_cls = wwn.WWN
+            else:
+                port_cls = iqn.IQN
+            ports = []
+            for lun_mapping in infinidat_volume.get_logical_units():
+                host_ports = lun_mapping.get_host().get_ports()
+                host_ports = [port for port in host_ports
+                              if isinstance(port, port_cls)]
+                ports.extend(host_ports)
+        elif self._protocol == 'FC':
+            ports = [wwn.WWN(wwpn) for wwpn in connector['wwpns']]
+        else:
+            ports = [iqn.IQN(connector['initiator'])]
+        return ports
+
     @fczm_utils.add_fc_zone
     @infinisdk_to_cinder_exceptions
     @coordination.synchronized('infinidat-{self.management_address}-lock')
@@ -399,11 +419,10 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         infinidat_volume = self._get_infinidat_volume(volume)
         if self._protocol == 'FC':
             volume_type = 'fibre_channel'
-            ports = [wwn.WWN(wwpn) for wwpn in connector['wwpns']]
         else:
             volume_type = 'iscsi'
-            ports = [iqn.IQN(connector['initiator'])]
         result_data = dict()
+        ports = self._get_ports_from_connector(infinidat_volume, connector)
         for port in ports:
             host_name = self._make_host_name(port)
             host = self._system.hosts.safe_get(name=host_name)
@@ -415,16 +434,18 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                 host.unmap_volume(infinidat_volume)
             except KeyError:
                 continue      # volume mapping not found
-        # check if the host now doesn't have mappings
-        if host is not None and len(host.get_luns()) == 0:
-            host.safe_delete()
-            if self._protocol == 'FC':
-                # Create initiator-target mapping to delete host entry
-                target_wwpns = list(self._get_online_fc_ports())
-                target_wwpns, target_map = self._build_initiator_target_map(
-                    connector, target_wwpns)
-                result_data = dict(target_wwn=target_wwpns,
-                                   initiator_target_map=target_map)
+            # check if the host now doesn't have mappings
+            if host is not None and len(host.get_luns()) == 0:
+                host.safe_delete()
+                if self._protocol == 'FC' and connector is not None:
+                    # Create initiator-target mapping to delete host entry
+                    # this is only relevant for regular (specific host) detach
+                    target_wwpns = list(self._get_online_fc_ports())
+                    target_wwpns, target_map = (
+                        self._build_initiator_target_map(connector,
+                                                         target_wwpns))
+                    result_data = dict(target_wwn=target_wwpns,
+                                       initiator_target_map=target_map)
         return dict(driver_volume_type=volume_type,
                     data=result_data)
 
