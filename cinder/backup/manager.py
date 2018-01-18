@@ -358,7 +358,6 @@ class BackupManager(manager.ThreadPoolManager):
                 'actual_status': actual_status,
             }
             self._update_backup_error(backup, err)
-            backup.save()
             raise exception.InvalidBackup(reason=err)
 
         try:
