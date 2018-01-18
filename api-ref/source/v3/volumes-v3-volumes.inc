@@ -113,7 +113,7 @@ Response Parameters
    - status: status_3
    - volume_image_metadata: volume_image_metadata
    - description: description_9
-   - multiattach: multiattach
+   - multiattach: multiattach_resp
    - source_volid: source_volid
    - consistencygroup_id: consistencygroup_id
    - os-vol-mig-status-attr:name_id: os-vol-mig-status-attr:name_id
@@ -186,7 +186,7 @@ Request
    - availability_zone: availability_zone
    - source_volid: source_volid
    - description: description_5
-   - multiattach: multiattach
+   - multiattach: multiattach_req
    - snapshot_id: snapshot_id
    - backup_id: backup_id_1
    - name: name_13
@@ -223,7 +223,7 @@ Response Parameters
    - metadata: metadata
    - status: status_3
    - description: description_9
-   - multiattach: multiattach
+   - multiattach: multiattach_resp
    - source_volid: source_volid
    - volume: volume
    - consistencygroup_id: consistencygroup_id
@@ -337,7 +337,7 @@ Response Parameters
    - status: status_3
    - volume_image_metadata: volume_image_metadata
    - description: description_9
-   - multiattach: multiattach
+   - multiattach: multiattach_resp
    - source_volid: source_volid
    - volume: volume
    - consistencygroup_id: consistencygroup_id
@@ -410,7 +410,7 @@ Response Parameters
    - metadata: metadata
    - status: status_3
    - description: description_9
-   - multiattach: multiattach
+   - multiattach: multiattach_resp
    - source_volid: source_volid
    - volume: volume
    - consistencygroup_id: consistencygroup_id
