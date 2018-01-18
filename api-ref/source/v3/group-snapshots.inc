@@ -90,6 +90,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
+   - all_tenants: all-tenants
    - sort_key: sort_key_group_snapshot
    - sort_dir: sort_dir_group_snapshot
    - limit: limit_group_snapshot
@@ -137,6 +138,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
+   - all_tenants: all-tenants
    - sort_key: sort_key_group_snapshot
    - sort_dir: sort_dir_group_snapshot
    - limit: limit_group_snapshot

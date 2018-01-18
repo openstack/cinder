@@ -82,6 +82,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
+   - all_tenants: all-tenants
    - sort: sort
    - limit: limit
    - offset: offset
@@ -260,6 +261,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
+   - all_tenants: all-tenants
    - sort: sort
    - limit: limit
    - offset: offset
@@ -717,7 +719,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - all_tenants: all_tenants
+   - all_tenants: all-tenants
 
 Response Parameters
 -------------------
