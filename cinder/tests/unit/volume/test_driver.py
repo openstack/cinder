@@ -222,6 +222,7 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
         (backup_device, is_snapshot) = self.volume.driver.get_backup_device(
             self.context, backup_obj)
         volume = objects.Volume.get_by_id(self.context, vol.id)
+        self.assertNotIn('temporary', backup_device.admin_metadata.keys())
         self.assertEqual(volume, backup_device)
         self.assertFalse(is_snapshot)
         backup_obj.refresh()
@@ -231,7 +232,9 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
         vol = tests_utils.create_volume(self.context,
                                         status='backing-up',
                                         previous_status='in-use')
-        temp_vol = tests_utils.create_volume(self.context)
+        admin_meta = {'temporary': 'True'}
+        temp_vol = tests_utils.create_volume(self.context,
+                                             admin_metadata=admin_meta)
         self.context.user_id = fake.USER_ID
         self.context.project_id = fake.PROJECT_ID
         backup_obj = tests_utils.create_backup(self.context,
@@ -248,7 +251,7 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
             backup_obj.refresh()
             self.assertEqual(temp_vol.id, backup_obj.temp_volume_id)
 
-    def test__create_temp_volume_from_snapshot(self):
+    def test_create_temp_volume_from_snapshot(self):
         volume_dict = {'id': fake.SNAPSHOT_ID,
                        'host': 'fakehost',
                        'cluster_name': 'fakecluster',
@@ -346,8 +349,8 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
     @mock.patch(driver_name + '.initialize_connection')
     @mock.patch(driver_name + '.create_export', return_value=None)
     @mock.patch(driver_name + '._connect_device')
-    def test__attach_volume_encrypted(self, connect_mock, export_mock,
-                                      initialize_mock):
+    def test_attach_volume_encrypted(self, connect_mock, export_mock,
+                                     initialize_mock):
         properties = {'host': 'myhost', 'ip': '192.168.1.43',
                       'initiator': u'iqn.1994-05.com.redhat:d9be887375',
                       'multipath': False, 'os_type': 'linux2',
