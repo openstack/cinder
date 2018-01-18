@@ -40,10 +40,10 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import strutils
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
-from cinder import utils
 from cinder.volume import configuration as conf
 
 from cinder.volume.drivers.ibm.storwize_svc import (
@@ -135,11 +135,11 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
 
     def initialize_connection(self, volume, connector):
         """Perform necessary work to make an iSCSI connection."""
-        @utils.synchronized('storwize-host' + self._state['system_id'] +
-                            connector['host'], external=True)
-        def _do_initialize_connection_locked():
+        @coordination.synchronized('storwize-host-{system_id}-{host}')
+        def _do_initialize_connection_locked(system_id, host):
             return self._do_initialize_connection(volume, connector)
-        return _do_initialize_connection_locked()
+        return _do_initialize_connection_locked(self._state['system_id'],
+                                                connector['host'])
 
     def _do_initialize_connection(self, volume, connector):
         """Perform necessary work to make an iSCSI connection.
@@ -392,12 +392,11 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         # so that all the fake connectors to an SVC are serialized
         host = connector['host'] if 'host' in connector else ""
 
-        @utils.synchronized('storwize-host' + self._state['system_id'] + host,
-                            external=True)
-        def _do_terminate_connection_locked():
+        @coordination.synchronized('storwize-host-{system_id}-{host}')
+        def _do_terminate_connection_locked(system_id, host):
             return self._do_terminate_connection(volume, connector,
                                                  **kwargs)
-        return _do_terminate_connection_locked()
+        return _do_terminate_connection_locked(self._state['system_id'], host)
 
     def _do_terminate_connection(self, volume, connector, **kwargs):
         """Cleanup after an iSCSI connection has been terminated.
