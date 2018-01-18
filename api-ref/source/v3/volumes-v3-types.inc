@@ -36,9 +36,9 @@ Request
    - project_id: project_id_path
    - volume_type_id: volume_type_id
    - volume_type: volume_type_1
-   - name: name_10
-   - description: description_15
-   - is_public: is_public
+   - name: name_volume_type_optional
+   - description: description_volume_type_optional
+   - is_public: is_public_volume_type_optional
 
 Request Example
 ---------------
@@ -53,10 +53,10 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - volume_type: volume_type_1
-   - is_public: is_public
-   - extra_specs: extra_specs
-   - description: description_15
-   - name: name_7
+   - is_public: is_public_volume_type_required
+   - extra_specs: extra_specs_volume_type_required
+   - description: description_volume_type_required
+   - name: name_volume_type_required
 
 Response Example
 ----------------
@@ -84,7 +84,7 @@ Request
 
    - project_id: project_id_path
    - volume_type_id: volume_type_id
-   - extra_specs: extra_specs
+   - extra_specs: extra_specs_volume_type_required
 
 Request Example
 ---------------
@@ -98,7 +98,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - extra_specs: extra_specs
+   - extra_specs: extra_specs_volume_type_required
 
 
 Response Example
@@ -132,7 +132,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - extra_specs: extra_specs
+   - extra_specs: extra_specs_volume_type_required
 
 
 Response Example
@@ -249,16 +249,53 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - volume_type: volume_type_1
-   - is_public: is_public
-   - extra_specs: extra_specs
-   - description: description_15
-   - name: name_7
+   - is_public: is_public_volume_type_required
+   - extra_specs: extra_specs_volume_type_required
+   - description: description_volume_type_required
+   - name: name_volume_type_required
 
 
 Response Example
 ----------------
 
 .. literalinclude:: ./samples/volume-type-show-response.json
+   :language: javascript
+
+
+Show default volume type
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  GET /v3/{project_id}/types/default
+
+Shows details for the default volume type if configured.
+
+
+Normal response codes: 200
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - volume_type: volume_type_1
+   - is_public: is_public_volume_type_required
+   - extra_specs: extra_specs_volume_type_required
+   - description: description_volume_type_required
+   - name: name_volume_type_required
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-type-default-response.json
    :language: javascript
 
 
@@ -310,8 +347,8 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - volume_types: volume_types
-   - extra_specs: extra_specs
-   - name: name_7
+   - extra_specs: extra_specs_volume_type_required
+   - name: name_volume_type_required
 
 Response Example
 ----------------
@@ -337,10 +374,10 @@ Request
 
    - volume_type: volume_type_1
    - project_id: project_id_path
-   - name: name_7
-   - os-volume-type-access:is_public: is_public
-   - description: description_15
-   - extra_specs: extra_specs_1
+   - name: name_volume_type_required
+   - os-volume-type-access:is_public: is_public_volume_type_optional
+   - description: description_volume_type_optional
+   - extra_specs: extra_specs_volume_type_optional
 
 Request Example
 ---------------
@@ -355,12 +392,12 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - volume_type: volume_type_1
-   - is_public: is_public
-   - extra_specs: extra_specs
-   - description: description_15
-   - name: name_7
+   - is_public: is_public_volume_type_required
+   - extra_specs: extra_specs_volume_type_required
+   - description: description_volume_type_required
+   - name: name_volume_type_required
    - id: volume_type_id_body
-   - os-volume-type-access:is_public: os-volume-type-access:is_public
+   - os-volume-type-access:is_public: is_public_volume_type_required
 
 Response Example
 ----------------

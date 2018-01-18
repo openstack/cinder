@@ -1,11 +1,11 @@
 {
     "volume_type": {
         "id": "6685584b-1eac-4da6-b5c3-555430cf68ff",
-        "name": "vol-type-001",
-        "description": "volume type 001",
+        "name": "volume-type-test",
+        "description": "default volume type",
         "is_public": true,
         "extra_specs": {
-            "capabilities": "gpu"
+            "volume_backend_name": "rbd"
         }
     }
 }

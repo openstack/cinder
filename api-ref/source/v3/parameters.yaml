@@ -897,12 +897,6 @@ description_14:
   in: body
   required: false
   type: string
-description_15:
-  description: |
-    The volume type description.
-  in: body
-  required: false
-  type: string
 description_16:
   description: |
     The group snapshot description.
@@ -967,6 +961,18 @@ description_group_false:
 description_group_true:
   description: |
     The group description.
+  in: body
+  required: true
+  type: string
+description_volume_type_optional:
+  description: |
+    The volume type description.
+  in: body
+  required: false
+  type: string
+description_volume_type_required:
+  description: |
+    The volume type description.
   in: body
   required: true
   type: string
@@ -1049,14 +1055,7 @@ extra_info:
   in: body
   required: false
   type: string
-extra_specs:
-  description: |
-    A set of key and value pairs that contains the
-    specifications for a volume type.
-  in: body
-  required: true
-  type: object
-extra_specs_1:
+extra_specs_volume_type_optional:
   description: |
     A key and value pair that contains additional
     specifications that are associated with the volume type. Examples
@@ -1064,6 +1063,13 @@ extra_specs_1:
     on the storage driver in use.
   in: body
   required: false
+  type: object
+extra_specs_volume_type_required:
+  description: |
+    A set of key and value pairs that contains the
+    specifications for a volume type.
+  in: body
+  required: true
   type: object
 fail_reason:
   description: |
@@ -1403,12 +1409,6 @@ is_incremental:
   in: body
   required: false
   type: boolean
-is_public:
-  description:
-    Whether the volume type is publicly visible.
-  in: body
-  required: false
-  type: boolean
 is_public_1:
   description:
     Whether the group is publicly visible.
@@ -1420,6 +1420,18 @@ is_public_2:
     Whether the group type is publicly visible.
   in: body
   required: false
+  type: boolean
+is_public_volume_type_optional:
+  description: |
+    Whether the volume type is publicly visible.
+  in: body
+  required: false
+  type: boolean
+is_public_volume_type_required:
+  description: |
+    Whether the volume type is publicly visible.
+  in: body
+  required: true
   type: boolean
 is_up:
   description: |
@@ -1834,12 +1846,6 @@ name_6:
   in: body
   required: false
   type: string
-name_7:
-  description: |
-    The name of the volume type.
-  in: body
-  required: true
-  type: string
 name_8:
   description: |
     The volume name.
@@ -1852,17 +1858,23 @@ name_9:
   in: body
   required: true
   type: string
-name_10:
-  description: |
-    The name of the volume type.
-  in: body
-  required: false
-  type: string
 name_optional:
   description: |
     The name of the Volume Backup.
   in: body
   required: false
+  type: string
+name_volume_type_optional:
+  description: |
+    The name of the volume type.
+  in: body
+  required: false
+  type: string
+name_volume_type_required:
+  description: |
+    The name of the volume type.
+  in: body
+  required: true
   type: string
 namespace:
   description: |
@@ -2053,12 +2065,6 @@ os-volume-replication:extended_status_1:
   in: body
   required: false
   type: string
-os-volume-type-access:is_public:
-  description: |
-    Make type accessible to the public.
-  in: body
-  required: false
-  type: boolean
 os-volume_upload_image:
   description: |
     The ``os-volume_upload_image`` action. This
