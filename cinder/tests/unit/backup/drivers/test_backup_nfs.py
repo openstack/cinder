@@ -143,6 +143,12 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                   }
         return db.backup_create(self.ctxt, backup)['id']
 
+    def _write_effective_compression_file(self, data_size):
+        """Ensure file contents can be effectively compressed."""
+        self.volume_file.seek(0)
+        self.volume_file.write(bytes([65] * data_size))
+        self.volume_file.seek(0)
+
     def setUp(self):
         super(BackupNFSSwiftBasedTestCase, self).setUp()
 
@@ -162,8 +168,10 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                          return_value=mock_remotefsclient)
         # Remove tempdir.
         self.addCleanup(shutil.rmtree, self.temp_dir)
+        self.size_volume_file = 0
         for _i in range(0, 32):
             self.volume_file.write(os.urandom(1024))
+            self.size_volume_file += 1024
 
     def test_backup_uncompressed(self):
         volume_id = fake.VOLUME_ID
@@ -179,7 +187,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='bz2')
         service = nfs.NFSBackupDriver(self.ctxt)
-        self.volume_file.seek(0)
+        self._write_effective_compression_file(self.size_volume_file)
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
@@ -188,7 +196,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='zlib')
         service = nfs.NFSBackupDriver(self.ctxt)
-        self.volume_file.seek(0)
+        self._write_effective_compression_file(self.size_volume_file)
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
@@ -569,10 +577,11 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
 
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='bz2')
-        self.flags(backup_file_size=(1024 * 3))
+        file_size = 1024 * 3
+        self.flags(backup_file_size=file_size)
         self.flags(backup_sha_block_size_bytes=1024)
         service = nfs.NFSBackupDriver(self.ctxt)
-        self.volume_file.seek(0)
+        self._write_effective_compression_file(file_size)
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
@@ -587,10 +596,11 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
 
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='zlib')
-        self.flags(backup_file_size=(1024 * 3))
+        file_size = 1024 * 3
+        self.flags(backup_file_size=file_size)
         self.flags(backup_sha_block_size_bytes=1024)
         service = nfs.NFSBackupDriver(self.ctxt)
-        self.volume_file.seek(0)
+        self._write_effective_compression_file(file_size)
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
