@@ -1,0 +1,9 @@
+{
+    "group_type": {
+        "id": "7270c56e-6354-4528-8e8b-f54dee2232c8",
+        "name": "group-type-test",
+        "description": "default group type",
+        "is_public": "true",
+        "group_specs": {}
+    }
+}
