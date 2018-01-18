@@ -79,7 +79,8 @@ swiftbackup_service_opts = [
     cfg.StrOpt('backup_swift_auth',
                default='per_user',
                choices=['per_user', 'single_user'],
-               help='Swift authentication mechanism.'),
+               help='Swift authentication mechanism (per_user or '
+               'single_user).'),
     cfg.StrOpt('backup_swift_auth_version',
                default='1',
                help='Swift authentication version. Specify "1" for auth 1.0'
