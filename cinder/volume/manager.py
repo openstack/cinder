@@ -697,6 +697,10 @@ class VolumeManager(manager.CleanableManager,
         2. Delete a migration volume
            If deleting the volume in a migration, we want to skip
            quotas but we need database updates for the volume.
+
+        3. Delete a temp volume for backup
+           If deleting the temp volume for backup, we want to skip
+           quotas but we need database updates for the volume.
       """
 
         context = context.elevated()
@@ -731,6 +735,14 @@ class VolumeManager(manager.CleanableManager,
                 reason=_("Unmanage and cascade delete options "
                          "are mutually exclusive."))
 
+        # To backup a snapshot or a 'in-use' volume, create a temp volume
+        # from the snapshot or in-use volume, and back it up.
+        # Get admin_metadata to detect temporary volume.
+        is_temp_vol = False
+        if volume.admin_metadata.get('temporary', 'False') == 'True':
+            is_temp_vol = True
+            LOG.info("Trying to delete temp volume: %s", volume.id)
+
         # The status 'deleting' is not included, because it only applies to
         # the source volume to be deleted after a migration. No quota
         # needs to be handled for it.
@@ -742,7 +754,8 @@ class VolumeManager(manager.CleanableManager,
         notification = "delete.start"
         if unmanage_only:
             notification = "unmanage.start"
-        self._notify_about_volume_usage(context, volume, notification)
+        if not is_temp_vol:
+            self._notify_about_volume_usage(context, volume, notification)
         try:
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
@@ -792,9 +805,10 @@ class VolumeManager(manager.CleanableManager,
                 self._clear_db(context, is_migrating_dest, volume,
                                new_status)
 
-        # If deleting source/destination volume in a migration, we should
-        # skip quotas.
-        if not is_migrating:
+        # If deleting source/destination volume in a migration or a temp
+        # volume for backup, we should skip quotas.
+        skip_quota = is_migrating or is_temp_vol
+        if not skip_quota:
             # Get reservations
             try:
                 reservations = None
@@ -816,9 +830,9 @@ class VolumeManager(manager.CleanableManager,
 
         volume.destroy()
 
-        # If deleting source/destination volume in a migration, we should
-        # skip quotas.
-        if not is_migrating:
+        # If deleting source/destination volume in a migration or a temp
+        # volume for backup, we should skip quotas.
+        if not skip_quota:
             notification = "delete.end"
             if unmanage_only:
                 notification = "unmanage.end"
