@@ -502,7 +502,7 @@ class VolumeTypesManageApiTest(test.TestCase):
             fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
         req.method = 'PUT'
 
-        self.assertRaises(exception.ValidationError,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._update, req,
                           DEFAULT_VOLUME_TYPE, body=body)
 
@@ -513,7 +513,7 @@ class VolumeTypesManageApiTest(test.TestCase):
             fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
         req.method = 'PUT'
 
-        self.assertRaises(exception.ValidationError,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._update, req,
                           DEFAULT_VOLUME_TYPE, body=body)
 
@@ -699,3 +699,38 @@ class VolumeTypesManageApiTest(test.TestCase):
         if expected_results.get('is_public') is not None:
             self.assertEqual(expected_results['is_public'],
                              results['volume_type']['is_public'])
+
+    def test_update_with_name_null(self):
+        body = {"volume_type": {"name": None}}
+        req = fakes.HTTPRequest.blank('/v2/%s/types/%s' % (
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+        req.method = 'PUT'
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._update, req,
+                          DEFAULT_VOLUME_TYPE, body=body)
+
+    @ddt.data({"volume_type": {"name": None, "description": "description"}},
+              {"volume_type": {"name": None, "is_public": True}},
+              {"volume_type": {"description": "description",
+                               "is_public": True}})
+    def test_update_volume_type(self, body):
+        req = fakes.HTTPRequest.blank('/v2/%s/types/%s' % (
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+        req.method = 'PUT'
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req.environ['cinder.context'] = ctxt
+        volume_type_1 = volume_types.create(ctxt, 'volume_type')
+        res = self.controller._update(req, volume_type_1.get('id'), body=body)
+
+        expected_name = body['volume_type'].get('name')
+        if expected_name is not None:
+            self.assertEqual(expected_name, res['volume_type']['name'])
+
+        expected_is_public = body['volume_type'].get('is_public')
+        if expected_is_public is not None:
+            self.assertEqual(expected_is_public,
+                             res['volume_type']['is_public'])
+
+        self.assertEqual(body['volume_type'].get('description'),
+                         res['volume_type']['description'])

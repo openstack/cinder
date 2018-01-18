@@ -357,6 +357,43 @@ class GroupTypesApiTest(test.TestCase):
             self.ctxt, type_id, 'group_type1', None,
             is_public=boolean_is_public)
 
+    def test_update_group_type_with_name_null(self):
+        req = fakes.HTTPRequest.blank(
+            '/v3/%s/types/%s' % (fake.PROJECT_ID, fake.GROUP_TYPE_ID),
+            version=mv.GROUP_TYPE)
+        req.environ['cinder.context'] = self.ctxt
+        body = {"group_type": {"name": None}}
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
+                          req, fake.GROUP_TYPE_ID, body=body)
+
+    @ddt.data({"group_type": {"name": None,
+                              "description": "description"}},
+              {"group_type": {"name": "test",
+                              "is_public": True}},
+              {"group_type": {"description": None,
+                              "is_public": True}})
+    def test_update_group_type(self, body):
+        req = fakes.HTTPRequest.blank(
+            '/v3/%s/types/%s' % (fake.PROJECT_ID, fake.GROUP_TYPE_ID),
+            version=mv.GROUP_TYPE)
+
+        group_type_1 = group_types.create(self.ctxt, 'group_type')
+
+        req.environ['cinder.context'] = self.ctxt
+        res = self.controller.update(req, group_type_1.get('id'), body=body)
+
+        expected_name = body['group_type'].get('name')
+        if expected_name is not None:
+            self.assertEqual(expected_name, res['group_type']['name'])
+
+        expected_is_public = body['group_type'].get('is_public')
+        if expected_is_public is not None:
+            self.assertEqual(expected_is_public,
+                             res['group_type']['is_public'])
+
+        self.assertEqual(body['group_type'].get('description'),
+                         res['group_type']['description'])
+
     def test_group_types_show(self):
         self.mock_object(group_types, 'get_group_type',
                          return_group_types_get_group_type)
