@@ -4,7 +4,7 @@ Ceph RADOS Block Device (RBD)
 
 If you use KVM or QEMU as your hypervisor, you can configure the Compute
 service to use `Ceph RADOS block devices
-(RBD) <http://ceph.com/ceph-storage/block-storage/>`__ for volumes.
+(RBD) <https://ceph.com/ceph-storage/block-storage/>`__ for volumes.
 
 Ceph is a massively scalable, open source, distributed storage system.
 It is comprised of an object store, block store, and a POSIX-compliant
@@ -72,7 +72,7 @@ Ceph exposes RADOS; you can access it through the following interfaces:
 *RADOS Gateway*
  OpenStack Object Storage and Amazon-S3 compatible
  RESTful interface (see `RADOS_Gateway
- <http://ceph.com/wiki/RADOS_Gateway>`__).
+ <https://ceph.com/wiki/RADOS_Gateway>`__).
 
 *librados*
  and its related C/C++ bindings
