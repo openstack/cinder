@@ -174,6 +174,8 @@ MAPPING = {
     'DellStorageCenterFCDriver':
     'cinder.volume.drivers.dell_emc.sc.storagecenter_fc.'
     'SCFCDriver',
+    'cinder.volume.drivers.windows.windows.WindowsDriver':
+    'cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver',
 }
 
 

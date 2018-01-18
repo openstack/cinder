@@ -33,20 +33,21 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.windows import db_fakes
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.windows import windows
+from cinder.volume.drivers.windows import iscsi as windows_iscsi
 
 
 @ddt.ddt
-class TestWindowsDriver(test.TestCase):
-    @mock.patch.object(windows, 'utilsfactory')
+class TestWindowsISCSIDriver(test.TestCase):
+    @mock.patch.object(windows_iscsi, 'utilsfactory')
     def setUp(self, mock_utilsfactory):
-        super(TestWindowsDriver, self).setUp()
+        super(TestWindowsISCSIDriver, self).setUp()
         self.configuration = conf.Configuration(None)
-        self.configuration.append_config_values(windows.windows_opts)
+        self.configuration.append_config_values(windows_iscsi.windows_opts)
         self.flags(windows_iscsi_lun_path='fake_iscsi_lun_path')
         self.flags(image_conversion_dir='fake_image_conversion_dir')
 
-        self._driver = windows.WindowsDriver(configuration=self.configuration)
+        self._driver = windows_iscsi.WindowsISCSIDriver(
+            configuration=self.configuration)
 
     @mock.patch.object(fileutils, 'ensure_tree')
     def test_do_setup(self, mock_ensure_tree):
@@ -56,7 +57,7 @@ class TestWindowsDriver(test.TestCase):
             [mock.call('fake_iscsi_lun_path'),
              mock.call('fake_image_conversion_dir')])
 
-    @mock.patch.object(windows.WindowsDriver, '_get_portals')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, '_get_portals')
     def test_check_for_setup_error(self, mock_get_portals):
         self._driver.check_for_setup_error()
 
@@ -93,8 +94,8 @@ class TestWindowsDriver(test.TestCase):
             fail_if_none_found=True)
 
     @ddt.data(True, False)
-    @mock.patch.object(windows.WindowsDriver, '_get_portals')
-    @mock.patch.object(windows.WindowsDriver, '_get_target_name')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, '_get_portals')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, '_get_target_name')
     def test_get_host_information(self, multipath, mock_get_target_name,
                                   mock_get_portals):
         tgt_utils = self._driver._tgt_utils
@@ -140,7 +141,8 @@ class TestWindowsDriver(test.TestCase):
         tgt_utils.get_target_information.assert_called_once_with(
             mock.sentinel.target_name)
 
-    @mock.patch.object(windows.WindowsDriver, '_get_host_information')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver,
+                       '_get_host_information')
     def test_initialize_connection(self, mock_get_host_info):
         tgt_utils = self._driver._tgt_utils
 
@@ -173,7 +175,7 @@ class TestWindowsDriver(test.TestCase):
         self._driver._tgt_utils.deassociate_initiator.assert_called_once_with(
             fake_initiator['initiator'], volume.provider_location)
 
-    @mock.patch.object(windows.WindowsDriver, 'local_path')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, 'local_path')
     def test_create_volume(self, mock_local_path):
         volume = fake_volume.fake_volume_obj(mock.sentinel.fake_context)
 
@@ -203,7 +205,7 @@ class TestWindowsDriver(test.TestCase):
         self.assertEqual(expected_disk_path, disk_path)
         mock_get_fmt.assert_called_once_with()
 
-    @mock.patch.object(windows.WindowsDriver, 'local_path')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, 'local_path')
     @mock.patch.object(fileutils, 'delete_if_exists')
     def test_delete_volume(self, mock_delete_if_exists, mock_local_path):
         volume = fake_volume.fake_volume_obj(mock.sentinel.fake_context)
@@ -227,7 +229,7 @@ class TestWindowsDriver(test.TestCase):
         self._driver._tgt_utils.create_snapshot.assert_called_once_with(
             snapshot.volume_name, snapshot.name)
 
-    @mock.patch.object(windows.WindowsDriver, 'local_path')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, 'local_path')
     def test_create_volume_from_snapshot(self, mock_local_path):
         volume = fake_volume.fake_volume_obj(context.get_admin_context())
         snapshot = fake_snapshot.fake_snapshot_obj(context.get_admin_context())
@@ -257,9 +259,9 @@ class TestWindowsDriver(test.TestCase):
         target_name = self._driver._get_target_name(volume)
         self.assertEqual(expected_target_name, target_name)
 
-    @mock.patch.object(windows.WindowsDriver, '_get_target_name')
-    @mock.patch.object(windows.utils, 'generate_username')
-    @mock.patch.object(windows.utils, 'generate_password')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, '_get_target_name')
+    @mock.patch.object(windows_iscsi.utils, 'generate_username')
+    @mock.patch.object(windows_iscsi.utils, 'generate_password')
     def test_create_export(self, mock_generate_password,
                            mock_generate_username,
                            mock_get_target_name):
@@ -298,7 +300,7 @@ class TestWindowsDriver(test.TestCase):
             provider_auth=expected_provider_auth)
         self.assertEqual(expected_vol_updates, vol_updates)
 
-    @mock.patch.object(windows.WindowsDriver, '_get_target_name')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, '_get_target_name')
     def test_remove_export(self, mock_get_target_name):
         volume = fake_volume.fake_volume_obj(mock.sentinel.fake_context)
 
@@ -308,7 +310,7 @@ class TestWindowsDriver(test.TestCase):
         self._driver._tgt_utils.delete_iscsi_target.assert_called_once_with(
             mock_get_target_name.return_value)
 
-    @mock.patch.object(windows.WindowsDriver, 'local_path')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, 'local_path')
     @mock.patch.object(image_utils, 'temporary_file')
     @mock.patch.object(image_utils, 'fetch_to_vhd')
     @mock.patch('os.unlink')
@@ -347,7 +349,7 @@ class TestWindowsDriver(test.TestCase):
             [mock.call(volume.name, enabled=False),
              mock.call(volume.name, enabled=True)])
 
-    @mock.patch.object(windows.uuidutils, 'generate_uuid')
+    @mock.patch.object(windows_iscsi.uuidutils, 'generate_uuid')
     def test_temporary_snapshot(self, mock_generate_uuid):
         tgt_utils = self._driver._tgt_utils
         mock_generate_uuid.return_value = mock.sentinel.snap_uuid
@@ -363,7 +365,7 @@ class TestWindowsDriver(test.TestCase):
         tgt_utils.delete_snapshot.assert_called_once_with(
             expected_snap_name)
 
-    @mock.patch.object(windows.WindowsDriver, '_temporary_snapshot')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, '_temporary_snapshot')
     @mock.patch.object(image_utils, 'upload_volume')
     @mock.patch.object(fileutils, 'delete_if_exists')
     def test_copy_volume_to_image(self, mock_delete_if_exists,
@@ -400,8 +402,8 @@ class TestWindowsDriver(test.TestCase):
         mock_delete_if_exists.assert_called_once_with(
             expected_tmp_vhd_path)
 
-    @mock.patch.object(windows.WindowsDriver, '_temporary_snapshot')
-    @mock.patch.object(windows.WindowsDriver, 'local_path')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, '_temporary_snapshot')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, 'local_path')
     def test_create_cloned_volume(self, mock_local_path,
                                   mock_tmp_snap):
         tgt_utils = self._driver._tgt_utils
@@ -444,7 +446,7 @@ class TestWindowsDriver(test.TestCase):
             mock.sentinel.drive)
         mock_splitdrive.assert_called_once_with('fake_iscsi_lun_path')
 
-    @mock.patch.object(windows.WindowsDriver, '_get_capacity_info')
+    @mock.patch.object(windows_iscsi.WindowsISCSIDriver, '_get_capacity_info')
     def test_update_volume_stats(self, mock_get_capacity_info):
         mock_get_capacity_info.return_value = (
             mock.sentinel.size_gb,

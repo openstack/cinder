@@ -7,7 +7,7 @@ Target service that can be used with OpenStack Block Storage in your stack.
 Being entirely a software solution, consider it in particular for mid-sized
 networks where the costs of a SAN might be excessive.
 
-The Windows Block Storage driver works with OpenStack Compute on any
+The Windows iSCSI Block Storage driver works with OpenStack Compute on any
 hypervisor. It includes snapshotting support and the ``boot from volume``
 feature.
 
@@ -95,7 +95,7 @@ configuration sample for using the Windows iSCSI Driver:
    [DEFAULT]
    auth_strategy = keystone
    volume_name_template = volume-%s
-   volume_driver = cinder.volume.drivers.windows.WindowsDriver
+   volume_driver = cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver
    glance_api_servers = IP_ADDRESS:9292
    rabbit_host = IP_ADDRESS
    rabbit_port = 5672
@@ -107,7 +107,7 @@ configuration sample for using the Windows iSCSI Driver:
    debug = True
 
 The following table contains a reference to the only driver specific
-option that will be used by the Block Storage Windows driver:
+option that will be used by the Block Storage Windows iSCSI driver:
 
 .. include:: ../../tables/cinder-windows.inc
 

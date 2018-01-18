@@ -31,6 +31,7 @@ from oslo_utils import uuidutils
 
 from cinder import exception
 from cinder.image import image_utils
+from cinder import interface
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume import utils
@@ -47,7 +48,8 @@ CONF = cfg.CONF
 CONF.register_opts(windows_opts, group=configuration.SHARED_CONF_GROUP)
 
 
-class WindowsDriver(driver.ISCSIDriver):
+@interface.volumedriver
+class WindowsISCSIDriver(driver.ISCSIDriver):
     """Executes volume driver commands on Windows Storage server."""
 
     VERSION = '1.0.0'
@@ -56,7 +58,7 @@ class WindowsDriver(driver.ISCSIDriver):
     CI_WIKI_NAME = "Microsoft_iSCSI_CI"
 
     def __init__(self, *args, **kwargs):
-        super(WindowsDriver, self).__init__(*args, **kwargs)
+        super(WindowsISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration = kwargs.get('configuration', None)
         if self.configuration:
             self.configuration.append_config_values(windows_opts)
