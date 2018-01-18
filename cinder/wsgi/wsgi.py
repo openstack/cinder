@@ -29,7 +29,9 @@ i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config
+from cinder.common import constants
 from cinder import rpc
+from cinder import service
 from cinder import version
 
 CONF = cfg.CONF
@@ -43,4 +45,6 @@ def initialize_application():
     config.set_middleware_defaults()
 
     rpc.init(CONF)
+    service.setup_profiler(constants.API_BINARY, CONF.host)
+
     return wsgi.Loader(CONF).load_app(name='osapi_volume')
