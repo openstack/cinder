@@ -120,6 +120,9 @@ class API(base.Base):
         volume_ref = self.db.volume_get(context, volume_id)
         if volume_ref['status'] != "available":
             raise exception.InvalidVolume(reason=_("status must be available"))
+        if volume_ref['encryption_key_id'] is not None:
+            raise exception.InvalidVolume(
+                reason=_("transferring encrypted volume is not supported"))
 
         volume_utils.notify_about_volume_usage(context, volume_ref,
                                                "transfer.create.start")
