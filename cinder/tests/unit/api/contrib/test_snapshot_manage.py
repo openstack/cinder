@@ -167,6 +167,29 @@ class SnapshotManageTest(test.TestCase):
         # 5th argument of args is metadata.
         self.assertIsNone(args[5])
 
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
+    @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
+    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    def test_manage_snapshot_ok_ref_as_string(self, mock_db,
+                                              mock_create_snapshot,
+                                              mock_rpcapi):
+
+        mock_db.return_value = fake_service.fake_service_obj(
+            self._admin_ctxt,
+            binary=constants.VOLUME_BINARY)
+
+        body = {'snapshot': {'volume_id': fake.VOLUME_ID,
+                             'ref': "string"}}
+
+        res = self._get_resp_post(body)
+        self.assertEqual(http_client.ACCEPTED, res.status_int, res)
+
+        # Check the volume_rpcapi.manage_existing_snapshot was called with
+        # correct arguments.
+        self.assertEqual(1, mock_rpcapi.call_count)
+        args = mock_rpcapi.call_args[0]
+        self.assertEqual(body['snapshot']['ref'], args[2])
+
     @mock.patch('cinder.objects.service.Service.is_up',
                 return_value=True,
                 new_callable=mock.PropertyMock)
