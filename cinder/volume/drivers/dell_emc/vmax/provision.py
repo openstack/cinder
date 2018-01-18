@@ -57,15 +57,22 @@ class VMAXProvision(object):
 
         @coordination.synchronized("emc-sg-{storage_group}")
         def do_create_storage_group(storage_group):
-            storagegroup = self.rest.create_storage_group(
-                array, storage_group, srp, slo, workload, extra_specs,
-                do_disable_compression)
+            # Check if storage group has been recently created
+            storagegroup = self.rest.get_storage_group(
+                array, storagegroup_name)
+            if storagegroup is None:
+                storagegroup = self.rest.create_storage_group(
+                    array, storage_group, srp, slo, workload, extra_specs,
+                    do_disable_compression)
 
-            LOG.debug("Create storage group took: %(delta)s H:MM:SS.",
-                      {'delta': self.utils.get_time_delta(start_time,
-                                                          time.time())})
-            LOG.info("Storage group %(sg)s created successfully.",
-                     {'sg': storagegroup_name})
+                LOG.debug("Create storage group took: %(delta)s H:MM:SS.",
+                          {'delta': self.utils.get_time_delta(start_time,
+                                                              time.time())})
+                LOG.info("Storage group %(sg)s created successfully.",
+                         {'sg': storagegroup_name})
+            else:
+                LOG.info("Storage group %(sg)s already exists.",
+                         {'sg': storagegroup_name})
             return storagegroup
 
         return do_create_storage_group(storagegroup_name)
