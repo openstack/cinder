@@ -40,4 +40,5 @@ The following links describe how to install the Cinder Block Storage Service:
    index-obs
    index-rdo
    index-ubuntu
+   index-windows
 

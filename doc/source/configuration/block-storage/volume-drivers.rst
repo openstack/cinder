@@ -69,6 +69,7 @@ Driver Configuration Reference
    drivers/vzstorage-driver
    drivers/vmware-vmdk-driver
    drivers/windows-iscsi-volume-driver
+   drivers/windows-smb-volume-driver
    drivers/zadara-volume-driver
    drivers/zfssa-iscsi-driver
    drivers/zfssa-nfs-driver
