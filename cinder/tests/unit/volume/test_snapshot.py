@@ -218,6 +218,26 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
                           "fake_description", False, {}, None,
                           commit_quota=False)
 
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_create_snapshot_in_db_invalid_metadata(self, mock_get):
+        test_volume = tests_utils.create_volume(
+            self.context,
+            status='available',
+            host=CONF.host)
+        mock_get.return_value = test_volume
+        volume_api = cinder.volume.api.API()
+
+        with mock.patch.object(QUOTAS, 'add_volume_type_opts'),\
+            mock.patch.object(QUOTAS, 'reserve') as mock_reserve,\
+                mock.patch.object(QUOTAS, 'commit') as mock_commit:
+            self.assertRaises(exception.InvalidInput,
+                              volume_api.create_snapshot_in_db,
+                              self.context, test_volume, "fake_snapshot_name",
+                              "fake_description", False, "fake_metadata", None,
+                              commit_quota=True)
+            mock_reserve.assert_not_called()
+            mock_commit.assert_not_called()
+
     def test_create_snapshot_failed_maintenance(self):
         """Test exception handling when create snapshot in maintenance."""
         test_volume = tests_utils.create_volume(
