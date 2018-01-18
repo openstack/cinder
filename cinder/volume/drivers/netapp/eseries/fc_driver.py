@@ -122,3 +122,9 @@ class NetAppEseriesFibreChannelDriver(driver.BaseVD,
                                          source_cg=None, source_vols=None):
         return self.library.create_consistencygroup_from_src(
             group, volumes, cgsnapshot, snapshots, source_cg, source_vols)
+
+    def create_group(self, context, group):
+        return self.library.create_consistencygroup(group)
+
+    def delete_group(self, context, group, volumes):
+        return self.library.delete_consistencygroup(group, volumes)
