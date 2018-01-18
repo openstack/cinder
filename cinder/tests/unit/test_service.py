@@ -588,3 +588,61 @@ class OSCompatibilityTestCase(test.TestCase):
 
     def test_process_launcher_on_linux(self):
         self._test_service_launcher('posix')
+
+
+class WindowsProcessLauncherTestCase(test.TestCase):
+    @mock.patch.object(service, 'os_win_utilsfactory', create=True)
+    @mock.patch('oslo_service.service.SignalHandler')
+    def setUp(self, mock_signal_handler_cls, mock_utilsfactory):
+        super(WindowsProcessLauncherTestCase, self).setUp()
+
+        self._signal_handler = mock_signal_handler_cls.return_value
+        self._processutils = mock_utilsfactory.get_processutils.return_value
+
+        self._launcher = service.WindowsProcessLauncher()
+
+    def test_setup_signal_handlers(self):
+        exp_signal_map = {'SIGINT': self._launcher._terminate,
+                          'SIGTERM': self._launcher._terminate}
+        self._signal_handler.add_handler.assert_has_calls(
+            [mock.call(signal, handler)
+             for signal, handler in exp_signal_map.items()],
+            any_order=True)
+
+    @mock.patch('sys.exit')
+    def test_terminate_handler(self, mock_exit):
+        self._launcher._terminate(mock.sentinel.signum, mock.sentinel.frame)
+        mock_exit.assert_called_once_with(1)
+
+    @mock.patch('subprocess.Popen')
+    def test_launch(self, mock_popen):
+        mock_workers = [mock.Mock(), mock.Mock(), mock.Mock()]
+
+        mock_popen.side_effect = mock_workers
+        self._processutils.kill_process_on_job_close.side_effect = [
+            exception.CinderException, None, None]
+
+        # We expect the first process to be cleaned up after failing
+        # to setup a job object.
+        self.assertRaises(exception.CinderException,
+                          self._launcher.add_process,
+                          mock.sentinel.cmd1)
+        mock_workers[0].kill.assert_called_once_with()
+
+        self._launcher.add_process(mock.sentinel.cmd2)
+        self._launcher.add_process(mock.sentinel.cmd3)
+
+        mock_popen.assert_has_calls(
+            [mock.call(cmd)
+             for cmd in [mock.sentinel.cmd1,
+                         mock.sentinel.cmd2,
+                         mock.sentinel.cmd3]])
+        self._processutils.kill_process_on_job_close.assert_has_calls(
+            [mock.call(worker.pid) for worker in mock_workers[1:]])
+
+        self._launcher.wait()
+
+        wait_processes = self._processutils.wait_for_multiple_processes
+        wait_processes.assert_called_once_with(
+            [worker.pid for worker in mock_workers[1:]],
+            wait_all=True)

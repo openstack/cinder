@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Multiple backends may now be enabled within the same Cinder Volume service
+    on Windows by using the ``enabled_backends`` config option.
