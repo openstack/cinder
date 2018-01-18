@@ -3,6 +3,8 @@
 Group types
 ===========
 
+To create a generic volume group, you must specify a group type.
+
 
 Update group type
 ~~~~~~~~~~~~~~~~~
@@ -10,8 +12,6 @@ Update group type
 .. rest_method::  PUT /v3/{project_id}/group_types/{group_type_id}
 
 Updates a group type.
-
-To create a generic volume group, you must specify a group type.
 
 Normal response codes: 200
 
@@ -28,8 +28,8 @@ Request
    - group_type_id: group_type_id_1
    - group_type: group_type
    - name: name_16
-   - description: description_12
-   - is_public: is_public_2
+   - description: description_group_type_optional
+   - is_public: is_public_group_type_optional
 
 Request Example
 ---------------
@@ -45,9 +45,9 @@ Response Parameters
 
    - group_type: group_type
    - id: group_type_id_2
-   - is_public: is_public_1
+   - is_public: is_public_group_type_required
    - group_specs: group_specs
-   - description: description_12
+   - description: description_group_type_required
    - name: name_16
 
 Response Example
@@ -86,15 +86,55 @@ Response Parameters
    - group_type: group_type
    - id: group_type_id_2
    - name: name_16
-   - is_public: is_public_1
+   - is_public: is_public_group_type_required
    - group_specs: group_specs
-   - description: description_12
+   - description: description_group_type_required
 
 
 Response Example
 ----------------
 
 .. literalinclude:: ./samples/group-type-show-response.json
+   :language: javascript
+
+
+Show default group type details
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  GET /v3/{project_id}/group_types/default
+
+Shows details for the default group type if configured.
+
+
+Normal response codes: 200
+
+Error response codes: itemNotFound(404)
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - group_type: group_type
+   - id: group_type_id_2
+   - name: name_16
+   - is_public: is_public_group_type_required
+   - group_specs: group_specs
+   - description: description_group_type_required
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/group-type-default-response.json
    :language: javascript
 
 
@@ -149,7 +189,7 @@ Response Parameters
 
    - group_types: group_types
    - id: group_type_id_2
-   - group_specs: group_specs_2
+   - group_specs: group_specs
    - name: name_16
 
 Response Example
@@ -166,8 +206,6 @@ Create group type
 
 Creates a group type.
 
-To create a generic volume group, you must specify a group type.
-
 
 Normal response codes: 202
 
@@ -183,8 +221,8 @@ Request
    - project_id: project_id_path
    - group_type: group_type
    - name: name_16
-   - description: description_12
-   - is_public: is_public_2
+   - description: description_group_type_optional
+   - is_public: is_public_group_type_optional
    - group_specs: group_specs
 
 Request Example
@@ -201,9 +239,9 @@ Response Parameters
 
    - group_type: group_type
    - id: group_type_id_2
-   - is_public: is_public_1
+   - is_public: is_public_group_type_required
    - group_specs: group_specs
-   - description: description_12
+   - description: description_group_type_required
    - name: name_16
 
 
