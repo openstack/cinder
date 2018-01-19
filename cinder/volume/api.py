@@ -349,7 +349,8 @@ class API(base.Base):
                 # Refresh the object here, otherwise things ain't right
                 vref = objects.Volume.get_by_id(
                     context, vref['id'])
-                vref.multiattach = self._is_multiattach(volume_type)
+                vref.multiattach = (self._is_multiattach(volume_type) or
+                                    multiattach)
                 vref.save()
                 LOG.info("Create volume request issued successfully.",
                          resource=vref)
