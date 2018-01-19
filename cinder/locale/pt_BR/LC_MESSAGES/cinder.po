@@ -9,16 +9,17 @@
 # Rodrigo Felix de Almeida <rodrigofelixdealmeida@gmail.com>, 2014
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 # Marcio <marciofoz@gmail.com>, 2017. #zanata
+# Rodrigo Loures <rmoraesloures@gmail.com>, 2018. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 10.0.7.dev4\n"
+"Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-10-07 03:21+0000\n"
+"POT-Creation-Date: 2017-12-29 00:34+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2017-03-15 07:37+0000\n"
-"Last-Translator: Marcio <marciofoz@gmail.com>\n"
+"PO-Revision-Date: 2018-01-18 09:05+0000\n"
+"Last-Translator: Rodrigo Loures <rmoraesloures@gmail.com>\n"
 "Language: pt-BR\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -133,6 +134,12 @@ msgid "%(service)s Service is not %(status)s on storage appliance: %(host)s"
 msgstr ""
 "O Serviço %(service)s não é %(status)s no dispositivo de armazenamento: "
 "%(host)s"
+
+#, python-format
+msgid ""
+"%(type)s with id %(id)s is already being cleaned up or another host has "
+"taken over it."
+msgstr "%(type)s com id %(id)s já está sendo limpo ou outro host já assumiu."
 
 #, python-format
 msgid "%(value_name)s must be <= %(max_value)d"
@@ -971,6 +978,12 @@ msgstr ""
 "Não foi possível criar especificações de criptografia. Tipo de volume em uso."
 
 #, python-format
+msgid "Cannot create group_type with name %(name)s and specs %(group_specs)s"
+msgstr ""
+"Não foi possível criar o Tipo de Grupo com o nome %(name)s e especificações "
+"%(group_specs)s"
+
+#, python-format
 msgid ""
 "Cannot create image of disk format: %s. Only vmdk disk format is accepted."
 msgstr ""
@@ -1126,6 +1139,10 @@ msgid "Cannot get the portgroup from the masking view."
 msgstr ""
 "Não é possível obter o grupo de portas a partir da visualização de máscara."
 
+#, python-format
+msgid "Cannot perform %(action)s during system upgrade."
+msgstr "Não foi possível executar %(action)s durante a atualização do sistema."
+
 msgid "Cannot ping DRBDmanage backend"
 msgstr "Não é possível executar ping do backend do DRBDmanage"
 
@@ -1206,6 +1223,10 @@ msgstr ""
 "uso."
 
 #, python-format
+msgid "Cannot update group_type %(id)s"
+msgstr "Não foi possível atualizar o Tipo de Grupo %(id)s"
+
+#, python-format
 msgid "Cannot update volume_type %(id)s"
 msgstr "Não é possível atualizar volume_type %(id)s"
 
@@ -1280,6 +1301,18 @@ msgid ""
 msgstr ""
 "O tipo de clone '%(clone_type)s' é inválido; os valores válidos são: "
 "'%(full_clone)s' e '%(linked_clone)s'."
+
+#, python-format
+msgid "Cluster %(id)s could not be found."
+msgstr "Cluster %(id)s não pode ser encontrado."
+
+#, python-format
+msgid "Cluster %(id)s still has hosts."
+msgstr "Cluster %(id)s ainda possui hosts."
+
+#, python-format
+msgid "Cluster %(name)s already exists."
+msgstr "Cluster %(name)s já existe."
 
 msgid ""
 "Cluster is not formatted. You should probably perform \"dog cluster format\"."
@@ -1796,6 +1829,10 @@ msgstr ""
 "replication_device %s de erro de configuração de driver Dell Cinder não "
 "localizada"
 
+#, python-format
+msgid "Dell driver failure: %(reason)s"
+msgstr "Falha no driver Dell: %(reason)s"
+
 msgid "Describe-resource is admin only functionality"
 msgstr "O Descrever-recurso é uma funcionalidade apenas administrativa"
 
@@ -1819,6 +1856,9 @@ msgstr "Remova o volume da instância e, em seguida, tente novamente."
 #, python-format
 msgid "Detected more than one volume with name %(vol_name)s"
 msgstr "Detectado mais de um volume com o nome %(vol_name)s"
+
+msgid "Device or resource is busy."
+msgstr "O dispositivo ou recurso está ocupado."
 
 #, python-format
 msgid "Did not find expected column in %(fun)s: %(hdr)s."
@@ -4166,12 +4206,74 @@ msgid "Got bad path information from DRBDmanage! (%s)"
 msgstr "Informações de caminho inválido obtido do DRBDmanage! (%s)"
 
 #, python-format
+msgid "Group %(group_id)s could not be found."
+msgstr "O Grupo %(group_id)s não pode ser encontrado."
+
+#, python-format
 msgid "Group %s not found."
 msgstr "Grupo %s não encontrado."
 
 #, python-format
 msgid "Group '%s' not found."
 msgstr "Grupo '%s' não encontrado."
+
+#, python-format
+msgid ""
+"Group Type %(group_type_id)s deletion is not allowed with groups present "
+"with the type."
+msgstr ""
+"Não é possível excluir o Tipo de Grupo %(group_type_id)s com grupos que "
+"ainda possuem esse tipo."
+
+#, python-format
+msgid "Group Type %(group_type_id)s has no specs with key %(group_specs_key)s."
+msgstr ""
+"Tipo de Grupo %(group_type_id)s não possui especificações com a chave  "
+"%(group_specs_key)s."
+
+#, python-format
+msgid "Group Type %(id)s already exists."
+msgstr "Tipo de Grupo %(id)s já existe."
+
+#, python-format
+msgid "Group type %(group_type_id)s could not be found."
+msgstr "Tipo de grupo %(group_type_id)s não pode ser encontrado."
+
+#, python-format
+msgid ""
+"Group type access for %(group_type_id)s / %(project_id)s combination already "
+"exists."
+msgstr ""
+"Acesso de Tipo de Grupo para a combinação %(group_type_id)s / %(project_id)s "
+"já existe."
+
+#, python-format
+msgid ""
+"Group type access not found for %(group_type_id)s / %(project_id)s "
+"combination."
+msgstr ""
+"Acesso de tipo de grupo não encontrado para a combinação %(group_type_id)s / "
+"%(project_id)s."
+
+#, python-format
+msgid "Group type encryption for type %(type_id)s already exists."
+msgstr "Criptografia do tipo de Grupo para o tipo %(type_id)s já existe."
+
+#, python-format
+msgid "Group type encryption for type %(type_id)s does not exist."
+msgstr "Criptografia do tipo de Grupo para o tipo %(type_id)s não existe."
+
+#, python-format
+msgid "Group type with name %(group_type_name)s could not be found."
+msgstr "Tipo de grupo com o nome %(group_type_name)s não pode ser encontrado."
+
+#, python-format
+msgid ""
+"Group volume type mapping for %(group_id)s / %(volume_type_id)s combination "
+"already exists."
+msgstr ""
+"O mapeamento de tipo de volume do grupo para a combinação %(group_id)s / "
+"%(volume_type_id)s já existe."
 
 msgid "HBSD error occurs."
 msgstr "Erro HBSD ocorreu."
@@ -4380,6 +4482,14 @@ msgstr ""
 "ConsistencyGroup inválido: Nenhum host para criar grupo de consistências"
 
 #, python-format
+msgid "Invalid Group Status: %(reason)s"
+msgstr "Status do Grupo inválido: %(reason)s"
+
+#, python-format
+msgid "Invalid Group: %(reason)s"
+msgstr "Grupo inválido: %(reason)s"
+
+#, python-format
 msgid ""
 "Invalid HPELeftHand API version found: %(found)s. Version %(minimum)s or "
 "greater required for manage/unmanage support."
@@ -4475,6 +4585,10 @@ msgstr "Tipo de disco inválido: %(disk_type)s."
 #, python-format
 msgid "Invalid disk type: %s."
 msgstr "Tipo de disco inválido: %s."
+
+#, python-format
+msgid "Invalid group type: %(reason)s"
+msgstr "Tipo de grupo inválido: %(reason)s"
 
 #, python-format
 msgid "Invalid host: %(reason)s"
@@ -4947,6 +5061,10 @@ msgid "Maximum number of backups allowed (%(allowed)d) exceeded"
 msgstr "Número máximo de backups permitidos (%(allowed)d) excedido"
 
 #, python-format
+msgid "Maximum number of groups allowed (%(allowed)d) exceeded"
+msgstr "Foi excedido o número máximo de grupos permitido (%(allowed)d)"
+
+#, python-format
 msgid "Maximum number of snapshots allowed (%(allowed)d) exceeded"
 msgstr ""
 "Número máximo de capturas instantâneas permitido (%(allowed)d) excedido"
@@ -4962,6 +5080,10 @@ msgstr ""
 #, python-format
 msgid "May specify only one of %s"
 msgstr "Só é possível especificar um de %s"
+
+#, python-format
+msgid "Message %(message_id)s could not be found."
+msgstr "Mensagem %(message_id)s não pode ser encontrada."
 
 msgid "Metadata backup already exists for this volume"
 msgstr "Backup de metadados já existe para esse volume"
@@ -4995,6 +5117,10 @@ msgstr "Corpo da solicitação ausente"
 
 msgid "Missing request body."
 msgstr "Corpo da solicitação ausente."
+
+#, python-format
+msgid "Missing required element '%(element)s' in request body."
+msgstr "Ausência do elemento solicitado '%(element)s' no corpo da requisição."
 
 #, python-format
 msgid "Missing required element '%s' in request body"
@@ -5366,6 +5492,10 @@ msgstr ""
 "está ativada, o que requer que todos os IDs de LUN sejam exclusivos em todo "
 "o grupo de hosts."
 
+#, python-format
+msgid "No valid backend was found. %(reason)s"
+msgstr "Nenhum backend válido foi encontrado. %(reason)s"
+
 msgid "No valid ports."
 msgstr "Nenhuma porta válida."
 
@@ -5561,6 +5691,10 @@ msgstr "O nome dos conjuntos não está configurado."
 #, python-format
 msgid "Primary copy status: %(status)s and synchronized: %(sync)s."
 msgstr "Status da cópia primária: %(status)s e sincronizada: %(sync)s."
+
+#, python-format
+msgid "Programming error in Cinder: %(reason)s"
+msgstr "Erro de programação no Cinder: %(reason)s"
 
 msgid "Project ID"
 msgstr "ID do Projeto"
@@ -5864,6 +5998,14 @@ msgstr ""
 "O volume solicitado ou a captura instantânea excede a cota %(name)s "
 "permitida. Solicitados %(requested)sG, a cota é %(quota)sG e %(consumed)sG "
 "foi consumido."
+
+#, python-format
+msgid ""
+"Requested volume size %(size)dG is larger than maximum allowed limit "
+"%(limit)dG."
+msgstr ""
+"O tamanho %(size)d requerido para o volume é maior que o máximo permitido "
+"%(limit)d."
 
 msgid "Required configuration not found"
 msgstr "Configuração necessária não localizada"
@@ -6570,6 +6712,10 @@ msgstr ""
 "A captura instantânea não pode ser criada quando o volume está no modo de "
 "manutenção."
 
+#, python-format
+msgid "The snapshot is unavailable: %(data)s"
+msgstr "O snapshot está indisponível: %(data)s"
+
 msgid "The source volume for this WebDAV operation not found."
 msgstr "O volume de origem para esta operação WebDAV não foi localizado."
 
@@ -6966,6 +7112,10 @@ msgid "Unable to create replica clone for volume %s."
 msgstr "Não é possível criar clone de réplica para o volume %s."
 
 #, python-format
+msgid "Unable to create server object for initiator %(name)s"
+msgstr "Não é possível criar o objeto do servidor para o iniciador %(name)s"
+
+#, python-format
 msgid "Unable to create volume %(name)s from %(snap)s."
 msgstr "Não é possível criar o volume %(name)s a partir do %(snap)s."
 
@@ -7050,6 +7200,12 @@ msgid ""
 msgstr ""
 "Não é possível executar failover para \"padrão', isso pode ser feito somente "
 "após um failover ter sido concluído."
+
+#, python-format
+msgid "Unable to failover to replication target: %(reason)s)."
+msgstr ""
+"Não foi possível executar o failover para o destino de replicação:  "
+"%(reason)s)."
 
 msgid "Unable to fetch connection information from backend."
 msgstr "Não foi possível buscar informações de conexão do backend."
@@ -7624,6 +7780,10 @@ msgstr ""
 #, python-format
 msgid "Volume %(name)s was created in VNX, but in %(state)s state."
 msgstr "O volume %(name)s foi criado no VNX, mas no estado %(state)s."
+
+#, python-format
+msgid "Volume %(name)s was not deactivated in time."
+msgstr "O Volume %(name)s não foi desativado no tempo."
 
 #, python-format
 msgid "Volume %(vol)s could not be created in pool %(pool)s."
