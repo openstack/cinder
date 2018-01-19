@@ -264,3 +264,19 @@ class AttachmentManagerTestCase(test.TestCase):
                           self.user_context,
                           vref,
                           fake.UUID2)
+
+    def test_attachment_create_readonly_volume(self):
+        """Test attachment_create on a readonly volume."""
+        volume_params = {'status': 'available'}
+
+        vref = tests_utils.create_volume(self.context, **volume_params)
+        self.volume_api.update_readonly_flag(self.context, vref, True)
+        aref = self.volume_api.attachment_create(self.context,
+                                                 vref,
+                                                 fake.UUID2)
+        self.assertEqual(fake.UUID2, aref.instance_uuid)
+        self.assertIsNone(aref.attach_time)
+        self.assertEqual('reserved', aref.attach_status)
+        self.assertEqual('ro', aref.attach_mode)
+        self.assertEqual(vref.id, aref.volume_id)
+        self.assertEqual({}, aref.connection_info)

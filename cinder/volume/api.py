@@ -2119,6 +2119,10 @@ class API(base.Base):
                                                      connector,
                                                      attachment_ref.id))
         attachment_ref.connection_info = connection_info
+        if self.db.volume_admin_metadata_get(
+                ctxt.elevated(),
+                volume_ref['id']).get('readonly', False):
+            attachment_ref.attach_mode = 'ro'
         attachment_ref.save()
         return attachment_ref
 
