@@ -532,7 +532,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                                   mock_delete_snapshot,
                                   mock_create_snapshot,
                                   mock_validate_state,
-                                  mock_extend_volme,
+                                  mock_extend_volume,
                                   mock_copy_volume_image,
                                   mock_snapshots_exist,
                                   mock_local_path,
@@ -596,8 +596,8 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                 mock_local_path.return_value)
             mock_local_path.assert_has_calls(
                 [mock.call(src_vref), mock.call(volume_ref)])
-            mock_extend_volme.assert_called_once_with(volume_ref,
-                                                      volume.size)
+            mock_extend_volume.assert_called_once_with(volume_ref,
+                                                       volume.size)
 
     @mock.patch('shutil.copyfile')
     @mock.patch.object(remotefs.RemoteFSSnapDriver, '_set_rw_permissions')
