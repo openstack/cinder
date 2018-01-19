@@ -114,12 +114,13 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
             nfs_mount_point_base=self.base,
             nfs_mount_options=opts)
 
+        supports_auto_mosr = kwargs.get('supports_auto_mosr', False)
         self._sparse_copy_volume_data = True
         self.reserved_percentage = self.configuration.reserved_percentage
         self.max_over_subscription_ratio = (
             vutils.get_max_over_subscription_ratio(
                 self.configuration.max_over_subscription_ratio,
-                supports_auto=False))
+                supports_auto=supports_auto_mosr))
 
     def initialize_connection(self, volume, connector):
 

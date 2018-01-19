@@ -74,6 +74,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         self._execute = None
         self._context = None
         self.app_version = kwargs.pop("app_version", "unknown")
+        kwargs['supports_auto_mosr'] = True
         super(NetAppNfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(na_opts.netapp_connection_opts)
         self.configuration.append_config_values(na_opts.netapp_basicauth_opts)
@@ -831,20 +832,6 @@ class NetAppNfsDriver(driver.ManageableVD,
     def _is_share_clone_compatible(self, volume, share):
         """Checks if share is compatible with volume to host its clone."""
         raise NotImplementedError()
-
-    def _share_has_space_for_clone(self, share, size_in_gib, thin=True):
-        """Is there space on the share for a clone given the original size?"""
-        requested_size = size_in_gib * units.Gi
-
-        total_size, total_available = self._get_capacity_info(share)
-
-        reserved_ratio = self.reserved_percentage / 100.0
-        reserved = int(round(total_size * reserved_ratio))
-        available = max(0, total_available - reserved)
-        if thin:
-            available = available * self.max_over_subscription_ratio
-
-        return available >= requested_size
 
     def _check_share_can_hold_size(self, share, size):
         """Checks if volume can hold image with size."""

@@ -385,16 +385,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
     def _is_share_clone_compatible(self, volume, share):
         """Checks if share is compatible with volume to host its clone."""
         flexvol_name = self._get_flexvol_name_for_share(share)
-        thin = self._is_volume_thin_provisioned(flexvol_name)
-        return (
-            self._share_has_space_for_clone(share, volume['size'], thin) and
-            self._is_share_vol_type_match(volume, share, flexvol_name)
-        )
-
-    def _is_volume_thin_provisioned(self, flexvol_name):
-        """Checks if a flexvol is thin (sparse file or thin provisioned)."""
-        ssc_info = self.ssc_library.get_ssc_for_flexvol(flexvol_name)
-        return ssc_info.get('thin_provisioning_support') or False
+        return self._is_share_vol_type_match(volume, share, flexvol_name)
 
     def _is_share_vol_type_match(self, volume, share, flexvol_name):
         """Checks if share matches volume type."""

@@ -117,7 +117,7 @@ class NetAppBlockStorageLibrary(object):
         self.max_over_subscription_ratio = (
             volume_utils.get_max_over_subscription_ratio(
                 self.configuration.max_over_subscription_ratio,
-                supports_auto=False))
+                supports_auto=True))
         self.reserved_percentage = self._get_reserved_percentage()
         self.loopingcalls = loopingcalls.LoopingCalls()
 

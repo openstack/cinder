@@ -671,64 +671,6 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           fake.NFS_VOLUME,
                           fake.NFS_SHARE)
 
-    @ddt.data(
-        {'size': 12, 'thin': False, 'over': 1.0, 'res': 0, 'expected': True},
-        {'size': 12, 'thin': False, 'over': 1.0, 'res': 5, 'expected': False},
-        {'size': 12, 'thin': True, 'over': 1.0, 'res': 5, 'expected': False},
-        {'size': 12, 'thin': True, 'over': 1.1, 'res': 5, 'expected': True},
-        {'size': 240, 'thin': True, 'over': 20.0, 'res': 0, 'expected': True},
-        {'size': 241, 'thin': True, 'over': 20.0, 'res': 0, 'expected': False},
-    )
-    @ddt.unpack
-    def test_share_has_space_for_clone(self, size, thin, over, res, expected):
-        total_bytes = 20 * units.Gi
-        available_bytes = 12 * units.Gi
-
-        with mock.patch.object(self.driver,
-                               '_get_capacity_info',
-                               return_value=(
-                                   total_bytes, available_bytes)):
-            with mock.patch.object(self.driver,
-                                   'max_over_subscription_ratio',
-                                   over):
-                with mock.patch.object(self.driver,
-                                       'reserved_percentage',
-                                       res):
-                    result = self.driver._share_has_space_for_clone(
-                        fake.NFS_SHARE,
-                        size,
-                        thin=thin)
-        self.assertEqual(expected, result)
-
-    @ddt.data(
-        {'size': 12, 'thin': False, 'over': 1.0, 'res': 0, 'expected': True},
-        {'size': 12, 'thin': False, 'over': 1.0, 'res': 5, 'expected': False},
-        {'size': 12, 'thin': True, 'over': 1.0, 'res': 5, 'expected': False},
-        {'size': 12, 'thin': True, 'over': 1.1, 'res': 5, 'expected': True},
-        {'size': 240, 'thin': True, 'over': 20.0, 'res': 0, 'expected': True},
-        {'size': 241, 'thin': True, 'over': 20.0, 'res': 0, 'expected': False},
-    )
-    @ddt.unpack
-    @mock.patch.object(nfs_base.NetAppNfsDriver, '_get_capacity_info')
-    def test_share_has_space_for_clone2(self,
-                                        mock_get_capacity,
-                                        size, thin, over, res, expected):
-        total_bytes = 20 * units.Gi
-        available_bytes = 12 * units.Gi
-        mock_get_capacity.return_value = (total_bytes, available_bytes)
-
-        with mock.patch.object(self.driver,
-                               'max_over_subscription_ratio',
-                               over):
-            with mock.patch.object(self.driver,
-                                   'reserved_percentage',
-                                   res):
-                result = self.driver._share_has_space_for_clone(
-                    fake.NFS_SHARE,
-                    size,
-                    thin=thin)
-        self.assertEqual(expected, result)
-
     def test_get_share_mount_and_vol_from_vol_ref(self):
         self.mock_object(na_utils, 'resolve_hostname',
                          return_value='10.12.142.11')
