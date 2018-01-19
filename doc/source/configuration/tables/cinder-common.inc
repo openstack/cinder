@@ -156,7 +156,7 @@
      - (String) DEPRECATED: The path to respond to healtcheck requests on.
    * - **[key_manager]**
      -
-   * - ``backend`` = ``castellan.key_manager.barbican_key_manager.BarbicanKeyManager``
+   * - ``backend`` = ``barbican``
      - (String) The full class name of the key manager API class
    * - ``fixed_key`` = ``None``
      - (String) Fixed key returned by key manager, specified in hex
