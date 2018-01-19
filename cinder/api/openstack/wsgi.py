@@ -1250,18 +1250,19 @@ class Controller(object):
             raise webob.exc.HTTPBadRequest(explanation=fail_msg)
 
     @staticmethod
-    def validate_name_and_description(body):
+    def validate_name_and_description(body, check_length=True):
         for attribute in ['name', 'description',
                           'display_name', 'display_description']:
             value = body.get(attribute)
             if value is not None:
                 if isinstance(value, six.string_types):
                     body[attribute] = value.strip()
-                try:
-                    utils.check_string_length(body[attribute], attribute,
-                                              min_length=0, max_length=255)
-                except exception.InvalidInput as error:
-                    raise webob.exc.HTTPBadRequest(explanation=error.msg)
+                if check_length:
+                    try:
+                        utils.check_string_length(body[attribute], attribute,
+                                                  min_length=0, max_length=255)
+                    except exception.InvalidInput as error:
+                        raise webob.exc.HTTPBadRequest(explanation=error.msg)
 
     @staticmethod
     def validate_string_length(value, entity_name, min_length=0,
