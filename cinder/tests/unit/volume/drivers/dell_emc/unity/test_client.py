@@ -177,6 +177,12 @@ class MockResource(object):
             raise ex.UnityLunNameInUseError
         return MockResource(_id=name, name=name)
 
+    def get_snap(self, name):
+        return MockResource(_id=name, name=name)
+
+    def restore(self, delete_backup):
+        return MockResource(_id='snap_1', name="internal_snap")
+
 
 class MockResourceList(object):
     def __init__(self, names=None, ids=None):
@@ -521,3 +527,7 @@ class ClientTest(unittest.TestCase):
 
     def test_get_pool_name(self):
         self.assertEqual('Pool0', self.client.get_pool_name('lun_0'))
+
+    def test_restore_snapshot(self):
+        back_snap = self.client.restore_snapshot('snap1')
+        self.assertEqual("internal_snap", back_snap.name)

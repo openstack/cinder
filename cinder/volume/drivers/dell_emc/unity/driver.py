@@ -52,9 +52,10 @@ class UnityDriver(driver.ManageableVD,
         1.0.0 - Initial version
         2.0.0 - Add thin clone support
         3.0.0 - Add IPv6 support
+        3.1.0 - Support revert to snapshot API
     """
 
-    VERSION = '03.00.00'
+    VERSION = '03.01.00'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
@@ -226,3 +227,7 @@ class UnityDriver(driver.ManageableVD,
 
     def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
         return self.adapter.terminate_connection_snapshot(snapshot, connector)
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Reverts a volume to a snapshot."""
+        return self.adapter.restore_snapshot(volume, snapshot)
