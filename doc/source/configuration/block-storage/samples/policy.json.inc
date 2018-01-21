@@ -108,6 +108,7 @@
     "volume:attachment_create": "",
     "volume:attachment_update": "rule:admin_or_owner",
     "volume:attachment_delete": "rule:admin_or_owner",
+    "volume:attachment_complete": "rule:admin_or_owner",
 
     "snapshot_extension:snapshot_actions:update_snapshot_status": "",
     "snapshot_extension:snapshot_manage": "rule:admin_api",
