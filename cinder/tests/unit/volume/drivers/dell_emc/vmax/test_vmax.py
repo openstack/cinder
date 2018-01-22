@@ -3414,6 +3414,17 @@ class VMAXCommonTest(test.TestCase):
         model_update = self.common.create_volume(self.data.test_volume)
         self.assertEqual(ref_model_update, model_update)
 
+    def test_create_volume_qos(self):
+        ref_model_update = (
+            {'provider_location': six.text_type(self.data.provider_location)})
+        extra_specs = deepcopy(self.data.extra_specs_intervals_set)
+        extra_specs['qos'] = {
+            'total_iops_sec': '4000', 'DistributionType': 'Always'}
+        with mock.patch.object(self.utils, 'get_volumetype_extra_specs',
+                               return_value=extra_specs):
+            model_update = self.common.create_volume(self.data.test_volume)
+            self.assertEqual(ref_model_update, model_update)
+
     def test_create_volume_from_snapshot(self):
         ref_model_update = (
             {'provider_location': six.text_type(
@@ -3497,6 +3508,23 @@ class VMAXCommonTest(test.TestCase):
             self.common._remove_members.assert_called_once_with(
                 array, volume, device_id, extra_specs,
                 connector, async_grp=None)
+
+    def test_unmap_lun_qos(self):
+        array = self.data.array
+        device_id = self.data.device_id
+        volume = self.data.test_volume
+        extra_specs = deepcopy(self.data.extra_specs_intervals_set)
+        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        extra_specs['qos'] = {
+            'total_iops_sec': '4000', 'DistributionType': 'Always'}
+        connector = self.data.connector
+        with mock.patch.object(self.common, '_remove_members'):
+            with mock.patch.object(self.utils, 'get_volumetype_extra_specs',
+                                   return_value=extra_specs):
+                self.common._unmap_lun(volume, connector)
+                self.common._remove_members.assert_called_once_with(
+                    array, volume, device_id, extra_specs,
+                    connector, async_grp=None)
 
     def test_unmap_lun_not_mapped(self):
         volume = self.data.test_volume
