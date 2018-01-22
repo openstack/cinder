@@ -12,6 +12,8 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+import time
+
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
@@ -227,7 +229,8 @@ class Client(object):
         :returns Boolean: True or False
         """
         src_lun = self.vnx.get_lun(lun_id=src_id)
-
+        # Sleep 30 seconds to make sure the session starts on the VNX.
+        time.sleep(common.INTERVAL_30_SEC)
         utils.wait_until(condition=self.session_finished,
                          interval=common.INTERVAL_30_SEC,
                          src_lun=src_lun)

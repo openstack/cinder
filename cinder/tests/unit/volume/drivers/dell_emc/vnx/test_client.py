@@ -12,7 +12,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
 import unittest
 
 from cinder import exception
@@ -50,10 +49,12 @@ class TestClient(test.TestCase):
         super(TestClient, self).setUp()
         self.origin_timeout = vnx_common.DEFAULT_TIMEOUT
         vnx_common.DEFAULT_TIMEOUT = 0
+        vnx_common.INTERVAL_30_SEC = 0
 
     def tearDown(self):
         super(TestClient, self).tearDown()
         vnx_common.DEFAULT_TIMEOUT = self.origin_timeout
+        vnx_common.INTERVAL_30_SEC = 30
 
     @res_mock.patch_client
     def test_create_lun(self, client, mocked):
@@ -116,7 +117,6 @@ class TestClient(test.TestCase):
                           src_id=4,
                           dst_id=5)
         lun.migrate.assert_called_with(5, storops.VNXMigrationRate.HIGH)
-        mock_sleep.assert_called_with(15)
 
     @res_mock.patch_client
     def test_session_finished_faulted(self, client, mocked):
@@ -256,10 +256,8 @@ class TestClient(test.TestCase):
     def test_expand_lun_already_expanded(self, client, _ignore):
         client.expand_lun('lun', 10)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
-    @utils.patch_sleep
     @res_mock.patch_client
-    def test_expand_lun_not_ops_ready(self, client, _ignore, sleep_mock):
+    def test_expand_lun_not_ops_ready(self, client, _ignore):
         self.assertRaises(storops_ex.VNXLunPreparingError,
                           client.expand_lun, 'lun', 10)
         lun = client.vnx.get_lun()
