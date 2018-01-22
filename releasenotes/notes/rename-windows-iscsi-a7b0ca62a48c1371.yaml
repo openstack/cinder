@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The Windows iSCSI driver has been renamed. The updated driver location
+    is ``cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver``.
