@@ -2366,7 +2366,10 @@ class VMAXCommon(object):
             pool_details = info_detail[1].split('+')
             if len(pool_details) == 4:
                 target_slo = pool_details[0]
-                target_workload = pool_details[1]
+                if pool_details[1].lower() == 'none':
+                    target_workload = 'NONE'
+                else:
+                    target_workload = pool_details[1]
                 target_srp = pool_details[2]
                 target_array_serial = pool_details[3]
             elif len(pool_details) == 3:
