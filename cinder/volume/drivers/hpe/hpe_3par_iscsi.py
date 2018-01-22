@@ -125,10 +125,11 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         3.0.12 - Added entry point tracing
         3.0.13 - Handling HTTP conflict 409, host WWN/iSCSI name already used
                 by another host, while creating 3PAR iSCSI Host. bug #1642945
+        3.0.14-ocata - Get host from os-brick connector. bug #1690244
 
     """
 
-    VERSION = "3.0.13"
+    VERSION = "3.0.14-ocata"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -633,7 +634,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
         return host, username, password
 
-    def _do_export(self, common, volume):
+    def _do_export(self, common, volume, connector):
         """Gets the associated account, generates CHAP info and updates."""
         model_update = {}
 
@@ -642,7 +643,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
             return model_update
 
         # CHAP username will be the hostname
-        chap_username = volume['host'].split('@')[0]
+        chap_username = connector['host']
 
         chap_password = None
         try:
@@ -709,7 +710,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
     def create_export(self, context, volume, connector):
         common = self._login()
         try:
-            return self._do_export(common, volume)
+            return self._do_export(common, volume, connector)
         finally:
             self._logout(common)
 
