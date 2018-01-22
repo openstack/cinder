@@ -23,7 +23,7 @@ Steps to update ``cinder-api`` servers:
 
      .. code-block:: ini
 
-        api_class = castellan.key_manager.barbican_key_manager.BarbicanKeyManager
+        backend = barbican
 
 #. Restart ``cinder-api``.
 
@@ -37,7 +37,7 @@ Update ``nova-compute`` servers:
    .. code-block:: ini
 
       [key_manager]
-      api_class = castellan.key_manager.barbican_key_manager.BarbicanKeyManager
+      backend = barbican
 
      .. note::
 
