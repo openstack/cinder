@@ -1010,19 +1010,32 @@ class CommonAdapter(replication.ReplicationAdapter):
         :param volume: `common.Volume` object with volume information.
         :param connector: connector information from Nova.
         """
-        host = self.build_host(connector)
-        sg = self.client.get_storage_group(host.name)
-        self.remove_host_access(volume, host, sg)
+        # None `connector` means force detach the volume from all hosts.
+        is_force_detach = False
+        if connector is None:
+            LOG.info('Force detaching volume %s from all hosts.', volume.name)
+            is_force_detach = True
 
-        # build_terminate_connection return data should go before
-        # terminate_connection_cleanup. The storage group may be deleted in
-        # the terminate_connection_cleanup which is needed during getting
-        # return data
-        self.update_storage_group_if_required(sg)
-        re = self.build_terminate_connection_return_data(host, sg)
-        self.terminate_connection_cleanup(host, sg)
+        host = None if is_force_detach else self.build_host(connector)
+        sg_list = (self.client.filter_sg(volume.vnx_lun_id) if is_force_detach
+                   else [self.client.get_storage_group(host.name)])
 
-        return re
+        return_data = None
+        for sg in sg_list:
+            self.remove_host_access(volume, host, sg)
+
+            # build_terminate_connection return data should go before
+            # terminate_connection_cleanup. The storage group may be deleted in
+            # the terminate_connection_cleanup which is needed during getting
+            # return data
+            self.update_storage_group_if_required(sg)
+            if not is_force_detach:
+                # force detach will return None
+                return_data = self.build_terminate_connection_return_data(
+                    host, sg)
+            self.terminate_connection_cleanup(host, sg)
+
+        return return_data
 
     def update_storage_group_if_required(self, sg):
         if sg.existed and self.destroy_empty_sg:
@@ -1036,17 +1049,19 @@ class CommonAdapter(replication.ReplicationAdapter):
         :param sg: object of `storops` storage group.
         """
         lun = self.client.get_lun(lun_id=volume.vnx_lun_id)
-        hostname = host.name
         if not sg.existed:
-            LOG.warning("Storage Group %s is not found. "
-                        "Nothing can be done in terminate_connection().",
-                        hostname)
+            # `host` is None when force-detach
+            if host is not None:
+                # Only print this warning message when normal detach
+                LOG.warning("Storage Group %s is not found. "
+                            "Nothing can be done in terminate_connection().",
+                            host.name)
         else:
             try:
                 sg.detach_alu(lun)
             except storops_ex.VNXDetachAluNotFoundError:
                 LOG.warning("Volume %(vol)s is not in Storage Group %(sg)s.",
-                            {'vol': volume.name, 'sg': hostname})
+                            {'vol': volume.name, 'sg': sg.name})
 
     def build_terminate_connection_return_data(self, host, sg):
         raise NotImplementedError()
@@ -1064,7 +1079,8 @@ class CommonAdapter(replication.ReplicationAdapter):
             LOG.info("Storage Group %s is empty.", sg.name)
             sg.disconnect_host(sg.name)
             sg.delete()
-            if self.itor_auto_dereg:
+            if host is not None and self.itor_auto_dereg:
+                # `host` is None when force-detach
                 self._deregister_initiator(host)
         except storops_ex.StoropsException:
             LOG.warning("Failed to destroy Storage Group %s.",
