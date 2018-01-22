@@ -986,6 +986,7 @@ class ScaleIODriver(driver.VolumeDriver):
         stats['consistent_group_snapshot_enabled'] = True
         stats['thick_provisioning_support'] = True
         stats['thin_provisioning_support'] = True
+        stats['multiattach'] = True
         pools = []
 
         free_capacity = 0
@@ -1054,6 +1055,7 @@ class ScaleIODriver(driver.VolumeDriver):
                     'reserved_percentage': 0,
                     'thin_provisioning_support': True,
                     'thick_provisioning_support': True,
+                    'multiattach': True,
                     'provisioned_capacity_gb': provisioned_capacity,
                     'max_over_subscription_ratio':
                         self.configuration.max_over_subscription_ratio
