@@ -3153,6 +3153,20 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
         self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
 
+    def test_storwize_get_host_from_connector_with_both_fc_iscsi_host(self):
+        volume_iSCSI = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
+        vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
+        volume_iSCSI['volume_type_id'] = vol_type_iSCSI['id']
+
+        connector = {'host': 'storwize-svc-host',
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+        if self.USESIM:
+            self.sim._cmd_mkhost(name='storwize-svc-host-99999999',
+                                 hbawwpn='123')
+            self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
+            self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
+
     def test_storwize_iscsi_connection_snapshot(self):
         # create a iSCSI volume
         volume_iSCSI = self._create_volume()
