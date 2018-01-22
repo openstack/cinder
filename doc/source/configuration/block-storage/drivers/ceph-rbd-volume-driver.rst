@@ -72,7 +72,7 @@ Ceph exposes RADOS; you can access it through the following interfaces:
 *RADOS Gateway*
  OpenStack Object Storage and Amazon-S3 compatible
  RESTful interface (see `RADOS_Gateway
- <https://ceph.com/wiki/RADOS_Gateway>`__).
+ <http://docs.ceph.com/docs/master/radosgw/>`__).
 
 *librados*
  and its related C/C++ bindings

@@ -100,7 +100,7 @@ Cinder Driver for single FC or iSCSI backend.
       scheduler_default_filters = DriverFilter,CapabilitiesFilter
 
    See following links for more information:
-   `<https://docs.openstack.org/cinder/latest/scheduler-filters.html>`_
+   `<https://docs.openstack.org/cinder/latest/configuration/block-storage/scheduler-filters.html>`_
    `<https://docs.openstack.org/cinder/latest/admin/blockstorage-driver-filter-weighing.html>`_
 
 #. Under the ``[DEFAULT]`` section, set the enabled_backends parameter
