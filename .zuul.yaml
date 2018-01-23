@@ -7,10 +7,32 @@
         - cinder-tox-bandit-baseline:
             voting: false
         - nova-multiattach
+        - openstack-tox-functional-py35:
+            branches: ^(?!driverfixes/).*$
+            irrelevant-files:
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
     gate:
       jobs:
         - cinder-tox-compliance
         - nova-multiattach
+        - openstack-tox-functional-py35:
+            branches: ^(?!driverfixes/).*$
+            irrelevant-files:
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
 
 - job:
     # Previously named legacy-tempest-dsvm-full-lio
