@@ -76,12 +76,18 @@ class ChunkedBackupDriver(driver.BackupDriver):
         try:
             if algorithm.lower() in ('none', 'off', 'no'):
                 return None
-            elif algorithm.lower() in ('zlib', 'gzip'):
+            if algorithm.lower() in ('zlib', 'gzip'):
                 import zlib as compressor
-                return compressor
+                result = compressor
             elif algorithm.lower() in ('bz2', 'bzip2'):
                 import bz2 as compressor
-                return compressor
+                result = compressor
+            else:
+                result = None
+            if result:
+                # NOTE(geguileo): Compression/Decompression starves
+                # greenthreads so we use a native thread instead.
+                return eventlet.tpool.Proxy(result)
         except ImportError:
             pass
 
@@ -104,6 +110,16 @@ class ChunkedBackupDriver(driver.BackupDriver):
         self.compressor = \
             self._get_compressor(CONF.backup_compression_algorithm)
         self.support_force_delete = True
+
+    def _get_object_writer(self, container, object_name, extra_metadata=None):
+        """Return writer proxy-wrapped to execute methods in native thread."""
+        writer = self.get_object_writer(container, object_name, extra_metadata)
+        return eventlet.tpool.Proxy(writer)
+
+    def _get_object_reader(self, container, object_name, extra_metadata=None):
+        """Return reader proxy-wrapped to execute methods in native thread."""
+        reader = self.get_object_reader(container, object_name, extra_metadata)
+        return eventlet.tpool.Proxy(reader)
 
     # To create your own "chunked" backup driver, implement the following
     # abstract methods.
@@ -222,7 +238,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         metadata_json = json.dumps(metadata, sort_keys=True, indent=2)
         if six.PY3:
             metadata_json = metadata_json.encode('utf-8')
-        with self.get_object_writer(container, filename) as writer:
+        with self._get_object_writer(container, filename) as writer:
             writer.write(metadata_json)
         LOG.debug('_write_metadata finished. Metadata: %s.', metadata_json)
 
@@ -243,7 +259,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         sha256file_json = json.dumps(sha256file, sort_keys=True, indent=2)
         if six.PY3:
             sha256file_json = sha256file_json.encode('utf-8')
-        with self.get_object_writer(container, filename) as writer:
+        with self._get_object_writer(container, filename) as writer:
             writer.write(sha256file_json)
         LOG.debug('_write_sha256file finished.')
 
@@ -253,7 +269,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         LOG.debug('_read_metadata started, container name: %(container)s, '
                   'metadata filename: %(filename)s.',
                   {'container': container, 'filename': filename})
-        with self.get_object_reader(container, filename) as reader:
+        with self._get_object_reader(container, filename) as reader:
             metadata_json = reader.read()
         if six.PY3:
             metadata_json = metadata_json.decode('utf-8')
@@ -267,7 +283,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         LOG.debug('_read_sha256file started, container name: %(container)s, '
                   'sha256 filename: %(filename)s.',
                   {'container': container, 'filename': filename})
-        with self.get_object_reader(container, filename) as reader:
+        with self._get_object_reader(container, filename) as reader:
             sha256file_json = reader.read()
         if six.PY3:
             sha256file_json = sha256file_json.decode('utf-8')
@@ -327,7 +343,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         algorithm, output_data = self._prepare_output_data(data)
         obj[object_name]['compression'] = algorithm
         LOG.debug('About to put_object')
-        with self.get_object_writer(
+        with self._get_object_writer(
                 container, object_name, extra_metadata=extra_metadata
         ) as writer:
             writer.write(output_data)
@@ -349,8 +365,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         data_size_bytes = len(data)
         # Execute compression in native thread so it doesn't prevent
         # cooperative greenthread switching.
-        compressed_data = eventlet.tpool.execute(self.compressor.compress,
-                                                 data)
+        compressed_data = self.compressor.compress(data)
         comp_size_bytes = len(compressed_data)
         algorithm = CONF.backup_compression_algorithm.lower()
         if comp_size_bytes >= data_size_bytes:
@@ -618,7 +633,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                           'volume_id': volume_id,
                       })
 
-            with self.get_object_reader(
+            with self._get_object_reader(
                     container, object_name,
                     extra_metadata=extra_metadata) as reader:
                 body = reader.read()

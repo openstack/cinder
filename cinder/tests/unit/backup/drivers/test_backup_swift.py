@@ -27,6 +27,7 @@ import tempfile
 import threading
 import zlib
 
+from eventlet import tpool
 import mock
 from oslo_config import cfg
 from swiftclient import client as swift
@@ -821,8 +822,10 @@ class BackupSwiftTestCase(test.TestCase):
         self.assertIsNone(compressor)
         compressor = service._get_compressor('zlib')
         self.assertEqual(zlib, compressor)
+        self.assertIsInstance(compressor, tpool.Proxy)
         compressor = service._get_compressor('bz2')
         self.assertEqual(bz2, compressor)
+        self.assertIsInstance(compressor, tpool.Proxy)
         self.assertRaises(ValueError, service._get_compressor, 'fake')
 
     def test_prepare_output_data_effective_compression(self):
@@ -831,17 +834,17 @@ class BackupSwiftTestCase(test.TestCase):
         thread_dict = {}
         original_compress = zlib.compress
 
-        def my_compress(data, *args, **kwargs):
+        def my_compress(data):
             thread_dict['compress'] = threading.current_thread()
             return original_compress(data)
+
+        self.mock_object(zlib, 'compress', side_effect=my_compress)
 
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         # Set up buffer of 128 zeroed bytes
         fake_data = b'\0' * 128
 
-        with mock.patch.object(service.compressor, 'compress',
-                               side_effect=my_compress):
-            result = service._prepare_output_data(fake_data)
+        result = service._prepare_output_data(fake_data)
 
         self.assertEqual('zlib', result[0])
         self.assertGreater(len(fake_data), len(result[1]))
