@@ -46,6 +46,7 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.mock_object(client_base.Client, '_init_ssh_client')
         self.client = client_base.Client(**CONNECTION_INFO)
         self.client.connection = mock.MagicMock()
+        self.client.connection.get_api_version.return_value = (1, 100)
         self.client.ssh_client = mock.MagicMock()
         self.connection = self.client.connection
         self.fake_volume = six.text_type(uuid.uuid4())
@@ -89,7 +90,6 @@ class NetAppBaseClientTestCase(test.TestCase):
 
     def test_create_lun(self):
         expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
-
         with mock.patch.object(netapp_api.NaElement,
                                'create_node_with_children',
                                ) as mock_create_node:
@@ -103,6 +103,28 @@ class NetAppBaseClientTestCase(test.TestCase):
                 **{'path': expected_path,
                    'size': self.fake_size,
                    'ostype': self.fake_metadata['OsType'],
+                   'space-reservation-enabled':
+                   self.fake_metadata['SpaceReserved']})
+            self.connection.invoke_successfully.assert_called_once_with(
+                mock.ANY, True)
+
+    def test_create_lun_exact_size(self):
+        expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
+        self.connection.get_api_version.return_value = (1, 110)
+        with mock.patch.object(netapp_api.NaElement,
+                               'create_node_with_children',
+                               ) as mock_create_node:
+            self.client.create_lun(self.fake_volume,
+                                   self.fake_lun,
+                                   self.fake_size,
+                                   self.fake_metadata)
+
+            mock_create_node.assert_called_once_with(
+                'lun-create-by-size',
+                **{'path': expected_path,
+                   'size': self.fake_size,
+                   'ostype': self.fake_metadata['OsType'],
+                   'use-exact-size': 'true',
                    'space-reservation-enabled':
                    self.fake_metadata['SpaceReserved']})
             self.connection.invoke_successfully.assert_called_once_with(

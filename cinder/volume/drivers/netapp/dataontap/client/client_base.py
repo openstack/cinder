@@ -97,11 +97,15 @@ class Client(object):
         """Issues API request for creating LUN on volume."""
 
         path = '/vol/%s/%s' % (volume_name, lun_name)
+        params = {'path': path, 'size': six.text_type(size),
+                  'ostype': metadata['OsType'],
+                  'space-reservation-enabled': metadata['SpaceReserved']}
+        version = self.get_ontapi_version()
+        if version >= (1, 110):
+            params['use-exact-size'] = 'true'
         lun_create = netapp_api.NaElement.create_node_with_children(
             'lun-create-by-size',
-            **{'path': path, 'size': six.text_type(size),
-               'ostype': metadata['OsType'],
-               'space-reservation-enabled': metadata['SpaceReserved']})
+            **params)
         if qos_policy_group_name:
             lun_create.add_new_child('qos-policy-group', qos_policy_group_name)
 

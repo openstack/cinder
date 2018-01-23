@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed bug #1731474 on NetApp Data ONTAP driver that was causing LUNs to be created
+    with larger size than requested. This fix requires version 9.1 of ONTAP
+    or later.
