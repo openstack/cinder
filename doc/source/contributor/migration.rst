@@ -26,7 +26,7 @@ the destination volume is located, and both of them share the same
 Cinder API service, scheduler service, message queue service, etc.
 
 As a general rule migration is possible for volumes in 'available' or
-‘in-use’ status, for the driver which has implemented volume migration.
+'in-use' status, for the driver which has implemented volume migration.
 So far, we are confident that migration will succeed for 'available'
 volumes, whose drivers implement the migration routines. However,
 the migration of 'in-use' volumes is driver dependent. It depends on
@@ -109,7 +109,7 @@ To set up an environment to try the volume migration, we need to
 configure at least two different back-ends on the same node of cinder
 volume service, c-vol node or two back-ends on two different volume
 nodes of cinder volume service, c-vol nodes. Which command to use,
-‘cinder migrate’ or ‘cinder retype’, depends on which type of volume
+'cinder migrate' or 'cinder retype', depends on which type of volume
 we would like to test.
 
 **Scenario 1 for migration**
@@ -191,19 +191,19 @@ What can be tracked during volume migration
 The volume migration is an administrator only action and it may take
 a relatively long time to finish. The property ‘migration status’ will
 indicate the stage of the migration process for the volume. The
-administrator can check the ‘migration status’ via the ‘cinder list’
-or ‘cinder show <volume-id>’ command. The ‘cinder list’ command presents
+administrator can check the 'migration status' via the 'cinder list'
+or 'cinder show <volume-id>' command. The 'cinder list' command presents
 a list of all the volumes with some properties displayed, including the
 migration status, only to the administrator. However, the migration status
-is not included if ‘cinder list’ is issued by an ordinary user. The
-‘cinder show <volume-id>’ will present all the detailed information of a
+is not included if 'cinder list' is issued by an ordinary user. The
+'cinder show <volume-id>' will present all the detailed information of a
 specific volume, including the migration status, only to the administrator.
 
-If the migration status of a volume shows ‘starting’, ‘migrating’ or
-‘completing’, it means the volume is in the process of a migration.
-If the migration status is ‘success’, it means the migration has finished
+If the migration status of a volume shows 'starting', 'migrating' or
+'completing', it means the volume is in the process of a migration.
+If the migration status is 'success', it means the migration has finished
 and the previous migration of this volume succeeded. If the
-migration status is ‘error’, it means the migration has finished and
+migration status is 'error', it means the migration has finished and
 the previous migration of this volume failed.
 
 
@@ -218,7 +218,7 @@ is based on the volume attachment to the node of cinder volume service,
 c-vol node. Any back-end driver supporting iSCSI will be able to support
 the generic host-assisted migration for sure. The back-end driver without
 iSCSI supported needs to be tested to decide if it supports this kind of
-migration. The block-based transfer mode is done by ‘dd’ command,
+migration. The block-based transfer mode is done by 'dd' command,
 applying to drivers like LVM, Storwize, etc, and the file-based transfer
 mode is done by file copy, typically applying to the RBD driver.
 

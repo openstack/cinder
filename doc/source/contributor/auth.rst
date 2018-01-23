@@ -185,7 +185,7 @@ Existing API calls to launch instances specific a single, combined “type” fl
 
   RunInstances type=m1.large number=1 secgroup=default key=mykey confidentiality=low integrity=low availability=low
 
-These additional parameters would also apply to creation of block storage volumes (along with the existing parameter of ‘size’), and creation of object storage ‘buckets’. (C.I.A. classifications on a bucket would be inherited by the keys within this bucket.)
+These additional parameters would also apply to creation of block storage volumes (along with the existing parameter of 'size'), and creation of object storage 'buckets'. (C.I.A. classifications on a bucket would be inherited by the keys within this bucket.)
 
 
 Request Brokering
@@ -206,7 +206,7 @@ Dirty Cloud - Hybrid Data Centers
 *	CloudAudit bridge interfaces
 *	Anything in the ARP table
 
-A hybrid cloud environment provides dedicated, potentially co-located physical hardware with a network interconnect to the project or users’ cloud virtual network.
+A hybrid cloud environment provides dedicated, potentially co-located physical hardware with a network interconnect to the project or user's cloud virtual network.
 
 This interconnect is typically a bridged VPN connection. Any machines that can be bridged into a hybrid environment in this fashion (at Layer 2) must implement a minimum version of the CloudAudit spec, such that they can be queried to provide a complete picture of the IT-sec runtime environment.
 

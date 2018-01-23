@@ -2,7 +2,7 @@
 features:
   - |
     The multiattach capability has been enabled and verified
-    as working with the ScaleIO driver. It is the users’
+    as working with the ScaleIO driver. It is the user's
     responsibility to add some type of exclusion (at the file
     system or network file system layer) to prevent multiple
     writers from corrupting data on the volume.

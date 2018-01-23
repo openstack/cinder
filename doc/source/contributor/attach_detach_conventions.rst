@@ -56,7 +56,7 @@ NOTE: multi-attach will add "in-use" to the above acceptable states.
 
 If the volume is in fact available, we immediately issue an update to the Cinder
 database and mark the status of the volume to “attaching” thereby reserving the
-volume so that it won’t be used by another API call anywhere else.
+volume so that it won't be used by another API call anywhere else.
 
 initialize_connection(self, context, volume, connector)
 -------------------------------------------------------
