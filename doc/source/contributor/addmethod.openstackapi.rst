@@ -26,7 +26,7 @@ To map URLs to controllers+actions, OpenStack uses the Routes package, a clone o
 
 URLs are mapped to "action" methods on "controller" classes in ``cinder/api/openstack/__init__/ApiRouter.__init__`` .
 
-See http://routes.groovie.org/manual.html for all syntax, but you'll probably just need these two:
+See http://routes.readthedocs.io/en/latest/ for all syntax, but you'll probably just need these two:
    - mapper.connect() lets you map a single URL to a single action on a controller.
    - mapper.resource() connects many standard URLs to actions on a controller.
 
