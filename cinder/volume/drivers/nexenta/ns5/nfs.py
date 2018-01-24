@@ -363,8 +363,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
                 snap = snap_map[max(snap_map)]
                 url = 'storage/snapshots/%s' % urllib.parse.quote_plus(snap)
                 clone = self.nef.get(url)['clones'][0]
-                url = 'storage/filesystems/%s/promote' % urllib.parse.quote_plus(
-                    clone)
+                url = 'storage/filesystems/%s/promote' % (
+                    urllib.parse.quote_plus(clone))
                 self.nef.post(url)
                 url = 'storage/filesystems/%s?snapshots=true' % '%2F'.join(
                     [pool, fs, volume['name']])
@@ -608,6 +608,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
             'free_capacity_gb': free_space,
             'reserved_percentage': self.configuration.reserved_percentage,
             'QoS_support': False,
+            'multiattach': True,
             'location_info': location_info,
             'volume_backend_name': self.backend_name,
             'nfs_mount_point_base': self.nfs_mount_point_base

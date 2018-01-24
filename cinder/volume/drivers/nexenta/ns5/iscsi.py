@@ -505,6 +505,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             data = self.nef.get(vol_map_url).get('data')
         lun = data[0]['lun']
 
+        if not self.configuration.nexenta_writebackcache:
+            url = 'san/logicalUnits?fields=guid&volume=%s' % volume_path
+            lu_guid = self.nef.get(url)['data'][0]['guid']
+            url = 'san/logicalUnits/%s' % lu_guid
+            self.nef.put(url, {"writebackCacheDisabled": False})
+
         provider_location = '%(host)s:%(port)s %(name)s %(lun)s' % {
             'host': self.iscsi_host,
             'port': self.configuration.nexenta_iscsi_target_portal_port,
