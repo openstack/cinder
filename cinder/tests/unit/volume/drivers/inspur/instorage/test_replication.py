@@ -43,8 +43,7 @@ from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 
 class InStorageMCSReplicationTestCase(test.TestCase):
 
-    @mock.patch.object(greenthread, 'sleep')
-    def setUp(self, mock_sleep):
+    def setUp(self):
         super(InStorageMCSReplicationTestCase, self).setUp()
 
         def _run_ssh_aux(cmd, check_exit_code=True, attempts=1):
@@ -97,6 +96,8 @@ class InStorageMCSReplicationTestCase(test.TestCase):
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
         self._create_test_volume_types()
+
+        self.mock_object(greenthread, 'sleep')
 
     def _set_flag(self, flag, value):
         group = self.driver.configuration.config_group

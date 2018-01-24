@@ -34,10 +34,9 @@ from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 
 
 class InStorageMCSISCSIDriverTestCase(test.TestCase):
-
-    @mock.patch.object(greenthread, 'sleep')
-    def setUp(self, mock_sleep):
+    def setUp(self):
         super(InStorageMCSISCSIDriverTestCase, self).setUp()
+        self.mock_object(greenthread, 'sleep')
         self.iscsi_driver = fakes.FakeInStorageMCSISCSIDriver(
             configuration=conf.Configuration(None))
         self._def_flags = {'san_ip': 'hostname',
