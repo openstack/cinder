@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Fix the way encryption key IDs are managed for encrypted volume backups.
+    When creating a backup, the volume's encryption key is cloned and assigned
+    a new key ID. The backup's cloned key ID is now stored in the backup
+    database so that it can be deleted whenever the backup is deleted.
+
+    When restoring the backup of an encrypted volume, the destination volume
+    is assigned a clone of the backup's encryption key ID. This ensures every
+    restored backup has a unique encryption key ID, even when multiple volumes
+    have been restored from the same backup.
+

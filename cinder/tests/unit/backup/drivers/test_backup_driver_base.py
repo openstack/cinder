@@ -286,8 +286,7 @@ class BackupMetadataAPITestCase(test.TestCase):
 
     def _create_encrypted_volume_db_entry(self, id, type_id, encrypted):
         if encrypted:
-            key_id = self.bak_meta_api._key_manager.create_key(
-                'context', algorithm='AES', length=256)
+            key_id = str(uuid.uuid4())
             vol = {'id': id, 'size': 1, 'status': 'available',
                    'volume_type_id': type_id, 'encryption_key_id': key_id}
         else:

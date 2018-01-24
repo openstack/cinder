@@ -33,6 +33,7 @@ Volume backups can be created, restored, deleted and listed.
 
 import os
 
+from castellan import key_manager
 from eventlet import tpool
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -235,15 +236,26 @@ class BackupManager(manager.ThreadPoolManager):
             backup.status = fields.BackupStatus.AVAILABLE
             backup.save()
         elif backup['status'] == fields.BackupStatus.DELETING:
-            LOG.info('Resuming delete on backup: %s.', backup['id'])
-            if CONF.backup_service_inithost_offload:
-                # Offload all the pending backup delete operations to the
-                # threadpool to prevent the main backup service thread
-                # from being blocked.
-                self._add_to_threadpool(self.delete_backup, ctxt, backup)
+            # Don't resume deleting the backup of an encrypted volume. The
+            # admin context won't be sufficient to delete the backup's copy
+            # of the encryption key ID (a real user context is required).
+            if backup.encryption_key_id is None:
+                LOG.info('Resuming delete on backup: %s.', backup.id)
+                if CONF.backup_service_inithost_offload:
+                    # Offload all the pending backup delete operations to the
+                    # threadpool to prevent the main backup service thread
+                    # from being blocked.
+                    self._add_to_threadpool(self.delete_backup, ctxt, backup)
+                else:
+                    # Delete backups sequentially
+                    self.delete_backup(ctxt, backup)
             else:
-                # Delete backups sequentially
-                self.delete_backup(ctxt, backup)
+                LOG.info('Unable to resume deleting backup of an encrypted '
+                         'volume, resetting backup %s to error_deleting '
+                         '(was deleting).',
+                         backup.id)
+                backup.status = fields.BackupStatus.ERROR_DELETING
+                backup.save()
 
     def _detach_all_attachments(self, ctxt, volume):
         attachments = volume['volume_attachment'] or []
@@ -412,6 +424,15 @@ class BackupManager(manager.ThreadPoolManager):
         self._notify_about_backup_usage(context, backup, "create.end")
 
     def _run_backup(self, context, backup, volume):
+        # Save a copy of the encryption key ID in case the volume is deleted.
+        if (volume.encryption_key_id is not None and
+                backup.encryption_key_id is None):
+            backup.encryption_key_id = volume_utils.clone_encryption_key(
+                context,
+                key_manager.API(CONF),
+                volume.encryption_key_id)
+            backup.save()
+
         backup_service = self.get_backup_driver(context)
 
         properties = utils.brick_get_connector_properties()
@@ -538,6 +559,7 @@ class BackupManager(manager.ThreadPoolManager):
         self._notify_about_backup_usage(context, backup, "restore.end")
 
     def _run_restore(self, context, backup, volume):
+        orig_key_id = volume.encryption_key_id
         backup_service = self.get_backup_driver(context)
 
         properties = utils.brick_get_connector_properties()
@@ -569,6 +591,48 @@ class BackupManager(manager.ThreadPoolManager):
         finally:
             self._detach_device(context, attach_info, volume, properties,
                                 force=True)
+
+        # Regardless of whether the restore was successful, do some
+        # housekeeping to ensure the restored volume's encryption key ID is
+        # unique, and any previous key ID is deleted. Start by fetching fresh
+        # info on the restored volume.
+        restored_volume = objects.Volume.get_by_id(context, volume.id)
+        restored_key_id = restored_volume.encryption_key_id
+        if restored_key_id != orig_key_id:
+            LOG.info('Updating encryption key ID for volume %(volume_id)s '
+                     'from backup %(backup_id)s.',
+                     {'volume_id': volume.id, 'backup_id': backup.id})
+
+            key_mgr = key_manager.API(CONF)
+            if orig_key_id is not None:
+                LOG.debug('Deleting original volume encryption key ID.')
+                volume_utils.delete_encryption_key(context,
+                                                   key_mgr,
+                                                   orig_key_id)
+
+            if backup.encryption_key_id is None:
+                # This backup predates the current code that stores the cloned
+                # key ID in the backup database. Fortunately, the key ID
+                # restored from the backup data _is_ a clone of the original
+                # volume's key ID, so grab it.
+                LOG.debug('Gleaning backup encryption key ID from metadata.')
+                backup.encryption_key_id = restored_key_id
+                backup.save()
+
+            # Clone the key ID again to ensure every restored volume has
+            # a unique key ID. The volume's key ID should not be the same
+            # as the backup.encryption_key_id (the copy made when the backup
+            # was first created).
+            new_key_id = volume_utils.clone_encryption_key(
+                context,
+                key_mgr,
+                backup.encryption_key_id)
+            restored_volume.encryption_key_id = new_key_id
+            restored_volume.save()
+        else:
+            LOG.debug('Encryption key ID for volume %(volume_id)s already '
+                      'matches encryption key ID in backup %(backup_id)s.',
+                      {'volume_id': volume.id, 'backup_id': backup.id})
 
     def delete_backup(self, context, backup):
         """Delete volume backup from configured backup service."""
@@ -630,6 +694,13 @@ class BackupManager(manager.ThreadPoolManager):
         except Exception:
             reservations = None
             LOG.exception("Failed to update usages deleting backup")
+
+        if backup.encryption_key_id is not None:
+            volume_utils.delete_encryption_key(context,
+                                               key_manager.API(CONF),
+                                               backup.encryption_key_id)
+            backup.encryption_key_id = None
+            backup.save()
 
         backup.destroy()
         # If this backup is incremental backup, handle the

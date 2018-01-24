@@ -39,7 +39,8 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     # Version 1.3: Changed 'status' field to use BackupStatusField
     # Version 1.4: Add restore_volume_id
     # Version 1.5: Add metadata
-    VERSION = '1.5'
+    # Version 1.6: Add encryption_key_id
+    VERSION = '1.6'
 
     OPTIONAL_FIELDS = ('metadata',)
 
@@ -75,6 +76,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         'data_timestamp': fields.DateTimeField(nullable=True),
         'restore_volume_id': fields.StringField(nullable=True),
         'metadata': fields.DictOfStringsField(nullable=True),
+        'encryption_key_id': fields.StringField(nullable=True),
     }
 
     obj_extra_fields = ['name', 'is_incremental', 'has_dependent_backups']
