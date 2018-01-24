@@ -280,11 +280,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                             content_length=len(self.data))
             except socket.error as err:
                 raise exception.SwiftConnectionFailed(reason=err)
-            LOG.debug('swift MD5 for %(object_name)s: %(etag)s',
-                      {'object_name': self.object_name, 'etag': etag, })
             md5 = hashlib.md5(self.data).hexdigest()
-            LOG.debug('backup MD5 for %(object_name)s: %(md5)s',
-                      {'object_name': self.object_name, 'md5': md5})
             if etag != md5:
                 err = _('error writing object to swift, MD5 of object in '
                         'swift %(etag)s is not the same as MD5 of object sent '
