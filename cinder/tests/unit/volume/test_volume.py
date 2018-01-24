@@ -1737,6 +1737,21 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           volume)
         db.volume_destroy(self.context, volume.id)
 
+    def test_attachment_reserve_with_bootable_volume(self):
+        # test the private _attachment_reserve method with a bootable,
+        # in-use, multiattach volume.
+        instance_uuid = fake.UUID1
+        volume = tests_utils.create_volume(self.context, status='in-use')
+        tests_utils.attach_volume(self.context, volume.id, instance_uuid,
+                                  'attached_host', 'mountpoint', mode='rw')
+        volume.multiattach = True
+        volume.bootable = True
+
+        attachment = self.volume_api._attachment_reserve(
+            self.context, volume, instance_uuid)
+
+        self.assertEqual(attachment.attach_status, 'reserved')
+
     def test_unreserve_volume_success_in_use(self):
         UUID = six.text_type(uuid.uuid4())
         volume = tests_utils.create_volume(self.context, status='attaching')
