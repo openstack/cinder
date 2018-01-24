@@ -2167,12 +2167,21 @@ class API(base.Base):
         status_updates = {'status': 'available',
                           'attach_status': 'detached'}
         remaining_attachments = AO_LIST.get_all_by_volume_id(ctxt, volume.id)
+        LOG.debug("Remaining volume attachments: %s", remaining_attachments,
+                  resource=volume)
 
         # NOTE(jdg) Try and figure out the > state we have left and set that
         # attached > attaching > > detaching > reserved
         pending_status_list = []
         for attachment in remaining_attachments:
             pending_status_list.append(attachment.attach_status)
+            LOG.debug("Adding status of: %s to pending status list "
+                      "for volume.", attachment.attach_status,
+                      resource=volume)
+
+        LOG.debug("Pending status list for volume during "
+                  "attachment-delete: %s",
+                  pending_status_list, resource=volume)
         if 'attached' in pending_status_list:
             status_updates['status'] = 'in-use'
             status_updates['attach_status'] = 'attached'
