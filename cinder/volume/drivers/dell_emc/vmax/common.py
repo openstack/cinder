@@ -1890,11 +1890,11 @@ class VMAXCommon(object):
                 foundVolumeinstance = self.conn.GetInstance(instancename)
                 volumeElementName = (self.utils.
                                      get_volume_element_name(volumename))
-                if not (volumeElementName ==
-                        foundVolumeinstance['ElementName']):
+                if not (foundVolumeinstance['ElementName']
+                        in volumeElementName):
                     # Check if it is a vol created as part of a clone group
-                    if not (targetVolName ==
-                            foundVolumeinstance['ElementName']):
+                    if not (foundVolumeinstance['ElementName']
+                            in targetVolName):
                         foundVolumeinstance = None
             except Exception as e:
                 LOG.info(_LI("Exception in retrieving volume: %(e)s."),

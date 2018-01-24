@@ -386,7 +386,7 @@ class VMAXCommonData(object):
                       'SystemCreationClassName': u'Symm_StorageSystem'}
     provider_location = {'classname': 'Symm_StorageVolume',
                          'keybindings': keybindings,
-                         'version': '2.5.0'}
+                         'version': '2.5.1'}
     provider_location2 = {'classname': 'Symm_StorageVolume',
                           'keybindings': keybindings2}
     provider_location3 = {'classname': 'Symm_StorageVolume',
@@ -2758,6 +2758,53 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.common.utils.process_exception_args,
                           arg, instancename3)
+
+    @mock.patch.object(
+        utils.VMAXUtils,
+        'get_volume_element_name',
+        return_value='OS-1234567890')
+    def test_find_lun_backward_compatible(self, mock_elem):
+        keybindings = {'CreationClassName': u'Symm_StorageVolume',
+                       'SystemName': u'SYMMETRIX+000195900551',
+                       'DeviceID': u'1',
+                       'SystemCreationClassName': u'Symm_StorageSystem'}
+        provider_location = {'classname': 'Symm_StorageVolume',
+                             'keybindings': keybindings}
+        volume = EMC_StorageVolume()
+        volume['name'] = 'vol1'
+        volume['id'] = '1234567890'
+        volume['provider_location'] = six.text_type(provider_location)
+
+        self.driver.common.conn = self.driver.common._get_ecom_connection()
+        with mock.patch.object(self.driver.common.conn, 'GetInstance',
+                               return_value={'ElementName': u'1234567890'}):
+            findlun = self.driver.common._find_lun(volume)
+            # Found lun.
+            self.assertEqual({'ElementName': '1234567890'}, findlun)
+
+    @mock.patch.object(
+        utils.VMAXUtils,
+        'get_volume_element_name',
+        return_value='OS-9876543210')
+    def test_find_lun_backward_compatible_no_match(self, mock_elem):
+        keybindings = {'CreationClassName': u'Symm_StorageVolume',
+                       'SystemName': u'SYMMETRIX+000195900551',
+                       'DeviceID': u'1',
+                       'SystemCreationClassName': u'Symm_StorageSystem'}
+        provider_location = {'classname': 'Symm_StorageVolume',
+                             'keybindings': keybindings}
+        volume = EMC_StorageVolume()
+        volume['name'] = 'vol1'
+        volume['id'] = '1234567890'
+        volume['provider_location'] = six.text_type(provider_location)
+
+        self.driver.common.conn = self.driver.common._get_ecom_connection()
+        with mock.patch.object(self.driver.common.conn, 'GetInstance',
+                               return_value={'ElementName': u'1234567890'}):
+            findlun = self.driver.common._find_lun(volume)
+            # No match, ElementName from VMAX is not contained in volume
+            # element name generated from volume.id i.e. OS-<volume.id>
+            self.assertIsNone(findlun)
 
     # Bug 1403160 - make sure the masking view is cleanly deleted
     def test_last_volume_delete_masking_view(self):

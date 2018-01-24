@@ -83,10 +83,11 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
               - Support for compression on All Flash
               - Volume replication 2.1 (bp add-vmax-replication)
               - rename and restructure driver (bp vmax-rename-dell-emc)
+        2.5.1 - backward compatibility fix (bug #1745183)
 
     """
 
-    VERSION = "2.5.0"
+    VERSION = "2.5.1"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
