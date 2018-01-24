@@ -27,6 +27,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils as json
 from oslo_service import loopingcall
+from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import units
@@ -2733,10 +2734,18 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                         last_exception = e
                         greenthread.sleep(self.DEFAULT_GR_SLEEP)
                     try:
+                        std_err = last_exception.stderr
+                        if std_err is not None and not self._is_ascii(std_err):
+                            std_err = encodeutils.safe_decode(std_err,
+                                                              errors='ignore')
+                            LOG.error("The stderr has non-ascii characters. "
+                                      "Please check the error code.\n"
+                                      "Stderr: %s", std_err)
+                            std_err = std_err.split()[0]
                         raise processutils.ProcessExecutionError(
                             exit_code=last_exception.exit_code,
                             stdout=last_exception.stdout,
-                            stderr=last_exception.stderr,
+                            stderr=std_err,
                             cmd=last_exception.cmd)
                     except AttributeError:
                         raise processutils.ProcessExecutionError(
@@ -2748,6 +2757,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error("Error running SSH command: %s", command)
+
+    def _is_ascii(self, value):
+        try:
+            return all(ord(c) < 128 for c in value)
+        except TypeError:
+            return False
 
     def _toggle_ip(self):
         # Change active_ip if storwize_san_secondary_ip is set.
