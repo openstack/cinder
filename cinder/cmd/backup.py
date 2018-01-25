@@ -43,12 +43,21 @@ from cinder import version
 
 CONF = cfg.CONF
 
+# NOTE(mriedem): The default backup driver uses swift and performs read/write
+# operations in a thread. swiftclient will log requests and responses at DEBUG
+# level, which can cause a thread switch and break the backup operation. So we
+# set a default log level of WARN for swiftclient to try and avoid this issue.
+_EXTRA_DEFAULT_LOG_LEVELS = ['swiftclient=WARN']
+
 
 def main():
     objects.register_all()
     gmr_opts.set_defaults(CONF)
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
+    logging.set_defaults(
+        default_log_levels=logging.get_default_log_levels() +
+        _EXTRA_DEFAULT_LOG_LEVELS)
     logging.setup(CONF, "cinder")
     python_logging.captureWarnings(True)
     priv_context.init(root_helper=shlex.split(utils.get_root_helper()))
