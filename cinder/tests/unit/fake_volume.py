@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils.uuidutils import is_uuid_like
 from oslo_versionedobjects import fields
 
 from cinder import objects
@@ -102,6 +103,9 @@ def fake_db_volume_attachment(**updates):
 
 
 def fake_volume_obj(context, **updates):
+    if updates.get('encryption_key_id'):
+        assert is_uuid_like(updates['encryption_key_id'])
+
     expected_attrs = updates.pop('expected_attrs',
                                  ['metadata', 'admin_metadata'])
     vol = objects.Volume._from_db_object(context, objects.Volume(),
