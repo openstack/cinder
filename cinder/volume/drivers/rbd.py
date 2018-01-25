@@ -14,12 +14,15 @@
 """RADOS Block Device Driver"""
 
 from __future__ import absolute_import
+import binascii
 import json
 import math
 import os
 import tempfile
 
+from castellan import key_manager
 from eventlet import tpool
+from os_brick import encryptors
 from os_brick.initiator import linuxrbd
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -681,12 +684,81 @@ class RBDDriver(driver.CloneableImageVD,
             return {'replication_status': fields.ReplicationStatus.DISABLED}
         return None
 
+    def _check_encryption_provider(self, volume, context):
+        """Check that this is a LUKS encryption provider.
+
+        :returns: encryption dict
+        """
+
+        encryption = self.db.volume_encryption_metadata_get(context, volume.id)
+        provider = encryption['provider']
+        if provider in encryptors.LEGACY_PROVIDER_CLASS_TO_FORMAT_MAP:
+            provider = encryptors.LEGACY_PROVIDER_CLASS_TO_FORMAT_MAP[provider]
+        if provider != encryptors.LUKS:
+            message = _("Provider %s not supported.") % provider
+            raise exception.VolumeDriverException(message=message)
+
+        if 'cipher' not in encryption or 'key_size' not in encryption:
+            msg = _('encryption spec must contain "cipher" and'
+                    '"key_size"')
+            raise exception.VolumeDriverException(message=msg)
+
+        return encryption
+
+    def _create_encrypted_volume(self, volume, context):
+        """Create an encrypted volume.
+
+        This works by creating an encrypted image locally,
+        and then uploading it to the volume.
+        """
+
+        encryption = self._check_encryption_provider(volume, context)
+
+        # Fetch the key associated with the volume and decode the passphrase
+        keymgr = key_manager.API(CONF)
+        key = keymgr.get(context, encryption['encryption_key_id'])
+        passphrase = binascii.hexlify(key.get_encoded()).decode('utf-8')
+
+        # create a file
+        tmp_dir = self._image_conversion_dir()
+
+        with tempfile.NamedTemporaryFile(dir=tmp_dir) as tmp_image:
+            with tempfile.NamedTemporaryFile(dir=tmp_dir) as tmp_key:
+                with open(tmp_key.name, 'w') as f:
+                    f.write(passphrase)
+
+                cipher_spec = image_utils.decode_cipher(encryption['cipher'],
+                                                        encryption['key_size'])
+
+                create_cmd = (
+                    'qemu-img', 'create', '-f', 'luks',
+                    '-o', 'cipher-alg=%(cipher_alg)s,'
+                    'cipher-mode=%(cipher_mode)s,'
+                    'ivgen-alg=%(ivgen_alg)s' % cipher_spec,
+                    '--object', 'secret,id=luks_sec,'
+                    'format=raw,file=%(passfile)s' % {'passfile':
+                                                      tmp_key.name},
+                    '-o', 'key-secret=luks_sec',
+                    tmp_image.name,
+                    '%sM' % (volume.size * 1024))
+                self._execute(*create_cmd)
+
+            # Copy image into RBD
+            chunk_size = self.configuration.rbd_store_chunk_size * units.Mi
+            order = int(math.log(chunk_size, 2))
+
+            cmd = ['rbd', 'import',
+                   '--pool', self.configuration.rbd_pool,
+                   '--order', order,
+                   tmp_image.name, volume.name]
+            cmd.extend(self._ceph_args())
+            self._execute(*cmd)
+
     def create_volume(self, volume):
         """Creates a logical volume."""
 
         if volume.encryption_key_id:
-            message = _("Encryption is not yet supported.")
-            raise exception.VolumeDriverException(message=message)
+            return self._create_encrypted_volume(volume, volume.obj_context)
 
         size = int(volume.size) * units.Gi
 
@@ -1254,7 +1326,45 @@ class RBDDriver(driver.CloneableImageVD,
 
         return tmpdir
 
+    def copy_image_to_encrypted_volume(self, context, volume, image_service,
+                                       image_id):
+        self._copy_image_to_volume(context, volume, image_service, image_id,
+                                   encrypted=True)
+
     def copy_image_to_volume(self, context, volume, image_service, image_id):
+        self._copy_image_to_volume(context, volume, image_service, image_id)
+
+    def _encrypt_image(self, context, volume, tmp_dir, src_image_path):
+        encryption = self._check_encryption_provider(volume, context)
+
+        # Fetch the key associated with the volume and decode the passphrase
+        keymgr = key_manager.API(CONF)
+        key = keymgr.get(context, encryption['encryption_key_id'])
+        passphrase = binascii.hexlify(key.get_encoded()).decode('utf-8')
+
+        # Decode the dm-crypt style cipher spec into something qemu-img can use
+        cipher_spec = image_utils.decode_cipher(encryption['cipher'],
+                                                encryption['key_size'])
+
+        tmp_dir = self._image_conversion_dir()
+
+        with tempfile.NamedTemporaryFile(prefix='luks_',
+                                         dir=tmp_dir) as pass_file:
+            with open(pass_file.name, 'w') as f:
+                f.write(passphrase)
+
+            # Convert the raw image to luks
+            dest_image_path = src_image_path + '.luks'
+            image_utils.convert_image(src_image_path, dest_image_path,
+                                      'luks', src_format='raw',
+                                      cipher_spec=cipher_spec,
+                                      passphrase_file=pass_file.name)
+
+            # Replace the original image with the now encrypted image
+            os.rename(dest_image_path, src_image_path)
+
+    def _copy_image_to_volume(self, context, volume, image_service, image_id,
+                              encrypted=False):
 
         tmp_dir = self._image_conversion_dir()
 
@@ -1263,6 +1373,9 @@ class RBDDriver(driver.CloneableImageVD,
                                      tmp.name,
                                      self.configuration.volume_dd_blocksize,
                                      size=volume.size)
+
+            if encrypted:
+                self._encrypt_image(context, volume, tmp_dir, tmp.name)
 
             self.delete_volume(volume)
 

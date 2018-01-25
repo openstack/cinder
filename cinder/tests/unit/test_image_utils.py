@@ -1703,3 +1703,10 @@ class TestImageUtils(test.TestCase):
                           virtual_size,
                           volume_size,
                           image_id)
+
+    def test_decode_cipher(self):
+        expected = {'cipher_alg': 'aes-256',
+                    'cipher_mode': 'xts',
+                    'ivgen_alg': 'essiv'}
+        result = image_utils.decode_cipher('aes-xts-essiv', 256)
+        self.assertEqual(expected, result)

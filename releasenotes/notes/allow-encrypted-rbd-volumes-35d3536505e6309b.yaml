@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    LUKS Encrypted RBD volumes can now be created by cinder-volume. This
+    capability was previously blocked by the rbd volume driver due to the lack
+    of any encryptors capable of attaching to an encrypted RBD volume. These
+    volumes can also be seeded with RAW image data from Glance through the use
+    of QEMU 2.10 and the qemu-img convert command.

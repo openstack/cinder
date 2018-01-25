@@ -14,11 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ddt
 import math
 import os
 import tempfile
 
+import castellan
+import ddt
 import mock
 from mock import call
 from oslo_utils import imageutils
@@ -34,6 +35,7 @@ from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit.keymgr import fake as fake_keymgr
 from cinder.tests.unit import utils
 from cinder.tests.unit.volume import test_driver
 from cinder.volume import configuration as conf
@@ -63,6 +65,11 @@ class MockImageBusyException(MockException):
 
 class MockImageExistsException(MockException):
     """Used as mock for rbd.ImageExists."""
+
+
+class KeyObject(object):
+    def get_encoded(arg):
+        return "asdf".encode('utf-8')
 
 
 def common_mocks(f):
@@ -184,6 +191,13 @@ class RBDTestCase(test.TestCase):
             **{'name': u'volume-0000000b',
                'id': '0c7d1f44-5a06-403f-bb82-ae7ad0d693a6',
                'size': 10})
+
+        self.volume_c = fake_volume.fake_volume_obj(
+            self.context,
+            **{'name': u'volume-0000000a',
+               'id': '55555555-222f-4b32-b585-9991b3bf0a99',
+               'size': 12,
+               'encryption_key_id': 'set_in_test'})
 
         self.snapshot = fake_snapshot.fake_snapshot_obj(
             self.context, name='snapshot-0000000a')
@@ -458,14 +472,6 @@ class RBDTestCase(test.TestCase):
 
         client.__enter__.assert_called_once_with()
         client.__exit__.assert_called_once_with(None, None, None)
-
-    @common_mocks
-    def test_create_encrypted_volume(self):
-        self.volume_a.encryption_key_id = \
-            '00000000-0000-0000-0000-000000000000'
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.create_volume,
-                          self.volume_a)
 
     @common_mocks
     def test_manage_existing_get_size(self):
@@ -2033,6 +2039,50 @@ class RBDTestCase(test.TestCase):
                 self.volume_a.name)
             mock_delete.assert_called_once_with(self.volume_a)
             self.assertEqual((True, None), ret)
+
+    @mock.patch('tempfile.NamedTemporaryFile')
+    @mock.patch('cinder.volume.drivers.rbd.RBDDriver.'
+                '_check_encryption_provider',
+                return_value={'encryption_key_id': fake.ENCRYPTION_KEY_ID})
+    def test_create_encrypted_volume(self,
+                                     mock_check_enc_prov,
+                                     mock_temp_file):
+        class DictObj(object):
+            # convert a dict to object w/ attributes
+            def __init__(self, d):
+                self.__dict__ = d
+
+        mock_temp_file.return_value.__enter__.side_effect = [
+            DictObj({'name': '/imgfile'}),
+            DictObj({'name': '/passfile'})]
+
+        key_mgr = fake_keymgr.fake_api()
+
+        self.mock_object(castellan.key_manager, 'API', return_value=key_mgr)
+        key_id = key_mgr.store(self.context, KeyObject())
+        self.volume_c.encryption_key_id = key_id
+
+        enc_info = {'encryption_key_id': key_id,
+                    'cipher': 'aes-xts-essiv',
+                    'key_size': 256}
+
+        with mock.patch('cinder.volume.drivers.rbd.RBDDriver.'
+                        '_check_encryption_provider', return_value=enc_info), \
+                mock.patch('cinder.volume.drivers.rbd.open') as mock_open, \
+                mock.patch.object(self.driver, '_execute') as mock_exec:
+            self.driver._create_encrypted_volume(self.volume_c,
+                                                 self.context)
+            mock_open.assert_called_with('/passfile', 'w')
+
+            mock_exec.assert_any_call(
+                'qemu-img', 'create', '-f', 'luks', '-o',
+                'cipher-alg=aes-256,cipher-mode=xts,ivgen-alg=essiv',
+                '--object',
+                'secret,id=luks_sec,format=raw,file=/passfile',
+                '-o', 'key-secret=luks_sec', '/imgfile', '12288M')
+            mock_exec.assert_any_call(
+                'rbd', 'import', '--pool', 'rbd', '--order', 22,
+                '/imgfile', self.volume_c.name)
 
 
 class ManagedRBDTestCase(test_driver.BaseDriverTestCase):
