@@ -505,7 +505,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             data = self.nef.get(vol_map_url).get('data')
         lun = data[0]['lun']
 
-        if not self.configuration.nexenta_writebackcache:
+        if not self.configuration.nexenta_lu_writebackcache_disabled:
             url = 'san/logicalUnits?fields=guid&volume=%s' % volume_path
             lu_guid = self.nef.get(url)['data'][0]['guid']
             url = 'san/logicalUnits/%s' % lu_guid
