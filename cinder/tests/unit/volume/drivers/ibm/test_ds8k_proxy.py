@@ -1486,6 +1486,30 @@ class DS8KProxyTest(test.TestCase):
             TEST_VOLUME_ID,
             ast.literal_eval(vol['provider_location'])['vol_hex_id'])
 
+    @mock.patch.object(helper.DS8KCommonHelper, '_create_lun')
+    def test_create_volume_for_cg_but_lss_full(self, mock_create_lun):
+        """Just reserve one LSS for CG."""
+        self.configuration.lss_range_for_cg = '22'
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id)
+
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     group_id=group.id)
+        mock_create_lun.side_effect = [
+            restclient.LssFullException('LSS is full.'), TEST_VOLUME_ID]
+
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_volume, volume)
+
     def test_create_volume_of_FB512(self):
         """create volume which type is FB 512."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
