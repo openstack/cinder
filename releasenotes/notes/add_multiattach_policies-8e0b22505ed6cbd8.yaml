@@ -3,25 +3,25 @@ features:
   - Added policies to disallow multiattach operations.  This includes two
     policies, the first being a general policy to allow the creation or
     retyping of multiattach volumes is a volume create policy with the name
-    ``MULTIATTACH_POLICY``.
+    ``volume:multiattach``.
 
     The second policy is specifically for disallowing the ability to create
     multiple attachments on a volume that is marked as bootable, and is an
-    attachment policy with the name ``MULTIATTACH_BOOTABLE_VOLUME_POLICY``.
+    attachment policy with the name ``volume:multiattach_bootable_volume``.
 
-    The default for these new policies is ``ADMIN_OR_OWNER``; be aware that
-    if you wish to disable either of these policies for your users you will
-    need to modify the default policy settings.
+    The default for these new policies is ``rule:admin_or_owner``; be aware
+    that if you wish to disable either of these policies for your users you
+    will need to modify the default policy settings.
 upgrade:
   - Added policies to disallow multiattach operations.  This includes two
     policies, the first being a general policy to allow the creation or
     retyping of multiattach volumes is a volume create policy with the name
-    ``MULTIATTACH_POLICY``.
+    ``volume:multiattach``.
 
     The second policy is specifically for disallowing the ability to create
     multiple attachments on a volume that is marked as bootable, and is an
-    attachment policy with the name ``MULTIATTACH_BOOTABLE_VOLUME_POLICY``.
+    attachment policy with the name ``volume:multiattach_bootable_volume``.
 
-    The default for these new policies is ``ADMIN_OR_OWNER``; be aware that
-    if you wish to disable either of these policies for your users you will
-    need to modify the default policy settings.
+    The default for these new policies is ``rule:admin_or_owner``; be aware
+    that if you wish to disable either of these policies for your users you
+    will need to modify the default policy settings.
