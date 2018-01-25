@@ -166,8 +166,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         if data:
             origin = data[0].get('originalSnapshot')
         else:
-            LOG.info(_('Volume %s does not exist, it seems it was '
-                       'already deleted.'), volume['name'])
+            LOG.info(_LI('Volume %s does not exist, it seems it was '
+                         'already deleted.'), volume['name'])
             return
         try:
             url = 'storage/volumes/%s?snapshots=true' % path
@@ -504,6 +504,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             counter += 1
             data = self.nef.get(vol_map_url).get('data')
         lun = data[0]['lun']
+
+        if not self.configuration.nexenta_writebackcache:
+            url = 'san/logicalUnits?fields=guid&volume=%s' % volume_path
+            lu_guid = self.nef.get(url)['data'][0]['guid']
+            url = 'san/logicalUnits/%s' % lu_guid
+            self.nef.put(url, {"writebackCacheDisabled": False})
 
         provider_location = '%(host)s:%(port)s %(name)s %(lun)s' % {
             'host': self.iscsi_host,
