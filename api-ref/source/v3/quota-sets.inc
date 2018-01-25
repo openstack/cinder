@@ -35,7 +35,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: qos_set_id
+   - id: project_id
    - volumes: volumes_number
    - volumes_{volume_type}: volumes_number_for_type
    - snapshots: snapshots_number
@@ -81,7 +81,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: qos_set_id
+   - id: project_id
    - volumes: volumes_number_usage
    - volumes_{volume_type}: volumes_number_for_type_usage
    - snapshots: snapshots_number_usage
@@ -209,7 +209,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: qos_set_id
+   - id: project_id
    - volumes: volumes_number
    - volumes_{volume_type}: volumes_number_for_type
    - snapshots: snapshots_number
