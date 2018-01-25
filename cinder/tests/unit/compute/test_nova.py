@@ -109,14 +109,11 @@ class NovaClientTestCase(test.TestCase):
                                          p_client, p_api_version):
 
         nova.novaclient(self.ctx, privileged_user=True)
-        p_password_plugin.assert_called_once_with(
-            auth_url='http://keystonehost:5000', default_domain_id=None,
-            default_domain_name=None, domain_id=None, domain_name=None,
-            password='strongpassword', project_domain_id=None,
-            project_domain_name=None, project_id=None, project_name=None,
-            trust_id=None, user_domain_id=None, user_domain_name=None,
-            user_id=None, username='adminuser'
-        )
+        p_password_plugin.assert_called_once()
+        self.assertEqual('adminuser',
+                         p_password_plugin.call_args[1]['username'])
+        self.assertEqual('http://keystonehost:5000',
+                         p_password_plugin.call_args[1]['auth_url'])
         p_client.assert_called_once_with(
             p_api_version(nova.NOVA_API_VERSION),
             session=p_session.return_value, region_name=None,
@@ -137,14 +134,11 @@ class NovaClientTestCase(test.TestCase):
                           'http://privatekeystonehost:5000',
                           group='nova')
         nova.novaclient(self.ctx, privileged_user=True)
-        p_password_plugin.assert_called_once_with(
-            auth_url='http://privatekeystonehost:5000', default_domain_id=None,
-            default_domain_name=None, domain_id=None, domain_name=None,
-            password='strongpassword', project_domain_id=None,
-            project_domain_name=None, project_id=None, project_name=None,
-            trust_id=None, user_domain_id=None, user_domain_name=None,
-            user_id=None, username='adminuser'
-        )
+        p_password_plugin.assert_called_once()
+        self.assertEqual('http://privatekeystonehost:5000',
+                         p_password_plugin.call_args[1]['auth_url'])
+        self.assertEqual('adminuser',
+                         p_password_plugin.call_args[1]['username'])
         p_client.assert_called_once_with(
             p_api_version(nova.NOVA_API_VERSION),
             session=p_session.return_value, region_name=None,
@@ -161,14 +155,13 @@ class NovaClientTestCase(test.TestCase):
 
         CONF.set_override('region_name', 'farfaraway', group='nova')
         nova.novaclient(self.ctx, privileged_user=True)
-        p_password_plugin.assert_called_once_with(
-            auth_url='http://keystonehost:5000', default_domain_id=None,
-            default_domain_name=None, domain_id=None, domain_name=None,
-            password='strongpassword', project_domain_id=None,
-            project_domain_name=None, project_id=None, project_name=None,
-            trust_id=None, user_domain_id=None, user_domain_name=None,
-            user_id=None, username='adminuser'
-        )
+        # This doesn't impact the password plugin, just make sure it was called
+        # with expected default values
+        p_password_plugin.assert_called_once()
+        self.assertEqual('http://keystonehost:5000',
+                         p_password_plugin.call_args[1]['auth_url'])
+        self.assertEqual('adminuser',
+                         p_password_plugin.call_args[1]['username'])
         p_client.assert_called_once_with(
             p_api_version(nova.NOVA_API_VERSION),
             session=p_session.return_value, region_name='farfaraway',
