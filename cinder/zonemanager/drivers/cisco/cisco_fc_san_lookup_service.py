@@ -136,6 +136,8 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
                 LOG.debug("show fcns database for vsan %s", zoning_vsan)
                 nsinfo = self.get_nameserver_info(zoning_vsan)
 
+                self.cleanup()
+
                 LOG.debug("Lookup service:fcnsdatabase-%s", nsinfo)
                 LOG.debug("Lookup service:initiator list from caller-%s",
                           formatted_initiator_list)
