@@ -813,14 +813,16 @@ class StorageCenterApi(object):
         # save the user from themselves.
         folderpath = foldername.strip('/')
         folderpath = os.path.dirname(folderpath)
-        # If we have any kind of path we throw it into the filters.
+        # Put our path into the filters
         if folderpath != '':
             # Legacy didn't begin with a slash.
             if not self.legacyfoldernames:
                 folderpath = '/' + folderpath
             # SC convention is to end with a '/' so make sure we do.
             folderpath += '/'
-            pf.append('folderPath', folderpath)
+        elif not self.legacyfoldernames:
+            folderpath = '/'
+        pf.append('folderPath', folderpath)
         folder = None
         r = self.client.post(url, pf.payload)
         if self._check_result(r):

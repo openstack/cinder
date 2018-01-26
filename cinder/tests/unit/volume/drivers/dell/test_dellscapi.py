@@ -1926,6 +1926,58 @@ class DellSCSanAPITestCase(test.TestCase):
         self.scapi.legacyfoldernames = True
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_result')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    def test_find_folder_legacy_root(self,
+                                     mock_post,
+                                     mock_get_result,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        self.scapi._find_folder('StorageCenter/ScVolumeFolder/GetList',
+                                'devstackvol', 12345)
+        expected_payload = {'filter': {'filterType': 'AND', 'filters': [
+            {'filterType': 'Equals', 'attributeName': 'scSerialNumber',
+             'attributeValue': 12345},
+            {'filterType': 'Equals', 'attributeName': 'Name',
+             'attributeValue': 'devstackvol'},
+            {'filterType': 'Equals', 'attributeName': 'folderPath',
+             'attributeValue': ''}]}}
+        mock_post.assert_called_once_with(
+            'StorageCenter/ScVolumeFolder/GetList',
+            expected_payload)
+        self.assertTrue(mock_get_result.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_result')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    def test_find_folder_non_legacy_root(self,
+                                         mock_post,
+                                         mock_get_result,
+                                         mock_close_connection,
+                                         mock_open_connection,
+                                         mock_init):
+        self.scapi.legacyfoldernames = False
+        self.scapi._find_folder('StorageCenter/ScVolumeFolder/GetList',
+                                'devstackvol', 12345)
+        expected_payload = {'filter': {'filterType': 'AND', 'filters': [
+            {'filterType': 'Equals', 'attributeName': 'scSerialNumber',
+             'attributeValue': 12345},
+            {'filterType': 'Equals', 'attributeName': 'Name',
+             'attributeValue': 'devstackvol'},
+            {'filterType': 'Equals', 'attributeName': 'folderPath',
+             'attributeValue': '/'}]}}
+        mock_post.assert_called_once_with(
+            'StorageCenter/ScVolumeFolder/GetList',
+            expected_payload)
+        self.assertTrue(mock_get_result.called)
+        self.scapi.legacyfoldernames = True
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_result',
                        return_value=u'devstackvol/fcvm/')
     @mock.patch.object(dell_storagecenter_api.HttpClient,
