@@ -24,6 +24,7 @@ import eventlet
 import mock
 from oslo_config import cfg
 from oslo_utils import units
+import requests
 import six
 from six.moves import urllib
 
@@ -50,11 +51,17 @@ for key in FAKE_PARMS:
         sanitized_params[key] = six.text_type(value)
 sanitized_params = utils.create_ordereddict(sanitized_params)
 global_sanitized_params = urllib.parse.urlencode(sanitized_params)
-header = {
-    'charset': 'utf-8', 'Content-Type': 'application/x-www-form-urlencoded'}
-login_url = ('/cgi-bin/authLogin.cgi?')
 
-get_basic_info_url = ('/cgi-bin/authLogin.cgi')
+header = {
+    'charset': 'utf-8',
+    'Content-Type': 'application/x-www-form-urlencoded'
+}
+
+login_url = '/cgi-bin/authLogin.cgi?'
+fake_login_url = 'http://1.2.3.4:8080' + login_url
+
+get_basic_info_url = '/cgi-bin/authLogin.cgi'
+fake_get_basic_info_url = 'http://1.2.3.4:8080' + get_basic_info_url
 
 FAKE_RES_DETAIL_DATA_LOGIN = """
     <QDocRoot version="1.0">
@@ -599,7 +606,8 @@ def create_configuration(
         thin_provision=True,
         compression=True,
         deduplication=False,
-        ssd_cache=False):
+        ssd_cache=False,
+        verify_ssl=True):
     """Create configuration."""
     configuration = mock.Mock()
     configuration.san_login = username
@@ -616,6 +624,7 @@ def create_configuration(
     configuration.qnap_storage_protocol = 'iscsi'
     configuration.reserved_percentage = 0
     configuration.use_chap_auth = False
+    configuration.driver_ssl_cert_verify = verify_ssl
     return configuration
 
 
@@ -626,7 +635,15 @@ class QnapDriverBaseTestCase(test.TestCase):
         """Setup the Qnap Driver Base TestCase."""
         super(QnapDriverBaseTestCase, self).setUp()
         self.driver = None
-        self.mock_HTTPConnection = None
+        self.mock_session = None
+
+    @staticmethod
+    def sanitize(params):
+        sanitized = {_key: six.text_type(_value)
+                     for _key, _value in six.iteritems(params)
+                     if _value is not None}
+        sanitized = utils.create_ordereddict(sanitized)
+        return urllib.parse.urlencode(sanitized)
 
 
 class SnapshotClass(object):
@@ -746,19 +763,21 @@ class HostClass(object):
 class FakeLoginResponse(object):
     """Fake login response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_LOGIN
 
 
 class FakeNoAuthPassedResponse(object):
     """Fake no auth passed response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_NO_AUTHPASSED
 
@@ -766,19 +785,21 @@ class FakeNoAuthPassedResponse(object):
 class FakeGetBasicInfoResponse(object):
     """Fake GetBasicInfo response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_GETBASIC_INFO
 
 
 class FakeGetBasicInfo114Response(object):
     """Fake GetBasicInfo114 response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_114
 
@@ -786,9 +807,10 @@ class FakeGetBasicInfo114Response(object):
 class FakeGetBasicInfoTsResponse(object):
     """Fake GetBasicInfoTs response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TS
 
@@ -796,9 +818,10 @@ class FakeGetBasicInfoTsResponse(object):
 class FakeGetBasicInfoTesResponse(object):
     """Fake GetBasicInfoTes response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES
 
@@ -806,9 +829,10 @@ class FakeGetBasicInfoTesResponse(object):
 class FakeGetBasicInfoTes433Response(object):
     """Fake GetBasicInfoTes response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_433
 
@@ -816,9 +840,10 @@ class FakeGetBasicInfoTes433Response(object):
 class FakeGetBasicInfoUnsupportResponse(object):
     """Fake GetBasicInfoUnsupport response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_UNSUPPORT
 
@@ -826,9 +851,10 @@ class FakeGetBasicInfoUnsupportResponse(object):
 class FakeGetBasicInfoUnsupportTsResponse(object):
     """Fake GetBasicInfoUnsupportTs response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_UNSUPPORT_TS
 
@@ -836,9 +862,10 @@ class FakeGetBasicInfoUnsupportTsResponse(object):
 class FakeGetBasicInfoUnsupportTesResponse(object):
     """Fake GetBasicInfoUnsupportTes response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_UNSUPPORT_TES
 
@@ -846,9 +873,10 @@ class FakeGetBasicInfoUnsupportTesResponse(object):
 class FakeLunInfoResponse(object):
     """Fake lun info response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_LUN_INFO
 
@@ -856,9 +884,10 @@ class FakeLunInfoResponse(object):
 class FakeLunInfoFailResponse(object):
     """Fake lun info response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_LUN_INFO_FAIL
 
@@ -866,9 +895,10 @@ class FakeLunInfoFailResponse(object):
 class FakeSnapshotInfoResponse(object):
     """Fake snapshot info response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_SNAPSHOT_INFO
 
@@ -876,9 +906,10 @@ class FakeSnapshotInfoResponse(object):
 class FakeSnapshotInfoFailResponse(object):
     """Fake snapshot info response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_SNAPSHOT_INFO_FAIL
 
@@ -886,9 +917,10 @@ class FakeSnapshotInfoFailResponse(object):
 class FakeOneLunInfoResponse(object):
     """Fake one lun info response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
+    @property
+    def text(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_ONE_LUN_INFO
 
@@ -896,90 +928,99 @@ class FakeOneLunInfoResponse(object):
 class FakeMappedOneLunInfoResponse(object):
     """Fake one lun info response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_MAPPED_ONE_LUN_INFO
 
 
 class FakePoolInfoResponse(object):
     """Fake pool info response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_SPECIFIC_POOL_INFO
 
 
 class FakePoolInfoFailResponse(object):
     """Fake pool info response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_SPECIFIC_POOL_INFO_FAIL
 
 
 class FakeCreateLunResponse(object):
     """Fake create lun response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_CREATE_LUN
 
 
 class FakeCreateLunFailResponse(object):
     """Fake create lun response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_CREATE_LUN_FAIL
 
 
 class FakeCreateLunBusyResponse(object):
     """Fake create lun response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_CREATE_LUN_BUSY
 
 
-class FakeCreatTargetResponse(object):
+class FakeCreateTargetResponse(object):
     """Fake create target response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_CREATE_TARGET
 
 
-class FakeCreatTargetFailResponse(object):
+class FakeCreateTargetFailResponse(object):
     """Fake create target response."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_CREATE_TARGET_FAIL
 
 
 class FakeGetIscsiPortalInfoResponse(object):
     """Fake get iscsi portal inforesponse."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_ISCSI_PORTAL_INFO
 
     def __repr__(self):
@@ -990,100 +1031,110 @@ class FakeGetIscsiPortalInfoResponse(object):
 class FakeCreateSnapshotResponse(object):
     """Fake Create snapshot inforesponse."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_SNAPSHOT
 
 
 class FakeCreateSnapshotWithoutSnapshotResponse(object):
     """Fake Create snapshot inforesponse."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_SNAPSHOT_WITHOUT_SNAPSHOT
 
 
 class FakeCreateSnapshotWithoutLunResponse(object):
     """Fake Create snapshot inforesponse."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_SNAPSHOT_WITHOUT_LUN
 
 
 class FakeCreateSnapshotFailResponse(object):
     """Fake Create snapshot inforesponse."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_SNAPSHOT_FAIL
 
 
 class FakeGetAllIscsiPortalSetting(object):
     """Fake get all iSCSI portal setting."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_GET_ALL_ISCSI_PORTAL_SETTING
 
 
 class FakeGetAllEthernetIp(object):
     """Fake get all ethernet ip setting."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_ETHERNET_IP
 
 
 class FakeTargetInfo(object):
     """Fake target info setting."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_TARGET_INFO
 
 
 class FakeTargetInfoFail(object):
     """Fake target info setting."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_TARGET_INFO_FAIL
 
 
 class FakeTargetInfoByInitiator(object):
     """Fake target info setting."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_TARGET_INFO_BY_INITIATOR
 
 
 class FakeTargetInfoByInitiatorFail(object):
     """Fake target info setting."""
 
-    status = 'fackStatus'
+    status_code = 'fackStatus'
 
-    def read(self):
-        """Mock response.read."""
+    @property
+    def text(self):
+        """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_TARGET_INFO_BY_INITIATOR_FAIL
 
 
@@ -1094,8 +1145,7 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
     def setUp(self):
         """Setup the Qnap Share Driver login TestCase."""
         super(QnapDriverLoginTestCase, self).setUp()
-        self.mock_object(six.moves.http_client, 'HTTPConnection')
-        self.mock_object(six.moves.http_client, 'HTTPSConnection')
+        self.mock_object(requests, 'request')
 
     @data({'mng_url': 'http://1.2.3.4:8080', 'port': '8080', 'ssl': False,
           'get_basic_info_response': FakeGetBasicInfoResponse()},
@@ -1120,11 +1170,8 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
         """Test do_setup with http://1.2.3.4:8080."""
         fake_login_response = FakeLoginResponse()
         fake_get_basic_info_response = get_basic_info_response
-        if ssl:
-            mock_connection = six.moves.http_client.HTTPSConnection
-        else:
-            mock_connection = six.moves.http_client.HTTPConnection
-        mock_connection.return_value.getresponse.side_effect = ([
+        mock_request = requests.request
+        mock_request.side_effect = ([
             fake_login_response,
             fake_get_basic_info_response,
             fake_login_response])
@@ -1132,7 +1179,7 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
                 'admin', 'qnapadmin', mng_url,
-                '1.2.3.4', 'Storage Pool 1', True))
+                '1.2.3.4', 'Storage Pool 1', True, verify_ssl=ssl))
         self.driver.do_setup('context')
 
         self.assertEqual('fakeSid', self.driver.api_executor.sid)
@@ -1150,11 +1197,8 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
         """Test do_setup with http://1.2.3.4:8080."""
         fake_login_response = FakeLoginResponse()
         fake_get_basic_info_response = FakeGetBasicInfoResponse()
-        if ssl:
-            mock_connection = six.moves.http_client.HTTPSConnection
-        else:
-            mock_connection = six.moves.http_client.HTTPConnection
-        mock_connection.return_value.getresponse.side_effect = ([
+        mock_request = requests.request
+        mock_request.side_effect = ([
             fake_login_response,
             fake_get_basic_info_response,
             fake_login_response])
@@ -1162,7 +1206,8 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
                 'admin', 'qnapadmin', mng_url,
-                '1.2.3.4', 'Storage Pool 1', True))
+                '1.2.3.4', 'Storage Pool 1', True, verify_ssl=ssl))
+
         del self.driver.configuration.qnap_management_url
         self.assertRaises(exception.InvalidInput,
                           self.driver.do_setup, 'context')
@@ -1177,11 +1222,8 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
         """Test do_setup with http://1.2.3.4:8080."""
         fake_login_response = FakeLoginResponse()
         fake_get_basic_info_response = get_basic_info_response
-        if ssl:
-            mock_connection = six.moves.http_client.HTTPSConnection
-        else:
-            mock_connection = six.moves.http_client.HTTPConnection
-        mock_connection.return_value.getresponse.side_effect = ([
+        mock_request = requests.request
+        mock_request.side_effect = ([
             fake_login_response,
             fake_get_basic_info_response,
             fake_login_response])
@@ -1189,7 +1231,7 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
                 'admin', 'qnapadmin', mng_url,
-                '1.2.3.4', 'Storage Pool 1', True))
+                '1.2.3.4', 'Storage Pool 1', True, verify_ssl=ssl))
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.do_setup, 'context')
 
@@ -1200,11 +1242,8 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
         """Test check_for_setup_error."""
         fake_login_response = FakeLoginResponse()
         fake_get_basic_info_response = FakeGetBasicInfoResponse()
-        if ssl:
-            mock_connection = six.moves.http_client.HTTPSConnection
-        else:
-            mock_connection = six.moves.http_client.HTTPConnection
-        mock_connection.return_value.getresponse.side_effect = ([
+        mock_request = requests.request
+        mock_request.side_effect = ([
             fake_login_response,
             fake_get_basic_info_response,
             fake_login_response])
@@ -1212,7 +1251,7 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
                 'admin', 'qnapadmin', mng_url,
-                '1.2.3.4', 'Storage Pool 1', True))
+                '1.2.3.4', 'Storage Pool 1', True, verify_ssl=ssl))
         self.driver.do_setup('context')
         self.driver.check_for_setup_error()
 
@@ -1248,17 +1287,17 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
     def get_one_lun_info_return_value(self):
         """Return the lun form get_one_lun_info method."""
         fake_one_lun_info_response = FakeOneLunInfoResponse()
-        ret = {'data': fake_one_lun_info_response.read(),
+        ret = {'data': fake_one_lun_info_response.text,
                'error': None,
-               'http_status': fake_one_lun_info_response.status}
+               'http_status': fake_one_lun_info_response.status_code}
         return ret
 
     def get_mapped_one_lun_info_return_value(self):
         """Return the lun form get_one_lun_info method."""
         fake_mapped_one_lun_info_response = FakeMappedOneLunInfoResponse()
-        ret = {'data': fake_mapped_one_lun_info_response.read(),
+        ret = {'data': fake_mapped_one_lun_info_response.text,
                'error': None,
-               'http_status': fake_mapped_one_lun_info_response.status}
+               'http_status': fake_mapped_one_lun_info_response.status_code}
         return ret
 
     def get_snapshot_info_return_value(self):
@@ -2334,15 +2373,15 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
     """Tests QnapAPIExecutor."""
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_lun_positive_with_thin_allocate(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create lun."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
 
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2377,35 +2416,32 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['lv_threshold'] = '80'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
+        fake_post_params = self.sanitize(fake_params)
 
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         create_lun_url = (
-            '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_lun_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', create_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', create_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_lun_positive_without_thin_allocate(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create lun."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
 
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2440,35 +2476,32 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['lv_threshold'] = '80'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
+        fake_post_params = self.sanitize(fake_params)
 
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         create_lun_url = (
-            '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_lun_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', create_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', create_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_lun_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create lun."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
 
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2491,15 +2524,15 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           fake_volume, 'fakepool', 'fakeLun', 'False',
                           'False', 'True', 'False')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_lun_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create lun."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
 
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2520,12 +2553,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           fake_volume, 'fakepool', 'fakeLun', 'False',
                           'False', 'True', 'False')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_delete_lun(
             self,
-            mock_http_connection):
+            mock_request):
         """Test delete lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2549,30 +2582,27 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['LUNIndex'] = 'fakeLunIndex'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
+        fake_post_params = self.sanitize(fake_params)
 
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         delete_lun_url = (
-            '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_lun_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', delete_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', delete_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
-    def test_delete_lun_negative(self, mock_http_connection):
+    @mock.patch('requests.request')
+    def test_delete_lun_negative(self, mock_request):
         """Test delete lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2593,12 +2623,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.delete_lun,
                           'fakeLunIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_delete_lun_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test delete lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2617,12 +2647,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.delete_lun,
                           'fakeLunIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_delete_lun_positive_with_busy_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test delete lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2646,32 +2676,29 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['LUNIndex'] = 'fakeLunIndex'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
+        fake_post_params = self.sanitize(fake_params)
 
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         delete_lun_url = (
-            '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_lun_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', delete_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', delete_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_specific_poolinfo(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get specific pool info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2695,32 +2722,29 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['Pool_Info'] = '1'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
+
         get_specific_poolinfo_url = (
-            '/cgi-bin/disk/disk_manage.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/disk_manage.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call(
-                'GET', get_specific_poolinfo_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_specific_poolinfo_url, data=None,
+                      headers=None, verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_specific_poolinfo_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get specific pool info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2741,12 +2765,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.get_specific_poolinfo,
                           'Pool1')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_specific_poolinfo_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get specific pool info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2765,16 +2789,16 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.get_specific_poolinfo,
                           'Pool1')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_target(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create target."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
-            FakeCreatTargetResponse()])
+            FakeCreateTargetResponse()])
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
@@ -2796,32 +2820,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['controller_name'] = 'sca'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         create_target_url = (
-            '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_target_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', create_target_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', create_target_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_target_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create target."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2842,16 +2862,16 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.create_target,
                           'fakeTargetName', 'sca')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_target_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create target."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
-            FakeCreatTargetFailResponse()])
+            FakeCreateTargetFailResponse()])
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
@@ -2866,10 +2886,10 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.create_target,
                           'fakeTargetName', 'sca')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
-    def test_add_target_init(self, mock_http_connection):
+    @mock.patch('requests.request')
+    def test_add_target_init(self, mock_request):
         """Test add target init."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2901,33 +2921,29 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['ha_sync'] = '1'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
+        fake_post_params = self.sanitize(fake_params)
 
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         add_target_init_url = (
-            '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_target_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call(
-                'GET', add_target_init_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', add_target_init_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_add_target_init_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test add target init."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2948,12 +2964,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.add_target_init,
                           'fakeTargetIqn', 'fakeInitiatorIqn', False, '', '')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_add_target_init_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test add target init."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -2972,12 +2988,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.add_target_init,
                           'fakeTargetIqn', 'fakeInitiatorIqn', False, '', '')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_remove_target_init(
             self,
-            mock_http_connection):
+            mock_request):
         """Test add target init."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse()])
@@ -2995,19 +3011,20 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             'fakeTargetIqn', 'fakeInitiatorIqn')
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_map_lun(
             self,
-            mock_http_connection):
+            mock_request):
         """Test map lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3031,32 +3048,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['targetIndex'] = 'fakeTargetIndex'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         map_lun_url = (
-            '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_target_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', map_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', map_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_map_lun_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test map lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3077,12 +3090,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.map_lun,
                           'fakeLunIndex', 'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_map_lun_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test map lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3101,12 +3114,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.map_lun,
                           'fakeLunIndex', 'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_disable_lun(
             self,
-            mock_http_connection):
+            mock_request):
         """Test disable lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3131,30 +3144,26 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['LUNEnable'] = 0
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         unmap_lun_url = (
-            '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_target_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', unmap_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', unmap_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
-    def test_disable_lun_negative(self, mock_http_connection):
+    @mock.patch('requests.request')
+    def test_disable_lun_negative(self, mock_request):
         """Test disable lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3175,12 +3184,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.disable_lun,
                           'fakeLunIndex', 'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_disable_lun_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test disable lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3199,12 +3208,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.disable_lun,
                           'fakeLunIndex', 'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_unmap_lun(
             self,
-            mock_http_connection):
+            mock_request):
         """Test unmap lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3228,32 +3237,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['targetIndex'] = 'fakeTargetIndex'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         unmap_lun_url = (
-            '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_target_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', unmap_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', unmap_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_unmap_lun_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test unmap lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3274,12 +3279,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.unmap_lun,
                           'fakeLunIndex', 'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_unmap_lun_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test unmap lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3298,12 +3303,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.unmap_lun,
                           'fakeLunIndex', 'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_iscsi_portal_info(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get iscsi portal info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3325,33 +3330,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['iSCSI_portal'] = '1'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         get_iscsi_portal_info_url = (
-            '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_portal_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call(
-                'GET', get_iscsi_portal_info_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_iscsi_portal_info_url, data=None,
+                      headers=None, verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_iscsi_portal_info_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get iscsi portal info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3371,10 +3371,10 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.api_executor.get_iscsi_portal_info)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
-    def test_get_lun_info(self, mock_http_connection):
+    @mock.patch('requests.request')
+    def test_get_lun_info(self, mock_request):
         """Test get lun info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3395,32 +3395,29 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['func'] = 'extra_get'
         fake_params['lunList'] = '1'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
 
         get_lun_info_url = (
-            '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_portal_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_lun_info_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_lun_info_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_lun_info_positive_with_lun_index(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get lun info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3441,32 +3438,30 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['func'] = 'extra_get'
         fake_params['lunList'] = '1'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+
+        fake_post_params = self.sanitize(fake_params)
 
         get_lun_info_url = (
-            '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_portal_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_lun_info_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_lun_info_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_lun_info_positive_with_lun_name(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get lun info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3487,32 +3482,30 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['func'] = 'extra_get'
         fake_params['lunList'] = '1'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+
+        fake_post_params = self.sanitize(fake_params)
 
         get_lun_info_url = (
-            '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_portal_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_lun_info_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_lun_info_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_lun_info_positive_with_lun_naa(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get lun info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3533,33 +3526,30 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['func'] = 'extra_get'
         fake_params['lunList'] = '1'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
 
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
 
         get_lun_info_url = (
-            '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_portal_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_lun_info_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_lun_info_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_lun_info_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get lun info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3579,12 +3569,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.api_executor.get_lun_info)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_one_lun_info(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get one lun info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3606,33 +3596,30 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['lun_info'] = '1'
         fake_params['lunID'] = 'fakeLunId'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
 
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
 
         get_lun_info_url = (
-            '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_portal_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_lun_info_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_lun_info_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_one_lun_info_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get one lun info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3653,12 +3640,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.get_one_lun_info,
                           'fakeLunId')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_snapshot_info(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get snapshot info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3683,32 +3670,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['snap_start'] = '0'
         fake_params['snap_count'] = '100'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         get_snapshot_info_url = (
-            '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/snapshot.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_snapshot_info_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_snapshot_info_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_snapshot_info_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get snapshot info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3730,12 +3713,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           lun_index='fakeLunIndex',
                           snapshot_name='fakeSnapshotName')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_snapshot_info_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get snapshot info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3755,12 +3738,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           lun_index='fakeLunIndex',
                           snapshot_name='fakeSnapshotName')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_snapshot_api(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create snapshot api."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3786,33 +3769,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['vital'] = '1'
         fake_params['snapshot_type'] = '0'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         create_snapshot_api_url = (
-            '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/snapshot.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call(
-                'GET', create_snapshot_api_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', create_snapshot_api_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_snapshot_api_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create snapshot api."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3833,12 +3811,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.create_snapshot_api,
                           'fakeLunIndex', 'fakeSnapshotName')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_snapshot_api_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create snapshot api."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3857,12 +3835,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.create_snapshot_api,
                           'fakeLunIndex', 'fakeSnapshotName')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_delete_snapshot_api(
             self,
-            mock_http_connection):
+            mock_request):
         """Test api delete snapshot."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3883,33 +3861,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['func'] = 'del_snapshots'
         fake_params['snapshotID'] = 'fakeSnapshotId'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         api_delete_snapshot_url = (
-            '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/snapshot.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call(
-                'GET', api_delete_snapshot_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', api_delete_snapshot_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_delete_snapshot_api_positive_without_snapshot(
             self,
-            mock_http_connection):
+            mock_request):
         """Test api de;ete snapshot."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3930,33 +3903,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['func'] = 'del_snapshots'
         fake_params['snapshotID'] = 'fakeSnapshotId'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         api_delete_snapshot_url = (
-            '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/snapshot.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call(
-                'GET', api_delete_snapshot_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', api_delete_snapshot_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_delete_snapshot_api_positive_without_lun(
             self,
-            mock_http_connection):
+            mock_request):
         """Test api de;ete snapshot."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -3977,33 +3945,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['func'] = 'del_snapshots'
         fake_params['snapshotID'] = 'fakeSnapshotId'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         api_delete_snapshot_url = (
-            '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/snapshot.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call(
-                'GET', api_delete_snapshot_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', api_delete_snapshot_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_delete_snapshot_api_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test api de;ete snapshot."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4024,12 +3987,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.delete_snapshot_api,
                           'fakeSnapshotId')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_delete_snapshot_api_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test api de;ete snapshot."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4048,12 +4011,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.delete_snapshot_api,
                           'fakeSnapshotId')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_clone_snapshot(
             self,
-            mock_http_connection):
+            mock_request):
         """Test clone snapshot."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4077,32 +4040,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['snapshotID'] = 'fakeSnapshotId'
         fake_params['new_name'] = 'fakeLunName'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         clone_snapshot_url = (
-            '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/snapshot.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', clone_snapshot_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', clone_snapshot_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_clone_snapshot_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test clone snapshot."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4123,12 +4082,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.clone_snapshot,
                           'fakeSnapshotId', 'fakeLunName')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_clone_snapshot_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test clone snapshot."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4147,12 +4106,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.clone_snapshot,
                           'fakeSnapshotId', 'fakeLunName')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_edit_lun(
             self,
-            mock_http_connection):
+            mock_request):
         """Test edit lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4185,32 +4144,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['LUNStatus'] = 'fakeLunStatus'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         edit_lun_url = (
-            '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_lun_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', edit_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', edit_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_edit_lun_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test edit lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4237,12 +4192,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.edit_lun,
                           fake_lun)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_edit_lun_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test edit lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4267,12 +4222,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.edit_lun,
                           fake_lun)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_all_iscsi_portal_setting(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get all iscsi portal setting."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4292,34 +4247,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params = {}
         fake_params['func'] = 'get_all'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         get_all_iscsi_portal_setting_url = (
-            '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_portal_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call(
-                'GET',
-                get_all_iscsi_portal_setting_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_all_iscsi_portal_setting_url, data=None,
+                      headers=None, verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_ethernet_ip_with_type_data(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get ethernet ip."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4339,33 +4288,29 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params = {}
         fake_params['subfunc'] = 'net_setting'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
 
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         get_ethernet_ip_url = (
-            '/cgi-bin/sys/sysRequest.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/sys/sysRequest.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_ethernet_ip_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_ethernet_ip_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_ethernet_ip_with_type_manage(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get ethernet ip."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4385,31 +4330,26 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params = {}
         fake_params['subfunc'] = 'net_setting'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         get_ethernet_ip_url = (
-            '/cgi-bin/sys/sysRequest.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/sys/sysRequest.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_ethernet_ip_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_ethernet_ip_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
-    def test_get_ethernet_ip_with_type_all(self, mock_http_connection):
+    @mock.patch('requests.request')
+    def test_get_ethernet_ip_with_type_all(self, mock_request):
         """Test get ethernet ip."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4429,33 +4369,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params = {}
         fake_params['subfunc'] = 'net_setting'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         get_ethernet_ip_url = (
-            '/cgi-bin/sys/sysRequest.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/sys/sysRequest.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_ethernet_ip_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_ethernet_ip_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_ethernet_ip_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get ethernet ip."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4476,12 +4411,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.get_ethernet_ip,
                           type='data')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_target_info(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get target info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4504,32 +4439,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['targetIndex'] = 'fakeTargetIndex'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         get_target_info_url = (
-            '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_portal_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_target_info_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_target_info_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_target_info_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get target info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4550,12 +4481,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.get_target_info,
                           'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_target_info_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get target info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
             FakeLoginResponse(),
@@ -4574,12 +4505,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.get_target_info,
                           'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_target_info_by_initiator(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get target info by initiator."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfo114Response(),
             FakeLoginResponse(),
@@ -4602,32 +4533,28 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['initiatorIQN'] = 'fakeInitiatorIQN'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         get_target_info_url = (
-            '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_portal_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_target_info_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_target_info_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_target_info_by_initiator_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get target info by initiator."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfo114Response(),
             FakeLoginResponse(),
@@ -4649,12 +4576,12 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                           get_target_info_by_initiator,
                           'fakeInitiatorIQN')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_target_info_by_initiator_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get target info by initiator."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfo114Response(),
             FakeLoginResponse(),
@@ -4677,39 +4604,35 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['initiatorIQN'] = 'fakeInitiatorIQN'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         get_target_info_url = (
-            '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_portal_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_target_info_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_target_info_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
 
 class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
     """Tests QnapAPIExecutorTS."""
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_lun_positive_with_thin_allocate(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create lun."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
 
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -4742,35 +4665,31 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['lv_threshold'] = '80'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         create_lun_url = (
-            '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_lun_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', create_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', create_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_lun_positive_without_thin_allocate(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create lun."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
 
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -4803,35 +4722,31 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['lv_threshold'] = '80'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         create_lun_url = (
-            '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_lun_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', create_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', create_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_lun_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create lun."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
 
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -4854,15 +4769,15 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           fake_volume, 'fakepool', 'fakeLun', 'False',
                           'False', 'True', 'False')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_lun_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create lun."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
 
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -4883,12 +4798,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           fake_volume, 'fakepool', 'fakeLun', 'False',
                           'False', 'True', 'False')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_delete_lun(
             self,
-            mock_http_connection):
+            mock_request):
         """Test delete lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -4912,32 +4827,28 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['LUNIndex'] = 'fakeLunIndex'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         delete_lun_url = (
-            '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_lun_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', delete_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', delete_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_delete_lun_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test delete lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -4958,12 +4869,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.delete_lun,
                           'fakeLunIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_delete_lun_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test delete lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -4982,12 +4893,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.delete_lun,
                           'fakeLunIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_delete_lun_positive_with_busy_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test delete lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5011,32 +4922,28 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['LUNIndex'] = 'fakeLunIndex'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         delete_lun_url = (
-            '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_lun_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', delete_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', delete_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_map_lun(
             self,
-            mock_http_connection):
+            mock_request):
         """Test map lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5060,32 +4967,28 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['targetIndex'] = 'fakeTargetIndex'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         map_lun_url = (
-            '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_target_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', map_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', map_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_map_lun_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test map lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5106,12 +5009,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.map_lun,
                           'fakeLunIndex', 'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_map_lun_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test map lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5130,12 +5033,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.map_lun,
                           'fakeLunIndex', 'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_disable_lun(
             self,
-            mock_http_connection):
+            mock_request):
         """Test disable lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5160,32 +5063,28 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['LUNEnable'] = 0
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         unmap_lun_url = (
-            '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_target_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', unmap_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', unmap_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_disable_lun_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test disable lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5206,12 +5105,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.disable_lun,
                           'fakeLunIndex', 'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_disable_lun_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test disable lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5230,12 +5129,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.disable_lun,
                           'fakeLunIndex', 'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_unmap_lun(
             self,
-            mock_http_connection):
+            mock_request):
         """Test unmap lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5259,32 +5158,28 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['targetIndex'] = 'fakeTargetIndex'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         unmap_lun_url = (
-            '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_target_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', unmap_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', unmap_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_unmap_lun_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test unmap lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5305,12 +5200,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.unmap_lun,
                           'fakeLunIndex', 'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_unmap_lun_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test unmap lun."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5329,12 +5224,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.unmap_lun,
                           'fakeLunIndex', 'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_remove_target_init(
             self,
-            mock_http_connection):
+            mock_request):
         """Test remove target init."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5359,33 +5254,28 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['ha_sync'] = '1'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_params = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_params[key] = six.text_type(value)
-
-        fake_post_params = utils.create_ordereddict(fake_post_params)
-        fake_post_params = urllib.parse.urlencode(fake_post_params)
+        fake_post_params = self.sanitize(fake_params)
         remove_target_init_url = (
-            '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_params)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_target_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call(
-                'GET', remove_target_init_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', remove_target_init_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_remove_target_init_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test remove target init."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5406,11 +5296,11 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.remove_target_init,
                           'fakeTargetIqn', 'fakeDefaultAcl')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_remove_target_init_negative_with_wrong_result(
-            self, mock_http_connection):
+            self, mock_request):
         """Test remove target init."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5429,11 +5319,11 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.remove_target_init,
                           'fakeTargetIqn', 'fakeDefaultAcl')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_target_info(
-            self, mock_http_connection):
+            self, mock_request):
         """Test get get target info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5458,32 +5348,28 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['ha_sync'] = '1'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_params = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_params[key] = six.text_type(value)
-
-        fake_post_params = utils.create_ordereddict(fake_post_params)
-        fake_post_params = urllib.parse.urlencode(fake_post_params)
+        fake_post_params = self.sanitize(fake_params)
         get_target_info_url = (
-            '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_params)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_portal_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_target_info_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_target_info_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_target_info_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get get target info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5504,12 +5390,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.get_target_info,
                           'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_target_info_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get get target info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5528,12 +5414,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.get_target_info,
                           'fakeTargetIndex')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_ethernet_ip_with_type(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get ethernet ip."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5553,21 +5439,23 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         fake_post_parm = 'sid=fakeSid&subfunc=net_setting'
         get_ethernet_ip_url = (
-            '/cgi-bin/sys/sysRequest.cgi?' + fake_post_parm)
+            'http://1.2.3.4:8080/cgi-bin/sys/sysRequest.cgi?' + fake_post_parm)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_ethernet_ip_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_ethernet_ip_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
-    def test_get_ethernet_ip_negative(self, mock_http_connection):
+    @mock.patch('requests.request')
+    def test_get_ethernet_ip_negative(self, mock_request):
         """Test get ethernet ip."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5588,12 +5476,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.get_ethernet_ip,
                           type='data')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_snapshot_info(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get snapshot info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5618,31 +5506,28 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['smb_snapshot'] = '1'
         fake_params['snapshot_list'] = '1'
         fake_params['sid'] = 'fakeSid'
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         get_snapshot_info_url = (
-            '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/snapshot.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_snapshot_info_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_snapshot_info_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_snapshot_info_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get snapshot info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5664,12 +5549,12 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           lun_index='fakeLunIndex',
                           snapshot_name='fakeSnapshotName')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_snapshot_info_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get snapshot info."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5689,16 +5574,16 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           lun_index='fakeLunIndex',
                           snapshot_name='fakeSnapshotName')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_target(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create target."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
-            FakeCreatTargetResponse()])
+            FakeCreateTargetResponse()])
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
@@ -5719,32 +5604,28 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['bTargetClusterEnable'] = '1'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         create_target_url = (
-            '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_target_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', create_target_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', create_target_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_target_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create target."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
@@ -5765,16 +5646,16 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
                           self.driver.api_executor.create_target,
                           'fakeTargetName', 'sca')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_target_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create target."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTsResponse(),
             FakeLoginResponse(),
-            FakeCreatTargetFailResponse()])
+            FakeCreateTargetFailResponse()])
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
@@ -5793,15 +5674,15 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
     """Tests QnapAPIExecutorTES."""
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_lun_positive_with_thin_allocate(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create lun."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
 
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTesResponse(),
             FakeLoginResponse(),
@@ -5837,35 +5718,31 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
         fake_params['lv_threshold'] = '80'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         create_lun_url = (
-            '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_lun_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', create_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', create_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_lun_positive_without_thin_allocate(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create lun."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
 
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTesResponse(),
             FakeLoginResponse(),
@@ -5901,35 +5778,31 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
         fake_params['lv_threshold'] = '80'
         fake_params['sid'] = 'fakeSid'
 
-        fake_post_parms = {}
-        for key in fake_params:
-            value = fake_params[key]
-            if value is not None:
-                fake_post_parms[key] = six.text_type(value)
-
-        fake_post_parms = utils.create_ordereddict(fake_post_parms)
-        fake_post_parms = urllib.parse.urlencode(fake_post_parms)
+        fake_post_params = self.sanitize(fake_params)
         create_lun_url = (
-            '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
+            'http://1.2.3.4:8080/cgi-bin/disk/iscsi_lun_setting.cgi?' +
+            fake_post_params)
 
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', create_lun_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', create_lun_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_lun_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create lun."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
 
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTesResponse(),
             FakeLoginResponse(),
@@ -5952,15 +5825,15 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
                           fake_volume, 'fakepool', 'fakeLun', 'False',
                           'False', 'True', 'False')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_create_lun_negative_with_wrong_result(
             self,
-            mock_http_connection):
+            mock_request):
         """Test create lun."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
 
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTesResponse(),
             FakeLoginResponse(),
@@ -5981,12 +5854,12 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
                           fake_volume, 'fakepool', 'fakeLun', 'False',
                           'False', 'True', 'False')
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_ethernet_ip_with_type(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get ehternet ip."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTesResponse(),
             FakeLoginResponse(),
@@ -6006,22 +5879,24 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
 
         fake_post_parm = 'sid=fakeSid&subfunc=net_setting'
         get_ethernet_ip_url = (
-            '/cgi-bin/sys/sysRequest.cgi?' + fake_post_parm)
+            'http://1.2.3.4:8080/cgi-bin/sys/sysRequest.cgi?' + fake_post_parm)
         expected_call_list = [
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_basic_info_url),
-            mock.call('POST', login_url, global_sanitized_params, header),
-            mock.call('GET', get_ethernet_ip_url)]
-        self.assertEqual(
-            expected_call_list,
-            mock_http_connection.return_value.request.call_args_list)
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', fake_get_basic_info_url, data=None, headers=None,
+                      verify=False),
+            mock.call('POST', fake_login_url, data=global_sanitized_params,
+                      headers=header, verify=False),
+            mock.call('GET', get_ethernet_ip_url, data=None, headers=None,
+                      verify=False)]
+        self.assertEqual(expected_call_list, mock_request.call_args_list)
 
-    @mock.patch('six.moves.http_client.HTTPConnection')
+    @mock.patch('requests.request')
     def test_get_ethernet_ip_negative(
             self,
-            mock_http_connection):
+            mock_request):
         """Test get ethernet ip."""
-        mock_http_connection.return_value.getresponse.side_effect = ([
+        mock_request.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTesResponse(),
             FakeLoginResponse(),
