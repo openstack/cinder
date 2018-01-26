@@ -7638,8 +7638,10 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                            del_volumes)
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'])
-        self.assertIsNone(add_volumes_update)
-        self.assertIsNone(remove_volumes_update)
+        self.assertEqual([{'id': vol1.id, 'group_id': hyper_group.id},
+                          {'id': vol2.id, 'group_id': hyper_group.id}],
+                         add_volumes_update, )
+        self.assertEqual([], remove_volumes_update)
 
         # del hyperswap volume from volume group
         add_volumes = []
@@ -7651,20 +7653,22 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                            del_volumes)
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'])
-        self.assertIsNone(add_volumes_update)
-        self.assertIsNone(remove_volumes_update)
+        self.assertEqual([], add_volumes_update)
+        self.assertEqual([{'id': vol1.id, 'group_id': None},
+                          {'id': vol2.id, 'group_id': None}],
+                         remove_volumes_update)
 
         # add non-hyper volume
         non_type_ref = volume_types.create(self.ctxt, 'nonhypertype', None)
         add_vol3 = self._create_volume(volume_type_id=non_type_ref['id'])
         (model_update, add_volumes_update,
-         remove_volumes_update) = self.driver.update_group(self.ctxt,
-                                                           hyper_group,
-                                                           [add_vol3], [])
+         remove_volumes_update) = self.driver.update_group(
+            self.ctxt, hyper_group, [add_vol3, vol1], [])
         self.assertEqual(fields.GroupStatus.ERROR,
                          model_update['status'])
-        self.assertIsNone(add_volumes_update)
-        self.assertIsNone(remove_volumes_update)
+        self.assertEqual([{'id': vol1.id, 'group_id': hyper_group.id}],
+                         add_volumes_update)
+        self.assertEqual([], remove_volumes_update)
 
 
 class CLIResponseTestCase(test.TestCase):
@@ -9829,14 +9833,14 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         rccg_name = self.driver._get_rccg_name(group)
         temp_state = self.sim._rcconsistgrp_list[rccg_name][state]
-        self.sim._rcconsistgrp_list[rccg_name]['state'] = value
+        self.sim._rcconsistgrp_list[rccg_name][state] = value
         (model_update, add_volumes_update,
          remove_volumes_update) = self.driver.update_group(
             self.ctxt, group, [mm_vol2], [])
-        self.assertEqual(model_update['status'], fields.GroupStatus.ERROR)
-        self.assertIsNone(add_volumes_update)
-        self.assertIsNone(remove_volumes_update)
-        self.sim._rcconsistgrp_list[rccg_name]['state'] = temp_state
+        self.assertEqual(fields.GroupStatus.ERROR, model_update['status'])
+        self.assertEqual([], add_volumes_update)
+        self.assertEqual([], remove_volumes_update)
+        self.sim._rcconsistgrp_list[rccg_name][state] = temp_state
 
         self.driver.delete_group(self.ctxt, group, [mm_vol1])
 
@@ -9852,18 +9856,27 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         (model_update, add_volumes_update,
          remove_volumes_update) = self.driver.update_group(
             self.ctxt, group, add_vols, [])
-        self.assertEqual(model_update['status'], fields.GroupStatus.ERROR)
-        self.assertIsNone(add_volumes_update)
-        self.assertIsNone(remove_volumes_update)
+        self.assertEqual(fields.GroupStatus.ERROR, model_update['status'])
+        self.assertEqual([{'id': mm_vol.id, 'group_id': group.id}],
+                         add_volumes_update)
+        self.assertEqual([], remove_volumes_update)
         self.driver.delete_group(self.ctxt, group, add_vols)
 
         group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
         rccg_name = self.driver._get_rccg_name(group)
         # Create metro mirror replication.
         mm_vol1, model_update = self._create_test_volume(self.mm_type)
+        rcrel = self.driver._helpers.get_relationship_info(mm_vol1.name)
+        self.sim._rc_state_transition('wait', rcrel)
         mm_vol2, model_update = self._create_test_volume(self.mm_type)
+        rcrel = self.driver._helpers.get_relationship_info(mm_vol2.name)
+        self.sim._rc_state_transition('wait', rcrel)
         mm_vol3, model_update = self._create_test_volume(self.mm_type)
+        rcrel = self.driver._helpers.get_relationship_info(mm_vol3.name)
+        self.sim._rc_state_transition('wait', rcrel)
         mm_vol4, model_update = self._create_test_volume(self.mm_type)
+        rcrel = self.driver._helpers.get_relationship_info(mm_vol4.name)
+        self.sim._rc_state_transition('wait', rcrel)
 
         add_vols = [mm_vol1, mm_vol2]
         (model_update, add_volumes_update,
@@ -9875,9 +9888,11 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertEqual(
             rccg_name,
             self.driver._helpers.get_rccg_info(mm_vol2.name)['name'])
-        self.assertEqual(model_update['status'], fields.GroupStatus.AVAILABLE)
-        self.assertIsNone(add_volumes_update)
-        self.assertIsNone(remove_volumes_update)
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
+        self.assertEqual([{'id': mm_vol1.id, 'group_id': group.id},
+                          {'id': mm_vol2.id, 'group_id': group.id}],
+                         add_volumes_update)
+        self.assertEqual([], remove_volumes_update)
 
         add_vols = [mm_vol3, mm_vol4]
         rmv_vols = [mm_vol1, mm_vol2]
@@ -9892,9 +9907,13 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertEqual(
             rccg_name,
             self.driver._helpers.get_rccg_info(mm_vol4.name)['name'])
-        self.assertEqual(model_update['status'], fields.GroupStatus.AVAILABLE)
-        self.assertIsNone(add_volumes_update)
-        self.assertIsNone(remove_volumes_update)
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
+        self.assertEqual([{'id': mm_vol3.id, 'group_id': group.id},
+                          {'id': mm_vol4.id, 'group_id': group.id}],
+                         add_volumes_update)
+        self.assertEqual([{'id': mm_vol1.id, 'group_id': None},
+                          {'id': mm_vol2.id, 'group_id': None}],
+                         remove_volumes_update)
         self.driver.delete_group(self.ctxt, group, [mm_vol1, mm_vol2,
                                                     mm_vol3, mm_vol4])
 
