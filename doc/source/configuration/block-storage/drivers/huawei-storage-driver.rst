@@ -265,7 +265,7 @@ To configure the volume driver, follow the steps below:
           storage_pool :xxx,
           san_address: https://x.x.x.x:8088/deviceManager/rest/,
           san_user: xxx,
-          san_passowrd: xxx,
+          san_password: xxx,
           iscsi_default_target_ip: x.x.x.x
 
    .. note::
