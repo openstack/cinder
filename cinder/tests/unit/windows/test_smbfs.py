@@ -61,11 +61,12 @@ class WindowsSmbFsTestCase(test.TestCase):
         self.context = context.get_admin_context()
 
         self._FAKE_SMBFS_CONFIG = mock.MagicMock(
-            smbfs_shares_config = mock.sentinel.share_config_file,
-            smbfs_default_volume_format = 'vhdx')
+            smbfs_shares_config=mock.sentinel.share_config_file,
+            smbfs_default_volume_format='vhdx',
+            nas_volume_prov_type='thin')
 
         self._smbfs_driver = smbfs.WindowsSmbfsDriver(
-            configuration=mock.Mock())
+            configuration=self._FAKE_SMBFS_CONFIG)
         self._smbfs_driver._delete = mock.Mock()
         self._smbfs_driver._local_volume_dir = mock.Mock(
             return_value=self._FAKE_MNT_POINT)
@@ -796,6 +797,12 @@ class WindowsSmbFsTestCase(test.TestCase):
 
         mock_type = drv._get_vhd_type(qemu_subformat=False)
         self.assertEqual(mock_type, 3)
+
+        self._smbfs_driver.configuration.nas_volume_prov_type = (
+            'thick')
+
+        mock_type = drv._get_vhd_type(qemu_subformat=True)
+        self.assertEqual(mock_type, 'fixed')
 
     def test_get_managed_vol_expected_path(self):
         self._vhdutils.get_vhd_format.return_value = 'vhdx'
