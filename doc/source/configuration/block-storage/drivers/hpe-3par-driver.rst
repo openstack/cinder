@@ -46,6 +46,16 @@ the HPE 3PAR storage system:
     volume snapshots. This applies to the volume :command:`snapshot-*`
     commands.
 
+  * Enabling Volume Compression requires the following:
+
+    * Array must contain SSD disks.
+
+    * HPE 3PAR Operating System software version 3.3.1 MU1 or higher.
+
+    * Array must have the Compression license installed.
+
+    * HPE 3PAR Storage System with 8k or 20k series
+
 * HPE 3PAR drivers will now check the licenses installed on the array and
   disable driver capabilities based on available licenses. This will apply to
   thin provisioning, QoS support and volume replication.
@@ -98,6 +108,12 @@ Supported operations
 * Create a generic volume group from a group snapshot or another group.
 
 * Volume Compression.
+
+* Group Replication with More Granularity (Tiramisu).
+
+* Volume Revert to Snapshot.
+
+* Additional Backend Capabilities.
 
 Volume type support for both HPE 3PAR drivers includes the ability to set the
 following capabilities in the OpenStack Block Storage API
@@ -230,18 +246,8 @@ Adaptive Flash Cache license installed.
 * ``hpe3par:flash_cache`` - The flash-cache policy, which can be turned on and
   off by setting the value to ``true`` or ``false``.
 
-For ``hpe3par:compression`` key, the HPE 3PAR StoreServ Storage array must meet
-the following requirements:
-
-* Firmware version HPE 3PAR OS 3.3.1
-
-* HPE 3PAR Storage system with 8k or 20k series
-
-* Compression license installed
-
-* Supported only on Solid State drives
-
-* The assigned CPG for a compressed volume must be set to device type of "SSD"
+* ``hpe3par:compression`` -  The volume compression, which can be turned on and
+  off by setting the value to ``true`` or ``false``.
 
 Other restrictions and considerations for ``hpe3par:compression``:
 
