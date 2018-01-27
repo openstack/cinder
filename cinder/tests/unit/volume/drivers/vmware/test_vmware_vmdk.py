@@ -97,6 +97,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._config.vmware_connection_pool_size = self.POOL_SIZE
         self._config.vmware_adapter_type = self.ADAPTER_TYPE
         self._config.vmware_snapshot_format = self.SNAPSHOT_FORMAT
+        self._config.vmware_lazy_create = True
 
         self._db = mock.Mock()
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config,
@@ -168,6 +169,14 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._driver.create_volume(volume)
 
         verify_volume_creation.assert_called_once_with(volume)
+
+    @mock.patch.object(VMDK_DRIVER, '_create_backing')
+    def test_create_volume_with_lazy_create_disabled(self, create_backing):
+        self._config.vmware_lazy_create = False
+        volume = self._create_volume_dict()
+        self._driver.create_volume(volume)
+
+        create_backing.assert_called_once_with(volume)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_delete_volume_without_backing(self, vops):

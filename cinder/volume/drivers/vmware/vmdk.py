@@ -144,6 +144,12 @@ vmdk_opts = [
                choices=['template', 'COW'],
                default='template',
                help='Volume snapshot format in vCenter server.'),
+    cfg.BoolOpt('vmware_lazy_create',
+                default=True,
+                help='If true, the backend volume in vCenter server is created'
+                     ' lazily when the volume is created without any source. '
+                     'The backend volume is created when the volume is '
+                     'attached, uploaded to image service or during backup.'),
 ]
 
 CONF = cfg.CONF
@@ -251,7 +257,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     #         support for revert-to-snapshot
     #         improve scalability of querying volumes in backend (bug 1600754)
     # 3.1.0 - support adapter type change using retype
-    VERSION = '3.1.0'
+    # 3.2.0 - config option to disable lazy creation of backend volume
+    VERSION = '3.2.0'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
@@ -355,7 +362,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         :param volume: Volume object
         """
-        self._verify_volume_creation(volume)
+        if self.configuration.vmware_lazy_create:
+            self._verify_volume_creation(volume)
+        else:
+            self._create_backing(volume)
 
     def _delete_volume(self, volume):
         """Delete the volume backing if it is present.

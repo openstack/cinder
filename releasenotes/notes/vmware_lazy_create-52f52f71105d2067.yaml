@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    VMware VMDK driver now supports a config option
+    ``vmware_lazy_create`` to disable the default behavior of
+    lazy creation of raw volumes in the backend.
