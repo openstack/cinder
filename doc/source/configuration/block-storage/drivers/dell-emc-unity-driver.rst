@@ -300,6 +300,14 @@ For data path, please follow below steps:
 - If you create a volume using Cinder and attach it to a VM,
   the connection between this VM and volume will be IPv6-based iSCSI.
 
+Force detach volume from all hosts
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The user could use `os-force_detach` action to detach a volume from all its
+attached hosts.
+For more detail, please refer to
+https://developer.openstack.org/api-ref/block-storage/v2/?expanded=force-detach-volume-detail#force-detach-volume
+
 Troubleshooting
 ~~~~~~~~~~~~~~~
 
