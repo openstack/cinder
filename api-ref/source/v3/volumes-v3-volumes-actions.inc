@@ -369,6 +369,11 @@ Change type of existing volume. Specify the ``os-retype`` action in the request 
 Change the volume type of existing volume, Cinder may migrate the volume to
 proper volume host according to the new volume type.
 
+Retyping an *in-use* volume from a multiattach-capable type to a
+non-multiattach-capable type, or vice-versa, is not supported. It is generally
+not recommended to retype an *in-use* multiattach volume if that volume has
+more than one active read/write attachment.
+
 Policy defaults enable only users with the administrative role or the owner of
 the volume to perform this operation. Cloud providers can change these
 permissions through the policy.json file.
