@@ -372,7 +372,7 @@ class DotHillCommon(object):
 
         self.client_login()
         try:
-            self.client.delete_snapshot(snap_name)
+            self.client.delete_snapshot(snap_name, self.backend_type)
         except exception.DotHillRequestError as ex:
             # if the volume wasn't found, ignore the error
             if 'The volume was not found on this system.' in ex.args:
