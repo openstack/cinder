@@ -44,14 +44,13 @@ from cinder.volume import volume_types
 
 from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 
+
 CONF = cfg.CONF
 
 
 @ddt.ddt
 class InStorageMCSCommonDriverTestCase(test.TestCase):
-
-    @mock.patch.object(greenthread, 'sleep')
-    def setUp(self, mock_sleep):
+    def setUp(self):
         super(InStorageMCSCommonDriverTestCase, self).setUp()
         self._def_flags = {'san_ip': 'hostname',
                            'instorage_san_secondary_ip': 'secondaryname',
@@ -88,6 +87,7 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
         self.driver._assistant.check_lcmapping_interval = 0
         self.mock_object(instorage_iscsi.InStorageMCSISCSIDriver,
                          'DEFAULT_GR_SLEEP', 0)
+        self.mock_object(greenthread, 'sleep')
 
     def _set_flag(self, flag, value, configuration=None):
         if not configuration:
