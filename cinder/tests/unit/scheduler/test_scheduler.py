@@ -74,6 +74,25 @@ class SchedulerManagerTestCase(test.TestCase):
         sleep_mock.assert_called_once_with(CONF.periodic_interval)
         self.assertFalse(self.manager._startup_delay)
 
+    @mock.patch('cinder.scheduler.driver.Scheduler.backend_passes_filters')
+    @mock.patch(
+        'cinder.scheduler.host_manager.BackendState.consume_from_volume')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
+    def test_manage_existing_snapshot(self, mock_manage_existing_snapshot,
+                                      mock_consume, mock_backend_passes):
+        volume = fake_volume.fake_volume_obj(self.context, **{'size': 1})
+        fake_backend = fake_scheduler.FakeBackendState('host1', {})
+        mock_backend_passes.return_value = fake_backend
+
+        self.manager.manage_existing_snapshot(self.context, volume,
+                                              'fake_snapshot', 'fake_ref',
+                                              None)
+
+        mock_consume.assert_called_once_with({'size': 1})
+        mock_manage_existing_snapshot.assert_called_once_with(
+            self.context, 'fake_snapshot', 'fake_ref',
+            volume.service_topic_queue)
+
     @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-volume': '1.3'})

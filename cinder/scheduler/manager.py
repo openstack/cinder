@@ -211,7 +211,8 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                 {'size': request_spec['volume_properties']['size']})
         except exception.NoValidBackend as ex:
             self._set_snapshot_state_and_notify('create_snapshot',
-                                                snapshot, 'error',
+                                                snapshot,
+                                                fields.SnapshotStatus.ERROR,
                                                 ctxt, ex, request_spec)
         else:
             volume_rpcapi.VolumeAPI().create_snapshot(ctxt, volume,
@@ -350,6 +351,28 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         else:
             volume_rpcapi.VolumeAPI().manage_existing(context, volume,
                                                       request_spec.get('ref'))
+
+    def manage_existing_snapshot(self, context, volume, snapshot, ref,
+                                 request_spec, filter_properties=None):
+        """Ensure that the host exists and can accept the snapshot."""
+
+        self._wait_for_scheduler()
+
+        try:
+            backend = self.driver.backend_passes_filters(
+                context, volume.service_topic_queue, request_spec,
+                filter_properties)
+            backend.consume_from_volume({'size': volume.size})
+
+        except exception.NoValidBackend as ex:
+            self._set_snapshot_state_and_notify('manage_existing_snapshot',
+                                                snapshot,
+                                                fields.SnapshotStatus.ERROR,
+                                                context, ex, request_spec)
+        else:
+            volume_rpcapi.VolumeAPI().manage_existing_snapshot(
+                context, snapshot, ref,
+                volume.service_topic_queue)
 
     def get_pools(self, context, filters=None):
         """Get active pools from scheduler's cache.

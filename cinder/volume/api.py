@@ -1834,16 +1834,21 @@ class API(base.Base):
     def manage_existing_snapshot(self, context, ref, volume,
                                  name=None, description=None,
                                  metadata=None):
-        service = self._get_service_by_host_cluster(context, volume.host,
-                                                    volume.cluster_name,
-                                                    'snapshot')
+        # Ensure the service is up and not disabled.
+        self._get_service_by_host_cluster(context, volume.host,
+                                          volume.cluster_name,
+                                          'snapshot')
 
         snapshot_object = self.create_snapshot_in_db(context, volume, name,
                                                      description, True,
                                                      metadata, None,
                                                      commit_quota=True)
-        self.volume_rpcapi.manage_existing_snapshot(
-            context, snapshot_object, ref, service.service_topic_queue)
+        kwargs = {'snapshot_id': snapshot_object.id,
+                  'volume_properties':
+                      objects.VolumeProperties(size=volume.size)}
+        self.scheduler_rpcapi.manage_existing_snapshot(
+            context, volume, snapshot_object, ref,
+            request_spec=objects.RequestSpec(**kwargs))
         return snapshot_object
 
     def get_manageable_snapshots(self, context, host, cluster_name,

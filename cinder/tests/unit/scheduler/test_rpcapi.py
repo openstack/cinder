@@ -103,6 +103,32 @@ class SchedulerRPCAPITestCase(test.RPCAPITestCase):
                           request_spec=self.fake_rs_obj,
                           version='3.5')
 
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=True)
+    def test_manage_existing_snapshot(self, can_send_version_mock):
+        self._test_rpc_api('manage_existing_snapshot',
+                           rpc_method='cast',
+                           volume='fake_volume',
+                           snapshot='fake_snapshot',
+                           ref='fake_ref',
+                           request_spec={'snapshot_id': self.fake_snapshot.id},
+                           filter_properties=None)
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=False)
+    def test_manage_existing_snapshot_capped(self, can_send_version_mock):
+        self.assertRaises(exception.ServiceTooOld,
+                          self._test_rpc_api,
+                          'manage_existing_snapshot',
+                          rpc_method='cast',
+                          volume=self.fake_volume,
+                          snapshot=self.fake_snapshot,
+                          ref='fake_ref',
+                          request_spec={'snapshot_id': self.fake_snapshot.id,
+                                        'ref': 'fake_ref'},
+                          filter_properties=None,
+                          version='3.10')
+
     @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
     def test_notify_service_capabilities_backend(self, can_send_version_mock):
         """Test sending new backend by RPC instead of old host parameter."""

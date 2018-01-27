@@ -65,7 +65,8 @@ class SnapshotManageTest(test.TestCase):
         res = req.get_response(app())
         return res
 
-    @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
+    @mock.patch(
+        'cinder.scheduler.rpcapi.SchedulerAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
     @mock.patch('cinder.objects.service.Service.get_by_id')
     def test_manage_snapshot_route(self, mock_service_get,
