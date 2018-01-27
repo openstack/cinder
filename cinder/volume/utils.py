@@ -980,3 +980,35 @@ def is_group_a_type(group, key):
         )
         return spec == "<is> True"
     return False
+
+
+def get_max_over_subscription_ratio(str_value, supports_auto=False):
+    """Get the max_over_subscription_ratio from a string
+
+    As some drivers need to do some calculations with the value and we are now
+    receiving a string value in the conf, this converts the value to float
+    when appropriate.
+
+    :param str_value: Configuration object
+    :param supports_auto: Tell if the calling driver supports auto MOSR.
+    :param drv_msg: Error message from the caller
+    :response: value of mosr
+    """
+
+    if not supports_auto and str_value == "auto":
+        msg = _("This driver does not support automatic "
+                "max_over_subscription_ratio calculation. Please use a "
+                "valid float value.")
+        LOG.error(msg)
+        raise exception.VolumeDriverException(message=msg)
+
+    if str_value == 'auto':
+        return str_value
+
+    mosr = float(str_value)
+    if mosr < 1:
+        msg = _("The value of max_over_subscription_ratio must be "
+                "greater than 1.")
+        LOG.error(msg)
+        raise exception.InvalidParameterValue(message=msg)
+    return mosr

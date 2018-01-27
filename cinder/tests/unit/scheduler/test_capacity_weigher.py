@@ -155,7 +155,8 @@ class CapacityWeigherTestCase(test.TestCase):
         }
         weighed_host = self._get_weighed_hosts(
             backend_info_list,
-            weight_properties=weight_properties)[0]
+            weight_properties=weight_properties)
+        weighed_host = weighed_host[0]
         self.assertEqual(0.0, weighed_host.weight)
         self.assertEqual(winner, utils.extract_host(weighed_host.obj.host))
 

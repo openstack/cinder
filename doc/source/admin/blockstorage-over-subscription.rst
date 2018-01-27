@@ -23,6 +23,13 @@ A ratio of 1.0 means provisioned capacity cannot exceed the total physical
 capacity. A ratio lower than 1.0 is ignored and the default value is used
 instead.
 
+This parameter also can be set as ``max_over_subscription_ratio=auto``. When
+using auto, Cinder will automatically calculate the
+``max_over_subscription_ratio`` based on the provisioned capacity and the used
+space. This allows the creation of a larger number of volumes at the
+begginning of the pool's life, and start to restrict the creation as the free
+space approaces to 0 or the reserved limit.
+
 .. note::
 
    ``max_over_subscription_ratio`` can be configured for each back end when
@@ -33,6 +40,10 @@ instead.
    ``max_over_subscription_ratio`` is for configuring a back end. For a
    driver that supports multiple pools per back end, it can report this
    ratio for each pool. The LVM driver does not support multiple pools.
+
+   Setting this value to 'auto'. The values calculated by Cinder can
+   dinamically vary according to the pool's provisioned capacity and consumed
+   space.
 
 The existing ``reserved_percentage`` flag is used to prevent over provisioning.
 This flag represents the percentage of the back-end capacity that is reserved.

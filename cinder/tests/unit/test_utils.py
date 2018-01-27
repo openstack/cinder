@@ -34,6 +34,19 @@ from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder import utils
 
+POOL_CAPS = {'total_capacity_gb': 0,
+             'free_capacity_gb': 0,
+             'allocated_capacity_gb': 0,
+             'provisioned_capacity_gb': 0,
+             'max_over_subscription_ratio': '1.0',
+             'thin_provisioning_support': False,
+             'thick_provisioning_support': True,
+             'reserved_percentage': 0,
+             'volume_backend_name': 'lvm1',
+             'timestamp': timeutils.utcnow(),
+             'multiattach': True,
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}
+
 
 class ExecuteTestCase(test.TestCase):
     @mock.patch('cinder.utils.processutils.execute')
@@ -1532,3 +1545,82 @@ class TestCheckMetadataProperties(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           utils.check_metadata_properties,
                           meta)
+
+
+POOL_CAP1 = {'allocated_capacity_gb': 10, 'provisioned_capacity_gb': 10,
+             'thin_provisioning_support': False, 'total_capacity_gb': 10,
+             'free_capacity_gb': 10, 'max_over_subscription_ratio': 1.0}
+POOL_CAP2 = {'allocated_capacity_gb': 10, 'provisioned_capacity_gb': 10,
+             'thin_provisioning_support': True, 'total_capacity_gb': 100,
+             'free_capacity_gb': 95, 'max_over_subscription_ratio': None}
+POOL_CAP3 = {'allocated_capacity_gb': 0, 'provisioned_capacity_gb': 0,
+             'thin_provisioning_support': True, 'total_capacity_gb': 100,
+             'free_capacity_gb': 100, 'max_over_subscription_ratio': 'auto'}
+POOL_CAP4 = {'allocated_capacity_gb': 100,
+             'thin_provisioning_support': True, 'total_capacity_gb': 2500,
+             'free_capacity_gb': 500, 'max_over_subscription_ratio': 'auto'}
+POOL_CAP5 = {'allocated_capacity_gb': 10000,
+             'thin_provisioning_support': True, 'total_capacity_gb': 2500,
+             'free_capacity_gb': 0.1, 'max_over_subscription_ratio': 'auto'}
+POOL_CAP6 = {'allocated_capacity_gb': 1000, 'provisioned_capacity_gb': 1010,
+             'thin_provisioning_support': True, 'total_capacity_gb': 2500,
+             'free_capacity_gb': 2500, 'max_over_subscription_ratio': 'auto'}
+POOL_CAP7 = {'allocated_capacity_gb': 10, 'provisioned_capacity_gb': 10,
+             'thin_provisioning_support': True, 'total_capacity_gb': 10,
+             'free_capacity_gb': 10}
+POOL_CAP8 = {'allocated_capacity_gb': 10, 'provisioned_capacity_gb': 10,
+             'thin_provisioning_support': True, 'total_capacity_gb': 10,
+             'free_capacity_gb': 10, 'max_over_subscription_ratio': '15.5'}
+POOL_CAP9 = {'allocated_capacity_gb': 10, 'provisioned_capacity_gb': 10,
+             'thin_provisioning_support': True, 'total_capacity_gb': 10,
+             'free_capacity_gb': 'unknown',
+             'max_over_subscription_ratio': '15.5'}
+POOL_CAP10 = {'allocated_capacity_gb': 10, 'provisioned_capacity_gb': 10,
+              'thin_provisioning_support': True,
+              'total_capacity_gb': 'infinite', 'free_capacity_gb': 10,
+              'max_over_subscription_ratio': '15.5'}
+
+
+@ddt.ddt
+class TestAutoMaxOversubscriptionRatio(test.TestCase):
+    @ddt.data({'data': POOL_CAP1,
+               'global_max_over_subscription_ratio': 'auto',
+               'expected_result': 1.0},
+              {'data': POOL_CAP2,
+               'global_max_over_subscription_ratio': 'auto',
+               'expected_result': 2.67},
+              {'data': POOL_CAP3,
+               'global_max_over_subscription_ratio': '20.0',
+               'expected_result': 20},
+              {'data': POOL_CAP4,
+               'global_max_over_subscription_ratio': '20.0',
+               'expected_result': 1.05},
+              {'data': POOL_CAP5,
+               'global_max_over_subscription_ratio': '10.0',
+               'expected_result': 5.0},
+              {'data': POOL_CAP6,
+               'global_max_over_subscription_ratio': '20.0',
+               'expected_result': 1011.0},
+              {'data': POOL_CAP7,
+               'global_max_over_subscription_ratio': 'auto',
+               'expected_result': 11.0},
+              {'data': POOL_CAP8,
+               'global_max_over_subscription_ratio': '20.0',
+               'expected_result': 15.5},
+              {'data': POOL_CAP9,
+               'global_max_over_subscription_ratio': '20.0',
+               'expected_result': 1.0},
+              {'data': POOL_CAP10,
+               'global_max_over_subscription_ratio': '20.0',
+               'expected_result': 1.0},
+              )
+    @ddt.unpack
+    def test_calculate_max_over_subscription_ratio(
+            self, data, expected_result, global_max_over_subscription_ratio):
+
+        result = utils.calculate_max_over_subscription_ratio(
+            data, global_max_over_subscription_ratio)
+        # Just for sake of testing we reduce the float precision
+        if result is not None:
+            result = round(result, 2)
+        self.assertEqual(expected_result, result)

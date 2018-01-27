@@ -27,6 +27,7 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.volume import utils as volume_utis
 
 
 def fake_retry(exceptions, interval=1, retries=3, backoff_rate=2):
@@ -2688,6 +2689,8 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
                                    config_ratio,
                                    expected_ratio,
                                    auto):
+        volume_utis.get_max_over_subscription_ratio = mock.Mock(
+            return_value=expected_ratio)
         self.mock_config.pure_automatic_max_oversubscription_ratio = auto
         self.mock_config.max_over_subscription_ratio = config_ratio
         actual_ratio = self.driver._get_thin_provisioning(provisioned, used)

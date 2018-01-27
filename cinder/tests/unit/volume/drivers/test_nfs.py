@@ -33,6 +33,7 @@ from cinder.tests.unit import fake_volume
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers import remotefs
+from cinder.volume import utils as vutils
 
 
 class RemoteFsDriverTestCase(test.TestCase):
@@ -413,6 +414,9 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nas_share_path = None
         self.configuration.nas_mount_options = None
         self.configuration.volume_dd_blocksize = '1M'
+
+        self.mock_object(vutils, 'get_max_over_subscription_ratio',
+                         return_value=1)
 
         self.context = context.get_admin_context()
 

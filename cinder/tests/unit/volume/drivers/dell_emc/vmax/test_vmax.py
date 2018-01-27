@@ -1007,7 +1007,7 @@ class FakeXML(object):
 class VMAXUtilsTest(test.TestCase):
     def setUp(self):
         self.data = VMAXCommonData()
-
+        volume_utils.get_max_over_subscription_ratio = mock.Mock()
         super(VMAXUtilsTest, self).setUp()
         config_group = 'UtilsTests'
         fake_xml = FakeXML().create_fake_config_file(
@@ -1487,6 +1487,7 @@ class VMAXRestTest(test.TestCase):
         self.data = VMAXCommonData()
 
         super(VMAXRestTest, self).setUp()
+        volume_utils.get_max_over_subscription_ratio = mock.Mock()
         config_group = 'RestTests'
         fake_xml = FakeXML().create_fake_config_file(
             config_group, self.data.port_group_name_f)
@@ -2865,6 +2866,7 @@ class VMAXProvisionTest(test.TestCase):
         self.data = VMAXCommonData()
 
         super(VMAXProvisionTest, self).setUp()
+        volume_utils.get_max_over_subscription_ratio = mock.Mock()
         config_group = 'ProvisionTests'
         self.fake_xml = FakeXML().create_fake_config_file(
             config_group, self.data.port_group_name_i)
@@ -3367,6 +3369,8 @@ class VMAXCommonTest(test.TestCase):
         self.data = VMAXCommonData()
 
         super(VMAXCommonTest, self).setUp()
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio',
+                         return_value=1.0)
         config_group = 'CommonTests'
         self.fake_xml = FakeXML().create_fake_config_file(
             config_group, self.data.port_group_name_f)
@@ -5075,6 +5079,7 @@ class VMAXFCTest(test.TestCase):
 
         super(VMAXFCTest, self).setUp()
         config_group = 'FCTests'
+        volume_utils.get_max_over_subscription_ratio = mock.Mock()
         self.fake_xml = FakeXML().create_fake_config_file(
             config_group, self.data.port_group_name_f)
         self.configuration = FakeConfiguration(self.fake_xml, config_group)
@@ -5334,6 +5339,7 @@ class VMAXISCSITest(test.TestCase):
         config_group = 'ISCSITests'
         self.fake_xml = FakeXML().create_fake_config_file(
             config_group, self.data.port_group_name_i)
+        volume_utils.get_max_over_subscription_ratio = mock.Mock()
         configuration = FakeConfiguration(self.fake_xml, config_group)
         rest.VMAXRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
@@ -5639,6 +5645,7 @@ class VMAXMaskingTest(test.TestCase):
 
         super(VMAXMaskingTest, self).setUp()
 
+        volume_utils.get_max_over_subscription_ratio = mock.Mock()
         configuration = mock.Mock()
         configuration.safe_get.return_value = 'MaskingTests'
         configuration.config_group = 'MaskingTests'
@@ -6568,6 +6575,7 @@ class VMAXCommonReplicationTest(test.TestCase):
             'remote_pool': self.data.srp2,
             'rdf_group_label': self.data.rdf_group_name,
             'allow_extend': 'True'}
+        volume_utils.get_max_over_subscription_ratio = mock.Mock()
         configuration = FakeConfiguration(
             self.fake_xml, config_group,
             replication_device=self.replication_device)

@@ -37,6 +37,7 @@ from cinder.volume.drivers.zfssa import webdavclient
 from cinder.volume.drivers.zfssa import zfssaiscsi as iscsi
 from cinder.volume.drivers.zfssa import zfssanfs
 from cinder.volume.drivers.zfssa import zfssarest as rest
+from cinder.volume import utils as volume_utils
 
 
 nfs_logbias = 'latency'
@@ -137,6 +138,8 @@ class TestZFSSAISCSIDriver(test.TestCase):
     def setUp(self, _factory_zfssa):
         super(TestZFSSAISCSIDriver, self).setUp()
         self._create_fake_config()
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio',
+                         return_value=1.0)
         _factory_zfssa.return_value = mock.MagicMock(spec=rest.ZFSSAApi)
         iscsi.ZFSSAISCSIDriver._execute = fake_utils.fake_execute
         self.drv = iscsi.ZFSSAISCSIDriver(configuration=self.configuration)
@@ -1038,6 +1041,8 @@ class TestZFSSANFSDriver(test.TestCase):
         super(TestZFSSANFSDriver, self).setUp()
         self._create_fake_config()
         _factory_zfssa.return_value = mock.MagicMock(spec=rest.ZFSSANfsApi)
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio',
+                         return_value=1.0)
         self.drv = zfssanfs.ZFSSANFSDriver(configuration=self.configuration)
         self.drv._execute = fake_utils.fake_execute
         self.drv.do_setup({})

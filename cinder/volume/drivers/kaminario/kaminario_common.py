@@ -798,11 +798,14 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         LOG.debug("Searching total volumes in K2 for updating stats.")
         total_volumes = self.client.search("volumes").total - 1
         provisioned_vol = cap.provisioned_volumes
+
         if (conf.auto_calc_max_oversubscription_ratio and cap.provisioned
                 and (cap.total - cap.free) != 0):
             ratio = provisioned_vol / float(cap.total - cap.free)
         else:
-            ratio = conf.max_over_subscription_ratio
+            ratio = vol_utils.get_max_over_subscription_ratio(
+                conf.max_over_subscription_ratio, supports_auto=True)
+
         self.stats = {'QoS_support': False,
                       'free_capacity_gb': cap.free / units.Mi,
                       'total_capacity_gb': cap.total / units.Mi,

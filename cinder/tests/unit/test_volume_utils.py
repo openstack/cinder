@@ -1055,3 +1055,28 @@ class VolumeUtilsTestCase(test.TestCase):
         group = fake_group.fake_group_obj(
             None, group_type_id=fake.GROUP_TYPE_ID)
         self.assertTrue(volume_utils.is_group_a_cg_snapshot_type(group))
+
+    @ddt.data({'max_over_subscription_ratio': '10', 'supports_auto': True},
+              {'max_over_subscription_ratio': 'auto', 'supports_auto': True},
+              {'max_over_subscription_ratio': 'auto', 'supports_auto': False},
+              {'max_over_subscription_ratio': '1.2', 'supports_auto': False},)
+    @ddt.unpack
+    def test_get_max_over_subscription_ratio(self,
+                                             max_over_subscription_ratio,
+                                             supports_auto):
+
+        if not supports_auto and max_over_subscription_ratio == 'auto':
+            self.assertRaises(exception.VolumeDriverException,
+                              volume_utils.get_max_over_subscription_ratio,
+                              max_over_subscription_ratio, supports_auto)
+        elif not supports_auto:
+            mosr = volume_utils.get_max_over_subscription_ratio(
+                max_over_subscription_ratio, supports_auto)
+            self.assertEqual(float(max_over_subscription_ratio), mosr)
+        else:  # supports_auto
+            mosr = volume_utils.get_max_over_subscription_ratio(
+                max_over_subscription_ratio, supports_auto)
+            if max_over_subscription_ratio == 'auto':
+                self.assertEqual(max_over_subscription_ratio, mosr)
+            else:
+                self.assertEqual(float(max_over_subscription_ratio), mosr)

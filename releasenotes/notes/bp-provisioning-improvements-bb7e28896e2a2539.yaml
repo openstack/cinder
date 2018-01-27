@@ -1,0 +1,5 @@
+---
+features:
+  - Cinder now supports the use of 'max_over_subscription_ratio = auto' which
+    automatically calculates the value for max_over_subscription_ratio in the
+    scheduler.
