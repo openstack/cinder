@@ -1008,6 +1008,9 @@ metadata_items:
   in: body
   required: true
   type: integer
+# NOTE(mriedem): We can update the migration_policy retype note about encrypted
+# in-use volumes not being supported once
+# https://bugzilla.redhat.com/show_bug.cgi?id=760547 is fixed.
 migration_policy:
   description: |
     Specify if the volume should be migrated when it is re-typed.
@@ -1016,7 +1019,8 @@ migration_policy:
 
     .. note:: If the volume is attached to a server instance and will be
       migrated, then by default policy only users with the administrative role
-      should attempt the retype operation.
+      should attempt the retype operation. A retype which involves a migration
+      to a new host for an *in-use* encrypted volume is not supported.
   in: body
   required: false
   type: string
