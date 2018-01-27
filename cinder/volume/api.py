@@ -867,10 +867,13 @@ class API(base.Base):
             msg = _("Snapshot of secondary replica is not allowed.")
             raise exception.InvalidVolume(reason=msg)
 
-        if ((not force) and (volume['status'] != "available")):
-            msg = _("Volume %(vol_id)s status must be available, "
+        valid_status = ["available", "in-use"] if force else ["available"]
+
+        if volume['status'] not in valid_status:
+            msg = _("Volume %(vol_id)s status must be %(status)s, "
                     "but current status is: "
                     "%(vol_status)s.") % {'vol_id': volume['id'],
+                                          'status': ', '.join(valid_status),
                                           'vol_status': volume['status']}
             raise exception.InvalidVolume(reason=msg)
 
@@ -911,7 +914,17 @@ class API(base.Base):
             }
             snapshot = objects.Snapshot(context=context, **kwargs)
             snapshot.create()
+            volume.refresh()
 
+            if volume['status'] not in valid_status:
+                msg = _("Volume %(vol_id)s status must be %(status)s , "
+                        "but current status is: "
+                        "%(vol_status)s.") % {'vol_id': volume['id'],
+                                              'status':
+                                                  ', '.join(valid_status),
+                                              'vol_status':
+                                                  volume['status']}
+                raise exception.InvalidVolume(reason=msg)
             if commit_quota:
                 QUOTAS.commit(context, reservations)
         except Exception:

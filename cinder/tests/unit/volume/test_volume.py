@@ -1543,7 +1543,11 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                        'description',
                                        volume_type=db_vol_type)
 
-        volume_src['host'] = 'fake_host'
+        db.volume_update(self.context, volume_src['id'],
+                         {'host': 'fake_host@fake_backend',
+                          'status': 'available'})
+        volume_src = objects.Volume.get_by_id(self.context, volume_src['id'])
+
         snapshot_ref = volume_api.create_snapshot_force(self.context,
                                                         volume_src,
                                                         'name',

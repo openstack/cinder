@@ -199,6 +199,25 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
                           'fake_name',
                           'fake_description')
 
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_create_snapshot_in_db_invalid_volume_status(self, mock_get):
+        test_volume1 = tests_utils.create_volume(
+            self.context,
+            status='available',
+            host=CONF.host)
+        test_volume2 = tests_utils.create_volume(
+            self.context,
+            status='deleting',
+            host=CONF.host)
+        mock_get.return_value = test_volume2
+        volume_api = cinder.volume.api.API()
+
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.create_snapshot_in_db,
+                          self.context, test_volume1, "fake_snapshot_name",
+                          "fake_description", False, {}, None,
+                          commit_quota=False)
+
     def test_create_snapshot_failed_maintenance(self):
         """Test exception handling when create snapshot in maintenance."""
         test_volume = tests_utils.create_volume(

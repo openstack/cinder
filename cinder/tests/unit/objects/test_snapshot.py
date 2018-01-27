@@ -124,10 +124,12 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
             'status': 'deleted',
             'deleted': True,
             'deleted_at': utcnow_mock.return_value}
-        snapshot = objects.Snapshot(context=self.context, id=fake.SNAPSHOT_ID)
+        snapshot = objects.Snapshot(context=self.context,
+                                    id=fake.SNAPSHOT_ID)
         snapshot.destroy()
-        snapshot_destroy.assert_called_once_with(self.context,
-                                                 fake.SNAPSHOT_ID)
+        self.assertTrue(snapshot_destroy.called)
+        admin_context = snapshot_destroy.call_args[0][0]
+        self.assertTrue(admin_context.is_admin)
         self.assertTrue(snapshot.deleted)
         self.assertEqual(fields.SnapshotStatus.DELETED, snapshot.status)
         self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
