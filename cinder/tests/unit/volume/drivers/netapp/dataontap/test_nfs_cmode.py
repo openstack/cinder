@@ -999,20 +999,14 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                       0)])
         mock_super_add_looping_tasks.assert_called_once_with()
 
-    @ddt.data({'has_space': True, 'type_match': True, 'expected': True},
-              {'has_space': True, 'type_match': False, 'expected': False},
-              {'has_space': False, 'type_match': True, 'expected': False},
-              {'has_space': False, 'type_match': False, 'expected': False})
+    @ddt.data({'type_match': True, 'expected': True},
+              {'type_match': False, 'expected': False})
     @ddt.unpack
-    def test_is_share_clone_compatible(self, has_space, type_match, expected):
+    def test_is_share_clone_compatible(self, type_match, expected):
 
         mock_get_flexvol_name_for_share = self.mock_object(
             self.driver, '_get_flexvol_name_for_share',
             return_value='fake_flexvol')
-        mock_is_volume_thin_provisioned = self.mock_object(
-            self.driver, '_is_volume_thin_provisioned', return_value='thin')
-        mock_share_has_space_for_clone = self.mock_object(
-            self.driver, '_share_has_space_for_clone', return_value=has_space)
         mock_is_share_vol_type_match = self.mock_object(
             self.driver, '_is_share_vol_type_match', return_value=type_match)
 
@@ -1021,28 +1015,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
         mock_get_flexvol_name_for_share.assert_called_once_with(fake.NFS_SHARE)
-        mock_is_volume_thin_provisioned.assert_called_once_with('fake_flexvol')
-        mock_share_has_space_for_clone.assert_called_once_with(
-            fake.NFS_SHARE, fake.SIZE, 'thin')
-        if has_space:
-            mock_is_share_vol_type_match.assert_called_once_with(
-                fake.VOLUME, fake.NFS_SHARE, 'fake_flexvol')
-
-    @ddt.data({'thin': True, 'expected': True},
-              {'thin': False, 'expected': False},
-              {'thin': None, 'expected': False})
-    @ddt.unpack
-    def test_is_volume_thin_provisioned(self, thin, expected):
-
-        ssc_data = {'thin_provisioning_support': thin}
-        mock_get_ssc_for_flexvol = self.mock_object(
-            self.driver.ssc_library, 'get_ssc_for_flexvol',
-            return_value=ssc_data)
-
-        result = self.driver._is_volume_thin_provisioned('fake_flexvol')
-
-        self.assertEqual(expected, result)
-        mock_get_ssc_for_flexvol.assert_called_once_with('fake_flexvol')
+        mock_is_share_vol_type_match.assert_called_once()
 
     @ddt.data({'flexvols': ['volume1', 'volume2'], 'expected': True},
               {'flexvols': ['volume3', 'volume4'], 'expected': False},
