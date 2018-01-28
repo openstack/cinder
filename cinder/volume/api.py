@@ -2060,7 +2060,7 @@ class API(base.Base):
         if (vref.get('multiattach', False) and
                 vref.status == 'in-use' and
                 vref.bootable):
-            context.authorize(
+            ctxt.authorize(
                 attachment_policy.MULTIATTACH_BOOTABLE_VOLUME_POLICY)
 
         # FIXME(JDG):  We want to be able to do things here like reserve a
