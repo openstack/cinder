@@ -119,8 +119,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         self._diskutils = utilsfactory.get_diskutils()
 
         thin_enabled = (
-            CONF.backend_defaults.nas_volume_prov_type ==
-            'thin')
+            self.configuration.nas_volume_prov_type == 'thin')
         self._thin_provisioning_support = thin_enabled
         self._thick_provisioning_support = not thin_enabled
 
@@ -556,7 +555,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         return share
 
     def _get_vhd_type(self, qemu_subformat=False):
-        prov_type = CONF.backend_defaults.nas_volume_prov_type
+        prov_type = self.configuration.nas_volume_prov_type
 
         if qemu_subformat:
             vhd_type = self._vhd_qemu_subformat_mapping[prov_type]
