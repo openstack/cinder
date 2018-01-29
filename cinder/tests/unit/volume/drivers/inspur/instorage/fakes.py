@@ -27,6 +27,7 @@ from cinder import exception
 from cinder import utils
 
 from cinder.volume.drivers.inspur.instorage import instorage_const
+from cinder.volume.drivers.inspur.instorage import instorage_fc
 from cinder.volume.drivers.inspur.instorage import instorage_iscsi
 
 MCS_POOLS = ['openstack', 'openstack1']
@@ -37,6 +38,21 @@ def get_test_pool(get_all=False):
         return MCS_POOLS
     else:
         return MCS_POOLS[0]
+
+
+class FakeInStorageMCSFcDriver(instorage_fc.InStorageMCSFCDriver):
+
+    def __init__(self, *args, **kwargs):
+        super(FakeInStorageMCSFcDriver, self).__init__(*args, **kwargs)
+
+    def set_fake_storage(self, fake):
+        self.fake_storage = fake
+
+    def _run_ssh(self, cmd, check_exit_code=True, attempts=1):
+        utils.check_ssh_injection(cmd)
+        ret = self.fake_storage.execute_command(cmd, check_exit_code)
+
+        return ret
 
 
 class FakeInStorageMCSISCSIDriver(instorage_iscsi.InStorageMCSISCSIDriver):
