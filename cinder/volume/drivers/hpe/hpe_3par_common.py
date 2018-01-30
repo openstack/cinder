@@ -261,11 +261,14 @@ class HPE3PARCommon(object):
         4.0.3 - Fixed create group from source functionality in case of
                 tiramisu. bug #1742092.
         4.0.4 - Fixed setting of sync_period value in rcopygroup. bug #1746235
+        4.0.5 - Fixed volume created and added in cloned group,
+                differs from volume present in the source group in terms of
+                extra-specs. bug #1744025
 
 
     """
 
-    VERSION = "4.0.3"
+    VERSION = "4.0.5"
 
     stats = {}
 
@@ -595,6 +598,7 @@ class HPE3PARCommon(object):
         volumes_model_update = []
         task_id_list = []
         volumes_cpg_map = []
+        snap_vol_dict = {}
         replication_flag = False
         model_update = {'status': fields.GroupStatus.AVAILABLE}
 
@@ -623,8 +627,40 @@ class HPE3PARCommon(object):
             # Stop remote copy, so we can add volumes in RCG.
             self._stop_remote_copy_group(group)
 
-        for i, volume in enumerate(volumes):
+        for i in range(0, len(volumes)):
+            # In case of group created from group,we are mapping
+            # source volume with it's snapshot
             snap_name = snap_base + "-" + six.text_type(i)
+            snap_detail = self.client.getVolume(snap_name)
+            vol_name = snap_detail.get('copyOf')
+            src_vol_name = vol_name
+
+            # In case of group created from group snapshots,we are mapping
+            # source volume with it's snapshot
+            if source_group is None:
+                for snapshot in snapshots:
+                    # Getting vol_name from snapshot, in case of group created
+                    # from group snapshot.
+                    vol_name = (
+                        self._get_3par_vol_name(snapshot.get('volume_id')))
+                    if src_vol_name == vol_name:
+                        vol_name = (
+                            self._get_3par_vol_name(snapshot.get('id')))
+                        break
+            LOG.debug("Source volume name: %(vol)s of snapshot: %(snap)s",
+                      {'vol': src_vol_name, 'snap': snap_name})
+            snap_vol_dict[vol_name] = snap_name
+
+        for volume in volumes:
+            src_vol_name = volume.get('source_volid')
+            if src_vol_name is None:
+                src_vol_name = volume.get('snapshot_id')
+
+            # Finding source volume from volume and then use snap_vol_dict
+            # to get right snap name from source volume.
+            vol_name = self._get_3par_vol_name(src_vol_name)
+            snap_name = snap_vol_dict.get(vol_name)
+
             volume_name = self._get_3par_vol_name(volume.get('id'))
             type_info = self.get_volume_settings_from_type(volume)
             cpg = type_info['cpg']
