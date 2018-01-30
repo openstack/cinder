@@ -90,6 +90,7 @@ Response Parameters
    - snapshot_id: snapshot_id_2
    - os-backup-project-attr:project_id: os-backup-project-attr:project_id
    - count: count
+   - metadata: metadata_9
 
 Response Example
 ----------------
@@ -143,6 +144,7 @@ Response Parameters
    - data_timestamp: data_timestamp
    - snapshot_id: snapshot_id_2
    - os-backup-project-attr:project_id: os-backup-project-attr:project_id
+   - metadata: metadata_9
 
 Response Example
 ----------------
