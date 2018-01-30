@@ -109,6 +109,7 @@ Request
 
    - project_id: project_id_path
    - group_id: group_id
+   - list_volume: list_volume
 
 Response Parameters
 -------------------
@@ -124,6 +125,7 @@ Response Parameters
    - volume_types: volume_types
    - id: id
    - name: group_name
+   - volumes: volume_ids
    - replication_status: group_replication_status
 
 Response Example
@@ -217,6 +219,7 @@ Request
    - limit: limit
    - offset: offset
    - marker: marker
+   - list_volume: list_volume
 
 
 Response Parameters
@@ -233,6 +236,7 @@ Response Parameters
    - volume_types: volume_types
    - id: group_id
    - name: name
+   - volumes: volume_ids
 
 Response Example
 ----------------
