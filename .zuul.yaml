@@ -2,7 +2,7 @@
     name: openstack/cinder
     check:
       jobs:
-        - cinder-tempest-dsvm-lvm-lio:
+        - cinder-tempest-dsvm-lvm-lio-barbican:
             voting: false
         - cinder-tox-compliance
         - cinder-tox-bandit-baseline:
@@ -13,10 +13,10 @@
 
 - job:
     # Previously named legacy-tempest-dsvm-full-lio
-    name: cinder-tempest-dsvm-lvm-lio
+    name: cinder-tempest-dsvm-lvm-lio-barbican
     parent: legacy-dsvm-base
-    run: playbooks/legacy/cinder-tempest-dsvm-lvm-lio/run.yaml
-    post-run: playbooks/legacy/cinder-tempest-dsvm-lvm-lio/post.yaml
+    run: playbooks/legacy/cinder-tempest-dsvm-lvm-lio-barbican/run.yaml
+    post-run: playbooks/legacy/cinder-tempest-dsvm-lvm-lio-barbican/post.yaml
     timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
