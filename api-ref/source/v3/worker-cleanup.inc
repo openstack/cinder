@@ -23,7 +23,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - cluster: cluster_mutex
+   - cluster_name: cluster_mutex
+   - service_id: service_id
    - host: host_service
    - binary: binary
    - is-up: is_up
