@@ -66,6 +66,7 @@ Driver Configuration Reference
    drivers/storpool-volume-driver
    drivers/synology-dsm-driver
    drivers/tintri-volume-driver
+   drivers/veritas-access-iscsi-driver
    drivers/vzstorage-driver
    drivers/vmware-vmdk-driver
    drivers/windows-iscsi-volume-driver
