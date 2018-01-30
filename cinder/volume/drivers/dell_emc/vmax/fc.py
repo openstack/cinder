@@ -90,9 +90,11 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Support for manage/unmanage snapshots
                 (vmax-manage-unmanage-snapshot)
               - Support for revert to volume snapshot
+        3.2.0 - Support for retyping replicated volumes (bp
+                vmax-retype-replicated-volumes)
     """
 
-    VERSION = "3.1.0"
+    VERSION = "3.2.0"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"

@@ -495,6 +495,16 @@ class VMAXUtils(object):
         else:
             return True
 
+    def change_replication(self, vol_is_replicated, new_type):
+        """Check if volume types have different replication status.
+
+        :param vol_is_replicated: from source
+        :param new_type: from target
+        :return: bool
+        """
+        is_tgt_rep = self.is_replication_enabled(new_type['extra_specs'])
+        return vol_is_replicated != is_tgt_rep
+
     @staticmethod
     def is_replication_enabled(extra_specs):
         """Check if replication is to be enabled.

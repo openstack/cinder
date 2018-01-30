@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ast
 import time
 
 from oslo_log import log as logging
@@ -23,6 +24,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.volume.drivers.dell_emc.vmax import provision
 from cinder.volume.drivers.dell_emc.vmax import utils
+from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -1454,12 +1456,59 @@ class VMAXMasking(object):
             # Need to check if the volume needs to be returned to a
             # generic volume group. This may be necessary in a force-detach
             # situation.
-            if volume.group_id is not None:
-                vol_grp_name = self.provision.get_or_create_volume_group(
-                    serial_number, volume.group, extra_specs)
-                self._check_adding_volume_to_storage_group(
-                    serial_number, device_id,
-                    vol_grp_name, volume_name, extra_specs)
+            self.return_volume_to_volume_group(
+                serial_number, volume, device_id, volume_name, extra_specs)
+
+    def return_volume_to_volume_group(self, serial_number, volume,
+                                      device_id, volume_name, extra_specs):
+        """Return a volume to its volume group, if required.
+
+        :param serial_number: the array serial number
+        :param volume: the volume object
+        :param device_id: the device id
+        :param volume_name: the volume name
+        :param extra_specs: the extra specifications
+        """
+        if (volume.group_id is not None and
+                (volume_utils.is_group_a_cg_snapshot_type(volume.group)
+                 or volume.group.is_replicated)):
+            vol_grp_name = self.provision.get_or_create_volume_group(
+                serial_number, volume.group, extra_specs)
+            self._check_adding_volume_to_storage_group(
+                serial_number, device_id,
+                vol_grp_name, volume_name, extra_specs)
+            if volume.group.is_replicated:
+                self.add_remote_vols_to_volume_group(
+                    volume, volume.group, extra_specs)
+
+    def add_remote_vols_to_volume_group(
+            self, volumes, group, extra_specs, rep_driver_data=None):
+        """Add the remote volumes to their volume group.
+
+        :param volumes: list of volumes
+        :param group: the id of the group
+        :param extra_specs: the extra specifications
+        :param rep_driver_data: replication driver data, optional
+        """
+        remote_device_list = []
+        remote_array = None
+        if not isinstance(volumes, list):
+            volumes = [volumes]
+        for vol in volumes:
+            try:
+                remote_loc = ast.literal_eval(vol.replication_driver_data)
+            except (ValueError, KeyError):
+                remote_loc = ast.literal_eval(rep_driver_data)
+            remote_array = remote_loc['array']
+            founddevice_id = self.rest.check_volume_device_id(
+                remote_array, remote_loc['device_id'], vol.id)
+            if founddevice_id is not None:
+                remote_device_list.append(founddevice_id)
+        group_name = self.provision.get_or_create_volume_group(
+            remote_array, group, extra_specs)
+        self.add_volumes_to_storage_group(
+            remote_array, remote_device_list, group_name, extra_specs)
+        LOG.info("Added volumes to remote volume group.")
 
     def get_or_create_default_storage_group(
             self, serial_number, srp, slo, workload, extra_specs,

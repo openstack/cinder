@@ -1484,6 +1484,11 @@ class VMAXUtilsTest(test.TestCase):
 
         self.assertEqual(expected_snap_name, updated_name)
 
+    def test_change_replication(self):
+        new_type = {'extra_specs': self.data.extra_specs_rep_enabled}
+        self.assertFalse(self.utils.change_replication(True, new_type))
+        self.assertTrue(self.utils.change_replication(False, new_type))
+
 
 class VMAXRestTest(test.TestCase):
     def setUp(self):
@@ -4564,7 +4569,7 @@ class VMAXCommonTest(test.TestCase):
             migrate_status = self.common._migrate_volume(
                 self.data.array, volume, device_id, self.data.srp,
                 self.data.slo, self.data.workload, volume_name,
-                new_type, extra_specs)
+                new_type, extra_specs)[0]
             self.assertTrue(migrate_status)
             target_extra_specs = {
                 'array': self.data.array, 'interval': 3,
@@ -4580,7 +4585,7 @@ class VMAXCommonTest(test.TestCase):
                 migrate_status = self.common._migrate_volume(
                     self.data.array, volume, device_id, self.data.srp,
                     self.data.slo, self.data.workload, volume_name,
-                    new_type, extra_specs)
+                    new_type, extra_specs)[0]
                 self.assertTrue(migrate_status)
                 mock_remove.assert_not_called()
 
@@ -4610,7 +4615,7 @@ class VMAXCommonTest(test.TestCase):
             migrate_status = self.common._migrate_volume(
                 self.data.array, self.data.test_volume, device_id,
                 self.data.srp, self.data.slo,
-                self.data.workload, volume_name, new_type, extra_specs)
+                self.data.workload, volume_name, new_type, extra_specs)[0]
             self.assertFalse(migrate_status)
 
     def test_is_valid_for_storage_assisted_migration_true(self):
@@ -4620,20 +4625,20 @@ class VMAXCommonTest(test.TestCase):
         ref_return = (True, 'Silver', 'OLTP')
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host, self.data.array,
-            self.data.srp, volume_name, False)
+            self.data.srp, volume_name, False, False)
         self.assertEqual(ref_return, return_val)
         # No current sgs found
         with mock.patch.object(self.rest, 'get_storage_groups_from_volume',
                                return_value=None):
             return_val = self.common._is_valid_for_storage_assisted_migration(
                 device_id, host, self.data.array, self.data.srp,
-                volume_name, False)
+                volume_name, False, False)
             self.assertEqual(ref_return, return_val)
         host = {'host': 'HostX@Backend#Silver+SRP_1+000197800123'}
         ref_return = (True, 'Silver', 'NONE')
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host, self.data.array,
-            self.data.srp, volume_name, False)
+            self.data.srp, volume_name, False, False)
         self.assertEqual(ref_return, return_val)
 
     def test_is_valid_for_storage_assisted_migration_false(self):
@@ -4644,36 +4649,25 @@ class VMAXCommonTest(test.TestCase):
         host = {'host': 'HostX@Backend#Silver+SRP_1+000197800123+dummy+data'}
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host, self.data.array,
-            self.data.srp, volume_name, False)
+            self.data.srp, volume_name, False, False)
         self.assertEqual(ref_return, return_val)
         # Wrong array
         host2 = {'host': 'HostX@Backend#Silver+OLTP+SRP_1+00012345678'}
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host2, self.data.array,
-            self.data.srp, volume_name, False)
+            self.data.srp, volume_name, False, False)
         self.assertEqual(ref_return, return_val)
         # Wrong srp
         host3 = {'host': 'HostX@Backend#Silver+OLTP+SRP_2+000197800123'}
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host3, self.data.array,
-            self.data.srp, volume_name, False)
+            self.data.srp, volume_name, False, False)
         self.assertEqual(ref_return, return_val)
         # Already in correct sg
         host4 = {'host': self.data.fake_host}
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host4, self.data.array,
-            self.data.srp, volume_name, False)
-        self.assertEqual(ref_return, return_val)
-
-    def test_is_valid_for_storage_assisted_migration_none(self):
-        device_id = self.data.device_id
-        host = {'host': self.data.none_host}
-        volume_name = self.data.test_volume.name
-        # Testing for 'NONE' Workload
-        ref_return = (True, 'Diamond', 'NONE')
-        return_val = self.common._is_valid_for_storage_assisted_migration(
-            device_id, host, self.data.array,
-            self.data.srp, volume_name, False)
+            self.data.srp, volume_name, False, False)
         self.assertEqual(ref_return, return_val)
 
     def test_find_volume_group(self):
@@ -6333,12 +6327,13 @@ class VMAXMaskingTest(test.TestCase):
             self.data.array, self.data.masking_view_name_i)
         mock_delete_mv.assert_called_once()
 
+    @mock.patch.object(masking.VMAXMasking, 'return_volume_to_volume_group')
     @mock.patch.object(rest.VMAXRest, 'move_volume_between_storage_groups')
     @mock.patch.object(masking.VMAXMasking,
                        'get_or_create_default_storage_group')
     @mock.patch.object(masking.VMAXMasking, 'add_volume_to_storage_group')
     def test_add_volume_to_default_storage_group(
-            self, mock_add_sg, mock_get_sg, mock_move):
+            self, mock_add_sg, mock_get_sg, mock_move, mock_return):
         self.mask.add_volume_to_default_storage_group(
             self.data.array, self.device_id, self.volume_name,
             self.extra_specs)
@@ -6347,14 +6342,12 @@ class VMAXMaskingTest(test.TestCase):
             self.data.array, self.device_id, self.volume_name,
             self.extra_specs, src_sg=self.data.storagegroup_name_i)
         mock_move.assert_called_once()
-        mock_add_sg.reset_mock()
         vol_grp_member = deepcopy(self.data.test_volume)
         vol_grp_member.group_id = self.data.test_vol_grp_name_id_only
-        vol_grp_member.group = self.data.test_group
         self.mask.add_volume_to_default_storage_group(
             self.data.array, self.device_id, self.volume_name,
             self.extra_specs, volume=vol_grp_member)
-        self.assertEqual(2, mock_add_sg.call_count)
+        mock_return.assert_called_once()
 
     @mock.patch.object(provision.VMAXProvision, 'create_storage_group')
     def test_get_or_create_default_storage_group(self, mock_create_sg):
@@ -6569,6 +6562,32 @@ class VMAXMaskingTest(test.TestCase):
             self.mask.failed_live_migration(device_dict, sg_list, None)
             mock_remove_volume.assert_not_called()
             mock_remove_child_sg.assert_called_once()
+
+    @mock.patch.object(masking.VMAXMasking,
+                       'add_volumes_to_storage_group')
+    def test_add_remote_vols_to_volume_group(self, mock_add):
+        self.mask.add_remote_vols_to_volume_group(
+            [self.data.test_volume], self.data.test_rep_group,
+            self.data.rep_extra_specs)
+        mock_add.assert_called_once()
+
+    @mock.patch.object(masking.VMAXMasking, 'add_remote_vols_to_volume_group')
+    @mock.patch.object(masking.VMAXMasking,
+                       '_check_adding_volume_to_storage_group')
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    @mock.patch.object(volume_utils, 'is_group_a_type',
+                       side_effect=[False, False, True, True])
+    def test_return_volume_to_volume_group(self, mock_type, mock_cg,
+                                           mock_check, mock_add):
+        vol_grp_member = deepcopy(self.data.test_volume)
+        vol_grp_member.group_id = self.data.test_vol_grp_name_id_only
+        vol_grp_member.group = self.data.test_group
+        for x in range(0, 2):
+            self.mask.return_volume_to_volume_group(
+                self.data.array, vol_grp_member, self.data.device_id,
+                self.data.test_volume.name, self.data.extra_specs)
+        mock_add.assert_called_once()
 
 
 class VMAXCommonReplicationTest(test.TestCase):
@@ -7400,7 +7419,7 @@ class VMAXCommonReplicationTest(test.TestCase):
     @mock.patch.object(utils.VMAXUtils, 'check_rep_status_enabled')
     @mock.patch.object(common.VMAXCommon,
                        '_remove_remote_vols_from_volume_group')
-    @mock.patch.object(common.VMAXCommon, '_add_remote_vols_to_volume_group')
+    @mock.patch.object(masking.VMAXMasking, 'add_remote_vols_to_volume_group')
     @mock.patch.object(volume_utils, 'is_group_a_type', return_value=True)
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=True)
@@ -7413,14 +7432,6 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.data.test_group_1, add_vols, remove_vols)
         mock_add.assert_called_once()
         mock_remove.assert_called_once()
-
-    @mock.patch.object(masking.VMAXMasking,
-                       'add_volumes_to_storage_group')
-    def test_add_remote_vols_to_volume_group(self, mock_add):
-        self.common._add_remote_vols_to_volume_group(
-            self.data.remote_array, [self.data.test_volume],
-            self.data.test_rep_group, self.data.rep_extra_specs)
-        mock_add.assert_called_once()
 
     @mock.patch.object(masking.VMAXMasking,
                        'remove_volumes_from_storage_group')
@@ -7485,3 +7496,43 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.async_driver.common.failover_host(volumes, None, [])
         mock_fv.assert_not_called()
         mock_fg.assert_called_once()
+
+    @mock.patch.object(common.VMAXCommon, '_retype_volume', return_value=True)
+    @mock.patch.object(masking.VMAXMasking, 'remove_vol_from_storage_group')
+    @mock.patch.object(common.VMAXCommon, '_retype_remote_volume',
+                       return_value=True)
+    @mock.patch.object(common.VMAXCommon, 'setup_volume_replication',
+                       return_value=VMAXCommonData.provider_location2)
+    @mock.patch.object(common.VMAXCommon,
+                       '_remove_vol_and_cleanup_replication')
+    @mock.patch.object(utils.VMAXUtils, 'is_replication_enabled',
+                       side_effect=[False, True, True, False, True, True])
+    def test_migrate_volume_replication(self, mock_re, mock_rm_rep,
+                                        mock_setup, mock_retype,
+                                        mock_rm, mock_rt):
+        new_type = {'extra_specs': {}}
+        for x in range(0, 3):
+            success, model_update = self.common._migrate_volume(
+                self.data.array, self.data.test_volume, self.data.device_id,
+                self.data.srp, 'OLTP', 'Silver', self.data.test_volume.name,
+                new_type, self.data.extra_specs)
+            self.assertTrue(success)
+        mock_rm_rep.assert_called_once()
+        mock_setup.assert_called_once()
+        mock_retype.assert_called_once()
+
+    @mock.patch.object(
+        common.VMAXCommon, '_get_replication_extra_specs',
+        return_value=VMAXCommonData.extra_specs_rep_enabled)
+    @mock.patch.object(
+        rest.VMAXRest, 'get_storage_groups_from_volume',
+        side_effect=[
+            VMAXCommonData.storagegroup_list, ['OS-SRP_1-Diamond-DSS-RE-SG']])
+    @mock.patch.object(common.VMAXCommon, '_retype_volume', return_value=True)
+    def test_retype_volume_replication(self, mock_retype, mock_sg, mock_es):
+        for x in range(0, 2):
+            self.common._retype_remote_volume(
+                self.data.array, self.data.test_volume, self.data.device_id,
+                self.data.test_volume.name, utils.REP_SYNC,
+                True, self.data.extra_specs)
+        mock_retype.assert_called_once()
