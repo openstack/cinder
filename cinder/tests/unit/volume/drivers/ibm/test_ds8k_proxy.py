@@ -1127,7 +1127,7 @@ class DS8KProxyTest(test.TestCase):
 
     @ddt.data('25- 27-', '-25- 27', '25-27 122', '25, 26', '25-#28')
     def test_get_lss_ids_for_cg_1(self, lss_range_for_cg):
-        """lss_range_for_cg should has the right format."""
+        """lss_range_for_cg should have the right format."""
         self.configuration.lss_range_for_cg = lss_range_for_cg
         self.assertRaises(exception.InvalidParameterValue,
                           FakeDS8KCommonHelper, self.configuration, None)
