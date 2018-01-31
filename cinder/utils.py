@@ -285,7 +285,8 @@ def time_format(at=None):
         at = timeutils.utcnow()
     date_string = at.strftime("%Y-%m-%dT%H:%M:%S")
     tz = at.tzname(None) if at.tzinfo else 'UTC'
-    date_string += ('Z' if tz == 'UTC' else tz)
+    # Need to handle either iso8601 or python UTC format
+    date_string += ('Z' if tz in ['UTC', 'UTC+00:00'] else tz)
     return date_string
 
 
