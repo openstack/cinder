@@ -147,7 +147,7 @@ Basic Usage
 - **Exclusion**
 
   In some cases we'll need to set conditions on what is *not* in the DB record
-  instead of what is is, for that we will use the exclusion mechanism provided
+  instead of what is in, for that we will use the exclusion mechanism provided
   by the ``Not`` class in all persistent objects.  This class accepts single
   values as well as iterables.
 
