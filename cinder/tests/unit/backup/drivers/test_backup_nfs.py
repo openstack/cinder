@@ -205,6 +205,38 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         backup = objects.Backup.get_by_id(self.ctxt, FAKE_BACKUP_ID)
         self.assertEqual(backup['container'], UPDATED_CONTAINER_NAME)
 
+    def test_backup_cancel(self):
+        """Test the backup abort mechanism when backup is force deleted."""
+        count = set()
+
+        def my_refresh():
+            # This refresh method will abort the backup after 1 chunk
+            count.add(len(count) + 1)
+            if len(count) == 2:
+                backup.destroy()
+            original_refresh()
+
+        volume_id = fake.VOLUME_ID
+        self._create_backup_db_entry(volume_id=volume_id,
+                                     container=None,
+                                     backup_id=FAKE_BACKUP_ID)
+        service = nfs.NFSBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        backup = objects.Backup.get_by_id(self.ctxt, FAKE_BACKUP_ID)
+        original_refresh = backup.refresh
+
+        # We cannot mock refresh method in backup object directly because
+        # mock will raise AttributeError on context manager exit.
+        with mock.patch('cinder.objects.base.CinderPersistentObject.refresh',
+                        side_effect=my_refresh), \
+                mock.patch.object(service, 'delete_object',
+                                  side_effect=service.delete_object) as delete:
+            # Driver shouldn't raise the NotFound exception
+            service.backup(backup, self.volume_file)
+
+            # Ensure we called the delete_backup method when abort is detected
+            self.assertEqual(1, delete.call_count)
+
     @mock.patch('cinder.backup.drivers.posix.PosixBackupDriver.'
                 'update_container_name',
                 return_value='testcontainer1')

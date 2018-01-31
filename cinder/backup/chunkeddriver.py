@@ -484,7 +484,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
             # First of all, we check the status of this backup. If it
             # has been changed to delete or has been deleted, we cancel the
             # backup process to do forcing delete.
-            backup = objects.Backup.get_by_id(self.context, backup.id)
+            with backup.as_read_deleted():
+                backup.refresh()
             if backup.status in (fields.BackupStatus.DELETING,
                                  fields.BackupStatus.DELETED):
                 is_backup_canceled = True
