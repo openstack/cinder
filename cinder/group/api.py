@@ -318,7 +318,9 @@ class API(base.Base):
                     volumes = objects.VolumeList.get_all_by_generic_group(
                         context, group.id)
                     for vol in volumes:
-                        vol.destroy()
+                        # NOTE(tommylikehu): `delete` is used here in order to
+                        # revert consumed quota.
+                        self.volume_api.delete(context, vol)
                     group.destroy()
                 finally:
                     LOG.error("Error occurred when creating group "
@@ -399,7 +401,9 @@ class API(base.Base):
                     volumes = objects.VolumeList.get_all_by_generic_group(
                         context, group.id)
                     for vol in volumes:
-                        vol.destroy()
+                        # NOTE(tommylikehu): `delete` is used here in order to
+                        # revert consumed quota.
+                        self.volume_api.delete(context, vol)
                     group.destroy()
                 finally:
                     LOG.error("Error occurred when creating "
