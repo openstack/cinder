@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    We no longer leave orphaned chunks on the backup backend or leave a
+    temporary volume/snapshot when aborting a backup.

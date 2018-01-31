@@ -297,6 +297,34 @@ class CinderPersistentObject(object):
         finally:
             self._context = original_context
 
+    @contextlib.contextmanager
+    def as_read_deleted(self, mode='yes'):
+        """Context manager to make OVO with modified read deleted context.
+
+        This temporarily modifies the context embedded in an object to
+        have a different `read_deleted` parameter.
+
+        Parameter mode accepts most of the same parameters as our `model_query`
+        DB method.  We support 'yes', 'no', and 'only'.
+
+        usage:
+
+           with obj.as_read_deleted():
+               obj.refresh()
+           if obj.status = 'deleted':
+               ...
+        """
+        if self._context is None:
+            raise exception.OrphanedObjectError(method='as_read_deleted',
+                                                objtype=self.obj_name())
+
+        original_mode = self._context.read_deleted
+        self._context.read_deleted = mode
+        try:
+            yield
+        finally:
+            self._context.read_deleted = original_mode
+
     @classmethod
     def _get_expected_attrs(cls, context, *args, **kwargs):
         return None
