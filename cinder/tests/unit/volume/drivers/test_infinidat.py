@@ -74,8 +74,10 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         # mock external library dependencies
         infinisdk = self.patch("cinder.volume.drivers.infinidat.infinisdk")
         capacity = self.patch("cinder.volume.drivers.infinidat.capacity")
-        self.patch("cinder.volume.drivers.infinidat.iqn")
-        self.patch("cinder.volume.drivers.infinidat.wwn")
+        self._iqn = self.patch("cinder.volume.drivers.infinidat.iqn")
+        self._wwn = self.patch("cinder.volume.drivers.infinidat.wwn")
+        self._wwn.WWN = mock.Mock
+        self._iqn.IQN = mock.Mock
         capacity.byte = 1
         capacity.GiB = units.Gi
         infinisdk.core.exceptions.InfiniSDKException = FakeInfinisdkException
@@ -506,6 +508,19 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_group_snapshot,
                           None, test_snapgroup, [test_snapshot])
+
+    def test_terminate_connection_force_detach(self):
+        mock_infinidat_host = mock.Mock()
+        mock_infinidat_host.get_ports.return_value = [
+            self._wwn.WWN(TEST_WWN_1)]
+        mock_mapping = mock.Mock()
+        mock_mapping.get_host.return_value = mock_infinidat_host
+        self._mock_volume.get_logical_units.return_value = [mock_mapping]
+        # connector is None - force detach - detach all mappings
+        self.driver.terminate_connection(test_volume, None)
+        # make sure we actually detached the host mapping
+        self._mock_host.unmap_volume.assert_called_once()
+        self._mock_host.safe_delete.assert_called_once()
 
 
 class InfiniboxDriverTestCaseFC(InfiniboxDriverTestCaseBase):
