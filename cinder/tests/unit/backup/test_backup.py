@@ -587,6 +587,31 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(fields.BackupStatus.ERROR, backup['status'])
         self.assertTrue(mock_run_backup.called)
 
+    @mock.patch('cinder.backup.manager.BackupManager._run_backup')
+    def test_create_backup_aborted(self, run_backup_mock):
+        """Test error handling when abort occurs during backup creation."""
+        def my_run_backup(*args, **kwargs):
+            backup.destroy()
+            with backup.as_read_deleted():
+                original_refresh()
+
+        run_backup_mock.side_effect = my_run_backup
+        vol_id = self._create_volume_db_entry(size=1)
+        backup = self._create_backup_db_entry(volume_id=vol_id)
+        original_refresh = backup.refresh
+
+        self.backup_mgr.create_backup(self.ctxt, backup)
+
+        self.assertTrue(run_backup_mock.called)
+
+        vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+        self.assertEqual('available', vol.status)
+        self.assertEqual('backing-up', vol['previous_status'])
+        # Make sure we didn't set the backup to available after it was deleted
+        with backup.as_read_deleted():
+            backup.refresh()
+        self.assertEqual(fields.BackupStatus.DELETED, backup.status)
+
     @mock.patch('cinder.backup.manager.BackupManager._run_backup',
                 side_effect=FakeBackupException(str(uuid.uuid4())))
     def test_create_backup_with_snapshot_error(self, mock_run_backup):

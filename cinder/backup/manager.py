@@ -406,21 +406,29 @@ class BackupManager(manager.ThreadPoolManager):
             self.db.volume_update(context, volume_id,
                                   {'status': previous_status,
                                    'previous_status': 'backing-up'})
-        backup.status = fields.BackupStatus.AVAILABLE
-        backup.size = volume['size']
 
-        if updates:
-            backup.update(updates)
-        backup.save()
+        # _run_backup method above updated the status for the backup, so it
+        # will reflect latest status, even if it is deleted
+        completion_msg = 'finished'
+        if backup.status in (fields.BackupStatus.DELETING,
+                             fields.BackupStatus.DELETED):
+            completion_msg = 'aborted'
+        else:
+            backup.status = fields.BackupStatus.AVAILABLE
+            backup.size = volume['size']
 
-        # Handle the num_dependent_backups of parent backup when child backup
-        # has created successfully.
-        if backup.parent_id:
-            parent_backup = objects.Backup.get_by_id(context,
-                                                     backup.parent_id)
-            parent_backup.num_dependent_backups += 1
-            parent_backup.save()
-        LOG.info('Create backup finished. backup: %s.', backup.id)
+            if updates:
+                backup.update(updates)
+            backup.save()
+
+            # Handle the num_dependent_backups of parent backup when child
+            # backup has created successfully.
+            if backup.parent_id:
+                parent_backup = objects.Backup.get_by_id(context,
+                                                         backup.parent_id)
+                parent_backup.num_dependent_backups += 1
+                parent_backup.save()
+        LOG.info('Create backup %s. backup: %s.', completion_msg, backup.id)
         self._notify_about_backup_usage(context, backup, "create.end")
 
     def _run_backup(self, context, backup, volume):
@@ -472,7 +480,8 @@ class BackupManager(manager.ThreadPoolManager):
                                     backup_device.is_snapshot, force=True,
                                     ignore_errors=True)
         finally:
-            backup = objects.Backup.get_by_id(context, backup.id)
+            with backup.as_read_deleted():
+                backup.refresh()
             self._cleanup_temp_volumes_snapshots_when_backup_created(
                 context, backup)
         return updates
