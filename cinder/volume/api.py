@@ -289,7 +289,7 @@ class API(base.Base):
 
         utils.check_metadata_properties(metadata)
 
-        if (volume_type and self._is_multiattach(volume_type)):
+        if (volume_type and self._is_multiattach(volume_type)) or multiattach:
             context.authorize(vol_policy.MULTIATTACH_POLICY)
 
         create_what = {
