@@ -260,6 +260,7 @@ class HPE3PARCommon(object):
         4.0.2 - Added Tiramisu feature on 3PAR.
         4.0.3 - Fixed create group from source functionality in case of
                 tiramisu. bug #1742092.
+        4.0.4 - Fixed setting of sync_period value in rcopygroup. bug #1746235
 
 
     """
@@ -4224,8 +4225,8 @@ class HPE3PARCommon(object):
 
         # Check and see if we are in periodic mode. If we are, update
         # Remote Copy Group to have a sync period.
-        if len(rcg['volumes']) and rcg.get('syncPeriod'):
-            if replication_sync_period != int(rcg.get('syncPeriod')):
+        if len(rcg['volumes']) and 'syncPeriod' in rcg['targets'][0]:
+            if replication_sync_period != int(rcg['targets'][0]['syncPeriod']):
                 for target in self._replication_targets:
                     if target['replication_mode'] == replication_mode_num:
                         sync_target = {'targetName': target['backend_id'],
