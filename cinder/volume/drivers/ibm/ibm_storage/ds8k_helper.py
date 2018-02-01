@@ -592,6 +592,33 @@ class DS8KCommonHelper(object):
             htype = 'LinuxRHEL'
         return collections.namedtuple('Host', ('name', 'type'))(hname, htype)
 
+    def check_vol_mapped_to_host(self, connector, vol_id):
+        map_info = {
+            'host_ports': [],
+            'mappings': [],
+            'lun_ids': []
+        }
+        host_wwpn_set = set(wwpn.upper() for wwpn in connector['wwpns'])
+        host_ports = self._get_host_ports(host_wwpn_set)
+        defined_hosts = set(
+            hp['host_id'] for hp in host_ports if hp['host_id'])
+        if not defined_hosts:
+            return False, None, map_info
+        elif len(defined_hosts) > 1:
+            raise restclient.APIException(_('More than one host found.'))
+        else:
+            host_id = defined_hosts.pop()
+            mappings = self._get_mappings(host_id)
+            lun_ids = [
+                m['lunid'] for m in mappings if m['volume']['id'] == vol_id]
+            map_info['host_ports'] = host_ports
+            map_info['mappings'] = mappings
+            map_info['lun_ids'] = lun_ids
+            if not lun_ids:
+                return False, host_id, map_info
+            else:
+                return True, host_id, map_info
+
     @coordination.synchronized('ibm-ds8k-{connector[host]}')
     def initialize_connection(self, vol_id, connector, **kwargs):
         host = self._get_host(connector)
@@ -640,53 +667,39 @@ class DS8KCommonHelper(object):
         }
 
     @coordination.synchronized('ibm-ds8k-{connector[host]}')
-    def terminate_connection(self, vol_id, connector, force, **kwargs):
+    def terminate_connection(self, vol_id, host_id, connector, map_info):
         host = self._get_host(connector)
-        host_wwpn_set = set(wwpn.upper() for wwpn in connector['wwpns'])
-        host_ports = self._get_host_ports(host_wwpn_set)
-        defined_hosts = set(
-            hp['host_id'] for hp in host_ports if hp['host_id'])
+        host_ports = map_info['host_ports']
+        lun_ids = map_info['lun_ids']
+        mappings = map_info['mappings']
         delete_ports = set(
             hp['wwpn'] for hp in host_ports if not hp['host_id'])
         LOG.debug("terminate_connection: host_ports: %(host)s, "
                   "defined_hosts: %(defined)s, delete_ports: %(delete)s.",
                   {"host": host_ports,
-                   "defined": defined_hosts,
+                   "defined": host_id,
                    "delete": delete_ports})
-
-        if not defined_hosts:
-            LOG.info('Could not find host.')
-            return None
-        elif len(defined_hosts) > 1:
-            raise restclient.APIException(_('More than one host found.'))
-        else:
-            host_id = defined_hosts.pop()
-            mappings = self._get_mappings(host_id)
-            lun_ids = [
-                m['lunid'] for m in mappings if m['volume']['id'] == vol_id]
-            LOG.info('Volumes attached to host %(host)s are %(vols)s.',
-                     {'host': host_id, 'vols': ','.join(lun_ids)})
-            for lun_id in lun_ids:
-                self._delete_mappings(host_id, lun_id)
-            if not lun_ids:
-                LOG.warning("Volume %(vol)s is already not mapped to "
-                            "host %(host)s.",
-                            {'vol': vol_id, 'host': host.name})
-            # if this host only has volumes that have been detached,
-            # remove the host and its ports
-            ret_info = {
-                'driver_volume_type': 'fibre_channel',
-                'data': {}
-            }
-            if len(mappings) == len(lun_ids):
-                for port in delete_ports:
-                    self._delete_host_ports(port)
-                self._delete_host(host_id)
-                target_ports = [p['wwpn'] for p in self._get_ioports()]
-                target_map = {initiator.upper(): target_ports
-                              for initiator in connector['wwpns']}
-                ret_info['data']['initiator_target_map'] = target_map
-            return ret_info
+        for lun_id in lun_ids:
+            self._delete_mappings(host_id, lun_id)
+        if not lun_ids:
+            LOG.warning("Volume %(vol)s is already not mapped to "
+                        "host %(host)s.",
+                        {'vol': vol_id, 'host': host.name})
+        # if this host only has volumes that have been detached,
+        # remove the host and its ports
+        ret_info = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {}
+        }
+        if len(mappings) == len(lun_ids):
+            for port in delete_ports:
+                self._delete_host_ports(port)
+            self._delete_host(host_id)
+            target_ports = [p['wwpn'] for p in self._get_ioports()]
+            target_map = {initiator.upper(): target_ports
+                          for initiator in connector['wwpns']}
+            ret_info['data']['initiator_target_map'] = target_map
+        return ret_info
 
     def create_group(self, group):
         return {'status': fields.GroupStatus.AVAILABLE}

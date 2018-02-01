@@ -908,6 +908,8 @@ FAKE_REST_API_RESPONSES = {
         FAKE_MAP_VOLUME_RESPONSE,
     TEST_SOURCE_DS8K_IP + '/ioports/get':
         FAKE_GET_IOPORT_RESPONSE,
+    TEST_TARGET_DS8K_IP + '/ioports/get':
+        FAKE_GET_IOPORT_RESPONSE,
     TEST_SOURCE_DS8K_IP + '/hosts/post':
         FAKE_CREATE_HOST_RESPONSE,
     TEST_SOURCE_DS8K_IP + '/host_ports/assign/post':
@@ -917,9 +919,16 @@ FAKE_REST_API_RESPONSES = {
     TEST_SOURCE_DS8K_IP + '/hosts%5Bid=' + TEST_HOST_ID + '%5D/mappings/' +
     TEST_LUN_ID + '/delete':
         FAKE_DELETE_MAPPINGS_RESPONSE,
+    TEST_TARGET_DS8K_IP + '/hosts%5Bid=' + TEST_HOST_ID + '%5D/mappings/' +
+    TEST_LUN_ID + '/delete':
+        FAKE_DELETE_MAPPINGS_RESPONSE,
     TEST_SOURCE_DS8K_IP + '/host_ports/' + TEST_SOURCE_WWPN_2 + '/delete':
         FAKE_DELETE_HOST_PORTS_RESPONSE,
+    TEST_TARGET_DS8K_IP + '/host_ports/' + TEST_SOURCE_WWPN_2 + '/delete':
+        FAKE_DELETE_HOST_PORTS_RESPONSE,
     TEST_SOURCE_DS8K_IP + '/hosts%5Bid=' + TEST_HOST_ID + '%5D/delete':
+        FAKE_DELETE_HOSTS_RESPONSE,
+    TEST_TARGET_DS8K_IP + '/hosts%5Bid=' + TEST_HOST_ID + '%5D/delete':
         FAKE_DELETE_HOSTS_RESPONSE
 }
 
@@ -2716,6 +2725,23 @@ class DS8KProxyTest(test.TestCase):
 
         self.driver.terminate_connection(volume, TEST_CONNECTOR)
 
+    def test_terminate_connection_of_eckd_volume(self):
+        """attach a ECKD volume to host."""
+        self.configuration.connection_type = (
+            storage.XIV_CONNECTION_TYPE_FC_ECKD)
+        self.configuration.ds8k_devadd_unitadd_mapping = 'C4-10'
+        self.configuration.ds8k_ssid_prefix = 'FF'
+        self.configuration.san_clustername = TEST_ECKD_POOL_ID
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
+        location = six.text_type({'vol_hex_id': TEST_ECKD_VOLUME_ID})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location)
+        unmap_data = self.driver.terminate_connection(volume, {})
+        self.assertIsNone(unmap_data)
+
     @mock.patch.object(helper.DS8KCommonHelper, '_get_host_ports')
     def test_terminate_connection_with_multiple_hosts(self,
                                                       mock_get_host_ports):
@@ -2771,8 +2797,9 @@ class DS8KProxyTest(test.TestCase):
             }
         ]
         mock_get_host_ports.side_effect = [host_ports]
-        unmap_data = self.driver.terminate_connection(volume, TEST_CONNECTOR)
-        self.assertIsNone(unmap_data)
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.terminate_connection, volume,
+                          TEST_CONNECTOR)
 
     @mock.patch.object(helper.DS8KCommonHelper, '_get_host_ports')
     @mock.patch.object(helper.DS8KCommonHelper, '_get_mappings')
@@ -2803,6 +2830,128 @@ class DS8KProxyTest(test.TestCase):
                 "host_id": ''
             }
         ]
+        mappings = [
+            {
+                "lunid": TEST_LUN_ID,
+                "link": {},
+                "volume": {"id": TEST_VOLUME_ID, "link": {}}
+            }
+        ]
+        mock_get_host_ports.side_effect = [host_ports]
+        mock_get_mappings.side_effect = [mappings]
+        self.driver.terminate_connection(volume, TEST_CONNECTOR)
+
+    @mock.patch.object(helper.DS8KCommonHelper, '_get_host_ports')
+    @mock.patch.object(helper.DS8KCommonHelper, '_get_mappings')
+    def test_detach_with_host_has_failed_over(self, mock_get_mappings,
+                                              mock_get_host_ports):
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self, TEST_TARGET_DS8K_IP)
+        self.driver.setup(self.ctxt)
+
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {'default': {'vol_hex_id': TEST_VOLUME_ID}})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data)
+        host_ports_1 = [
+            {
+                "wwpn": TEST_SOURCE_WWPN_1,
+                "state": "logged in",
+                "hosttype": "LinuxRHEL",
+                "addrdiscovery": "lunpolling",
+                "host_id": TEST_HOST_ID
+            },
+            {
+                "wwpn": TEST_SOURCE_WWPN_2,
+                "state": "unconfigured",
+                "hosttype": "LinuxRHEL",
+                "addrdiscovery": "lunpolling",
+                "host_id": ''
+            }
+        ]
+        host_ports_2 = [
+            {
+                "wwpn": TEST_SOURCE_WWPN_1,
+                "state": "logged in",
+                "hosttype": "LinuxRHEL",
+                "addrdiscovery": "lunpolling",
+                "host_id": TEST_HOST_ID
+            },
+            {
+                "wwpn": TEST_SOURCE_WWPN_2,
+                "state": "unconfigured",
+                "hosttype": "LinuxRHEL",
+                "addrdiscovery": "lunpolling",
+                "host_id": ''
+            }
+        ]
+        mappings_1 = [
+            {
+                "lunid": TEST_LUN_ID,
+                "link": {},
+                "volume": {"id": TEST_VOLUME_ID_2, "link": {}}
+            }
+        ]
+        mappings_2 = [
+            {
+                "lunid": TEST_LUN_ID,
+                "link": {},
+                "volume": {"id": TEST_VOLUME_ID, "link": {}}
+            }
+        ]
+        mock_get_host_ports.side_effect = [host_ports_1, host_ports_2]
+        mock_get_mappings.side_effect = [mappings_1, mappings_2]
+        self.driver.terminate_connection(volume, TEST_CONNECTOR)
+
+    @mock.patch.object(helper.DS8KCommonHelper, '_get_host_ports')
+    @mock.patch.object(helper.DS8KCommonHelper, '_get_mappings')
+    def test_detach_with_group_has_failed_over(self, mock_get_mappings,
+                                               mock_get_host_ports):
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        group_type = group_types.create(
+            self.ctxt,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = self._create_group(host=TEST_GROUP_HOST,
+                                   group_type_id=group_type.id,
+                                   replication_status='failed-over')
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {'default': {'vol_hex_id': TEST_VOLUME_ID}})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data,
+                                     group_id=group.id,
+                                     replication_status='failed-over')
+        host_ports = [
+            {
+                "wwpn": TEST_SOURCE_WWPN_1,
+                "state": "logged in",
+                "hosttype": "LinuxRHEL",
+                "addrdiscovery": "lunpolling",
+                "host_id": TEST_HOST_ID
+            },
+            {
+                "wwpn": TEST_SOURCE_WWPN_2,
+                "state": "unconfigured",
+                "hosttype": "LinuxRHEL",
+                "addrdiscovery": "lunpolling",
+                "host_id": ''
+            }
+        ]
+
         mappings = [
             {
                 "lunid": TEST_LUN_ID,
