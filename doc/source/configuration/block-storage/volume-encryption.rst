@@ -90,7 +90,7 @@ the volume.
 
    .. code-block:: console
 
-      $ openstack volume type create --encryption-provider nova.volume.encryptors.luks.LuksEncryptor \
+      $ openstack volume type create --encryption-provider luks \
         --encryption-cipher aes-xts-plain64 --encryption-key-size 256 --encryption-control-location front-end LUKS
 
         +-------------+----------------------------------------------------------------+
@@ -100,7 +100,7 @@ the volume.
         | encryption  | cipher='aes-xts-plain64', control_location='front-end',        |
         |             | encryption_id='8584c43f-1666-43d1-a348-45cfcef72898',          |
         |             | key_size='256',                                                |
-        |             | provider='nova.volume.encryptors.luks.LuksEncryptor'           |
+        |             | provider='luks'                                                |
         | id          | b9a8cff5-2f60-40d1-8562-d33f3bf18312                           |
         | is_public   | True                                                           |
         | name        | LUKS                                                           |
