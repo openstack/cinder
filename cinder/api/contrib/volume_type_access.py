@@ -13,13 +13,14 @@
 
 """The volume type access extension."""
 
-from oslo_utils import uuidutils
 import six
 from six.moves import http_client
 import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volume_type_access
+from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
 from cinder.policies import volume_access as policy
@@ -55,15 +56,6 @@ class VolumeTypeAccessController(object):
 
 class VolumeTypeActionController(wsgi.Controller):
     """The volume type access API controller for the OpenStack API."""
-
-    def _check_body(self, body, action_name):
-        self.assert_valid_body(body, action_name)
-        access = body[action_name]
-        project = access.get('project')
-        if not uuidutils.is_uuid_like(project):
-            msg = _("Bad project format: "
-                    "project is not in proper format (%s)") % project
-            raise webob.exc.HTTPBadRequest(explanation=msg)
 
     def _extend_vol_type(self, vol_type_rval, vol_type_ref):
         if vol_type_ref:
@@ -104,10 +96,10 @@ class VolumeTypeActionController(wsgi.Controller):
             self._extend_vol_type(resp_obj.obj['volume_type'], vol_type)
 
     @wsgi.action('addProjectAccess')
+    @validation.schema(volume_type_access.add_project_access)
     def _addProjectAccess(self, req, id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.ADD_PROJECT_POLICY)
-        self._check_body(body, 'addProjectAccess')
         project = body['addProjectAccess']['project']
 
         try:
@@ -118,10 +110,10 @@ class VolumeTypeActionController(wsgi.Controller):
         return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('removeProjectAccess')
+    @validation.schema(volume_type_access.remove_project_access)
     def _removeProjectAccess(self, req, id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.REMOVE_PROJECT_POLICY)
-        self._check_body(body, 'removeProjectAccess')
         project = body['removeProjectAccess']['project']
 
         # Not found exception will be handled at the wsgi level
