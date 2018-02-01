@@ -173,3 +173,33 @@ Run this command to create a backup of a snapshot:
 
 Where ``VOLUME`` is the name or ID of the volume, ``SNAPSHOT_ID`` is the ID of
 the volume's snapshot.
+
+Cancelling
+----------
+
+Since Liberty it is possible to cancel an ongoing backup operation on any of
+the Chunked Backup type of drivers such as Swift, NFS, Google, GlusterFS, and
+Posix.
+
+To issue a backup cancellation on a backup we must request a force delete on
+the backup.
+
+.. code-block:: console
+
+   $ openstack volume backup delete --force BACKUP_ID
+
+.. note::
+
+    The policy on force delete defaults to admin only.
+
+Even if the backup is immediately deleted, and therefore no longer appears in
+the listings, the cancellation may take a little bit longer, so please check
+the status of the source resource to see when it stops being "backing-up".
+
+.. note::
+
+   Before Pike the "backing-up" status would always be stored in the volume,
+   even when backing up a snapshot, so when backing up a snapshot any delete
+   operation on the snapshot that followed a cancellation could result in an
+   error if the snapshot was still mapped.  Polling on the volume to stop being
+   "backing-up" prior to the deletion is required to ensure success.
