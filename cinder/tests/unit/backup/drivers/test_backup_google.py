@@ -125,6 +125,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
                                 volume_id=_DEFAULT_VOLUME_ID,
                                 container=google_dr.CONF.backup_gcs_bucket,
                                 parent_id=None,
+                                status=None,
                                 service_metadata=None):
 
         try:
@@ -138,6 +139,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
                   'parent_id': parent_id,
                   'user_id': fake.USER_ID,
                   'project_id': fake.PROJECT_ID,
+                  'status': status,
                   'service_metadata': service_metadata,
                   }
         backup = objects.Backup(context=self.ctxt, **kwargs)
@@ -476,7 +478,9 @@ class GoogleBackupDriverTestCase(test.TestCase):
     @gcs_client
     def test_restore(self):
         volume_id = 'c2a81f09-f480-4325-8424-00000071685b'
-        backup = self._create_backup_db_entry(volume_id=volume_id)
+        backup = self._create_backup_db_entry(
+            volume_id=volume_id,
+            status=objects.fields.BackupStatus.RESTORING)
         service = google_dr.GoogleBackupDriver(self.ctxt)
 
         with tempfile.NamedTemporaryFile() as volume_file:
@@ -514,9 +518,11 @@ class GoogleBackupDriverTestCase(test.TestCase):
         self.volume_file.seek(20 * units.Ki)
         self.volume_file.write(os.urandom(units.Ki))
 
-        deltabackup = self._create_backup_db_entry(volume_id=volume_id,
-                                                   container=container_name,
-                                                   parent_id=backup.id)
+        deltabackup = self._create_backup_db_entry(
+            volume_id=volume_id,
+            status=objects.fields.BackupStatus.RESTORING,
+            container=container_name,
+            parent_id=backup.id)
         self.volume_file.seek(0)
         service2 = google_dr.GoogleBackupDriver(self.ctxt)
         service2.backup(deltabackup, self.volume_file, True)

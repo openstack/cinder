@@ -615,8 +615,14 @@ class ChunkedBackupDriver(driver.BackupDriver):
 
         self._finalize_backup(backup, container, object_meta, object_sha256)
 
-    def _restore_v1(self, backup, volume_id, metadata, volume_file):
-        """Restore a v1 volume backup."""
+    def _restore_v1(self, backup, volume_id, metadata, volume_file,
+                    requested_backup):
+        """Restore a v1 volume backup.
+
+        Raises BackupRestoreCancel on any requested_backup status change, we
+        ignore the backup parameter for this check since that's only the
+        current data source from the list of backup sources.
+        """
         backup_id = backup['id']
         LOG.debug('v1 volume backup restore of %s started.', backup_id)
         extra_metadata = metadata.get('extra_metadata')
@@ -637,6 +643,13 @@ class ChunkedBackupDriver(driver.BackupDriver):
             raise exception.InvalidBackup(reason=err)
 
         for metadata_object in metadata_objects:
+            # Abort when status changes to error, available, or anything else
+            with requested_backup.as_read_deleted():
+                requested_backup.refresh()
+            if requested_backup.status != fields.BackupStatus.RESTORING:
+                raise exception.BackupRestoreCancel(back_id=backup.id,
+                                                    vol_id=volume_id)
+
             object_name, obj = list(metadata_object.items())[0]
             LOG.debug('restoring object. backup: %(backup_id)s, '
                       'container: %(container)s, object name: '
@@ -683,7 +696,10 @@ class ChunkedBackupDriver(driver.BackupDriver):
                   backup_id)
 
     def restore(self, backup, volume_id, volume_file):
-        """Restore the given volume backup from backup repository."""
+        """Restore the given volume backup from backup repository.
+
+        Raises BackupRestoreCancel on any backup status change.
+        """
         backup_id = backup['id']
         container = backup['container']
         object_prefix = backup['service_metadata']
@@ -725,7 +741,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
             backup1 = backup_list[index]
             index = index - 1
             metadata = self._read_metadata(backup1)
-            restore_func(backup1, volume_id, metadata, volume_file)
+            restore_func(backup1, volume_id, metadata, volume_file, backup)
 
             volume_meta = metadata.get('volume_meta', None)
             try:

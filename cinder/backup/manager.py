@@ -530,7 +530,10 @@ class BackupManager(manager.ThreadPoolManager):
             raise exception.InvalidBackup(reason=err)
 
         try:
+            canceled = False
             self._run_restore(context, backup, volume)
+        except exception.BackupRestoreCancel:
+            canceled = True
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.volume_update(context, volume_id,
@@ -538,12 +541,15 @@ class BackupManager(manager.ThreadPoolManager):
                 backup.status = fields.BackupStatus.AVAILABLE
                 backup.save()
 
-        self.db.volume_update(context, volume_id, {'status': 'available'})
+        volume.status = 'error' if canceled else 'available'
+        volume.save()
         backup.status = fields.BackupStatus.AVAILABLE
         backup.save()
-        LOG.info('Restore backup finished, backup %(backup_id)s restored'
-                 ' to volume %(volume_id)s.',
-                 {'backup_id': backup.id, 'volume_id': volume_id})
+        LOG.info('%(result)s restoring backup %(backup_id)s to volume '
+                 '%(volume_id)s.',
+                 {'result': 'Canceled' if canceled else 'Finished',
+                  'backup_id': backup.id,
+                  'volume_id': volume_id})
         self._notify_about_backup_usage(context, backup, "restore.end")
 
     def _run_restore(self, context, backup, volume):

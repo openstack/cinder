@@ -155,6 +155,10 @@ class BackupDriverException(CinderException):
     message = _("Backup driver reported an error: %(message)s")
 
 
+class BackupRestoreCancel(CinderException):
+    message = _("Canceled backup %(back_id)s restore on volume %(vol_id)s")
+
+
 class GlanceConnectionFailed(CinderException):
     message = _("Connection to glance failed: %(reason)s")
 

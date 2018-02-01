@@ -700,6 +700,8 @@ class BackupSwiftTestCase(test.TestCase):
 
         with tempfile.NamedTemporaryFile() as volume_file:
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
+            backup.status = objects.fields.BackupStatus.RESTORING
+            backup.save()
             service.restore(backup, volume_id, volume_file)
 
     def test_restore_delta(self):
@@ -748,6 +750,8 @@ class BackupSwiftTestCase(test.TestCase):
 
         with tempfile.NamedTemporaryFile() as restored_file:
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
+            backup.status = objects.fields.BackupStatus.RESTORING
+            backup.save()
             service.restore(backup, volume_id,
                             restored_file)
             self.assertTrue(filecmp.cmp(self.volume_file.name,

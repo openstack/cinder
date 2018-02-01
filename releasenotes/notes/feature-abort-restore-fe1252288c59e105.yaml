@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Support backup restore cancelation by changing the backup status to
+    anything other than `restoring` using `cinder backup-reset-state`.

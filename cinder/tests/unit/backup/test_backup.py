@@ -1011,6 +1011,26 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
         self.assertTrue(mock_run_restore.called)
 
+    def test_restore_backup_with_driver_cancellation(self):
+        """Test error handling when a restore is cancelled."""
+        vol_id = self._create_volume_db_entry(status='restoring-backup',
+                                              size=1)
+        backup = self._create_backup_db_entry(
+            status=fields.BackupStatus.RESTORING, volume_id=vol_id)
+
+        mock_run_restore = self.mock_object(
+            self.backup_mgr,
+            '_run_restore')
+        mock_run_restore.side_effect = exception.BackupRestoreCancel(
+            vol_id=vol_id, back_id=backup.id)
+        # We shouldn't raise an exception on the call, it's OK to cancel
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+        vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+        self.assertEqual('error', vol.status)
+        backup.refresh()
+        self.assertEqual(fields.BackupStatus.AVAILABLE, backup.status)
+        self.assertTrue(mock_run_restore.called)
+
     def test_restore_backup_with_bad_service(self):
         """Test error handling.
 
@@ -1065,6 +1085,8 @@ class BackupTestCase(BaseBackupTest):
 
         mock_temporary_chown.assert_called_once_with('/dev/null')
         mock_get_conn.assert_called_once_with()
+        vol.status = 'available'
+        vol.obj_reset_changes()
         mock_secure_enabled.assert_called_once_with(self.ctxt, vol)
         mock_attach_device.assert_called_once_with(self.ctxt, vol,
                                                    properties)

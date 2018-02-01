@@ -127,7 +127,8 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                                 volume_id=_DEFAULT_VOLUME_ID,
                                 container='test-container',
                                 backup_id=fake.BACKUP_ID,
-                                parent_id=None):
+                                parent_id=None,
+                                status=None):
 
         try:
             db.volume_get(self.ctxt, volume_id)
@@ -141,6 +142,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                   'parent_id': parent_id,
                   'user_id': fake.USER_ID,
                   'project_id': fake.PROJECT_ID,
+                  'status': status,
                   }
         return db.backup_create(self.ctxt, backup)['id']
 
@@ -608,6 +610,8 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
 
         with tempfile.NamedTemporaryFile() as restored_file:
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
+            backup.status = objects.fields.BackupStatus.RESTORING
+            backup.save()
             service.restore(backup, volume_id, restored_file)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
@@ -629,6 +633,8 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
 
         with tempfile.NamedTemporaryFile() as restored_file:
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
+            backup.status = objects.fields.BackupStatus.RESTORING
+            backup.save()
             service.restore(backup, volume_id, restored_file)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
@@ -649,6 +655,8 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         service = nfs.NFSBackupDriver(self.ctxt)
         self._write_effective_compression_file(file_size)
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
+        backup.status = objects.fields.BackupStatus.RESTORING
+        backup.save()
         service.backup(backup, self.volume_file)
 
         with tempfile.NamedTemporaryFile() as restored_file:
@@ -659,6 +667,70 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
 
         self.assertNotEqual(threading.current_thread(),
                             self.thread_dict['thread'])
+
+    def test_restore_abort_delta(self):
+        volume_id = fake.VOLUME_ID
+        count = set()
+
+        def _fake_generate_object_name_prefix(self, backup):
+            az = 'az_fake'
+            backup_name = '%s_backup_%s' % (az, backup['id'])
+            volume = 'volume_%s' % (backup['volume_id'])
+            prefix = volume + '_' + backup_name
+            return prefix
+
+        def my_refresh():
+            # This refresh method will abort the backup after 1 chunk
+            count.add(len(count) + 1)
+            if len(count) == 2:
+                backup.status = objects.fields.BackupStatus.AVAILABLE
+                backup.save()
+            original_refresh()
+
+        self.mock_object(nfs.NFSBackupDriver,
+                         '_generate_object_name_prefix',
+                         _fake_generate_object_name_prefix)
+
+        self.flags(backup_file_size=(1024 * 8))
+        self.flags(backup_sha_block_size_bytes=1024)
+
+        container_name = self.temp_dir.replace(tempfile.gettempdir() + '/',
+                                               '', 1)
+        self._create_backup_db_entry(volume_id=volume_id,
+                                     container=container_name,
+                                     backup_id=fake.BACKUP_ID)
+        service = nfs.NFSBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
+        service.backup(backup, self.volume_file)
+
+        # Create incremental backup with no change to contents
+        self.volume_file.seek(16 * 1024)
+        self.volume_file.write(os.urandom(1024))
+        self.volume_file.seek(20 * 1024)
+        self.volume_file.write(os.urandom(1024))
+
+        self._create_backup_db_entry(
+            volume_id=volume_id,
+            status=objects.fields.BackupStatus.RESTORING,
+            container=container_name,
+            backup_id=fake.BACKUP2_ID,
+            parent_id=fake.BACKUP_ID)
+        self.volume_file.seek(0)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
+        service.backup(deltabackup, self.volume_file, True)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
+
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
+        original_refresh = backup.refresh
+
+        with tempfile.NamedTemporaryFile() as restored_file, \
+                mock.patch('cinder.objects.Backup.refresh',
+                           side_effect=my_refresh):
+
+            self.assertRaises(exception.BackupRestoreCancel,
+                              service.restore, backup, volume_id,
+                              restored_file)
 
     def test_restore_delta(self):
         volume_id = fake.VOLUME_ID
@@ -693,10 +765,12 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self.volume_file.seek(20 * 1024)
         self.volume_file.write(os.urandom(1024))
 
-        self._create_backup_db_entry(volume_id=volume_id,
-                                     container=container_name,
-                                     backup_id=fake.BACKUP2_ID,
-                                     parent_id=fake.BACKUP_ID)
+        self._create_backup_db_entry(
+            volume_id=volume_id,
+            status=objects.fields.BackupStatus.RESTORING,
+            container=container_name,
+            backup_id=fake.BACKUP2_ID,
+            parent_id=fake.BACKUP_ID)
         self.volume_file.seek(0)
         deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         service.backup(deltabackup, self.volume_file, True)

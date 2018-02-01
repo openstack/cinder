@@ -391,6 +391,9 @@ class BackupDriver(base.Base):
         starvation parameter volume_file will be a proxy that will execute all
         methods in native threads, so the method implementation doesn't need to
         worry about that..
+
+        May raise BackupRestoreCancel to indicate that the restoration of a
+        volume has been aborted by changing the backup status.
         """
         return
 
