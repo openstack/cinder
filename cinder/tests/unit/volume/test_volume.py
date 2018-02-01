@@ -628,6 +628,18 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertEqual(foo['id'], vol['volume_type_id'])
         self.assertTrue(vol['multiattach'])
 
+    def test_create_volume_with_multiattach_no_volume_type(self):
+        """Tests creating a volume with multiattach=True but no special type.
+
+        This tests the pre 3.50 microversion behavior of being able to create
+        a volume with the multiattach request parameter regardless of a
+        multiattach-capable volume type.
+        """
+        volume_api = cinder.volume.api.API()
+        volume = volume_api.create(
+            self.context, 1, 'name', 'description', multiattach=True)
+        self.assertTrue(volume.multiattach)
+
     @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
     def test_create_volume_with_encrypted_volume_type_aes(self):
         ctxt = context.get_admin_context()
