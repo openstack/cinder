@@ -4576,8 +4576,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         :param original_volume_status: The status of the original volume
         :returns: model_update to update DB with any needed changes
         """
-        current_name = CONF.volume_name_template % new_volume['id']
-        original_volume_name = CONF.volume_name_template % volume['id']
+        current_name = new_volume.name
+        original_volume_name = volume.name
+        LOG.debug("Attempt rename of %(cur)s to original name %(orig)s",
+                  dict(cur=current_name, orig=original_volume_name))
         try:
             self._helpers.rename_vdisk(current_name, original_volume_name)
             rep_type = self._get_volume_replicated_type(ctxt, new_volume)

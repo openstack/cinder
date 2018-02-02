@@ -5934,6 +5934,24 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                           backend_volume,
                                                           'attached')
         self.assertEqual({'_name_id': backend_volume.id}, model_update)
+        rename_vdisk.assert_called_once_with(backend_volume.name, volume.name)
+
+        # Now back to first 'available' test, but with volume names that don't
+        # match the driver's name template. Need to use mock vols to set name.
+        rename_vdisk.reset_mock()
+        rename_vdisk.side_effect = None
+
+        class MockVol(dict):
+            def __getattr__(self, attr):
+                return self.get(attr, None)
+
+        target_vol = MockVol(id='1', name='new-vol-name', volume_type_id=None)
+        orig_vol = MockVol(id='2', name='orig-vol-name', volume_type_id=None)
+        model_update = self.driver.update_migrated_volume(ctxt, orig_vol,
+                                                          target_vol,
+                                                          'available')
+        rename_vdisk.assert_called_once_with('new-vol-name', 'orig-vol-name')
+        self.assertEqual({'_name_id': None}, model_update)
 
     def test_storwize_vdisk_copy_ops(self):
         ctxt = testutils.get_test_admin_context()
@@ -8859,7 +8877,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                                           backend_volume,
                                                           'available')
         aux_vol = (storwize_const.REPLICA_AUX_VOL_PREFIX + volume.name)
-        rename_vdisk.assert_called_with('aux_test', aux_vol)
+        rename_vdisk.assert_has_calls([mock.call(
+            backend_volume.name, volume.name), mock.call('aux_test', aux_vol)])
         self.assertEqual({'_name_id': None}, model_update)
 
         rename_vdisk.reset_mock()
