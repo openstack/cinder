@@ -44,9 +44,12 @@ class KeyMigrator(object):
 
     def handle_key_migration(self, volumes):
         castellan_options.set_defaults(self.conf)
-        self.conf.import_opt(name='fixed_key',
-                             module_str='cinder.keymgr.conf_key_mgr',
-                             group='key_manager')
+        try:
+            self.conf.import_opt(name='fixed_key',
+                                 module_str='cinder.keymgr.conf_key_mgr',
+                                 group='key_manager')
+        except cfg.DuplicateOptError:
+            pass
         fixed_key = self.conf.key_manager.fixed_key
         backend = self.conf.key_manager.backend or ''
 
