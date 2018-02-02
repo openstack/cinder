@@ -3273,6 +3273,10 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                                                extra_spec_4)
         volume4_iSCSI['volume_type_id'] = vol_type_iSCSI_4['id']
         self.iscsi_driver.initialize_connection(volume4_iSCSI, connector2)
+        host_name = self.iscsi_driver._helpers.get_host_from_connector(
+            connector2, iscsi=True)
+        host_info = self.iscsi_driver._helpers.ssh.lshost(host=host_name)
+        self.assertEqual('site2', host_info[0]['site_name'])
 
     @mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                        '_do_terminate_connection')
@@ -4053,6 +4057,10 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         vol_type_fc = volume_types.create(self.ctxt, 'FC', extra_spec)
         volume_fc['volume_type_id'] = vol_type_fc['id']
         self.fc_driver.initialize_connection(volume_fc, connector)
+        host_name = self.fc_driver._helpers.get_host_from_connector(
+            connector, iscsi=True)
+        host_info = self.fc_driver._helpers.ssh.lshost(host=host_name)
+        self.assertEqual('site1', host_info[0]['site_name'])
 
         # host_site is site2, different with site1.
         volume1_fc = self._create_volume()
