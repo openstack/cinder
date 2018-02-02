@@ -57,21 +57,32 @@ For details of each command, see the NEC Storage Manager Command Reference
        (iSMcfg ldbind)
      * Create Snapshot Reserve Areas (SRAs) in each snapshot pool.
        (iSMcfg srabind)
+  #. Create control volumes
+
+     * Create control volumes for each controller node. (iSMcfg ldbind)
   #. (Optional) Register SSH public key
 
 
 - iSCSI only
 
   #. Set IP addresses of each iSCSI port. (iSMcfg setiscsiport)
-  #. Create a LD Set with setting multi-target mode on. (iSMcfg addldset)
-  #. Register initiator names of each node. (iSMcfg addldsetinitiator)
+  #. Create LD Sets with setting multi-target mode on for each controller
+     and compute nodes. (iSMcfg addldset)
+  #. For each node, register the initiator name (/etc/iscsi/initiatorname.iscsi)
+     to LD set for the node. (iSMcfg addldsetinitiator)
+  #. For each controller node, add the control volume created above to LD set
+     for the node. (iSMcfg addldsetld)
 
 
 - Fibre Channel only
 
   #. Start access control. (iSMcfg startacc)
-  #. Create a LD Set. (iSMcfg addldset)
-  #. Register WWPNs of each node. (iSMcfg addldsetpath)
+  #. Create LD Sets for each controller and compute nodes.
+     (iSMcfg addldset)
+  #. For each node, register WWPNs (/sys/class/fc_host/hostX/port_name)
+     to LD set for the node. (iSMcfg addldsetpath)
+  #. For each controller node, add the control volume created above to LD set
+     for the node. (iSMcfg addldsetld)
 
 
 Configuration
