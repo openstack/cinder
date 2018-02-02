@@ -197,7 +197,7 @@ class RBDTestCase(test.TestCase):
             **{'name': u'volume-0000000a',
                'id': '55555555-222f-4b32-b585-9991b3bf0a99',
                'size': 12,
-               'encryption_key_id': 'set_in_test'})
+               'encryption_key_id': fake.ENCRYPTION_KEY_ID})
 
         self.snapshot = fake_snapshot.fake_snapshot_obj(
             self.context, name='snapshot-0000000a')
