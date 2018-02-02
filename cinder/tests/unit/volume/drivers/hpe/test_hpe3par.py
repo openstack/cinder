@@ -5654,7 +5654,11 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
         typ_info.return_value = type_info
         source_volume = self.volume_src_cg
-
+        volume = self.volume_tiramisu
+        volume['source_volid'] = source_volume['id']
+        common = hpecommon.HPE3PARCommon(None)
+        vol_name = common._get_3par_vol_name(volume.get('id'))
+        mock_client.getVolume.return_value = {'copyOf': vol_name}
         group_snap_optional = (
             {'expirationHours': 1})
 
@@ -5681,6 +5685,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     self.SRC_CONSIS_GROUP_NAME,
                     optional=group_snap_optional),
                 mock.call.stopRemoteCopy(self.RCG_3PAR_GROUP_NAME),
+                mock.call.getVolume(mock.ANY),
                 mock.call.copyVolume(
                     mock.ANY,
                     self.VOLUME_NAME_3PAR,
@@ -5704,7 +5709,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             # Create a consistency group from a source consistency group.
             self.driver.create_group_from_src(
                 context.get_admin_context(), group,
-                [self.volume_tiramisu], source_group=source_grp,
+                [volume], source_group=source_grp,
                 source_vols=[source_volume])
 
             mock_client.assert_has_calls(
@@ -5733,6 +5738,11 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                      'hpe3par_keys': {}}
 
         typ_info.return_value = type_info
+        source_volume = self.volume_src_cg
+        volume.volume['source_volid'] = source_volume['id']
+        common = hpecommon.HPE3PARCommon(None)
+        vol_name = common._get_3par_vol_name(volume.id)
+        mock_client.getVolume.return_value = {'copyOf': vol_name}
 
         group_snap_comment = Comment({
             "group_id": "6044fedf-c889-4752-900f-2039d247a5df",
@@ -5835,7 +5845,10 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
         typ_info.return_value = type_info
         source_volume = self.volume_src_cg
-
+        volume.volume['source_volid'] = source_volume['id']
+        common = hpecommon.HPE3PARCommon(None)
+        vol_name = common._get_3par_vol_name(volume.id)
+        mock_client.getVolume.return_value = {'copyOf': vol_name}
         group_snap_optional = (
             {'expirationHours': 1})
 
@@ -5861,6 +5874,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     mock.ANY,
                     self.SRC_CONSIS_GROUP_NAME,
                     optional=group_snap_optional),
+                mock.call.getVolume(mock.ANY),
                 mock.call.copyVolume(
                     mock.ANY,
                     self.VOLUME_NAME_3PAR,
