@@ -155,6 +155,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
             raise exception.VolumeTypeExtraSpecsNotFound(
                 volume_type_id=type_id, extra_specs_key=id)
 
+    @wsgi.response(http_client.ACCEPTED)
     def delete(self, req, type_id, id):
         """Deletes an existing extra spec."""
         context = req.environ['cinder.context']
@@ -175,7 +176,6 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         notifier.info(context,
                       'volume_type_extra_specs.delete',
                       notifier_info)
-        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _check_key_names(self, keys):
         if not common.validate_key_names(keys):

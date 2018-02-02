@@ -53,6 +53,13 @@ def app():
     return mapper
 
 
+def app_v3():
+    api = fakes.router.APIRouter()
+    mapper = fakes.urlmap.URLMap()
+    mapper['/v3'] = api
+    return mapper
+
+
 class BaseAdminTest(test.TestCase):
     def setUp(self):
         super(BaseAdminTest, self).setUp()
@@ -528,17 +535,17 @@ class AdminActionsTest(BaseAdminTest):
         req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
         body = {'os-migrate_volume': {'host': host,
                                       'force_host_copy': force_host_copy}}
         version = version or mv.BASE_VERSION
         req.headers = mv.get_mv_header(version)
+        req.headers['Content-Type'] = 'application/json'
         req.api_version_request = mv.get_api_version(version)
         if version == mv.VOLUME_MIGRATE_CLUSTER:
             body['os-migrate_volume']['cluster'] = cluster
         req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = ctx
-        resp = self.controller._migrate_volume(req, volume.id, body)
+        resp = req.get_response(app_v3())
 
         # verify status
         self.assertEqual(expected_status, resp.status_int)
@@ -573,10 +580,10 @@ class AdminActionsTest(BaseAdminTest):
         host = 'test2'
         cluster = 'cluster'
         volume = self._migrate_volume_prep()
-        self.assertRaises(exception.InvalidInput,
-                          self._migrate_volume_3_exec, self.ctx, volume, host,
-                          None, version=mv.VOLUME_MIGRATE_CLUSTER,
-                          cluster=cluster)
+        expected_status = http_client.BAD_REQUEST
+        self._migrate_volume_3_exec(self.ctx, volume, host, expected_status,
+                                    version=mv.VOLUME_MIGRATE_CLUSTER,
+                                    cluster=cluster)
 
     def _migrate_volume_exec(self, ctx, volume, host, expected_status,
                              force_host_copy=False):
