@@ -775,6 +775,7 @@ class Backup(BASE, CinderBase):
     snapshot_id = Column(String(36))
     data_timestamp = Column(DateTime)
     restore_volume_id = Column(String(36))
+    encryption_key_id = Column(String(36))
 
     @validates('fail_reason')
     def validate_fail_reason(self, key, fail_reason):

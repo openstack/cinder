@@ -17,7 +17,6 @@
 
 import abc
 
-from castellan import key_manager
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
@@ -26,7 +25,6 @@ import six
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _
-from cinder.volume import utils as vol_utils
 
 service_opts = [
     cfg.IntOpt('backup_metadata_version', default=2,
@@ -60,13 +58,6 @@ class BackupMetadataAPI(base.Base):
         self.context = context
         self._key_mgr = None
 
-    @property
-    def _key_manager(self):
-        # Allows for lazy initialization of the key manager
-        if self._key_mgr is None:
-            self._key_mgr = key_manager.API(CONF)
-        return self._key_mgr
-
     @staticmethod
     def _is_serializable(value):
         """Returns True if value is serializable."""
@@ -96,12 +87,13 @@ class BackupMetadataAPI(base.Base):
                     LOG.info("Unable to serialize field '%s' - excluding "
                              "from backup", key)
                     continue
-                # Copy the encryption key UUID for backup
-                if key is 'encryption_key_id' and value is not None:
-                    value = vol_utils.clone_encryption_key(self.context,
-                                                           self._key_manager,
-                                                           value)
-                    LOG.debug("Copying encryption key UUID for backup.")
+                # NOTE(abishop): The backup manager is now responsible for
+                # ensuring a copy of the volume's encryption key ID is
+                # retained in case the volume is deleted. Yes, this means
+                # the backup's volume base metadata now stores the volume's
+                # original encryption key ID, which affects how things are
+                # handled when backups are restored. The backup manager
+                # handles this, too.
                 container[type_tag][key] = value
 
             LOG.debug("Completed fetching metadata type '%s'", type_tag)

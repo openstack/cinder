@@ -142,6 +142,7 @@ OBJ_VERSIONS.add('1.31', {'Volume': '1.7'})
 OBJ_VERSIONS.add('1.32', {'RequestSpec': '1.3'})
 OBJ_VERSIONS.add('1.33', {'Volume': '1.8'})
 OBJ_VERSIONS.add('1.34', {'VolumeAttachment': '1.3'})
+OBJ_VERSIONS.add('1.35', {'Backup': '1.6', 'BackupImport': '1.6'})
 
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):
