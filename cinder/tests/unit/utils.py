@@ -64,6 +64,7 @@ def create_volume(ctxt,
                   testcase_instance=None,
                   id=None,
                   metadata=None,
+                  admin_metadata=None,
                   **kwargs):
     """Create a volume object in the DB."""
     vol = {'size': size,
@@ -79,6 +80,9 @@ def create_volume(ctxt,
 
     if metadata:
         vol['metadata'] = metadata
+    if admin_metadata:
+        vol['admin_metadata'] = admin_metadata
+        ctxt = ctxt.elevated()
     for key in kwargs:
         vol[key] = kwargs[key]
     vol['replication_status'] = replication_status
