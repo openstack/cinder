@@ -56,6 +56,11 @@ CONF = cfg.CONF
 CONF.register_opts(chunkedbackup_service_opts)
 
 
+# Object writer and reader returned by inheriting classes must not have any
+# logging calls, as well as the compression libraries, as eventlet has a bug
+# (https://github.com/eventlet/eventlet/issues/432) that would result in
+# failures.
+
 @six.add_metaclass(abc.ABCMeta)
 class ChunkedBackupDriver(driver.BackupDriver):
     """Abstract chunked backup driver.
@@ -122,14 +127,23 @@ class ChunkedBackupDriver(driver.BackupDriver):
     def get_object_writer(self, container, object_name, extra_metadata=None):
         """Returns a writer object which stores the chunk data in backup repository.
 
-           The object returned should be a context handler that can be used
-           in a "with" context.
+        The object returned should be a context handler that can be used in a
+        "with" context.
+
+        The object writer methods must not have any logging calls, as eventlet
+        has a bug (https://github.com/eventlet/eventlet/issues/432) that would
+        result in failures.
         """
         return
 
     @abc.abstractmethod
     def get_object_reader(self, container, object_name, extra_metadata=None):
-        """Returns a reader object for the backed up chunk."""
+        """Returns a reader object for the backed up chunk.
+
+        The object reader methods must not have any logging calls, as eventlet
+        has a bug (https://github.com/eventlet/eventlet/issues/432) that would
+        result in failures.
+        """
         return
 
     @abc.abstractmethod
