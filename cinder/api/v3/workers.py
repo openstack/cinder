@@ -32,8 +32,7 @@ from cinder import utils
 
 class WorkerController(wsgi.Controller):
     allowed_clean_keys = {'service_id', 'cluster_name', 'host', 'binary',
-                          'is_up', 'disabled', 'resource_id', 'resource_type',
-                          'until'}
+                          'is_up', 'disabled', 'resource_id', 'resource_type'}
 
     def __init__(self, *args, **kwargs):
         self.sch_api = sch_rpc.SchedulerAPI()
