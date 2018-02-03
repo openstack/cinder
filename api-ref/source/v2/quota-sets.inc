@@ -47,7 +47,7 @@ Response Parameters
    - quota_set: quota_set
    - cores: cores
    - fixed_ips: fixed_ips
-   - id: id
+   - id: project_id
    - security_groups: security_groups
 
 
@@ -87,7 +87,6 @@ Request
    - quota_set: quota_set
    - cores: cores
    - fixed_ips: fixed_ips
-   - id: id
    - security_groups: security_groups
    - project_id: quotas_project_id
    - admin_project_id: admin_project_id
@@ -118,7 +117,7 @@ Response Parameters
    - quota_set: quota_set
    - cores: cores
    - fixed_ips: fixed_ips
-   - id: id
+   - id: project_id
    - security_groups: security_groups
 
 Response Example
@@ -191,7 +190,7 @@ Response Parameters
    - quota_set: quota_set
    - cores: cores
    - fixed_ips: fixed_ips
-   - id: id
+   - id: project_id
    - security_groups: security_groups
 
 
