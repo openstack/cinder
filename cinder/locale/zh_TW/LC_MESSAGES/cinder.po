@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 12.0.0.0b2.dev262\n"
+"Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-11-29 20:28+0000\n"
+"POT-Creation-Date: 2018-02-03 01:53+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -112,14 +112,6 @@ msgid "%(service)s Service is not %(status)s on storage appliance: %(host)s"
 msgstr "%(service)s 服務在儲存體軟體驅動裝置 %(host)s 上不是處於 %(status)s"
 
 #, python-format
-msgid "%(value_name)s must be <= %(max_value)d"
-msgstr "%(value_name)s 必須 <= %(max_value)d"
-
-#, python-format
-msgid "%(value_name)s must be >= %(min_value)d"
-msgstr "%(value_name)s 必須 >= %(min_value)d"
-
-#, python-format
 msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr "%(workers)d 的 %(worker_name)s 值無效，必須大於 0。"
@@ -188,10 +180,6 @@ msgid "%s must be an absolute path."
 msgstr "%s 必須是絕對路徑。"
 
 #, python-format
-msgid "%s must be an integer."
-msgstr "%s 必須是整數。"
-
-#, python-format
 msgid "%s not set in cinder.conf"
 msgstr "%s 未在 cinder.conf 中設定"
 
@@ -218,9 +206,6 @@ msgstr "'qemu-img info' 剖析失敗。"
 
 msgid "'status' must be specified."
 msgstr "必須指定 'status'。"
-
-msgid "'volume_id' must be specified"
-msgstr "必須指定 'volume_id'"
 
 #, python-format
 msgid ""
@@ -451,10 +436,6 @@ msgstr "配額集中的索引鍵錯誤：%s"
 msgid ""
 "Bad or unexpected response from the storage volume backend API: %(data)s"
 msgstr "來自儲存磁區後端 API 的回應錯誤或不符合預期：%(data)s"
-
-#, python-format
-msgid "Bad project format: project is not in proper format (%s)"
-msgstr "專案格式不當：專案未採取適當格式 (%s)"
 
 msgid "Bad response from Datera API"
 msgstr "Datera API 傳回錯誤的回應"
@@ -1994,9 +1975,6 @@ msgstr "無法建立快取磁區 %(volume)s。錯誤：%(err)s"
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr "無法給架構 %(fabric)s 新增連線：錯誤：%(err)s"
 
-msgid "Failed cgsnapshot"
-msgstr "失敗的 CgSnapshot"
-
 #, python-format
 msgid "Failed creating snapshot for group: %(response)s."
 msgstr "無法為群組建立 Snapshot：%(response)s。"
@@ -2548,10 +2526,6 @@ msgid "File %(file_path)s could not be found."
 msgstr "找不到檔案 %(file_path)s。"
 
 #, python-format
-msgid "File %(path)s has invalid backing file %(bfile)s, aborting."
-msgstr "檔案 %(path)s 具有無效的支援檔案 %(bfile)s，正在中斷。"
-
-#, python-format
 msgid "File already exists at %s."
 msgstr "%s 處已存在檔案。"
 
@@ -3017,9 +2991,6 @@ msgstr ""
 msgid "Incorrect request body format"
 msgstr "要求內文的格式不正確"
 
-msgid "Incorrect request body format."
-msgstr "要求內文的格式不正確。"
-
 msgid "Incremental backups exist for this backup."
 msgstr "此備份的增量備份已存在。"
 
@@ -3268,10 +3239,6 @@ msgstr "無效的更新設定：'%s'"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "force 的值 '%s' 無效。"
-
-#, python-format
-msgid "Invalid value '%s' for skip_validation."
-msgstr "skip_validation 的值 '%s' 無效。"
 
 #, python-format
 msgid "Invalid value for 'bootable': '%s'"
@@ -3821,9 +3788,6 @@ msgstr "不存在具有由參照 %s 所指定之 UID 的 vdisk。"
 msgid ""
 "No volume on cluster with vserver %(vserver)s and junction path %(junction)s "
 msgstr "叢集上沒有含 vserver %(vserver)s 及接合路徑%(junction)s 的磁區"
-
-msgid "No volume service(s) started successfully, terminating."
-msgstr "所有磁區服務均未順利啟動，終止中。"
 
 msgid "Not a valid value for NaElement."
 msgstr "不是 NaElement 的有效值。"
@@ -4600,10 +4564,6 @@ msgstr "結束時間 (%(end)s) 必須晚於開始時間 (%(start)s)。"
 msgid "The failed-over volume could not be deleted: %s"
 msgstr "無法刪除已失效接手的磁區：%s"
 
-#, python-format
-msgid "The following elements are required: %s"
-msgstr "需要下列元素：%s"
-
 msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
 "and resume replication on the 3PAR backends."
@@ -5375,12 +5335,6 @@ msgstr ""
 "%(vol_status)s。"
 
 #, python-format
-msgid ""
-"Volume %(vol_id)s status must be available, but current status is: "
-"%(vol_status)s."
-msgstr "磁區 %(vol_id)s 狀態必須為可用，但是現行狀態為：%(vol_status)s。"
-
-#, python-format
 msgid "Volume %(volume_id)s could not be found."
 msgstr "找不到磁區 %(volume_id)s。"
 
@@ -5589,10 +5543,6 @@ msgstr "磁區參照必須包含 source-name 元素。"
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "找不到 %(volume_id)s 的磁區抄寫。"
-
-#, python-format
-msgid "Volume service %s failed to start."
-msgstr "磁區服務 %s 無法啟動。"
 
 msgid "Volume should have agent-type set as None."
 msgstr "磁區應該將代理程式類型設定為「無」。"
@@ -6218,9 +6168,6 @@ msgstr ""
 "create_cloned_volume，目標磁區實例名稱：%(volume_instancename)s，取得實例失"
 "敗。"
 
-msgid "create_cloned_volume: Source and destination size differ."
-msgstr "create_cloned_volume：來源及目的地大小不同。"
-
 #, python-format
 msgid ""
 "create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
@@ -6334,11 +6281,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot：Snapshot 狀態必須為「可用」，才能建立磁區。無效"
 "的狀態為：%s。"
-
-msgid ""
-"create_volume_from_snapshot: Volume size is different from snapshot based "
-"volume."
-msgstr "create_volume_from_snapshot：磁區大小與 Snapshot 型磁區不同。"
 
 #, python-format
 msgid ""
@@ -6528,10 +6470,6 @@ msgstr "無效的使用者 '%s'"
 #, python-format
 msgid "iscsi portal, %s, not found"
 msgstr "找不到 iSCSI 入口網站 %s"
-
-msgid ""
-"iscsi_ip_address must be set in config file when using protocol 'iSCSI'."
-msgstr "使用通訊協定 'iSCSI' 時，必須在配置檔中設定 iscsi_ip_address。"
 
 #, python-format
 msgid "key manager error: %(reason)s"
@@ -6766,9 +6704,6 @@ msgstr "已指派磁區"
 
 msgid "volume changed"
 msgstr "已變更磁區"
-
-msgid "volume is already attached"
-msgstr "已連接磁區"
 
 #, python-format
 msgid ""

@@ -11,9 +11,9 @@
 # Ian Y. Choi <ianyrchoi@gmail.com>, 2017. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 12.0.0.0b2.dev262\n"
+"Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-11-29 20:28+0000\n"
+"POT-Creation-Date: 2018-02-03 01:53+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -118,14 +118,6 @@ msgstr ""
 "%(service)s 서비스가 스토리지 어플라이언스 %(host)s에서 %(status)s이(가) 아님"
 
 #, python-format
-msgid "%(value_name)s must be <= %(max_value)d"
-msgstr "%(value_name)s은(는) %(max_value)d보다 작거나 같아야 함"
-
-#, python-format
-msgid "%(value_name)s must be >= %(min_value)d"
-msgstr "%(value_name)s은(는) >= %(min_value)d이어야 함. "
-
-#, python-format
 msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr ""
@@ -203,10 +195,6 @@ msgid "%s must be an absolute path."
 msgstr "%s은(는) 절대 경로여야 합니다. "
 
 #, python-format
-msgid "%s must be an integer."
-msgstr "%s은(는) 정수여야 합니다."
-
-#, python-format
 msgid "%s not set in cinder.conf"
 msgstr "cinder.conf에 %s이(가) 설정되지 않음"
 
@@ -233,9 +221,6 @@ msgstr "'qemu-img info' 구문 분석에 실패했습니다. "
 
 msgid "'status' must be specified."
 msgstr "'상태'가 지정되어야 합니다."
-
-msgid "'volume_id' must be specified"
-msgstr "'volume_id'를 지정해야 함"
 
 #, python-format
 msgid ""
@@ -477,10 +462,6 @@ msgstr "할당량 세트의 잘못된 키: %s"
 msgid ""
 "Bad or unexpected response from the storage volume backend API: %(data)s"
 msgstr "스토리지 볼륨 백엔드 API로부터 잘못되었거나 예상치 못한 응답: %(data)s"
-
-#, python-format
-msgid "Bad project format: project is not in proper format (%s)"
-msgstr "잘못된 프로젝트 형식: 프로젝트 형식이 올바르지 않음(%s)"
 
 msgid "Bad response from Datera API"
 msgstr "Datera API의 잘못된 응답"
@@ -2100,9 +2081,6 @@ msgstr "캐시 볼륨 %(volume)s을(를) 작성하지 못했습니다. 오류: %
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr "패브릭=%(fabric)s에 대한 연결 추가 실패: 오류:%(err)s"
 
-msgid "Failed cgsnapshot"
-msgstr "cg 스냅샷 실패"
-
 #, python-format
 msgid "Failed creating snapshot for group: %(response)s."
 msgstr "그룹의 스냅샷 작성 실패: %(response)s."
@@ -2679,11 +2657,6 @@ msgid "File %(file_path)s could not be found."
 msgstr "%(file_path)s 파일을 찾을 수 없습니다. "
 
 #, python-format
-msgid "File %(path)s has invalid backing file %(bfile)s, aborting."
-msgstr ""
-"파일 %(path)s에 올바르지 않은 백업 파일 %(bfile)s이(가) 있어 중단합니다."
-
-#, python-format
 msgid "File already exists at %s."
 msgstr "%s에 파일이 이미 있습니다. "
 
@@ -3166,9 +3139,6 @@ msgstr ""
 msgid "Incorrect request body format"
 msgstr "올바르지 않은 요청 본문 형식"
 
-msgid "Incorrect request body format."
-msgstr "올바르지 않은 요청 본문 형식입니다."
-
 msgid "Incremental backups exist for this backup."
 msgstr "이 백업에 대한 증분 백업이 있습니다. "
 
@@ -3425,10 +3395,6 @@ msgstr "올바르지 않은 업데이트 설정: '%s'"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "강제 실행에 대한 올바르지 않은 값 '%s'입니다. "
-
-#, python-format
-msgid "Invalid value '%s' for skip_validation."
-msgstr "skip_validation에 대한 값 '%s'이(가) 올바르지 않습니다. "
 
 #, python-format
 msgid "Invalid value for 'bootable': '%s'"
@@ -4009,9 +3975,6 @@ msgid ""
 "No volume on cluster with vserver %(vserver)s and junction path %(junction)s "
 msgstr ""
 "vserver가 %(vserver)s이고 접합 경로가 %(junction)s인 클러스터에 볼륨이 없음"
-
-msgid "No volume service(s) started successfully, terminating."
-msgstr "볼륨 서비스가 시작되지 않아서 종료합니다. "
 
 msgid "Not a valid value for NaElement."
 msgstr "NaElement의 올바른 값이 아닙니다."
@@ -4817,10 +4780,6 @@ msgstr "종료 시간(%(end)s)은 시작 시간(%(start)s) 이후여야 합니�
 #, python-format
 msgid "The failed-over volume could not be deleted: %s"
 msgstr "장애 복구된 볼륨을 삭제할 수 없음: %s"
-
-#, python-format
-msgid "The following elements are required: %s"
-msgstr "다음 요소가 필요함: %s"
 
 msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
@@ -5650,13 +5609,6 @@ msgstr ""
 "현재 상태가  %(vol_status)s입니다. "
 
 #, python-format
-msgid ""
-"Volume %(vol_id)s status must be available, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"볼륨 %(vol_id)s 상태가 사용 가능이어야 합니다. 현재 상태: %(vol_status)s."
-
-#, python-format
 msgid "Volume %(volume_id)s could not be found."
 msgstr "%(volume_id)s 볼륨을 찾을 수 없습니다. "
 
@@ -5876,10 +5828,6 @@ msgstr "볼륨 참조에는 source-name 요소가 포함되어 있어야 합니�
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "%(volume_id)s의 볼륨 복제를 찾을 수 없습니다. "
-
-#, python-format
-msgid "Volume service %s failed to start."
-msgstr "볼륨 서비스 %s을(를) 시작하는 데 실패했습니다. "
 
 msgid "Volume should have agent-type set as None."
 msgstr "볼륨의 에이전트 유형은 None으로 설정되어야 합니다. "
@@ -6532,9 +6480,6 @@ msgstr ""
 "create_cloned_volume, 대상 볼륨 instancename: %(volume_instancename)s, 인스턴"
 "스 가져오기에 실패했습니다."
 
-msgid "create_cloned_volume: Source and destination size differ."
-msgstr "create_cloned_volume: 소스 및 대상 크기가 다릅니다. "
-
 #, python-format
 msgid ""
 "create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
@@ -6652,11 +6597,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: 볼륨 작성에 스냅샷 상태가 \"사용 가능\"해야 합니"
 "다. 올바르지 않은 상태는 %s입니다."
-
-msgid ""
-"create_volume_from_snapshot: Volume size is different from snapshot based "
-"volume."
-msgstr "create_volume_from_snapshot: 볼륨 크기가 스냅샷 기반 볼륨과 다릅니다."
 
 #, python-format
 msgid ""
@@ -6854,11 +6794,6 @@ msgstr "사용자 '%s'이(가) 올바르지 않음 "
 #, python-format
 msgid "iscsi portal, %s, not found"
 msgstr "iscsi 포털, %s을(를) 찾을 수 없음"
-
-msgid ""
-"iscsi_ip_address must be set in config file when using protocol 'iSCSI'."
-msgstr ""
-"프로토콜 'iSCSI' 사용 시 구성 파일에서 iscsi_ip_address를 설정해야 합니다. "
 
 #, python-format
 msgid "key manager error: %(reason)s"
@@ -7104,9 +7039,6 @@ msgstr "볼륨 지정됨"
 
 msgid "volume changed"
 msgstr "볼륨 변경됨"
-
-msgid "volume is already attached"
-msgstr "볼륨이 이미 접속됨"
 
 #, python-format
 msgid ""

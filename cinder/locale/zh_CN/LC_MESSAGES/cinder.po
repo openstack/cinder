@@ -17,9 +17,9 @@
 # howard lee <howard@mail.ustc.edu.cn>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 12.0.0.0b2.dev262\n"
+"Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-11-29 20:28+0000\n"
+"POT-Creation-Date: 2018-02-03 01:53+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -158,14 +158,6 @@ msgid "%(service)s Service is not %(status)s on storage appliance: %(host)s"
 msgstr "在以下存储设备上，%(service)s 服务并非处于 %(status)s 状态：%(host)s"
 
 #, python-format
-msgid "%(value_name)s must be <= %(max_value)d"
-msgstr "%(value_name)s 必须小于或等于 %(max_value)d"
-
-#, python-format
-msgid "%(value_name)s must be >= %(min_value)d"
-msgstr "%(value_name)s 必须大于或等于 %(min_value)d"
-
-#, python-format
 msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr "%(workers)d 的 %(worker_name)s 值无效，必须大于 0。"
@@ -242,10 +234,6 @@ msgid "%s must be an absolute path."
 msgstr "%s 必须为绝对路径。"
 
 #, python-format
-msgid "%s must be an integer."
-msgstr "%s 必须为整数。"
-
-#, python-format
 msgid "%s not set in cinder.conf"
 msgstr "cinder.conf 中未设置 %s"
 
@@ -271,17 +259,11 @@ msgstr "写入 snap_info 时，状态必须为“活动”。"
 msgid "'consistencygroup_id' must be specified"
 msgstr "必须指定“consistencygroup_id”"
 
-msgid "'group_id' must be specified"
-msgstr "必须指定\"group_id\""
-
 msgid "'qemu-img info' parsing failed."
 msgstr "'qemu-img info'解析失败"
 
 msgid "'status' must be specified."
 msgstr "必须指定“status”。"
-
-msgid "'volume_id' must be specified"
-msgstr "必须指定“volume_id”"
 
 #, python-format
 msgid ""
@@ -569,10 +551,6 @@ msgstr "配额集中的键不正确：%s"
 msgid ""
 "Bad or unexpected response from the storage volume backend API: %(data)s"
 msgstr "从存储卷后端 API 返回了不正确或意外的响应：%(data)s"
-
-#, python-format
-msgid "Bad project format: project is not in proper format (%s)"
-msgstr "项目格式不正确：项目没有采用正确格式 (%s)"
 
 msgid "Bad response from Datera API"
 msgstr "来自 Datera API 的响应不正确"
@@ -2331,9 +2309,6 @@ msgstr "未能创建高速缓存卷 %(volume)s。错误：%(err)s"
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr "对于光纤网 %(fabric)s，未能添加连接：发生错误：%(err)s"
 
-msgid "Failed cgsnapshot"
-msgstr "已使 cg 快照失效"
-
 #, python-format
 msgid "Failed creating snapshot for group: %(response)s."
 msgstr "为组创建快照失败：%(response)s。"
@@ -2897,10 +2872,6 @@ msgstr "光纤通道连接控制失败：%(reason)s"
 #, python-format
 msgid "File %(file_path)s could not be found."
 msgstr "找不到文件 %(file_path)s。"
-
-#, python-format
-msgid "File %(path)s has invalid backing file %(bfile)s, aborting."
-msgstr "文件 %(path)s 具有无效支持文件 %(bfile)s，正在异常中止。"
 
 #, python-format
 msgid "File already exists at %s."
@@ -3494,9 +3465,6 @@ msgstr ""
 msgid "Incorrect request body format"
 msgstr "不正确的请求主体格式"
 
-msgid "Incorrect request body format."
-msgstr "请求主体格式不正确。"
-
 msgid "Incremental backups exist for this backup."
 msgstr "对于此备份，存在增量备份。"
 
@@ -3789,10 +3757,6 @@ msgstr "删除卷标志的值\"%s\"无效。"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "值“%s”对于 force 无效。"
-
-#, python-format
-msgid "Invalid value '%s' for skip_validation."
-msgstr "skip_validation 的值“%s”无效。"
 
 #, python-format
 msgid "Invalid value for 'bootable': '%s'"
@@ -4412,9 +4376,6 @@ msgstr "没有具备引用 %s 指定的 UID 的 vdisk。"
 msgid ""
 "No volume on cluster with vserver %(vserver)s and junction path %(junction)s "
 msgstr "集群上不存在任何具有 vserver %(vserver)s 和结点路径 %(junction)s 的卷"
-
-msgid "No volume service(s) started successfully, terminating."
-msgstr "未成功启动卷服务，正在终止。"
 
 #, python-format
 msgid "No volumes or consistency groups exist in cluster %(current)s."
@@ -5353,10 +5314,6 @@ msgstr "结束时间 (%(end)s) 必须在开始时间 (%(start)s) 之后。"
 msgid "The failed-over volume could not be deleted: %s"
 msgstr "无法删除已故障转移的卷：%s"
 
-#, python-format
-msgid "The following elements are required: %s"
-msgstr "需要下列元素：%s"
-
 msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
 "and resume replication on the 3PAR backends."
@@ -6042,10 +5999,6 @@ msgid "Unsupported backup verify driver"
 msgstr "不支持备份验证驱动程序"
 
 #, python-format
-msgid "Unsupported fields %s."
-msgstr "不支持的域%s。"
-
-#, python-format
 msgid ""
 "Unsupported firmware on switch %s. Make sure switch is running firmware v6.4 "
 "or higher"
@@ -6231,12 +6184,6 @@ msgid ""
 msgstr ""
 "卷 %(vol_id)s 状态必须为“可用”，才能更新只读标记，但当前状态为："
 "%(vol_status)s。"
-
-#, python-format
-msgid ""
-"Volume %(vol_id)s status must be available, but current status is: "
-"%(vol_status)s."
-msgstr "卷 %(vol_id)s 状态必须为“可用”，但当前状态为：%(vol_status)s。"
 
 #, python-format
 msgid "Volume %(volume_id)s could not be found."
@@ -6492,10 +6439,6 @@ msgstr "卷引用必须包含 source-name 元素。"
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "找不到 %(volume_id)s 的卷复制。"
-
-#, python-format
-msgid "Volume service %s failed to start."
-msgstr "卷服务 %s 未能启动。"
 
 msgid "Volume should have agent-type set as None."
 msgstr "卷应该将 agent-type 设置为“无”。"
@@ -7179,9 +7122,6 @@ msgid ""
 msgstr ""
 "create_cloned_volume，目标卷实例名：%(volume_instancename)s，获取实例失败。"
 
-msgid "create_cloned_volume: Source and destination size differ."
-msgstr "create_cloned_volume：源和目标大小不同。"
-
 #, python-format
 msgid ""
 "create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
@@ -7295,11 +7235,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot：快照状态必须为“可用”，以便创建卷。无效状态为 "
 "%s。"
-
-msgid ""
-"create_volume_from_snapshot: Volume size is different from snapshot based "
-"volume."
-msgstr "create_volume_from_snapshot：卷大小不同于基于快照的卷。"
 
 #, python-format
 msgid ""
@@ -7537,10 +7472,6 @@ msgstr "用户 '%s' 无效"
 #, python-format
 msgid "iscsi portal, %s, not found"
 msgstr "找不到 iscsi 门户网站 %s"
-
-msgid ""
-"iscsi_ip_address must be set in config file when using protocol 'iSCSI'."
-msgstr "使用“iSCSI”协议时，必须在配置文件中设置 iscsi_ip_address。"
 
 #, python-format
 msgid "key manager error: %(reason)s"
@@ -7808,9 +7739,6 @@ msgstr "卷已分配"
 
 msgid "volume changed"
 msgstr "卷已更改"
-
-msgid "volume is already attached"
-msgstr "卷已连接"
 
 #, python-format
 msgid ""

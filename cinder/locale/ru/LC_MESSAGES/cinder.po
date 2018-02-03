@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 12.0.0.0b2.dev262\n"
+"Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-11-29 20:28+0000\n"
+"POT-Creation-Date: 2018-02-03 01:53+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -118,14 +118,6 @@ msgstr ""
 "%(host)s"
 
 #, python-format
-msgid "%(value_name)s must be <= %(max_value)d"
-msgstr "%(value_name)s должно быть <= %(max_value)d"
-
-#, python-format
-msgid "%(value_name)s must be >= %(min_value)d"
-msgstr "%(value_name)s должен быть >= %(min_value)d"
-
-#, python-format
 msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr ""
@@ -203,10 +195,6 @@ msgid "%s must be an absolute path."
 msgstr "%s должен быть абсолютным путем."
 
 #, python-format
-msgid "%s must be an integer."
-msgstr "%s должен быть целым числом."
-
-#, python-format
 msgid "%s not set in cinder.conf"
 msgstr "%s не задан в cinder.conf"
 
@@ -233,9 +221,6 @@ msgstr "Ошибка анализа 'qemu-img info'."
 
 msgid "'status' must be specified."
 msgstr "Должно быть указано значение status."
-
-msgid "'volume_id' must be specified"
-msgstr "Должен быть указан параметр volume_id"
 
 #, python-format
 msgid ""
@@ -483,10 +468,6 @@ msgid ""
 msgstr ""
 "Неправильный или непредвиденный ответ от API базовой программы тома "
 "хранилища: %(data)s"
-
-#, python-format
-msgid "Bad project format: project is not in proper format (%s)"
-msgstr "Неправильный формат проекта: проект имеет неправильный формат (%s)"
 
 msgid "Bad response from Datera API"
 msgstr "Неправильный ответ API Datera"
@@ -2135,9 +2116,6 @@ msgstr ""
 "Не удалось добавить соединение для коммутируемой сети=%(fabric)s. Ошибка:"
 "%(err)s"
 
-msgid "Failed cgsnapshot"
-msgstr "Сбойная моментальная копия группы согласования"
-
 #, python-format
 msgid "Failed creating snapshot for group: %(response)s."
 msgstr "Не удалось создать моментальную копию для группы %(response)s."
@@ -2729,12 +2707,6 @@ msgid "File %(file_path)s could not be found."
 msgstr "Файл %(file_path)s не может быть найден."
 
 #, python-format
-msgid "File %(path)s has invalid backing file %(bfile)s, aborting."
-msgstr ""
-"Файл %(path)s содержит недопустимый базовый файл %(bfile)s, принудительное "
-"завершение."
-
-#, python-format
 msgid "File already exists at %s."
 msgstr "Файл уже существует в %s."
 
@@ -3236,9 +3208,6 @@ msgstr ""
 msgid "Incorrect request body format"
 msgstr "Неправильный формат тела запроса"
 
-msgid "Incorrect request body format."
-msgstr "Недопустимый формат тела запроса."
-
 msgid "Incremental backups exist for this backup."
 msgstr "Для этой резервной копии существует дополняющие резервные копии."
 
@@ -3499,10 +3468,6 @@ msgstr "Недопустимый параметр обновления: '%s'"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "Неверное значение '%s' для принудительного применения."
-
-#, python-format
-msgid "Invalid value '%s' for skip_validation."
-msgstr "Недопустимое значение '%s' для skip_validation."
 
 #, python-format
 msgid "Invalid value for 'bootable': '%s'"
@@ -4094,9 +4059,6 @@ msgid ""
 msgstr ""
 "В кластере с vserver %(vserver)s и путем пересечения %(junction)s "
 "отсутствует том "
-
-msgid "No volume service(s) started successfully, terminating."
-msgstr "Не удалось запустить службы томов. Завершение."
 
 msgid "Not a valid value for NaElement."
 msgstr "Недопустимое значение для NaElement."
@@ -4931,10 +4893,6 @@ msgstr ""
 #, python-format
 msgid "The failed-over volume could not be deleted: %s"
 msgstr "Нельзя удалить том, для которого выполнено переключение после сбоя: %s"
-
-#, python-format
-msgid "The following elements are required: %s"
-msgstr "Требуются следующие элементы: %s"
 
 msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
@@ -5781,14 +5739,6 @@ msgstr ""
 "изменить флаг readonly, однако текущее состояние - %(vol_status)s."
 
 #, python-format
-msgid ""
-"Volume %(vol_id)s status must be available, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"Состояние %(vol_id)s тома должно быть available, однако текущее состояние - "
-"%(vol_status)s."
-
-#, python-format
 msgid "Volume %(volume_id)s could not be found."
 msgstr "Том %(volume_id)s не найден."
 
@@ -6007,10 +5957,6 @@ msgstr "Ссылка на том должна содержать элемент 
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "Копия тома %(volume_id)s не найдена."
-
-#, python-format
-msgid "Volume service %s failed to start."
-msgstr "Не удалось запустить службу томов %s."
 
 msgid "Volume should have agent-type set as None."
 msgstr "В параметре agent-type тома должно быть указано значение None."
@@ -6675,9 +6621,6 @@ msgstr ""
 "create_cloned_volume, имя экземпляра целевого тома: %(volume_instancename)s, "
 "ошибка получения экземпляра."
 
-msgid "create_cloned_volume: Source and destination size differ."
-msgstr "create_cloned_volume: различаются исходный и целевой размеры."
-
 #, python-format
 msgid ""
 "create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
@@ -6797,13 +6740,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: Для состояние тома требуется состояние "
 "моментальной копии \"available\". Недопустимое состояние: %s."
-
-msgid ""
-"create_volume_from_snapshot: Volume size is different from snapshot based "
-"volume."
-msgstr ""
-"create_volume_from_snapshot: размер тома отличается от размера тома на "
-"основе моментальной копии."
 
 #, python-format
 msgid ""
@@ -7005,12 +6941,6 @@ msgstr "недопустимый пользователь %s"
 #, python-format
 msgid "iscsi portal, %s, not found"
 msgstr "портал iSCSI %s не найден"
-
-msgid ""
-"iscsi_ip_address must be set in config file when using protocol 'iSCSI'."
-msgstr ""
-"В файле конфигурации должен быть указан параметр iscsi_ip_address, когда "
-"используется протокол 'iSCSI'."
 
 #, python-format
 msgid "key manager error: %(reason)s"
@@ -7265,9 +7195,6 @@ msgstr "том присвоен"
 
 msgid "volume changed"
 msgstr "том изменен"
-
-msgid "volume is already attached"
-msgstr "том уже подключен"
 
 #, python-format
 msgid ""

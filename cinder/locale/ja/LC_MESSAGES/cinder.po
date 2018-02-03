@@ -11,9 +11,9 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 12.0.0.0b2.dev262\n"
+"Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-11-29 20:28+0000\n"
+"POT-Creation-Date: 2018-02-03 01:53+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -163,14 +163,6 @@ msgstr ""
 "継がれています。"
 
 #, python-format
-msgid "%(value_name)s must be <= %(max_value)d"
-msgstr "%(value_name)s は %(max_value)d 以下である必要があります。"
-
-#, python-format
-msgid "%(value_name)s must be >= %(min_value)d"
-msgstr "%(value_name)s は %(min_value)d 以上である必要があります。"
-
-#, python-format
 msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr ""
@@ -256,10 +248,6 @@ msgid "%s must be an absolute path."
 msgstr "%s は絶対パスである必要があります。"
 
 #, python-format
-msgid "%s must be an integer."
-msgstr "%s は整数である必要があります。"
-
-#, python-format
 msgid "%s not set in cinder.conf"
 msgstr "%s が cinder.conf に設定されていません"
 
@@ -285,9 +273,6 @@ msgstr "snap_info の書き込み時には 'active' が存在しなければな�
 msgid "'consistencygroup_id' must be specified"
 msgstr "'consistencygroup_id' を指定する必要があります。"
 
-msgid "'group_id' must be specified"
-msgstr "'group_id' の指定は必須です"
-
 msgid "'qemu-img info' parsing failed."
 msgstr "'qemu-img info' の解析に失敗しました。"
 
@@ -296,9 +281,6 @@ msgstr "'status' を指定する必要があります。"
 
 msgid "'success' not found"
 msgstr "'success' が見つかりません。"
-
-msgid "'volume_id' must be specified"
-msgstr "'volume_id' を指定する必要があります"
 
 #, python-format
 msgid ""
@@ -628,10 +610,6 @@ msgid ""
 msgstr ""
 "ストレージボリュームバックエンド API からの不正な応答または想定しない応答: "
 "%(data)s"
-
-#, python-format
-msgid "Bad project format: project is not in proper format (%s)"
-msgstr "不正なプロジェクト形式: プロジェクトの形式が正しくありません (%s)"
 
 msgid "Bad response from Datera API"
 msgstr "Datera API からの正しくない応答"
@@ -2725,9 +2703,6 @@ msgstr "キャッシュボリューム %(volume)s の作成に失敗しました
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr "ファブリック %(fabric)s の接続の追加に失敗しました。エラー: %(err)s"
 
-msgid "Failed cgsnapshot"
-msgstr "cgsnapshot が失敗しました。"
-
 #, python-format
 msgid "Failed creating snapshot for group: %(response)s."
 msgstr "グループのスナップショットの作成に失敗しました: %(response)s。"
@@ -3395,12 +3370,6 @@ msgstr "ファイバーチャネル接続制御障害: %(reason)s"
 #, python-format
 msgid "File %(file_path)s could not be found."
 msgstr "ファイル %(file_path)s が見つかりませんでした。"
-
-#, python-format
-msgid "File %(path)s has invalid backing file %(bfile)s, aborting."
-msgstr ""
-"ファイル %(path)s に無効なバッキングファイル %(bfile)s があります。打ち切りま"
-"す。"
 
 #, python-format
 msgid "File already exists at %s."
@@ -4085,9 +4054,6 @@ msgstr ""
 msgid "Incorrect request body format"
 msgstr "要求本体の形式が正しくありません。"
 
-msgid "Incorrect request body format."
-msgstr "要求本体の形式が正しくありません。"
-
 msgid "Incremental backups exist for this backup."
 msgstr "このバックアップには増分バックアップが存在します。"
 
@@ -4393,10 +4359,6 @@ msgstr "delete-volumes フラッグの値 '%s' が無効です。"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "force の値 '%s' は無効です。"
-
-#, python-format
-msgid "Invalid value '%s' for skip_validation."
-msgstr "skip_validation の値 '%s' が無効です。"
 
 #, python-format
 msgid "Invalid value for 'bootable': '%s'"
@@ -5119,9 +5081,6 @@ msgid ""
 msgstr ""
 "仮想サーバー %(vserver)s および接合パス %(junction)s を含むボリュームはクラス"
 "ターにありません"
-
-msgid "No volume service(s) started successfully, terminating."
-msgstr "どのボリュームサービス も正常に起動しませんでした。処理を終了します。"
 
 #, python-format
 msgid "No volumes or consistency groups exist in cluster %(current)s."
@@ -6265,10 +6224,6 @@ msgstr "終了時刻 (%(end)s) は開始時刻 (%(start)s) より後でなけれ
 msgid "The failed-over volume could not be deleted: %s"
 msgstr "フェイルオーバーされたボリュームを削除することができませんでした: %s"
 
-#, python-format
-msgid "The following elements are required: %s"
-msgstr "次の要素が必要です: %s"
-
 msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
 "and resume replication on the 3PAR backends."
@@ -7116,10 +7071,6 @@ msgid "Unsupported backup verify driver"
 msgstr "サポートされないバックアップ検証ドライバーです。"
 
 #, python-format
-msgid "Unsupported fields %s."
-msgstr "サポートされないフィールド: %s"
-
-#, python-format
 msgid ""
 "Unsupported firmware on switch %s. Make sure switch is running firmware v6.4 "
 "or higher"
@@ -7323,14 +7274,6 @@ msgid ""
 msgstr ""
 "読み取り専用フラグを更新するには、ボリューム %(vol_id)s の状態が「使用可能」"
 "でなければなりませんが、現在の状態は %(vol_status)s です。"
-
-#, python-format
-msgid ""
-"Volume %(vol_id)s status must be available, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"ボリューム %(vol_id)s の状態は「使用可能」でなければなりませんが、現在の状態"
-"は %(vol_status)s です。"
 
 #, python-format
 msgid "Volume %(volume_id)s could not be found."
@@ -7625,10 +7568,6 @@ msgstr "ボリュームの参照にはソース名の要素が含まれる必要
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "%(volume_id)s のボリューム複製が見つかりませんでした。"
-
-#, python-format
-msgid "Volume service %s failed to start."
-msgstr "ボリュームサービス %s が起動できませんでした。"
 
 msgid "Volume should have agent-type set as None."
 msgstr "ボリュームには agent-type として None を設定する必要があります。"
@@ -8381,9 +8320,6 @@ msgstr ""
 "create_cloned_volume、ターゲットボリュームインスタンス名: "
 "%(volume_instancename)s、インスタンスの取得が失敗しました。"
 
-msgid "create_cloned_volume: Source and destination size differ."
-msgstr "create_cloned_volume: ソースと宛先のサイズが異なっています。"
-
 #, python-format
 msgid ""
 "create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
@@ -8507,13 +8443,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: ボリュームを作成するには、スナップショットの状態"
 "が「使用可能」でなければなりません。無効な状態は %s です。"
-
-msgid ""
-"create_volume_from_snapshot: Volume size is different from snapshot based "
-"volume."
-msgstr ""
-"create_volume_from_snapshot: ボリュームサイズが、スナップショットベースボ"
-"リュームと異なります。"
 
 #, python-format
 msgid ""
@@ -8791,12 +8720,6 @@ msgstr "ユーザー '%s' は無効です"
 #, python-format
 msgid "iscsi portal, %s, not found"
 msgstr "iscsi ポータル %s が見つかりません"
-
-msgid ""
-"iscsi_ip_address must be set in config file when using protocol 'iSCSI'."
-msgstr ""
-"プロトコル 'iSCSI' を使用する場合、設定ファイルに iscsi_ip_address を設定しな"
-"ければなりません。"
 
 #, python-format
 msgid "key manager error: %(reason)s"
@@ -9147,9 +9070,6 @@ msgstr "割り当てられたボリューム"
 
 msgid "volume changed"
 msgstr "変更されたボリューム"
-
-msgid "volume is already attached"
-msgstr "ボリュームは既に接続されています。"
 
 #, python-format
 msgid ""

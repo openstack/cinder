@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 12.0.0.0b2.dev262\n"
+"Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-11-29 20:28+0000\n"
+"POT-Creation-Date: 2018-02-03 01:53+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -115,14 +115,6 @@ msgstr ""
 "%(host)s"
 
 #, python-format
-msgid "%(value_name)s must be <= %(max_value)d"
-msgstr "%(value_name)s deve essere <= %(max_value)d"
-
-#, python-format
-msgid "%(value_name)s must be >= %(min_value)d"
-msgstr "%(value_name)s deve essere >= %(min_value)d"
-
-#, python-format
 msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr ""
@@ -201,10 +193,6 @@ msgid "%s must be an absolute path."
 msgstr "%s deve essere un percorso assoluto."
 
 #, python-format
-msgid "%s must be an integer."
-msgstr "%s deve essere un numero intero."
-
-#, python-format
 msgid "%s not set in cinder.conf"
 msgstr "%s non impostato in cinder.conf"
 
@@ -231,9 +219,6 @@ msgstr "analisi di 'qemu-img info' non riuscita."
 
 msgid "'status' must be specified."
 msgstr "È necessario specificare 'status'."
-
-msgid "'volume_id' must be specified"
-msgstr "È necessario specificare 'volume_id'"
 
 #, python-format
 msgid ""
@@ -490,11 +475,6 @@ msgid ""
 msgstr ""
 "Risposta non corretta o imprevista dall'API di backend del volume di "
 "archiviazione: %(data)s"
-
-#, python-format
-msgid "Bad project format: project is not in proper format (%s)"
-msgstr ""
-"Formato progetto non corretto: il formato del progetto non è corretto (%s)"
 
 msgid "Bad response from Datera API"
 msgstr "Risposta errata dall'API Datera"
@@ -2185,9 +2165,6 @@ msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr ""
 "Impossibile aggiungere la connessione per fabric=%(fabric)s: Errore:%(err)s"
 
-msgid "Failed cgsnapshot"
-msgstr "cgsnapshot non riuscito"
-
 #, python-format
 msgid "Failed creating snapshot for group: %(response)s."
 msgstr "Impossibile creare l'istantanea per il gruppo: %(response)s."
@@ -2805,12 +2782,6 @@ msgid "File %(file_path)s could not be found."
 msgstr "Impossibile trovare il file %(file_path)s."
 
 #, python-format
-msgid "File %(path)s has invalid backing file %(bfile)s, aborting."
-msgstr ""
-"Il file %(path)s ha un file di backup %(bfile)s non valido, operazione "
-"interrotta."
-
-#, python-format
 msgid "File already exists at %s."
 msgstr "Il file già esiste in %s."
 
@@ -3334,9 +3305,6 @@ msgstr ""
 msgid "Incorrect request body format"
 msgstr "Il formato del corpo della richiesta non è corretto"
 
-msgid "Incorrect request body format."
-msgstr "Il formato della struttura della richiesta non è corretto."
-
 msgid "Incremental backups exist for this backup."
 msgstr "Per questo backup esistono backup incrementali."
 
@@ -3606,10 +3574,6 @@ msgstr "Impostazione di aggiornamento non valida: '%s'"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "Valore non valido '%s' per force."
-
-#, python-format
-msgid "Invalid value '%s' for skip_validation."
-msgstr "Valore non valido '%s' per skip_validation. "
 
 #, python-format
 msgid "Invalid value for 'bootable': '%s'"
@@ -4215,9 +4179,6 @@ msgid ""
 msgstr ""
 "Nessun volume nel cluster con vserver %(vserver)s e percorso di giunzione "
 "%(junction)s "
-
-msgid "No volume service(s) started successfully, terminating."
-msgstr "Nessun servizio volume avviato con esito positivo, si termina. "
 
 msgid "Not a valid value for NaElement."
 msgstr "Non un valore valido per NaElement."
@@ -5059,10 +5020,6 @@ msgstr ""
 #, python-format
 msgid "The failed-over volume could not be deleted: %s"
 msgstr "Impossibile eliminare il volume sottoposto a failover: %s"
-
-#, python-format
-msgid "The following elements are required: %s"
-msgstr "Sono richiesti i seguenti elementi: %s"
 
 msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
@@ -5938,14 +5895,6 @@ msgstr ""
 "l'indicatore di sola lettura, ma lo stato corrente è: %(vol_status)s."
 
 #, python-format
-msgid ""
-"Volume %(vol_id)s status must be available, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"Lo stato del volume %(vol_id)s deve essere available, ma lo stato corrente "
-"è: %(vol_status)s."
-
-#, python-format
 msgid "Volume %(volume_id)s could not be found."
 msgstr "Impossibile trovare il volume %(volume_id)s."
 
@@ -6173,10 +6122,6 @@ msgstr "Il riferimento al volume deve contenere l'elemento source-name."
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "Impossibile trovare la replica del volume per %(volume_id)s."
-
-#, python-format
-msgid "Volume service %s failed to start."
-msgstr "Avvio del servizio volume %s non riuscito. "
 
 msgid "Volume should have agent-type set as None."
 msgstr "Il volume deve avere agent-type impostato su Nessuno. "
@@ -6850,11 +6795,6 @@ msgstr ""
 "create_cloned_volume, nome istanza volume di destinazione: "
 "%(volume_instancename)s, Richiamo istanza non riuscito."
 
-msgid "create_cloned_volume: Source and destination size differ."
-msgstr ""
-"create_cloned_volume: la dimensione dell'origine e della destinazione sono "
-"differenti."
-
 #, python-format
 msgid ""
 "create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
@@ -6975,13 +6915,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: Lo stato dell'istantanea deve essere \"available"
 "\" per la creazione del volume. Lo stato non valido è: %s."
-
-msgid ""
-"create_volume_from_snapshot: Volume size is different from snapshot based "
-"volume."
-msgstr ""
-"create_volume_from_snapshot: Dimensione del volume diversa dal volume basato "
-"sull'istantanea."
 
 #, python-format
 msgid ""
@@ -7181,12 +7114,6 @@ msgstr "utente non valido '%s'"
 #, python-format
 msgid "iscsi portal, %s, not found"
 msgstr "portale iscsi, %s, non trovato"
-
-msgid ""
-"iscsi_ip_address must be set in config file when using protocol 'iSCSI'."
-msgstr ""
-"iscsi_ip_address deve essere impostato nel file di configurazione quando si "
-"usa il protocollo 'iSCSI'."
 
 #, python-format
 msgid "key manager error: %(reason)s"
@@ -7437,9 +7364,6 @@ msgstr "volume assegnato"
 
 msgid "volume changed"
 msgstr "volume modificato"
-
-msgid "volume is already attached"
-msgstr "il volume è già collegato"
 
 #, python-format
 msgid ""

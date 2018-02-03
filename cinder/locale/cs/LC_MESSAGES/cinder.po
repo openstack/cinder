@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 12.0.0.0b2.dev262\n"
+"Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2017-11-29 20:28+0000\n"
+"POT-Creation-Date: 2018-02-03 01:53+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -115,14 +115,6 @@ msgstr ""
 "Služba %(service)s není ve stavu %(status)s v zařízení úložiště: %(host)s"
 
 #, python-format
-msgid "%(value_name)s must be <= %(max_value)d"
-msgstr "%(value_name)s musí být <= %(max_value)d"
-
-#, python-format
-msgid "%(value_name)s must be >= %(min_value)d"
-msgstr "%(value_name)s musí být >= %(min_value)d"
-
-#, python-format
 msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr ""
@@ -186,10 +178,6 @@ msgid "%s must be an absolute path."
 msgstr "%s musí být absolutní cesta."
 
 #, python-format
-msgid "%s must be an integer."
-msgstr "%s musí být celé číslo."
-
-#, python-format
 msgid "%s not set in cinder.conf"
 msgstr "%s není nastaveno v cinder.conf"
 
@@ -216,9 +204,6 @@ msgstr "zpracování 'qemu-img info' selhalo."
 
 msgid "'status' must be specified."
 msgstr "'status' musí být zadáno."
-
-msgid "'volume_id' must be specified"
-msgstr "'volume_id' svazku musí být zadáno."
 
 #, python-format
 msgid ""
@@ -434,10 +419,6 @@ msgid ""
 msgstr ""
 "Špatná nebo neočekávaná odpověď od API podpůrné vrstvy úložiště svazků: "
 "%(data)s"
-
-#, python-format
-msgid "Bad project format: project is not in proper format (%s)"
-msgstr "Špatný formát projektu: projekt není ve správném formátu (%s)"
 
 msgid "Bad response from Datera API"
 msgstr "Špatná odpověď od API Datera"
@@ -1699,9 +1680,6 @@ msgstr "Nelze vytvořit svazek mezipaměti %(volume)s. Chyba: %(err)s"
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr "Nelze přidat připojení pro fabric=%(fabric)s: Chyba: %(err)s"
 
-msgid "Failed cgsnapshot"
-msgstr "Snímek jednotnosti selhal"
-
 #, python-format
 msgid "Failed creating snapshot for volume %(volname)s: %(response)s."
 msgstr "Nelze vytvořit snímek ze svazku %(volname)s: %(response)s."
@@ -2180,11 +2158,6 @@ msgid "File %(file_path)s could not be found."
 msgstr "Soubor %(file_path)s nemohl být nalezen."
 
 #, python-format
-msgid "File %(path)s has invalid backing file %(bfile)s, aborting."
-msgstr ""
-"Soubor %(path)s má neplatný záložní soubor %(bfile)s, operace přerušena."
-
-#, python-format
 msgid "File already exists at %s."
 msgstr "Soubor s nastavením již existuje v %s."
 
@@ -2602,9 +2575,6 @@ msgstr ""
 msgid "Incorrect request body format"
 msgstr "Nesprávný formát těla požadavku"
 
-msgid "Incorrect request body format."
-msgstr "Nesprávný formát těla požadavku."
-
 msgid "Incremental backups exist for this backup."
 msgstr "Pro tuto zálohu existují přírůstkové zálohy."
 
@@ -2837,10 +2807,6 @@ msgstr "Neplatné nastavení aktualizace: '%s'"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "Neplatná hodnota '%s' pro vynucení."
-
-#, python-format
-msgid "Invalid value '%s' for skip_validation."
-msgstr "Neplatná hodnota '%s' pro přeskočení ověření."
 
 #, python-format
 msgid "Invalid value for 'bootable': '%s'"
@@ -3363,9 +3329,6 @@ msgid ""
 msgstr ""
 "Žádný svazek v clusteru na virtuálním serveru %(vserver)s a cestě spojení "
 "%(junction)s"
-
-msgid "No volume service(s) started successfully, terminating."
-msgstr "Žádné služby svazku nebyly úspěšně spuštěny, ukončování."
 
 msgid "Not a valid value for NaElement."
 msgstr "Neplatná hodnota pro NaElement."
@@ -4013,10 +3976,6 @@ msgstr "Doba konce (%(end)s) musí být po době začátku (%(start)s)."
 msgid "The failed-over volume could not be deleted: %s"
 msgstr "Záložní svazek nelze smazat: %s."
 
-#, python-format
-msgid "The following elements are required: %s"
-msgstr "Jsou vyžadovány následující prvky: %s"
-
 msgid "The key cannot be None."
 msgstr "Klíč nemůže být None."
 
@@ -4640,14 +4599,6 @@ msgstr ""
 "čtení, ale současný stav: %(vol_status)s."
 
 #, python-format
-msgid ""
-"Volume %(vol_id)s status must be available, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"Stav svazku %(vol_id)s musí být dostupný, nebo chybný, ale současný stav je: "
-"%(vol_status)s."
-
-#, python-format
 msgid "Volume %(volume_id)s could not be found."
 msgstr "Svazek %(volume_id)s nemohl být nalezen."
 
@@ -4838,10 +4789,6 @@ msgstr "Odkaz na svazek musí obsahovat prvek source-name."
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "Replikace svazku %(volume_id)s nemohla být nalezena."
-
-#, python-format
-msgid "Volume service %s failed to start."
-msgstr "Služba svazku %s nemohla být spuštěna."
 
 msgid "Volume should have agent-type set as None."
 msgstr "Svazek by měl mít typ agenta nastaven na None."
@@ -5192,9 +5139,6 @@ msgstr "skupina jednotnosti změněna"
 msgid "control_location must be defined"
 msgstr "ovládací umístění musí být zadáno"
 
-msgid "create_cloned_volume: Source and destination size differ."
-msgstr "Vytvoření klonovaného svazku: Velikost zdroje a cíle se liší."
-
 #, python-format
 msgid "create_copy: Source vdisk %(src)s (%(src_id)s) does not exist."
 msgstr ""
@@ -5235,12 +5179,6 @@ msgid ""
 msgstr ""
 "Vytvoření svazku ze snímku: Pro vytvoření svazku musí být stav snímku "
 "\"dostupný\". Neplatný stav je: %s."
-
-msgid ""
-"create_volume_from_snapshot: Volume size is different from snapshot based "
-"volume."
-msgstr ""
-"Vytvoření svazku ze snímku: Velikost svazku se liší od svazku ze snímku."
 
 #, python-format
 msgid ""
@@ -5406,12 +5344,6 @@ msgstr "Neplatný uživatel '%s'"
 #, python-format
 msgid "iscsi portal, %s, not found"
 msgstr "portál iscsi %s nebyl nalezen"
-
-msgid ""
-"iscsi_ip_address must be set in config file when using protocol 'iSCSI'."
-msgstr ""
-"IP adresa iscsi musí být při použití protokolu 'iSCSI' uvedena v souboru  s "
-"nastavením."
 
 #, python-format
 msgid "key manager error: %(reason)s"
@@ -5622,9 +5554,6 @@ msgstr "svazek přidělen"
 
 msgid "volume changed"
 msgstr "svazek změněn"
-
-msgid "volume is already attached"
-msgstr "svazek již je připojen"
 
 #, python-format
 msgid ""
