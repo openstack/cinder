@@ -62,6 +62,7 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
         super(DotHillISCSIDriver, self).__init__(*args, **kwargs)
         self.common = None
         self.configuration.append_config_values(san.san_opts)
+        self.iscsi_ips = None
 
     def _init_common(self):
         return dothillcommon.DotHillCommon(self.configuration)
