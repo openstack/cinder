@@ -32,6 +32,8 @@ Volume backups can be created, restored, deleted and listed.
 """
 
 import os
+
+from eventlet import tpool
 from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
@@ -80,6 +82,12 @@ CONF.import_opt('use_multipath_for_image_xfer', 'cinder.volume.driver')
 CONF.import_opt('num_volume_device_scan_tries', 'cinder.volume.driver')
 QUOTAS = quota.QUOTAS
 
+
+# TODO(geguileo): Once Eventlet issue #432 gets fixed we can just tpool.execute
+# the whole call to the driver's backup and restore methods instead of proxy
+# wrapping the device_file and having the drivers also proxy wrap their
+# writes/reads and the compression/decompression calls.
+# (https://github.com/eventlet/eventlet/issues/432)
 
 class BackupManager(manager.ThreadPoolManager):
     """Manages backup of block storage devices."""
@@ -386,6 +394,10 @@ class BackupManager(manager.ThreadPoolManager):
         backup_service = self.service.get_backup_driver(context)
 
         properties = utils.brick_get_connector_properties()
+
+        # NOTE(geguileo): Not all I/O disk operations properly do greenthread
+        # context switching and may end up blocking the greenthread, so we go
+        # with native threads proxy-wrapping the device file object.
         try:
             backup_device = self.volume_rpcapi.get_backup_device(context,
                                                                  backup,
@@ -401,16 +413,16 @@ class BackupManager(manager.ThreadPoolManager):
                     if backup_device.secure_enabled:
                         with open(device_path) as device_file:
                             updates = backup_service.backup(
-                                backup, device_file)
+                                backup, tpool.Proxy(device_file))
                     else:
                         with utils.temporary_chown(device_path):
                             with open(device_path) as device_file:
                                 updates = backup_service.backup(
-                                    backup, device_file)
+                                    backup, tpool.Proxy(device_file))
                 # device_path is already file-like so no need to open it
                 else:
-                    updates = backup_service.backup(
-                        backup, device_path)
+                    updates = backup_service.backup(backup,
+                                                    tpool.Proxy(device_path))
 
             finally:
                 self._detach_device(context, attach_info,
@@ -506,21 +518,27 @@ class BackupManager(manager.ThreadPoolManager):
             self.volume_rpcapi.secure_file_operations_enabled(context,
                                                               volume))
         attach_info = self._attach_device(context, volume, properties)
+
+        # NOTE(geguileo): Not all I/O disk operations properly do greenthread
+        # context switching and may end up blocking the greenthread, so we go
+        # with native threads proxy-wrapping the device file object.
         try:
             device_path = attach_info['device']['path']
             if (isinstance(device_path, six.string_types) and
                     not os.path.isdir(device_path)):
                 if secure_enabled:
                     with open(device_path, 'wb') as device_file:
-                        backup_service.restore(backup, volume.id, device_file)
+                        backup_service.restore(backup, volume.id,
+                                               tpool.Proxy(device_file))
                 else:
                     with utils.temporary_chown(device_path):
                         with open(device_path, 'wb') as device_file:
                             backup_service.restore(backup, volume.id,
-                                                   device_file)
+                                                   tpool.Proxy(device_file))
             # device_path is already file-like so no need to open it
             else:
-                backup_service.restore(backup, volume.id, device_path)
+                backup_service.restore(backup, volume.id,
+                                       tpool.Proxy(device_path))
         finally:
             self._detach_device(context, attach_info, volume, properties,
                                 force=True)
