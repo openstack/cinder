@@ -26,7 +26,7 @@
      - (Integer) If >0, create LVs with multiple mirrors. Note that this requires lvm_mirrors + 2 PVs with available space
    * - ``lvm_suppress_fd_warnings`` = ``False``
      - (Boolean) Suppress leaked file descriptor warnings in LVM commands.
-   * - ``lvm_type`` = ``default``
+   * - ``lvm_type`` = ``auto``
      - (String) Type of LVM volumes to deploy; (default, thin, or auto). Auto defaults to thin if thin is supported.
    * - ``volume_group`` = ``cinder-volumes``
      - (String) Name for the VG that will contain exported volumes
