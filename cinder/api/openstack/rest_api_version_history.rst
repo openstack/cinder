@@ -394,3 +394,7 @@ Add ``shared_targets`` and ``service_uuid`` fields to volume.
 3.49
 ----
   Support report backend storage state in service list.
+
+3.50
+----
+  Add multiattach capability.
