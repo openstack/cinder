@@ -27,6 +27,7 @@ import sys
 import eventlet
 eventlet.monkey_patch()
 
+from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_privsep import priv_context
@@ -39,6 +40,7 @@ i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config  # noqa
+from cinder.db import api as session
 from cinder import objects
 from cinder import service
 from cinder import utils
@@ -47,11 +49,36 @@ from cinder import version
 
 CONF = cfg.CONF
 
+backup_workers_opt = cfg.IntOpt(
+    'backup_workers',
+    default=1, min=1, max=processutils.get_worker_count(),
+    help='Number of backup processes to launch. Improves performance with '
+    'concurrent backups.')
+CONF.register_opt(backup_workers_opt)
+
+LOG = None
+
 # NOTE(mriedem): The default backup driver uses swift and performs read/write
 # operations in a thread. swiftclient will log requests and responses at DEBUG
 # level, which can cause a thread switch and break the backup operation. So we
 # set a default log level of WARN for swiftclient to try and avoid this issue.
 _EXTRA_DEFAULT_LOG_LEVELS = ['swiftclient=WARN']
+
+
+def _launch_backup_process(launcher, num_process):
+    try:
+        server = service.Service.create(binary='cinder-backup',
+                                        coordination=True,
+                                        process_number=num_process + 1)
+    except Exception:
+        LOG.exception('Backup service %s failed to start.', CONF.host)
+        sys.exit(1)
+    else:
+        # Dispose of the whole DB connection pool here before
+        # starting another process.  Otherwise we run into cases where
+        # child processes share DB connections which results in errors.
+        session.dispose_engine()
+        launcher.launch_service(server)
 
 
 def main():
@@ -67,7 +94,21 @@ def main():
     priv_context.init(root_helper=shlex.split(utils.get_root_helper()))
     utils.monkey_patch()
     gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
-    server = service.Service.create(binary='cinder-backup',
-                                    coordination=True)
-    service.serve(server)
-    service.wait()
+    global LOG
+    LOG = logging.getLogger(__name__)
+
+    if CONF.backup_workers > 1:
+        LOG.info('Backup running with %s processes.', CONF.backup_workers)
+        launcher = service.get_launcher()
+
+        for i in range(CONF.backup_workers):
+            _launch_backup_process(launcher, i)
+
+        launcher.wait()
+    else:
+        LOG.info('Backup running in single process mode.')
+        server = service.Service.create(binary='cinder-backup',
+                                        coordination=True,
+                                        process_number=1)
+        service.serve(server)
+        service.wait()

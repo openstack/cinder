@@ -93,13 +93,14 @@ class TestCinderBackupCmd(test.TestCase):
         super(TestCinderBackupCmd, self).setUp()
         sys.argv = ['cinder-backup']
 
+    @mock.patch('cinder.cmd.backup._launch_backup_process')
     @mock.patch('cinder.service.wait')
     @mock.patch('cinder.service.serve')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.utils.monkey_patch')
     @mock.patch('oslo_log.log.setup')
     def test_main(self, log_setup, monkey_patch, service_create, service_serve,
-                  service_wait):
+                  service_wait, launch_mock):
         server = service_create.return_value
 
         cinder_backup.main()
@@ -109,9 +110,35 @@ class TestCinderBackupCmd(test.TestCase):
         log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
         service_create.assert_called_once_with(binary='cinder-backup',
-                                               coordination=True)
+                                               coordination=True,
+                                               process_number=1)
         service_serve.assert_called_once_with(server)
         service_wait.assert_called_once_with()
+        launch_mock.assert_not_called()
+
+    @mock.patch('cinder.service.get_launcher')
+    @mock.patch('cinder.service.Service.create')
+    @mock.patch('cinder.utils.monkey_patch')
+    @mock.patch('oslo_log.log.setup')
+    def test_main_multiprocess(self, log_setup, monkey_patch, service_create,
+                               get_launcher):
+        CONF.set_override('backup_workers', 2)
+        cinder_backup.main()
+
+        self.assertEqual('cinder', CONF.project)
+        self.assertEqual(CONF.version, version.version_string())
+
+        c1 = mock.call(binary=constants.BACKUP_BINARY,
+                       coordination=True,
+                       process_number=1)
+        c2 = mock.call(binary=constants.BACKUP_BINARY,
+                       coordination=True,
+                       process_number=2)
+        service_create.assert_has_calls([c1, c2])
+
+        launcher = get_launcher.return_value
+        self.assertEqual(2, launcher.launch_service.call_count)
+        launcher.wait.assert_called_once_with()
 
 
 class TestCinderSchedulerCmd(test.TestCase):

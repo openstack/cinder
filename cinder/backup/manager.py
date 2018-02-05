@@ -111,6 +111,7 @@ class BackupManager(manager.ThreadPoolManager):
         super(BackupManager, self).__init__(*args, **kwargs)
         self.is_initialized = False
         self._set_tpool_size(CONF.backup_native_threads_pool_size)
+        self._process_number = kwargs.get('process_number', 1)
 
     @property
     def driver_name(self):
@@ -175,7 +176,17 @@ class BackupManager(manager.ThreadPoolManager):
         self.backup_rpcapi = backup_rpcapi.BackupAPI()
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
 
+    @utils.synchronized('backup-pgid-%s' % os.getpgrp(),
+                        external=True, delay=0.1)
     def _cleanup_incomplete_backup_operations(self, ctxt):
+        # Only the first launched process should do the cleanup, the others
+        # have waited on the lock for the first one to finish the cleanup and
+        # can now continue with the start process.
+        if self._process_number != 1:
+            LOG.debug("Process #%s (pgid=%s) skips cleanup.",
+                      self._process_number, os.getpgrp())
+            return
+
         LOG.info("Cleaning up incomplete backup operations.")
 
         # TODO(smulcahy) implement full resume of backup and restore
