@@ -180,7 +180,7 @@ Creates an attachment.
 
 Available starting in the 3.27 microversion.
 
-Normal response codes: 202
+Normal response codes: 200
 
 Error response codes: badRequest(400), itemNotFound(404)
 
@@ -285,7 +285,7 @@ Complete an attachment for a cinder volume.
 
 Available starting in the 3.44 microversion.
 
-Normal response codes: 202
+Normal response codes: 204
 
 Error response codes: badRequest(400), itemNotFound(404)
 
