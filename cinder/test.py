@@ -23,6 +23,7 @@ inline callbacks.
 import copy
 import logging
 import os
+import sys
 import uuid
 
 import fixtures
@@ -43,6 +44,7 @@ from cinder import context
 from cinder import coordination
 from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
+from cinder import exception
 from cinder import i18n
 from cinder.objects import base as objects_base
 from cinder import rpc
@@ -61,6 +63,26 @@ SESSION_CONFIGURED = False
 
 class TestingException(Exception):
     pass
+
+
+class CinderExceptionReraiseFormatError(object):
+    real_log_exception = exception.CinderException._log_exception
+
+    @classmethod
+    def patch(cls):
+        exception.CinderException._log_exception = cls._wrap_log_exception
+
+    @staticmethod
+    def _wrap_log_exception(self):
+        exc_info = sys.exc_info()
+        CinderExceptionReraiseFormatError.real_log_exception(self)
+        six.reraise(*exc_info)
+
+
+# NOTE(melwitt) This needs to be done at import time in order to also catch
+# CinderException format errors that are in mock decorators. In these cases,
+# the errors will be raised during test listing, before tests actually run.
+CinderExceptionReraiseFormatError.patch()
 
 
 class Database(fixtures.Fixture):
@@ -228,7 +250,6 @@ class TestCase(testtools.TestCase):
 
         fake_notifier.mock_notifier(self)
 
-        self.override_config('fatal_exception_format_errors', True)
         # This will be cleaned up by the NestedTempfile fixture
         lock_path = self.useFixture(fixtures.TempDir()).path
         self.fixture = self.useFixture(

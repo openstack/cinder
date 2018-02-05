@@ -438,7 +438,7 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
         # Test prestartlcmap failing
         with mock.patch.object(
                 instorage_common.InStorageSSH, 'prestartlcmap') as prestart:
-            prestart.side_effect = exception.VolumeBackendAPIException
+            prestart.side_effect = exception.VolumeBackendAPIException(data='')
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver.create_snapshot, snap1)
 
@@ -527,7 +527,7 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
         # Fail the snapshot
         with mock.patch.object(
                 instorage_common.InStorageSSH, 'prestartlcmap') as prestart:
-            prestart.side_effect = exception.VolumeBackendAPIException
+            prestart.side_effect = exception.VolumeBackendAPIException(data='')
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver.create_volume_from_snapshot,
                               vol2, snap1)
@@ -1361,14 +1361,14 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
         self.assertEqual({'_name_id': None}, model_update)
 
         rename_vdisk.reset_mock()
-        rename_vdisk.side_effect = exception.VolumeBackendAPIException
+        rename_vdisk.side_effect = exception.VolumeBackendAPIException(data='')
         model_update = self.driver.update_migrated_volume(ctxt, volume,
                                                           backend_volume,
                                                           'available')
         self.assertEqual({'_name_id': backend_volume.id}, model_update)
 
         rename_vdisk.reset_mock()
-        rename_vdisk.side_effect = exception.VolumeBackendAPIException
+        rename_vdisk.side_effect = exception.VolumeBackendAPIException(data='')
         model_update = self.driver.update_migrated_volume(ctxt, volume,
                                                           backend_volume,
                                                           'attached')

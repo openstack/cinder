@@ -934,7 +934,8 @@ class FlashSystemDriverTestCase(test.TestCase):
         # case 3: _get_vdisk_map_properties raises exception
         with mock.patch.object(flashsystem_fc.FlashSystemFCDriver,
                                '_get_vdisk_map_properties') as get_properties:
-            get_properties.side_effect = exception.VolumeBackendAPIException
+            get_properties.side_effect = (
+                exception.VolumeBackendAPIException(data=''))
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver.initialize_connection,
                               vol1, self.connector)
@@ -1091,7 +1092,8 @@ class FlashSystemDriverTestCase(test.TestCase):
 
         # case 3: _copy_vdisk_data raises exception
         self.driver.create_volume(vol1)
-        _copy_vdisk_data.side_effect = exception.VolumeBackendAPIException
+        _copy_vdisk_data.side_effect = (
+            exception.VolumeBackendAPIException(data=''))
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.driver._create_and_copy_vdisk_data,
@@ -1139,7 +1141,7 @@ class FlashSystemDriverTestCase(test.TestCase):
         self.driver.terminate_connection(vol2, connector)
 
         # case 3: no mapped before copy, raise exception when scan
-        _scan_device.side_effect = exception.VolumeBackendAPIException
+        _scan_device.side_effect = exception.VolumeBackendAPIException(data='')
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.driver._copy_vdisk_data,
@@ -1150,7 +1152,7 @@ class FlashSystemDriverTestCase(test.TestCase):
         self.assertFalse(v2_mapped)
 
         # case 4: no mapped before copy, raise exception when copy
-        copy_volume.side_effect = exception.VolumeBackendAPIException
+        copy_volume.side_effect = exception.VolumeBackendAPIException(data='')
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.driver._copy_vdisk_data,
