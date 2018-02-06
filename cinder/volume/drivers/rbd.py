@@ -97,6 +97,13 @@ RBD_OPTS = [
                      'dynamic value -used + current free- and to False to '
                      'report a static value -quota max bytes if defined and '
                      'global size of cluster if not-.'),
+    cfg.BoolOpt('rbd_exclusive_cinder_pool', default=False,
+                help="Set to True if the pool is used exclusively by Cinder. "
+                     "On exclusive use driver won't query images' provisioned "
+                     "size as they will match the value calculated by the "
+                     "Cinder core code for allocated_capacity_gb. This "
+                     "reduces the load on the Ceph cluster as well as on the "
+                     "volume service."),
 ]
 
 CONF = cfg.CONF
@@ -446,7 +453,6 @@ class RBDDriver(driver.CloneableImageVD,
             'storage_protocol': 'ceph',
             'total_capacity_gb': 'unknown',
             'free_capacity_gb': 'unknown',
-            'provisioned_capacity_gb': 0,
             'reserved_percentage': (
                 self.configuration.safe_get('reserved_percentage')),
             'multiattach': False,
@@ -467,10 +473,14 @@ class RBDDriver(driver.CloneableImageVD,
             stats['free_capacity_gb'] = free_capacity
             stats['total_capacity_gb'] = total_capacity
 
-            total_gbi = self._get_usage_info()
-            stats['provisioned_capacity_gb'] = total_gbi
+            # For exclusive pools let scheduler set provisioned_capacity_gb to
+            # allocated_capacity_gb, and for non exclusive query the value.
+            if not self.configuration.safe_get('rbd_exclusive_cinder_pool'):
+                total_gbi = self._get_usage_info()
+                stats['provisioned_capacity_gb'] = total_gbi
         except self.rados.Error:
-            # just log and return unknown capacities
+            # just log and return unknown capacities and let scheduler set
+            # provisioned_capacity_gb = allocated_capacity_gb
             LOG.exception('error refreshing volume stats')
         self._stats = stats
 
