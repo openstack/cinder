@@ -141,6 +141,19 @@ CEPH_MON_DUMP = r"""dumped monmap epoch 1
 """
 
 
+class MockDriverConfig(object):
+    def __init__(self, **kwargs):
+        my_dict = vars(self)
+        my_dict.update(kwargs)
+        my_dict.setdefault('max_over_subscription_ratio', 1.0)
+        my_dict.setdefault('reserved_percentage', 0)
+        my_dict.setdefault('volume_backend_name', 'RBD')
+        my_dict.setdefault('_default', None)
+
+    def __call__(self, value):
+        return getattr(self, value, self._default)
+
+
 def mock_driver_configuration(value):
     if value == 'max_over_subscription_ratio':
         return 1.0
@@ -1191,8 +1204,9 @@ class RBDTestCase(test.TestCase):
             expected['replication_targets'] = [t['backend_id']for t in targets]
             expected['replication_targets'].append('default')
 
+        my_safe_get = MockDriverConfig(rbd_exclusive_cinder_pool=False)
         self.mock_object(self.driver.configuration, 'safe_get',
-                         mock_driver_configuration)
+                         my_safe_get)
 
         with mock.patch.object(self.driver, '_get_fsid') as mock_get_fsid:
             mock_get_fsid.return_value = expected_fsid
@@ -1202,9 +1216,46 @@ class RBDTestCase(test.TestCase):
     @common_mocks
     @mock.patch('cinder.volume.drivers.rbd.RBDDriver._get_usage_info')
     @mock.patch('cinder.volume.drivers.rbd.RBDDriver._get_pool_stats')
-    def test_update_volume_stats_error(self, stats_mock, usage_mock):
+    def test_update_volume_stats_exclusive_pool(self, stats_mock, usage_mock):
+        stats_mock.return_value = (mock.sentinel.free_capacity_gb,
+                                   mock.sentinel.total_capacity_gb)
+
+        expected_fsid = 'abc'
+        expected_location_info = ('nondefault:%s:%s:%s:rbd' %
+                                  (self.cfg.rbd_ceph_conf, expected_fsid,
+                                   self.cfg.rbd_user))
+        expected = dict(
+            volume_backend_name='RBD',
+            replication_enabled=False,
+            vendor_name='Open Source',
+            driver_version=self.driver.VERSION,
+            storage_protocol='ceph',
+            total_capacity_gb=mock.sentinel.total_capacity_gb,
+            free_capacity_gb=mock.sentinel.free_capacity_gb,
+            reserved_percentage=0,
+            thin_provisioning_support=True,
+            max_over_subscription_ratio=1.0,
+            multiattach=False,
+            location_info=expected_location_info)
+
+        my_safe_get = MockDriverConfig(rbd_exclusive_cinder_pool=True)
         self.mock_object(self.driver.configuration, 'safe_get',
-                         mock_driver_configuration)
+                         my_safe_get)
+
+        with mock.patch.object(self.driver, '_get_fsid',
+                               return_value=expected_fsid):
+            actual = self.driver.get_volume_stats(True)
+
+        self.assertDictEqual(expected, actual)
+        usage_mock.assert_not_called()
+
+    @common_mocks
+    @mock.patch('cinder.volume.drivers.rbd.RBDDriver._get_usage_info')
+    @mock.patch('cinder.volume.drivers.rbd.RBDDriver._get_pool_stats')
+    def test_update_volume_stats_error(self, stats_mock, usage_mock):
+        my_safe_get = MockDriverConfig(rbd_exclusive_cinder_pool=False)
+        self.mock_object(self.driver.configuration, 'safe_get',
+                         my_safe_get)
 
         expected_fsid = 'abc'
         expected_location_info = ('nondefault:%s:%s:%s:rbd' %
@@ -1219,7 +1270,6 @@ class RBDTestCase(test.TestCase):
                         free_capacity_gb='unknown',
                         reserved_percentage=0,
                         multiattach=False,
-                        provisioned_capacity_gb=0,
                         max_over_subscription_ratio=1.0,
                         thin_provisioning_support=True,
                         location_info=expected_location_info)
