@@ -139,6 +139,7 @@ class RequestContext(context.RequestContext):
                    quota_class=values.get('quota_class'),
                    service_catalog=values.get('service_catalog'),
                    request_id=values.get('request_id'),
+                   global_request_id=values.get('global_request_id'),
                    is_admin=values.get('is_admin'),
                    roles=values.get('roles'),
                    auth_token=values.get('auth_token'),
