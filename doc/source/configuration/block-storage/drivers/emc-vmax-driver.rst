@@ -1028,10 +1028,9 @@ Assumptions, Restrictions and Pre-Requisites
 
    .. code-block:: console
 
-      # symaccess -sid <SymmID> -iscsi <iscsi>
-                  enable chap |
-                  disable chap |
-                  set chap -cred <Credential> -secret <Secret>
+      # symaccess -sid <SymmID> -iscsi <iscsi> \
+                  {enable chap | disable chap | set chap} \
+                   -cred <Credential> -secret <Secret>
 
       # symaccess -sid 128 \
                   -iscsi iqn.1991-05.com.company.lcseb130 \
@@ -1058,8 +1057,6 @@ Settings and Configuration
    .. code-block:: ini
 
       [VMAX_ISCSI_DIAMOND]
-      image_volume_cache_enabled = True
-      volume_clear = zero
       volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
       volume_backend_name = VMAX_ISCSI_DIAMOND
       san_ip = 10.10.10.10
@@ -1224,9 +1221,6 @@ Configure the source and target arrays
       vmax_srp = SRP_1
       vmax_array = 000123456789
       vmax_port_groups = [OS-FC-PG]
-      use_chap_auth = True
-      chap_username = my_username
-      chap_password = my_password
       volume_backend_name = VMAX_FC_REPLICATION
       replication_device = target_device_id:000197811111,
                            remote_port_group:os-failover-pg,
@@ -1387,6 +1381,18 @@ the RDF relationship to the host, and presenting all paths to the host,
 appearing that they all point to the one device. In order to do this,
 there needs to be multipath software running to manage writing to the
 multiple paths.
+
+Known issues
+------------
+
+.. note::
+
+   There is a known issue which can occasionally occur when certain operations
+   on replicated volumes are invoked concurrently. This can cause some of
+   these operations to fail, but they should be successful on subsequent
+   attempts. Currently, this limitation applies to concurrent deletion of
+   replicated volumes, and concurrent management of existing volumes into a
+   replication volume type.
 
 
 Volume retype -  storage assisted volume migration
