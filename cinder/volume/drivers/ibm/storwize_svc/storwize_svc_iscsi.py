@@ -172,7 +172,7 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         if host_name is None:
             # Host does not exist - add a new host to Storwize/SVC
             # The host_site is necessary for hyperswap volume
-            if self._helpers.is_volume_hyperswap(
+            if backend_helper.is_volume_hyperswap(
                     volume_name) and host_site is None:
                 msg = (_('There is no host_site configured for a hyperswap'
                          ' volume %s.') % volume_name)
@@ -182,10 +182,10 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
             host_name = backend_helper.create_host(connector, iscsi=True,
                                                    site = host_site)
         else:
-            host_info = self._helpers.ssh.lshost(host=host_name)
+            host_info = backend_helper.ssh.lshost(host=host_name)
             if 'site_name' in host_info[0]:
                 if not host_info[0]['site_name'] and host_site:
-                    self._helpers.update_host(host_name, host_site)
+                    backend_helper.update_host(host_name, host_site)
                 elif host_info[0]['site_name']:
                     ref_host_site = host_info[0]['site_name']
                     if host_site and host_site != ref_host_site:
