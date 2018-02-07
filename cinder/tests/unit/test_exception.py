@@ -15,6 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import fixtures
 import mock
 import six
 from six.moves import http_client
@@ -45,7 +46,9 @@ class CinderExceptionTestCase(test.TestCase):
 
     def test_error_msg_exception_with_kwargs(self):
         # NOTE(dprince): disable format errors for this test
-        self.flags(fatal_exception_format_errors=False)
+        self.useFixture(fixtures.MonkeyPatch(
+            'cinder.exception.CinderException._log_exception',
+            test.CinderExceptionReraiseFormatError.real_log_exception))
 
         class FakeCinderException(exception.CinderException):
             message = "default message: %(misspelled_code)s"
