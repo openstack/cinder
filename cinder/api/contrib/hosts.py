@@ -17,6 +17,7 @@
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import timeutils
 import webob.exc
 
@@ -89,6 +90,10 @@ class HostController(wsgi.Controller):
     def __init__(self):
         self.api = volume_api.HostAPI()
         super(HostController, self).__init__()
+        versionutils.report_deprecated_feature(
+            LOG,
+            "The Host API is deprecated and will be "
+            "be removed in a future version.")
 
     def index(self, req):
         context = req.environ['cinder.context']
