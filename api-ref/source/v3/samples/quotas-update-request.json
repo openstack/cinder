@@ -4,5 +4,5 @@
         "volumes": 5,
         "volumes_ceph": 3,
         "backups": 4
-    },
+    }
 }
