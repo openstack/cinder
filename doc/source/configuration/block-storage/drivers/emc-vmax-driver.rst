@@ -17,7 +17,7 @@ System requirements
 
 The Cinder driver supports the VMAX-3 series and VMAX All-Flash arrays.
 
-Solutions Enabler 8.4.0.12 or later, and Unisphere for VMAX 8.4.0.12 or later
+Solutions Enabler 8.4.0.7 or later, and Unisphere for VMAX 8.4.0.15 or later
 are required.
 
 You can download Solutions Enabler and Unisphere from the Dell EMC's support
@@ -337,9 +337,6 @@ following the setup instructions above, are supported with a few exceptions:
 
 #. Consistency groups are deprecated in Pike. Generic Volume Groups are
    supported from Pike onwards.
-
-#. Please note that the Pike release of VMAX cinder drivers will be the last
-   release which supports Hybrid VMAX3 Arrays.
 
 
 SSL support
