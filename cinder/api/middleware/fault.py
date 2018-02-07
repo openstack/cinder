@@ -44,6 +44,11 @@ class FaultWrapper(base_wsgi.Middleware):
             status, webob.exc.HTTPInternalServerError)()
 
     def _error(self, inner, req):
+        if isinstance(inner, UnicodeDecodeError):
+            msg = _("Error decoding your request. Either the URL or the "
+                    "request body contained characters that could not be "
+                    "decoded by Cinder.")
+            return wsgi.Fault(webob.exc.HTTPBadRequest(explanation=msg))
         if not isinstance(inner, exception.QuotaError):
             LOG.exception("Caught error: %(type)s %(error)s",
                           {'type': type(inner),

@@ -17,6 +17,7 @@ from oslo_serialization import jsonutils
 from six.moves import http_client
 import webob.dec
 
+from cinder.api.middleware import fault
 from cinder.api.openstack import wsgi
 from cinder import test
 
@@ -79,3 +80,18 @@ class TestFaults(test.TestCase):
         """Ensure the status_int is set correctly on faults."""
         fault = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='what?'))
         self.assertEqual(http_client.BAD_REQUEST, fault.status_int)
+
+
+class ExceptionTest(test.TestCase):
+
+    def _wsgi_app(self, inner_app):
+        return fault.FaultWrapper(inner_app)
+
+    def test_unicode_decode_error(self):
+        @webob.dec.wsgify
+        def unicode_error(req):
+            raise UnicodeDecodeError("ascii", b"", 0, 1, "bad")
+
+        api = self._wsgi_app(unicode_error)
+        resp = webob.Request.blank('/').get_response(api)
+        self.assertEqual(400, resp.status_int)
