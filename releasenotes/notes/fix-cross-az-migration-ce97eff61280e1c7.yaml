@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Resolve issue with cross AZ migrations and retypes where the destination
+    volume kept the source volume's AZ, so we ended up with a volume where the
+    AZ does not match the backend. (bug 1747949)
