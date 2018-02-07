@@ -368,7 +368,8 @@ class FCTargetData(dict):
                 'target_lun': lun, 'target_wwn': wwn,
                 'initiator_target_map': initiator_target_map}
         self['driver_volume_type'] = 'fibre_channel'
-        self['data'] = data
+        self['data'] = {key: value for key, value in data.items()
+                        if value is not None}
 
     def to_dict(self):
         """Converts to the dict.
