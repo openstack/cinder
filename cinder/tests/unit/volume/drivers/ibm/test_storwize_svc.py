@@ -4805,6 +4805,18 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.assertEqual(self._driver.configuration.storwize_san_secondary_ip,
                          self._driver.active_ip)
 
+    @mock.patch.object(ssh_utils, 'SSHPool')
+    @mock.patch.object(processutils, 'ssh_execute')
+    def test_run_ssh_response_no_ascii(self, mock_ssh_execute, mock_ssh_pool):
+        mock_ssh_execute.side_effect = processutils.ProcessExecutionError(
+            u'',
+            'CMMVC6035E \xe6\x93\x8d\xe4\xbd\x9c\xe5\xa4\xb1\xe8\xb4\xa5\n',
+            1,
+            u'svctask lsmdiskgrp "openstack"',
+            None)
+        self.assertRaises(exception.InvalidInput,
+                          self._driver._validate_pools_exist)
+
     def _create_volume_type(self, opts, type_name):
         type_ref = volume_types.create(self.ctxt, type_name, opts)
         vol_type = objects.VolumeType.get_by_id(self.ctxt, type_ref['id'])
