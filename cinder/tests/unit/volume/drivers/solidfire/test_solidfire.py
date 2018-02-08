@@ -529,17 +529,17 @@ class SolidFireVolumeTestCase(test.TestCase):
                             'targetSecret': 'shhhh',
                             'username': 'john-wayne'}]
 
-        get_vol_result = [{'volumeID': 5,
-                           'name': 'test_volume',
-                           'accountID': 25,
-                           'sliceCount': 1,
-                           'totalSize': 1 * units.Gi,
-                           'enable512e': True,
-                           'access': "readWrite",
-                           'status': "active",
-                           'attributes': {},
-                           'qos': None,
-                           'iqn': 'super_fake_iqn'}]
+        get_vol_result = {'volumeID': 5,
+                          'name': 'test_volume',
+                          'accountID': 25,
+                          'sliceCount': 1,
+                          'totalSize': 1 * units.Gi,
+                          'enable512e': True,
+                          'access': "readWrite",
+                          'status': "active",
+                          'attributes': {},
+                          'qos': None,
+                          'iqn': 'super_fake_iqn'}
 
         mod_conf = self.configuration
         mod_conf.sf_enable_vag = True
@@ -548,7 +548,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                                '_get_sfaccounts_for_tenant',
                                return_value=fake_sfaccounts), \
             mock.patch.object(sfv,
-                              '_get_volumes_for_account',
+                              '_get_sfvol_by_cinder_vref',
                               return_value=get_vol_result), \
             mock.patch.object(sfv,
                               '_issue_api_request'), \
@@ -556,7 +556,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                               '_remove_volume_from_vags') as rem_vol:
 
             sfv.delete_volume(testvol)
-            rem_vol.assert_called_with(get_vol_result[0]['volumeID'])
+            rem_vol.assert_called_with(get_vol_result['volumeID'])
 
     def test_delete_volume_no_volume_on_backend(self):
         fake_sfaccounts = [{'accountID': 5,
