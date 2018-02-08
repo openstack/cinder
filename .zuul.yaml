@@ -1,5 +1,4 @@
 - project:
-    name: openstack/cinder
     check:
       jobs:
         - cinder-tempest-dsvm-lvm-lio:
