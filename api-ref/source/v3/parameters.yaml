@@ -169,13 +169,6 @@ transfer_id:
   in: path
   required: true
   type: string
-user_id_1:
-  description: |
-    The user ID. Specify in the URI as
-    ``user_id={user_id}``.
-  in: path
-  required: false
-  type: string
 vol_type_id:
   description: |
     The UUID for an existing volume type.
@@ -512,18 +505,6 @@ availability_zone:
     The name of the availability zone.
   in: body
   required: false
-  type: string
-availability_zone_1:
-  description: |
-    The availability zone.
-  in: body
-  required: false
-  type: string
-availability_zone_2:
-  description: |
-    The availability zone.
-  in: body
-  required: true
   type: string
 availability_zone_3:
   description: |

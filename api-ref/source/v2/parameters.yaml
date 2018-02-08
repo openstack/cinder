@@ -31,25 +31,12 @@ cgsnapshot_id_1:
   in: path
   required: false
   type: string
-consistencygroup_id_2:
-  description: |
-    The ID of the consistency group.
-  in: path
-  required: false
-  type: string
 encryption_id:
   description: |
     The ID of the encryption type.
   in: path
   required: true
   type: string
-force_3:
-  description: |
-    To delete a QoS specification even if it is in-
-    use, set to ``true``. Default is ``false``.
-  in: path
-  required: false
-  type: boolean
 hostname:
   description: |
     The name of the host that hosts the storage back
@@ -105,13 +92,6 @@ quotas_project_id:
 transfer_id:
   description: |
     The unique identifier for a volume transfer.
-  in: path
-  required: false
-  type: string
-user_id_1:
-  description: |
-    The user ID. Specify in the URI as
-    ``user_id={user_id}``.
   in: path
   required: false
   type: string
@@ -300,18 +280,6 @@ availability_zone:
     The name of the availability zone.
   in: body
   required: false
-  type: string
-availability_zone_1:
-  description: |
-    The availability zone.
-  in: body
-  required: false
-  type: string
-availability_zone_2:
-  description: |
-    The availability zone.
-  in: body
-  required: true
   type: string
 availability_zone_3:
   description: |
@@ -595,15 +563,6 @@ extra_specs:
   description: |
     A set of key and value pairs that contains the
     specifications for a volume type.
-  in: body
-  required: true
-  type: object
-extra_specs_1:
-  description: |
-    A key and value pair that contains additional
-    specifications that are associated with the volume type. Examples
-    include capabilities, capacity, compression, and so on, depending
-    on the storage driver in use.
   in: body
   required: true
   type: object
