@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    The hosts api extension is now deprecated and will be removed in a
+    future version.
+deprecations:
+  - |
+    The hosts api extension is now deprecated and will be removed in a
+    future version.
