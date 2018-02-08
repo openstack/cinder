@@ -615,56 +615,6 @@ class TestCinderManageCmd(test.TestCase):
 
             self.assertEqual(expected_out, fake_out.getvalue())
 
-    def test_get_log_commands_no_errors(self):
-        with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
-            CONF.set_override('log_dir', None)
-            expected_out = 'No errors in logfiles!\n'
-
-            get_log_cmds = cinder_manage.GetLogCommands()
-            get_log_cmds.errors()
-
-            out_lines = fake_out.getvalue().splitlines(True)
-
-            self.assertTrue(out_lines[0].startswith('DEPRECATED'))
-            self.assertEqual(expected_out, out_lines[1])
-
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch('os.listdir')
-    def test_get_log_commands_errors(self, listdir, open):
-        CONF.set_override('log_dir', 'fake-dir')
-        listdir.return_value = ['fake-error.log']
-
-        with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
-            open.return_value = six.StringIO(
-                '[ ERROR ] fake-error-message')
-            expected_out = ['fake-dir/fake-error.log:-\n',
-                            'Line 1 : [ ERROR ] fake-error-message\n']
-
-            get_log_cmds = cinder_manage.GetLogCommands()
-            get_log_cmds.errors()
-
-            out_lines = fake_out.getvalue().splitlines(True)
-
-            self.assertTrue(out_lines[0].startswith('DEPRECATED'))
-            self.assertEqual(expected_out[0], out_lines[1])
-            self.assertEqual(expected_out[1], out_lines[2])
-
-            open.assert_called_once_with('fake-dir/fake-error.log', 'r')
-            listdir.assert_called_once_with(CONF.log_dir)
-
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch('os.path.exists')
-    def test_get_log_commands_syslog_no_log_file(self, path_exists, open):
-        path_exists.return_value = False
-
-        get_log_cmds = cinder_manage.GetLogCommands()
-        with mock.patch('sys.stdout', new=six.StringIO()):
-            exit = self.assertRaises(SystemExit, get_log_cmds.syslog)
-            self.assertEqual(1, exit.code)
-
-            path_exists.assert_any_call('/var/log/syslog')
-            path_exists.assert_any_call('/var/log/messages')
-
     @mock.patch('cinder.db.backup_get_all')
     @mock.patch('cinder.context.get_admin_context')
     def test_backup_commands_list(self, get_admin_context, backup_get_all):

@@ -56,7 +56,6 @@ from __future__ import print_function
 
 
 import logging as python_logging
-import os
 import prettytable
 import sys
 import time
@@ -459,68 +458,6 @@ class ConfigCommands(object):
                 print('%s = %s' % (key, value))
 
 
-class GetLogCommands(object):
-    """Get logging information."""
-
-    deprecation_msg = ('DEPRECATED: The log commands are deprecated '
-                       'since Queens and are not maintained. They will be '
-                       'removed in an upcoming release.')
-
-    def errors(self):
-        """Get all of the errors from the log files."""
-
-        print(self.deprecation_msg)
-
-        error_found = 0
-        if CONF.log_dir:
-            logs = [x for x in os.listdir(CONF.log_dir) if x.endswith('.log')]
-            for file in logs:
-                log_file = os.path.join(CONF.log_dir, file)
-                lines = [line.strip() for line in open(log_file, "r")]
-                lines.reverse()
-                print_name = 0
-                for index, line in enumerate(lines):
-                    if line.find(" ERROR ") > 0:
-                        error_found += 1
-                        if print_name == 0:
-                            print(log_file + ":-")
-                            print_name = 1
-                        print(_("Line %(dis)d : %(line)s") %
-                              {'dis': len(lines) - index, 'line': line})
-        if error_found == 0:
-            print(_("No errors in logfiles!"))
-
-    @args('num_entries', nargs='?', type=int, default=10,
-          help='Number of entries to list (default: %(default)d)')
-    def syslog(self, num_entries=10):
-        """Get <num_entries> of the cinder syslog events."""
-
-        print(self.deprecation_msg)
-
-        entries = int(num_entries)
-        count = 0
-        log_file = ''
-        if os.path.exists('/var/log/syslog'):
-            log_file = '/var/log/syslog'
-        elif os.path.exists('/var/log/messages'):
-            log_file = '/var/log/messages'
-        else:
-            print(_("Unable to find system log file!"))
-            sys.exit(1)
-        lines = [line.strip() for line in open(log_file, "r")]
-        lines.reverse()
-        print(_("Last %s cinder syslog entries:-") % (entries))
-        for line in lines:
-            if line.find("cinder") > 0:
-                count += 1
-                print(_("%s") % (line))
-            if count == entries:
-                break
-
-        if count == 0:
-            print(_("No cinder entries in syslog!"))
-
-
 class BackupCommands(object):
     """Methods for managing backups."""
 
@@ -759,7 +696,6 @@ CATEGORIES = {
     'cg': ConsistencyGroupCommands,
     'db': DbCommands,
     'host': HostCommands,
-    'logs': GetLogCommands,
     'service': ServiceCommands,
     'shell': ShellCommands,
     'version': VersionCommands,
