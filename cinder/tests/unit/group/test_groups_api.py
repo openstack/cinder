@@ -374,6 +374,84 @@ class GroupAPITestCase(test.TestCase):
         self.group_api.delete_group_snapshot(self.ctxt, ret_group_snap)
         mock_delete_api.assert_called_once_with(mock.ANY, ret_group_snap)
 
+    @mock.patch('cinder.volume.api.API.delete')
+    @mock.patch('cinder.objects.VolumeType.get_by_name_or_id')
+    @mock.patch('cinder.db.group_volume_type_mapping_create')
+    @mock.patch('cinder.volume.api.API.create')
+    @mock.patch('cinder.objects.GroupSnapshot.get_by_id')
+    @mock.patch('cinder.objects.SnapshotList.get_all_for_group_snapshot')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.create_group_from_src')
+    @mock.patch('cinder.objects.VolumeList.get_all_by_generic_group')
+    def test_create_group_from_snap_volume_failed(
+            self, mock_volume_get_all,
+            mock_rpc_create_group_from_src,
+            mock_snap_get_all, mock_group_snap_get,
+            mock_volume_api_create,
+            mock_mapping_create,
+            mock_get_volume_type, mock_volume_delete):
+        mock_volume_api_create.side_effect = [exception.CinderException]
+        vol_type = fake_volume.fake_volume_type_obj(
+            self.ctxt,
+            id=fake.VOLUME_TYPE_ID,
+            name='fake_volume_type')
+        mock_get_volume_type.return_value = vol_type
+
+        grp_snap = utils.create_group_snapshot(
+            self.ctxt, fake.GROUP_ID,
+            group_type_id=fake.GROUP_TYPE_ID,
+            status=fields.GroupStatus.CREATING)
+        mock_group_snap_get.return_value = grp_snap
+        vol1 = utils.create_volume(
+            self.ctxt,
+            availability_zone='nova',
+            volume_type_id=vol_type['id'],
+            group_id=fake.GROUP_ID)
+
+        snap = utils.create_snapshot(self.ctxt, vol1.id,
+                                     volume_type_id=vol_type['id'],
+                                     status=fields.GroupStatus.CREATING)
+        mock_snap_get_all.return_value = [snap]
+
+        name = "test_group"
+        description = "this is a test group"
+        grp = utils.create_group(self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+                                 volume_type_ids=[vol_type['id']],
+                                 availability_zone='nova',
+                                 name=name, description=description,
+                                 group_snapshot_id=grp_snap.id,
+                                 status=fields.GroupStatus.CREATING)
+
+        vol2 = utils.create_volume(
+            self.ctxt,
+            availability_zone=grp.availability_zone,
+            volume_type_id=vol_type['id'],
+            group_id=grp.id,
+            snapshot_id=snap.id)
+        mock_volume_get_all.return_value = [vol2]
+
+        self.assertRaises(
+            exception.CinderException,
+            self.group_api._create_group_from_group_snapshot,
+            self.ctxt, grp, grp_snap.id)
+
+        mock_volume_api_create.assert_called_once_with(
+            self.ctxt, 1, None, None,
+            availability_zone=grp.availability_zone,
+            group_snapshot=grp_snap,
+            group=grp,
+            snapshot=snap,
+            volume_type=vol_type)
+
+        mock_rpc_create_group_from_src.assert_not_called()
+
+        mock_volume_delete.assert_called_once_with(self.ctxt, vol2)
+
+        vol2.destroy()
+        grp.destroy()
+        snap.destroy()
+        vol1.destroy()
+        grp_snap.destroy()
+
     @mock.patch('cinder.objects.VolumeType.get_by_name_or_id')
     @mock.patch('cinder.db.group_volume_type_mapping_create')
     @mock.patch('cinder.volume.api.API.create')
@@ -508,6 +586,63 @@ class GroupAPITestCase(test.TestCase):
         vol2.destroy()
         grp2.destroy()
         vol.destroy()
+        grp.destroy()
+
+    @mock.patch('cinder.volume.api.API.delete')
+    @mock.patch('cinder.objects.VolumeType.get_by_name_or_id')
+    @mock.patch('cinder.db.group_volume_type_mapping_create')
+    @mock.patch('cinder.volume.api.API.create')
+    @mock.patch('cinder.objects.Group.get_by_id')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.create_group_from_src')
+    @mock.patch('cinder.objects.VolumeList.get_all_by_generic_group')
+    def test_create_group_from_group_create_volume_failed(
+            self, mock_volume_get_all, mock_rpc_create_group_from_src,
+            mock_group_get, mock_volume_api_create, mock_mapping_create,
+            mock_get_volume_type, mock_volume_delete):
+        vol_type = fake_volume.fake_volume_type_obj(
+            self.ctxt,
+            id=fake.VOLUME_TYPE_ID,
+            name='fake_volume_type')
+        mock_get_volume_type.return_value = vol_type
+
+        grp = utils.create_group(self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+                                 volume_type_ids=[vol_type['id']],
+                                 availability_zone='nova',
+                                 status=fields.GroupStatus.CREATING)
+        mock_group_get.return_value = grp
+
+        vol1 = utils.create_volume(
+            self.ctxt,
+            availability_zone=grp.availability_zone,
+            volume_type_id=fake.VOLUME_TYPE_ID,
+            group_id=grp.id)
+        vol2 = utils.create_volume(
+            self.ctxt,
+            availability_zone=grp.availability_zone,
+            volume_type_id=fake.VOLUME_TYPE_ID,
+            group_id=grp.id)
+        mock_volume_get_all.side_effect = [[vol1, vol2], [vol1]]
+
+        grp2 = utils.create_group(self.ctxt,
+                                  group_type_id=fake.GROUP_TYPE_ID,
+                                  volume_type_ids=[vol_type['id']],
+                                  availability_zone='nova',
+                                  source_group_id=grp.id,
+                                  status=fields.GroupStatus.CREATING)
+
+        mock_volume_api_create.side_effect = [None, exception.CinderException]
+
+        self.assertRaises(
+            exception.CinderException,
+            self.group_api._create_group_from_source_group,
+            self.ctxt, grp2, grp.id)
+
+        mock_rpc_create_group_from_src.assert_not_called()
+        mock_volume_delete.assert_called_once_with(self.ctxt, vol1)
+
+        grp2.destroy()
+        vol2.destroy()
+        vol1.destroy()
         grp.destroy()
 
     @mock.patch('cinder.group.api.API._create_group_from_group_snapshot')
