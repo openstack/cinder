@@ -51,6 +51,11 @@ create_backup_v343['properties']['backup']['properties'][
     'metadata'] = parameter_types.metadata_allows_null
 
 
+create_backup_v351 = copy.deepcopy(create_backup_v343)
+create_backup_v351['properties']['backup']['properties'][
+    'availability_zone'] = parameter_types.nullable_string
+
+
 update = {
     'type': 'object',
     'properties': {

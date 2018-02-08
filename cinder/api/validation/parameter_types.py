@@ -185,3 +185,8 @@ backup_url = {'type': 'string', 'minLength': 1, 'format': 'base64'}
 
 
 backup_service = {'type': 'string', 'minLength': 0, 'maxLength': 255}
+
+
+nullable_string = {
+    'type': ('string', 'null'), 'minLength': 0, 'maxLength': 255
+}

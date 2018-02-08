@@ -139,6 +139,8 @@ BACKEND_STATE_REPORT = '3.49'
 
 MULTIATTACH_VOLUMES = '3.50'
 
+BACKUP_AZ = '3.51'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.
