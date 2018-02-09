@@ -994,7 +994,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
 
         volume_update = None
         if new_lun:
-            # if new lun meets all requirements of retype sucessfully,
+            # if new lun meets all requirements of retype successfully,
             # exception happens during clean up can be ignored.
             if new_type_replication:
                 new_lun.type_replication = True
