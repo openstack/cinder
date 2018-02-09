@@ -1,0 +1,7 @@
+---
+other:
+  - |
+    The "cinder-manage logs" commands have been removed.  Information
+    previously gathered by these commands may be found in cinder service and
+    syslog logs.
+
