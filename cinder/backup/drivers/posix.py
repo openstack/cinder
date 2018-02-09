@@ -131,7 +131,7 @@ class PosixBackupDriver(chunkeddriver.ChunkedBackupDriver):
         try:
             os.remove(path)
         except OSError as e:
-            # ignore exception if path does not exsit
+            # Ignore exception if path does not exist.
             if e.errno != errno.ENOENT:
                 raise
 
