@@ -1286,7 +1286,7 @@ class FJDXCommon(object):
                   'parameters: %(c)s, '
                   'Return code: %(rc)s, '
                   'Error: %(errordesc)s, '
-                  'Retrun data: %(retdata)s.',
+                  'Return data: %(retdata)s.',
                   {'a': classname,
                    'b': instanceNameList,
                    'c': param_dict,
