@@ -1,0 +1,762 @@
+# Akihiro Motoki <amotoki@gmail.com>, 2016. #zanata
+# Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
+# Hidekazu Nakamura <hid-nakamura@vf.jp.nec.com>, 2017. #zanata
+# Yuko Fukuda <fukuda.yuko@jp.fujitsu.com>, 2017. #zanata
+msgid ""
+msgstr ""
+"Project-Id-Version: Cinder Release Notes\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-02-08 12:51+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2017-09-04 07:29+0000\n"
+"Last-Translator: Hidekazu Nakamura <hid-nakamura@vf.jp.nec.com>\n"
+"Language-Team: Japanese\n"
+"Language: ja\n"
+"X-Generator: Zanata 3.9.6\n"
+"Plural-Forms: nplurals=1; plural=0\n"
+
+msgid ""
+"\"volume_extension:types_extra_specs:create\": \"rule:admin or rule:"
+"type_admin\", \"volume_extension:types_extra_specs:delete\": \"rule:admin or "
+"rule:type_admin\", \"volume_extension:types_extra_specs:index\": \"\", "
+"\"volume_extension:types_extra_specs:show\": \"rule:admin or rule:type_admin "
+"or rule:type_viewer\", \"volume_extension:types_extra_specs:update\": \"rule:"
+"admin or rule:type_admin\""
+msgstr ""
+"\"volume_extension:types_extra_specs:create\": \"rule:admin or rule:"
+"type_admin\", \"volume_extension:types_extra_specs:delete\": \"rule:admin or "
+"rule:type_admin\", \"volume_extension:types_extra_specs:index\": \"\", "
+"\"volume_extension:types_extra_specs:show\": \"rule:admin or rule:type_admin "
+"or rule:type_viewer\", \"volume_extension:types_extra_specs:update\": \"rule:"
+"admin or rule:type_admin\""
+
+msgid "10.0.0"
+msgstr "10.0.0"
+
+msgid "10.0.1"
+msgstr "10.0.1"
+
+msgid "10.0.3"
+msgstr "10.0.3"
+
+msgid "10.0.4"
+msgstr "10.0.4"
+
+msgid "10.0.5"
+msgstr "10.0.5"
+
+msgid "11.0.0"
+msgstr "11.0.0"
+
+msgid ""
+"3PAR driver creates FC VLUN of match-set type instead of host sees. With "
+"match-set, the host will see the virtual volume on specified NSP (Node-Slot-"
+"Port). This change in vlun type fixes bug 1577993."
+msgstr ""
+"3PAR ドライバーはホストが見る代わりに match-set タイプの FC VLUN を作成しま"
+"す。 match-set でホストは指定された NSP（Node-Slot-Port）上の仮想ボリュームを"
+"見ます。これはバグ 1577993 の vlun type に関する修正です。"
+
+msgid "7.0.1"
+msgstr "7.0.1"
+
+msgid "7.0.2"
+msgstr "7.0.2"
+
+msgid "7.0.3"
+msgstr "7.0.3"
+
+msgid "8.0.0"
+msgstr "8.0.0"
+
+msgid "8.1.0"
+msgstr "8.1.0"
+
+msgid "8.1.1"
+msgstr "8.1.1"
+
+msgid "8.1.1-11"
+msgstr "8.1.1-11"
+
+msgid "9.0.0"
+msgstr "9.0.0"
+
+msgid "9.1.0"
+msgstr "9.1.0"
+
+msgid "9.1.1"
+msgstr "9.1.1"
+
+msgid "9.1.2"
+msgstr "9.1.2"
+
+msgid ""
+"A bug in the Quobyte driver was fixed that prevented backing up volumes and "
+"snapshots"
+msgstr ""
+"ボリュームのバックアップとスナップショットの取得を阻止していたQuobyteドライバ"
+"のバグが修正されました。"
+
+msgid ""
+"A new API to display the volumes summary. This summary API displays the "
+"total number of volumes and total volume's size in GB."
+msgstr ""
+"ボリュームサマリを表示する新しい API。このサマリ API はボリューム数とボリュー"
+"ムサイズの合計（GB）を表示します。"
+
+msgid ""
+"Add Support for QoS in the Nimble Storage driver. QoS is available from "
+"Nimble OS release 4.x and above."
+msgstr ""
+" Nimble ストレージドライバーに QoS サポートを追加しました。QoS は Nimble OS "
+"release 4.x とそれ以降で利用可能。"
+
+msgid "Add Support for deduplication of volumes in the Nimble Storage driver."
+msgstr ""
+"Nimble ストレージドライバーでボリュームの重複排除サポートを追加しました。"
+
+msgid "Add ``admin_or_storage_type_admin`` rule to ``policy.json``, e.g."
+msgstr ""
+"``policy.json`` に ``admin_or_storage_type_admin`` を追加しました。 例："
+
+msgid "Add ``storage_type_admin`` role."
+msgstr "``storage_type_admin`` ロールを追加しました。"
+
+msgid ""
+"Add ability to enable multi-initiator support to allow live migration in the "
+"Nimble backend driver."
+msgstr ""
+"Nimble バックエンドドライバーで、ライブマイグレーションでのマルチイニシエー"
+"ターのサポートを可能にする機能を追加しました。"
+
+msgid ""
+"Add consistency group capability to Generic Volume Groups in the Dell EMC SC "
+"driver."
+msgstr ""
+"Dell EMC SC ドライバに汎用Volume Groupに対する整合性グループ機能が追加されま"
+"した。"
+
+msgid ""
+"Add consistent group capability to generic volume groups in Lefthand driver."
+msgstr ""
+"Lefthandドライバに汎用Volume Groupに対する整合性グループ機能が追加されまし"
+"た。"
+
+msgid ""
+"Add consistent group capability to generic volume groups in Pure drivers."
+msgstr ""
+"Pure ドライバで 一般的なボリュームグループにコンシステンシーグループ能力を追"
+"加しました。"
+
+msgid "Add consistent group capability to generic volume groups in VNX driver."
+msgstr ""
+"VNX ドライバーで 一般的なボリュームグループにコンシステンシーグループ能力を追"
+"加しました。"
+
+msgid ""
+"Add consistent group capability to generic volume groups in XIV, Spectrum "
+"Accelerate and A9000/R storage systems."
+msgstr ""
+"XIV, Spectrum Accelerate, A9000/R ストレージシステムに汎用ボリュームグループ"
+"に整合性グループ機能が追加されました。"
+
+msgid ""
+"Add consistent group capability to generic volume groups in the XtremIO "
+"driver."
+msgstr ""
+" XtremIO ドライバーで 一般的なボリュームグループにコンシステンシーグループ能"
+"力を追加しました。"
+
+msgid "Add filters support to get_pools API v3.28."
+msgstr "get_pools API v3.28 でフィルタサポートを追加しました。"
+
+msgid ""
+"Add get_manageable_volumes and get_manageable_snapshots implementations for "
+"Pure Storage Volume Drivers."
+msgstr ""
+"Pure Storage ボリュームドライバーに get_manageable_volumes と "
+"get_manageable_snapshots 実装を追加しました。"
+
+msgid "Add multipath enhancement to Storwize iSCSI driver."
+msgstr "Storwize SVC ドライバーにマルチパスのサポートを追加しました。"
+
+msgid "Add provider_id in the detailed view of a volume for admin."
+msgstr "管理者向けにボリューム詳細表示に provider_id を追加しました。"
+
+msgid "Add support for hybrid aggregates to the NetApp cDOT drivers."
+msgstr ""
+"NetApp cDOT ドライバーに ハイブリッドアグリゲートのサポートを追加しました。"
+
+msgid "Add support for reporting pool disk type in Huawei driver."
+msgstr ""
+" Huawei ドライバーにプールディスクタイプをレポートするサポートを追加しまし"
+"た。"
+
+msgid "Add support to backup volume using snapshot in the Unity driver."
+msgstr ""
+"Unity ドライバにスナップショットを使うボリュームバックアップのサポートを追加"
+"しました。"
+
+msgid "Add support to configure IO ports option in Dell EMC Unity driver."
+msgstr ""
+"Dell EMC Unity ドライバーに IO ポートオプション設定のサポートを追加しました。"
+
+msgid "Add v2.1 volume replication support in VMAX driver."
+msgstr " VMAXドライバーに、 v2.1 レプリケーションのサポートを追加しました。"
+
+msgid ""
+"Added Cheesecake (v2.1) replication support to the Pure Storage Volume "
+"drivers."
+msgstr ""
+"Pure Storage ボリュームドライバーに Cheesecake (v2.1)  レプリケーションのサ"
+"ポートを追加しました。"
+
+msgid "Added Cinder consistency group for the NetApp NFS driver."
+msgstr "NetApp NFS ドライバー用に整合性グループのサポートを追加しました。"
+
+msgid "Added Consistency Group support in ScaleIO driver."
+msgstr "Scale IO ドライバーに整合性グループのサポートを追加しました。"
+
+msgid "Added Datera EDF API 2.1 support."
+msgstr "Datera EDF API 2.1 サポートを追加しました。"
+
+msgid "Added Datera Multi-Tenancy Support."
+msgstr "Datera マルチテナントサポートを追加しました。"
+
+msgid "Added Datera Template Support."
+msgstr "Datera テンプレートサポートを追加しました。"
+
+msgid "Added HA support for NexentaEdge iSCSI driver"
+msgstr " NexentaEdge iSCSI ドライバに HA サポートを追加しました。"
+
+msgid "Added Keystone v3 support for Swift backup driver in single user mode."
+msgstr ""
+"シングルユーザーモードで、Swift バックアップドライバー用の Keystone v3 のサ"
+"ポートを追加しました。"
+
+msgid "Added Migrate and Extend for Nexenta NFS driver."
+msgstr "Nexenta NFS ドライバーにマイグレーションと拡張の機能を追加しました。"
+
+msgid "Added NBD driver for NexentaEdge."
+msgstr "NexentaEdge 用 NBD ドライバーを追加しました。"
+
+msgid "Added Nimble Storage Fibre Channel backend driver."
+msgstr ""
+"Nimble Storage ファイバーチャネルバックエンドドライバーを追加しました。"
+
+msgid "Added QoS support in ScaleIO driver."
+msgstr "Scale IO ドライバーに QoS サポートを追加しました。"
+
+msgid "Added REST API to update backup name and description."
+msgstr "バックアップ名と説明を更新する  REST API を追加しました。"
+
+msgid ""
+"Added RPC backward compatibility layer similar to the one implemented in "
+"Nova. This means that Cinder services can be upgraded one-by-one without "
+"breakage. After all the services are upgraded SIGHUP signals should be "
+"issued to all the services to signal them to reload cached minimum RPC "
+"versions. Alternative is of course restart of them. Please note that cinder-"
+"api service doesn't support SIGHUP yet. Please also take into account that "
+"all the rolling upgrades capabilities are considered tech preview, as we "
+"don't have a CI testing it yet."
+msgstr ""
+"Novaに実装されているものと近い、RPC 後方互換性レイヤーを追加しました。これ"
+"は、 Cinder サービスを１つずつ、破損させずにアップグレードできることを意味し"
+"ます。全てのサービスをアップグレードした後、 キャッシュされた最小のRPCバー"
+"ジョンを再読み込みすることを知らせるために、 SIGHUP シグナルを全てのサービス"
+"に送信します。代替手段は、もちろん全てのサービスを再起動トすることです。"
+"cinder-api サービスではまだ SIGHUP をサポートしていないことに注意してくださ"
+"い。また、まだこの機能のCIテストは行われていないため、すべてのローリングアッ"
+"プグレード機能がテクニカルプレビューであることを考慮してください。"
+
+msgid "Added Retype functionality to Nexenta iSCSI and NFS drivers."
+msgstr ""
+"Nexenta iSCSI ドライバーおよび NFS ドライバーにタイプ変更機能を追加しました。"
+
+msgid ""
+"Added a new config option `scheduler_weight_handler`. This is a global "
+"option which specifies how the scheduler should choose from a listed of "
+"weighted pools. By default the existing weigher is used which always chooses "
+"the highest weight."
+msgstr ""
+"新しい設定オプション `scheduler_weight_handler` を追加しました。これはグロー"
+"バルオプションで、どのようにスケジューラが重みづけされたプールのリストから選"
+"択するかを指定します。デフォルトでは今ある weigher が使われます。これは常に最"
+"高の weight を選びます。"
+
+msgid ""
+"Added a new weight handler `StochasticHostWeightHandler`. This weight "
+"handler chooses pools randomly, where the random probabilities are "
+"proportional to the weights, so higher weighted pools are chosen more "
+"frequently, but not all the time. This weight handler spreads new shares "
+"across available pools more fairly."
+msgstr ""
+"新しいウェイトハンドラ― `StochasticHostWeightHandler` を追加しました。この"
+"ウェイトハンドラ―はランダムにプールを選びます。ランダム性は重みに比例しますの"
+"で、より高く重みづけられたプールはより頻繁に選ばれますが、いつもそうではあり"
+"ません。このウェイトハンドラはより公平に使用可能なプール間で新しく分け合うこ"
+"とを広めます。"
+
+msgid "Added ability to backup snapshots."
+msgstr "バックアップスナップショットを可能にする機能を追加しました。"
+
+msgid "Added ability to query backups by project ID."
+msgstr "プロジェクト ID によりバックアップを検索できる機能を追加しました。"
+
+msgid ""
+"Added additional metrics reported to the scheduler for Pure Volume Drivers "
+"for better filtering and weighing functions."
+msgstr ""
+"Pure ボリュームドライバのフィルタリング機能と重みづけ機能の向上のため、スケ"
+"ジューラーにレポートされる指標を追加しました。"
+
+msgid "Added backend FC and iSCSI drivers for NEC Storage."
+msgstr "NEC ストレージ用に FC と iSCSI バックエンドドライバーを追加しました。"
+
+msgid "Added backend ISCSI driver for Reduxio."
+msgstr "Reduxio用バックエンド ISCSIドライバーを追加しました。"
+
+msgid "Added backend driver for Coho Data storage."
+msgstr "Coho Data ストレージ用バックエンドドライバーを追加しました。"
+
+msgid "Added backend driver for DISCO storage."
+msgstr "Discoストレージ用バックエンドドライバーを追加しました。"
+
+msgid "Added backend driver for Dell EMC Unity storage."
+msgstr " Dell EMC Unity ストレージ用バックエンドドライバーを追加しました。"
+
+msgid "Added backend driver for FalconStor FreeStor."
+msgstr " FalconStor FreeStor 用バックエンドドライバーを追加しました。"
+
+msgid "Added backend driver for Fujitsu ETERNUS DX (FC)."
+msgstr " Fujitsu ETERNUS DX 用バックエンドドライバー (FC) を追加 しました。"
+
+msgid "Added backend driver for Fujitsu ETERNUS DX (iSCSI)."
+msgstr "Fujitsu ETERNUS DX 用バックエンドドライバー (iSCSI) を追加しました。"
+
+msgid "Added backend driver for Huawei FusionStorage."
+msgstr "Huawei FusionStorage用バックエンドドライバーを追加しました。"
+
+msgid "Added backend driver for Nexenta Edge iSCSI storage."
+msgstr "Nexenta Edge iSCSI ストレージ用バックエンドドライバーを追加しました。"
+
+msgid "Added backend driver for NexentaStor5 NFS storage."
+msgstr "NexentaStor5 NFS ストレージ用バックエンドドライバーを追加しました。"
+
+msgid "Added backend driver for NexentaStor5 iSCSI storage."
+msgstr "NexentaStor5 iSCSI ストレージ用バックエンドドライバーを追加しました。"
+
+msgid "Added backend driver for Synology iSCSI-supported storage."
+msgstr ""
+"Synology iSCSI-supported ストレージ用バックエンドドライバーを追加しました。"
+
+msgid "Added backend driver for Violin Memory 7000 iscsi storage."
+msgstr ""
+"Violin Memory 7000 iscsi ストレージ用バックエンドドライバーを追加しました。"
+
+msgid "Added backend driver for ZTE iSCSI storage."
+msgstr "ZTE iSCSI  ストレージ用バックエンドドライバーを追加しました。"
+
+msgid "Added cinder backup driver for Google Cloud Storage."
+msgstr "Google Cloud ストレージ用 バックアップドライバーを追加しました。"
+
+msgid ""
+"Added config option ``vmware_connection_pool_size`` in the VMware VMDK "
+"driver to specify the maximum number of connections (to vCenter) in the http "
+"connection pool."
+msgstr ""
+"VMware VMDK ドライバに ``vmware_connection_pool_size`` 設定オプションを追加し"
+"て、http sつ属プールの（vCenterへの）最大接続数を指定します。"
+
+msgid ""
+"Added config option to enable/disable automatically calculation an over-"
+"subscription ratio max for Pure Volume Drivers. When disabled the drivers "
+"will now respect the max_oversubscription_ratio config option."
+msgstr ""
+"Pure ボリュームドライバー用に、オーバーサブスクリプション比率の最大値の自動計"
+"算を有効/無効にする設定オプションを追加しました。ドライバーを無効にした場合、"
+"設定オプション max_oversubscription_ratio が優先されます。"
+
+msgid ""
+"Added consistency group support to generic volume groups in ScaleIO Driver."
+msgstr ""
+"ScaleIOドライバの汎用ボリュームグループに整合性グループのサポートを追加しまし"
+"た。"
+
+msgid "Added consistency group support to the Huawei driver."
+msgstr "Huawei ドライバー用に整合性グループのサポートを追加しました。"
+
+msgid ""
+"Added create/delete APIs for group snapshots and an API to create group from "
+"source."
+msgstr ""
+"グループスナップショットの作成/削除 API と、ソースからグループを作成する API "
+"を追加しました。"
+
+msgid "Added driver for Tegile IntelliFlash arrays."
+msgstr "Tegile IntelliFlash アレイ用ドライバーを追加しました。"
+
+msgid "Added driver for the InfiniBox storage array."
+msgstr "InfiniBox ストレージアレイ 用ドライバーを追加しました。"
+
+msgid "Added extend method to NFS driver for NexentaStor 5."
+msgstr "NexentaStor 5 用 NFS ドライバーへ拡張メソッドを追加しました。"
+
+msgid "Added group type and group specs APIs."
+msgstr "グループタイプと group specs API を追加しました。 "
+
+msgid ""
+"Added host-level (whole back end replication - v2.1) replication support to "
+"the NetApp cDOT drivers (iSCSI, FC, NFS)."
+msgstr ""
+"NetApp cDOT ドライバー（iSCSI、FC、NFS）用にホストレベル（全体バックエンドレ"
+"プリケーション v2.1）レプリケーションサポートを追加しました。"
+
+msgid "Added iSCSI CHAP uni-directional authentication for NetApp drivers."
+msgstr "NetAPp ドライバー用に iSCSI CHAP の一方向認証機能を追加しました。"
+
+msgid "Added manage/unmanage snapshot support for Huawei drivers."
+msgstr ""
+"Huawei ドライバー用にスナップショットの管理/管理解除機能のサポートを追加しま"
+"した。"
+
+msgid "Added manage/unmanage snapshot support to the HNAS NFS driver."
+msgstr ""
+"HNAS NFS ドライバー用にスナップショットの管理/管理解除機能のサポートを追加し"
+"ました。"
+
+msgid "Added manage/unmanage volume support for Dell Equallogic driver."
+msgstr ""
+"Dell Equallogic ドライバー用にボリュームの管理/管理解除機能のサポートを追加し"
+"ました。"
+
+msgid "Added manage/unmanage volume support for Huawei drivers."
+msgstr ""
+"Huawei ドライバー用にボリュームの管理/管理解除機能のサポートを追加しました。"
+
+msgid "Added multiple management IP support to Storwize SVC driver."
+msgstr "Storwize SVC ドライバー用に複数の管理IPのサポートを追加しました。"
+
+msgid "Added multiple pools support to Storwize SVC driver."
+msgstr "Storwize SVC ドライバー用に複数プールのサポートを追加しました。"
+
+msgid ""
+"Added new BoolOpt ``backup_ceph_image_journals`` for enabling the Ceph image "
+"features required to support RBD mirroring of Cinder backup pool."
+msgstr ""
+"Ceph イメージ機能を有効とするために新しい BoolOpt "
+"``backup_ceph_image_journals`` を追加しました。これは Cinder バックアッププー"
+"ルの RBD ミラーリングをサポートするために必要です。"
+
+msgid ""
+"Added new Hitachi VSP FC Driver. The VSP driver supports all Hitachi VSP "
+"Family and HUSVM."
+msgstr ""
+"新しい Hitachi VSP FC ドライバを追加しました。VSP ドライバはすべての Hitachi "
+"VSP ファミリーと HUSVM をサポートします。"
+
+msgid "Added oversubscription support in the VMAX driver"
+msgstr ""
+"VMAX ドライバーに オーバーサブスクリプションの サポートを追加しました。"
+
+msgid "Added replication failback support for the Dell SC driver."
+msgstr ""
+"Dell SC ドライバー用にレプリケーションフェイルバックのサポートを追加しまし"
+"た。"
+
+msgid "Added replication v2.1 support to the Dell Storage Center drivers."
+msgstr ""
+"Dell Storage Center ドライバー用に、レプリケーション V2.1 のサポートを追加し"
+"ました。"
+
+msgid "Added replication v2.1 support to the IBM Storwize driver."
+msgstr ""
+"IBM Storwize ドライバー用に、レプリケーション V2.1 のサポートを追加しました。"
+
+msgid "Added replication v2.1 support to the IBM XIV/DS8K driver."
+msgstr ""
+"IBM XIV/DS8K ドライバー用に、レプリケーション V2.1 のサポートを追加しました。"
+
+msgid "Added reset status API to generic volume group."
+msgstr "一般的なボリュームグループに reset status API を追加しました。"
+
+msgid "Added reset status API to group snapshot."
+msgstr "グループスナップショットに reset status API を追加しました。"
+
+msgid "Added snapshot manage/unmanage support to the EMC XtremIO driver."
+msgstr ""
+"EMC XtremIO ドライバー用にスナップショットの管理/管理解除機能のサポートを追加"
+"しました。"
+
+msgid "Added snapshot manage/unmanage support to the HPE 3PAR driver."
+msgstr ""
+"HPE 3PAR ドライバー用にスナップショットの管理/管理解除機能のサポートを追加し"
+"ました。"
+
+msgid "Added snapshot manage/unmanage support to the HPE LeftHand driver."
+msgstr ""
+"HPE LeftHand ドライバー用にスナップショットの管理/管理解除機能のサポートを追"
+"加しました。"
+
+msgid "Added support for API microversions, as well as /v3 API endpoint."
+msgstr ""
+"API マイクロバージョンおよび /v3 API エンドポイントのサポートを追加しました。"
+
+msgid "Added support for ZMQ messaging layer in multibackend configuration."
+msgstr ""
+"マルチバックエンド設定において、 Zero MQ メッセージングドライバーのサポートを"
+"追加しました。"
+
+msgid ""
+"Added support for ZeroMQ messaging driver in cinder single backend config."
+msgstr ""
+"cinder の単一のバックエンド設定において、 Zero MQ メッセージングドライバーの"
+"サポートを追加しました。"
+
+msgid ""
+"Added support for creating a consistency group from a source consistency "
+"group in the HPE 3PAR driver."
+msgstr ""
+"HPE 3PAR ドライバーに、ソースの整合性グループから整合性グループを作成する機能"
+"を追加しました。"
+
+msgid ""
+"Added support for creating, deleting, and updating consistency groups for "
+"NetApp 7mode and CDOT backends."
+msgstr ""
+"NetApp 7mode と CDOT バックエンドに、整合性グループの追加、削除、更新機能のサ"
+"ポートを追加しました。"
+
+msgid ""
+"Added support for images with vmware_adaptertype set to paraVirtual in the "
+"VMDK driver."
+msgstr ""
+"VMDK ドライバーに、準仮想化のため vmware_adaptertype を設定したイメージのサ"
+"ポートを追加しました。"
+
+msgid "Added support for manage volume in the VMware VMDK driver."
+msgstr ""
+"VMware VMDK ドライバーに、ボリュームの管理機能のサポートを追加しました。"
+
+msgid "Added support for manage/unmanage snapshot in the ScaleIO driver."
+msgstr ""
+"ScaleIO ドライバー用にスナップショットの管理/管理解除機能のサポートを追加しま"
+"した。"
+
+msgid "Added support for manage/unmanage volume in the ScaleIO driver."
+msgstr ""
+"ScaleIO ドライバー用にボリュームの管理/管理解除機能のサポートを追加しました。"
+
+msgid ""
+"Added support for oversubscription in thin provisioning in the ScaleIO "
+"driver. Volumes should have extra_specs with the key provisioning:type with "
+"value equals to either 'thick' or 'thin'. max_oversubscription_ratio can be "
+"defined by the global config or for ScaleIO specific with the config option "
+"sio_max_over_subscription_ratio. The maximum oversubscription ratio "
+"supported at the moment is 10.0."
+msgstr ""
+"ScaleIO ドライバに、シンプロビジョニングのオーバーサブスクリプションのサポー"
+"トを追加しました。ボリュームは extra_specs に 鍵 provisioning:type、値が  "
+"'thick' または  'thin' とするべきです。max_oversubscription_ratio をグローバ"
+"ルオプションとして定義するか、ScaleIO 固有の設定オプション "
+"sio_max_over_subscription_ratio が定義できます。最大オーバーサブスクリプショ"
+"ン比率は 10.0 がサポートされます。"
+
+msgid ""
+"Added support for querying volumes filtered by glance metadata key/value "
+"using 'glance_metadata' optional URL parameter. For example, \"volumes/"
+"detail?glance_metadata={\"image_name\":\"xxx\"}\"."
+msgstr ""
+"glance  メタデータの項目である'glance_metadata'  とオプションのURLパラメータ"
+"を キー/値 として、ボリュームをフィルターするクエリーを作成する機能のサポート"
+"を追加しました。例:  \"volumes/detail?glance_metadata={\"image_name\":\"xxx"
+"\"}\""
+
+msgid ""
+"Added support for scaling QoS in the ScaleIO driver. The new QoS keys are "
+"maxIOPSperGB and maxBWSperGB."
+msgstr ""
+"ScaleIO ドライバー用にスケーリング QoS 機能のサポートを追加しました。新しい "
+"QoS キーは maxIOPSperGB と maxBWSperGB です。"
+
+msgid ""
+"Added support for taking, deleting, and restoring a cgsnapshot for NetApp "
+"7mode and CDOT backends."
+msgstr ""
+"NetApp 7mode と CDOT バックエンドに、cgsnapshot の取得、削除、リストア機能の"
+"サポートを追加しました。"
+
+msgid ""
+"Added the ability to list manageable volumes and snapshots via GET operation "
+"on the /v2/<project_id>/os-volume-manage and /v2/<project_id>/os-snapshot-"
+"manage URLs, respectively."
+msgstr ""
+"GET オペレーションにより、管理可能なボリュームとスナップショットのリストを表"
+"示を行う機能を追加しました。URLはそれぞれ、 /v2/<project_id>/os-volume-"
+"manage と /v2/<project_id>/os-snapshot-manage です。"
+
+msgid ""
+"Added the options ``visibility`` and ``protected`` to the os-"
+"volume_upload_image REST API call."
+msgstr ""
+"os-volume_upload_image REST API コールに、 ``visibility`` と ``protected`` オ"
+"プションを追加しました。"
+
+msgid "Added v2.1 replication support in Huawei Cinder driver."
+msgstr ""
+"Huawei Cinder ドライバーに、 v2.1 レプリケーションのサポートを追加しました。"
+
+msgid "Added v2.1 replication support to SolidFire driver."
+msgstr ""
+"SolidFire ドライバーに、 v2.1 レプリケーションのサポートを追加しました。"
+
+msgid "Added v2.1 replication support to the HPE 3PAR driver."
+msgstr ""
+"HPE 3PAR ドライバーに、 v2.1 レプリケーションのサポートを追加しました。"
+
+msgid "Added v2.1 replication support to the HPE LeftHand driver."
+msgstr ""
+"HPE LeftHand  ドライバーに、 v2.1 レプリケーションのサポートを追加しました。"
+
+msgid "Added volume backend drivers for CoprHD FC, iSCSI and Scaleio."
+msgstr ""
+"CoprHD FC / iSCSI と Scaleio 用ボリュームバックエンドドライバーを追加しまし"
+"た。"
+
+msgid "Added volume driver for Zadara Storage VPSA."
+msgstr "Zadara Storage VPSA 用ボリュームバックエンドドライバーを追加しました。"
+
+msgid ""
+"Adding or removing volume_type_access from any project during DB migration "
+"62 must not be performed."
+msgstr ""
+"DB マイグレーションを行っているプロジェクトでは、 volume_type_access  の追加/"
+"削除は行われません。"
+
+msgid "Adds v2.1 replication support in VNX Cinder driver."
+msgstr ""
+"VNX Cinder ドライバーに、 v2.1 レプリケーションのサポートを追加しました。"
+
+msgid ""
+"All Datera DataFabric backed volume-types will now use API version 2 with "
+"Datera DataFabric"
+msgstr ""
+"全ての Datera DataFabric を背後に持つボリュームタイプは、 Datera DataFabric "
+"との通信に  API バージョン 2 を利用するようになりました。"
+
+msgid ""
+"Allow API user to remove the consistency group name or description "
+"information."
+msgstr ""
+"API ユーザーが整合性グループの名前や説明を削除することが許容されるようになり"
+"ました。"
+
+msgid ""
+"Allow for eradicating Pure Storage volumes, snapshots, and pgroups when "
+"deleting their Cinder counterpart."
+msgstr ""
+"Pure Storage のボリューム、スナップショット、 pgroup を、 cincer カウンター"
+"パートが削除された際に一括で削除できるようになりました。"
+
+msgid "Allow spaces when managing existing volumes with the HNAS iSCSI driver."
+msgstr ""
+"HNAS iSCSI ドライバーで既存のボリュームを管理する際、スペースが許容されるよう"
+"になりました。"
+
+msgid ""
+"An error has been corrected in the EMC ScaleIO driver that had caused all "
+"volumes to be provisioned at 'thick' even if user had specificed 'thin'."
+msgstr ""
+"EMC ScaleIO において、プロビジョニングで 'thin' を指定した場合でもすべてのボ"
+"リュームが 'thick' としてプロビジョニングされるエラーを修正しました。"
+
+msgid ""
+"Any Volume Drivers configured in the DEFAULT config stanza should be moved "
+"to their own stanza and enabled via the enabled_backends config option. The "
+"older style of config with DEFAULT is deprecated and will be removed in "
+"future releases."
+msgstr ""
+"DEFAULT config スタンザで設定されているすべてのボリュームドライバーは、自身の"
+"スタンザに移動させ、 enabled_backends config オプションを有効にしなければいけ"
+"ません。 DEFAULT を使った古いスタイルの設定は非推奨であり、今後のリリースで削"
+"除される予定です。"
+
+msgid "Backend driver for Scality SRB has been removed."
+msgstr "Scality SRB 用のバックエンドドライバーは削除されました。"
+
+msgid "Better cleanup handling in the NetApp E-Series driver."
+msgstr "より良いNetApp E-Series ドライバにおけるクリーンアップ処理"
+
+msgid ""
+"BoolOpt ``datera_acl_allow_all`` is changed to a volume type extra spec "
+"option-- ``DF:acl_allow_all``"
+msgstr ""
+"BoolOpt ``datera_acl_allow_all` はボリュームタイプの extra spec オプション "
+"``DF:acl_allow_all`` に変更されました。"
+
+msgid "Broke Datera driver up into modules."
+msgstr "Datera ドライバがモジュール化されました。"
+
+msgid "Bug Fixes"
+msgstr "バグ修正"
+
+msgid "Capabilites List for Datera Volume Drivers"
+msgstr "Datera ボリュームドライバ用のケイパビリティーリスト"
+
+msgid "Capacity reporting fixed with Huawei backend drivers."
+msgstr ""
+"Huawei  バックエンドドライバにおけるキャパシティーレポーティングが修正されま"
+"した。"
+
+msgid "Changes config option default for datera_num_replicas from 1 to 3"
+msgstr ""
+"設定オプション datera_num_replicas のデフォルト値を 1 から 3 に変更しました。"
+
+msgid "Current Series Release Notes"
+msgstr "開発中バージョンのリリースノート"
+
+msgid "Deprecated IBM driver _multipath_enabled config flags."
+msgstr "IBM driver _multipath_enabled 設定フラグは非推奨となりました。"
+
+msgid "Deprecated datera_api_version option."
+msgstr "datera_api_versionオプションは非推奨となりました。"
+
+msgid ""
+"Deprecated the configuration option ``hnas_svcX_volume_type``. Use option "
+"``hnas_svcX_pool_name`` to indicate the name of the services (pools)."
+msgstr ""
+"``hnas_svcX_volume_type``構成オプションは非推奨となりました。サービス(プール)"
+"の名前を指定する際には、``hnas_svcX_pool_name``オプションを使用してください。"
+
+msgid ""
+"Deprecated the configuration option ``nas_ip``. Use option ``nas_host`` to "
+"indicate the IP address or hostname of the NAS system."
+msgstr ""
+"``nas_ip``構成オプションは非推奨となりました。NASシステムのIPアドレスまはたホ"
+"スト名を指定する際には、``nas_host``オプションを使用してください。"
+
+msgid "Deprecation Notes"
+msgstr "廃止予定の機能"
+
+msgid "Known Issues"
+msgstr "既知の問題"
+
+msgid "Liberty Series Release Notes"
+msgstr "Liberty バージョンのリリースノート"
+
+msgid "Mitaka Series Release Notes"
+msgstr "Mitaka バージョンのリリースノート"
+
+msgid "New Features"
+msgstr "新機能"
+
+msgid "Other Notes"
+msgstr "その他の注意点"
+
+msgid "Security Issues"
+msgstr "セキュリティー上の問題"
+
+msgid "Upgrade Notes"
+msgstr "アップグレード時の注意"
