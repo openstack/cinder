@@ -4,7 +4,7 @@ Oracle ZFS Storage Appliance NFS driver
 
 The Oracle ZFS Storage Appliance (ZFSSA) NFS driver enables the ZFSSA to
 be used seamlessly as a block storage resource. The driver enables you
-to to create volumes on a ZFS share that is NFS mounted.
+to create volumes on a ZFS share that is NFS mounted.
 
 Requirements
 ~~~~~~~~~~~~
