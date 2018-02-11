@@ -53,7 +53,7 @@ First, list the available back ends:
 
 .. note::
 
-   Only Block Storage V2 API supports :command:`cinder get-pools`.
+   Block Storage API supports :command:`cinder get-pools` since V2 version.
 
 You can also get available back ends like following:
 

@@ -32,7 +32,7 @@ flag is False by default.
 
 .. note::
 
-   The ``incremental`` and ``force`` flags are only available for block
+   The ``incremental`` and ``force`` flags are only available since block
    storage API v2. You have to specify ``[--os-volume-api-version 2]`` in the
    ``cinder`` command-line interface to use this parameter.
 
