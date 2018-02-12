@@ -313,6 +313,7 @@ class BackendState(object):
             self.free_capacity_gb -= volume_gb
         if update_time:
             self.updated = timeutils.utcnow()
+        LOG.debug("Consumed %s GB from backend: %s", volume['size'], self)
 
     def __repr__(self):
         # FIXME(zhiteng) backend level free_capacity_gb isn't as
@@ -320,8 +321,27 @@ class BackendState(object):
         # come up with better representation of HostState.
         grouping = 'cluster' if self.cluster_name else 'host'
         grouping_name = self.backend_id
-        return ("%s '%s': free_capacity_gb: %s, pools: %s" %
-                (grouping, grouping_name, self.free_capacity_gb, self.pools))
+        return ("%(grouping)s '%(grouping_name)s':"
+                "free_capacity_gb: %(free_capacity_gb)s, "
+                "total_capacity_gb: %(total_capacity_gb)s,"
+                "allocated_capacity_gb: %(allocated_capacity_gb)s, "
+                "max_over_subscription_ratio: %(mosr)s,"
+                "reserved_percentage: %(reserved_percentage)s, "
+                "provisioned_capacity_gb: %(provisioned_capacity_gb)s,"
+                "thin_provisioning_support: %(thin_provisioning_support)s, "
+                "thick_provisioning_support: %(thick)s,"
+                "pools: %(pools)s,"
+                "updated at: %(updated)s" %
+                {'grouping': grouping, 'grouping_name': grouping_name,
+                 'free_capacity_gb': self.free_capacity_gb,
+                 'total_capacity_gb': self.total_capacity_gb,
+                 'allocated_capacity_gb': self.allocated_capacity_gb,
+                 'mosr': self.max_over_subscription_ratio,
+                 'reserved_percentage': self.reserved_percentage,
+                 'provisioned_capacity_gb': self.provisioned_capacity_gb,
+                 'thin_provisioning_support': self.thin_provisioning_support,
+                 'thick': self.thick_provisioning_support,
+                 'pools': self.pools, 'updated': self.updated})
 
 
 class PoolState(BackendState):
