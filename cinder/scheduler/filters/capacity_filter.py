@@ -118,6 +118,10 @@ class CapacityFilter(filters.BaseBackendFilter):
         if provision_type == 'thick':
             thin = False
 
+        msg_args = {"grouping_name": backend_state.backend_id,
+                    "grouping": grouping,
+                    "requested": requested_size,
+                    "available": free}
         # Only evaluate using max_over_subscription_ratio if
         # thin_provisioning_support is True. Check if the ratio of
         # provisioned capacity over total capacity has exceeded over
@@ -126,6 +130,8 @@ class CapacityFilter(filters.BaseBackendFilter):
                 backend_state.max_over_subscription_ratio >= 1):
             provisioned_ratio = ((backend_state.provisioned_capacity_gb +
                                   requested_size) / total)
+            LOG.debug("Checking provisioning for request of %s GB. "
+                      "Backend: %s", requested_size, backend_state)
             if provisioned_ratio > backend_state.max_over_subscription_ratio:
                 msg_args = {
                     "provisioned_ratio": provisioned_ratio,
@@ -159,6 +165,11 @@ class CapacityFilter(filters.BaseBackendFilter):
                                 "(%(available)sGB) to accomodate thin "
                                 "provisioned %(size)sGB volume on %(grouping)s"
                                 " %(grouping_name)s.", msg_args)
+                else:
+                    LOG.debug("Space information for volume creation "
+                              "on %(grouping)s %(grouping_name)s "
+                              "(requested / avail): "
+                              "%(requested)s/%(available)s", msg_args)
                 return res
         elif thin and backend_state.thin_provisioning_support:
             LOG.warning("Filtering out %(grouping)s %(grouping_name)s "
@@ -170,11 +181,6 @@ class CapacityFilter(filters.BaseBackendFilter):
                          "grouping": grouping,
                          "grouping_name": backend_state.backend_id})
             return False
-
-        msg_args = {"grouping_name": backend_state.backend_id,
-                    "grouping": grouping,
-                    "requested": requested_size,
-                    "available": free}
 
         if free < requested_size:
             LOG.warning("Insufficient free space for volume creation "
