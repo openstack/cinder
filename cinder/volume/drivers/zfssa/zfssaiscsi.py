@@ -479,6 +479,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         data['zfssa_sparse'] = six.text_type(lcfg.zfssa_lun_sparse)
         data['zfssa_compression'] = lcfg.zfssa_lun_compression
         data['zfssa_logbias'] = lcfg.zfssa_lun_logbias
+        data['multiattach'] = True
 
         self._stats = data
 
