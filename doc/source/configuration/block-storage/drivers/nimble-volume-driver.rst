@@ -120,6 +120,17 @@ The Nimble volume driver also supports the following extra spec options:
 'nimble:multi-initiator'='true'
   Used to enable multi-initiator access for a volume-type.
 
+nimble:dedupe'='true'
+  Used to enable dedupe support for a volume-type.
+
+'nimble:iops-limit'=IOPS_LIMIT
+  Used to set the IOPS_LIMIT between 256 and 4294967294 for all
+  volumes created for this volume-type.
+
+'nimble:folder'=FOLDER_NAME
+  FOLDER_NAME is the name of the folder which exists on the Nimble array
+  and should be enabled for every volume in a volume type
+
 These extra-specs can be enabled by using the following command:
 
 .. code-block:: console
