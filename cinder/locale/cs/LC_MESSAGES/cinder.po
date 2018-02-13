@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-02-03 01:53+0000\n"
+"POT-Creation-Date: 2018-02-13 03:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -119,10 +119,6 @@ msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr ""
 "Hodnota %(worker_name)s ve %(workers)d je neplatná, musí být větší než 0."
-
-#, python-format
-msgid "%s"
-msgstr "%s"
 
 #, python-format
 msgid ""
@@ -2912,16 +2908,8 @@ msgstr "Chyba klíče: %s"
 msgid "LUN not found with given ref %s."
 msgstr "LUN nenalezena pomocí zadaného odkazu %s."
 
-#, python-format
-msgid "Last %s cinder syslog entries:-"
-msgstr "Posledních %s položek cinder v záznamu systému:-"
-
 msgid "LeftHand cluster not found"
 msgstr "Cluster LeftHand nebyl nalezen"
-
-#, python-format
-msgid "Line %(dis)d : %(line)s"
-msgstr "Řádek %(dis)d : %(line)s"
 
 #, python-format
 msgid "Linked clone of source volume not supported in state: %s."
@@ -3215,9 +3203,6 @@ msgstr "Žádné aktivní portály iSCSI zadané pomocí IP iSCSI"
 msgid "No backups available to do an incremental backup."
 msgstr "Žádná záloha pro provedení přírůstkové zálohy."
 
-msgid "No cinder entries in syslog!"
-msgstr "Žádné položky cinder v záznamu systému!"
-
 #, python-format
 msgid "No cloned LUN named %s found on the filer"
 msgstr "Ve správci souborů nebyl nalezen klonovaný LUN s názvem %s"
@@ -3228,9 +3213,6 @@ msgstr "Nenalezen žádný uzel nastavení."
 #, python-format
 msgid "No element by given name %s."
 msgstr "Žádný prvek podle zadaného názvu %s."
-
-msgid "No errors in logfiles!"
-msgstr "Žádné chyby v souborech záznamu!"
 
 #, python-format
 msgid "No file found with %s as backing file."
@@ -4270,9 +4252,6 @@ msgstr "Nelze najít mapování iSCSI."
 #, python-format
 msgid "Unable to find ssh_hosts_key_file: %s"
 msgstr "Nelze najít soubor klíčů hostitelů ssh: %s"
-
-msgid "Unable to find system log file!"
-msgstr "Nelze najít soubor záznamu systému!"
 
 #, python-format
 msgid "Unable to find volume %s"

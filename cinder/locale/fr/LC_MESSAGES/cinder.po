@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-02-03 01:53+0000\n"
+"POT-Creation-Date: 2018-02-13 03:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -124,10 +124,6 @@ msgid ""
 msgstr ""
 "La valeur %(worker_name)s de %(workers)d n'est pas valide. Elle doit être "
 "supérieure à 0."
-
-#, python-format
-msgid "%s"
-msgstr "%s"
 
 #, python-format
 msgid "%s \"data\" is not in result."
@@ -3762,19 +3758,11 @@ msgstr ""
 msgid "LUN not found with given ref %s."
 msgstr "LUN introuvable avec la réf donnée %s."
 
-#, python-format
-msgid "Last %s cinder syslog entries:-"
-msgstr "Dernières entrées Cinder syslog %s :-"
-
 msgid "LeftHand cluster not found"
 msgstr "Cluster LeftHand introuvable"
 
 msgid "License is unavailable."
 msgstr "La licence n'est pas disponible."
-
-#, python-format
-msgid "Line %(dis)d : %(line)s"
-msgstr "Ligne %(dis)d : %(line)s"
 
 #, python-format
 msgid "Linked clone of source volume not supported in state: %s."
@@ -4129,9 +4117,6 @@ msgstr "Il n'existe aucun portail iSCSI actif dans les IP iSCSI soumis"
 msgid "No backups available to do an incremental backup."
 msgstr "Aucune sauvegarde disponible pour faire une sauvegarde incrémentielle."
 
-msgid "No cinder entries in syslog!"
-msgstr "Aucune entrée Cinder dans syslog"
-
 #, python-format
 msgid "No cloned LUN named %s found on the filer"
 msgstr "Aucun LUN cloné nommé %s détecté dans le gestionnaire de fichiers"
@@ -4142,9 +4127,6 @@ msgstr "Aucun noeud de configuration n'a été trouvé."
 #, python-format
 msgid "No element by given name %s."
 msgstr "Aucun élément du nom indiqué %s."
-
-msgid "No errors in logfiles!"
-msgstr "Aucune erreur dans le fichier de log !"
 
 #, python-format
 msgid "No file found with %s as backing file."
@@ -5537,9 +5519,6 @@ msgstr "Impossible de trouver des mappages iSCSI."
 #, python-format
 msgid "Unable to find ssh_hosts_key_file: %s"
 msgstr "ssh_hosts_key_file introuvable: %s"
-
-msgid "Unable to find system log file!"
-msgstr "Fichier de trace système non trouvé!"
 
 #, python-format
 msgid ""
