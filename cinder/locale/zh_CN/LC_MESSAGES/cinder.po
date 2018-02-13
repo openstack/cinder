@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-02-03 01:53+0000\n"
+"POT-Creation-Date: 2018-02-13 03:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -161,10 +161,6 @@ msgstr "在以下存储设备上，%(service)s 服务并非处于 %(status)s 状
 msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr "%(workers)d 的 %(worker_name)s 值无效，必须大于 0。"
-
-#, python-format
-msgid "%s"
-msgstr "%s"
 
 #, python-format
 msgid "%s \"data\" is not in result."
@@ -3878,19 +3874,11 @@ msgstr "无法通过UUID:%(uuid)s找到LUN。"
 msgid "LUN not found with given ref %s."
 msgstr "找不到具有给定引用 %s 的 LUN。"
 
-#, python-format
-msgid "Last %s cinder syslog entries:-"
-msgstr "以下是最后 %s 个 cinder 系统日志条目：-"
-
 msgid "LeftHand cluster not found"
 msgstr "找不到 LeftHand 集群"
 
 msgid "License is unavailable."
 msgstr "许可证不可用。"
-
-#, python-format
-msgid "Line %(dis)d : %(line)s"
-msgstr "行 %(dis)d：%(line)s"
 
 #, python-format
 msgid "Linked clone of source volume not supported in state: %s."
@@ -4251,9 +4239,6 @@ msgstr "不存在具有所提供 iSCSI IP 的活动 iSCSI 门户网站"
 msgid "No backups available to do an incremental backup."
 msgstr "没有任何备份可用于执行增量备份。"
 
-msgid "No cinder entries in syslog!"
-msgstr "系统日志中没有任何 cinder 条目！"
-
 #, python-format
 msgid "No cloned LUN named %s found on the filer"
 msgstr "在文件管理器上，找不到名为 %s 的已克隆 LUN"
@@ -4264,9 +4249,6 @@ msgstr "找不到配置节点。"
 #, python-format
 msgid "No element by given name %s."
 msgstr "没有具备给定名称 %s 的元素。"
-
-msgid "No errors in logfiles!"
-msgstr "日志文件中没有任何错误！"
 
 #, python-format
 msgid "No file found with %s as backing file."
@@ -5726,9 +5708,6 @@ msgstr "无法找到发起者为 %(name)s 的服务器对象。"
 #, python-format
 msgid "Unable to find ssh_hosts_key_file: %s"
 msgstr "找不到 ssh_hosts_key_file：%s"
-
-msgid "Unable to find system log file!"
-msgstr "不能发现系统日志文件"
 
 #, python-format
 msgid ""

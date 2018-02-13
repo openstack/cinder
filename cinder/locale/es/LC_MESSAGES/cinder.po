@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-02-03 01:53+0000\n"
+"POT-Creation-Date: 2018-02-13 03:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -127,10 +127,6 @@ msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr ""
 "El valor %(worker_name)s de %(workers)d no es válido, debe ser mayor que 0."
-
-#, python-format
-msgid "%s"
-msgstr "%s"
 
 #, python-format
 msgid "%s \"data\" is not in result."
@@ -3742,19 +3738,11 @@ msgstr "El LUN no existe."
 msgid "LUN not found with given ref %s."
 msgstr "No se ha encontrado un LUN con la referencia dada %s."
 
-#, python-format
-msgid "Last %s cinder syslog entries:-"
-msgstr "Últimas %s entradas de syslog de Cinder:-"
-
 msgid "LeftHand cluster not found"
 msgstr "Clúster LeftHand no encontrado"
 
 msgid "License is unavailable."
 msgstr "La licencia no está disponible."
-
-#, python-format
-msgid "Line %(dis)d : %(line)s"
-msgstr "Línea %(dis)d : %(line)s"
 
 #, python-format
 msgid "Linked clone of source volume not supported in state: %s."
@@ -4131,9 +4119,6 @@ msgstr ""
 "No hay copias de seguridad disponibles para hacer una copia de seguridad "
 "incremental."
 
-msgid "No cinder entries in syslog!"
-msgstr "No hay entradas de Cinder en syslog"
-
 #, python-format
 msgid "No cloned LUN named %s found on the filer"
 msgstr ""
@@ -4145,9 +4130,6 @@ msgstr "No se ha encontrado ningún nodo de configuración."
 #, python-format
 msgid "No element by given name %s."
 msgstr "No hay ningún elemento con el nombre indicado %s."
-
-msgid "No errors in logfiles!"
-msgstr "¡No hay errores en los ficheros de log!"
 
 #, python-format
 msgid "No file found with %s as backing file."
@@ -5580,9 +5562,6 @@ msgstr "No se pueden encontrar correlaciones iSCSI."
 #, python-format
 msgid "Unable to find ssh_hosts_key_file: %s"
 msgstr "No se puede encontrar ssh_hosts_key_file: %s"
-
-msgid "Unable to find system log file!"
-msgstr "¡No ha sido posible encontrar el fichero de log del sistema!"
 
 #, python-format
 msgid ""
