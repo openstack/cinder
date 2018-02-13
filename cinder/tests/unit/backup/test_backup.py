@@ -1452,14 +1452,6 @@ class BackupTestCase(BaseBackupTest):
         backups = db.backup_get_all_by_host(ctxt_read_deleted, 'testhost')
         self.assertEqual(2, len(backups))
 
-    def test_backup_manager_driver_name(self):
-        """Test mapping between backup services and backup drivers."""
-        self.override_config('backup_driver', "cinder.backup.services.swift")
-        backup_mgr = \
-            importutils.import_object(CONF.backup_manager)
-        self.assertEqual('cinder.backup.drivers.swift',
-                         backup_mgr.driver_name)
-
     def test_export_record_with_bad_service(self):
         """Test error handling.
 
@@ -1725,34 +1717,31 @@ class BackupTestCaseWithVerify(BaseBackupTest):
                        '_cleanup_temp_volumes_snapshots_for_one_backup')
     def test_backup_reset_status_from_nonrestoring_to_available(
             self, mock_clean_temp):
+        service_name = ('cinder.tests.unit.backup.'
+                        'fake_service_with_verify.FakeBackupServiceWithVerify')
+        self.override_config('backup_driver', service_name)
         vol_id = self._create_volume_db_entry(status='available',
                                               size=1)
         backup = self._create_backup_db_entry(status=fields.BackupStatus.ERROR,
-                                              volume_id=vol_id)
-        with mock.patch.object(manager.BackupManager,
-                               '_map_service_to_driver') as \
-                mock_map_service_to_driver:
-            # It should works when the service name is a string
-            backup_driver = 'cinder.tests.unit.backup.fake_service_with_verify'
-            mock_map_service_to_driver.return_value = backup_driver
-            self.backup_mgr.reset_status(self.ctxt,
-                                         backup,
-                                         fields.BackupStatus.AVAILABLE)
-            mock_clean_temp.assert_called_once_with(self.ctxt, backup)
-            new_backup = db.backup_get(self.ctxt, backup.id)
-            self.assertEqual(fields.BackupStatus.AVAILABLE,
-                             new_backup['status'])
+                                              volume_id=vol_id,
+                                              service=service_name)
+        self.backup_mgr.reset_status(self.ctxt,
+                                     backup,
+                                     fields.BackupStatus.AVAILABLE)
+        mock_clean_temp.assert_called_once_with(self.ctxt, backup)
+        new_backup = db.backup_get(self.ctxt, backup.id)
+        self.assertEqual(fields.BackupStatus.AVAILABLE,
+                         new_backup['status'])
 
-            mock_map_service_to_driver.return_value = backup_driver
-            self.backup_mgr.reset_status(self.ctxt,
-                                         backup,
-                                         fields.BackupStatus.ERROR)
-            mock_clean_temp.reset_mock()
+        self.backup_mgr.reset_status(self.ctxt,
+                                     backup,
+                                     fields.BackupStatus.ERROR)
+        mock_clean_temp.reset_mock()
 
-            self.backup_mgr.reset_status(self.ctxt,
-                                         backup,
-                                         fields.BackupStatus.AVAILABLE)
-            mock_clean_temp.assert_called_once_with(self.ctxt, backup)
+        self.backup_mgr.reset_status(self.ctxt,
+                                     backup,
+                                     fields.BackupStatus.AVAILABLE)
+        mock_clean_temp.assert_called_once_with(self.ctxt, backup)
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
 

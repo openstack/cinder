@@ -109,19 +109,7 @@ class BackupManager(manager.ThreadPoolManager):
     def driver_name(self):
         """This function maps old backup services to backup drivers."""
 
-        return self._map_service_to_driver(CONF.backup_driver)
-
-    def _map_service_to_driver(self, service):
-        """Maps services to drivers."""
-
-        if service in mapper:
-            msg = ("Using legacy backup service configuration like "
-                   "cinder.backup.services.* is deprecated and "
-                   "will be removed in the 'R' release. Please use "
-                   "the cinder.backup.drivers.* method instead.")
-            versionutils.report_deprecated_feature(LOG, msg)
-            return mapper[service]
-        return service
+        return CONF.backup_driver
 
     def get_backup_driver(self, context):
         driver = None
@@ -522,7 +510,7 @@ class BackupManager(manager.ThreadPoolManager):
                       'backup_id': backup['id'],
                       'backup_size': backup['size']})
 
-        backup_service = self._map_service_to_driver(backup['service'])
+        backup_service = backup['service']
         configured_service = self.driver_name
         # TODO(tommylikehu): We upgraded the 'driver_name' from module
         # to class name, so we use 'in' here to match two namings,
@@ -658,7 +646,7 @@ class BackupManager(manager.ThreadPoolManager):
             self._update_backup_error(backup, err, status)
             raise exception.InvalidBackup(reason=err)
 
-        backup_service = self._map_service_to_driver(backup['service'])
+        backup_service = backup['service']
         if backup_service is not None:
             configured_service = self.driver_name
             # TODO(tommylikehu): We upgraded the 'driver_name' from module
@@ -754,7 +742,7 @@ class BackupManager(manager.ThreadPoolManager):
             raise exception.InvalidBackup(reason=err)
 
         backup_record = {'backup_service': backup.service}
-        backup_service = self._map_service_to_driver(backup.service)
+        backup_service = backup.service
         configured_service = self.driver_name
         # TODO(tommylikehu): We upgraded the 'driver_name' from module
         # to class name, so we use 'in' here to match two namings,
@@ -913,7 +901,7 @@ class BackupManager(manager.ThreadPoolManager):
                  {'backup_id': backup.id,
                   'status': status})
 
-        backup_service_name = self._map_service_to_driver(backup.service)
+        backup_service_name = backup.service
         LOG.info('Backup service: %s.', backup_service_name)
         if backup_service_name is not None:
             configured_service = self.driver_name
