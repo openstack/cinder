@@ -12,32 +12,28 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import webob.exc
-
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.i18n import _
+from cinder.api.schemas import scheduler_hints
+from cinder.api import validation
 
 
 class SchedulerHintsController(wsgi.Controller):
 
-    @staticmethod
-    def _extract_scheduler_hints(body):
+    @validation.schema(scheduler_hints.create)
+    def _extract_scheduler_hints(self, req, body):
         hints = {}
-
         attr = '%s:scheduler_hints' % Scheduler_hints.alias
-        try:
-            if attr in body:
-                hints.update(body[attr])
-        except ValueError:
-            msg = _("Malformed scheduler_hints attribute")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        if body.get(attr) is not None:
+            hints.update(body.get(attr))
 
         return hints
 
     @wsgi.extends
     def create(self, req, body):
-        hints = self._extract_scheduler_hints(body)
+        attr = '%s:scheduler_hints' % Scheduler_hints.alias
+        scheduler_hints_body = dict.fromkeys((attr,), body.get(attr))
+        hints = self._extract_scheduler_hints(req, body=scheduler_hints_body)
 
         if 'volume' in body:
             body['volume']['scheduler_hints'] = hints

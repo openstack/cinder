@@ -15,6 +15,7 @@
 
 import datetime
 
+import ddt
 from oslo_serialization import jsonutils
 from six.moves import http_client
 
@@ -30,6 +31,7 @@ from cinder.tests.unit import fake_constants as fake
 UUID = fakes.FAKE_UUID
 
 
+@ddt.ddt
 class SchedulerHintsTestCase(test.TestCase):
 
     def setUp(self):
@@ -103,4 +105,45 @@ class SchedulerHintsTestCase(test.TestCase):
 
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(self.app)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+
+    @ddt.data({'local_to_instance': UUID},
+              {'local_to_instance': None},
+              {'different_host': [fake.UUID1, fake.UUID2]},
+              {'same_host': UUID},
+              {'same_host': [fake.UUID1, fake.UUID2]},
+              {'fake_key': 'fake_value'},
+              {'query': 'query_testing'},
+              {'query': {}},
+              None)
+    def test_scheduler_hints_with_valid_body(self, value):
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.content_type = 'application/json'
+        body = {'volume': {'size': 1},
+                'OS-SCH-HNT:scheduler_hints': value}
+
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(self.app)
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
+
+    @ddt.data({'local_to_instance': 'local_to_instance'},
+              {'different_host': 'different_host'},
+              {'different_host': ['different_host']},
+              {'different_host': [UUID, UUID]},
+              {'same_host': 'same_host'},
+              {'same_host': ['same_host']},
+              {'same_host': [UUID, UUID]},
+              {'query': None},
+              {'scheduler_hints'})
+    def test_scheduler_hints_with_invalid_body(self, value):
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.content_type = 'application/json'
+        body = {'volume': {'size': 1},
+                'OS-SCH-HNT:scheduler_hints': value}
+
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(self.app)
+
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)
