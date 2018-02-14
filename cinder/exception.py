@@ -22,7 +22,6 @@ SHOULD include dedicated exception logging.
 
 """
 
-from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_versionedobjects import exception as obj_exc
 import six
@@ -34,19 +33,6 @@ from cinder.i18n import _
 
 
 LOG = logging.getLogger(__name__)
-
-# TODO(smcginnis) Remove in Rocky
-exc_log_opts = [
-    cfg.BoolOpt('fatal_exception_format_errors',
-                default=False,
-                help='Make exception message format errors fatal.',
-                deprecated_for_removal=True,
-                deprecated_since='12.0.0',
-                deprecated_reason='This is only used for internal testing.'),
-]
-
-CONF = cfg.CONF
-CONF.register_opts(exc_log_opts)
 
 
 class ConvertedException(webob.exc.WSGIHTTPException):
