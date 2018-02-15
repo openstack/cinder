@@ -338,6 +338,11 @@ Forces a volume to detach. Specify the ``os-force_detach`` action in the request
 Rolls back an unsuccessful detach operation after you disconnect
 the volume.
 
+Policy defaults enable only users with the administrative role to
+perform this operation. Cloud providers can change these permissions
+through the ``volume_extension:volume_admin_actions:force_detach`` rule in
+the ``policy.json`` file.
+
 Normal response codes: 202
 
 
