@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    Backup service to driver mapping is removed. If you use old values like
+    'cinder.backup.services.swift' or 'cinder.backup.services.ceph' it should
+    be changed to 'cinder.backup.drivers.swift' or 'cinder.backup.drivers.ceph'
+    accordingly to get your backup service working.
