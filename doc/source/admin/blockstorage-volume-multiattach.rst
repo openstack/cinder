@@ -1,49 +1,147 @@
 .. _volume_multiattach:
 
-=============================================
-Enable attaching a volume to multiple servers
-=============================================
+==================================================================
+Volume multi-attach: Enable attaching a volume to multiple servers
+==================================================================
 
-When configured to allow it and for backends that support it, Cinder
-allows a volume to be attached to more than one host/server at a time.
+The ability to attach a volume to multiple hosts/servers simultaneously is a
+use case desired for active/active or active/standby scenarios.
 
-By default this feature is only enabled for administrators, and is
-controlled by policy.  If the user is not an admin or the policy file
-isn't modified only a single attachment per volume is allowed.
+Support was added in both `Cinder`_ and `Nova`_ in the Queens release to volume
+multi-attach with read/write (RW) mode.
 
-In addition, the ability to attach a volume to multiple hosts/servers
-requires that the volume is of a special type that includes an extra-spec
-capability setting of multiattach: True::
+.. warning::
+
+   It is the responsibility of the user to ensure that a multiattach or
+   clustered file system is used on the volumes. Otherwise there may be a high
+   probability of data corruption.
+
+In Cinder the functionality is available from microversion '3.50' or higher.
+
+As a prerequisite `new Attach/Detach APIs were added to Cinder`_ in Ocata to
+overcome earlier limitations towards achieving volume multi-attach.
+
+In case you use Cinder together with Nova, compute API calls were switched to
+using the new block storage volume attachment APIs in Queens, if the required
+block storage API microversion is available.
+
+For more information on using multiattach volumes with the compute service,
+refer to the corresponding
+`compute admin guide section <https://docs.openstack.org/nova/latest/admin/manage-volumes.html#volume-multi-attach>`_.
+
+How to create a 'multiattach' volume
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to be able to attach a volume to multiple server instances you need to
+have the 'multiattach' flag set to 'True' in the volume details. Please ensure
+you have the right role and policy settings before performing the operation.
+
+Currently you can create a multiattach volume in two ways.
+
+.. note::
+
+   For information on back ends that provide the functionality see
+   `Back end support`.
+
+Multiattach volume type
+-----------------------
+
+Starting from the Queens release the ability to attach a volume to multiple
+hosts/servers requires that the volume is of a special type that includes an
+extra-spec capability setting of ``multiattach=<is> True``. You can create the
+volume type the following way:
 
 .. code-block:: console
 
    $ cinder type-create multiattach
    $ cinder type-key multiattach set multiattach="<is> True"
 
-Now any volume of this type is capable of having multiple simultaneous
-attachments.  You'll need to ensure you have a backend device that reports
-support of the multiattach capability, otherwise scheduling will fail on
-create.
-
-At this point Cinder will no longer check in-use status when creating/updating
-attachments.
-
 .. note::
 
-    This feature is only supported when using the new attachment API's,
-    attachment-create, attachment-update etc.
+   Creating a new volume type is an admin-only operation by default, you can
+   change the settings in the 'policy.json' configuration file if needed.
 
-In addition, it's possible to retype a volume to be multiattach capable.
-Currently however we do NOT allow retyping a volume to multiattach:True or
-multiattach:False if it's status is not ``avaialable``.  This is because some
-consumers/hypervisors need to make special considerations at attach-time for
-multiattach volumes (ie disable caching) and there's no mechanism currently to
-go back to ``in-use`` volumes and update them.  While going from
-``multiattach:True`` --> ``multiattach:False`` isn't as problematic, it is
-error prone when it comes to special cases like shelve, migrate etc.  The bottom
-line is it's *safer* to just avoid changing this setting on ``in-use`` volumes.
+To create the volume you need to use the volume type you created earlier, like
+this:
 
-Finally, note that Cinder (nor its backends) does not do anything in terms of file
-systems or control of the volumes.  In other words, it's up to the user to
-ensure that a multiattach or clustered file system is used on the volumes.
-Otherwise there may be a high probability of data corruption.
+.. code-block:: console
+
+   $ cinder create <volume_size> --name <volume_name> --volume-type <volume_type_uuid>
+
+In addition, it is possible to retype a volume to be (or not to be) multiattach
+capable. Currently however we only allow retyping a volume if its status is
+``available``.
+
+The reasoning behind the limitation is that some consumers/hypervisors need to
+make special considerations at attach-time for multiattach volumes (like
+disable caching) and there's no mechanism currently to update a currently
+attached volume in a safe way while keeping it attached the whole time.
+
+Multiattach flag - DEPRECATED
+-----------------------------
+
+Starting from the Queens release using the old way of specifying multiattach
+with the flag is DEPRECATED:
+
+.. code-block:: console
+
+   $ cinder create <volume_size> --name <volume_name> --allow-multiattch
+
+RO / RW caveats (the secondary RW attachment issue)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, secondary volume attachments are made in read/write mode
+which can be problematic, especially for operations like volume migration.
+
+There might be improvements to provide support to specify the attach-mode for
+the secondary attachments, for the latest information please take a look into
+`Cinder's specs list`_ for the current release.
+
+Back end support
+~~~~~~~~~~~~~~~~
+
+In order to have the feature available, multi-attach needs to be supported by
+the chosen back end which is indicated through capabilities in the
+corresponding volume driver.
+
+The reference implementation is available on LVM in the Queens release. You can
+check the `Driver Support Matrix`_ for further information on which back end
+provides the functionality.
+
+Policy rules
+~~~~~~~~~~~~
+
+You can control the availability of volume multi-attach through policies. We
+describe the default values in this documentation, you need to modify the
+'policy.json' configuration file if you would like to changes these settings.
+
+Multiattach policy
+------------------
+
+The general policy rule to allow the creation or retyping of multiattach
+volumes is named  ``volume:multiattach``.
+
+The default setting of this policy is ``rule:admin_or_owner``.
+
+Multiattach policy for bootable volumes
+---------------------------------------
+
+This is a policy to disallow the ability to create multiple attachments on a
+volume that is marked as bootable with the name
+``volume:multiattach_bootable_volume``.
+
+This is an attachment policy with a default setting of ``rule:admin_or_owner``.
+
+Known issues and limitations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Retyping an in-use volume from a multiattach-capable type to a
+  non-multiattach-capable type, or vice-versa, is not supported.
+- It is not recommended to retype an in-use multiattach volume if that volume
+  has more than one active read/write attachment.
+
+.. _`Cinder`: https://specs.openstack.org/openstack/cinder-specs/specs/queens/enable-multiattach.html
+.. _`Nova`: https://specs.openstack.org/openstack/nova-specs/specs/queens/approved/cinder-volume-multi-attach.html
+.. _`new Attach/Detach APIs were added to Cinder`: http://specs.openstack.org/openstack/cinder-specs/specs/ocata/add-new-attach-apis.html
+.. _`Cinder's specs list`: https://specs.openstack.org/openstack/cinder-specs/index.html
+.. _`Driver Support Matrix`: https://wiki.openstack.org/wiki/CinderSupportMatrix
