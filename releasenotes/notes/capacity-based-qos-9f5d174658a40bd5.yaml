@@ -1,0 +1,13 @@
+---
+features:
+  - Cinder now allows for capacity based QoS which can be useful in
+    environments where storage performance scales with consumption (such as
+    RBD backed storage).  The newly added QoS specs are `read_iops_sec_per_gb`,
+    `write_iops_sec_per_gb`, `total_iops_sec_per_gb`, `read_bytes_sec_per_gb`,
+    `write_bytes_sec_per_gb` and `total_bytes_sec_per_gb`.  These values will
+    be multiplied by the size of the volume and passed to the consumer.
+
+    For example, setting `total_iops_sec_per_gb` to 30 and setting
+    `total_bytes_sec_per_gb` to `1048576` (1MB) then creating a 100 GB volume
+    with that QoS will result in a volume with 3,000 total IOPs and 100MB/s
+    throughput limit.

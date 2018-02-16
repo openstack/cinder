@@ -1602,22 +1602,18 @@ class VolumeManager(manager.CleanableManager,
             if qos and qos.get('consumer') in ['front-end', 'both']:
                 specs = qos.get('specs')
 
+            # NOTE(mnaser): The following configures for per-GB QoS
             if specs is not None:
-                # Compute fixed IOPS values for per-GB keys
-                if 'write_iops_sec_per_gb' in specs:
-                    specs['write_iops_sec'] = (
-                        int(specs['write_iops_sec_per_gb']) * int(volume.size))
-                    specs.pop('write_iops_sec_per_gb')
+                volume_size = int(volume.size)
+                tune_opts = ('read_iops_sec', 'read_bytes_sec',
+                             'write_iops_sec', 'write_bytes_sec',
+                             'total_iops_sec', 'total_bytes_sec')
 
-                if 'read_iops_sec_per_gb' in specs:
-                    specs['read_iops_sec'] = (
-                        int(specs['read_iops_sec_per_gb']) * int(volume.size))
-                    specs.pop('read_iops_sec_per_gb')
-
-                if 'total_iops_sec_per_gb' in specs:
-                    specs['total_iops_sec'] = (
-                        int(specs['total_iops_sec_per_gb']) * int(volume.size))
-                    specs.pop('total_iops_sec_per_gb')
+                for option in tune_opts:
+                    option_per_gb = '%s_per_gb' % option
+                    if option_per_gb in specs:
+                        specs[option] = int(specs[option_per_gb]) * volume_size
+                        specs.pop(option_per_gb)
 
         qos_spec = dict(qos_specs=specs)
         conn_info['data'].update(qos_spec)
