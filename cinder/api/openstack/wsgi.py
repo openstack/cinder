@@ -853,7 +853,8 @@ class Resource(wsgi.Application):
         except (AttributeError, TypeError):
             return Fault(webob.exc.HTTPNotFound())
         except KeyError as ex:
-            msg = _("There is no such action: %s") % ex.args[0]
+            msg = (_("There is no such action: %s. Verify the request body "
+                     "and Content-Type header and try again.") % ex.args[0])
             return Fault(webob.exc.HTTPBadRequest(explanation=msg))
         except exception.MalformedRequestBody:
             msg = _("Malformed request body")
