@@ -19,12 +19,14 @@
 
 
 import abc
+from collections import OrderedDict
 import contextlib
 import datetime
 import functools
 import inspect
 import logging as py_logging
 import math
+import operator
 import os
 import pyclbr
 import random
@@ -1137,3 +1139,9 @@ def get_log_levels(prefix):
 
 def paths_normcase_equal(path_a, path_b):
     return os.path.normcase(path_a) == os.path.normcase(path_b)
+
+
+def create_ordereddict(adict):
+    """Given a dict, return a sorted OrderedDict."""
+    return OrderedDict(sorted(adict.items(),
+                              key=operator.itemgetter(0)))

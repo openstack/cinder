@@ -14,6 +14,7 @@
 #    under the License.
 
 import base64
+from collections import OrderedDict
 
 from ddt import data
 from ddt import ddt
@@ -28,23 +29,26 @@ from six.moves import urllib
 
 from cinder import exception
 from cinder import test
+from cinder import utils
 from cinder.volume.drivers import qnap
+
 CONF = cfg.CONF
 
 FAKE_LUNNAA = {'LUNNAA': 'fakeLunNaa'}
 FAKE_SNAPSHOT = {'snapshot_id': 'fakeSnapshotId'}
 
 FAKE_PASSWORD = 'qnapadmin'
-FAKE_PARMS = {}
+FAKE_PARMS = OrderedDict()
 FAKE_PARMS['pwd'] = base64.b64encode(FAKE_PASSWORD.encode("utf-8"))
 FAKE_PARMS['serviceKey'] = 1
 FAKE_PARMS['user'] = 'admin'
-sanitized_params = {}
+sanitized_params = OrderedDict()
 
 for key in FAKE_PARMS:
     value = FAKE_PARMS[key]
     if value is not None:
         sanitized_params[key] = six.text_type(value)
+sanitized_params = utils.create_ordereddict(sanitized_params)
 global_sanitized_params = urllib.parse.urlencode(sanitized_params)
 header = {
     'charset': 'utf-8', 'Content-Type': 'application/x-www-form-urlencoded'}
@@ -2379,6 +2383,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         create_lun_url = (
             '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
@@ -2441,6 +2446,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         create_lun_url = (
             '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
@@ -2549,6 +2555,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         delete_lun_url = (
             '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
@@ -2645,6 +2652,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         delete_lun_url = (
             '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
@@ -2692,7 +2700,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             value = fake_params[key]
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
-
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         get_specific_poolinfo_url = (
             '/cgi-bin/disk/disk_manage.cgi?' + fake_post_parms)
@@ -2794,6 +2802,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         create_target_url = (
             '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
@@ -2898,6 +2907,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         add_target_init_url = (
             '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
@@ -3027,6 +3037,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         map_lun_url = (
             '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
@@ -3126,6 +3137,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         unmap_lun_url = (
             '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
@@ -3222,6 +3234,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         unmap_lun_url = (
             '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
@@ -3318,6 +3331,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         get_iscsi_portal_info_url = (
             '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
@@ -3386,6 +3400,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             value = fake_params[key]
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
 
         get_lun_info_url = (
@@ -3431,6 +3446,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             value = fake_params[key]
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
 
         get_lun_info_url = (
@@ -3476,6 +3492,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             value = fake_params[key]
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
 
         get_lun_info_url = (
@@ -3521,6 +3538,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             value = fake_params[key]
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
+
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
 
         get_lun_info_url = (
@@ -3592,6 +3611,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             value = fake_params[key]
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
+
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
 
         get_lun_info_url = (
@@ -3668,6 +3689,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         get_snapshot_info_url = (
             '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
@@ -3770,6 +3792,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         create_snapshot_api_url = (
             '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
@@ -3866,6 +3889,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         api_delete_snapshot_url = (
             '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
@@ -3912,6 +3936,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         api_delete_snapshot_url = (
             '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
@@ -3958,6 +3983,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         api_delete_snapshot_url = (
             '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
@@ -4057,6 +4083,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         clone_snapshot_url = (
             '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
@@ -4164,6 +4191,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         edit_lun_url = (
             '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
@@ -4270,6 +4298,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         get_all_iscsi_portal_setting_url = (
             '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
@@ -4317,6 +4346,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         get_ethernet_ip_url = (
             '/cgi-bin/sys/sysRequest.cgi?' + fake_post_parms)
@@ -4362,6 +4392,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         get_ethernet_ip_url = (
             '/cgi-bin/sys/sysRequest.cgi?' + fake_post_parms)
@@ -4405,6 +4436,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         get_ethernet_ip_url = (
             '/cgi-bin/sys/sysRequest.cgi?' + fake_post_parms)
@@ -4478,6 +4510,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         get_target_info_url = (
             '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
@@ -4575,6 +4608,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         get_target_info_url = (
             '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
@@ -4649,6 +4683,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         get_target_info_url = (
             '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_parms)
@@ -4713,6 +4748,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         create_lun_url = (
             '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
@@ -4773,6 +4809,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         create_lun_url = (
             '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
@@ -4881,6 +4918,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         delete_lun_url = (
             '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
@@ -4979,6 +5017,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         delete_lun_url = (
             '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
@@ -5027,6 +5066,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         map_lun_url = (
             '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
@@ -5126,6 +5166,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         unmap_lun_url = (
             '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
@@ -5224,6 +5265,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         unmap_lun_url = (
             '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
@@ -5323,6 +5365,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_params[key] = six.text_type(value)
 
+        fake_post_params = utils.create_ordereddict(fake_post_params)
         fake_post_params = urllib.parse.urlencode(fake_post_params)
         remove_target_init_url = (
             '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_params)
@@ -5421,6 +5464,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_params[key] = six.text_type(value)
 
+        fake_post_params = utils.create_ordereddict(fake_post_params)
         fake_post_params = urllib.parse.urlencode(fake_post_params)
         get_target_info_url = (
             '/cgi-bin/disk/iscsi_portal_setting.cgi?' + fake_post_params)
@@ -5507,7 +5551,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         self.driver.api_executor.get_ethernet_ip(
             type='data')
 
-        fake_post_parm = 'subfunc=net_setting&sid=fakeSid'
+        fake_post_parm = 'sid=fakeSid&subfunc=net_setting'
         get_ethernet_ip_url = (
             '/cgi-bin/sys/sysRequest.cgi?' + fake_post_parm)
 
@@ -5579,7 +5623,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
             value = fake_params[key]
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
-
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         get_snapshot_info_url = (
             '/cgi-bin/disk/snapshot.cgi?' + fake_post_parms)
@@ -5681,6 +5725,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         create_target_url = (
             '/cgi-bin/disk/iscsi_target_setting.cgi?' + fake_post_parms)
@@ -5798,6 +5843,7 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         create_lun_url = (
             '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
@@ -5861,6 +5907,7 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
             if value is not None:
                 fake_post_parms[key] = six.text_type(value)
 
+        fake_post_parms = utils.create_ordereddict(fake_post_parms)
         fake_post_parms = urllib.parse.urlencode(fake_post_parms)
         create_lun_url = (
             '/cgi-bin/disk/iscsi_lun_setting.cgi?' + fake_post_parms)
@@ -5957,7 +6004,7 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
         self.driver.api_executor.get_ethernet_ip(
             type='data')
 
-        fake_post_parm = 'subfunc=net_setting&sid=fakeSid'
+        fake_post_parm = 'sid=fakeSid&subfunc=net_setting'
         get_ethernet_ip_url = (
             '/cgi-bin/sys/sysRequest.cgi?' + fake_post_parm)
         expected_call_list = [
@@ -5973,7 +6020,7 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
     def test_get_ethernet_ip_negative(
             self,
             mock_http_connection):
-        """Test get ehternet ip."""
+        """Test get ethernet ip."""
         mock_http_connection.return_value.getresponse.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoTesResponse(),

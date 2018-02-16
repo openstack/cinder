@@ -17,6 +17,7 @@ Volume driver for QNAP Storage.
 This driver supports QNAP Storage for iSCSI.
 """
 import base64
+from collections import OrderedDict
 import eventlet
 import functools
 import re
@@ -1219,12 +1220,12 @@ class QnapAPIExecutor(object):
 
     def execute_login(self):
         """Login and return sid."""
-        params = {}
-        params['user'] = self.username
+        params = OrderedDict()
         params['pwd'] = base64.b64encode(self.password.encode("utf-8"))
         params['serviceKey'] = '1'
+        params['user'] = self.username
 
-        sanitized_params = {}
+        sanitized_params = OrderedDict()
 
         for key in params:
             value = params[key]
@@ -1247,14 +1248,17 @@ class QnapAPIExecutor(object):
         self.sid = self.execute_login()
 
     def _get_res_details(self, url, **kwargs):
-        sanitized_params = {}
+        sanitized_params = OrderedDict()
 
-        for key, value in kwargs.items():
+        # Sort the dict of parameters
+        params = utils.create_ordereddict(kwargs)
+
+        for key, value in params.items():
             if value is not None:
                 sanitized_params[key] = six.text_type(value)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
-        url = url + sanitized_params
+        encoded_params = urllib.parse.urlencode(sanitized_params)
+        url = url + encoded_params
 
         res_details = self._execute_and_get_response_details(self.ip, url)
 
