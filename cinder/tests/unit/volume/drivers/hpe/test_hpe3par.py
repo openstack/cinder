@@ -3106,6 +3106,9 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
         mock_client = self.setup_driver()
         mock_client.isOnlinePhysicalCopy.return_value = False
+        mock_client.promoteVirtualCopy.return_value = {'taskid': 1}
+        mock_client.getTask.return_value = {'status': 1}
+
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
@@ -3114,7 +3117,8 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             expected = [
                 mock.call.isOnlinePhysicalCopy('osv-dh-F5VGRTseuujPjbeRBVg'),
                 mock.call.promoteVirtualCopy('oss-L4I73ONuTci9Fd4ceij-MQ',
-                                             optional={})
+                                             optional={}),
+                mock.call.getTask(1)
             ]
 
             mock_client.assert_has_calls(
@@ -3134,6 +3138,8 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         mock_client = self.setup_driver()
         mock_client.isOnlinePhysicalCopy.return_value = True
         mock_client.getStorageSystemInfo.return_value = mock.ANY
+        mock_client.promoteVirtualCopy.return_value = {'taskid': 1}
+        mock_client.getTask.return_value = {'status': 1}
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -3148,6 +3154,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 mock.call.promoteVirtualCopy(
                     'oss-L4I73ONuTci9Fd4ceij-MQ',
                     optional={'online': True, 'allowRemoteCopyParent': True}),
+                mock.call.getTask(1),
                 mock.call.startRemoteCopy('rcg-0DM4qZEVSKON-DXN-N')
             ]
             mock_client.assert_has_calls(
@@ -5440,6 +5447,8 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         mock_client = self.setup_driver()
         mock_client.isOnlinePhysicalCopy.return_value = False
         mock_client.getStorageSystemInfo.return_value = mock.ANY
+        mock_client.promoteVirtualCopy.return_value = {'taskid': 1}
+        mock_client.getTask.return_value = {'status': 1}
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -5463,6 +5472,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 mock.call.promoteVirtualCopy(
                     'oss-L4I73ONuTci9Fd4ceij-MQ',
                     optional={'allowRemoteCopyParent': True}),
+                mock.call.getTask(1),
                 mock.call.startRemoteCopy(self.RCG_3PAR_GROUP_NAME)
             ]
             mock_client.assert_has_calls(
