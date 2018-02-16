@@ -264,11 +264,12 @@ class HPE3PARCommon(object):
         4.0.5 - Fixed volume created and added in cloned group,
                 differs from volume present in the source group in terms of
                 extra-specs. bug #1744025
+        4.0.6 - Monitor task of promoting a virtual copy. bug #1749642
 
 
     """
 
-    VERSION = "4.0.5"
+    VERSION = "4.0.6"
 
     stats = {}
 
@@ -3319,7 +3320,19 @@ class HPE3PARCommon(object):
                       {'volume': volume_name})
             optional['online'] = True
 
-        self.client.promoteVirtualCopy(snapshot_name, optional=optional)
+        body = self.client.promoteVirtualCopy(snapshot_name, optional=optional)
+
+        task_id = body.get('taskid')
+
+        task_status = self._wait_for_task_completion(task_id)
+        if task_status['status'] is not self.client.TASK_DONE:
+            dbg = {'status': task_status, 'id': volume['id']}
+            msg = _('Promote virtual copy failed: '
+                    'id=%(id)s, status=%(status)s.') % dbg
+            raise exception.CinderException(msg)
+        else:
+            LOG.debug('Promote virtual copy completed: '
+                      'id=%s.', volume['id'])
 
         if replication_flag or volume_part_of_group:
             try:
