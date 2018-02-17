@@ -64,6 +64,7 @@ class SSHPool(pools.Pool):
         self.conn_timeout = conn_timeout if conn_timeout else None
         self.privatekey = privatekey
         self.hosts_key_file = None
+        self.current_size = 0
 
         # Validate good config setting here.
         # Paramiko handles the case where the file is inaccessible.
@@ -98,6 +99,23 @@ class SSHPool(pools.Pool):
             self.hosts_key_file += ',' + CONF.ssh_hosts_key_file
 
         super(SSHPool, self).__init__(*args, **kwargs)
+
+    def __del__(self):
+        # just return if nothing todo
+        if not self.current_size:
+            return
+        # change the size of the pool to reduce the number
+        # of elements on the pool via puts.
+        self.resize(1)
+        # release all but the last connection using
+        # get and put to allow any get waiters to complete.
+        while(self.waiting() or self.current_size > 1):
+            conn = self.get()
+            self.put(conn)
+        # Now free everthing that is left
+        while(self.free_items):
+            self.free_items.popleft().close()
+            self.current_size -= 1
 
     def create(self):
         try:
@@ -167,6 +185,14 @@ class SSHPool(pools.Pool):
                 if conn:
                     self.current_size -= 1
         return new_conn
+
+    def put(self, conn):
+        # If we are have more connections than we should just close it
+        if self.current_size > self.max_size:
+            conn.close()
+            self.current_size -= 1
+            return
+        super(SSHPool, self).put(conn)
 
     def remove(self, ssh):
         """Close an ssh client and remove it from free_items."""

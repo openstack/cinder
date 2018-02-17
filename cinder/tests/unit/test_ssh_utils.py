@@ -347,3 +347,72 @@ class SSHPoolTestCase(test.TestCase):
         self.assertRaises(paramiko.SSHException,
                           sshpool.get)
         self.assertEqual(0, sshpool.current_size)
+
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('os.path.isfile', return_value=True)
+    @mock.patch('paramiko.RSAKey.from_private_key_file')
+    @mock.patch('paramiko.SSHClient')
+    def test_ssh_put(self, mock_sshclient, mock_pkey, mock_isfile,
+                     mock_open):
+        self.override_config(
+            'ssh_hosts_key_file', '/var/lib/cinder/ssh_known_hosts')
+
+        fake_close = mock.MagicMock()
+        fake = FakeSSHClient()
+        fake.close = fake_close
+        mock_sshclient.return_value = fake
+
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=5,
+                                    max_size=5)
+        self.assertEqual(5, sshpool.current_size)
+        with sshpool.item():
+            pass
+        self.assertEqual(5, sshpool.current_size)
+        sshpool.resize(4)
+        with sshpool.item():
+            pass
+        self.assertEqual(4, sshpool.current_size)
+        fake_close.asssert_called_once_with(mock.call())
+        fake_close.reset_mock()
+        sshpool.resize(3)
+        with sshpool.item():
+            pass
+        self.assertEqual(3, sshpool.current_size)
+        fake_close.asssert_called_once_with(mock.call())
+
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('os.path.isfile', return_value=True)
+    @mock.patch('paramiko.RSAKey.from_private_key_file')
+    @mock.patch('paramiko.SSHClient')
+    def test_ssh_destructor(self, mock_sshclient, mock_pkey, mock_isfile,
+                            mock_open):
+        self.override_config(
+            'ssh_hosts_key_file', '/var/lib/cinder/ssh_known_hosts')
+
+        fake_close = mock.MagicMock()
+        fake = FakeSSHClient()
+        fake.close = fake_close
+        mock_sshclient.return_value = fake
+
+        # create with password
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=5,
+                                    max_size=5)
+        self.assertEqual(5, sshpool.current_size)
+        close_expect_calls = [mock.call(), mock.call(), mock.call(),
+                              mock.call(), mock.call()]
+
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=5,
+                                    max_size=5)
+        self.assertEqual(fake_close.mock_calls, close_expect_calls)
+        sshpool = None
+        self.assertEqual(fake_close.mock_calls, close_expect_calls +
+                         close_expect_calls)
