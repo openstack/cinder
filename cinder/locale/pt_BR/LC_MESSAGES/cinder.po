@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-02-13 03:39+0000\n"
+"POT-Creation-Date: 2018-02-17 00:08+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -5077,10 +5077,6 @@ msgstr "Não há compartilhamento que possa hospedar %(volume_size)sG"
 #, python-format
 msgid "There is no share which can host %(volume_size)sG."
 msgstr "Não há nenhum compartilhamento que possa armazenar %(volume_size)sG."
-
-#, python-format
-msgid "There is no such action: %s"
-msgstr "Essa ação não existe: %s"
 
 msgid "There is no virtual disk device."
 msgstr "Não há nenhum dispositivo de disco virtual."

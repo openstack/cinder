@@ -2,16 +2,17 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 # Hidekazu Nakamura <hid-nakamura@vf.jp.nec.com>, 2017. #zanata
 # Yuko Fukuda <fukuda.yuko@jp.fujitsu.com>, 2017. #zanata
+# Shu Muto <shu-mutou@rf.jp.nec.com>, 2018. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: Cinder Release Notes\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-02-08 12:51+0000\n"
+"POT-Creation-Date: 2018-02-17 00:05+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2017-09-04 07:29+0000\n"
-"Last-Translator: Hidekazu Nakamura <hid-nakamura@vf.jp.nec.com>\n"
+"PO-Revision-Date: 2018-02-16 09:09+0000\n"
+"Last-Translator: Shu Muto <shu-mutou@rf.jp.nec.com>\n"
 "Language-Team: Japanese\n"
 "Language: ja\n"
 "X-Generator: Zanata 3.9.6\n"
@@ -47,8 +48,29 @@ msgstr "10.0.4"
 msgid "10.0.5"
 msgstr "10.0.5"
 
+msgid "10.0.6-8"
+msgstr "10.0.6-8"
+
 msgid "11.0.0"
 msgstr "11.0.0"
+
+msgid "11.0.1"
+msgstr "11.0.1"
+
+msgid "11.0.2"
+msgstr "11.0.2"
+
+msgid "12.0.0.0b1"
+msgstr "12.0.0.0b1"
+
+msgid "12.0.0.0b2"
+msgstr "12.0.0.0b2"
+
+msgid "12.0.0.0b3"
+msgstr "12.0.0.0b3"
+
+msgid "12.0.0.0rc1"
+msgstr "12.0.0.0rc1"
 
 msgid ""
 "3PAR driver creates FC VLUN of match-set type instead of host sees. With "
@@ -107,6 +129,34 @@ msgstr ""
 "ムサイズの合計（GB）を表示します。"
 
 msgid ""
+"Add 'LUNType' configuration verification for Huawei driver when connecting "
+"to Dorado array. Because Dorado array only supports 'Thin' lun type, so "
+"'LUNType' only can be configured as 'Thin', any other type is invalid and if "
+"'LUNType' not explicitly configured, by default use 'Thin' for Dorado array."
+msgstr ""
+"Huawei ドライバーにDorado アレイへの接続時の 'LUNType' 設定検証を追加しまし"
+"た。Dorado アレイは 'Thin' lun タイプのみサポートしているため、'LUNType' の"
+"み 'Thin' に設定し、その他のタイプは無効であり、'LUNType' が明示的に設定され"
+"ていない場合はデフォルトで 'Thin' を Dorado アレイに使用します。"
+
+msgid ""
+"Add 'display_name' and 'display_description' validation for creating/"
+"updating snapshot and volume operations."
+msgstr ""
+"スナップショットの作成／更新とボリューム操作に 'display_name' と "
+"'display_description' の検証を追加しました。"
+
+msgid "Add CG capability to generic volume groups in Huawei driver."
+msgstr ""
+"Huaweiドライバーで 一般的なボリュームグループにコンシステンシーグループ能力を"
+"追加しました。"
+
+msgid "Add CG capability to generic volume groups in INFINIDAT driver."
+msgstr ""
+"INFINIDAT ドライバーで 一般的なボリュームグループにコンシステンシーグループ能"
+"力を追加しました。"
+
+msgid ""
 "Add Support for QoS in the Nimble Storage driver. QoS is available from "
 "Nimble OS release 4.x and above."
 msgstr ""
@@ -121,8 +171,29 @@ msgid "Add ``admin_or_storage_type_admin`` rule to ``policy.json``, e.g."
 msgstr ""
 "``policy.json`` に ``admin_or_storage_type_admin`` を追加しました。 例："
 
+msgid ""
+"Add ``all_tenants``, ``project_id`` support in attachment list&detail APIs."
+msgstr ""
+"接続リストと詳細の API に ``all_tenants`` と ``project_id`` のサポートを追加"
+"しました。"
+
+msgid ""
+"Add ``all_tenants``, ``project_id`` support in the attachment list and "
+"detail APIs."
+msgstr ""
+"接続リストと詳細の API に ``all_tenants`` と ``project_id`` のサポートを追加"
+"しました。"
+
 msgid "Add ``storage_type_admin`` role."
 msgstr "``storage_type_admin`` ロールを追加しました。"
+
+msgid "Add ``user_id`` field to snapshot list/detail and snapshot show."
+msgstr ""
+"snapshot list/detail および snapshot show に ``user_id`` フィールドを追加しま"
+"した。"
+
+msgid "Add ``volume-type`` filter to API Get-Pools"
+msgstr "Get-Pools API に ``volume-type`` フィルターを追加しました。"
 
 msgid ""
 "Add ability to enable multi-initiator support to allow live migration in the "
@@ -132,11 +203,49 @@ msgstr ""
 "ターのサポートを可能にする機能を追加しました。"
 
 msgid ""
+"Add ability to extend ``in-use`` volume. User should be aware of the whole "
+"environment before using this feature because it's dependent on several "
+"external factors below:"
+msgstr ""
+"``使用中``ボリュームを拡張できるようになりました。以下のいくつかの外部要因に"
+"依存しているため、この機能を使用する前に環境全体を認識しておく必要がありま"
+"す。"
+
+msgid "Add ability to specify backup driver via class name."
+msgstr "クラス名でバックアップドライバーを指定できるようになりました。"
+
+msgid "Add backup snapshots support for Storwize/SVC driver."
+msgstr ""
+"Storwize/SVC ドライバーにスナップショットバックアップのサポートを追加しまし"
+"た。"
+
+msgid "Add chap authentication support for the vmax backend."
+msgstr "VMAX バックエンドに chap 認証のサポートを追加しました。"
+
+msgid ""
 "Add consistency group capability to Generic Volume Groups in the Dell EMC SC "
 "driver."
 msgstr ""
 "Dell EMC SC ドライバに汎用Volume Groupに対する整合性グループ機能が追加されま"
 "した。"
+
+msgid ""
+"Add consistency group capability to generic volume groups in Storwize "
+"drivers."
+msgstr ""
+"Storwize ドライバーの一般的なボリュームグループにコンシステンシーグループ能力"
+"を追加しました。"
+
+msgid "Add consistency group replication support in XIV\\A9000 Cinder driver."
+msgstr ""
+"XIV\\A9000 Cinder ドライバーでコンシステンシーグループレプリケーションをサ"
+"ポートしました。"
+
+msgid ""
+"Add consistent group capability to generic volume groups in CoprHD driver."
+msgstr ""
+"CoprHD ドライバーの一般的なボリュームグループにコンシステンシーグループ能力を"
+"追加しました。"
 
 msgid ""
 "Add consistent group capability to generic volume groups in Lefthand driver."
@@ -163,11 +272,54 @@ msgstr ""
 "に整合性グループ機能が追加されました。"
 
 msgid ""
+"Add consistent group capability to generic volume groups in the SolidFire "
+"driver."
+msgstr ""
+" SolidFire ドライバーの一般的なボリュームグループにコンシステンシーグループ能"
+"力を追加しました。"
+
+msgid ""
 "Add consistent group capability to generic volume groups in the XtremIO "
 "driver."
 msgstr ""
 " XtremIO ドライバーで 一般的なボリュームグループにコンシステンシーグループ能"
 "力を追加しました。"
+
+msgid ""
+"Add consistent group snapshot support to generic volume groups in VMAX "
+"driver version 3.0."
+msgstr ""
+" VMAX ドライバーの一般的なボリュームグループにコンシステンシーグループスナッ"
+"プショットのサポートを追加しました。"
+
+msgid ""
+"Add consistent replication group support in Dell EMC VMAX cinder driver."
+msgstr ""
+"Dell EMC VMAX Cinder ドライバーに、 整合レプリケーショングループのサポートを"
+"追加しました。"
+
+msgid "Add consistent replication group support in Storwize Cinder driver."
+msgstr ""
+"Storwize Cinder ドライバーに、 整合レプリケーショングループのサポートを追加し"
+"ました。"
+
+msgid "Add consistent replication group support in VNX cinder driver."
+msgstr ""
+"VNX Cinder ドライバーに、 整合レプリケーショングループのサポートを追加しまし"
+"た。"
+
+msgid ""
+"Add enhanced support to the QNAP Cinder driver, including 'CHAP', 'Thin "
+"Provision', 'SSD Cache', 'Dedup' and 'Compression'."
+msgstr ""
+"Add enhanced support to the QNAP Cinder driver, including 'CHAP'、'Thin "
+"Provision'、'SSD Cache'、'Dedup' および 'Compression' を含む、サポート強化を "
+"QNAP Cinder ドライバーに追加しました。"
+
+msgid "Add filter, sorter and pagination support in group snapshot listings."
+msgstr ""
+"グループスナップショットの一覧にフィルター、ソート、ページ送りのサポートを追"
+"加しました。"
 
 msgid "Add filters support to get_pools API v3.28."
 msgstr "get_pools API v3.28 でフィルタサポートを追加しました。"
@@ -178,6 +330,24 @@ msgid ""
 msgstr ""
 "Pure Storage ボリュームドライバーに get_manageable_volumes と "
 "get_manageable_snapshots 実装を追加しました。"
+
+msgid ""
+"Add global mirror with change volumes(gmcv) support and user can manage gmcv "
+"replication volume by SVC driver. An example to set a gmcv replication "
+"volume type, set property replication_type as \"<in> gmcv\", property "
+"replication_enabled as \"<is> True\" and set property drivers:"
+"cycle_period_seconds as 500."
+msgstr ""
+"ボリューム変更を伴うグローバルミラー (gmcv) のサポートを追加し、SVC ドライ"
+"バーで gmcv レプリケーションボリュームを管理できるようになりました。gmcv レプ"
+"リケーションボリュームタイプを設定する一つの例として、プロパティー "
+"replication_type を \"<in> gmcv\" に設定し、プロパティー replication_enabled "
+"を \"<is> True\" に設定し、プロパティー driver:cycle_period_seconds を 500 に"
+"設定します。"
+
+msgid "Add mirrored volume support in IBM SVC/Storwize driver."
+msgstr ""
+"IBM SVC/Storwize ドライバーにミラーされたボリュームのサポートを追加しました。"
 
 msgid "Add multipath enhancement to Storwize iSCSI driver."
 msgstr "Storwize SVC ドライバーにマルチパスのサポートを追加しました。"
@@ -714,6 +884,9 @@ msgid "Changes config option default for datera_num_replicas from 1 to 3"
 msgstr ""
 "設定オプション datera_num_replicas のデフォルト値を 1 から 3 に変更しました。"
 
+msgid "Cinder Release Notes"
+msgstr "Cinder リリースノート"
+
 msgid "Current Series Release Notes"
 msgstr "開発中バージョンのリリースノート"
 
@@ -752,11 +925,318 @@ msgstr "Mitaka バージョンのリリースノート"
 msgid "New Features"
 msgstr "新機能"
 
+msgid "New iSCSI Cinder volume driver for Kaminario K2 all-flash arrays."
+msgstr ""
+"Kaminario K2 all-flash アレイの新しい iSCSI Cinder ボリュームドライバー"
+
+msgid "New path - cinder.volume.drivers.hpe.hpe_3par_fc.HPE3PARFCDriver"
+msgstr "新しいパス - cinder.volume.drivers.hpe.hpe_3par_fc.HPE3PARFCDriver"
+
+msgid "New path - cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver"
+msgstr ""
+"新しいパス - cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver"
+
+msgid ""
+"New path - cinder.volume.drivers.hpe.hpe_lefthand_iscsi."
+"HPELeftHandISCSIDriver"
+msgstr ""
+"新しいパス - cinder.volume.drivers.hpe.hpe_lefthand_iscsi."
+"HPELeftHandISCSIDriver"
+
+msgid "New path - cinder.volume.drivers.hpe.hpe_xp_fc.HPEXPFCDriver"
+msgstr "新しいパス - cinder.volume.drivers.hpe.hpe_xp_fc.HPEXPFCDriver"
+
+msgid "New path - cinder.volume.drivers.huawei.huawei_driver.HuaweiFCDriver"
+msgstr "新しいパス - cinder.volume.drivers.huawei.huawei_driver.HuaweiFCDriver"
+
+msgid "New path - cinder.volume.drivers.huawei.huawei_driver.HuaweiISCSIDriver"
+msgstr ""
+"新しいパス - cinder.volume.drivers.huawei.huawei_driver.HuaweiISCSIDriver"
+
+msgid "Newton Series Release Notes"
+msgstr "Newton バージョンのリリースノート"
+
+msgid "Ocata Series Release Notes"
+msgstr "Ocata バージョンのリリースノート"
+
 msgid "Other Notes"
 msgstr "その他の注意点"
+
+msgid "Pike Series Release Notes"
+msgstr "Pike  バージョンのリリースノート"
+
+msgid "QNAP"
+msgstr "QNAP"
+
+msgid "QNAP Cinder driver added support for QES fw 2.0.0."
+msgstr "QNAP Cinder ドライバーに QES fw 2.0.0 サポートを追加しました。"
+
+msgid "QoS support in EMC VMAX iSCSI and FC drivers."
+msgstr "EMC VMAX iSCSI と FC ドライバーの QoS サポート"
+
+msgid "Queens Series Release Notes"
+msgstr "Queens バージョンのリリースノート"
+
+msgid "Re-added QNAP Cinder volume driver."
+msgstr "QNAP Cinder ボリュームドライバーを再追加しました。"
+
+msgid "Reduxio"
+msgstr "Reduxio"
+
+msgid "Removed - ``eqlx_chap_login``"
+msgstr "``eqlx_chap_login`` を削除しました"
+
+msgid "Removed - ``eqlx_chap_password``"
+msgstr "``eqlx_chap_password`` を削除しました"
+
+msgid "Removed - ``eqlx_cli_timeout``"
+msgstr "``eqlx_cli_timeout`` を削除しました"
+
+msgid "Removed - ``eqlx_use_chap``"
+msgstr "``eqlx_use_chap`` を削除しました"
+
+msgid ""
+"Removing cinder-all binary. Instead use the individual binaries like cinder-"
+"api, cinder-backup, cinder-volume, cinder-scheduler."
+msgstr ""
+"cinder-all バイナリーを削除しました。代わりに cinder-api、cinder-backup、"
+"cinder-volume、cinder-scheduler などの個別のバイナリーを使用してください。"
+
+msgid ""
+"Removing deprecated file cinder.middleware.sizelimit. In your api-paste.ini, "
+"replace cinder.middleware.sizelimit:RequestBodySizeLimiter.factory with "
+"oslo_middleware.sizelimit:RequestBodySizeLimiter.factory"
+msgstr ""
+"廃止予定だった cinder.middleware.sizelimit を削除しました。api-paste.ini の "
+"cinder.middleware.sizelimit:RequestBodySizeLimiter.factory を "
+"oslo_middleware.sizelimit:RequestBodySizeLimiter.factory に入れ替えてくださ"
+"い。"
+
+msgid ""
+"Removing the Dell EqualLogic driver's deprecated configuration options. "
+"Please replace old options in your cinder.conf with the new one."
+msgstr ""
+"廃止予定だった Dell EqualLogic ドライバーを削除しました。cinder.conf の古いオ"
+"プションを新しいものに入れ替えてください。"
+
+msgid ""
+"Rename Huawei18000ISCSIDriver and Huawei18000FCDriver to HuaweiISCSIDriver "
+"and HuaweiFCDriver."
+msgstr ""
+"Huawei18000ISCSIDriver と Huawei18000FCDriver を HuaweiISCSIDriver と "
+"HuaweiFCDriver に名前を変更しました。"
+
+msgid "Replaced with - ``chap_password``"
+msgstr "``chap_password`` に置き換えられました"
+
+msgid "Replaced with - ``chap_username``"
+msgstr "``chap_username`` に置き換えられました"
+
+msgid "Replaced with - ``ssh_conn_timeout``"
+msgstr "``ssh_conn_timeout`` に置き換えられました"
+
+msgid "Replaced with - ``use_chap_auth``"
+msgstr "``use_chap_auth`` に置き換えられました"
 
 msgid "Security Issues"
 msgstr "セキュリティー上の問題"
 
+msgid "Show CG Snapshot checks both tables."
+msgstr "両方のテーブルに CG スナップショットチェックを表示する。"
+
+msgid "Show CG checks both tables."
+msgstr "両方のテーブルに CG チェックを表示する。"
+
+msgid "Start using reno to manage release notes."
+msgstr "リリースノートの管理に reno を使い始めました。"
+
+msgid ""
+"Starting from Mitaka release Cinder is having a tech preview of rolling "
+"upgrades support."
+msgstr ""
+"Mitaka リリースから、Cinder はローリングアップグレードの技術プレビューをはじ"
+"めました。"
+
+msgid "Support Force backup of in-use cinder volumes for Nimble Storage."
+msgstr ""
+"Nimble ストレージで、使用中の Cinder ボリュームの強制バックアップをサポートし"
+"ました。"
+
+msgid ""
+"Support cinder_img_volume_type property in glance image metadata to specify "
+"volume type."
+msgstr ""
+"ボリュームタイプを指定するための Glance イメージメタデータの "
+"cinder_img_volume_type プロパティをサポートしました。"
+
+msgid "Support for Consistency Groups in the NetApp E-Series Volume Driver."
+msgstr ""
+"NetApp E-Series ボリュームドライバーで整合性グループをサポートしました。"
+
+msgid "Support for Dot Hill AssuredSAN arrays has been removed."
+msgstr "Dot Hill AssuredSAN アレイのサポートを削除しました。"
+
+msgid "Support for VMAX SRDF/Metro on VMAX cinder driver."
+msgstr "VMAX cinder ドライバーで VMAX SRDF/Metro をサポートしました。"
+
+msgid "Support for compression on VMAX All Flash in the VMAX driver."
+msgstr "VMAX ドライバーの VMAX All Flash で圧縮をサポートしました。"
+
+msgid ""
+"Support for creating a consistency group from consistency group in XtremIO."
+msgstr "XtremIO の整合性グループからの整合性グループの作成をサポートしました。"
+
+msgid "Support for force backup of in-use Cinder volumes in Nimble driver."
+msgstr ""
+"Nimble ドライバーで、使用中の Cinder ボリュームの強制バックアップをサポートし"
+"ました。"
+
+msgid "Support for iSCSI in INFINIDAT InfiniBox driver."
+msgstr "INFINIDAT InfiniBox ドライバーで iSCSI をサポートしました。"
+
+msgid "Support for iSCSI multipath in Huawei driver."
+msgstr "Huawei ドライバーで iSCSI マルチパスをサポートしました。"
+
+msgid "Support for iSCSI multipathing in EMC VMAX driver."
+msgstr "EMC VMAX ドライバーで iSCSI マルチパスをサポートしました。"
+
+msgid "Support for manage/ unmanage snapshots on VMAX cinder driver."
+msgstr ""
+"VMAX ドライバーでスナップショットの管理/管理解除機能をサポートしました。"
+
+msgid "Support for snapshot backup using the optimal path in Huawei driver."
+msgstr ""
+"Huawei ドライバーで最適パスを使用したスナップショットバックアップをサポートし"
+"ました。"
+
+msgid "Support iSCSI configuration in replication in Huawei driver."
+msgstr "Huawei ドライバーで複製における iSCSI 設定をサポートしました。"
+
+msgid ""
+"Support manage/unmanage volume and manage/unmanage snapshot functions for "
+"the NEC volume driver."
+msgstr ""
+"NEC ボリュームドライバーで、ボリュームとスナップショットの管理/管理解除機能の"
+"サポートしました。"
+
+msgid "Support to sort snapshots with \"name\"."
+msgstr "「名前」によるスナップショットのソートをサポートしました。"
+
+msgid "Tegile"
+msgstr "Tegile"
+
 msgid "Upgrade Notes"
 msgstr "アップグレード時の注意"
+
+msgid "Violin"
+msgstr "Violin"
+
+msgid "Violin Memory 6000 array series drivers are removed."
+msgstr "Violin Memory 6000 array シリーズのドライバーは削除されました。"
+
+msgid "Volume Manage/Unmanage support for Datera Volume Drivers"
+msgstr ""
+"Datera Volume ドライバー用にボリュームの管理/管理解除機能のサポートを追加しま"
+"した。"
+
+msgid ""
+"Volume manage/unmanage support for IBM FlashSystem FC and iSCSI drivers."
+msgstr ""
+"IBM FlashSystem FC および iSCSI ドライバー用にボリュームの管理/管理解除機能の"
+"サポートを追加しました。"
+
+msgid "Volume manage/unmanage support for Oracle ZFSSA iSCSI and NFS drivers."
+msgstr ""
+"Oracle ZFSSA iSCSI および NFS ドライバー用にボリュームの管理/管理解除機能のサ"
+"ポートを追加しました。"
+
+msgid "X-IO"
+msgstr "X-IO"
+
+msgid "ZTE"
+msgstr "ZTE"
+
+msgid ""
+"``\"admin_or_storage_type_admin\": \"is_admin:True or role:storage_type_admin"
+"\",``"
+msgstr ""
+"``\"admin_or_storage_type_admin\": \"is_admin:True or role:storage_type_admin"
+"\",``"
+
+msgid ""
+"``\"volume_extension:types_manage\": \"rule:admin_or_storage_type_admin\", "
+"\"volume_extension:volume_type_access:addProjectAccess\": \"rule:"
+"admin_or_storage_type_admin\", \"volume_extension:volume_type_access:"
+"removeProjectAccess\": \"rule:admin_or_storage_type_admin\",``"
+msgstr ""
+"``\"volume_extension:types_manage\": \"rule:admin_or_storage_type_admin\", "
+"\"volume_extension:volume_type_access:addProjectAccess\": \"rule:"
+"admin_or_storage_type_admin\", \"volume_extension:volume_type_access:"
+"removeProjectAccess\": \"rule:admin_or_storage_type_admin\",``"
+
+msgid "``choice_client``"
+msgstr "``choice_client``"
+
+msgid "``choice_client`` to ``disco_choice_client``"
+msgstr "``choice_client`` から ``disco_choice_client``"
+
+msgid ""
+"``cinder.keymgr.conf_key_mgr.ConfKeyManager`` still remains, but the "
+"``fixed_key`` configuration options should be moved to the ``[key_manager]`` "
+"section"
+msgstr ""
+"``cinder.keymgr.conf_key_mgr.ConfKeyManager`` は残っていますが、"
+"``fixed_key`` 設定オプションは ``[key_manager]`` セクションに移動する必要があ"
+"ります"
+
+msgid "``clone_check_timeout`` to ``disco_clone_check_timeout``"
+msgstr "``clone_check_timeout`` から ``disco_clone_check_timeout``"
+
+msgid "``disco_client_port``"
+msgstr "``disco_client_port``"
+
+msgid "``disco_client``"
+msgstr "``disco_client``"
+
+msgid "``disco_src_api_port``"
+msgstr "``disco_src_api_port``"
+
+msgid ""
+"``iscsi_ip_address``, ``iscsi_port``, ``target_helper``, "
+"``iscsi_target_prefix`` and ``iscsi_protocol`` config options are deprecated "
+"in flavor of ``target_ip_address``, ``target_port``, ``target_helper``, "
+"``target_prefix`` and ``target_protocol`` accordingly. Old config options "
+"will be removed in S release."
+msgstr ""
+"``iscsi_ip_address``、``iscsi_port``、``target_helper``、"
+"``iscsi_target_prefix``、``iscsi_protocol`` 設定オプションは廃止予定となり、"
+"``target_ip_address``、``target_port``、``target_helper``、"
+"``target_prefix``、``target_protocol``に変更されました。古い設定オプションは "
+"S リリースで削除予定です。"
+
+msgid "``os-set_image_metadata``"
+msgstr "``os-set_image_metadata``"
+
+msgid "``os-unset_image_metadata``"
+msgstr "``os-unset_image_metadata``"
+
+msgid "``rest_ip``"
+msgstr "``rest_ip``"
+
+msgid "``rest_ip`` to ``disco_rest_ip``"
+msgstr "``rest_ip`` から ``disco_rest_ip``"
+
+msgid "``restore_check_timeout`` to ``disco_restore_check_timeout``"
+msgstr "``restore_check_timeout`` から ``disco_restore_check_timeout``"
+
+msgid "``retry_interval``"
+msgstr "``retry_interval``"
+
+msgid "``retry_interval`` to ``disco_retry_interval``"
+msgstr "``retry_interval`` から ``disco_retry_interval``"
+
+msgid "``snapshot_check_timeout`` to ``disco_snapshot_check_timeout``"
+msgstr "``snapshot_check_timeout`` から ``disco_snapshot_check_timeout``"
+
+msgid "``volume_name_prefix`` to ``disco_volume_name_prefix``"
+msgstr "``volume_name_prefix`` から ``disco_volume_name_prefix``"
