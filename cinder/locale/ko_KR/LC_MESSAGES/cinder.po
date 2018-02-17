@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-02-13 03:39+0000\n"
+"POT-Creation-Date: 2018-02-17 00:08+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4906,10 +4906,6 @@ msgstr "%(volume_size)sG를 보유할 수 있는 공유가 없음"
 #, python-format
 msgid "There is no share which can host %(volume_size)sG."
 msgstr "%(volume_size)sG를 호스트할 수 있는 공유가 없습니다."
-
-#, python-format
-msgid "There is no such action: %s"
-msgstr "해당 조치가 없음: %s"
 
 msgid "There is no virtual disk device."
 msgstr "가상 디스크 디바이스가 없습니다."
