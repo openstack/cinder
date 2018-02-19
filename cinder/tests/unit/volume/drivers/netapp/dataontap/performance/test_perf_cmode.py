@@ -136,6 +136,7 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
         mock_get_base_counter_name.assert_called_once_with(
             'system:constituent', 'avg_processor_busy')
 
+    @test.testtools.skip("launchpad bug 1715915")
     def test_update_performance_cache(self):
 
         self.perf_library.performance_counters = {
@@ -175,6 +176,7 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
         mock_get_node_utilization.assert_has_calls([
             mock.call(12, 21, 'node1'), mock.call(22, 31, 'node2')])
 
+    @test.testtools.skip("launchpad bug #1715915")
     def test_update_performance_cache_first_pass(self):
 
         mock_get_aggregates_for_pools = self.mock_object(
