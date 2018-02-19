@@ -24,9 +24,11 @@ import os
 import fixtures
 from migrate.versioning import api as migration_api
 from migrate.versioning import repository
+from oslo_db.sqlalchemy import enginefacade
+from oslo_db.sqlalchemy import test_fixtures
 from oslo_db.sqlalchemy import test_migrations
 from oslo_db.sqlalchemy import utils as db_utils
-from oslo_db.tests.sqlalchemy import base as test_base
+from oslotest import base as test_base
 import sqlalchemy
 from sqlalchemy.engine import reflection
 
@@ -57,6 +59,15 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
     @property
     def migration_api(self):
         return migration_api
+
+    def setUp(self):
+        super(MigrationsMixin, self).setUp()
+
+        # (zzzeek) This mixin states that it uses the
+        # "self.engine" attribute in the migrate_engine() method.
+        # So the mixin must set that up for itself, oslo_db no longer
+        # makes these assumptions for you.
+        self.engine = enginefacade.writer.get_engine()
 
     @property
     def migrate_engine(self):
@@ -247,6 +258,7 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
 
     def _pre_upgrade_101(self, engine):
         """Add data to test the SQL migration."""
+
         types_table = db_utils.get_table(engine, 'volume_types')
         for i in range(1, 5):
             types_table.insert().execute({'id': str(i)})
@@ -398,8 +410,10 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assert_each_foreign_key_is_part_of_an_index()
 
 
-class TestSqliteMigrations(test_base.DbTestCase,
-                           MigrationsMixin):
+class TestSqliteMigrations(test_fixtures.OpportunisticDBTestMixin,
+                           MigrationsMixin,
+                           test_base.BaseTestCase):
+
     def assert_each_foreign_key_is_part_of_an_index(self):
         # Skip the test for SQLite because SQLite does not list
         # UniqueConstraints as indexes, which makes this test fail.
@@ -407,9 +421,11 @@ class TestSqliteMigrations(test_base.DbTestCase,
         pass
 
 
-class TestMysqlMigrations(test_base.MySQLOpportunisticTestCase,
-                          MigrationsMixin):
+class TestMysqlMigrations(test_fixtures.OpportunisticDBTestMixin,
+                          MigrationsMixin,
+                          test_base.BaseTestCase):
 
+    FIXTURE = test_fixtures.MySQLOpportunisticFixture
     BOOL_TYPE = sqlalchemy.dialects.mysql.TINYINT
 
     def test_mysql_innodb(self):
@@ -437,6 +453,9 @@ class TestMysqlMigrations(test_base.MySQLOpportunisticTestCase,
         self.assertEqual(count, 0, "%d non InnoDB tables created" % count)
 
 
-class TestPostgresqlMigrations(test_base.PostgreSQLOpportunisticTestCase,
-                               MigrationsMixin):
+class TestPostgresqlMigrations(test_fixtures.OpportunisticDBTestMixin,
+                               MigrationsMixin,
+                               test_base.BaseTestCase):
+
+    FIXTURE = test_fixtures.PostgresqlOpportunisticFixture
     TIME_TYPE = sqlalchemy.types.TIMESTAMP
