@@ -1886,6 +1886,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         data['active_cluster_mvip'] = self.active_cluster['mvip']
         data['reserved_percentage'] = self.configuration.reserved_percentage
         data['QoS_support'] = True
+        data['multiattach'] = True
 
         try:
             results = self._issue_api_request('GetClusterCapacity', params)
