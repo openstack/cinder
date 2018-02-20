@@ -150,30 +150,6 @@ CONF.register_opts(volume_manager_opts)
 CONF.register_opts(volume_backend_opts, group=config.SHARED_CONF_GROUP)
 
 MAPPING = {
-    'cinder.volume.drivers.emc.scaleio':
-    'cinder.volume.drivers.dell_emc.scaleio.driver',
-    'cinder.volume.drivers.emc.vnx.driver.EMCVNXDriver':
-    'cinder.volume.drivers.dell_emc.vnx.driver.VNXDriver',
-    'cinder.volume.drivers.emc.xtremio.XtremIOISCSIDriver':
-    'cinder.volume.drivers.dell_emc.xtremio.XtremIOISCSIDriver',
-    'cinder.volume.drivers.emc.xtremio.XtremIOFibreChannelDriver':
-    'cinder.volume.drivers.dell_emc.xtremio.XtremIOFCDriver',
-    'cinder.volume.drivers.datera.DateraDriver':
-    'cinder.volume.drivers.datera.datera_iscsi.DateraDriver',
-    'cinder.volume.drivers.emc.emc_vmax_iscsi.EMCVMAXISCSIDriver':
-    'cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver',
-    'cinder.volume.drivers.emc.emc_vmax_fc.EMCVMAXFCDriver':
-    'cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver',
-    'cinder.volume.drivers.eqlx.DellEQLSanISCSIDriver':
-    'cinder.volume.drivers.dell_emc.ps.PSSeriesISCSIDriver',
-    'cinder.volume.drivers.dell.dell_storagecenter_iscsi.'
-    'DellStorageCenterISCSIDriver':
-    'cinder.volume.drivers.dell_emc.sc.storagecenter_iscsi.'
-    'SCISCSIDriver',
-    'cinder.volume.drivers.dell.dell_storagecenter_fc.'
-    'DellStorageCenterFCDriver':
-    'cinder.volume.drivers.dell_emc.sc.storagecenter_fc.'
-    'SCFCDriver',
     'cinder.volume.drivers.windows.windows.WindowsDriver':
     'cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver',
 }
