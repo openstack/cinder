@@ -1653,7 +1653,11 @@ class API(base.Base):
                         'of: %s.') % volume.status
                 LOG.info(msg)
                 raise exception.InvalidInput(reason=msg)
-            context.authorize(vol_policy.MULTIATTACH_POLICY)
+
+            # If they are retyping to a multiattach capable, make sure they
+            # are allowed to do so.
+            if tgt_is_multiattach:
+                context.authorize(vol_policy.MULTIATTACH_POLICY)
 
         # We're checking here in so that we can report any quota issues as
         # early as possible, but won't commit until we change the type. We
