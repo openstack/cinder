@@ -327,7 +327,11 @@ class InStorageMCSISCSIDriverTestCase(test.TestCase):
 
         # Check the multipath host-volume map return value
         for k, v in exp_m_path['data'].items():
-            self.assertEqual(v, ret['data'][k])
+            if k in ('target_iqns', 'target_portals'):
+                # These are randomly ordered lists
+                six.assertCountEqual(self, v, ret['data'][k])
+            else:
+                self.assertEqual(v, ret['data'][k])
 
         ret = self.iscsi_driver._assistant.get_host_from_connector(
             connector)
