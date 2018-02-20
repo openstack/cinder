@@ -7028,23 +7028,40 @@ class VMAXCommonReplicationTest(test.TestCase):
             'volume_id': self.data.test_volume.id,
             'updates':
                 {'replication_status': fields.ReplicationStatus.FAILED_OVER,
-                 'replication_driver_data': six.text_type(
-                     self.data.provider_location),
-                 'provider_location': six.text_type(
-                     self.data.provider_location3)}}
+                 'replication_driver_data': self.data.provider_location,
+                 'provider_location': self.data.provider_location3}}
         model_update = self.common._failover_volume(
             self.data.test_volume, True, self.extra_specs)
+
+        # Decode string representations of dicts into dicts, because
+        # the string representations are randomly ordered and therefore
+        # hard to compare.
+        model_update['updates']['replication_driver_data'] = ast.literal_eval(
+            model_update['updates']['replication_driver_data'])
+
+        model_update['updates']['provider_location'] = ast.literal_eval(
+            model_update['updates']['provider_location'])
+
         self.assertEqual(ref_model_update, model_update)
+
         ref_model_update2 = {
             'volume_id': self.data.test_volume.id,
             'updates':
                 {'replication_status': fields.ReplicationStatus.ENABLED,
-                 'replication_driver_data': six.text_type(
-                     self.data.provider_location),
-                 'provider_location': six.text_type(
-                     self.data.provider_location3)}}
+                 'replication_driver_data': self.data.provider_location,
+                 'provider_location': self.data.provider_location3}}
         model_update2 = self.common._failover_volume(
             self.data.test_volume, False, self.extra_specs)
+
+        # Decode string representations of dicts into dicts, because
+        # the string representations are randomly ordered and therefore
+        # hard to compare.
+        model_update2['updates']['replication_driver_data'] = ast.literal_eval(
+            model_update2['updates']['replication_driver_data'])
+
+        model_update2['updates']['provider_location'] = ast.literal_eval(
+            model_update2['updates']['provider_location'])
+
         self.assertEqual(ref_model_update2, model_update2)
 
     def test_failover_legacy_volume(self):
@@ -7052,12 +7069,20 @@ class VMAXCommonReplicationTest(test.TestCase):
             'volume_id': self.data.test_volume.id,
             'updates':
                 {'replication_status': fields.ReplicationStatus.FAILED_OVER,
-                 'replication_driver_data': six.text_type(
-                     self.data.legacy_provider_location),
-                 'provider_location': six.text_type(
-                     self.data.legacy_provider_location2)}}
+                 'replication_driver_data': self.data.legacy_provider_location,
+                 'provider_location': self.data.legacy_provider_location2}}
         model_update = self.common._failover_volume(
             self.data.test_legacy_vol, True, self.extra_specs)
+
+        # Decode string representations of dicts into dicts, because
+        # the string representations are randomly ordered and therefore
+        # hard to compare.
+        model_update['updates']['replication_driver_data'] = ast.literal_eval(
+            model_update['updates']['replication_driver_data'])
+
+        model_update['updates']['provider_location'] = ast.literal_eval(
+            model_update['updates']['provider_location'])
+
         self.assertEqual(ref_model_update, model_update)
 
     def test_failover_volume_exception(self):
@@ -7247,13 +7272,20 @@ class VMAXCommonReplicationTest(test.TestCase):
         vols_model_update = self.common._replicate_group(
             self.data.array, [volume_model_update],
             self.data.test_vol_grp_name, self.extra_specs)
-        ref_rep_data = six.text_type({'array': self.data.remote_array,
-                                      'device_id': self.data.device_id2})
+        ref_rep_data = {'array': self.data.remote_array,
+                        'device_id': self.data.device_id2}
         ref_vol_update = {
             'id': self.data.test_volume.id,
             'provider_location': self.data.test_volume.provider_location,
             'replication_driver_data': ref_rep_data,
             'replication_status': fields.ReplicationStatus.ENABLED}
+
+        # Decode string representations of dicts into dicts, because
+        # the string representations are randomly ordered and therefore
+        # hard to compare.
+        vols_model_update[0]['replication_driver_data'] = ast.literal_eval(
+            vols_model_update[0]['replication_driver_data'])
+
         self.assertEqual(ref_vol_update, vols_model_update[0])
 
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
