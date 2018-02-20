@@ -109,7 +109,7 @@ the volume.
 The OpenStack dashboard (horizon) supports creating the encrypted
 volume type as of the Kilo release. For instructions, see
 `Create an encrypted volume type
-<https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-encryption.html#create-an-encrypted-volume-type>`_.
+<https://docs.openstack.org/horizon/latest/admin/manage-volumes.html#create-an-encrypted-volume-type>`_.
 
 Create an encrypted volume
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
