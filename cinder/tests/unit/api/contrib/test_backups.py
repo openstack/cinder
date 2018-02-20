@@ -1446,7 +1446,7 @@ class BackupsAPITestCase(test.TestCase):
 
         req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
             fake.PROJECT_ID, backup.id))
-        body = {"": {}}
+        body = {"restore": {'': ''}}
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
@@ -1459,14 +1459,11 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)
         self.assertEqual(http_client.BAD_REQUEST,
                          res_dict['badRequest']['code'])
-        if six.PY3:
-            self.assertEqual("Additional properties are not allowed "
-                             "('' was unexpected)",
-                             res_dict['badRequest']['message'])
-        else:
-            self.assertEqual("Additional properties are not allowed "
-                             "(u'' was unexpected)",
-                             res_dict['badRequest']['message'])
+
+        self.assertIn("Additional properties are not allowed ",
+                      res_dict['badRequest']['message'])
+        self.assertIn("'' was unexpected)",
+                      res_dict['badRequest']['message'])
 
     @mock.patch('cinder.db.service_get_all')
     @mock.patch('cinder.volume.api.API.create')
