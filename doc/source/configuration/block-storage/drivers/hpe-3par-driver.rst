@@ -371,7 +371,7 @@ OpenStack software.
 
       # The CPG to use for Snapshots for volumes. If empty hpe3par_cpg will be
       # used.
-      hpe3par_snap_cpg=OpenStackSNAP_CPG
+      hpe3par_cpg_snap=OpenStackSNAP_CPG
 
       # Time in hours to retain a snapshot. You can't delete it before this
       # expires.
