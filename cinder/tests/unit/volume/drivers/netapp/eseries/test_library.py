@@ -991,7 +991,11 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
 
         self.assertSetEqual(set(eseries_fake.FC_TARGET_WWPNS),
                             set(target_wwpns))
-        self.assertDictEqual(eseries_fake.FC_I_T_MAP, initiator_target_map)
+
+        for i in eseries_fake.FC_I_T_MAP:
+            for t in eseries_fake.FC_I_T_MAP[i]:
+                self.assertIn(t, initiator_target_map[i])
+
         self.assertEqual(4, num_paths)
 
     @ddt.data(('raid0', 'raid0'), ('raid1', 'raid1'), ('raid3', 'raid5'),

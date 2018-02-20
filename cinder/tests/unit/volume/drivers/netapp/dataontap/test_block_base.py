@@ -422,7 +422,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             self.library._build_initiator_target_map(fake.FC_CONNECTOR)
 
         self.assertSetEqual(set(fake.FC_TARGET_WWPNS), set(target_wwpns))
-        self.assertDictEqual(fake.FC_I_T_MAP, init_targ_map)
+
+        for i in fake.FC_I_T_MAP:
+            for t in fake.FC_I_T_MAP[i]:
+                self.assertIn(t, init_targ_map[i])
+
         self.assertEqual(4, num_paths)
 
     @mock.patch.object(na_utils, 'check_flags')
