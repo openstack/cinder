@@ -851,7 +851,6 @@ class VolumeManager(manager.CleanableManager,
                 QUOTAS.commit(context, reservations, project_id=project_id)
 
             self._update_allocated_capacity(volume, decrement=True)
-            self.publish_service_capabilities(context)
 
         msg = "Deleted volume successfully."
         if unmanage_only:
@@ -2776,7 +2775,6 @@ class VolumeManager(manager.CleanableManager,
         self._notify_about_volume_usage(
             context, volume, "retype",
             extra_usage_info={'volume_type': new_type_id})
-        self.publish_service_capabilities(context)
         LOG.info("Retype volume completed successfully.",
                  resource=volume)
 
@@ -3400,7 +3398,6 @@ class VolumeManager(manager.CleanableManager,
         group.destroy()
         self._notify_about_group_usage(
             context, group, "delete.end")
-        self.publish_service_capabilities(context)
         LOG.info("Delete group "
                  "completed successfully.",
                  resource={'type': 'group',
