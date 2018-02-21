@@ -178,6 +178,35 @@ class WindowsSmbFsTestCase(test.TestCase):
 
         self.assertEqual(expected, ret_val)
 
+    @mock.patch.object(smbfs.WindowsSmbfsDriver, '_get_snapshot_backing_file')
+    @mock.patch.object(smbfs.WindowsSmbfsDriver, 'get_volume_format')
+    @mock.patch.object(smbfs.WindowsSmbfsDriver, '_get_mount_point_base')
+    def test_initialize_connection_snapshot(self, mock_get_mount_base,
+                                            mock_get_volume_format,
+                                            mock_get_snap_by_backing_file):
+        self._smbfs_driver.shares = {self._FAKE_SHARE: self._FAKE_SHARE_OPTS}
+        mock_get_snap_by_backing_file.return_value = self._FAKE_VOLUME_NAME
+        mock_get_volume_format.return_value = 'vhdx'
+        mock_get_mount_base.return_value = self._FAKE_MNT_BASE
+
+        exp_data = {'export': self._FAKE_SHARE,
+                    'format': 'vhdx',
+                    'name': self._FAKE_VOLUME_NAME,
+                    'options': self._FAKE_SHARE_OPTS,
+                    'access_mode': 'ro'}
+        expected = {
+            'driver_volume_type': 'smbfs',
+            'data': exp_data,
+            'mount_point_base': self._FAKE_MNT_BASE}
+        ret_val = self._smbfs_driver.initialize_connection_snapshot(
+            self.snapshot, mock.sentinel.connector)
+
+        self.assertEqual(expected, ret_val)
+
+        mock_get_snap_by_backing_file.assert_called_once_with(self.snapshot)
+        mock_get_volume_format.assert_called_once_with(self.snapshot.volume)
+        mock_get_mount_base.assert_called_once_with()
+
     def test_setup(self):
         self._test_setup(config=self._FAKE_SMBFS_CONFIG)
 

@@ -194,6 +194,25 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
             'mount_point_base': self._get_mount_point_base()
         }
 
+    @coordination.synchronized('{self.driver_prefix}-{snapshot.volume.id}')
+    def initialize_connection_snapshot(self, snapshot, connector):
+        backing_file = self._get_snapshot_backing_file(snapshot)
+        volume = snapshot.volume
+        fmt = self.get_volume_format(volume)
+
+        data = {'export': volume.provider_location,
+                'format': fmt,
+                'name': backing_file,
+                'access_mode': 'ro'}
+
+        if volume.provider_location in self.shares:
+            data['options'] = self.shares[volume.provider_location]
+        return {
+            'driver_volume_type': self.driver_volume_type,
+            'data': data,
+            'mount_point_base': self._get_mount_point_base()
+        }
+
     def _check_os_platform(self):
         if sys.platform != 'win32':
             _msg = _("This system platform (%s) is not supported. This "
