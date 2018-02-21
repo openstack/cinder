@@ -646,18 +646,8 @@ def serve(server, workers=None):
 
 
 def wait():
-    LOG.debug('Full set of CONF:')
-    for flag in CONF:
-        flag_get = CONF.get(flag, None)
-        # hide flag contents from log if contains a password
-        # should use secret flag when switch over to openstack-common
-        if ("_password" in flag or "_key" in flag or
-                (flag == "sql_connection" and
-                    ("mysql:" in flag_get or "postgresql:" in flag_get))):
-            LOG.debug('%s : FLAG SET ', flag)
-        else:
-            LOG.debug('%(flag)s : %(flag_get)s',
-                      {'flag': flag, 'flag_get': flag_get})
+    CONF.log_opt_values(LOG, logging.DEBUG)
+
     try:
         _launcher.wait()
     except KeyboardInterrupt:
