@@ -1,0 +1,10 @@
+
+fixes:
+  - |
+    Storwize SVC Driver: Fixes `bug 1749687
+    <https://bugs.launchpad.net/cinder/+bug/1749687>`__
+    previously lsvdisk() was called separately for every
+    'in-use' volume in order to check if the volume exists
+    on the storage.
+    In order to avoid problem of too long driver initialization
+    now lsvdisk() is called once per pool.

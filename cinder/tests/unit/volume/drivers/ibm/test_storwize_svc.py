@@ -1907,6 +1907,15 @@ port_speed!N/A
 
         return ('', '')
 
+    def _cmd_lsvdisks_from_filter(self, filter_name, value):
+        volumes = []
+        if filter_name == 'mdisk_grp_name':
+            for vol in self._volumes_list:
+                vol_info = self._volumes_list[vol]
+                if vol_info['mdisk_grp_name'] == value:
+                    volumes.append(vol)
+        return volumes
+
     def _cmd_chvdisk(self, **kwargs):
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
@@ -4798,6 +4807,26 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             None)
         self.assertRaises(exception.InvalidInput,
                           self._driver._validate_pools_exist)
+
+    def _get_pool_volumes(self, pool):
+        vdisks = self.sim._cmd_lsvdisks_from_filter('mdisk_grp_name', pool)
+        return vdisks
+
+    def test_get_all_volumes(self):
+        _volumes_list = []
+        pools = _get_test_pool(get_all=True)
+        for pool in pools:
+            host = 'openstack@svc#%s' % pool
+            vol1 = testutils.create_volume(self.ctxt, host=host)
+            self.driver.create_volume(vol1)
+            vol2 = testutils.create_volume(self.ctxt, host=host)
+            self.driver.create_volume(vol2)
+        for pool in pools:
+            pool_vols = self._get_pool_volumes(pool)
+            for pool_vol in pool_vols:
+                _volumes_list.append(pool_vol)
+        for vol in _volumes_list:
+            self.assertIn(vol, self.sim._volumes_list)
 
     def _create_volume_type(self, opts, type_name):
         type_ref = volume_types.create(self.ctxt, type_name, opts)
