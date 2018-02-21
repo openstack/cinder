@@ -615,6 +615,35 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                                                       'count=1024',
                                                       run_as_root=True)
 
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_local_path_volume_info')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_read_info_file')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_local_volume_dir')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_qemu_img_info')
+    def test_get_snapshot_backing_file(
+            self, mock_qemu_img_info, mock_local_vol_dir,
+            mock_read_info_file, mock_local_path_vol_info):
+
+        fake_snapshot_file_name = os.path.basename(self._fake_snapshot_path)
+        fake_snapshot_info = {self._fake_snapshot.id: fake_snapshot_file_name}
+
+        fake_snap_img_info = mock.Mock()
+        fake_snap_img_info.backing_file = self._fake_volume.name
+
+        mock_read_info_file.return_value = fake_snapshot_info
+        mock_qemu_img_info.return_value = fake_snap_img_info
+        mock_local_vol_dir.return_value = self._FAKE_MNT_POINT
+
+        snap_backing_file = self._driver._get_snapshot_backing_file(
+            self._fake_snapshot)
+        self.assertEqual(os.path.basename(self._fake_volume_path),
+                         snap_backing_file)
+
+        mock_local_path_vol_info.assert_called_once_with(self._fake_volume)
+        mock_read_info_file.assert_called_once_with(
+            mock_local_path_vol_info.return_value)
+        mock_local_vol_dir.assert_called_once_with(self._fake_volume)
+        mock_qemu_img_info.assert_called_once_with(self._fake_snapshot_path)
+
 
 class RemoteFSPoolMixinTestCase(test.TestCase):
     def setUp(self):
