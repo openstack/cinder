@@ -258,7 +258,7 @@ and the second is maximum acceptable version. A specified version can be null::
 
 If the minimum version specified is null then there is no restriction on
 the minimum version, and likewise if the maximum version is null there
-is no restriction the maximum version. Alternatively a one sided comparison
+is no restriction the maximum version. Alternatively an one sided comparison
 can be used as in the example above.
 
 Other necessary changes
