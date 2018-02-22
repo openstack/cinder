@@ -655,3 +655,6 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         # The SMBFS driver does not manage file permissions. We chose
         # to let this up to the deployer.
         pass
+
+    def backup_use_temp_snapshot(self):
+        return True

@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    The Cinder Volume Backup service can now be run on Windows. It supports
+    backing up volumes exposed by SMBFS/iSCSI Windows Cinder Volume backends,
+    as well as any other Cinder backend that's accessible on Windows (e.g.
+    SANs exposing volumes via iSCSI/FC).
+
+    The Swift and Posix backup drivers are known to be working on Windows.

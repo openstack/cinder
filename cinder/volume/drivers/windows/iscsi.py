@@ -345,3 +345,6 @@ class WindowsISCSIDriver(driver.ISCSIDriver):
         additional_size_mb = (new_size - old_size) * 1024
 
         self._tgt_utils.extend_wt_disk(volume.name, additional_size_mb)
+
+    def backup_use_temp_snapshot(self):
+        return False

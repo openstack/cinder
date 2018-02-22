@@ -355,6 +355,16 @@ class TemporaryChownTestCase(test.TestCase):
         mock_stat.assert_called_once_with(test_filename)
         self.assertFalse(mock_exec.called)
 
+    @mock.patch('os.name', 'nt')
+    @mock.patch('os.stat')
+    @mock.patch('cinder.utils.execute')
+    def test_temporary_chown_win32(self, mock_exec, mock_stat):
+        with utils.temporary_chown(mock.sentinel.path):
+            pass
+
+        mock_exec.assert_not_called()
+        mock_stat.assert_not_called()
+
 
 class TempdirTestCase(test.TestCase):
     @mock.patch('tempfile.mkdtemp')

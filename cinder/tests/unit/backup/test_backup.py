@@ -611,7 +611,7 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('six.moves.builtins.open', wraps=open)
     @mock.patch.object(os.path, 'isdir', return_value=False)
     def test_create_backup(self, mock_isdir, mock_open, mock_temporary_chown,
                            mock_get_backup_device, mock_get_conn):
@@ -636,7 +636,6 @@ class BackupTestCase(BaseBackupTest):
         mock_attach_device.return_value = attach_info
         properties = {}
         mock_get_conn.return_value = properties
-        mock_open.return_value = open('/dev/null', 'rb')
 
         self.backup_mgr.create_backup(self.ctxt, backup)
 
@@ -650,6 +649,7 @@ class BackupTestCase(BaseBackupTest):
                                                    force=True,
                                                    ignore_errors=True)
 
+        mock_open.assert_called_once_with('/dev/null', 'rb')
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         self.assertEqual('available', vol['status'])
         self.assertEqual('backing-up', vol['previous_status'])
@@ -1084,10 +1084,14 @@ class BackupTestCase(BaseBackupTest):
 
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('six.moves.builtins.open', wraps=open)
     @mock.patch.object(os.path, 'isdir', return_value=False)
+    @ddt.data({'os_name': 'nt', 'exp_open_mode': 'rb+'},
+              {'os_name': 'posix', 'exp_open_mode': 'wb'})
+    @ddt.unpack
     def test_restore_backup(self, mock_isdir, mock_open,
-                            mock_temporary_chown, mock_get_conn):
+                            mock_temporary_chown, mock_get_conn,
+                            os_name, exp_open_mode):
         """Test normal backup restoration."""
         vol_size = 1
         vol_id = self._create_volume_db_entry(status='restoring-backup',
@@ -1097,7 +1101,6 @@ class BackupTestCase(BaseBackupTest):
 
         properties = {}
         mock_get_conn.return_value = properties
-        mock_open.return_value = open('/dev/null', 'wb')
         mock_secure_enabled = (
             self.volume_mocks['secure_file_operations_enabled'])
         mock_secure_enabled.return_value = False
@@ -1109,8 +1112,10 @@ class BackupTestCase(BaseBackupTest):
                                               '_attach_device')
         mock_attach_device.return_value = attach_info
 
-        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+        with mock.patch('os.name', os_name):
+            self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
 
+        mock_open.assert_called_once_with('/dev/null', exp_open_mode)
         mock_temporary_chown.assert_called_once_with('/dev/null')
         mock_get_conn.assert_called_once_with()
         mock_secure_enabled.assert_called_once_with(self.ctxt, vol)
