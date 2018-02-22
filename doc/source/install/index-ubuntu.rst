@@ -17,7 +17,7 @@ scale your environment with additional storage nodes.
 .. toctree::
    :maxdepth: 2
 
-   cinder-storage-install-ubuntu.rst
    cinder-controller-install-ubuntu.rst
+   cinder-storage-install-ubuntu.rst
    cinder-backup-install-ubuntu.rst
    cinder-verify.rst
