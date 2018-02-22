@@ -7727,9 +7727,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 common,
                 self.volume,
                 self.connector_multipath_enabled)
-            # On Python 3, hash is randomized, and so set() is used to get
-            # the expected order
-            fcwwns = list(set(('123456789054321', '123456789012345')))
+
+            fcwwns = ['123456789054321', '123456789012345']
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
                 mock.call.getCPG(HPE3PAR_CPG),
@@ -7737,9 +7736,20 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 mock.call.queryHost(wwns=['123456789012345',
                                           '123456789054321']),
                 mock.call.modifyHost('fakehost',
-                                     {'FCWWNs': fcwwns,
+                                     {'FCWWNs': mock.ANY,
                                       'pathOperation': 1}),
                 mock.call.getHost('fakehost')]
+
+            # We don't know what order fcwwns is supplied in.  Since
+            # there are only two members, test it both ways.
+            call1 = mock.call('fakehost', {'FCWWNs': fcwwns,
+                                           'pathOperation': 1})
+            fcwwns_rev = list(fcwwns)
+            fcwwns_rev.reverse()
+            call2 = mock.call('fakehost', {'FCWWNs': fcwwns_rev,
+                                           'pathOperation': 1})
+            self.assertTrue(call1 in mock_client.modifyHost.call_args_list or
+                            call2 in mock_client.modifyHost.call_args_list)
 
             mock_client.assert_has_calls(expected)
 
