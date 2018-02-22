@@ -586,6 +586,12 @@ class VolumeManager(manager.CleanableManager,
         # Make sure the host in the DB matches our own when clustered
         self._set_resource_host(volume)
 
+        # Update our allocated capacity counter early to minimize race
+        # conditions with the scheduler.
+        self._update_allocated_capacity(volume)
+        # We lose the host value if we reschedule, so keep it here
+        original_host = volume.host
+
         context_elevated = context.elevated()
         if filter_properties is None:
             filter_properties = {}
@@ -658,10 +664,12 @@ class VolumeManager(manager.CleanableManager,
                 except tfe.NotFound:
                     pass
 
-            if not rescheduled:
-                # NOTE(dulek): Volume wasn't rescheduled so we need to update
-                # volume stats as these are decremented on delete.
-                self._update_allocated_capacity(volume)
+            if rescheduled:
+                # NOTE(geguileo): Volume was rescheduled so we need to update
+                # volume stats because the volume wasn't created here.
+                # Volume.host is None now, so we pass the original host value.
+                self._update_allocated_capacity(volume, decrement=True,
+                                                host=original_host)
 
         shared_targets = (
             1
@@ -844,20 +852,7 @@ class VolumeManager(manager.CleanableManager,
             if reservations:
                 QUOTAS.commit(context, reservations, project_id=project_id)
 
-            pool = vol_utils.extract_host(volume.host, 'pool')
-            if pool is None:
-                # Legacy volume, put them into default pool
-                pool = self.driver.configuration.safe_get(
-                    'volume_backend_name') or vol_utils.extract_host(
-                        volume.host, 'pool', True)
-            size = volume.size
-
-            try:
-                self.stats['pools'][pool]['allocated_capacity_gb'] -= size
-            except KeyError:
-                self.stats['pools'][pool] = dict(
-                    allocated_capacity_gb=-size)
-
+            self._update_allocated_capacity(volume, decrement=True)
             self.publish_service_capabilities(context)
 
         msg = "Deleted volume successfully."
@@ -3265,21 +3260,22 @@ class VolumeManager(manager.CleanableManager,
 
         self.db.volume_update(context, vol['id'], update)
 
-    def _update_allocated_capacity(self, vol):
+    def _update_allocated_capacity(self, vol, decrement=False, host=None):
         # Update allocated capacity in volume stats
-        pool = vol_utils.extract_host(vol['host'], 'pool')
+        host = host or vol['host']
+        pool = vol_utils.extract_host(host, 'pool')
         if pool is None:
             # Legacy volume, put them into default pool
             pool = self.driver.configuration.safe_get(
-                'volume_backend_name') or vol_utils.extract_host(
-                    vol['host'], 'pool', True)
+                'volume_backend_name') or vol_utils.extract_host(host, 'pool',
+                                                                 True)
 
+        vol_size = -vol['size'] if decrement else vol['size']
         try:
-            self.stats['pools'][pool]['allocated_capacity_gb'] += (
-                vol['size'])
+            self.stats['pools'][pool]['allocated_capacity_gb'] += vol_size
         except KeyError:
             self.stats['pools'][pool] = dict(
-                allocated_capacity_gb=vol['size'])
+                allocated_capacity_gb=max(vol_size, 0))
 
     def delete_group(self, context, group):
         """Deletes group and the volumes in the group."""
