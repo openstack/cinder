@@ -45,7 +45,8 @@ def volume_get(self, context, volume_id, viewable_admin_meta=False):
     if volume_id == fake.VOLUME_ID:
         return objects.Volume(context, id=fake.VOLUME_ID,
                               _name_id=fake.VOLUME2_ID,
-                              host='fake_host', cluster_name=None)
+                              host='fake_host', cluster_name=None,
+                              size=1)
     raise exception.VolumeNotFound(volume_id=volume_id)
 
 
@@ -107,7 +108,8 @@ class SnapshotManageTest(test.TestCase):
         res = req.get_response(app())
         return res
 
-    @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
+    @mock.patch(
+        'cinder.scheduler.rpcapi.SchedulerAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
     @mock.patch('cinder.db.sqlalchemy.api.service_get')
     def test_manage_snapshot_ok(self, mock_db,
@@ -145,9 +147,10 @@ class SnapshotManageTest(test.TestCase):
         # correct arguments.
         self.assertEqual(1, mock_rpcapi.call_count)
         args = mock_rpcapi.call_args[0]
-        self.assertEqual({u'fake_key': u'fake_ref'}, args[2])
+        self.assertEqual({u'fake_key': u'fake_ref'}, args[3])
 
-    @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
+    @mock.patch(
+        'cinder.scheduler.rpcapi.SchedulerAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
     @mock.patch('cinder.objects.service.Service.get_by_id')
     def test_manage_snapshot_ok_with_metadata_null(
@@ -167,7 +170,8 @@ class SnapshotManageTest(test.TestCase):
         # 5th argument of args is metadata.
         self.assertIsNone(args[5])
 
-    @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
+    @mock.patch(
+        'cinder.scheduler.rpcapi.SchedulerAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
     @mock.patch('cinder.db.sqlalchemy.api.service_get')
     def test_manage_snapshot_ok_ref_as_string(self, mock_db,
@@ -188,7 +192,7 @@ class SnapshotManageTest(test.TestCase):
         # correct arguments.
         self.assertEqual(1, mock_rpcapi.call_count)
         args = mock_rpcapi.call_args[0]
-        self.assertEqual(body['snapshot']['ref'], args[2])
+        self.assertEqual(body['snapshot']['ref'], args[3])
 
     @mock.patch('cinder.objects.service.Service.is_up',
                 return_value=True,
@@ -366,7 +370,8 @@ class SnapshotManageTest(test.TestCase):
                          res.json['badRequest']['message'])
         self.assertTrue(mock_is_up.called)
 
-    @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
+    @mock.patch(
+        'cinder.scheduler.rpcapi.SchedulerAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
     @mock.patch('cinder.objects.service.Service.get_by_id')
     def test_manage_snapshot_with_null_validate(

@@ -71,9 +71,10 @@ class SchedulerAPI(rpc.RPCAPI):
         3.8 - Addds ``valid_host_capacity`` method
         3.9 - Adds create_snapshot method
         3.10 - Adds backup_id to create_volume method.
+        3.11 - Adds manage_existing_snapshot method.
     """
 
-    RPC_API_VERSION = '3.10'
+    RPC_API_VERSION = '3.11'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
@@ -161,6 +162,20 @@ class SchedulerAPI(rpc.RPCAPI):
             'filter_properties': filter_properties, 'volume': volume,
         }
         return cctxt.cast(ctxt, 'manage_existing', **msg_args)
+
+    @rpc.assert_min_rpc_version('3.11')
+    def manage_existing_snapshot(self, ctxt, volume, snapshot, ref,
+                                 request_spec=None, filter_properties=None):
+        cctxt = self._get_cctxt()
+        request_spec_p = jsonutils.to_primitive(request_spec)
+        msg_args = {
+            'request_spec': request_spec_p,
+            'filter_properties': filter_properties,
+            'volume': volume,
+            'snapshot': snapshot,
+            'ref': ref,
+        }
+        return cctxt.cast(ctxt, 'manage_existing_snapshot', **msg_args)
 
     @rpc.assert_min_rpc_version('3.2')
     def extend_volume(self, ctxt, volume, new_size, reservations,
