@@ -1,0 +1,11 @@
+---
+features:
+  - Added dell_api_async_rest_timeout option to the
+    Dell EMC SC driver. This is the timeout used for
+    asynchronous REST calls to the Dell EMC SC REST
+    API. Default is 15 seconds.
+  - Added dell_api_sync_rest_timeout option to the
+    Dell EMC SC driver. This is the timeout used for
+    synchronous REST calls to the Dell EMC SC REST
+    API. Default is 30 seconds.
+

@@ -79,7 +79,8 @@ class HttpClient(object):
     Helper for making the REST calls.
     """
 
-    def __init__(self, host, port, user, password, verify, apiversion):
+    def __init__(self, host, port, user, password,
+                 verify, asynctimeout, synctimeout, apiversion):
         """HttpClient handles the REST requests.
 
         :param host: IP address of the Dell Data Collector.
@@ -88,6 +89,8 @@ class HttpClient(object):
         :param password: Password.
         :param verify: Boolean indicating whether certificate verification
                        should be turned on or not.
+        :param asynctimeout: async REST call time out.
+        :param synctimeout: sync REST call time out.
         :param apiversion: Dell API version.
         """
         self.baseUrl = 'https://%s:%s/' % (host, port)
@@ -100,6 +103,8 @@ class HttpClient(object):
         self.header['Accept'] = 'application/json'
         self.header['x-dell-api-version'] = apiversion
         self.verify = verify
+        self.asynctimeout = asynctimeout
+        self.synctimeout = synctimeout
 
         # Verify is a configurable option.  So if this is false do not
         # spam the c-vol log.
@@ -230,7 +235,8 @@ class HttpClient(object):
         LOG.debug('get: %(url)s', {'url': url})
         rest_response = self.session.get(self.__formatUrl(url),
                                          headers=self.header,
-                                         verify=self.verify)
+                                         verify=self.verify,
+                                         timeout=self.synctimeout)
 
         if (rest_response and rest_response.status_code == (
                 http_client.BAD_REQUEST)) and (
@@ -248,7 +254,9 @@ class HttpClient(object):
             data=json.dumps(payload,
                             ensure_ascii=False).encode('utf-8'),
             headers=self._get_header(async_call),
-            verify=self.verify), async_call)
+            verify=self.verify, timeout=(
+                self.asynctimeout if async_call else self.synctimeout)),
+            async_call)
 
     @utils.retry(exceptions=(requests.ConnectionError,))
     def put(self, url, payload, async_call=False):
@@ -260,14 +268,18 @@ class HttpClient(object):
             data=json.dumps(payload,
                             ensure_ascii=False).encode('utf-8'),
             headers=self._get_header(async_call),
-            verify=self.verify), async_call)
+            verify=self.verify, timeout=(
+                self.asynctimeout if async_call else self.synctimeout)),
+            async_call)
 
     @utils.retry(exceptions=(requests.ConnectionError,))
     def delete(self, url, payload=None, async_call=False):
         LOG.debug('delete: %(url)s data: %(payload)s',
                   {'url': url, 'payload': payload})
         named = {'headers': self._get_header(async_call),
-                 'verify': self.verify}
+                 'verify': self.verify,
+                 'timeout': (
+                     self.asynctimeout if async_call else self.synctimeout)}
         if payload:
             named['data'] = json.dumps(
                 payload, ensure_ascii=False).encode('utf-8')
@@ -336,6 +348,8 @@ class SCApiHelper(object):
                            self.san_login,
                            self.san_password,
                            self.config.dell_sc_verify_cert,
+                           self.config.dell_api_async_rest_timeout,
+                           self.config.dell_api_sync_rest_timeout,
                            self.apiversion)
         # This instance is for a single backend.  That backend has a
         # few items of information we should save rather than passing them
@@ -368,7 +382,7 @@ class SCApiHelper(object):
         connection = None
         LOG.info('open_connection to %(ssn)s at %(ip)s',
                  {'ssn': self.primaryssn,
-                  'ip': self.config.san_ip})
+                  'ip': self.san_ip})
         if self.primaryssn:
             try:
                 """Open connection to REST API."""
@@ -420,12 +434,14 @@ class SCApi(object):
         3.6.0 - Server type support.
         3.7.0 - Support for Data Reduction, Group QOS and Volume QOS.
         4.0.0 - Driver moved to dell_emc.
+        4.1.0 - Timeouts added to rest calls.
 
     """
 
-    APIDRIVERVERSION = '4.0.0'
+    APIDRIVERVERSION = '4.1.0'
 
-    def __init__(self, host, port, user, password, verify, apiversion):
+    def __init__(self, host, port, user, password, verify,
+                 asynctimeout, synctimeout, apiversion):
         """This creates a connection to Dell SC or EM.
 
         :param host: IP address of the REST interface..
@@ -434,6 +450,8 @@ class SCApi(object):
         :param password: Password.
         :param verify: Boolean indicating whether certificate verification
                        should be turned on or not.
+        :param asynctimeout: async REST call time out.
+        :param synctimeout: sync REST call time out.
         :param apiversion: Version used on login.
         """
         self.notes = 'Created by Dell EMC Cinder Driver'
@@ -454,8 +472,8 @@ class SCApi(object):
         # Nothing other than Replication should care if we are direct connect
         # or not.
         self.is_direct_connect = False
-        self.client = HttpClient(host, port, user, password,
-                                 verify, apiversion)
+        self.client = HttpClient(host, port, user, password, verify,
+                                 asynctimeout, synctimeout, apiversion)
 
     def __enter__(self):
         return self
