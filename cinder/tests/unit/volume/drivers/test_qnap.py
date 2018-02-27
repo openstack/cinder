@@ -3861,7 +3861,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
     def test_delete_snapshot_api(
             self,
             mock_http_connection):
-        """Test api de;ete snapshot."""
+        """Test api delete snapshot."""
         mock_http_connection.return_value.getresponse.side_effect = ([
             FakeLoginResponse(),
             FakeGetBasicInfoResponse(),
