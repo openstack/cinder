@@ -473,6 +473,13 @@ class RBDDriver(driver.CloneableImageVD,
             'provisioned_capacity_gb': 0,
             'reserved_percentage': (
                 self.configuration.safe_get('reserved_percentage')),
+            # NOTE(eharney): Do not enable multiattach for this driver.
+            # For multiattach to work correctly, the exclusive-lock
+            # feature required by ceph journaling must be disabled.
+            # This has implications for replication and other Cinder
+            # operations.
+            # Multiattach support for this driver will be investigated
+            # as multi-attach support in Cinder matures.
             'multiattach': False,
             'thin_provisioning_support': True,
             'max_over_subscription_ratio': (
