@@ -319,8 +319,10 @@ class RBDDriver(driver.CloneableImageVD,
             if timeout is None:
                 timeout = self.configuration.rados_connect_timeout
 
-            LOG.debug("connecting to %(name)s (timeout=%(timeout)s).",
-                      {'name': name, 'timeout': timeout})
+            LOG.debug("connecting to %(user)s@%(name)s (conf=%(conf)s, "
+                      "timeout=%(timeout)s).",
+                      {'user': user, 'name': name, 'conf': conf,
+                       'timeout': timeout})
 
             client = self.rados.Rados(rados_id=user,
                                       clustername=name,
