@@ -47,12 +47,12 @@ class VolumeUnmanageController(wsgi.Controller):
         attached to an instance.
         """
         context = req.environ['cinder.context']
-        context.authorize(policy.UNMANAGE_POLICY)
 
         LOG.info("Unmanage volume with id: %s", id)
 
         # Not found exception will be handled at the wsgi level
         vol = self.volume_api.get(context, id)
+        context.authorize(policy.UNMANAGE_POLICY, target_obj=vol)
         self.volume_api.delete(context, vol, unmanage_only=True)
         return webob.Response(status_int=http_client.ACCEPTED)
 

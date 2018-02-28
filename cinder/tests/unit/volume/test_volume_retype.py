@@ -17,6 +17,8 @@ from oslo_config import cfg
 from cinder import context
 from cinder import exception
 from cinder import objects
+from cinder.policies import volume_actions as vol_action_policies
+from cinder.policies import volumes as volume_policies
 from cinder import quota
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import volume as base
@@ -63,8 +65,9 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
         else:
             return self.default_vol_type
 
+    @mock.patch('cinder.context.RequestContext.authorize')
     @mock.patch.object(volume_types, 'get_by_name_or_id')
-    def test_retype_multiattach(self, _mock_get_types):
+    def test_retype_multiattach(self, _mock_get_types, mock_authorize):
         """Verify multiattach retype restrictions."""
 
         _mock_get_types.side_effect = self.fake_get_vtype
@@ -106,3 +109,15 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
                           self.context,
                           vol,
                           'multiattach-type')
+        mock_authorize.assert_has_calls(
+            [mock.call(volume_policies.CREATE_POLICY),
+             mock.call(volume_policies.CREATE_POLICY),
+             mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY),
+             mock.call(volume_policies.MULTIATTACH_POLICY,
+                       target_obj=mock.ANY),
+             mock.call(volume_policies.CREATE_POLICY),
+             mock.call(volume_policies.MULTIATTACH_POLICY),
+             mock.call(volume_policies.CREATE_POLICY),
+             mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY),
+             mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY),
+             ])

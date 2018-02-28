@@ -645,8 +645,8 @@ class API(base.Base):
         return volumes
 
     def get_snapshot(self, context, snapshot_id):
-        context.authorize(snapshot_policy.GET_POLICY)
         snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
+        context.authorize(snapshot_policy.GET_POLICY, target_obj=snapshot)
 
         # FIXME(jdg): The objects don't have the db name entries
         # so build the resource tag manually for now.
@@ -656,8 +656,8 @@ class API(base.Base):
         return snapshot
 
     def get_volume(self, context, volume_id):
-        context.authorize(vol_policy.GET_POLICY)
         volume = objects.Volume.get_by_id(context, volume_id)
+        context.authorize(vol_policy.GET_POLICY, target_obj=volume)
         LOG.info("Volume retrieved successfully.", resource=volume)
         return volume
 
@@ -863,7 +863,7 @@ class API(base.Base):
                               cgsnapshot_id,
                               commit_quota=True,
                               group_snapshot_id=None):
-        context.authorize(snapshot_policy.CREATE_POLICY)
+        context.authorize(snapshot_policy.CREATE_POLICY, target_obj=volume)
 
         utils.check_metadata_properties(metadata)
         if not volume.host:
@@ -1656,7 +1656,8 @@ class API(base.Base):
             # If they are retyping to a multiattach capable, make sure they
             # are allowed to do so.
             if tgt_is_multiattach:
-                context.authorize(vol_policy.MULTIATTACH_POLICY)
+                context.authorize(vol_policy.MULTIATTACH_POLICY,
+                                  target_obj=volume)
 
         # We're checking here in so that we can report any quota issues as
         # early as possible, but won't commit until we change the type. We
@@ -2070,7 +2071,8 @@ class API(base.Base):
                 vref.status == 'in-use' and
                 vref.bootable):
             ctxt.authorize(
-                attachment_policy.MULTIATTACH_BOOTABLE_VOLUME_POLICY)
+                attachment_policy.MULTIATTACH_BOOTABLE_VOLUME_POLICY,
+                target_obj=vref)
 
         # FIXME(JDG):  We want to be able to do things here like reserve a
         # volume for Nova to do BFV WHILE the volume may be in the process of
