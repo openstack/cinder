@@ -194,7 +194,10 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
                       'specs': {
                           'write_iops_sec_per_gb': 5,
                           'read_iops_sec_per_gb': 7700,
-                          'total_iops_sec_per_gb': 300000}
+                          'total_iops_sec_per_gb': 300000,
+                          'read_bytes_sec_per_gb': 10,
+                          'write_bytes_sec_per_gb': 40,
+                          'total_bytes_sec_per_gb': 1048576}
                       }
 
         with mock.patch.object(cinder.volume.volume_types,
@@ -206,7 +209,10 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
             mock_get_target.return_value = None
             qos_specs_expected = {'write_iops_sec': 15,
                                   'read_iops_sec': 23100,
-                                  'total_iops_sec': 900000}
+                                  'total_iops_sec': 900000,
+                                  'read_bytes_sec': 30,
+                                  'write_bytes_sec': 120,
+                                  'total_bytes_sec': 3145728}
             # initialize_connection() passes qos_specs that is designated to
             # be consumed by front-end or both front-end and back-end
             conn_info = self.volume.initialize_connection(
