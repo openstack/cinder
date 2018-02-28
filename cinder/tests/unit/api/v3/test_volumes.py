@@ -531,7 +531,8 @@ class VolumeApiTest(test.TestCase):
         self.controller.delete(req, 'fake_id')
         context = req.environ['cinder.context']
         if request_version == mv.VOLUME_DELETE_FORCE:
-            mock_authorize.assert_called_with(policy.FORCE_DELETE_POLICY)
+            mock_authorize.assert_called_with(policy.FORCE_DELETE_POLICY,
+                                              target_obj='fake_volume')
             mock_delete.assert_called_with(context,
                                            "fake_volume",
                                            cascade=False,

@@ -105,8 +105,8 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         self.assertSnapshotAttributes(self._get_snapshot(res.body),
                                       project_id=fake.PROJECT_ID,
                                       progress='0%')
-        calls = [mock.call(snap_policy.GET_POLICY), mock.call(
-            snap_policy.EXTEND_ATTRIBUTE, fatal=False)]
+        calls = [mock.call(snap_policy.GET_POLICY, target_obj=snapshot_obj),
+                 mock.call(snap_policy.EXTEND_ATTRIBUTE, fatal=False)]
         mock_authorize.assert_has_calls(calls)
 
     @mock.patch('cinder.context.RequestContext.authorize')

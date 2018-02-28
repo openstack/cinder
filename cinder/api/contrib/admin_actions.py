@@ -78,11 +78,11 @@ class AdminController(wsgi.Controller):
                 explanation=_("Must specify a valid status"))
         return update
 
-    def authorize(self, context, action_name):
+    def authorize(self, context, action_name, target_obj=None):
         context.authorize(
             'volume_extension:%(resource)s_admin_actions:%(action)s' %
             {'resource': self.resource_name,
-             'action': action_name})
+             'action': action_name}, target_obj=target_obj)
 
     def _remove_worker(self, context, id):
         # Remove the cleanup worker from the DB when we change a resource
@@ -107,7 +107,6 @@ class AdminController(wsgi.Controller):
                                             'attached_mode')
 
         context = req.environ['cinder.context']
-        self.authorize(context, 'reset_status')
         update = self.validate_update(body['os-reset_status'])
         msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
@@ -132,9 +131,9 @@ class AdminController(wsgi.Controller):
     def _force_delete(self, req, id, body):
         """Delete a resource, bypassing the check that it must be available."""
         context = req.environ['cinder.context']
-        self.authorize(context, 'force_delete')
         # Not found exception will be handled at the wsgi level
         resource = self._get(context, id)
+        self.authorize(context, 'force_delete', target_obj=resource)
         self._delete(context, resource, force=True)
 
 
@@ -158,6 +157,10 @@ class VolumeAdminController(AdminController):
                               'none', 'starting',)
 
     def _update(self, *args, **kwargs):
+        context = args[0]
+        volume_id = args[1]
+        volume = objects.Volume.get_by_id(context, volume_id)
+        self.authorize(context, 'reset_status', target_obj=volume)
         db.volume_update(*args, **kwargs)
 
     def _get(self, *args, **kwargs):
@@ -204,9 +207,9 @@ class VolumeAdminController(AdminController):
     def _force_detach(self, req, id, body):
         """Roll back a bad detach after the volume been disconnected."""
         context = req.environ['cinder.context']
-        self.authorize(context, 'force_detach')
         # Not found exception will be handled at the wsgi level
         volume = self._get(context, id)
+        self.authorize(context, 'force_detach', target_obj=volume)
         try:
             connector = body['os-force_detach'].get('connector', None)
         except AttributeError:
@@ -242,9 +245,9 @@ class VolumeAdminController(AdminController):
     def _migrate_volume(self, req, id, body):
         """Migrate a volume to the specified host."""
         context = req.environ['cinder.context']
-        self.authorize(context, 'migrate_volume')
         # Not found exception will be handled at the wsgi level
         volume = self._get(context, id)
+        self.authorize(context, 'migrate_volume', target_obj=volume)
         params = body['os-migrate_volume']
 
         cluster_name, host = common.get_cluster_host(req, params,
@@ -258,9 +261,9 @@ class VolumeAdminController(AdminController):
     def _migrate_volume_completion(self, req, id, body):
         """Complete an in-progress migration."""
         context = req.environ['cinder.context']
-        self.authorize(context, 'migrate_volume_completion')
         # Not found exception will be handled at the wsgi level
         volume = self._get(context, id)
+        self.authorize(context, 'migrate_volume_completion', target_obj=volume)
         params = body['os-migrate_volume_completion']
         try:
             new_volume_id = params['new_volume']
@@ -286,6 +289,7 @@ class SnapshotAdminController(AdminController):
         snapshot_id = args[1]
         fields = args[2]
         snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
+        self.authorize(context, 'reset_status', target_obj=snapshot)
         snapshot.update(fields)
         snapshot.save()
 
@@ -316,7 +320,6 @@ class BackupAdminController(AdminController):
     def _reset_status(self, req, id, body):
         """Reset status on the resource."""
         context = req.environ['cinder.context']
-        self.authorize(context, 'reset_status')
         update = self.validate_update(body['os-reset_status'])
         msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,

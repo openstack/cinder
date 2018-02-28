@@ -66,10 +66,10 @@ class VolumeController(volumes_v2.VolumeController):
         LOG.info("Delete volume with id: %(id)s %(params)s",
                  {'id': id, 'params': params}, context=context)
 
-        if force:
-            context.authorize(policy.FORCE_DELETE_POLICY)
-
         volume = self.volume_api.get(context, id)
+
+        if force:
+            context.authorize(policy.FORCE_DELETE_POLICY, target_obj=volume)
 
         self.volume_api.delete(context, volume,
                                cascade=cascade,

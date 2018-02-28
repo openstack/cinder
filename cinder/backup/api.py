@@ -36,6 +36,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
+from cinder.policies import backup_actions as backup_action_policy
 from cinder.policies import backups as policy
 import cinder.policy
 from cinder import quota
@@ -65,8 +66,9 @@ class API(base.Base):
         super(API, self).__init__(db)
 
     def get(self, context, backup_id):
-        context.authorize(policy.GET_POLICY)
-        return objects.Backup.get_by_id(context, backup_id)
+        backup = objects.Backup.get_by_id(context, backup_id)
+        context.authorize(policy.GET_POLICY, target_obj=backup)
+        return backup
 
     def _check_support_to_force_delete(self, context, backup_host):
         result = self.backup_rpcapi.check_support_to_force_delete(context,
@@ -84,7 +86,7 @@ class API(base.Base):
         :raises BackupDriverException:
         :raises ServiceNotFound:
         """
-        context.authorize(policy.DELETE_POLICY)
+        context.authorize(policy.DELETE_POLICY, target_obj=backup)
         if not force and backup.status not in [fields.BackupStatus.AVAILABLE,
                                                fields.BackupStatus.ERROR]:
             msg = _('Backup status must be available or error')
@@ -198,8 +200,8 @@ class API(base.Base):
                container, incremental=False, availability_zone=None,
                force=False, snapshot_id=None, metadata=None):
         """Make the RPC call to create a volume backup."""
-        context.authorize(policy.CREATE_POLICY)
         volume = self.volume_api.get(context, volume_id)
+        context.authorize(policy.CREATE_POLICY, target_obj=volume)
         snapshot = None
         if snapshot_id:
             snapshot = self.volume_api.get_snapshot(context, snapshot_id)
@@ -334,8 +336,8 @@ class API(base.Base):
 
     def restore(self, context, backup_id, volume_id=None, name=None):
         """Make the RPC call to restore a volume backup."""
-        context.authorize(policy.RESTORE_POLICY)
         backup = self.get(context, backup_id)
+        context.authorize(policy.RESTORE_POLICY, target_obj=backup)
         if backup['status'] != fields.BackupStatus.AVAILABLE:
             msg = _('Backup status must be available')
             raise exception.InvalidBackup(reason=msg)
@@ -419,6 +421,9 @@ class API(base.Base):
         """
         # get backup info
         backup = self.get(context, backup_id)
+        context.authorize(
+            backup_action_policy.BASE_POLICY_NAME % "reset_status",
+            target_obj=backup)
         backup.host = self._get_available_backup_service_host(
             backup.host, backup.availability_zone)
         backup.save()
@@ -437,8 +442,8 @@ class API(base.Base):
         :returns: contains 'backup_url' and 'backup_service'
         :raises InvalidBackup:
         """
-        context.authorize(policy.EXPORT_POLICY)
         backup = self.get(context, backup_id)
+        context.authorize(policy.EXPORT_POLICY, target_obj=backup)
         if backup['status'] != fields.BackupStatus.AVAILABLE:
             msg = (_('Backup status must be available and not %s.') %
                    backup['status'])
@@ -558,8 +563,8 @@ class API(base.Base):
         return backup
 
     def update(self, context, backup_id, fields):
-        context.authorize(policy.UPDATE_POLICY)
         backup = self.get(context, backup_id)
+        context.authorize(policy.UPDATE_POLICY, target_obj=backup)
         backup.update(fields)
         backup.save()
         return backup

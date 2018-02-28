@@ -46,12 +46,12 @@ class SnapshotUnmanageController(wsgi.Controller):
         A Not Found error is returned if the specified snapshot does not exist.
         """
         context = req.environ['cinder.context']
-        context.authorize(policy.UNMANAGE_POLICY)
 
         LOG.info("Unmanage snapshot with id: %s", id)
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
+            context.authorize(policy.UNMANAGE_POLICY, target_obj=snapshot)
             self.volume_api.delete_snapshot(context, snapshot,
                                             unmanage_only=True)
         # Not found exception will be handled at the wsgi level

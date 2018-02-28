@@ -877,7 +877,8 @@ class API(base.Base):
         return group_snapshot
 
     def delete_group_snapshot(self, context, group_snapshot, force=False):
-        context.authorize(gsnap_policy.DELETE_POLICY)
+        context.authorize(gsnap_policy.DELETE_POLICY,
+                          target_obj=group_snapshot)
         group_snapshot.assert_not_frozen()
         values = {'status': 'deleting'}
         expected = {'status': ('available', 'error')}
@@ -904,15 +905,18 @@ class API(base.Base):
                                                  group_snapshot)
 
     def update_group_snapshot(self, context, group_snapshot, fields):
-        context.authorize(gsnap_policy.UPDATE_POLICY)
+        context.authorize(gsnap_policy.UPDATE_POLICY,
+                          target_obj=group_snapshot)
         group_snapshot.update(fields)
         group_snapshot.save()
 
     def get_group_snapshot(self, context, group_snapshot_id):
-        context.authorize(gsnap_policy.GET_POLICY)
-        group_snapshots = objects.GroupSnapshot.get_by_id(context,
-                                                          group_snapshot_id)
-        return group_snapshots
+        group_snapshot = objects.GroupSnapshot.get_by_id(context,
+                                                         group_snapshot_id)
+        context.authorize(gsnap_policy.GET_POLICY,
+                          target_obj=group_snapshot)
+
+        return group_snapshot
 
     def get_all_group_snapshots(self, context, filters=None, marker=None,
                                 limit=None, offset=None, sort_keys=None,
@@ -936,7 +940,8 @@ class API(base.Base):
     def reset_group_snapshot_status(self, context, gsnapshot, status):
         """Reset status of group snapshot"""
 
-        context.authorize(gsnap_action_policy.RESET_STATUS)
+        context.authorize(gsnap_action_policy.RESET_STATUS,
+                          target_obj=gsnapshot)
         field = {'updated_at': timeutils.utcnow(),
                  'status': status}
         gsnapshot.update(field)
