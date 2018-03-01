@@ -108,10 +108,11 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         4.0.1 - Added check to remove FC zones. bug #1730720
         4.0.2 - Create one vlun in single path configuration. bug #1727176
         4.0.3 - Create FC vlun as host sees. bug #1734505
+        4.0.4 - Handle force detach case. bug #1686745
 
     """
 
-    VERSION = "4.0.3"
+    VERSION = "4.0.4"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -209,27 +210,34 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         """Driver entry point to unattach a volume from an instance."""
         common = self._login()
         try:
-            hostname = common._safe_hostname(connector['host'])
-            common.terminate_connection(volume, hostname,
-                                        wwn=connector['wwpns'])
+            is_force_detach = connector is None
+            if is_force_detach:
+                common.terminate_connection(volume, None, None)
+                # TODO(sonivi): remove zones, if not required
+                # for now, do not remove zones
+                zone_remove = False
+            else:
+                hostname = common._safe_hostname(connector['host'])
+                common.terminate_connection(volume, hostname,
+                                            wwn=connector['wwpns'])
+
+                zone_remove = True
+                try:
+                    vluns = common.client.getHostVLUNs(hostname)
+                except hpeexceptions.HTTPNotFound:
+                    # No more exports for this host.
+                    pass
+                else:
+                    # Vlun exists, so check for wwpn entry.
+                    for wwpn in connector.get('wwpns'):
+                        for vlun in vluns:
+                            if (vlun.get('active') and
+                                    vlun.get('remoteName') == wwpn.upper()):
+                                zone_remove = False
+                                break
 
             info = {'driver_volume_type': 'fibre_channel',
                     'data': {}}
-
-            zone_remove = True
-            try:
-                vluns = common.client.getHostVLUNs(hostname)
-            except hpeexceptions.HTTPNotFound:
-                # No more exports for this host.
-                pass
-            else:
-                # Vlun exists, so check for wwpn entry.
-                for wwpn in connector.get('wwpns'):
-                    for vlun in vluns:
-                        if vlun.get('active') and \
-                           vlun.get('remoteName') == wwpn.upper():
-                            zone_remove = False
-                            break
 
             if zone_remove:
                 LOG.info("Need to remove FC Zone, building initiator "
