@@ -18,10 +18,17 @@ This operations deletes the backup and any backup data.
 The backup driver returns the ``405`` status code if it does not
 support this operation.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: itemNotFound(404), badMethod(405)
+.. rest_status_code:: success ../status.yaml
 
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 404
+   - 405
 
 Request
 -------
@@ -47,10 +54,17 @@ Reset backup's status
 
 Reset a backup's status. Specify the ``os-reset_status`` action in the request body.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
 
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 Request
 -------

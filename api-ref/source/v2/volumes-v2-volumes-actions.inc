@@ -32,7 +32,13 @@ Troubleshooting
   request. If the request fails again, investigate the storage back
   end.
 
-Normal response codes: 202
+
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -52,11 +58,6 @@ Request Example
    :language: javascript
 
 
-
-
-
-
-
 Reset volume statuses
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -64,7 +65,13 @@ Reset volume statuses
 
 Administrator only. Resets the status, attach status, and migration status for a volume. Specify the ``os-reset_status`` action in the request body.
 
-Normal response codes: 202
+
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -93,7 +100,12 @@ Set image metadata for volume
 
 Sets the image metadata for a volume. Specify the ``os-set_image_metadata`` action in the request body.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -120,7 +132,13 @@ Remove image metadata from volume
 
 Removes image metadata, by key, from a volume. Specify the ``os-unset_image_metadata`` action in the request body and the ``key`` for the metadata key and value pair that you want to remove.
 
-Normal response codes: 200
+
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -140,9 +158,6 @@ Request Example
    :language: javascript
 
 
-
-
-
 Show image metadata for volume
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -150,7 +165,12 @@ Show image metadata for volume
 
 Shows image metadata for a volume.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -184,7 +204,6 @@ Response Example
 
 
 
-
 Attach volume to server
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -198,7 +217,12 @@ Preconditions
 
 - You should set ``instance_uuid`` or ``host_name``.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -231,7 +255,12 @@ Preconditions
 
 - Volume status must be ``in-use``.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -252,13 +281,6 @@ Request Example
 
 
 
-
-
-
-
-
-
-
 Unmanage volume
 ~~~~~~~~~~~~~~~
 
@@ -270,7 +292,12 @@ Preconditions
 
 - Volume status must be ``available``.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -290,10 +317,6 @@ Request Example
 
 
 
-
-
-
-
 Force detach volume
 ~~~~~~~~~~~~~~~~~~~
 
@@ -309,7 +332,13 @@ perform this operation. Cloud providers can change these permissions
 through the ``volume_extension:volume_admin_actions:force_detach`` rule in
 the ``policy.json`` file.
 
-Normal response codes: 202
+
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -328,10 +357,6 @@ Request Example
 
 .. literalinclude:: ./samples/volume-force-detach-request.json
    :language: javascript
-
-
-
-
 
 
 
@@ -354,7 +379,12 @@ Policy defaults enable only users with the administrative role or the owner of
 the volume to perform this operation. Cloud providers can change these
 permissions through the policy.json file.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -375,11 +405,6 @@ Request Example
    :language: javascript
 
 
-
-
-
-
-
 Force delete volume
 ~~~~~~~~~~~~~~~~~~~
 
@@ -388,8 +413,12 @@ Force delete volume
 Attempts force-delete of volume, regardless of state. Specify the ``os-force_delete`` action
 in the request body.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 202
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -408,11 +437,6 @@ Request Example
    :language: javascript
 
 
-
-
-
-
-
 Update volume bootable status
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -420,7 +444,13 @@ Update volume bootable status
 
 Update the bootable status for a volume, mark it as a bootable volume. Specify the ``os-set_bootable`` action in the request body.
 
-Normal response codes: 200
+
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request

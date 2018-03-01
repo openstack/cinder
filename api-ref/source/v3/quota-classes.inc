@@ -15,9 +15,17 @@ Show quota classes for a project
 Shows quota class set for a project. If no specific value for the quota class
 resource exists, then the default value will be reported.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: forbidden(403), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 403
+   - 404
 
 
 Request
@@ -59,9 +67,18 @@ Update quota classes for a project
 Updates quota class set for a project. If the ``quota_class_name`` key does not
 exist, then the API will create one.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), forbidden(403), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 403
+   - 404
 
 
 Request

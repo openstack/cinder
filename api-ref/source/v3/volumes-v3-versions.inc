@@ -11,10 +11,16 @@ Show API v3 details
 
 Shows details for Block Storage API v3.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
 
-Error response codes: 403
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 403
 
 
 Request

@@ -14,9 +14,18 @@ Delete group snapshot
 
 Deletes a group snapshot.
 
-Normal response codes: 202
 
-Error response codes: badRequest(400), itemNotFound(404)
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 
 Request
@@ -36,9 +45,17 @@ Show group snapshot details
 Shows details for a group snapshot.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 
 Request
@@ -80,9 +97,16 @@ Lists all group snapshots with details. Since v3.31 if non-admin
 users specify invalid filters in the url, API will return bad request.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 Request
 -------
@@ -127,9 +151,16 @@ Lists all group snapshots, since v3.31 if non-admin users
 specify invalid filters in the url, API will return bad request.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 
 Request
@@ -170,9 +201,17 @@ Create group snapshot
 
 Creates a group snapshot.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 
 Request
@@ -216,9 +255,17 @@ Reset group snapshot status
 
 Resets the status for a group snapshot. Specifies the ``reset_status`` action in the request body.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 
 Request

@@ -25,7 +25,12 @@ The API chooses the size of the snapshot by rounding up the size of
 the existing snapshot to the next gibibyte (GiB).
 
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -57,7 +62,12 @@ List summary of snapshots available to manage
 Search a volume backend and list summary of snapshots which are available to
 manage.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -102,7 +112,13 @@ List detail of snapshots available to manage
 Search a volume backend and list detail of snapshots which are available to
 manage.
 
-Normal response codes: 200
+
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request

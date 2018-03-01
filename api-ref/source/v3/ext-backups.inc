@@ -47,9 +47,16 @@ since v3.31 if non-admin users specify invalid filters in the url,
 API will return bad request.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 
 Request
@@ -106,8 +113,12 @@ Show backup detail
 
 Shows details for a backup.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -159,9 +170,16 @@ Delete a backup
 
 Deletes a backup.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: Bad Request(400)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 Request
 -------
@@ -188,9 +206,17 @@ new volume matching the size and name of the originally backed up volume.
 In this case, if the name parameter is provided, it will be used as the
 name of the new volume.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: Bad Request(400), Request Entity Too Large(413)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 413
 
 
 Request
@@ -233,9 +259,17 @@ Create a backup
 
 Creates a Block Storage backup from a volume.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: Bad Request(400), Internal Server Error(500)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 500
 
 Request
 -------
@@ -277,9 +311,16 @@ Update a backup
 
 Update a Block Storage backup. This API is available since v3.9.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: Bad Request(400)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 Request
 -------
@@ -325,9 +366,16 @@ Lists Block Storage backups to which the project has access,
 since v3.31 if non-admin users specify invalid filters in the
 url, API will return bad request.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 Request
 -------
@@ -367,9 +415,17 @@ Export a backup
 Export information about a backup.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 
 Request
@@ -404,9 +460,17 @@ Import a backup
 Import information about a backup.
 
 
-Normal response codes: 201
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), serviceUnavailable(503)
+.. rest_status_code:: success ../status.yaml
+
+   - 201
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 503
 
 
 Request

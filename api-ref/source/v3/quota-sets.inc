@@ -16,7 +16,12 @@ Show quotas for a project
 Shows quotas for a project.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -61,8 +66,12 @@ Show quota usage for a project
 
 Shows quota usage for a project.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -109,7 +118,12 @@ Update quotas for a project
 Updates quotas for a project.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -168,8 +182,12 @@ Delete quotas for a project
 
 Deletes quotas for a project so the quotas revert to default values.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -190,8 +208,12 @@ Get default quotas for a project
 
 Gets default quotas for a project.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -236,9 +258,16 @@ Validate setup for nested quota
 Validate setup for nested quota, administrator should ensure that Keystone v3 or greater is
 being used.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
-Error response codes: badRequest(400)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 
 Request

@@ -14,7 +14,12 @@ Show all back-end capabilities
 Shows capabilities for a storage back end on the host.
 The ``hostname`` takes the form of ``hostname@volume_backend_name``.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 Request
 -------

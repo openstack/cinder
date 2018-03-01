@@ -7,14 +7,23 @@ List Api Versions
 
 Lists information for all Block Storage API versions.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200,300
+.. rest_status_code:: success ../status.yaml
 
-Error response codes: computeFault(400, 500), serviceUnavailable(503), badRequest(400),
-unauthorized(401), forbidden(403), badMethod(405), itemNotFound(404)
+   - 200
+   - 300
 
-Request
-~~~~~~~
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 405
+   - 500
+   - 503
 
 Response
 ~~~~~~~~

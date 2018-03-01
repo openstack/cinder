@@ -24,8 +24,12 @@ Update a volume type
 
 Updates a volume type.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -73,8 +77,12 @@ Create or update extra specs for volume type
 Adds new extra specifications to a volume type, or updates the extra
 specifications that are assigned to a volume type.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -115,8 +123,12 @@ Show all extra specifications for volume type
 
 Shows all extra specifications assigned to a volume type.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 Request
 -------
@@ -149,8 +161,12 @@ Show extra specification for volume type
 
 Shows the specific extra specification assigned to a volume type.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 Request
 -------
@@ -176,8 +192,12 @@ Update extra specification for volume type
 
 Update the specific extra specification assigned to a volume type.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -210,8 +230,12 @@ Delete extra specification for volume type
 
 Deletes the specific extra specification assigned to a volume type.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 202
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -231,8 +255,12 @@ Show volume type detail
 
 Shows details for a volume type.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 Request
 -------
@@ -269,8 +297,12 @@ Show default volume type
 
 Shows details for the default volume type if configured.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 Request
 -------
@@ -306,7 +338,12 @@ Delete a volume type
 
 Deletes a volume type.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -325,8 +362,12 @@ List all volume types
 
 Lists volume types.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -364,7 +405,12 @@ Create a volume type
 
 Creates a volume type.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -413,7 +459,12 @@ Show an encryption type
 
 To show an encryption type for an existing volume type.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -456,7 +507,12 @@ Show encryption specs item
 
 To show encryption specs item for an existing volume type.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -482,7 +538,12 @@ Delete an encryption type
 
 To delete an encryption type for an existing volume type.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -502,7 +563,12 @@ Create an encryption type
 
 To create an encryption type for an existing volume type.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -552,7 +618,12 @@ Update an encryption type
 
 To update an encryption type for an existing volume type.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request

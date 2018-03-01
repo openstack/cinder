@@ -14,7 +14,12 @@ List resource filters
 
 List filters.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request

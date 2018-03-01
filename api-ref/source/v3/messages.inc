@@ -13,9 +13,17 @@ Delete message
 
 Deletes a message.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 
 Request
@@ -35,9 +43,17 @@ Show message details
 Shows details for a message.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 
 Request
@@ -82,9 +98,16 @@ Lists all messages, since v3.31 if non-admin users
 specify invalid filters in the url, API will return bad request.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 
 Request

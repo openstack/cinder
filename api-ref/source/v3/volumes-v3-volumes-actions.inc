@@ -52,7 +52,12 @@ Troubleshooting
   request. If the request fails again, investigate the storage back
   end.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -80,7 +85,12 @@ Reset a volume's statuses
 Administrator only. Resets the status, attach status, revert to snapshot,
 and migration status for a volume. Specify the ``os-reset_status`` action in the request body.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -112,9 +122,19 @@ and the volume status must be ``available``.
 
 Available since API microversion ``3.40``.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: 400(HTTPBadRequest), 403(HTTPForbidden), 404(HTTPNotFound), 409(HTTPConflict)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 403
+   - 404
+   - 409
 
 Request
 -------
@@ -140,7 +160,12 @@ Set image metadata for a volume
 
 Sets the image metadata for a volume. Specify the ``os-set_image_metadata`` action in the request body.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -167,7 +192,12 @@ Remove image metadata from a volume
 
 Removes image metadata, by key, from a volume. Specify the ``os-unset_image_metadata`` action in the request body and the ``key`` for the metadata key and value pair that you want to remove.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -196,7 +226,12 @@ Show image metadata for a volume
 
 Shows image metadata for a volume.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -242,7 +277,12 @@ Preconditions
 
 - You should set ``instance_uuid`` or ``host_name``.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -276,7 +316,12 @@ Preconditions
 
 - Volume status must be ``in-use``.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -309,7 +354,12 @@ Preconditions
 
 - Volume status must be ``available``.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -343,7 +393,12 @@ perform this operation. Cloud providers can change these permissions
 through the ``volume_extension:volume_admin_actions:force_detach`` rule in
 the ``policy.json`` file.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -383,7 +438,12 @@ Policy defaults enable only users with the administrative role or the owner of
 the volume to perform this operation. Cloud providers can change these
 permissions through the policy.json file.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -412,8 +472,12 @@ Force delete a volume
 Attempts force-delete of volume, regardless of state. Specify the ``os-force_delete`` action
 in the request body.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 202
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -440,7 +504,12 @@ Update a volume's bootable status
 Update the bootable status for a volume, mark it as a bootable volume. Specify
 the ``os-set_bootable`` action in the request body.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -467,7 +536,12 @@ Upload volume to image
 
 Uploads the specified volume to image service.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request

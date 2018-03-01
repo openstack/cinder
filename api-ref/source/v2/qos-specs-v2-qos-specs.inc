@@ -17,7 +17,12 @@ Disassociate QoS specification from all associations
 
 Disassociates a QoS specification from all associations.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -36,8 +41,12 @@ Unset keys in QoS specification
 
 Unsets keys in a QoS specification.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -72,7 +81,12 @@ Get all associations for QoS specification
 Lists all associations for a QoS specification.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -98,7 +112,12 @@ Associate QoS specification with volume type
 
 Associates a QoS specification with a volume type.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -118,7 +137,12 @@ Disassociate QoS specification from volume type
 
 Disassociates a QoS specification from a volume type.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -138,13 +162,22 @@ Show QoS specification details
 
 Shows details for a QoS specification.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
 
-Error response codes: Request Entity Too Large(413), badMethod(405),
-itemNotFound(404), forbidden(403), unauthorized(401), badRequest(400),
-serviceUnavailable(503)
+   - 200
 
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 405
+   - 413
+   - 503
 
 Request
 -------
@@ -182,9 +215,12 @@ Set keys in QoS specification
 
 Sets keys in a QoS specification.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
 
+   - 200
 
 Request
 -------
@@ -217,7 +253,12 @@ Delete QoS specification
 
 Deletes a QoS specification.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -239,7 +280,12 @@ Creates a QoS specification.
 
 Specify one or more key and value pairs in the request body.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -281,7 +327,12 @@ List QoS specs
 Lists quality of service (QoS) specifications.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request

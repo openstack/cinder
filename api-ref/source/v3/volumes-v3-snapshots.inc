@@ -43,10 +43,16 @@ Lists all Block Storage snapshots, with details, that the project can access,
 since v3.31 if non-admin users specify invalid filters in the url, API will
 return bad request.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
 
-Error response codes: badRequest(400)
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 
 Request
@@ -96,7 +102,12 @@ Create a snapshot
 Creates a volume snapshot, which is a point-in-time, complete copy of a volume.
 You can create a volume from a snapshot.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -151,10 +162,16 @@ Lists all Block Storage snapshots, with summary information,
 that the project can access, since v3.31 if non-admin users
 specify invalid filters in the url, API will return bad request.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
 
-Error response codes: badRequest(400)
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 
 Request
@@ -201,8 +218,12 @@ Show a snapshot's metadata
 
 Shows metadata for a snapshot.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -248,8 +269,12 @@ Updates metadata for a snapshot.
 Creates or replaces metadata items that match keys. Does not modify items that
 are not in the request.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -287,8 +312,12 @@ Update a snapshot's metadata
 
 Replaces all the snapshot's metadata with the key-value pairs in the request.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -328,8 +357,12 @@ Show a snapshot's details
 
 Shows details for a snapshot.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -373,8 +406,12 @@ Update a snapshot
 
 Updates a snapshot.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -426,7 +463,12 @@ Delete a snapshot
 
 Deletes a snapshot.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -445,7 +487,12 @@ Show a snapshot's metadata for a specific key
 
 Shows metadata for a snapshot for a specific key.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -480,7 +527,12 @@ Delete a snapshot's metadata
 
 Deletes metadata for a snapshot.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -500,7 +552,12 @@ Update a snapshot's metadata for a specific key
 
 Update metadata for a snapshot for a specific key.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request

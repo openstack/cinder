@@ -13,8 +13,12 @@ List API extensions
 
 Lists Block Storage API extensions.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request

@@ -44,9 +44,12 @@ List backups with details
 
 Lists Block Storage backups, with details, to which the project has access.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
 
+   - 200
 
 Request
 -------
@@ -99,9 +102,12 @@ Show backup details
 
 Shows details for a backup.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
 
+   - 200
 
 Request
 -------
@@ -150,12 +156,16 @@ Delete backup
 
 Deletes a backup.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: Bad Request(400)
+.. rest_status_code:: success ../status.yaml
 
+   - 202
 
+.. rest_status_code:: error ../status.yaml
 
+   - 400
 
 Request
 -------
@@ -176,10 +186,17 @@ Restores a Block Storage backup to an existing or new Block Storage volume.
 You must specify either the UUID or name of the volume. If you
 specify both the UUID and name, the UUID takes priority.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: Bad Request(400), Request Entity Too Large(413)
+.. rest_status_code:: success ../status.yaml
 
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 413
 
 Request
 -------
@@ -221,9 +238,17 @@ Create backup
 
 Creates a Block Storage backup from a volume.
 
-Normal response codes: 202,
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: Bad Request(400), Internal Server Error(500)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 500
 
 Request
 -------
@@ -263,7 +288,12 @@ List backups
 
 Lists Block Storage backups to which the project has access.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 Request
 -------
@@ -301,11 +331,17 @@ Export backup
 
 Export information about a backup.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
 
-Error response codes: badRequest(400), itemNotFound(404)
+   - 200
 
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 Request
 -------
@@ -338,11 +374,17 @@ Import backup
 
 Import information about a backup.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 201
+.. rest_status_code:: success ../status.yaml
 
-Error response codes: badRequest(400), serviceUnavailable(503)
+   - 201
 
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 503
 
 Request
 -------

@@ -28,7 +28,12 @@ Prior to microversion 3.16 host field was required, with the possibility of
 defining the cluster it is no longer required, but we must have either a host
 or a cluster field but we cannot have them both with values.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -66,7 +71,12 @@ List summary of volumes available to manage
 Search a volume backend and list summary of volumes which are available to
 manage.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -110,7 +120,12 @@ List detail of volumes available to manage
 Search a volume backend and list detail of volumes which are available to
 manage.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request

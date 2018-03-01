@@ -13,7 +13,12 @@ Accept volume transfer
 
 Accepts a volume transfer.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -55,8 +60,12 @@ Create volume transfer
 
 Creates a volume transfer.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 Request
 -------
@@ -100,9 +109,12 @@ List volume transfers
 
 Lists volume transfers.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
 
+   - 200
 
 Request
 -------
@@ -138,9 +150,12 @@ Show volume transfer details
 
 Shows details for a volume transfer.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
 
+   - 200
 
 Request
 -------
@@ -177,8 +192,12 @@ Delete volume transfer
 
 Deletes a volume transfer.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 Request
 -------
@@ -196,8 +215,12 @@ List volume transfers, with details
 
 Lists volume transfers, with details.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 Request
 -------

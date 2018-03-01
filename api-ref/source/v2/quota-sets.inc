@@ -14,8 +14,12 @@ Show quotas
 
 Shows quotas for a project.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -64,8 +68,12 @@ Update quotas
 
 Updates quotas for a project.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -133,8 +141,12 @@ Delete quotas
 
 Deletes quotas for a project so the quotas revert to default values.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -159,7 +171,12 @@ Get default quotas
 Gets default quotas for a project.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
