@@ -167,6 +167,7 @@ class TestCinderVolumeCmdPosix(test.TestCase):
         backends = ['', 'backend1', 'backend2', '']
         CONF.set_override('enabled_backends', backends)
         CONF.set_override('host', 'host')
+        CONF.set_override('cluster', None)
         launcher = get_launcher.return_value
 
         cinder_volume.main()
@@ -270,6 +271,7 @@ class TestCinderVolumeCmdWin32(test.TestCase):
         backends = ['', 'backend1', 'backend2', '']
         CONF.set_override('enabled_backends', backends)
         CONF.set_override('host', 'host')
+        CONF.set_override('cluster', None)
         launcher = get_launcher.return_value
 
         sys.argv += ['--backend_name', 'backend2']
@@ -297,6 +299,7 @@ class TestCinderVolumeCmdWin32(test.TestCase):
         # We're expecting the service to be run within the same process.
         CONF.set_override('enabled_backends', ['backend2'])
         CONF.set_override('host', 'host')
+        CONF.set_override('cluster', None)
         launcher = get_launcher.return_value
 
         cinder_volume.main()
