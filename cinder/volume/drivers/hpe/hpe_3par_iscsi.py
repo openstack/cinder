@@ -122,10 +122,11 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         4.0.0 - Adds base class.
         4.0.1 - Update CHAP on host record when volume is migrated
                 to new compute host. bug # 1737181
+        4.0.2 - Handle force detach case. bug #1686745
 
     """
 
-    VERSION = "4.0.1"
+    VERSION = "4.0.2"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -364,11 +365,15 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         """Driver entry point to unattach a volume from an instance."""
         common = self._login()
         try:
-            hostname = common._safe_hostname(connector['host'])
-            common.terminate_connection(
-                volume,
-                hostname,
-                iqn=connector['initiator'])
+            is_force_detach = connector is None
+            if is_force_detach:
+                common.terminate_connection(volume, None, None)
+            else:
+                hostname = common._safe_hostname(connector['host'])
+                common.terminate_connection(
+                    volume,
+                    hostname,
+                    iqn=connector['initiator'])
             self._clear_chap_3par(common, volume)
         finally:
             self._logout(common)
