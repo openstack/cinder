@@ -11,19 +11,6 @@ external storage, but at a fraction of the cost and complexity. Using the
 driver, Block Storage hosts can connect to a ScaleIO Storage
 cluster.
 
-Support matrix
-~~~~~~~~~~~~~~
-
-.. list-table::
-   :widths: 10 25
-   :header-rows: 1
-
-   * - ScaleIO version
-     - Supported Linux operating systems
-   * - 2.0
-     - CentOS 6.x, CentOS 7.x, SLES 11 SP3, SLES 12, Ubuntu 14.04, Ubuntu 16.04
-
-
 .. _scale_io_docs:
 
 Official ScaleIO documentation
@@ -35,6 +22,17 @@ To find the ScaleIO documentation:
 
 #. From the left-side panel, select the relevant ScaleIO version.
 
+Supported ScaleIO Versions
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Dell EMC ScaleIO Block Storage driver has been tested against the
+following versions of ScaleIO and found to be compatible:
+
+* ScaleIO 2.0.x
+* ScaleIO 2.5.x
+
+Please consult the :ref:`scale_io_docs`
+to determine supported operating systems for each version of ScaleIO.
 
 Deployment prerequisites
 ~~~~~~~~~~~~~~~~~~~~~~~~
