@@ -23,6 +23,7 @@ machine is never powered on and is often referred as the shadow VM.
 """
 
 import math
+import re
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -150,6 +151,9 @@ vmdk_opts = [
                      ' lazily when the volume is created without any source. '
                      'The backend volume is created when the volume is '
                      'attached, uploaded to image service or during backup.'),
+    cfg.StrOpt('vmware_datastore_regex',
+               help='Regular expression pattern to match the name of '
+                    'datastores where backend volumes are created.')
 ]
 
 CONF = cfg.CONF
@@ -258,7 +262,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     #         improve scalability of querying volumes in backend (bug 1600754)
     # 3.1.0 - support adapter type change using retype
     # 3.2.0 - config option to disable lazy creation of backend volume
-    VERSION = '3.2.0'
+    # 3.3.0 - config option to specify datastore name regex
+    VERSION = '3.3.0'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
@@ -281,6 +286,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         self._ds_sel = None
         self._clusters = None
         self._dc_cache = {}
+        self._ds_regex = None
 
     @property
     def volumeops(self):
@@ -1825,6 +1831,14 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """Any initialization the volume driver does while starting."""
         self._validate_params()
 
+        regex_pattern = self.configuration.vmware_datastore_regex
+        if regex_pattern:
+            try:
+                self._ds_regex = re.compile(regex_pattern)
+            except re.error:
+                raise exception.InvalidInput(reason=_(
+                    "Invalid regular expression: %s.") % regex_pattern)
+
         # Validate vCenter version.
         self._vc_version = self._get_vc_version()
         self._validate_vcenter_version(self._vc_version)
@@ -1851,7 +1865,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         self._volumeops = volumeops.VMwareVolumeOps(
             self.session, max_objects, EXTENSION_KEY, EXTENSION_TYPE)
         self._ds_sel = hub.DatastoreSelector(
-            self.volumeops, self.session, max_objects)
+            self.volumeops, self.session, max_objects, ds_regex=self._ds_regex)
 
         # Get clusters to be used for backing VM creation.
         cluster_names = self.configuration.vmware_cluster_name

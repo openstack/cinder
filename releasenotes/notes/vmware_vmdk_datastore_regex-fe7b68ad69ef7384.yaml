@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    VMware VMDK driver and FCD driver now support a config option
+    ``vmware_datastore_regex`` to specify the regular expression
+    pattern to match the name of datastores where backend volumes
+    are created.
