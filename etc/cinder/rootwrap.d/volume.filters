@@ -107,9 +107,6 @@ qemu-img_convert: CommandFilter, qemu-img, root
 
 udevadm: CommandFilter, udevadm, root
 
-# cinder/volume/driver.py: utils.read_file_as_root()
-cat: CommandFilter, cat, root
-
 # cinder/volume/nfs.py
 stat: CommandFilter, stat, root
 mount: CommandFilter, mount, root
