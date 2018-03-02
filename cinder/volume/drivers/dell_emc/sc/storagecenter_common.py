@@ -876,8 +876,9 @@ class SCCommonDriver(driver.ManageableVD,
         for volume in volumes:
             status = fields.GroupStatus.ERROR
             try:
-                if self.delete_volume(volume):
-                    status = fields.GroupStatus.DELETED
+                self.delete_volume(volume)
+                # We throw if that fails.
+                status = fields.GroupStatus.DELETED
             except (exception.VolumeBackendAPIException,
                     exception.VolumeIsBusy):
                 LOG.error('delete_group: error deleting volume %s',
