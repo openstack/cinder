@@ -22,7 +22,6 @@ import time
 
 import ddt
 import mock
-from oslo_concurrency import processutils as putils
 from oslo_utils import timeutils
 import six
 from six.moves import range
@@ -150,25 +149,6 @@ class GenericUtilsTestCase(test.TestCase):
         self.assertEqual('/dev/xvda', utils.make_dev_path('xvda'))
         self.assertEqual('/dev/xvdb1', utils.make_dev_path('xvdb', 1))
         self.assertEqual('/foo/xvdc1', utils.make_dev_path('xvdc', 1, '/foo'))
-
-    @mock.patch('cinder.utils.execute')
-    def test_read_file_as_root(self, mock_exec):
-        out = mock.Mock()
-        err = mock.Mock()
-        mock_exec.return_value = (out, err)
-        test_filepath = '/some/random/path'
-        output = utils.read_file_as_root(test_filepath)
-        mock_exec.assert_called_once_with('cat', test_filepath,
-                                          run_as_root=True)
-        self.assertEqual(out, output)
-
-    @mock.patch('cinder.utils.execute',
-                side_effect=putils.ProcessExecutionError)
-    def test_read_file_as_root_fails(self, mock_exec):
-        test_filepath = '/some/random/path'
-        self.assertRaises(exception.FileNotFound,
-                          utils.read_file_as_root,
-                          test_filepath)
 
     @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     @mock.patch('tempfile.NamedTemporaryFile')

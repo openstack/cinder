@@ -379,15 +379,6 @@ def sanitize_hostname(hostname):
     return hostname
 
 
-def read_file_as_root(file_path):
-    """Secure helper to read file as root."""
-    try:
-        out, _err = execute('cat', file_path, run_as_root=True)
-        return out
-    except processutils.ProcessExecutionError:
-        raise exception.FileNotFound(file_path=file_path)
-
-
 def robust_file_write(directory, filename, data):
     """Robust file write.
 
