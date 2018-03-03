@@ -265,11 +265,12 @@ class HPE3PARCommon(object):
                 differs from volume present in the source group in terms of
                 extra-specs. bug #1744025
         4.0.6 - Monitor task of promoting a virtual copy. bug #1749642
+        4.0.7 - Handle force detach case. bug #1686745
 
 
     """
 
-    VERSION = "4.0.6"
+    VERSION = "4.0.7"
 
     stats = {}
 
@@ -1659,7 +1660,11 @@ class HPE3PARCommon(object):
 
     def delete_vlun(self, volume, hostname, wwn=None, iqn=None):
         volume_name = self._get_3par_vol_name(volume['id'])
-        vluns = self.client.getHostVLUNs(hostname)
+        if hostname:
+            vluns = self.client.getHostVLUNs(hostname)
+        else:
+            # In case of 'force detach', hostname is None
+            vluns = self.client.getVLUNs()['members']
 
         # When deleteing VLUNs, you simply need to remove the template VLUN
         # and any active VLUNs will be automatically removed.  The template
@@ -1681,6 +1686,8 @@ class HPE3PARCommon(object):
 
         # VLUN Type of MATCHED_SET 4 requires the port to be provided
         for vlun in volume_vluns:
+            if hostname is None:
+                hostname = vlun.get('hostname')
             if 'portPos' in vlun:
                 self.client.deleteVLUN(volume_name, vlun['lun'],
                                        hostname=hostname,
@@ -1721,6 +1728,8 @@ class HPE3PARCommon(object):
             # host, so it is worth the unlikely risk.
 
             try:
+                # TODO(sonivi): since multiattach is not supported for now,
+                # delete only single host, if its not exported to volume.
                 self._delete_3par_host(hostname)
             except Exception as ex:
                 # Any exception down here is only logged.  The vlun is deleted.
@@ -2928,8 +2937,9 @@ class HPE3PARCommon(object):
         elif iqn:
             hosts = self.client.queryHost(iqns=[iqn])
 
-        if hosts and hosts['members'] and 'name' in hosts['members'][0]:
-            hostname = hosts['members'][0]['name']
+        if hosts is not None:
+            if hosts and hosts['members'] and 'name' in hosts['members'][0]:
+                hostname = hosts['members'][0]['name']
 
         try:
             self.delete_vlun(volume, hostname, wwn=wwn, iqn=iqn)
@@ -2950,12 +2960,19 @@ class HPE3PARCommon(object):
                                 "secondary target.")
                     return
                 else:
-                    # use the wwn to see if we can find the hostname
-                    hostname = self._get_3par_hostname_from_wwn_iqn(wwn, iqn)
-                    # no 3par host, re-throw
-                    if hostname is None:
-                        LOG.error("Exception: %s", e)
+                    if hosts is None:
+                        # In case of 'force detach', hosts is None
+                        LOG.exception("Exception: %s", e)
                         raise
+                    else:
+                        # use the wwn to see if we can find the hostname
+                        hostname = self._get_3par_hostname_from_wwn_iqn(
+                            wwn,
+                            iqn)
+                        # no 3par host, re-throw
+                        if hostname is None:
+                            LOG.exception("Exception: %s", e)
+                            raise
             else:
                 # not a 'host does not exist' HTTPNotFound exception, re-throw
                 LOG.error("Exception: %s", e)
