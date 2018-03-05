@@ -1,4 +1,4 @@
-# Copyright 2016 Nexenta Systems, Inc.
+# Copyright 2018 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -79,6 +79,7 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.cfg.nexenta_target_group_prefix = 'cinder-'
         self.cfg.nexenta_ns5_blocksize = 32
         self.cfg.nexenta_sparse = True
+        self.cfg.nexenta_lu_writebackcache_disabled = True
         self.cfg.nexenta_dataset_compression = 'on'
         self.cfg.nexenta_dataset_dedup = 'off'
         self.cfg.reserved_percentage = 20
@@ -148,7 +149,7 @@ class TestNexentaISCSIDriver(test.TestCase):
 
     def test_delete_volume(self):
         self.nef_mock.get.return_value = {
-            'data': {'originalSnapshot': 'clone-1'}}
+            'data': [{'originalSnapshot': 'clone-1'}]}
         self.assertIsNone(self.drv.delete_volume(self.TEST_VOLUME_REF))
 
     def test_extend_volume(self):
