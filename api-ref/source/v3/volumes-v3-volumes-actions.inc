@@ -122,7 +122,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
    - revert: revert
    - snapshot_id: snapshot_id_4
 
