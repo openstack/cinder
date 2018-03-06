@@ -1609,6 +1609,16 @@ def get_booleans_for_table(table_name):
 ###################
 
 
+def reset_active_backend(context, enable_replication, active_backend_id,
+                         backend_host):
+    """Reset the active backend for a host."""
+    return IMPL.reset_active_backend(context, enable_replication,
+                                     active_backend_id, backend_host)
+
+
+###################
+
+
 def driver_initiator_data_insert_by_key(context, initiator,
                                         namespace, key, value):
     """Updates DriverInitiatorData entry.

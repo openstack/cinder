@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    A new cinder-manage command, reset_active_backend, was added to promote a
+    failed-over backend participating in replication.  This allows you to
+    reset a backend without manually editing the database.  A backend
+    undergoing promotion using this command is expected to be in a disabled
+    and frozen state.  Support for both standalone and clustered backend
+    configurations are supported.
