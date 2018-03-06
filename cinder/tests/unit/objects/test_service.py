@@ -13,6 +13,7 @@
 #    under the License.
 
 import datetime
+import ddt
 import mock
 from oslo_utils import timeutils
 import pytz
@@ -25,6 +26,7 @@ from cinder.tests.unit import fake_service
 from cinder.tests.unit import objects as test_objects
 
 
+@ddt.ddt
 class TestService(test_objects.BaseObjectsTestCase):
 
     @mock.patch('cinder.db.sqlalchemy.api.service_get')
@@ -35,15 +37,17 @@ class TestService(test_objects.BaseObjectsTestCase):
         self._compare(self, db_service, service)
         service_get.assert_called_once_with(self.context, 1)
 
+    @ddt.data(True, False)
     @mock.patch('cinder.db.service_get')
-    def test_get_by_host_and_topic(self, service_get):
+    def test_get_by_host_and_topic(self, show_disabled, service_get):
         db_service = fake_service.fake_db_service()
         service_get.return_value = db_service
         service = objects.Service.get_by_host_and_topic(
-            self.context, 'fake-host', 'fake-topic')
+            self.context, 'fake-host', 'fake-topic', disabled=show_disabled)
         self._compare(self, db_service, service)
         service_get.assert_called_once_with(
-            self.context, disabled=False, host='fake-host', topic='fake-topic')
+            self.context, disabled=show_disabled, host='fake-host',
+            topic='fake-topic')
 
     @mock.patch('cinder.db.service_get')
     def test_get_by_args(self, service_get):
