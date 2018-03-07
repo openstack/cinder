@@ -659,6 +659,7 @@ class VMAXCommonData(object):
                  {"symmetrixId": array_herc,
                   "model": "VMAXHERC",
                   "ucode": "5978.1091.1092"}]
+    version_details = {"version": "V9.0.0.1"}
 
     headroom = {"headroom": [{"headroomCapacity": 20348.29}]}
 
@@ -847,6 +848,8 @@ class FakeRequestsSession(object):
                 if job['jobId'] in url:
                     return_object = job
                     break
+        elif 'version' in url:
+            return_object = self.data.version_details
         else:
             for symm in self.data.symmetrix:
                 if symm['symmetrixId'] in url:
@@ -1651,6 +1654,13 @@ class VMAXRestTest(test.TestCase):
     def test_get_array_serial_failed(self):
         array_details = self.rest.get_array_serial(self.data.failed_resource)
         self.assertIsNone(array_details)
+
+    def test_get_uni_version(self):
+        version, major_version = self.rest.get_uni_version()
+        self.assertEqual('90', major_version)
+        with mock.patch.object(self.rest, '_get_request', return_value=None):
+            version, major_version = self.rest.get_uni_version()
+            self.assertIsNone(major_version)
 
     def test_get_srp_by_name(self):
         ref_details = self.data.srp_details
