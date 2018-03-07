@@ -97,7 +97,7 @@ class AttachmentsController(wsgi.Controller):
                 sort_direction=sort_dirs)
 
     @wsgi.Controller.api_version(mv.NEW_ATTACH)
-    @wsgi.response(202)
+    @wsgi.response(200)
     @validation.schema(attachment.create)
     def create(self, req, body):
         """Create an attachment.
@@ -258,7 +258,7 @@ class AttachmentsController(wsgi.Controller):
         attachments = self.volume_api.attachment_delete(context, attachment)
         return attachment_views.ViewBuilder.list(attachments)
 
-    @wsgi.response(202)
+    @wsgi.response(204)
     @wsgi.Controller.api_version(mv.NEW_ATTACH_COMPLETION)
     @wsgi.action('os-complete')
     def complete(self, req, id, body):
