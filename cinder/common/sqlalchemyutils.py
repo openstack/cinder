@@ -98,7 +98,8 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
         # the actual primary key, rather than assuming its id
         LOG.warning('Id not in sort_keys; is sort_keys unique?')
 
-    assert(not (sort_dir and sort_dirs))
+    if sort_dir and sort_dirs:
+        raise AssertionError('Both sort_dir and sort_dirs specified.')
 
     # Default the sort direction to ascending
     if sort_dirs is None and sort_dir is None:
@@ -108,7 +109,9 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
     if sort_dirs is None:
         sort_dirs = [sort_dir for _sort_key in sort_keys]
 
-    assert(len(sort_dirs) == len(sort_keys))
+    if len(sort_dirs) != len(sort_keys):
+        raise AssertionError(
+            'sort_dirs length is not equal to sort_keys length.')
 
     # Add sorting
     for current_sort_key, current_sort_dir in zip(sort_keys, sort_dirs):
