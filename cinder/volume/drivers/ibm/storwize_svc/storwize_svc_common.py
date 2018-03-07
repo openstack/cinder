@@ -118,10 +118,10 @@ storwize_svc_opts = [
                      'creation.'),
     cfg.IntOpt('storwize_svc_flashcopy_rate',
                default=50,
-               min=1, max=100,
+               min=1, max=150,
                help='Specifies the Storwize FlashCopy copy rate to be used '
                'when creating a full volume copy. The default is rate '
-               'is 50, and the valid rates are 1-100.'),
+               'is 50, and the valid rates are 1-150.'),
     cfg.StrOpt('storwize_svc_mirror_pool',
                default=None,
                help='Specifies the name of the pool in which mirrored copy '
@@ -569,11 +569,12 @@ class StorwizeSSH(object):
 
     def mkfcmap(self, source, target, full_copy, copy_rate, consistgrp=None):
         ssh_cmd = ['svctask', 'mkfcmap', '-source', '"%s"' % source, '-target',
-                   '"%s"' % target, '-autodelete']
+                   '"%s"' % target]
         if not full_copy:
             ssh_cmd.extend(['-copyrate', '0'])
         else:
             ssh_cmd.extend(['-copyrate', six.text_type(copy_rate)])
+            ssh_cmd.append('-autodelete')
         if consistgrp:
             ssh_cmd.extend(['-consistgrp', consistgrp])
         out, err = self._ssh(ssh_cmd, check_exit_code=False)
@@ -1253,6 +1254,7 @@ class StorwizeHelpers(object):
                'stretched_cluster': cluster_partner,
                'replication': False,
                'nofmtdisk': config.storwize_svc_vol_nofmtdisk,
+               'flashcopy_rate': config.storwize_svc_flashcopy_rate,
                'mirror_pool': config.storwize_svc_mirror_pool,
                'volume_topology': None,
                'peer_pool': config.storwize_peer_pool,
@@ -1790,13 +1792,35 @@ class StorwizeHelpers(object):
                      {'cg': cgId})
         return volume_model_updates
 
+    def check_flashcopy_rate(self, flashcopy_rate):
+        sys_info = self.get_system_info()
+        code_level = sys_info['code_level']
+        if code_level < (7, 8, 1, 0) and flashcopy_rate > 100:
+            msg = (_('The configured flashcopy rate is %(fc_rate)s, The '
+                     'storage code level is %(code_level)s, the flashcopy_rate'
+                     ' range is 1-100 if the storwize code level '
+                     'below 7.8.1.') % {'fc_rate': flashcopy_rate,
+                                        'code_level': code_level})
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+    def update_flashcopy_rate(self, volume_name, new_flashcopy_rate):
+        mapping_ids = self._get_vdisk_fc_mappings(volume_name)
+        for map_id in mapping_ids:
+            attrs = self._get_flashcopy_mapping_attributes(map_id)
+            copy_rate = attrs['copy_rate']
+            # update flashcopy rate for clone volume
+            if copy_rate != '0':
+                self.ssh.chfcmap(map_id,
+                                 copyrate=six.text_type(new_flashcopy_rate))
+
     def run_flashcopy(self, source, target, timeout, copy_rate,
                       full_copy=True, restore=False):
         """Create a FlashCopy mapping from the source to the target."""
         LOG.debug('Enter: run_flashcopy: execute FlashCopy from source '
                   '%(source)s to target %(target)s.',
                   {'source': source, 'target': target})
-
+        self.check_flashcopy_rate(copy_rate)
         fc_map_id = self.ssh.mkfcmap(source, target, full_copy, copy_rate)
         self._prepare_fc_map(fc_map_id, timeout, restore)
         self.ssh.startfcmap(fc_map_id, restore)
@@ -1828,8 +1852,9 @@ class StorwizeHelpers(object):
         opts['iogrp'] = src_attrs['IO_group_id']
         self.create_vdisk(target, src_size, 'b', pool, opts)
 
+        self.check_flashcopy_rate(opts['flashcopy_rate'])
         self.ssh.mkfcmap(source, target, full_copy,
-                         config.storwize_svc_flashcopy_rate,
+                         opts['flashcopy_rate'],
                          consistgrp=consistgrp)
 
         LOG.debug('Leave: create_flashcopy_to_consistgrp: '
@@ -2128,7 +2153,7 @@ class StorwizeHelpers(object):
         timeout = config.storwize_svc_flashcopy_timeout
         try:
             self.run_flashcopy(src, tgt, timeout,
-                               config.storwize_svc_flashcopy_rate,
+                               opts['flashcopy_rate'],
                                full_copy=full_copy)
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -4546,6 +4571,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             # If the old_opts contain QoS keys, disable them.
             self._helpers.disable_vdisk_qos(volume['name'], old_opts['qos'])
 
+        if new_opts['flashcopy_rate'] != old_opts['flashcopy_rate']:
+            self._helpers.update_flashcopy_rate(volume.name,
+                                                new_opts['flashcopy_rate'])
+
         # Delete replica if needed
         if old_rep_type and not new_rep_type:
             self._aux_backend_helpers.delete_rc_volume(volume['name'],
@@ -5185,11 +5214,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         if rep_type:
             raise exception.InvalidInput(
                 reason=_('Reverting replication volume is not supported.'))
+        opts = self._get_vdisk_params(volume.volume_type_id)
         try:
             self._helpers.run_flashcopy(
                 snapshot.name, volume.name,
                 self.configuration.storwize_svc_flashcopy_timeout,
-                self.configuration.storwize_svc_flashcopy_rate, True, True)
+                opts['flashcopy_rate'], True, True)
         except Exception as err:
             msg = (_("Reverting volume %(vol)s to snapshot %(snap)s failed "
                      "due to: %(err)s.")
