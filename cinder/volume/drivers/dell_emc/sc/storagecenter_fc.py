@@ -34,7 +34,7 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
     """Implements commands for Dell Storage Center FC management.
 
     To enable the driver add the following line to the cinder configuration:
-        volume_driver=cinder.volume.drivers.dell_emc.sc.dell_storagecenter_fc.\
+        volume_driver=cinder.volume.drivers.dell_emc.sc.storagecenter_fc.\
         SCFCDriver
 
     Version history:
@@ -62,10 +62,11 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
         3.6.0 - Server type support.
         3.7.0 - Support for Data Reduction, Group QOS and Volume QOS.
         4.0.0 - Driver moved to dell_emc.
+        4.1.0 - Timeouts added to rest calls.
 
     """
 
-    VERSION = '4.0.0'
+    VERSION = '4.1.0'
 
     CI_WIKI_NAME = "Dell_EMC_SC_Series_CI"
 

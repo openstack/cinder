@@ -14,6 +14,7 @@
 
 import ddt
 import eventlet
+import json
 import mock
 import requests
 from requests import models
@@ -1683,6 +1684,8 @@ class DellSCSanAPITestCase(test.TestCase):
         self.configuration.target_port = 3260
         self._context = context.get_admin_context()
         self.apiversion = '2.0'
+        self.asynctimeout = 15
+        self.synctimeout = 30
 
         # Set up the SCApi
         self.scapi = storagecenter_api.SCApi(
@@ -1691,6 +1694,8 @@ class DellSCSanAPITestCase(test.TestCase):
             self.configuration.san_login,
             self.configuration.san_password,
             self.configuration.dell_sc_verify_cert,
+            self.asynctimeout,
+            self.synctimeout,
             self.apiversion)
 
         # Set up the scapi configuration vars
@@ -8635,6 +8640,8 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
         self.configuration.target_ip_address = '192.168.1.1'
         self.configuration.target_port = 3260
         self._context = context.get_admin_context()
+        self.asynctimeout = 15
+        self.synctimeout = 30
         self.apiversion = '2.0'
 
         # Set up the SCApi
@@ -8644,6 +8651,8 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
             self.configuration.san_login,
             self.configuration.san_password,
             self.configuration.dell_sc_verify_cert,
+            self.asynctimeout,
+            self.synctimeout,
             self.apiversion)
 
         # Set up the scapi configuration vars
@@ -8772,10 +8781,12 @@ class DellHttpClientTestCase(test.TestCase):
         self.user = 'johnnyuser'
         self.password = 'password'
         self.verify = False
+        self.asynctimeout = 15
+        self.synctimeout = 30
         self.apiversion = '3.1'
         self.httpclient = storagecenter_api.HttpClient(
-            self.host, self.port, self.user, self.password,
-            self.verify, self.apiversion)
+            self.host, self.port, self.user, self.password, self.verify,
+            self.asynctimeout, self.synctimeout, self.apiversion)
 
     def test_get_async_url(self):
         url = self.httpclient._get_async_url(self.ASYNCTASK)
@@ -8904,7 +8915,35 @@ class DellHttpClientTestCase(test.TestCase):
         expected_headers = self.httpclient.header.copy()
         mock_get.assert_called_once_with('https://localhost:3033/api/rest/url',
                                          headers=expected_headers,
+                                         timeout=30,
                                          verify=False)
+
+    @mock.patch.object(requests.Session, 'post', return_value=RESPONSE_200)
+    @mock.patch.object(storagecenter_api.HttpClient, '_rest_ret')
+    def test_post(self, mock_rest_ret, mock_post):
+        payload = {'payload': 'payload'}
+        self.httpclient.post('url', payload, True)
+        expected_headers = self.httpclient.header.copy()
+        expected_headers['async'] = 'True'
+        mock_post.assert_called_once_with(
+            'https://localhost:3033/api/rest/url',
+            data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+            headers=expected_headers,
+            timeout=15,
+            verify=False)
+
+    @mock.patch.object(requests.Session, 'post', return_value=RESPONSE_200)
+    @mock.patch.object(storagecenter_api.HttpClient, '_rest_ret')
+    def test_post_sync(self, mock_rest_ret, mock_post):
+        payload = {'payload': 'payload'}
+        self.httpclient.post('url', payload, False)
+        expected_headers = self.httpclient.header.copy()
+        mock_post.assert_called_once_with(
+            'https://localhost:3033/api/rest/url',
+            data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+            headers=expected_headers,
+            timeout=30,
+            verify=False)
 
 
 class DellStorageCenterApiHelperTestCase(test.TestCase):

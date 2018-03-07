@@ -2,19 +2,19 @@
 Dell EMC SC Series Fibre Channel and iSCSI drivers
 ==================================================
 
-The Dell Storage Center volume driver interacts with configured Storage
+The Dell EMC Storage Center volume driver interacts with configured Storage
 Center arrays.
 
-The Dell Storage Center driver manages Storage Center arrays through
-the Dell Storage Manager (DSM). DSM connection settings and Storage
+The Dell EMC Storage Center driver manages Storage Center arrays through
+the Dell EMC Storage Manager (DSM). DSM connection settings and Storage
 Center options are defined in the ``cinder.conf`` file.
 
-Prerequisite: Dell Storage Manager 2015 R1 or later must be used.
+Prerequisite: Dell EMC Storage Manager 2015 R1 or later must be used.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
 
-The Dell Storage Center volume driver provides the following Cinder
+The Dell EMC Storage Center volume driver provides the following Cinder
 volume operations:
 
 -  Create, delete, attach (map), and detach (unmap) volumes.
@@ -33,7 +33,7 @@ volume operations:
 Extra spec options
 ~~~~~~~~~~~~~~~~~~
 
-Volume type extra specs can be used to enable a variety of Dell Storage
+Volume type extra specs can be used to enable a variety of Dell EMC Storage
 Center options. Selecting Storage Profiles, Replay Profiles, enabling
 replication, replication options including Live Volume and Active Replay
 replication.
@@ -170,7 +170,7 @@ Use the following instructions to update the configuration file for iSCSI:
     # Name to give this storage back-end
     volume_backend_name = delliscsi
     # The iSCSI driver to load
-    volume_driver = cinder.volume.drivers.dell.dell_storagecenter_iscsi.DellStorageCenterISCSIDriver
+    volume_driver = cinder.volume.drivers.dell_emc.sc.storagecenter_iscsi.SCISCSIDriver
     # IP address of DSM
     san_ip = 172.23.8.101
     # DSM user name
@@ -204,7 +204,8 @@ channel:
     # Name to give this storage back-end
     volume_backend_name = dellfc
     # The FC driver to load
-    volume_driver = cinder.volume.drivers.dell.dell_storagecenter_fc.DellStorageCenterFCDriver
+    volume_driver = cinder.volume.drivers.dell_emc.sc.storagecenter_fc.SCFCDriver
+
     # IP address of the DSM
     san_ip = 172.23.8.101
     # DSM user name
@@ -298,10 +299,10 @@ Simply specify default as the backend_id.
 
     $ cinder failover-host cinder@delliscsi --backend_id default
 
-Non trivial heavy lifting is done by this command. It attempts to recover best
-it can but if things have diverged to far it can only do so much. It is also a
-one time only command so do not reboot or restart the service in the middle of
-it.
+Non trivial heavy lifting is done by this command. It attempts to recover as
+best it can but if things have diverged too far it can only do so much. It is
+also a one time only command so do not reboot or restart the service in the
+middle of it.
 
 Failover and failback are significant operations under OpenStack Cinder. Be
 sure to consult with support before attempting.
@@ -310,11 +311,11 @@ Server type configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This option allows one to set a default Server OS type to use when creating
-a server definition on the Dell Storage Center.
+a server definition on the Dell EMC Storage Center.
 
-When attaching a volume to a node the Dell Storage Center driver creates a
+When attaching a volume to a node the Dell EMC Storage Center driver creates a
 server definition on the storage array. This defition includes a Server OS
-type. The type used by the Dell Storage Center cinder driver is
+type. The type used by the Dell EMC Storage Center cinder driver is
 "Red Hat Linux 6.x". This is a modern operating system definition that supports
 all the features of an OpenStack node.
 
@@ -352,10 +353,31 @@ Add the following to the back-end specification to exclude the domains at
     excluded_domain_ip=172.20.25.15
     excluded_domain_ip=172.20.26.15
 
+Setting Dell EMC SC REST API timeouts
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The user can specify timeouts for Dell EMC SC REST API calls.
+
+To set the timeout for ASYNC REST API calls in seconds.
+
+.. code-block:: ini
+
+    [dell]
+    dell_api_async_rest_timeout=15
+
+To set the timeout for SYNC REST API calls in seconds.
+
+.. code-block:: ini
+
+    [dell]
+    dell_api_sync_rest_timeout=30
+
+Generally these should not be set without guidance from Dell EMC support.
+
 Driver options
 ~~~~~~~~~~~~~~
 
 The following table contains the configuration options specific to the
-Dell Storage Center volume driver.
+Dell EMC Storage Center volume driver.
 
 .. include:: ../../tables/cinder-dellsc.inc
