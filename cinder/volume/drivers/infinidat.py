@@ -113,10 +113,11 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         1.3 - added generic volume groups support
         1.4 - added support for QoS
         1.5 - added support for volume compression
+        1.6 - added support for volume multi-attach
 
     """
 
-    VERSION = '1.5'
+    VERSION = '1.6'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "INFINIDAT_CI"
@@ -474,7 +475,8 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                                       QoS_support=qos_support,
                                       thin_provisioning_support=thin,
                                       thick_provisioning_support=not thin,
-                                      max_over_subscription_ratio=max_osr)
+                                      max_over_subscription_ratio=max_osr,
+                                      multiattach=True)
         return self._volume_stats
 
     def _create_volume(self, volume):
