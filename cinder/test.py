@@ -26,6 +26,7 @@ import os
 import sys
 import uuid
 
+from eventlet import tpool
 import fixtures
 import mock
 from oslo_concurrency import lockutils
@@ -295,6 +296,11 @@ class TestCase(testtools.TestCase):
             # can be removed once we stop supporting py2 or the new name is
             # added.
             self.assertRaisesRegexp = self.assertRaisesRegex
+
+        # Ensure we have the default tpool size value and we don't carry
+        # threads from other test runs.
+        tpool.killall()
+        tpool._nthreads = 20
 
     def _restore_obj_registry(self):
         objects_base.CinderObjectRegistry._registry._obj_classes = \

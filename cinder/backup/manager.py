@@ -71,6 +71,12 @@ backup_manager_opts = [
                      'backup service startup. If false, the backup service '
                      'will remain down until all pending backups are '
                      'deleted.',),
+    cfg.IntOpt('backup_native_threads_pool_size',
+               default=60,
+               min=20,
+               help='Size of the native threads pool for the backups.  '
+                    'Most backup drivers rely heavily on this, it can be '
+                    'decreased for specific drivers that don\'t.'),
 ]
 
 # This map doesn't need to be extended in the future since it's only
@@ -104,6 +110,7 @@ class BackupManager(manager.ThreadPoolManager):
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
         super(BackupManager, self).__init__(*args, **kwargs)
         self.is_initialized = False
+        self._set_tpool_size(CONF.backup_native_threads_pool_size)
 
     @property
     def driver_name(self):
