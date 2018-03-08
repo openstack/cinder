@@ -2987,6 +2987,29 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertRaises(exception.ProgrammingError,
                           manager._append_volume_stats, {'pools': 'bad_data'})
 
+    def test_default_tpool_size(self):
+        """Test we can set custom tpool size."""
+        eventlet.tpool._nthreads = 10
+        self.assertListEqual([], eventlet.tpool._threads)
+
+        vol_manager.VolumeManager()
+
+        self.assertEqual(20, eventlet.tpool._nthreads)
+        self.assertListEqual([], eventlet.tpool._threads)
+
+    def test_tpool_size(self):
+        """Test we can set custom tpool size."""
+        self.assertNotEqual(100, eventlet.tpool._nthreads)
+        self.assertListEqual([], eventlet.tpool._threads)
+
+        self.override_config('backend_native_threads_pool_size', 100,
+                             group='backend_defaults')
+        vol_manager.VolumeManager()
+
+        self.assertEqual(100, eventlet.tpool._nthreads)
+        self.assertListEqual([], eventlet.tpool._threads)
+        eventlet.tpool._nthreads = 20
+
 
 class VolumeTestCaseLocks(base.BaseVolumeTestCase):
     MOCK_TOOZ = False

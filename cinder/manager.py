@@ -68,6 +68,7 @@ from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
 
 from eventlet import greenpool
+from eventlet import tpool
 
 
 CONF = cfg.CONF
@@ -93,6 +94,11 @@ class Manager(base.Base, PeriodicTasks):
         self.additional_endpoints = []
         self.availability_zone = CONF.storage_availability_zone
         super(Manager, self).__init__(db_driver)
+
+    def _set_tpool_size(self, nthreads):
+        # NOTE(geguileo): Until PR #472 is merged we have to be very careful
+        # not to call "tpool.execute" before calling this method.
+        tpool.set_num_threads(nthreads)
 
     @property
     def service_topic_queue(self):

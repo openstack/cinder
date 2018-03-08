@@ -1,0 +1,15 @@
+---
+features:
+  - Adds support to configure the size of the native thread pool used by the
+    cinder volume and backup services.  For the backup we use
+    `backup_native_threads_pool_size` in the `[DEFAULT]` section, and for the
+    backends we use `backend_native_threads_pool_size` in the driver section.
+
+fixes:
+  - Fixes concurrency issue on backups, where only 20 native threads could be
+    concurrently be executed.  Now default will be 60, and can be changed with
+    `backup_native_threads_pool_size`.
+  - RBD driver can have bottlenecks if too many slow operations are happening
+    at the same time (for example many huge volume deletions), we can now use
+    the `backend_native_threads_pool_size` option in the RBD driver section to
+    resolve the issue.

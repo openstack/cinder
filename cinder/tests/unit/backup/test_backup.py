@@ -19,6 +19,7 @@ import ddt
 import os
 import uuid
 
+from eventlet import tpool
 import mock
 from os_brick.initiator.connectors import fake as fake_connectors
 from oslo_config import cfg
@@ -1643,6 +1644,27 @@ class BackupTestCase(BaseBackupTest):
         vol_id = self._create_volume_db_entry(size=vol_size)
         backup = self._create_backup_db_entry(volume_id=vol_id)
         self.assertFalse(backup.has_dependent_backups)
+
+    def test_default_tpool_size(self):
+        """Test we can set custom tpool size."""
+        tpool._nthreads = 20
+        self.assertListEqual([], tpool._threads)
+
+        self.backup_mgr = importutils.import_object(CONF.backup_manager)
+
+        self.assertEqual(60, tpool._nthreads)
+        self.assertListEqual([], tpool._threads)
+
+    def test_tpool_size(self):
+        """Test we can set custom tpool size."""
+        self.assertNotEqual(100, tpool._nthreads)
+        self.assertListEqual([], tpool._threads)
+
+        self.override_config('backup_native_threads_pool_size', 100)
+        self.backup_mgr = importutils.import_object(CONF.backup_manager)
+
+        self.assertEqual(100, tpool._nthreads)
+        self.assertListEqual([], tpool._threads)
 
 
 class BackupTestCaseWithVerify(BaseBackupTest):
