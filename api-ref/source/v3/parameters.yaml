@@ -121,6 +121,13 @@ key_5:
   in: path
   required: true
   type: string
+list_volume:
+  description: |
+    Show volume ids in this group. Default is False.
+  in: path
+  required: false
+  type: string
+  min_version: 3.25
 message_id:
   description: |
     The UUID of the message.
@@ -2810,6 +2817,13 @@ volume_id_7:
   in: body
   required: true
   type: string
+volume_ids:
+  description: |
+    A list of ``volume`` ids, available only when ``list_volume`` set true.
+  in: body
+  required: false
+  type: array
+  min_version: 3.25
 volume_image_metadata:
   description: |
     List of image metadata entries.  Only included for volumes that were
