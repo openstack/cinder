@@ -881,6 +881,33 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
                 patch_execute)
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
                 patch_view_all)
+    def test_iscsi_terminate_connection(self):
+        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
+        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255",
+                     'multipath': True}
+        ret = self._iscsi_terminate_connection(self.vol, connector)
+        self.assertIsNone(ret)
+
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
+                patch_execute)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
+                patch_view_all)
+    def test_iscsi_terminate_connection_negative(self):
+        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
+        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255",
+                     'multipath': True}
+        with self.assertRaisesRegexp(exception.VolumeBackendAPIException,
+                                     r'Failed to unregister Logical Disk from'
+                                     r' Logical Disk Set \(iSM31064\)'):
+            mock_del = mock.Mock()
+            self._cli.delldsetld = mock_del
+            self._cli.delldsetld.return_value = False, 'iSM31064'
+            self._iscsi_terminate_connection(self.vol, connector)
+
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
+                patch_execute)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
+                patch_view_all)
     def test_fc_initialize_connection(self):
         self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
         self.vol.migration_status = None
@@ -915,6 +942,13 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual(
             '2A00000991020012',
             info['data']['initiator_target_map']['10000090FAA0786B'][3])
+        with self.assertRaisesRegexp(exception.VolumeBackendAPIException,
+                                     r'Failed to unregister Logical Disk from'
+                                     r' Logical Disk Set \(iSM31064\)'):
+            mock_del = mock.Mock()
+            self._cli.delldsetld = mock_del
+            self._cli.delldsetld.return_value = False, 'iSM31064'
+            self._fc_terminate_connection(self.vol, connector)
 
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
                 patch_execute)

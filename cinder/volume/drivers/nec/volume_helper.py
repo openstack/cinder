@@ -1180,7 +1180,50 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
     def iscsi_terminate_connection(self, volume, connector):
         msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
                    % {'id': volume.id, 'connector': connector})
-        LOG.info('Terminated iSCSI Connection (%s)', msgparm)
+
+        try:
+            self._iscsi_terminate_connection(volume, connector)
+            LOG.info('Terminated iSCSI Connection (%s)', msgparm)
+        except exception.CinderException as e:
+            with excutils.save_and_reraise_exception():
+                LOG.warning('Failed to Terminate iSCSI Connection '
+                            '(%(msgparm)s) (%(exception)s)',
+                            {'msgparm': msgparm, 'exception': e})
+
+    def _iscsi_terminate_connection(self, volume, connector):
+        if self._properties['ldset_name'] != '':
+            LOG.debug('Ldset is specified. Access control setting '
+                      'is not deleted automatically.')
+            return
+
+        if connector is None:
+            LOG.debug('Connector is not specified. Nothing to do.')
+            return
+
+        # delete unused access control setting.
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+
+        ldname = self.get_ldname(
+            volume.id, self._properties['ld_name_format'])
+        if ldname not in lds:
+            LOG.debug('Logical Disk `%s` has unbound already.', ldname)
+            return
+
+        ldset = self._validate_iscsildset_exist(ldsets, connector)
+        retnum, errnum = self._cli.delldsetld(ldset['ldsetname'], ldname)
+        if retnum is not True:
+            if 'iSM31065' in errnum:
+                LOG.debug('LD `%(ld)s` already deleted '
+                          'from LD Set `%(ldset)s`?',
+                          {'ld': ldname, 'ldset': ldset['ldsetname']})
+            else:
+                msg = (_('Failed to unregister Logical Disk from '
+                         'Logical Disk Set (%s)') % errnum)
+                raise exception.VolumeBackendAPIException(data=msg)
+        LOG.debug('LD `%(ld)s` deleted from LD Set `%(ldset)s`.',
+                  {'ld': ldname, 'ldset': ldset['ldsetname']})
 
     def iscsi_terminate_connection_snapshot(self, snapshot, connector,
                                             **kwargs):
@@ -1341,6 +1384,26 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                 self._build_initiator_target_map(connector, fc_ports))
             info['data'] = {'target_wwn': target_wwns,
                             'initiator_target_map': init_targ_map}
+
+        if connector is not None and self._properties['ldset_name'] == '':
+            # delete LD from LD set.
+            ldname = self.get_ldname(
+                volume.id, self._properties['ld_name_format'])
+            if ldname not in lds:
+                LOG.debug('Logical Disk `%s` has unbound already.', ldname)
+                return info
+
+            ldset = self._validate_fcldset_exist(ldsets, connector)
+            retnum, errnum = self._cli.delldsetld(ldset['ldsetname'], ldname)
+            if retnum is not True:
+                if 'iSM31065' in errnum:
+                    LOG.debug('LD `%(ld)s` already deleted '
+                              'from LD Set `%(ldset)s`?',
+                              {'ld': ldname, 'ldset': ldset['ldsetname']})
+                else:
+                    msg = (_('Failed to unregister Logical Disk from '
+                             'Logical Disk Set (%s)') % errnum)
+                    raise exception.VolumeBackendAPIException(data=msg)
 
         LOG.debug('_fc_terminate_connection'
                   '(Volume ID = %(id)s, connector = %(connector)s, '
