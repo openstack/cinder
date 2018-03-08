@@ -2398,7 +2398,6 @@ class VolumeManager(manager.CleanableManager,
         LOG.info("Migrate volume completed successfully.",
                  resource=volume)
 
-    @periodic_task.periodic_task
     def _report_driver_status(self, context):
         # It's possible during live db migration that the self.service_uuid
         # value isn't set (we didn't restart services), so we'll go ahead
@@ -2531,6 +2530,7 @@ class VolumeManager(manager.CleanableManager,
 
         return volume_stats
 
+    @periodic_task.periodic_task
     def publish_service_capabilities(self, context):
         """Collect driver status and then publish."""
         self._report_driver_status(context)

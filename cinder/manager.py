@@ -182,7 +182,6 @@ class SchedulerDependentManager(ThreadPoolManager):
         """Remember these capabilities to send on next periodic update."""
         self.last_capabilities = capabilities
 
-    @periodic_task.periodic_task
     def _publish_service_capabilities(self, context):
         """Pass data back to the scheduler at a periodic interval."""
         if self.last_capabilities:
