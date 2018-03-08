@@ -153,7 +153,7 @@ def convert_to_id(value62):
 class MStorageVolumeCommon(object):
     """M-Series Storage volume common class."""
 
-    VERSION = '1.10.1'
+    VERSION = '1.10.2'
     WIKI_NAME = 'NEC_Cinder_CI'
 
     def do_setup(self, context):
