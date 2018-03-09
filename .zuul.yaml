@@ -1,8 +1,7 @@
 - project:
     check:
       jobs:
-        - cinder-tempest-dsvm-lvm-lio-barbican:
-            voting: false
+        - cinder-tempest-dsvm-lvm-lio-barbican
         - cinder-tox-compliance
         - cinder-tox-bandit-baseline:
             voting: false
