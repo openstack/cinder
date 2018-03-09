@@ -38,8 +38,8 @@ Driver Configuration Reference
    drivers/dell-emc-scaleio-driver
    drivers/dell-storagecenter-driver
    drivers/dell-emc-unity-driver
+   drivers/dell-emc-vnx-driver
    drivers/emc-vmax-driver
-   drivers/emc-vnx-driver
    drivers/emc-xtremio-driver
    drivers/fujitsu-eternus-dx-driver
    drivers/hpe-3par-driver
