@@ -244,8 +244,6 @@ class VolumeActionsController(wsgi.Controller):
                     image_utils.VALID_DISK_FORMATS)
             }
             raise webob.exc.HTTPBadRequest(explanation=msg)
-        if disk_format == "parallels":
-            disk_format = "ploop"
 
         image_metadata = {"container_format": params.get(
             "container_format", "bare"),
