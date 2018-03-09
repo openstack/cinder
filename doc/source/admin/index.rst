@@ -30,6 +30,7 @@ Amazon EC2 Elastic Block Storage (EBS) offering.
    generalized_filters.rst
    blockstorage-backup-disks.rst
    blockstorage-boot-from-volume.rst
+   blockstorage-capacity-based-qos.rst
    blockstorage-consistency-groups.rst
    blockstorage-driver-filter-weighing.rst
    blockstorage-get-capabilities.rst
