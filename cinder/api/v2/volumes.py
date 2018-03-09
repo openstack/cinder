@@ -268,7 +268,7 @@ class VolumeController(wsgi.Controller):
             msg = ("The option 'multiattach' "
                    "is deprecated and will be removed in a future "
                    "release.  The default behavior going forward will "
-                   "be to specify mulitattach enabled volume types.")
+                   "be to specify multiattach enabled volume types.")
             versionutils.report_deprecated_feature(LOG, msg)
 
         new_volume = self.volume_api.create(context,
