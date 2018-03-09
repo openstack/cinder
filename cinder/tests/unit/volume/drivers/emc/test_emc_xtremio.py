@@ -59,16 +59,18 @@ xms_init = {'xms': {1: {'version': '4.0.0'}},
                                "index": 1,
                                },
                               },
-            'targets': {'X1-SC2-fc1': {'index': 1, "name": "X1-SC2-fc1",
-                                       "port-address":
-                                       "21:00:00:24:ff:57:b2:36",
-                                       'port-state': 'up',
-                                       },
-                        'X1-SC2-fc2': {'index': 2, "name": "X1-SC2-fc2",
-                                       "port-address":
-                                       "21:00:00:24:ff:57:b2:55",
-                                       'port-state': 'up',
-                                       }
+            'targets': {'X1-SC2-target1': {'index': 1, "name": "X1-SC2-fc1",
+                                           "port-address":
+                                           "21:00:00:24:ff:57:b2:36",
+                                           'port-type': 'fc',
+                                           'port-state': 'up',
+                                           },
+                        'X1-SC2-target2': {'index': 2, "name": "X1-SC2-fc2",
+                                           "port-address":
+                                           "21:00:00:24:ff:57:b2:55",
+                                           'port-type': 'fc',
+                                           'port-state': 'up',
+                                           }
                         },
             'volumes': {},
             'initiator-groups': {},

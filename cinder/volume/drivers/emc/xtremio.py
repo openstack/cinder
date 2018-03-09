@@ -208,6 +208,13 @@ class XtremIOClient(object):
     def add_vol_to_cg(self, vol_id, cg_id):
         pass
 
+    def get_fc_up_ports(self):
+        targets = [self.req('targets', name=target['name'])['content']
+                   for target in self.req('targets')['targets']]
+        return [target for target in targets
+                if target['port-type'] == 'fc' and
+                target["port-state"] == 'up']
+
 
 class XtremIOClient3(XtremIOClient):
     def __init__(self, configuration, cluster_id):
@@ -354,6 +361,13 @@ class XtremIOClient4(XtremIOClient):
             return inits[0]
         else:
             pass
+
+    def get_fc_up_ports(self):
+        return self.req('targets',
+                        data={'full': 1,
+                              'filter': ['port-type:eq:fc',
+                                         'port-state:eq:up'],
+                              'prop': 'port-address'})["targets"]
 
 
 class XtremIOVolumeDriver(san.SanDriver):
@@ -973,14 +987,9 @@ class XtremIOFibreChannelDriver(XtremIOVolumeDriver,
     def get_targets(self):
         if not self._targets:
             try:
-                target_list = self.client.req('targets')["targets"]
-                targets = [self.client.req('targets',
-                                           name=target['name'])['content']
-                           for target in target_list
-                           if '-fc' in target['name']]
+                targets = self.client.get_fc_up_ports()
                 self._targets = [target['port-address'].replace(':', '')
-                                 for target in targets
-                                 if target['port-state'] == 'up']
+                                 for target in targets]
             except exception.NotFound:
                 raise (exception.VolumeBackendAPIException
                        (data=_("Failed to get targets")))
