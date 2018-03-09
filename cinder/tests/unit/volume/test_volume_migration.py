@@ -24,6 +24,7 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import imageutils
 
+from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -75,6 +76,9 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                                        autospec=True)
         self._clear_patch.start()
         self.expected_status = 'available'
+        self._service = tests_utils.create_service(
+            self.context,
+            values={'host': 'newhost', 'binary': constants.VOLUME_BINARY})
 
     def tearDown(self):
         super(VolumeMigrationTestCase, self).tearDown()
@@ -98,6 +102,28 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                                           volume.id)
         self.assertEqual('newhost', volume.host)
         self.assertEqual('success', volume.migration_status)
+
+    def test_migrate_volume_driver_cross_az(self):
+        """Test volume migration done by driver."""
+        # Mock driver and rpc functions
+        self.mock_object(self.volume.driver, 'migrate_volume',
+                         lambda x, y, z, new_type_id=None: (
+                             True, {'user_id': fake.USER_ID}))
+        dst_az = 'AZ2'
+        db.service_update(self.context, self._service.id,
+                          {'availability_zone': dst_az})
+
+        volume = tests_utils.create_volume(self.context, size=0,
+                                           host=CONF.host,
+                                           migration_status='migrating')
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+        self.volume.migrate_volume(self.context, volume, host_obj, False)
+
+        # check volume properties
+        volume.refresh()
+        self.assertEqual('newhost', volume.host)
+        self.assertEqual('success', volume.migration_status)
+        self.assertEqual(dst_az, volume.availability_zone)
 
     def _fake_create_volume(self, ctxt, volume, req_spec, filters,
                             allow_reschedule=True):
@@ -153,6 +179,41 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
             migrate_volume_completion.assert_called_with(
                 self.context, volume, new_volume_obj, error=False)
             self.assertFalse(update_server_volume.called)
+
+    @mock.patch('cinder.compute.API')
+    @mock.patch('cinder.volume.manager.VolumeManager.'
+                'migrate_volume_completion')
+    def test_migrate_volume_generic_cross_az(self, migrate_volume_completion,
+                                             nova_api):
+        """Test that we set the right AZ in cross AZ migrations."""
+        original_create = objects.Volume.create
+        dst_az = 'AZ2'
+        db.service_update(self.context, self._service.id,
+                          {'availability_zone': dst_az})
+
+        def my_create(self, *args, **kwargs):
+            self.status = 'available'
+            original_create(self, *args, **kwargs)
+
+        volume = tests_utils.create_volume(self.context, size=1,
+                                           host=CONF.host)
+
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+        create_vol = self.patch('cinder.objects.Volume.create',
+                                side_effect=my_create, autospec=True)
+
+        with mock.patch.object(self.volume, '_copy_volume_data') as copy_mock:
+            self.volume._migrate_volume_generic(self.context, volume, host_obj,
+                                                None)
+            copy_mock.assert_called_with(self.context, volume, mock.ANY,
+                                         remote='dest')
+        migrate_volume_completion.assert_called_with(
+            self.context, volume, mock.ANY, error=False)
+
+        nova_api.return_value.update_server_volume.assert_not_called()
+
+        self.assertEqual(dst_az,
+                         create_vol.call_args[0][0]['availability_zone'])
 
     @mock.patch('cinder.compute.API')
     @mock.patch('cinder.volume.manager.VolumeManager.'
