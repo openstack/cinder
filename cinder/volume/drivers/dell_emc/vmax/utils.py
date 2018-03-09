@@ -811,3 +811,16 @@ class VMAXUtils(object):
                 [REP_ASYNC, REP_METRO]):
             return True
         return False
+
+    @staticmethod
+    def get_temp_failover_grp_name(rep_config):
+        """Get the temporary group name used for failover.
+
+        :param rep_config: the replication config
+        :return: temp_grp_name
+        """
+        temp_grp_name = ("OS-%(rdf)s-temp-rdf-sg"
+                         % {'rdf': rep_config['rdf_group_label']})
+        LOG.debug("The temp rdf managed group name is %(name)s",
+                  {'name': temp_grp_name})
+        return temp_grp_name

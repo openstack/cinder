@@ -593,35 +593,6 @@ class VMAXProvision(object):
         rc = timer.start(interval=UNLINK_INTERVAL).wait()
         return rc
 
-    def failover_volume(self, array, device_id, rdf_group,
-                        extra_specs, local_vol_state, failover):
-        """Failover or back a volume pair.
-
-        :param array: the array serial number
-        :param device_id: the source device id
-        :param rdf_group: the rdf group number
-        :param extra_specs: extra specs
-        :param local_vol_state: the local volume state
-        :param failover: flag to indicate failover or failback -- bool
-        """
-        if local_vol_state == WRITE_DISABLED:
-            LOG.info("Volume %(dev)s is already failed over.",
-                     {'dev': device_id})
-            return
-        if failover:
-            action = "Failing over"
-        else:
-            action = "Failing back"
-        LOG.info("%(action)s rdf pair: source device: %(src)s ",
-                 {'action': action, 'src': device_id})
-
-        @coordination.synchronized('emc-rg-{rdfg_no}')
-        def _failover_volume(rdfg_no):
-            self.rest.modify_rdf_device_pair(
-                array, device_id, rdfg_no, extra_specs)
-
-        _failover_volume(rdf_group)
-
     def get_or_create_volume_group(self, array, group, extra_specs):
         """Get or create a volume group.
 
