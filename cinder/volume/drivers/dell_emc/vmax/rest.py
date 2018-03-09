@@ -430,6 +430,20 @@ class VMAXRest(object):
                 is_next_gen = True
         return is_next_gen
 
+    def get_uni_version(self):
+        """Get the unisphere version from the server.
+
+        :return: version and major_version(e.g. ("V8.4.0.16", "84"))
+        """
+        version, major_version = None, None
+        target_uri = "/%s/system/version" % U4V_VERSION
+        response = self._get_request(target_uri, 'version')
+        if response and response.get('version'):
+            version = response['version']
+            version_list = version.split('.')
+            major_version = version_list[0][1] + version_list[1]
+        return version, major_version
+
     def get_srp_by_name(self, array, srp=None):
         """Returns the details of a storage pool.
 
@@ -944,8 +958,10 @@ class VMAXRest(object):
         :returns: volume dict
         :raises: VolumeBackendAPIException
         """
+        version = self.get_uni_version()[1]
         volume_dict = self.get_resource(
-            array, SLOPROVISIONING, 'volume', resource_name=device_id)
+            array, SLOPROVISIONING, 'volume', resource_name=device_id,
+            version=version)
         if not volume_dict:
             exception_message = (_("Volume %(deviceID)s not found.")
                                  % {'deviceID': device_id})
