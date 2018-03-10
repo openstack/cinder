@@ -18,8 +18,8 @@ Requirements
 
 * OpenStack Integration has been tested with the OpenStack environment
   installed on Ubuntu 16.04. For the list of qualified Linux host operating
-  system types, refer to the `Linux Host Configuration Guide <http://datacore.custhelp.com/app/answers/detail/a_id/1546>`_
-  on the `DataCore Technical Support Web page <http://datacore.custhelp.com/>`_.
+  system types, refer to the `Linux Host Configuration Guide <https://datacore.custhelp.com/app/answers/detail/a_id/1546>`_
+  on the `DataCore Technical Support Web page <https://datacore.custhelp.com/>`_.
 
 * If using multipath I/O, ensure that iSCSI ports are logged in on all
   OpenStack Compute nodes. (All Fibre Channel ports will be logged in
