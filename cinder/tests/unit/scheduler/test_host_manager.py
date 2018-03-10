@@ -1081,7 +1081,7 @@ class HostManagerTestCase(test.TestCase):
     @mock.patch('cinder.db.service_get_all')
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
-    def test_get_pools_filter_mulitattach(self, _mock_service_is_up,
+    def test_get_pools_filter_multiattach(self, _mock_service_is_up,
                                           _mock_service_get_all_by_topic):
         context = 'fake_context'
 
