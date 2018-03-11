@@ -1,0 +1,3 @@
+---
+features:
+  - Support for volume multi-attach in the INFINIDAT InfiniBox driver.
