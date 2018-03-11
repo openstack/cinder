@@ -57,9 +57,6 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.mock_object(solidfire.SolidFireDriver,
                          '_issue_api_request',
                          self.fake_issue_api_request)
-        self.mock_object(solidfire.SolidFireDriver,
-                         '_build_endpoint_info',
-                         self.fake_build_endpoint_info)
 
         self.expected_qos_results = {'minIOPS': 1000,
                                      'maxIOPS': 10000,
@@ -88,19 +85,6 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def fake_init_cluster_pairs(*args, **kwargs):
         return None
-
-    def fake_build_endpoint_info(obj, **kwargs):
-        endpoint = {}
-        endpoint['mvip'] = '1.1.1.1'
-        endpoint['login'] = 'admin'
-        endpoint['passwd'] = 'admin'
-        endpoint['port'] = '443'
-        endpoint['url'] = '{scheme}://{mvip}'.format(mvip='%s:%s' %
-                                                     (endpoint['mvip'],
-                                                      endpoint['port']),
-                                                     scheme='https')
-
-        return endpoint
 
     def fake_issue_api_request(obj, method, params, version='1.0',
                                endpoint=None):
@@ -2043,3 +2027,25 @@ class SolidFireVolumeTestCase(test.TestCase):
                                return_value=fake_type):
             res = sfv._extract_sf_attributes_from_extra_specs(type_id)
             six.assertCountEqual(self, expected, res)
+
+    def test_build_endpoint_with_kwargs(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        expected_ep = {'passwd': 'nunyabiz',
+                       'port': 888,
+                       'url': 'https://1.2.3.4:888',
+                       'svip': None,
+                       'mvip': '1.2.3.4',
+                       'login': 'JohnWayne'}
+        ep = sfv._build_endpoint_info(mvip='1.2.3.4', login='JohnWayne',
+                                      password='nunyabiz', port=888)
+        self.assertEqual(expected_ep, ep)
+
+        # Make sure we pick up defaults for those not specified
+        expected_ep = {'passwd': 'nunyabiz',
+                       'url': 'https://1.2.3.4:443',
+                       'svip': None,
+                       'mvip': '1.2.3.4',
+                       'login': 'admin',
+                       'port': 443}
+        ep = sfv._build_endpoint_info(mvip='1.2.3.4', password='nunyabiz')
+        self.assertEqual(expected_ep, ep)

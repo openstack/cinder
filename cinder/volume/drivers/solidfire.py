@@ -482,14 +482,17 @@ class SolidFireDriver(san.SanISCSIDriver):
     def _build_endpoint_info(self, **kwargs):
         endpoint = {}
 
+        # NOTE(jdg): We default to the primary cluster config settings
+        # but always check to see if desired settings were passed in
+        # to handle things like replication targets with unique settings
         endpoint['mvip'] = (
             kwargs.get('mvip', self.configuration.san_ip))
         endpoint['login'] = (
             kwargs.get('login', self.configuration.san_login))
         endpoint['passwd'] = (
-            kwargs.get('passwd', self.configuration.san_password))
+            kwargs.get('password', self.configuration.san_password))
         endpoint['port'] = (
-            kwargs.get('port', self.configuration.sf_api_port))
+            kwargs.get(('port'), self.configuration.sf_api_port))
         endpoint['url'] = 'https://%s:%s' % (endpoint['mvip'],
                                              endpoint['port'])
         endpoint['svip'] = kwargs.get('svip', self.configuration.sf_svip)
