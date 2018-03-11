@@ -143,6 +143,12 @@ volume_backend_opts = [
     cfg.BoolOpt('suppress_requests_ssl_warnings',
                 default=False,
                 help='Suppress requests library SSL certificate warnings.'),
+    cfg.IntOpt('backend_native_threads_pool_size',
+               default=20,
+               min=20,
+               help='Size of the native threads pool for the backend.  '
+                    'Increase for backends that heavily rely on this, like '
+                    'the RBD driver.'),
 ]
 
 CONF = cfg.CONF
@@ -190,6 +196,8 @@ class VolumeManager(manager.CleanableManager,
         service_name = service_name or 'backend_defaults'
         self.configuration = config.Configuration(volume_backend_opts,
                                                   config_group=service_name)
+        self._set_tpool_size(
+            self.configuration.backend_native_threads_pool_size)
         self.stats = {}
         self.service_uuid = None
 
