@@ -203,3 +203,21 @@ the status of the source resource to see when it stops being "backing-up".
    operation on the snapshot that followed a cancellation could result in an
    error if the snapshot was still mapped.  Polling on the volume to stop being
    "backing-up" prior to the deletion is required to ensure success.
+
+Since Rocky it is also possible to cancel an ongoing restoring operation on any
+of the Chunked Backup type of drivers.
+
+To issue a backup restoration cancellation we need to alter its status to
+anything other than `restoring`.  We strongly recommend using the "error" state
+to avoid any confusion on whether the restore was successful or not.
+
+.. code-block:: console
+
+   $ openstack volume backup set --state error BACKUP_ID
+
+.. warning::
+
+   After a restore operation has started, if it is then cancelled, the
+   destination volume is useless, as there is no way of knowing how much data,
+   or if any, was actually restored, hence our recommendation of using the
+   "error" state.
