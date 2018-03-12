@@ -25,7 +25,9 @@
             "updated_at": "2013-04-02T10:35:27.000000",
             "volume_id": "e5185058-943a-4cb4-96d9-72c184c337d6",
             "is_incremental": true,
-            "has_dependent_backups": false
+            "has_dependent_backups": false,
+            "metadata": {
+                "key": "value"}
         },
         {
             "availability_zone": "az1",
@@ -52,7 +54,9 @@
             "updated_at": "2013-04-02T10:21:48.000000",
             "volume_id": "e5185058-943a-4cb4-96d9-72c184c337d6",
             "is_incremental": true,
-            "has_dependent_backups": false
+            "has_dependent_backups": false,
+             "metadata": {
+                "key": "value"}
         }
     ],
     "count": 10
