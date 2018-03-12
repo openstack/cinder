@@ -45,6 +45,7 @@ CONF.register_cli_opts(core_opts)
 
 global_opts = [
     cfg.HostAddressOpt('my_ip',
+                       sample_default='<HOST_IP_ADDRESS>',
                        default=netutils.get_my_ipv4(),
                        help='IP address of this host'),
     cfg.ListOpt('glance_api_servers',
