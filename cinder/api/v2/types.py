@@ -15,16 +15,22 @@
 
 """The volume type & volume types extra specs extension."""
 
-from oslo_utils import strutils
+import ast
 from webob import exc
 
+from oslo_log import log as logging
+from oslo_utils import strutils
+
 from cinder.api import common
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v2.views import types as views_types
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils
 from cinder.volume import volume_types
+
+LOG = logging.getLogger(__name__)
 
 
 class VolumeTypesController(wsgi.Controller):
@@ -76,26 +82,42 @@ class VolumeTypesController(wsgi.Controller):
                 msg = _('Invalid is_public filter [%s]') % is_public
                 raise exc.HTTPBadRequest(explanation=msg)
 
+    @common.process_general_filtering('volume_type')
+    def _process_volume_type_filtering(self, context=None, filters=None,
+                                       req_version=None):
+        utils.remove_invalid_filter_options(context,
+                                            filters,
+                                            self._get_vol_type_filter_options()
+                                            )
+
     def _get_volume_types(self, req):
         """Helper function that returns a list of type dicts."""
         params = req.params.copy()
         marker, limit, offset = common.get_pagination_params(params)
         sort_keys, sort_dirs = common.get_sort_params(params)
-        # NOTE(wanghao): Currently, we still only support to filter by
-        # is_public. If we want to filter by more args, we should set params
-        # to filters.
-        filters = {}
+        filters = params
         context = req.environ['cinder.context']
+        req_version = req.api_version_request
+        if req_version.matches(mv.SUPPORT_VOLUME_TYPE_FILTER):
+            self._process_volume_type_filtering(context=context,
+                                                filters=filters,
+                                                req_version=req_version)
+        else:
+            utils.remove_invalid_filter_options(
+                context, filters, self._get_vol_type_filter_options())
         if context.is_admin:
             # Only admin has query access to all volume types
             filters['is_public'] = self._parse_is_public(
                 req.params.get('is_public', None))
         else:
             filters['is_public'] = True
-        utils.remove_invalid_filter_options(context,
-                                            filters,
-                                            self._get_vol_type_filter_options()
-                                            )
+        if 'extra_specs' in filters:
+            try:
+                filters['extra_specs'] = ast.literal_eval(
+                    filters['extra_specs'])
+            except (ValueError, SyntaxError):
+                LOG.debug('Could not evaluate "extra_specs" %s, assuming '
+                          'dictionary string.', filters['extra_specs'])
         limited_types = volume_types.get_all_types(context,
                                                    filters=filters,
                                                    marker=marker, limit=limit,

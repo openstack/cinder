@@ -639,6 +639,17 @@ def get_all_volume_groups(vg_name=None):
         utils.get_root_helper(),
         vg_name)
 
+
+def extract_availability_zones_from_volume_type(volume_type):
+    if not volume_type:
+        return None
+    extra_specs = volume_type.get('extra_specs', {})
+    if 'RESKEY:availability_zones' not in extra_specs:
+        return None
+    azs = extra_specs.get('RESKEY:availability_zones', '').split(',')
+    return [az.strip() for az in azs if az != '']
+
+
 # Default symbols to use for passwords. Avoids visually confusing characters.
 # ~6 bits per symbol
 DEFAULT_PASSWORD_SYMBOLS = ('23456789',  # Removed: 0,1

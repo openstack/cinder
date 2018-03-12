@@ -1,0 +1,12 @@
+---
+features: |
+    Now availability zone is supported in volume type as below.
+
+    * ``RESKEY:availability_zones`` now is a reserved spec key for AZ volume type,
+      and administrator can create AZ volume type that includes AZ restrictions
+      by adding a list of Az's to the extra specs similar to:
+      ``RESKEY:availability_zones: az1,az2``.
+    * Extra spec ``RESKEY:availability_zones`` will only be used for filtering backends
+      when creating and retyping volumes.
+    * Volume type can be filtered within extra spec: /types?extra_specs={"key":"value"}
+      since microversion "3.52".

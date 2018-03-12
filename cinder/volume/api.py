@@ -1714,6 +1714,11 @@ class API(base.Base):
                         'quota_reservations': reservations,
                         'old_reservations': old_reservations}
 
+        type_azs = volume_utils.extract_availability_zones_from_volume_type(
+            new_type)
+        if type_azs is not None:
+            request_spec['availability_zones'] = type_azs
+
         self.scheduler_rpcapi.retype(context, volume,
                                      request_spec=request_spec,
                                      filter_properties={})

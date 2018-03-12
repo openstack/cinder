@@ -10,5 +10,6 @@
     "attachment": ["volume_id", "status", "instance_id", "attach_status"],
     "message": ["resource_uuid", "resource_type", "event_id",
                 "request_id", "message_level"],
-    "pool": ["name", "volume_type"]
+    "pool": ["name", "volume_type"],
+    "volume_type": []
 }

@@ -1737,6 +1737,24 @@ class BasicFiltersTestCase(BackendFiltersTestCase):
         host = fakes.FakeBackendState('host1', {'service': service})
         self.assertTrue(filt_cls.backend_passes(host, request))
 
+    def test_availability_zone_filter_with_AZs(self):
+        filt_cls = self.class_map['AvailabilityZoneFilter']()
+        ctxt = context.RequestContext('fake', 'fake', is_admin=False)
+        request = {
+            'context': ctxt,
+            'request_spec': {'availability_zones': ['nova1', 'nova2']}
+        }
+
+        host1 = fakes.FakeBackendState(
+            'host1', {'service': {'availability_zone': 'nova1'}})
+        host2 = fakes.FakeBackendState(
+            'host2', {'service': {'availability_zone': 'nova2'}})
+        host3 = fakes.FakeBackendState(
+            'host3', {'service': {'availability_zone': 'nova3'}})
+        self.assertTrue(filt_cls.backend_passes(host1, request))
+        self.assertTrue(filt_cls.backend_passes(host2, request))
+        self.assertFalse(filt_cls.backend_passes(host3, request))
+
     def test_availability_zone_filter_different(self):
         filt_cls = self.class_map['AvailabilityZoneFilter']()
         service = {'availability_zone': 'nova'}

@@ -24,6 +24,12 @@ class AvailabilityZoneFilter(filters.BaseBackendFilter):
 
     def backend_passes(self, backend_state, filter_properties):
         spec = filter_properties.get('request_spec', {})
+        availability_zones = spec.get('availability_zones')
+
+        if availability_zones:
+            return (backend_state.service['availability_zone']
+                    in availability_zones)
+
         props = spec.get('resource_properties', {})
         availability_zone = props.get('availability_zone')
 

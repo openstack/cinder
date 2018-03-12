@@ -41,7 +41,8 @@ CONF = cfg.CONF
 CONF.register_opts(scheduler_driver_opts)
 
 
-def volume_update_db(context, volume_id, host, cluster_name):
+def volume_update_db(context, volume_id, host, cluster_name,
+                     availability_zone=None):
     """Set the host, cluster_name, and set the scheduled_at field of a volume.
 
     :returns: A Volume with the updated fields set properly.
@@ -50,6 +51,7 @@ def volume_update_db(context, volume_id, host, cluster_name):
     volume.host = host
     volume.cluster_name = cluster_name
     volume.scheduled_at = timeutils.utcnow()
+    volume.availability_zone = availability_zone
     volume.save()
 
     # A volume object is expected to be returned, as it is used by

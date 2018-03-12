@@ -404,3 +404,8 @@ be used as a way to query if the capability exists in the Cinder service.
 3.51
 ----
 Add support for cross AZ backups.
+
+3.52
+----
+``RESKEY:availability_zones`` is a reserved spec key for AZ volume type,
+and filter volume type by ``extra_specs`` is supported now.

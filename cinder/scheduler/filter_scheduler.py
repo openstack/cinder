@@ -96,9 +96,11 @@ class FilterScheduler(driver.Scheduler):
         backend = backend.obj
         volume_id = request_spec['volume_id']
 
-        updated_volume = driver.volume_update_db(context, volume_id,
-                                                 backend.host,
-                                                 backend.cluster_name)
+        updated_volume = driver.volume_update_db(
+            context, volume_id,
+            backend.host,
+            backend.cluster_name,
+            availability_zone=backend.service['availability_zone'])
         self._post_select_populate_filter_properties(filter_properties,
                                                      backend)
 

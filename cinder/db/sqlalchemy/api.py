@@ -3606,8 +3606,16 @@ def _process_volume_types_filters(query, filters):
             searchdict = filters.pop('extra_specs')
             extra_specs = getattr(models.VolumeTypes, 'extra_specs')
             for k, v in searchdict.items():
-                the_filter.extend([extra_specs.any(key=k, value=v,
-                                                   deleted=False)])
+                # NOTE(tommylikehu): We will use 'LIKE' operator for
+                # 'availability_zones' extra spec as it always store the
+                # AZ list info within the format: "az1, az2,...."
+                if k == 'RESKEY:availability_zones':
+                    the_filter.extend([extra_specs.any(
+                        models.VolumeTypeExtraSpecs.value.like(u'%%%s%%' % v),
+                        key=k, deleted=False)])
+                else:
+                    the_filter.extend(
+                        [extra_specs.any(key=k, value=v, deleted=False)])
             if len(the_filter) > 1:
                 query = query.filter(and_(*the_filter))
             else:

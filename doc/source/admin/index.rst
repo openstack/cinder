@@ -27,6 +27,7 @@ Amazon EC2 Elastic Block Storage (EBS) offering.
    blockstorage-api-throughput.rst
    blockstorage-manage-volumes.rst
    blockstorage-troubleshoot.rst
+   blockstorage-availability-zone-type.rst
    generalized_filters.rst
    blockstorage-backup-disks.rst
    blockstorage-boot-from-volume.rst
