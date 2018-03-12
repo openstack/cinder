@@ -1042,7 +1042,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         exp_req = {
             hub.DatastoreSelector.SIZE_BYTES: image_size,
             hub.DatastoreSelector.HARD_AFFINITY_DS_TYPE:
-                {hub.DatastoreType.VMFS, hub.DatastoreType.NFS}}
+                {hub.DatastoreType.VMFS,
+                 hub.DatastoreType.NFS,
+                 hub.DatastoreType.NFS41}}
         select_datastore.assert_called_once_with(exp_req)
         vops.create_datastore_folder.assert_called_once_with(
             ds_name, vmdk.TMP_IMAGES_DATASTORE_FOLDER_PATH, dc)

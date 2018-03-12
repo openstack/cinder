@@ -37,8 +37,9 @@ class DatastoreType(object):
     VMFS = "vmfs"
     VSAN = "vsan"
     VVOL = "vvol"
+    NFS41 = "nfs41"
 
-    _ALL_TYPES = {NFS, VMFS, VSAN, VVOL}
+    _ALL_TYPES = {NFS, VMFS, VSAN, VVOL, NFS41}
 
     @staticmethod
     def get_all_types():

@@ -144,7 +144,9 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         exp_req = {hub.DatastoreSelector.SIZE_BYTES: size_bytes}
         if preallocated:
             exp_req[hub.DatastoreSelector.HARD_AFFINITY_DS_TYPE] = (
-                {hub.DatastoreType.NFS, hub.DatastoreType.VMFS})
+                {hub.DatastoreType.NFS,
+                 hub.DatastoreType.VMFS,
+                 hub.DatastoreType.NFS41})
         select_datastore.assert_called_once_with(exp_req)
         vops.get_dc.assert_called_once_with(host)
         vops.create_datastore_folder.assert_called_once_with(

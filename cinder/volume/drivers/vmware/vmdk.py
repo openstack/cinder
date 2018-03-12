@@ -263,7 +263,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # 3.1.0 - support adapter type change using retype
     # 3.2.0 - config option to disable lazy creation of backend volume
     # 3.3.0 - config option to specify datastore name regex
-    VERSION = '3.3.0'
+    # 3.4.0 - added NFS41 as a supported datastore type
+    VERSION = '3.4.0'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"

@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    VMware VMDK driver and FCD driver now support NFS 4.1
+    datastores in vCenter server.
