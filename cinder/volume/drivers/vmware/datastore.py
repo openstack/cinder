@@ -54,10 +54,11 @@ class DatastoreSelector(object):
     PROFILE_NAME = "storageProfileName"
 
     # TODO(vbala) Remove dependency on volumeops.
-    def __init__(self, vops, session, max_objects):
+    def __init__(self, vops, session, max_objects, ds_regex=None):
         self._vops = vops
         self._session = session
         self._max_objects = max_objects
+        self._ds_regex = ds_regex
         self._profile_id_cache = {}
 
     @coordination.synchronized('vmware-datastore-profile-{profile_name}')
@@ -127,6 +128,9 @@ class DatastoreSelector(object):
             summary = ds_props.get('summary')
             host_mounts = ds_props.get('host')
             if (summary is None or host_mounts is None):
+                return False
+
+            if self._ds_regex and not self._ds_regex.match(summary.name):
                 return False
 
             if (hard_anti_affinity_ds and

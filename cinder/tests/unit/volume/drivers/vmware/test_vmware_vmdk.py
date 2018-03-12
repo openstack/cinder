@@ -17,6 +17,8 @@
 Test suite for VMware vCenter VMDK driver.
 """
 
+import re
+
 import ddt
 import mock
 from oslo_utils import units
@@ -98,6 +100,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._config.vmware_adapter_type = self.ADAPTER_TYPE
         self._config.vmware_snapshot_format = self.SNAPSHOT_FORMAT
         self._config.vmware_lazy_create = True
+        self._config.vmware_datastore_regex = None
 
         self._db = mock.Mock()
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config,
@@ -1680,6 +1683,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             label='OpenStack Cinder')
 
     @mock.patch.object(VMDK_DRIVER, '_validate_params')
+    @mock.patch('re.compile')
     @mock.patch.object(VMDK_DRIVER, '_get_vc_version')
     @mock.patch.object(VMDK_DRIVER, '_validate_vcenter_version')
     @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
@@ -1690,8 +1694,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, 'session')
     def _test_do_setup(
             self, session, vops, ds_sel_cls, vops_cls, register_extension,
-            get_pbm_wsdl_loc, validate_vc_version, get_vc_version,
-            validate_params, enable_pbm=True):
+            get_pbm_wsdl_loc, validate_vc_version, get_vc_version, re_compile,
+            validate_params, enable_pbm=True, ds_regex_pat=None,
+            invalid_regex=False):
         if enable_pbm:
             ver_str = '5.5'
             pbm_wsdl = mock.sentinel.pbm_wsdl
@@ -1705,30 +1710,51 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         cluster_refs = {'cls-1': cls_1, 'cls-2': cls_2}
         vops.get_cluster_refs.return_value = cluster_refs
 
-        self._driver.do_setup(mock.ANY)
+        self._driver.configuration.vmware_datastore_regex = ds_regex_pat
+        ds_regex = None
+        if ds_regex_pat:
+            if invalid_regex:
+                re_compile.side_effect = re.error("error")
+            else:
+                ds_regex = mock.sentinel.ds_regex
+                re_compile.return_value = ds_regex
 
-        validate_params.assert_called_once_with()
-        get_vc_version.assert_called_once_with()
-        validate_vc_version.assert_called_once_with(ver_str)
-        if enable_pbm:
-            get_pbm_wsdl_loc.assert_called_once_with(ver_str)
-            self.assertEqual(pbm_wsdl, self._driver.pbm_wsdl)
-        self.assertEqual(enable_pbm, self._driver._storage_policy_enabled)
-        register_extension.assert_called_once()
-        vops_cls.assert_called_once_with(
-            session, self._driver.configuration.vmware_max_objects_retrieval,
-            vmdk.EXTENSION_KEY, vmdk.EXTENSION_TYPE)
-        self.assertEqual(vops_cls.return_value, self._driver._volumeops)
-        ds_sel_cls.assert_called_once_with(
-            vops,
-            session,
-            self._driver.configuration.vmware_max_objects_retrieval)
-        self.assertEqual(ds_sel_cls.return_value, self._driver._ds_sel)
-        vops.get_cluster_refs.assert_called_once_with(
-            self._driver.configuration.vmware_cluster_name)
-        vops.build_backing_ref_cache.assert_called_once_with()
-        self.assertEqual(list(cluster_refs.values()),
-                         list(self._driver._clusters))
+        if ds_regex_pat and invalid_regex:
+            self.assertRaises(cinder_exceptions.InvalidInput,
+                              self._driver.do_setup,
+                              mock.ANY)
+            validate_params.assert_called_once_with()
+        else:
+            self._driver.do_setup(mock.ANY)
+
+            validate_params.assert_called_once_with()
+            get_vc_version.assert_called_once_with()
+            validate_vc_version.assert_called_once_with(ver_str)
+            if enable_pbm:
+                get_pbm_wsdl_loc.assert_called_once_with(ver_str)
+                self.assertEqual(pbm_wsdl, self._driver.pbm_wsdl)
+            self.assertEqual(enable_pbm, self._driver._storage_policy_enabled)
+            register_extension.assert_called_once()
+            vops_cls.assert_called_once_with(
+                session,
+                self._driver.configuration.vmware_max_objects_retrieval,
+                vmdk.EXTENSION_KEY,
+                vmdk.EXTENSION_TYPE)
+            self.assertEqual(vops_cls.return_value, self._driver._volumeops)
+            ds_sel_cls.assert_called_once_with(
+                vops,
+                session,
+                self._driver.configuration.vmware_max_objects_retrieval,
+                ds_regex=ds_regex)
+            self.assertEqual(ds_sel_cls.return_value, self._driver._ds_sel)
+            vops.get_cluster_refs.assert_called_once_with(
+                self._driver.configuration.vmware_cluster_name)
+            vops.build_backing_ref_cache.assert_called_once_with()
+            self.assertEqual(list(cluster_refs.values()),
+                             list(self._driver._clusters))
+
+        if ds_regex_pat:
+            re_compile.assert_called_once_with(ds_regex_pat)
 
     def test_do_setup(self):
         self._test_do_setup()
@@ -1756,6 +1782,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         get_vc_version.assert_called_once_with()
         validate_vc_version.assert_called_once_with(ver_str)
         get_pbm_wsdl_loc.assert_called_once_with(ver_str)
+
+    def test_do_setup_with_ds_regex(self):
+        self._test_do_setup(ds_regex_pat='foo')
+
+    def test_do_setup_with_invalid_ds_regex(self):
+        self._test_do_setup(ds_regex_pat='(foo', invalid_regex=True)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_get_dc(self, vops):

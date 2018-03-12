@@ -17,6 +17,8 @@
 Unit tests for datastore module.
 """
 
+import re
+
 import mock
 from oslo_utils import units
 
@@ -73,9 +75,10 @@ class DatastoreTest(test.TestCase):
     def _create_summary(
             self, ds, free_space=units.Mi, _type=ds_sel.DatastoreType.VMFS,
             capacity=2 * units.Mi, accessible=True):
-        return mock.Mock(datastore=ds, freeSpace=free_space, type=_type,
-                         capacity=capacity, accessible=accessible,
-                         name=ds.value)
+        summary = mock.Mock(datastore=ds, freeSpace=free_space, type=_type,
+                            capacity=capacity, accessible=accessible)
+        summary.name = ds.value
+        return summary
 
     def _create_host(self, value):
         host = mock.Mock(spec=['_type', 'value'], name=value)
@@ -145,10 +148,15 @@ class DatastoreTest(test.TestCase):
                      'host': host_mounts1}
 
         # valid datastore
-        ds10 = self._create_datastore('ds-10')
-        ds10_props = {'summary': self._create_summary(ds10),
+        ds1a = self._create_datastore('ds-1a')
+        ds1a_props = {'summary': self._create_summary(ds1a),
                       'host': host_mounts1}
-        filter_by_profile.return_value = {ds10: ds10_props}
+        filter_by_profile.return_value = {ds1a: ds1a_props}
+
+        # datastore name not matching the regex filter
+        ds1b = self._create_datastore('ds-1b')
+        ds1b_props = {'summary': self._create_summary(ds1b),
+                      'host': host_mounts1}
 
         datastores = {ds1: ds1_props,
                       ds2: ds2_props,
@@ -159,8 +167,10 @@ class DatastoreTest(test.TestCase):
                       ds7: ds7_props,
                       ds8: ds8_props,
                       ds9: ds9_props,
-                      ds10: ds10_props}
+                      ds1a: ds1a_props,
+                      ds1b: ds1b_props}
         profile_id = mock.sentinel.profile_id
+        self._ds_sel._ds_regex = re.compile("ds-[1-9a]{1,2}$")
         datastores = self._ds_sel._filter_datastores(
             datastores,
             512,
@@ -169,9 +179,9 @@ class DatastoreTest(test.TestCase):
             {ds_sel.DatastoreType.VMFS, ds_sel.DatastoreType.NFS},
             valid_host_refs=[host1, host2])
 
-        self.assertEqual({ds10: ds10_props}, datastores)
+        self.assertEqual({ds1a: ds1a_props}, datastores)
         filter_by_profile.assert_called_once_with(
-            {ds9: ds9_props, ds10: ds10_props},
+            {ds9: ds9_props, ds1a: ds1a_props},
             profile_id)
 
     def test_filter_datastores_with_empty_datastores(self):
