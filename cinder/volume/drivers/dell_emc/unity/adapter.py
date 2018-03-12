@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Dell Inc. or its subsidiaries.
+# Copyright (c) 2016 - 2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -152,9 +152,8 @@ class CommonAdapter(object):
         self.ip = self.config.san_ip
         self.username = self.config.san_login
         self.password = self.config.san_password
-        # Unity currently not support to upload certificate.
-        # Once it supports, enable the verify.
-        self.array_cert_verify = False
+        # Allow for customized CA
+        self.array_cert_verify = self.config.driver_ssl_cert_verify
         self.array_ca_cert_path = self.config.driver_ssl_cert_path
 
         sys_version = self.client.system.system_version
