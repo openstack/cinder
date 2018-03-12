@@ -274,6 +274,35 @@ not efficient since a cloned volume will be created during backup.
 An effective approach to backups is to create a snapshot for the volume and
 connect this snapshot to the Block Storage host for volume backup.
 
+SSL support
+~~~~~~~~~~~
+
+Admin is able to enable the SSL verification for any communication against
+Unity REST API.
+
+By default, the SSL verification is disabled, user can enable it by following
+steps:
+
+#. Setup the Unity array certificate and import it to the Unity, see section
+   `Storage system certificate` of `Security Configuration Guide <https://www.emc.com/collateral/TechnicalDocument/docu69321.pdf>`_.
+
+#. Import the CA certficate to the Cinder nodes on which the driver is running.
+
+#. Enable the changes on cinder nodes and restart the cinder services.
+
+.. code-block:: ini
+
+     [unity]
+     ...
+     driver_ssl_cert_verify = True
+     driver_ssl_cert_path = <path to the CA>
+     ...
+
+
+If `driver_ssl_cert_path` is omitted, the system default CA will be used for CA
+verification.
+
+
 IPv6 support
 ~~~~~~~~~~~~
 
