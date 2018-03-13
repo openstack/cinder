@@ -1,14 +1,17 @@
 .. -*- rst -*-
 
+API versions
+============
+
 List All Api Versions
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method:: GET /
 
 Lists information for all Block Storage API versions.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -26,10 +29,10 @@ Response codes
    - 503
 
 Request
-~~~~~~~
+-------
 
 Response
-~~~~~~~~
+--------
 
 **Example List Api Versions: JSON request**
 

@@ -29,7 +29,7 @@ defining the cluster it is no longer required, but we must have either a host
 or a cluster field but we cannot have them both with values.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -72,7 +72,7 @@ Search a volume backend and list summary of volumes which are available to
 manage.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -121,7 +121,7 @@ Search a volume backend and list detail of volumes which are available to
 manage.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

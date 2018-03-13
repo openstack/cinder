@@ -14,7 +14,7 @@ Delete message
 Deletes a message.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -44,7 +44,7 @@ Shows details for a message.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -99,7 +99,7 @@ specify invalid filters in the url, API will return bad request.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

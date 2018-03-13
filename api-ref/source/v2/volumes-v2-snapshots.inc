@@ -43,7 +43,7 @@ Lists all Block Storage snapshots, with details, that the project can access.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -90,7 +90,7 @@ Create snapshot
 Creates a volume snapshot, which is a point-in-time, complete copy of a volume. You can create a volume from a snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -132,14 +132,14 @@ Response Parameters
 
 
 List snapshots
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_method::  GET /v2/{project_id}/snapshots
 
 Lists all Block Storage snapshots, with summary information, that the project can access.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -189,7 +189,7 @@ Show snapshot metadata
 Shows metadata for a snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -241,7 +241,7 @@ are not in the request.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -280,7 +280,7 @@ Replaces all the snapshot's metadata with the key-value pairs in the request.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -319,7 +319,7 @@ Shows details for a snapshot.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -368,7 +368,7 @@ Updates a snapshot.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -424,7 +424,7 @@ Delete snapshot
 Deletes a snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

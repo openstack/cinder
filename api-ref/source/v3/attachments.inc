@@ -21,7 +21,7 @@ Deletes an attachment.
 Available starting in the 3.27 microversion.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -52,7 +52,7 @@ Shows details for an attachment.
 Available starting in the 3.27 microversion.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -105,7 +105,7 @@ users specify invalid filters in the url, API will return bad request.
 Available starting in the 3.27 microversion.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -159,7 +159,7 @@ specify invalid filters in the url, API will return bad request.
 Available starting in the 3.27 microversion.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -211,7 +211,7 @@ Creates an attachment.
 Available starting in the 3.27 microversion.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -273,7 +273,7 @@ and set up the appropriate connection_info from the driver.
 Available starting in the 3.27 microversion.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -332,7 +332,7 @@ Complete an attachment for a cinder volume.
 Available starting in the 3.44 microversion.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

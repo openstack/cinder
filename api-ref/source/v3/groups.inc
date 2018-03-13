@@ -26,7 +26,7 @@ Lists groups. Since v3.31 if non-admin users specify
 invalid filters in the url, API will return bad request.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -74,7 +74,7 @@ Create group
 Creates a group.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -114,7 +114,7 @@ Show group details
 Shows details for a group.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -166,7 +166,7 @@ Creates a group from source.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -205,7 +205,7 @@ Delete group
 Deletes a group.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -244,7 +244,7 @@ users specify invalid filters in the url, API will return bad request.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -300,7 +300,7 @@ Update group
 Updates a group.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -340,7 +340,7 @@ Reset group status
 Resets the status for a group. Specify the ``reset_status`` action in the request body.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

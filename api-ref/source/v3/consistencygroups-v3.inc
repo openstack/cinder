@@ -23,7 +23,7 @@ Lists consistency groups.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -66,7 +66,7 @@ Create a consistency group
 Creates a consistency group.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -119,7 +119,7 @@ Show a consistency group's details
 Shows details for a consistency group.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -162,7 +162,7 @@ Creates a consistency group from source.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -199,7 +199,7 @@ Delete a consistency group
 Deletes a consistency group.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -232,7 +232,7 @@ Lists consistency groups with details.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -281,7 +281,7 @@ Updates a consistency group.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

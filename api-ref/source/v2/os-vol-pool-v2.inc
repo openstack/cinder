@@ -15,7 +15,7 @@ List back-end storage pools
 Lists all back-end storage pools.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

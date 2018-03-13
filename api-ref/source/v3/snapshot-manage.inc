@@ -26,7 +26,7 @@ the existing snapshot to the next gibibyte (GiB).
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -63,7 +63,7 @@ Search a volume backend and list summary of snapshots which are available to
 manage.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -114,7 +114,7 @@ manage.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

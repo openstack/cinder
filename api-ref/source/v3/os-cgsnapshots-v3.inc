@@ -15,7 +15,7 @@ Delete a consistency group snapshot
 Deletes a consistency group snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -39,7 +39,7 @@ Show consistency group snapshot detail
 Shows details for a consistency group snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -83,7 +83,7 @@ List all consistency group snapshots with details
 Lists all consistency group snapshots with details.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -126,7 +126,7 @@ Lists all consistency group snapshots.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -170,7 +170,7 @@ Create a consistency group snapshot
 Creates a consistency group snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

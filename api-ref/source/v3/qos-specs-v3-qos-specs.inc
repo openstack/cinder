@@ -18,7 +18,7 @@ Disassociate a QoS specification from all associations
 Disassociates a QoS specification from all associations.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -42,7 +42,7 @@ Unset keys in a QoS specification
 Unsets keys in a QoS specification.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -74,7 +74,7 @@ Lists all associations for a QoS specification.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -119,7 +119,7 @@ Associates a QoS specification with a volume type.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -145,7 +145,7 @@ Disassociates a QoS specification from a volume type.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -170,7 +170,7 @@ Show a QoS specification details
 Shows details for a QoS specification.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -224,7 +224,7 @@ Set keys in a QoS specification
 Sets keys in a QoS specification.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -269,7 +269,7 @@ Delete a QoS specification
 Deletes a QoS specification.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -297,7 +297,7 @@ Specify one or more key and value pairs in the request body.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -342,7 +342,7 @@ Lists quality of service (QoS) specifications.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

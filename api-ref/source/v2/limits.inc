@@ -20,7 +20,7 @@ An absolute limit value of ``-1`` indicates that the absolute limit
 for the item is infinite.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

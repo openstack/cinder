@@ -15,7 +15,7 @@ List resource filters
 List filters.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

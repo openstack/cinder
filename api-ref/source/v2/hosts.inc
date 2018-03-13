@@ -16,7 +16,7 @@ List all hosts
 Lists all hosts summary info that is not disabled.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -66,7 +66,7 @@ It is not valid against other Cinder service hosts or hosts where the
 cinder-volume service has been disabled.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

@@ -44,7 +44,7 @@ since v3.31 if non-admin users specify invalid filters in the url, API will
 return bad request.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -103,7 +103,7 @@ Creates a volume snapshot, which is a point-in-time, complete copy of a volume.
 You can create a volume from a snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -163,7 +163,7 @@ that the project can access, since v3.31 if non-admin users
 specify invalid filters in the url, API will return bad request.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -219,7 +219,7 @@ Show a snapshot's metadata
 Shows metadata for a snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -270,7 +270,7 @@ Creates or replaces metadata items that match keys. Does not modify items that
 are not in the request.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -313,7 +313,7 @@ Update a snapshot's metadata
 Replaces all the snapshot's metadata with the key-value pairs in the request.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -358,7 +358,7 @@ Show a snapshot's details
 Shows details for a snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -407,7 +407,7 @@ Update a snapshot
 Updates a snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -464,7 +464,7 @@ Delete a snapshot
 Deletes a snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -488,7 +488,7 @@ Show a snapshot's metadata for a specific key
 Shows metadata for a snapshot for a specific key.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -528,7 +528,7 @@ Delete a snapshot's metadata
 Deletes metadata for a snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -553,7 +553,7 @@ Update a snapshot's metadata for a specific key
 Update metadata for a snapshot for a specific key.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

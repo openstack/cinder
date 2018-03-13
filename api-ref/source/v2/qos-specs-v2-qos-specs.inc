@@ -18,7 +18,7 @@ Disassociate QoS specification from all associations
 Disassociates a QoS specification from all associations.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -42,7 +42,7 @@ Unset keys in QoS specification
 Unsets keys in a QoS specification.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -82,7 +82,7 @@ Lists all associations for a QoS specification.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -113,7 +113,7 @@ Associate QoS specification with volume type
 Associates a QoS specification with a volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -138,7 +138,7 @@ Disassociate QoS specification from volume type
 Disassociates a QoS specification from a volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -163,7 +163,7 @@ Show QoS specification details
 Shows details for a QoS specification.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -216,7 +216,7 @@ Set keys in QoS specification
 Sets keys in a QoS specification.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -254,7 +254,7 @@ Delete QoS specification
 Deletes a QoS specification.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -281,7 +281,7 @@ Creates a QoS specification.
 Specify one or more key and value pairs in the request body.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -320,7 +320,7 @@ Response Parameters
 
 
 List QoS specs
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_method::  GET /v2/{project_id}/qos-specs
 
@@ -328,7 +328,7 @@ Lists quality of service (QoS) specifications.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

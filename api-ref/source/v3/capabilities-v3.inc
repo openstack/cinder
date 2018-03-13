@@ -15,7 +15,7 @@ Shows capabilities for a storage back end on the host.
 The ``hostname`` takes the form of ``hostname@volume_backend_name``.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

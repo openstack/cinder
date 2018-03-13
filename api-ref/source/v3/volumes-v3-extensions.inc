@@ -14,7 +14,7 @@ List Known API extensions
 Lists Block Storage API extensions.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

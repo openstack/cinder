@@ -71,7 +71,7 @@ since v3.31 if non-admin users specify invalid filters in the url, API will
 return bad request.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -180,7 +180,7 @@ Troubleshooting
   of the volume creation request.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -262,7 +262,7 @@ filters in the url, API will return bad request.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -321,7 +321,7 @@ Preconditions
 - The volume must exist.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -392,7 +392,7 @@ Update a volume
 Updates a volume.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -488,7 +488,7 @@ Troubleshooting
   the storage system.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -515,7 +515,7 @@ Creates or replaces metadata for a volume. Does not modify items that are not
 in the request.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -563,7 +563,7 @@ Shows metadata for a volume.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -604,7 +604,7 @@ Replaces all the volume's metadata with the key-value pairs in the request.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -652,7 +652,7 @@ Show a volume's metadata for a specific key
 Shows metadata for a volume for a specific key.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -694,7 +694,7 @@ Delete a volume's metadata
 Deletes metadata for a volume.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -720,7 +720,7 @@ Update metadata for a volume for a specific key.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -766,7 +766,7 @@ Display volumes summary with total number of volumes and total size in GB
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

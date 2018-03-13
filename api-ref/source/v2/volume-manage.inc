@@ -24,7 +24,7 @@ The API chooses the size of the volume by rounding up the size of
 the existing storage volume to the next gibibyte (GiB).
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
