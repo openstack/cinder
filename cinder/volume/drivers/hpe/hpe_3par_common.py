@@ -265,11 +265,12 @@ class HPE3PARCommon(object):
         3.0.38 - Fixed delete operation of replicated volume which is part
                  of QOS. bug #1717875
         3.0.39 - Added check to modify host after volume detach. bug #1730720
+        3.0.40 - Handle force detach case. bug #1686745
 
 
     """
 
-    VERSION = "3.0.39"
+    VERSION = "3.0.40"
 
     stats = {}
 
@@ -1498,11 +1499,16 @@ class HPE3PARCommon(object):
 
     def delete_vlun(self, volume, hostname, wwn=None, iqn=None):
         volume_name = self._get_3par_vol_name(volume['id'])
-        vluns = self.client.getHostVLUNs(hostname)
+        if hostname:
+            vluns = self.client.getHostVLUNs(hostname)
+        else:
+            # In case of 'force detach', hostname is None
+            vluns = self.client.getVLUNs()['members']
 
         # When deleteing VLUNs, you simply need to remove the template VLUN
         # and any active VLUNs will be automatically removed.  The template
         # VLUN are marked as active: False
+
         modify_host = True
         volume_vluns = []
 
@@ -1519,6 +1525,8 @@ class HPE3PARCommon(object):
 
         # VLUN Type of MATCHED_SET 4 requires the port to be provided
         for vlun in volume_vluns:
+            if hostname is None:
+                hostname = vlun.get('hostname')
             if 'portPos' in vlun:
                 self.client.deleteVLUN(volume_name, vlun['lun'],
                                        hostname=hostname,
@@ -1547,6 +1555,7 @@ class HPE3PARCommon(object):
                 if (wwn is not None and vlun.get('remoteName').lower() in wwn)\
                     or (iqn is not None and vlun.get('remoteName').lower() in
                         iqn):
+                    # vlun with wwn/iqn exists so do not modify host.
                     modify_host = False
                     break
 
@@ -1558,6 +1567,8 @@ class HPE3PARCommon(object):
             # host, so it is worth the unlikely risk.
 
             try:
+                # TODO(sonivi): since multiattach is not supported for now,
+                # delete only single host, if its not exported to volume.
                 self._delete_3par_host(hostname)
             except Exception as ex:
                 # Any exception down here is only logged.  The vlun is deleted.
@@ -1581,7 +1592,6 @@ class HPE3PARCommon(object):
             else:
                 mod_request = {'pathOperation': self.client.HOST_EDIT_REMOVE,
                                'iSCSINames': iqn}
-
             try:
                 self.client.modifyHost(hostname, mod_request)
             except Exception as ex:
@@ -2742,8 +2752,9 @@ class HPE3PARCommon(object):
         elif iqn:
             hosts = self.client.queryHost(iqns=[iqn])
 
-        if hosts and hosts['members'] and 'name' in hosts['members'][0]:
-            hostname = hosts['members'][0]['name']
+        if hosts is not None:
+            if hosts and hosts['members'] and 'name' in hosts['members'][0]:
+                hostname = hosts['members'][0]['name']
 
         try:
             self.delete_vlun(volume, hostname, wwn=wwn, iqn=iqn)
@@ -2764,12 +2775,19 @@ class HPE3PARCommon(object):
                                 "secondary target.")
                     return
                 else:
-                    # use the wwn to see if we can find the hostname
-                    hostname = self._get_3par_hostname_from_wwn_iqn(wwn, iqn)
-                    # no 3par host, re-throw
-                    if hostname is None:
+                    if hosts is None:
+                        # In case of 'force detach', hosts is None
                         LOG.error("Exception: %s", e)
                         raise
+                    else:
+                        # use the wwn to see if we can find the hostname
+                        hostname = self._get_3par_hostname_from_wwn_iqn(
+                            wwn,
+                            iqn)
+                        # no 3par host, re-throw
+                        if hostname is None:
+                            LOG.error("Exception: %s", e)
+                            raise
             else:
                 # not a 'host does not exist' HTTPNotFound exception, re-throw
                 LOG.error("Exception: %s", e)

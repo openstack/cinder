@@ -126,10 +126,11 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
         3.0.16 - Get host from os-brick connector. bug #1690244
         3.0.17 - Update CHAP on host record when volume is migrated
                  to new compute host. bug # 1737181
+        3.0.18 - Handle force detach case. bug #1686745
 
     """
 
-    VERSION = "3.0.17"
+    VERSION = "3.0.18"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -485,11 +486,15 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
         """Driver entry point to unattach a volume from an instance."""
         common = self._login()
         try:
-            hostname = common._safe_hostname(connector['host'])
-            common.terminate_connection(
-                volume,
-                hostname,
-                iqn=connector['initiator'])
+            is_force_detach = connector is None
+            if is_force_detach:
+                common.terminate_connection(volume, None, None)
+            else:
+                hostname = common._safe_hostname(connector['host'])
+                common.terminate_connection(
+                    volume,
+                    hostname,
+                    iqn=connector['initiator'])
             self._clear_chap_3par(common, volume)
         finally:
             self._logout(common)

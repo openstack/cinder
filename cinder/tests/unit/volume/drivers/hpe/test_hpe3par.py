@@ -5869,6 +5869,45 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
+    def test_force_detach_volume(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+
+        mock_client.getVLUNs.return_value = {
+            'members': [{
+                'active': False,
+                'volumeName': self.VOLUME_3PAR_NAME,
+                'hostname': self.FAKE_HOST,
+                'lun': None, 'type': 0}]}
+
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': self.FAKE_HOST
+            }]
+        }
+
+        mock_client.getHostVLUNs.side_effect = hpeexceptions.HTTPNotFound
+
+        expected = [
+            mock.call.getVLUNs(),
+            mock.call.deleteVLUN(
+                self.VOLUME_3PAR_NAME,
+                None,
+                hostname=self.FAKE_HOST),
+            mock.call.getHostVLUNs(self.FAKE_HOST),
+            mock.call.deleteHost(self.FAKE_HOST)]
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            self.driver.terminate_connection(self.volume, None)
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
     @mock.patch('cinder.zonemanager.utils.create_lookup_service')
     def test_terminate_connection_with_lookup(self, mock_lookup):
         # setup_mock_client drive with default configuration
