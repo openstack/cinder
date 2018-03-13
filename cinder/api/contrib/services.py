@@ -203,7 +203,7 @@ class ServiceController(wsgi.Controller):
             self.rpc_apis[service.binary].set_log_levels(context,
                                                          service, log_req)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _get_log(self, context, body):
         """Get current log levels for services."""
