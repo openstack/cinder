@@ -139,7 +139,7 @@ class SCSTAdm(iscsi.ISCSITarget):
                 LOG.error("Failed to set 'enable' attribute for "
                           "SCST target %s", e)
                 raise exception.ISCSITargetHelperCommandFailed(
-                    error_mesage="Failed to enable SCST Target.")
+                    error_message="Failed to enable SCST Target.")
             if chap_auth and self.target_name:
                 try:
                     chap_string = self._iscsi_authentication('IncomingUser=',
@@ -157,7 +157,7 @@ class SCSTAdm(iscsi.ISCSITarget):
                             "SCST target.")
                     LOG.exception(msg)
                     raise exception.ISCSITargetHelperCommandFailed(
-                        error_mesage=msg)
+                        error_message=msg)
 
         if self.target_name:
             if self._get_group() is None:
