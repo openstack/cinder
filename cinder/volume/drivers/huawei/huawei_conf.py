@@ -21,8 +21,8 @@ and set every property into Configuration object as an attribute.
 """
 
 import base64
+from defusedxml import ElementTree as ET
 import six
-from xml.etree import ElementTree as ET
 
 from oslo_log import log as logging
 

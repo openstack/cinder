@@ -18,7 +18,7 @@ Volume driver for Zadara Virtual Private Storage Array (VPSA).
 This driver requires VPSA with API version 15.07 or higher.
 """
 
-from defusedxml import lxml as etree
+from defusedxml import lxml
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import strutils
@@ -270,7 +270,7 @@ class ZadaraVPSAConnection(object):
             raise exception.BadHTTPResponseStatus(status=response.status_code)
 
         data = response.content
-        xml_tree = etree.fromstring(data)
+        xml_tree = lxml.fromstring(data)
         status = xml_tree.findtext('status')
         if status != '0':
             raise exception.FailedCmdWithDump(status=status, data=data)
