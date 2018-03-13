@@ -228,7 +228,7 @@ def hsexecute(cmdarg_json):
                                            cmdarg_json,
                                            run_as_root=True)
     except (putils.UnknownArgumentError, putils.ProcessExecutionError,
-            exception.ErrorInParsingArguments, OSError):
+            OSError):
         LOG.error("Exception in running the command for %s",
                   cmdarg_json,
                   exc_info=True)
