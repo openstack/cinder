@@ -12,8 +12,13 @@ Volume Driver class and Fibre Channel with NimbleFCDriver.
 Support for the Liberty release and above is available from Nimble OS
 2.3.8 or later.
 
-Nimble Storage Cinder driver does not accept unicode characters in
-the volume name or volume description.
+Support for the Ocata release and above is available from Nimble OS 3.6 or
+later.
+
+Nimble Storage Cinder driver does not support port binding with multiple
+interfaces on the same subnet due to existing limitation in os-brick. This
+is partially referenced in https://bugs.launchpad.net/os-brick/+bug/1722432
+but does not resolve for multiple software iscsi ifaces.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
