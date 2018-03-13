@@ -53,7 +53,9 @@ volume_opts = [
                     'this requires lvm_mirrors + 2 PVs with available space'),
     cfg.StrOpt('lvm_type',
                default='auto',
-               choices=['default', 'thin', 'auto'],
+               choices=[('default', 'Thick-provisioned LVM.'),
+                        ('thin', 'Thin-provisioned LVM.'),
+                        ('auto', 'Defaults to thin when supported.')],
                help='Type of LVM volumes to deploy; (default, thin, or auto). '
                     'Auto defaults to thin if thin is supported.'),
     cfg.StrOpt('lvm_conf_file',
