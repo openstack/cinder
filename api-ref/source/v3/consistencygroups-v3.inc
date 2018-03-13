@@ -22,7 +22,12 @@ List project's consistency groups
 Lists consistency groups.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -60,7 +65,12 @@ Create a consistency group
 
 Creates a consistency group.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -108,7 +118,12 @@ Show a consistency group's details
 
 Shows details for a consistency group.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 Request
 -------
@@ -145,7 +160,13 @@ Create a consistency group from source
 
 Creates a consistency group from source.
 
-Normal response codes: 202
+
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -177,7 +198,12 @@ Delete a consistency group
 
 Deletes a consistency group.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -205,7 +231,12 @@ List consistency groups and details
 Lists consistency groups with details.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -248,7 +279,13 @@ Update a consistency group
 
 Updates a consistency group.
 
-Normal response codes: 202
+
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request

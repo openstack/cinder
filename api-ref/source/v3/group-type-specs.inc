@@ -11,10 +11,18 @@ Create or update group specs for a group type
 Create group specs for a group type, if the specification key already exists in group specs,
 this API will update the specification as well.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 202
+.. rest_status_code:: success ../status.yaml
 
-Error response codes: badRequest(400), forbidden(403), itemNotFound(404)
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 403
+   - 404
 
 
 Request
@@ -57,9 +65,17 @@ List group specs for a group type
 List all the group specs for a group type,
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: itemNotFound(404), forbidden(403)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 403
+   - 404
 
 
 Request
@@ -94,9 +110,17 @@ Show one specific group spec for a group type
 Show a group spec for a group type,
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: itemNotFound(404), forbidden(403)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 403
+   - 404
 
 
 Request
@@ -131,9 +155,17 @@ Update one specific group spec for a group type
 Update a group spec for a group type,
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: itemNotFound(404), forbidden(403)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 403
+   - 404
 
 
 Request
@@ -174,9 +206,17 @@ Delete one specific group spec for a group type
 Delete a group spec for a group type,
 
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: itemNotFound(404), forbidden(403)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 403
+   - 404
 
 
 Request

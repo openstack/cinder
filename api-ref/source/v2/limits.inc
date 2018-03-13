@@ -19,10 +19,16 @@ Shows absolute limits for a project.
 An absolute limit value of ``-1`` indicates that the absolute limit
 for the item is infinite.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
 
-Error response codes: forbidden(403)
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 403
 
 Request
 -------

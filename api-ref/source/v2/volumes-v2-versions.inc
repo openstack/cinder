@@ -14,7 +14,12 @@ Show API v2 details
 Shows details for Block Storage API v2.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request

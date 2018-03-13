@@ -14,7 +14,12 @@ Delete a consistency group snapshot
 
 Deletes a consistency group snapshot.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -33,8 +38,12 @@ Show consistency group snapshot detail
 
 Shows details for a consistency group snapshot.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -73,8 +82,12 @@ List all consistency group snapshots with details
 
 Lists all consistency group snapshots with details.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 Request
 -------
@@ -112,7 +125,12 @@ List all consistency group snapshots
 Lists all consistency group snapshots.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -151,7 +169,12 @@ Create a consistency group snapshot
 
 Creates a consistency group snapshot.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 Request
 -------

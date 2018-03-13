@@ -13,8 +13,12 @@ Request cleanup of services with optional filtering. This API is only
 available with microversion 3.24 or later.
 
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 202
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request

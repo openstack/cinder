@@ -23,7 +23,12 @@ or source-name element, if possible.
 The API chooses the size of the volume by rounding up the size of
 the existing storage volume to the next gibibyte (GiB).
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request

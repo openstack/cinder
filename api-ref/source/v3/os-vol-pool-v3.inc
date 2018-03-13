@@ -16,9 +16,16 @@ Lists all back-end storage pools. Since v3.31 if non-admin users
 specify invalid filters in the url, API will return bad request.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 Request
 -------

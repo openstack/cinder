@@ -1,0 +1,54 @@
+    200:
+      default: |
+        Request was successful.
+    201:
+      default: |
+        Request has been fulfilled and new resource created.
+    202:
+      default: |
+        Request is accepted, but processing may take some time.
+    203:
+      default: |
+        Returned information is not full set, but a subset.
+    204:
+      default: |
+        Request fulfilled but service does not return anything.
+    300:
+      default: |
+        The resource corresponds to more than one representation.
+    400:
+      default: |
+        Some content in the request was invalid.
+    401:
+      default: |
+        User must authenticate before making a request.
+    403:
+      default: |
+        Policy does not allow current user to do this operation.
+    404:
+      default: |
+        The requested resource could not be found.
+    405:
+      default: |
+        Method is not valid for this endpoint and resource.
+    409:
+     default: |
+        This resource has an action in progress that would conflict with this request.
+    413:
+      default: |
+        This operation cannot be completed.
+    415:
+     default: |
+        The entity of the request is in a format not supported by the requested
+        resource for the method.
+    500:
+      default: |
+        Something went wrong with the service which prevents it from fulfilling
+        the request.
+    501:
+      default: |
+        The service does not have the functionality required to fulfill this
+        request.
+    503:
+      default: |
+        The service cannot handle the request right now.

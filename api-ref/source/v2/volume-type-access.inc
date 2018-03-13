@@ -20,7 +20,12 @@ Add private volume type access
 
 Adds private volume type access to a project.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -46,7 +51,12 @@ Remove private volume type access
 
 Removes private volume type access from a project.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -72,8 +82,12 @@ List private volume type access details
 
 Lists project IDs that have access to private volume type.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request

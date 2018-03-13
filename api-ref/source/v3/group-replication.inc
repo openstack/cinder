@@ -15,9 +15,17 @@ List replication targets
 
 Lists replication targets for a group.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 
 Request
@@ -57,9 +65,17 @@ Enable group replication
 
 Enable replication for a group.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 Request
 -------
@@ -82,9 +98,17 @@ Disable group replication
 
 Disable replication for a group.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 Request
 -------
@@ -107,9 +131,17 @@ Failover replication
 
 Failover a replicated group.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 Request
 -------

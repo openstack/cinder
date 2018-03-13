@@ -20,9 +20,17 @@ Deletes an attachment.
 
 Available starting in the 3.27 microversion.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 
 Request
@@ -43,9 +51,17 @@ Shows details for an attachment.
 
 Available starting in the 3.27 microversion.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 
 Request
@@ -88,9 +104,16 @@ users specify invalid filters in the url, API will return bad request.
 
 Available starting in the 3.27 microversion.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 Request
 -------
@@ -135,9 +158,16 @@ specify invalid filters in the url, API will return bad request.
 
 Available starting in the 3.27 microversion.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
 
 
 Request
@@ -180,9 +210,17 @@ Creates an attachment.
 
 Available starting in the 3.27 microversion.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 
 Request
@@ -234,9 +272,17 @@ and set up the appropriate connection_info from the driver.
 
 Available starting in the 3.27 microversion.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 Request
 -------
@@ -285,9 +331,17 @@ Complete an attachment for a cinder volume.
 
 Available starting in the 3.44 microversion.
 
-Normal response codes: 204
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 204
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 404
 
 
 Request

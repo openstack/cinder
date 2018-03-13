@@ -16,9 +16,18 @@ List All Cinder Services
 Lists all Cinder services. Provides details why any services
 were disabled.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -62,9 +71,19 @@ Disable a Cinder Service
 Disables a Cinder service. Specify the service by its host name
 and binary name.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -108,9 +127,19 @@ Logs information to the Cinder service table about why a Cinder service was disa
 
 Specify the service by its host name and binary name.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -155,9 +184,19 @@ Enable a Cinder Service
 Enables a Cinder service. Specify the service by its host name
 and binary name.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -201,9 +240,18 @@ Get Current Log Levels for Cinder Services
 Get current log levels for services, supported since v3.32. Filter the
 services by binary, server name and prefix for the log path.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -246,9 +294,18 @@ Set Log Levels of Cinder Services Dynamically
 Set log levels of services dynamically, supported since v3.32. Filter the
 services by binary, server name and prefix for the log path.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -276,9 +333,18 @@ Freeze a Cinder Backend Host
 Freeze and disable the specified cinder-volume host, and set
 ``Disabled Reason`` of Cinder service table to ``frozen``.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -303,9 +369,18 @@ Thaw a Cinder Backend Host
 Thaw and enable the specified cinder-volume host, and clean
 ``Disabled Reason`` of Cinder service table.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -331,10 +406,19 @@ Failover a replicating cinder-volume host. Since Cinder Volume API Version
 3.26, you can use ``failover`` in request URL instead of ``failover_host``,
 and the cluster name in request body is supported.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------

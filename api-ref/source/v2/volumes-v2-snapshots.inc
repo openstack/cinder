@@ -42,7 +42,12 @@ List snapshots with details
 Lists all Block Storage snapshots, with details, that the project can access.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -84,7 +89,12 @@ Create snapshot
 
 Creates a volume snapshot, which is a point-in-time, complete copy of a volume. You can create a volume from a snapshot.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -128,8 +138,12 @@ List snapshots
 
 Lists all Block Storage snapshots, with summary information, that the project can access.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -174,8 +188,12 @@ Show snapshot metadata
 
 Shows metadata for a snapshot.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -222,7 +240,12 @@ Creates or replaces metadata items that match keys. Does not modify items that
 are not in the request.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -256,7 +279,12 @@ Update snapshot metadata
 Replaces all the snapshot's metadata with the key-value pairs in the request.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -290,7 +318,12 @@ Show snapshot details
 Shows details for a snapshot.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -334,7 +367,12 @@ Update snapshot
 Updates a snapshot.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -385,7 +423,12 @@ Delete snapshot
 
 Deletes a snapshot.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request

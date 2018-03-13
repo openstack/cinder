@@ -15,9 +15,18 @@ List all hosts for a project
 
 Lists all hosts summary info that is not disabled.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -57,9 +66,19 @@ Shows volume and snapshot details for a cinder-volume host.
 It is not valid against other Cinder service hosts or hosts where the
 cinder-volume service has been disabled.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------

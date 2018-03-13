@@ -25,7 +25,12 @@ storage back ends, see `Configure multiple-storage back ends
 blockstorage-multi-backend.html>`_.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -71,7 +76,12 @@ Update extra specs for a volume type
 Updates the extra specifications that are assigned to a volume type.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -119,7 +129,12 @@ Show volume type details for v2
 Shows details for a volume type.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 Request
 -------
@@ -156,7 +171,12 @@ Delete volume type
 
 Deletes a volume type.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -176,7 +196,12 @@ List all volume types for v2
 Lists volume types.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -230,7 +255,12 @@ storage back ends, see `Configure multiple-storage back ends
 blockstorage-multi-backend.html>`_.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -275,7 +305,13 @@ Show an encryption type.
 
 To show an encryption type for an existing volume type.
 
-Normal response codes: 200
+
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -320,7 +356,12 @@ Delete an encryption type.
 
 To delete an encryption type for an existing volume type.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
 
 
 Request
@@ -341,7 +382,13 @@ Creates an encryption type.
 
 To create an encryption type for an existing volume type.
 
-Normal response codes: 200
+
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -393,7 +440,13 @@ Update an encryption type.
 
 To update an encryption type for an existing volume type.
 
-Normal response codes: 200
+
+Response codes
+~~~~~~~~~~~~~~
+
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request

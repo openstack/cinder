@@ -13,10 +13,20 @@ Update group type
 
 Updates a group type.
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), forbidden(403), itemNotFound(404),
-conflict(409), computeFault(500)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 403
+   - 404
+   - 409
+   - 500
 
 
 Request
@@ -64,10 +74,16 @@ Show group type details
 
 Shows details for a group type.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
 
-Error response codes: itemNotFound(404)
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 404
 
 Request
 -------
@@ -106,9 +122,16 @@ Show default group type details
 Shows details for the default group type if configured.
 
 
-Normal response codes: 200
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 404
 
 Request
 -------
@@ -145,9 +168,18 @@ Delete group type
 
 Deletes a group type.
 
-Normal response codes: 202
+Response codes
+~~~~~~~~~~~~~~
 
-Error response codes: badRequest(400), forbidden(403), itemNotFound(404)
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 403
+   - 404
 
 
 Request
@@ -166,8 +198,12 @@ List group types
 
 Lists group types.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 200
+.. rest_status_code:: success ../status.yaml
+
+   - 200
 
 
 Request
@@ -206,11 +242,19 @@ Create group type
 
 Creates a group type.
 
+Response codes
+~~~~~~~~~~~~~~
 
-Normal response codes: 202
+.. rest_status_code:: success ../status.yaml
 
-Error response codes: badRequest(400), forbidden(403), itemNotFound(404),
-conflict(409)
+   - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 403
+   - 404
+   - 409
 
 
 Request
