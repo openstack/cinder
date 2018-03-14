@@ -32,9 +32,7 @@ from cinder import service_auth
 nova_opts = [
     cfg.StrOpt('region_name',
                help='Name of nova region to use. Useful if keystone manages '
-                    'more than one region.',
-               deprecated_name="os_region_name",
-               deprecated_group="DEFAULT"),
+                    'more than one region.'),
     cfg.StrOpt('interface',
                default='public',
                choices=['public', 'admin', 'internal'],
