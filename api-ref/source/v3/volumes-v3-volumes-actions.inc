@@ -53,7 +53,7 @@ Troubleshooting
   end.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -86,7 +86,7 @@ Administrator only. Resets the status, attach status, revert to snapshot,
 and migration status for a volume. Specify the ``os-reset_status`` action in the request body.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -123,7 +123,7 @@ and the volume status must be ``available``.
 Available since API microversion ``3.40``.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -161,7 +161,7 @@ Set image metadata for a volume
 Sets the image metadata for a volume. Specify the ``os-set_image_metadata`` action in the request body.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -193,7 +193,7 @@ Remove image metadata from a volume
 Removes image metadata, by key, from a volume. Specify the ``os-unset_image_metadata`` action in the request body and the ``key`` for the metadata key and value pair that you want to remove.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -227,7 +227,7 @@ Show image metadata for a volume
 Shows image metadata for a volume.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -278,7 +278,7 @@ Preconditions
 - You should set ``instance_uuid`` or ``host_name``.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -317,7 +317,7 @@ Preconditions
 - Volume status must be ``in-use``.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -355,7 +355,7 @@ Preconditions
 - Volume status must be ``available``.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -394,7 +394,7 @@ through the ``volume_extension:volume_admin_actions:force_detach`` rule in
 the ``policy.json`` file.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -439,7 +439,7 @@ the volume to perform this operation. Cloud providers can change these
 permissions through the policy.json file.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -473,7 +473,7 @@ Attempts force-delete of volume, regardless of state. Specify the ``os-force_del
 in the request body.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -505,7 +505,7 @@ Update the bootable status for a volume, mark it as a bootable volume. Specify
 the ``os-set_bootable`` action in the request body.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -537,7 +537,7 @@ Upload volume to image
 Uploads the specified volume to image service.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

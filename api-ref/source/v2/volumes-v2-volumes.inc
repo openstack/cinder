@@ -67,7 +67,7 @@ List volumes with details
 Lists all Block Storage volumes, with details, that the project can access.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -169,7 +169,7 @@ Troubleshooting
   of the volume creation request.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -248,7 +248,7 @@ Lists summary information for all Block Storage volumes that the project can acc
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -301,7 +301,7 @@ Preconditions
 - The volume must exist.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -372,7 +372,7 @@ Updates a volume.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -469,7 +469,7 @@ Troubleshooting
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -496,7 +496,7 @@ Creates or replaces metadata for a volume. Does not modify items that are not
 in the request.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -545,7 +545,7 @@ Shows metadata for a volume.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -587,7 +587,7 @@ Update volume metadata
 Replaces all the volume's metadata with the key-value pairs in the request.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -636,7 +636,7 @@ Show volume metadata for a specific key
 Shows metadata for a volume for a specific key.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -676,7 +676,7 @@ Delete volume metadata
 Deletes metadata for a volume.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -701,7 +701,7 @@ Update volume metadata for a specific key
 Update metadata for a volume for a specific key.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

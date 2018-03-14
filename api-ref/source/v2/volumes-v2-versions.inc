@@ -1,10 +1,7 @@
 .. -*- rst -*-
 
-API versions
-============
-
-
-
+API version details
+===================
 
 Show API v2 details
 ~~~~~~~~~~~~~~~~~~~
@@ -15,7 +12,7 @@ Shows details for Block Storage API v2.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

@@ -48,7 +48,7 @@ API will return bad request.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -115,7 +115,7 @@ Show backup detail
 Shows details for a backup.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -173,7 +173,7 @@ Delete a backup
 Deletes a backup.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -213,7 +213,7 @@ In this case, if the name parameter is provided, it will be used as the
 name of the new volume.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -266,7 +266,7 @@ Create a backup
 Creates a Block Storage backup from a volume.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -318,7 +318,7 @@ Update a backup
 Update a Block Storage backup. This API is available since v3.9.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -373,7 +373,7 @@ since v3.31 if non-admin users specify invalid filters in the
 url, API will return bad request.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -422,7 +422,7 @@ Export information about a backup.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -467,7 +467,7 @@ Import information about a backup.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

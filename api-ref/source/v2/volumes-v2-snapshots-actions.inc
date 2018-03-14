@@ -15,7 +15,7 @@ Reset a snapshot's status
 Resets the status. Specify the ``os-reset_status`` action in the request body.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

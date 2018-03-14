@@ -14,7 +14,7 @@ Accept volume transfer
 Accepts a volume transfer.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -61,7 +61,7 @@ Create volume transfer
 Creates a volume transfer.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -110,7 +110,7 @@ List volume transfers
 Lists volume transfers.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -151,7 +151,7 @@ Show volume transfer details
 Shows details for a volume transfer.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -193,7 +193,7 @@ Delete volume transfer
 Deletes a volume transfer.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -216,7 +216,7 @@ List volume transfers, with details
 Lists volume transfers, with details.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

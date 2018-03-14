@@ -20,7 +20,7 @@ The backup driver returns the ``405`` status code if it does not
 support this operation.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -57,7 +57,7 @@ Reset a backup's status. Specify the ``os-reset_status`` action in the request
 body.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

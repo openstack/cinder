@@ -45,7 +45,7 @@ List backups with details
 Lists Block Storage backups, with details, to which the project has access.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -103,7 +103,7 @@ Show backup details
 Shows details for a backup.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -157,7 +157,7 @@ Delete backup
 Deletes a backup.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -177,7 +177,7 @@ Request
 
 
 Restore backup
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_method::  POST /v2/{project_id}/backups/{backup_id}/restore
 
@@ -187,7 +187,7 @@ You must specify either the UUID or name of the volume. If you
 specify both the UUID and name, the UUID takes priority.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -239,7 +239,7 @@ Create backup
 Creates a Block Storage backup from a volume.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -289,7 +289,7 @@ List backups
 Lists Block Storage backups to which the project has access.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -332,7 +332,7 @@ Export backup
 Export information about a backup.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -375,7 +375,7 @@ Import backup
 Import information about a backup.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

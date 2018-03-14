@@ -16,7 +16,7 @@ List replication targets
 Lists replication targets for a group.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -66,7 +66,7 @@ Enable group replication
 Enable replication for a group.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -99,7 +99,7 @@ Disable group replication
 Disable replication for a group.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -132,7 +132,7 @@ Failover replication
 Failover a replicated group.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

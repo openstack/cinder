@@ -25,7 +25,7 @@ Update a volume type
 Updates a volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -78,7 +78,7 @@ Adds new extra specifications to a volume type, or updates the extra
 specifications that are assigned to a volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -124,7 +124,7 @@ Show all extra specifications for volume type
 Shows all extra specifications assigned to a volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -162,7 +162,7 @@ Show extra specification for volume type
 Shows the specific extra specification assigned to a volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -193,7 +193,7 @@ Update extra specification for volume type
 Update the specific extra specification assigned to a volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -231,7 +231,7 @@ Delete extra specification for volume type
 Deletes the specific extra specification assigned to a volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -256,7 +256,7 @@ Show volume type detail
 Shows details for a volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -298,7 +298,7 @@ Show default volume type
 Shows details for the default volume type if configured.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -339,7 +339,7 @@ Delete a volume type
 Deletes a volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -363,7 +363,7 @@ List all volume types
 Lists volume types.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -406,7 +406,7 @@ Create a volume type
 Creates a volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -460,7 +460,7 @@ Show an encryption type
 To show an encryption type for an existing volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -508,7 +508,7 @@ Show encryption specs item
 To show encryption specs item for an existing volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -539,7 +539,7 @@ Delete an encryption type
 To delete an encryption type for an existing volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -564,7 +564,7 @@ Create an encryption type
 To create an encryption type for an existing volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -619,7 +619,7 @@ Update an encryption type
 To update an encryption type for an existing volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

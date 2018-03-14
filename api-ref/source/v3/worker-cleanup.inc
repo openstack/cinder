@@ -14,7 +14,7 @@ available with microversion 3.24 or later.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

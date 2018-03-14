@@ -17,7 +17,7 @@ Lists all Cinder services. Provides details why any services
 were disabled.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -72,7 +72,7 @@ Disables a Cinder service. Specify the service by its host name
 and binary name.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -128,7 +128,7 @@ Logs information to the Cinder service table about why a Cinder service was disa
 Specify the service by its host name and binary name.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -185,7 +185,7 @@ Enables a Cinder service. Specify the service by its host name
 and binary name.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -241,7 +241,7 @@ Get current log levels for services, supported since v3.32. Filter the
 services by binary, server name and prefix for the log path.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -295,7 +295,7 @@ Set log levels of services dynamically, supported since v3.32. Filter the
 services by binary, server name and prefix for the log path.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -334,7 +334,7 @@ Freeze and disable the specified cinder-volume host, and set
 ``Disabled Reason`` of Cinder service table to ``frozen``.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -370,7 +370,7 @@ Thaw and enable the specified cinder-volume host, and clean
 ``Disabled Reason`` of Cinder service table.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -407,7 +407,7 @@ Failover a replicating cinder-volume host. Since Cinder Volume API Version
 and the cluster name in request body is supported.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

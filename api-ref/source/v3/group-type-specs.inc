@@ -12,7 +12,7 @@ Create group specs for a group type, if the specification key already exists in 
 this API will update the specification as well.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -66,7 +66,7 @@ List all the group specs for a group type,
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -111,7 +111,7 @@ Show a group spec for a group type,
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -156,7 +156,7 @@ Update a group spec for a group type,
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -207,7 +207,7 @@ Delete a group spec for a group type,
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

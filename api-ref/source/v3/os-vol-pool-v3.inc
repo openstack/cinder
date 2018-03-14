@@ -17,7 +17,7 @@ specify invalid filters in the url, API will return bad request.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

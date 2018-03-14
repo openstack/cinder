@@ -16,7 +16,7 @@ Deletes a group snapshot.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -46,7 +46,7 @@ Shows details for a group snapshot.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -98,7 +98,7 @@ users specify invalid filters in the url, API will return bad request.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -152,7 +152,7 @@ specify invalid filters in the url, API will return bad request.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -202,7 +202,7 @@ Create group snapshot
 Creates a group snapshot.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -256,7 +256,7 @@ Reset group snapshot status
 Resets the status for a group snapshot. Specifies the ``reset_status`` action in the request body.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

@@ -26,7 +26,7 @@ blockstorage-multi-backend.html>`_.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -77,7 +77,7 @@ Updates the extra specifications that are assigned to a volume type.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -130,7 +130,7 @@ Shows details for a volume type.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -172,7 +172,7 @@ Delete volume type
 Deletes a volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -197,7 +197,7 @@ Lists volume types.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -256,7 +256,7 @@ blockstorage-multi-backend.html>`_.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -307,7 +307,7 @@ To show an encryption type for an existing volume type.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -357,7 +357,7 @@ Delete an encryption type.
 To delete an encryption type for an existing volume type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -384,7 +384,7 @@ To create an encryption type for an existing volume type.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -442,7 +442,7 @@ To update an encryption type for an existing volume type.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

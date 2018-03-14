@@ -16,7 +16,7 @@ Shows quota class set for a project. If no specific value for the quota class
 resource exists, then the default value will be reported.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -66,7 +66,7 @@ Updates quota class set for a project. If the ``quota_class_name`` key does not
 exist, then the API will create one.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 

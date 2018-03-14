@@ -14,7 +14,7 @@ Update group type
 Updates a group type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -75,7 +75,7 @@ Show group type details
 Shows details for a group type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -123,7 +123,7 @@ Shows details for the default group type if configured.
 
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -169,7 +169,7 @@ Delete group type
 Deletes a group type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -199,7 +199,7 @@ List group types
 Lists group types.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
@@ -243,7 +243,7 @@ Create group type
 Creates a group type.
 
 Response codes
-~~~~~~~~~~~~~~
+--------------
 
 .. rest_status_code:: success ../status.yaml
 
