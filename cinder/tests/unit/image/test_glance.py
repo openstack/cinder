@@ -130,10 +130,45 @@ class TestGlanceImageService(test.TestCase):
         fixture.update(kwargs)
         return fixture
 
+    @staticmethod
+    def _make_image_member_fixtures(**kwargs):
+        fixtures = []
+        fixture = {'status': None,
+                   'image_id': None,
+                   'member_id': None,
+                   'created_at': '2018-03-14T21:48:13Z',
+                   'updated_at': '2018-03-14T21:50:51Z',
+                   'schema': '/v2/schemas/member'}
+        fixture.update(kwargs)
+        fixtures.append(fixture)
+        return fixtures
+
     def _make_datetime_fixture(self):
         return self._make_fixture(created_at=self.NOW_GLANCE_FORMAT,
                                   updated_at=self.NOW_GLANCE_FORMAT,
                                   deleted_at=self.NOW_GLANCE_FORMAT)
+
+    def test_list_members(self):
+        fixture = {'status': None,
+                   'image_id': None,
+                   'member_id': None,
+                   'created_at': '2018-03-14T21:48:13Z',
+                   'updated_at': '2018-03-14T21:50:51Z',
+                   'schema': '/v2/schemas/member'}
+        image_id = '97c1ef11-3a64-4756-9f8c-7f9fb5abe09f'
+        member_id = '50fcc79f25524744a2c34682a1a74914'
+        fixture['status'] = 'accepted'
+        fixture['image_id'] = image_id
+        fixture['member_id'] = member_id
+        with mock.patch.object(self.service, '_client') as client_mock:
+            client_mock.call.return_value = self._make_image_member_fixtures(
+                image_id=image_id, member_id=member_id, status='accepted')
+            result = self.service.list_members(self.context, image_id)
+        self.assertEqual([fixture], result)
+        client_mock.call.assert_called_once_with(self.context,
+                                                 'list',
+                                                 controller='image_members',
+                                                 image_id=image_id)
 
     def test_get_api_servers(self):
         result = glance.get_api_servers(self.context)
