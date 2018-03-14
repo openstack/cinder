@@ -138,7 +138,8 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                             # 3. OS brick is calling us in single path mode so
                             #    we want to return Target_Portal and
                             #    Target_Portals as alternates.
-                            iscsiprops = api.find_iscsi_properties(scvolume)
+                            iscsiprops = api.find_iscsi_properties(scvolume,
+                                                                   scserver)
 
                             # If this is a live volume we need to map up our
                             # secondary volume. Note that if we have failed
@@ -201,7 +202,8 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                 secondaryvol = api.get_volume(
                     sclivevolume['secondaryVolume']['instanceId'])
                 if secondaryvol:
-                    return api.find_iscsi_properties(secondaryvol)
+                    return api.find_iscsi_properties(secondaryvol,
+                                                     secondary)
         # Dummy return on failure.
         data = {'target_discovered': False,
                 'target_iqn': None,

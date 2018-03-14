@@ -1745,12 +1745,13 @@ class StorageCenterApi(object):
                           'Error finding configuration: %s'), cportid)
         return controllerport
 
-    def find_iscsi_properties(self, scvolume):
+    def find_iscsi_properties(self, scvolume, scserver):
         """Finds target information for a given Dell scvolume object mapping.
 
         The data coming back is both the preferred path and all the paths.
 
         :param scvolume: The dell sc volume object.
+        :param scserver: The dell sc server object.
         :returns: iSCSI property dictionary.
         :raises: VolumeBackendAPIException
         """
@@ -1782,9 +1783,12 @@ class StorageCenterApi(object):
                 # Make sure this isn't a duplicate.
                 newportal = address + ':' + six.text_type(port)
                 for idx, portal in enumerate(portals):
-                    if portal == newportal and iqns[idx] == iqn:
+                    if (portal == newportal
+                            and iqns[idx] == iqn
+                            and luns[idx] == lun):
                         LOG.debug('Skipping duplicate portal %(ptrl)s and'
-                                  'iqn %(iqn)s.', {'ptrl': portal, 'iqn': iqn})
+                                  ' iqn %(iqn)s and lun %(lun)s.',
+                                  {'ptrl': portal, 'iqn': iqn, 'lun': lun})
                         return
                 # It isn't in the list so process it.
                 portals.append(newportal)
@@ -1818,10 +1822,17 @@ class StorageCenterApi(object):
             isvpmode = self._is_virtualport_mode(ssn)
             # Trundle through our mappings.
             for mapping in mappings:
-                # Don't return remote sc links.
                 msrv = mapping.get('server')
-                if msrv and msrv.get('objectType') == 'ScRemoteStorageCenter':
-                    continue
+                if msrv:
+                    # Don't return remote sc links.
+                    if msrv.get('objectType') == 'ScRemoteStorageCenter':
+                        continue
+                    # Don't return information for other servers. But
+                    # do log it.
+                    if self._get_id(msrv) != self._get_id(scserver):
+                        LOG.debug('find_iscsi_properties: Multiple servers'
+                                  ' attached to volume.')
+                        continue
 
                 # The lun, ro mode and status are in the mapping.
                 LOG.debug('find_iscsi_properties: mapping: %s', mapping)
