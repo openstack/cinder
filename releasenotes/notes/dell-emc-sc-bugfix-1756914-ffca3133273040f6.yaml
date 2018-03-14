@@ -1,0 +1,7 @@
+---
+fixes:
+  - Dell EMC SC driver correctly returns initialize_connection
+    data when more than one IQN is attached to a volume. This
+    fixes some random Nova Live Migration failures where the
+    connection information being returned was for an IQN other
+    than the one for which it was being requested.
