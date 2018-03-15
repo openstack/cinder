@@ -1073,6 +1073,10 @@ class VolumeManager(manager.CleanableManager,
 
         snapshot.status = fields.SnapshotStatus.AVAILABLE
         snapshot.progress = '100%'
+        # Resync with the volume's DB value. This addresses the case where
+        # the snapshot creation was in flight just prior to when the volume's
+        # fixed_key encryption key ID was migrated to Barbican.
+        snapshot.encryption_key_id = vol_ref.encryption_key_id
         snapshot.save()
 
         self._notify_about_snapshot_usage(context, snapshot, "create.end")

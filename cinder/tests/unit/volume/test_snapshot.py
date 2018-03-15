@@ -476,6 +476,31 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
         snapshot.destroy()
         db.volume_destroy(self.context, volume_id)
 
+    def test_create_snapshot_during_encryption_key_migration(self):
+        fixed_key_id = '00000000-0000-0000-0000-000000000000'
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        volume['encryption_key_id'] = fixed_key_id
+        volume_id = volume['id']
+
+        self.volume.create_volume(self.context, volume)
+
+        kwargs = {'encryption_key_id': fixed_key_id}
+        snapshot = create_snapshot(volume['id'], **kwargs)
+
+        self.assertEqual(fixed_key_id, snapshot.encryption_key_id)
+        db.volume_update(self.context,
+                         volume_id,
+                         {'encryption_key_id': fake.ENCRYPTION_KEY_ID})
+
+        self.volume.create_snapshot(self.context, snapshot)
+
+        snap_db = db.snapshot_get(self.context, snapshot.id)
+        self.assertEqual(fake.ENCRYPTION_KEY_ID, snap_db.encryption_key_id)
+
+        # cleanup resource
+        snapshot.destroy()
+        db.volume_destroy(self.context, volume_id)
+
     def test_delete_busy_snapshot(self):
         """Test snapshot can be created and deleted."""
 
