@@ -397,12 +397,8 @@ def fetch_verify_image(context, image_service, image_id, dest,
             # NOTE(xqueralt): If the image virtual size doesn't fit in the
             # requested volume there is no point on resizing it because it will
             # generate an unusable image.
-            if size is not None and data.virtual_size > size:
-                params = {'image_size': data.virtual_size, 'volume_size': size}
-                reason = _("Size is %(image_size)dGB and doesn't fit in a "
-                           "volume of size %(volume_size)dGB.") % params
-                raise exception.ImageUnacceptable(image_id=image_id,
-                                                  reason=reason)
+            if size is not None:
+                check_virtual_size(data.virtual_size, size, image_id)
 
 
 def fetch_to_vhd(context, image_service,
@@ -466,16 +462,12 @@ def fetch_to_volume_format(context, image_service,
             return
 
         data = qemu_img_info(tmp, run_as_root=run_as_root)
-        virt_size = int(math.ceil(float(data.virtual_size) / units.Gi))
 
         # NOTE(xqueralt): If the image virtual size doesn't fit in the
         # requested volume there is no point on resizing it because it will
         # generate an unusable image.
-        if size is not None and virt_size > size:
-            params = {'image_size': virt_size, 'volume_size': size}
-            reason = _("Size is %(image_size)dGB and doesn't fit in a "
-                       "volume of size %(volume_size)dGB.") % params
-            raise exception.ImageUnacceptable(image_id=image_id, reason=reason)
+        if size is not None:
+            check_virtual_size(data.virtual_size, size, image_id)
 
         fmt = data.file_format
         if fmt is None:
@@ -584,9 +576,11 @@ def check_available_space(dest, image_size, image_id):
 
     free_space = psutil.disk_usage(dest).free
     if free_space <= image_size:
-        msg = ('There is no space to convert image. '
-               'Requested: %(image_size)s, available: %(free_space)s'
-               ) % {'image_size': image_size, 'free_space': free_space}
+        msg = ('There is no space on %(dest_dir)s to convert image. '
+               'Requested: %(image_size)s, available: %(free_space)s.'
+               ) % {'dest_dir': dest,
+                    'image_size': image_size,
+                    'free_space': free_space}
         raise exception.ImageTooBig(image_id=image_id, reason=msg)
 
 
