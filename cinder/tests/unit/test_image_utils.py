@@ -615,13 +615,18 @@ class TestFetchToVhd(test.TestCase):
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         blocksize = mock.sentinel.blocksize
+        out_subformat = 'fake_subformat'
 
         output = image_utils.fetch_to_vhd(ctxt, image_service, image_id,
-                                          dest, blocksize)
+                                          dest, blocksize,
+                                          volume_subformat=out_subformat)
         self.assertIsNone(output)
         mock_fetch_to.assert_called_once_with(ctxt, image_service, image_id,
-                                              dest, 'vpc', blocksize, None,
-                                              None, run_as_root=True)
+                                              dest, 'vpc', blocksize,
+                                              volume_subformat=out_subformat,
+                                              user_id=None,
+                                              project_id=None,
+                                              run_as_root=True)
 
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.fetch_to_volume_format')
@@ -634,15 +639,19 @@ class TestFetchToVhd(test.TestCase):
         user_id = mock.sentinel.user_id
         project_id = mock.sentinel.project_id
         run_as_root = mock.sentinel.run_as_root
+        out_subformat = 'fake_subformat'
 
         output = image_utils.fetch_to_vhd(ctxt, image_service, image_id,
                                           dest, blocksize, user_id=user_id,
                                           project_id=project_id,
-                                          run_as_root=run_as_root)
+                                          run_as_root=run_as_root,
+                                          volume_subformat=out_subformat)
         self.assertIsNone(output)
         mock_fetch_to.assert_called_once_with(ctxt, image_service, image_id,
-                                              dest, 'vpc', blocksize, user_id,
-                                              project_id,
+                                              dest, 'vpc', blocksize,
+                                              volume_subformat=out_subformat,
+                                              user_id=user_id,
+                                              project_id=project_id,
                                               run_as_root=run_as_root)
 
 
@@ -659,8 +668,9 @@ class TestFetchToRaw(test.TestCase):
                                           dest, blocksize)
         self.assertIsNone(output)
         mock_fetch_to.assert_called_once_with(ctxt, image_service, image_id,
-                                              dest, 'raw', blocksize, None,
-                                              None, None, run_as_root=True)
+                                              dest, 'raw', blocksize,
+                                              user_id=None, project_id=None,
+                                              size=None, run_as_root=True)
 
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.fetch_to_volume_format')
@@ -681,8 +691,9 @@ class TestFetchToRaw(test.TestCase):
                                           run_as_root=run_as_root)
         self.assertIsNone(output)
         mock_fetch_to.assert_called_once_with(ctxt, image_service, image_id,
-                                              dest, 'raw', blocksize, user_id,
-                                              project_id, size,
+                                              dest, 'raw', blocksize,
+                                              user_id=user_id, size=size,
+                                              project_id=project_id,
                                               run_as_root=run_as_root)
 
 
