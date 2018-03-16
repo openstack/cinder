@@ -21,6 +21,7 @@ import webob
 
 from cinder import context
 from cinder.objects import fields
+from cinder.policies import snapshots as snap_policy
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -85,13 +86,15 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
-    def test_show(self, snapshot_get_by_id, volume_get_by_id,
+    @mock.patch('cinder.context.RequestContext.authorize')
+    def test_show(self, mock_authorize, snapshot_get_by_id, volume_get_by_id,
                   snapshot_metadata_get):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                      auth_token=True)
         snapshot = _get_default_snapshot_param()
         snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
         fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        mock_authorize.return_value = True
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get_by_id.return_value = fake_volume_obj
 
@@ -102,13 +105,21 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         self.assertSnapshotAttributes(self._get_snapshot(res.body),
                                       project_id=fake.PROJECT_ID,
                                       progress='0%')
+        calls = [mock.call(snap_policy.GET_POLICY), mock.call(
+            snap_policy.EXTEND_ATTRIBUTE, fatal=False)]
+        mock_authorize.assert_has_calls(calls)
 
-    def test_detail(self):
+    @mock.patch('cinder.context.RequestContext.authorize')
+    def test_detail(self, mock_authorize):
         url = '/v2/%s/snapshots/detail' % fake.PROJECT_ID
         res = self._make_request(url)
+        mock_authorize.return_value = False
 
         self.assertEqual(http_client.OK, res.status_int)
         for snapshot in self._get_snapshots(res.body):
             self.assertSnapshotAttributes(snapshot,
                                           project_id=fake.PROJECT_ID,
                                           progress='0%')
+        calls = [mock.call(snap_policy.GET_ALL_POLICY), mock.call(
+            snap_policy.EXTEND_ATTRIBUTE, fatal=False)]
+        mock_authorize.assert_has_calls(calls)
