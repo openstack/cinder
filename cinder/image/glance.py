@@ -24,6 +24,7 @@ import itertools
 import random
 import shutil
 import sys
+import textwrap
 import time
 
 import glanceclient.exc
@@ -47,6 +48,27 @@ glance_opts = [
                 help='A list of url schemes that can be downloaded directly '
                      'via the direct_url.  Currently supported schemes: '
                      '[file, cinder].'),
+    cfg.StrOpt('verify_glance_signatures',
+               choices=['disabled', 'enabled'],
+               default='enabled',
+               help=textwrap.dedent(
+                   """
+                   Enable image signature verification.
+
+                   Cinder uses the image signature metadata from Glance and
+                   verifies the signature of a signed image while downloading
+                   that image. There are two options here.
+
+                   1. ``enabled``: verify when image has signature metadata.
+                   2. ``disabled``: verification is turned off.
+
+                   If the image signature cannot be verified or if the image
+                   signature metadata is incomplete when required, then Cinder
+                   will not create the volume and update it into an error
+                   state. This provides end users with stronger assurances
+                   of the integrity of the image data they are using to
+                   create volumes.
+                   """)),
     cfg.StrOpt('glance_catalog_info',
                default='image:glance:publicURL',
                help='Info to match when looking for glance in the service '

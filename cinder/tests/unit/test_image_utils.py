@@ -14,13 +14,15 @@
 #    under the License.
 """Unit tests for image utils."""
 
-import ddt
 import errno
 import math
 
+import cryptography
+import ddt
 import mock
 from oslo_concurrency import processutils
 from oslo_utils import units
+from six.moves import builtins
 
 from cinder import exception
 from cinder.image import image_utils
@@ -343,6 +345,132 @@ class TestFetch(test.TestCase):
                               image_utils.fetch,
                               context, image_service, image_id, path,
                               _user_id, _project_id)
+
+
+class MockVerifier(object):
+    def update(self, data):
+        return
+
+    def verify(self):
+        return True
+
+
+class BadVerifier(object):
+    def update(self, data):
+        return
+
+    def verify(self):
+        raise cryptography.exceptions.InvalidSignature(
+            'Invalid signature.'
+        )
+
+
+class TestVerifyImageSignature(test.TestCase):
+
+    @mock.patch('cursive.signature_utils.get_verifier')
+    @mock.patch('oslo_utils.fileutils.remove_path_on_error')
+    def test_image_signature_verify_failed(self, mock_remove, mock_get):
+        self.mock_object(builtins, 'open', mock.mock_open())
+        ctxt = mock.sentinel.context
+        metadata = {'name': 'test image',
+                    'is_public': False,
+                    'protected': False,
+                    'properties':
+                        {'img_signature_certificate_uuid': 'fake_uuid',
+                         'img_signature_hash_method': 'SHA-256',
+                         'img_signature': 'signature',
+                         'img_signature_key_type': 'RSA-PSS'}}
+
+        class FakeImageService(object):
+            def show(self, context, image_id):
+                return metadata
+
+        self.flags(verify_glance_signatures='enabled')
+        mock_get.return_value = BadVerifier()
+
+        self.assertRaises(exception.ImageSignatureVerificationException,
+                          image_utils.verify_glance_image_signature,
+                          ctxt, FakeImageService(), 'fake_id',
+                          'fake_path')
+        mock_get.assert_called_once_with(
+            context=ctxt,
+            img_signature_certificate_uuid='fake_uuid',
+            img_signature_hash_method='SHA-256',
+            img_signature='signature',
+            img_signature_key_type='RSA-PSS')
+
+    @mock.patch('cursive.signature_utils.get_verifier')
+    def test_image_signature_metadata_missing(self, mock_get):
+        ctxt = mock.sentinel.context
+        metadata = {'name': 'test image',
+                    'is_public': False,
+                    'protected': False,
+                    'properties': {}}
+
+        class FakeImageService(object):
+            def show(self, context, image_id):
+                return metadata
+
+        self.flags(verify_glance_signatures='enabled')
+
+        result = image_utils.verify_glance_image_signature(
+            ctxt, FakeImageService(), 'fake_id', 'fake_path')
+        self.assertFalse(result)
+        mock_get.assert_not_called()
+
+    @mock.patch('cursive.signature_utils.get_verifier')
+    def test_image_signature_metadata_incomplete(self, mock_get):
+        ctxt = mock.sentinel.context
+        metadata = {'name': 'test image',
+                    'is_public': False,
+                    'protected': False,
+                    'properties':
+                        {'img_signature_certificate_uuid': None,
+                         'img_signature_hash_method': 'SHA-256',
+                         'img_signature': 'signature',
+                         'img_signature_key_type': 'RSA-PSS'}}
+
+        class FakeImageService(object):
+            def show(self, context, image_id):
+                return metadata
+
+        self.flags(verify_glance_signatures='enabled')
+
+        self.assertRaises(exception.InvalidSignatureImage,
+                          image_utils.verify_glance_image_signature, ctxt,
+                          FakeImageService(), 'fake_id', 'fake_path')
+        mock_get.assert_not_called()
+
+    @mock.patch('cursive.signature_utils.get_verifier')
+    @mock.patch('oslo_utils.fileutils.remove_path_on_error')
+    def test_image_signature_verify_success(self, mock_remove, mock_get):
+        self.mock_object(builtins, 'open', mock.mock_open())
+        ctxt = mock.sentinel.context
+        metadata = {'name': 'test image',
+                    'is_public': False,
+                    'protected': False,
+                    'properties':
+                        {'img_signature_certificate_uuid': 'fake_uuid',
+                         'img_signature_hash_method': 'SHA-256',
+                         'img_signature': 'signature',
+                         'img_signature_key_type': 'RSA-PSS'}}
+
+        class FakeImageService(object):
+            def show(self, context, image_id):
+                return metadata
+
+        self.flags(verify_glance_signatures='enabled')
+        mock_get.return_value = MockVerifier()
+
+        result = image_utils.verify_glance_image_signature(
+            ctxt, FakeImageService(), 'fake_id', 'fake_path')
+        self.assertTrue(result)
+        mock_get.assert_called_once_with(
+            context=ctxt,
+            img_signature_certificate_uuid='fake_uuid',
+            img_signature_hash_method='SHA-256',
+            img_signature='signature',
+            img_signature_key_type='RSA-PSS')
 
 
 class TestVerifyImage(test.TestCase):

@@ -31,6 +31,9 @@ import os
 import re
 import tempfile
 
+import cryptography
+from cursive import exception as cursive_exception
+from cursive import signature_utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -39,6 +42,7 @@ from oslo_utils import imageutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import psutil
+import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -282,6 +286,74 @@ def resize_image(source, size, run_as_root=False):
     """Changes the virtual size of the image."""
     cmd = ('qemu-img', 'resize', source, '%sG' % size)
     utils.execute(*cmd, run_as_root=run_as_root)
+
+
+def verify_glance_image_signature(context, image_service, image_id, path):
+    verifier = None
+    image_meta = image_service.show(context, image_id)
+    image_properties = image_meta.get('properties', {})
+    img_signature = image_properties.get('img_signature')
+    img_sig_hash_method = image_properties.get('img_signature_hash_method')
+    img_sig_cert_uuid = image_properties.get('img_signature_certificate_uuid')
+    img_sig_key_type = image_properties.get('img_signature_key_type')
+    if all(m is None for m in [img_signature,
+                               img_sig_cert_uuid,
+                               img_sig_hash_method,
+                               img_sig_key_type]):
+        # NOTE(tommylikehu): We won't verify the image signature
+        # if none of the signature metadata presents.
+        return False
+    if any(m is None for m in [img_signature,
+                               img_sig_cert_uuid,
+                               img_sig_hash_method,
+                               img_sig_key_type]):
+            LOG.error('Image signature metadata for image %s is '
+                      'incomplete.', image_id)
+            raise exception.InvalidSignatureImage(image_id=image_id)
+
+    try:
+        verifier = signature_utils.get_verifier(
+            context=context,
+            img_signature_certificate_uuid=img_sig_cert_uuid,
+            img_signature_hash_method=img_sig_hash_method,
+            img_signature=img_signature,
+            img_signature_key_type=img_sig_key_type,
+        )
+    except cursive_exception.SignatureVerificationError:
+        message = _('Failed to get verifier for image: %s') % image_id
+        LOG.error(message)
+        raise exception.ImageSignatureVerificationException(
+            reason=message)
+    if verifier:
+        with fileutils.remove_path_on_error(path):
+            with open(path, "rb") as tem_file:
+                try:
+                    while True:
+                        chunk = tem_file.read(1024)
+                        if chunk:
+                            verifier.update(chunk)
+                        else:
+                            break
+                    verifier.verify()
+                    LOG.info('Image signature verification succeeded '
+                             'for image: %s', image_id)
+                    return True
+                except cryptography.exceptions.InvalidSignature:
+                    message = _('Image signature verification '
+                                'failed for image: %s') % image_id
+                    LOG.error(message)
+                    raise exception.ImageSignatureVerificationException(
+                        reason=message)
+                except Exception as ex:
+                    message = _('Failed to verify signature for '
+                                'image: %(image)s due to '
+                                'error: %(error)s ') % {'image': image_id,
+                                                        'error':
+                                                            six.text_type(ex)}
+                    LOG.error(message)
+                    raise exception.ImageSignatureVerificationException(
+                        reason=message)
+    return False
 
 
 def fetch(context, image_service, image_id, path, _user_id, _project_id):

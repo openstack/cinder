@@ -98,6 +98,8 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             exception.VolumeTypeNotFound,
             exception.ImageUnacceptable,
             exception.ImageTooBig,
+            exception.InvalidSignatureImage,
+            exception.ImageSignatureVerificationException
         ]
 
     def execute(self, **kwargs):
@@ -811,6 +813,17 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                     with image_utils.TemporaryImages.fetch(
                             image_service, context, image_id,
                             backend_name) as tmp_image:
+                        if CONF.verify_glance_signatures != 'disabled':
+                            # Verify image signature via reading content from
+                            # temp image, and store the verification flag if
+                            # required.
+                            verified = \
+                                image_utils.verify_glance_image_signature(
+                                    context, image_service,
+                                    image_id, tmp_image)
+                            self.db.volume_glance_metadata_bulk_create(
+                                context, volume.id,
+                                {'signature_verified': verified})
                         # Try to create the volume as the minimal size,
                         # then we can extend once the image has been
                         # downloaded.
@@ -839,6 +852,15 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                             detail=
                             message_field.Detail.NOT_ENOUGH_SPACE_FOR_IMAGE,
                             exception=e)
+                except exception.ImageSignatureVerificationException as err:
+                    with excutils.save_and_reraise_exception():
+                        self.message.create(
+                            context,
+                            message_field.Action.COPY_IMAGE_TO_VOLUME,
+                            resource_uuid=volume.id,
+                            detail=
+                            message_field.Detail.SIGNATURE_VERIFICATION_FAILED,
+                            exception=err)
 
             if should_create_cache_entry:
                 # Update the newly created volume db entry before we clone it

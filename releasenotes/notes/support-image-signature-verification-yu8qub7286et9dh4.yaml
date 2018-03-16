@@ -1,0 +1,9 @@
+---
+features:
+  - Added image signature verification support when creating volume
+    from image. This depends on signature metadata from glance.
+    This feature is turned on by default, administrators can
+    change behaviour by updating option ``verify_glance_signatures``.
+    Also, an additional image metadata ``signature_verified`` has
+    been added to indicate whether signature verification was performed
+    during creating process.
