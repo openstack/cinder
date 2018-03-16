@@ -28,6 +28,7 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
+from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
 
 
@@ -56,6 +57,7 @@ PARENT_SG_NAME = 'parent_sg_name'
 CONNECTOR = 'connector'
 VOL_NAME = 'volume_name'
 EXTRA_SPECS = 'extra_specs'
+HOST_NAME = 'short_host_name'
 IS_RE = 'replication_enabled'
 DISABLECOMPRESSION = 'storagetype:disablecompression'
 REP_SYNC = 'Synchronous'
@@ -71,6 +73,11 @@ RDF_ACTIVE = 'active'
 RDF_ACTIVEACTIVE = 'activeactive'
 RDF_ACTIVEBIAS = 'activebias'
 METROBIAS = 'metro_bias'
+# Multiattach constants
+IS_MULTIATTACH = 'multiattach'
+OTHER_PARENT_SG = 'other_parent_sg_name'
+FAST_SG = 'fast_managed_sg'
+NO_SLO_SG = 'no_slo_sg'
 
 # Cinder.conf vmax configuration
 VMAX_SERVER_IP = 'san_ip'
@@ -824,3 +831,51 @@ class VMAXUtils(object):
         LOG.debug("The temp rdf managed group name is %(name)s",
                   {'name': temp_grp_name})
         return temp_grp_name
+
+    def get_child_sg_name(self, host_name, extra_specs):
+        """Get the child storage group name for a masking view.
+
+        :param host_name: the short host name
+        :param extra_specs: the extra specifications
+        :return: child sg name, compression flag, rep flag, short pg name
+        """
+        do_disable_compression = False
+        pg_name = self.get_pg_short_name(extra_specs[PORTGROUPNAME])
+        rep_enabled = self.is_replication_enabled(extra_specs)
+        if extra_specs[SLO]:
+            slo_wl_combo = self.truncate_string(
+                extra_specs[SLO] + extra_specs[WORKLOAD], 10)
+            unique_name = self.truncate_string(extra_specs[SRP], 12)
+            child_sg_name = (
+                "OS-%(shortHostName)s-%(srpName)s-%(combo)s-%(pg)s"
+                % {'shortHostName': host_name,
+                   'srpName': unique_name,
+                   'combo': slo_wl_combo,
+                   'pg': pg_name})
+            do_disable_compression = self.is_compression_disabled(
+                extra_specs)
+            if do_disable_compression:
+                child_sg_name = ("%(child_sg_name)s-CD"
+                                 % {'child_sg_name': child_sg_name})
+        else:
+            child_sg_name = (
+                "OS-%(shortHostName)s-No_SLO-%(pg)s"
+                % {'shortHostName': host_name, 'pg': pg_name})
+        if rep_enabled:
+            rep_mode = extra_specs.get(REP_MODE, None)
+            child_sg_name += self.get_replication_prefix(rep_mode)
+        return child_sg_name, do_disable_compression, rep_enabled, pg_name
+
+    @staticmethod
+    def change_multiattach(extra_specs, new_type_extra_specs):
+        """Check if a change in multiattach is required for retype.
+
+        :param extra_specs: the source type extra specs
+        :param new_type_extra_specs: the target type extra specs
+        :return: bool
+        """
+        is_src_multiattach = vol_utils.is_replicated_str(
+            extra_specs.get('multiattach'))
+        is_tgt_multiattach = vol_utils.is_replicated_str(
+            new_type_extra_specs.get('multiattach'))
+        return is_src_multiattach != is_tgt_multiattach
