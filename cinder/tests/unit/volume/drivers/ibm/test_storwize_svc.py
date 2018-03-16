@@ -758,13 +758,13 @@ port_speed!N/A
                 value1 = filter1.split('=')[1]
                 value2 = filter2.split('=')[1]
                 for v in ports:
-                    if(six.text_type(v[4]) == value1 and six.text_type(
+                    if(six.text_type(v[5]) == value1 and six.text_type(
                             v[7]) == value2):
                         rows.append(v)
             else:
                 value = kwargs['filtervalue'].split('=')[1]
                 for v in ports:
-                    if six.text_type(v[4]) == value:
+                    if six.text_type(v[5]) == value:
                         rows.append(v)
         else:
             rows = ports
@@ -4294,12 +4294,8 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
         conn_info = self.fc_driver.initialize_connection(volume_fc, connector)
         expected_target_wwn = ['5005076801A91806',
-                               '5005076801B96CFE',
                                '5005076801A96CFE',
-                               '5005076801B91806',
-                               '5005076801C96CFE',
                                '5005076801996CFE',
-                               '5005076801C91806',
                                '5005076801991806']
         self.assertItemsEqual(expected_target_wwn, conn_info[
             'data']['target_wwn'])
@@ -4313,21 +4309,13 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
 
         # Check that the initiator_target_map is as expected
         expected_term_data = ['5005076801A96CFE',
-                              '5005076801B96CFE',
-                              '5005076801C96CFE',
-                              '5005076801406CFE',
                               '5005076801A91806',
-                              '5005076801301806',
-                              '5005076801C91806',
-                              '5005076801B91806',
                               '5005076801201806',
-                              '5005076801401806',
                               '5005076801991806',
                               '5005076801101806',
                               '5005076801996CFE',
                               '5005076801206CFE',
-                              '5005076801106CFE',
-                              '5005076801306CFE']
+                              '5005076801106CFE']
         self.assertItemsEqual(expected_term_data, target_wwn1)
         self.assertItemsEqual(expected_term_data, target_wwn2)
 
