@@ -50,9 +50,18 @@ Cinder Db
 
     Print the current database version.
 
-``cinder-manage db sync``
+``cinder-manage db sync [--bump-versions] [version]``
 
     Sync the database up to the most recent version. This is the standard way to create the db as well.
+
+    This command interprets the following options when it is invoked:
+
+    version          Database version
+
+    --bump-versions  Update RPC and Objects versions when doing offline
+                     upgrades, with this we no longer need to restart the
+                     services twice after the upgrade to prevent ServiceTooOld
+                     exceptions.
 
 ``cinder-manage db purge [<number of days>]``
 
