@@ -366,7 +366,7 @@ class Service(service.Service):
     def create(cls, host=None, binary=None, topic=None, manager=None,
                report_interval=None, periodic_interval=None,
                periodic_fuzzy_delay=None, service_name=None,
-               coordination=False, cluster=None):
+               coordination=False, cluster=None, **kwargs):
         """Instantiates class and passes back application object.
 
         :param host: defaults to CONF.host
@@ -400,7 +400,7 @@ class Service(service.Service):
                           periodic_fuzzy_delay=periodic_fuzzy_delay,
                           service_name=service_name,
                           coordination=coordination,
-                          cluster=cluster)
+                          cluster=cluster, **kwargs)
 
         return service_obj
 

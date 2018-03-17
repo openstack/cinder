@@ -379,6 +379,21 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(len(fake_backup_list), mock_backup_cleanup.call_count)
         self.assertEqual(len(fake_backup_list), mock_temp_cleanup.call_count)
 
+    @mock.patch('cinder.objects.BackupList')
+    @mock.patch.object(manager.BackupManager, '_cleanup_one_backup')
+    @mock.patch.object(manager.BackupManager,
+                       '_cleanup_temp_volumes_snapshots_for_one_backup')
+    def test_cleanup_non_primary_process(self, temp_cleanup_mock,
+                                         backup_cleanup_mock, backup_ovo_mock):
+        """Test cleanup doesn't run on non primary processes."""
+        self.backup_mgr._process_number = 2
+
+        self.backup_mgr._cleanup_incomplete_backup_operations(self.ctxt)
+
+        backup_ovo_mock.get_all_by_host.assert_not_called()
+        backup_cleanup_mock.assert_not_called()
+        temp_cleanup_mock.assert_not_called()
+
     def test_cleanup_one_backing_up_volume(self):
         """Test cleanup_one_volume for volume status 'backing-up'."""
 

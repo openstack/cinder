@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Cinder backup now supports running multiple processes to make the most of
+    the available CPU cores.  Performance gains will be significant when
+    running multiple concurrent backups/restores with compression.  The number
+    of processes is set with `backup_workers` configuration option.

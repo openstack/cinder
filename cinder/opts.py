@@ -42,6 +42,7 @@ from cinder.backup.drivers import posix as cinder_backup_drivers_posix
 from cinder.backup.drivers import swift as cinder_backup_drivers_swift
 from cinder.backup.drivers import tsm as cinder_backup_drivers_tsm
 from cinder.backup import manager as cinder_backup_manager
+from cinder.cmd import backup as cinder_cmd_backup
 from cinder.cmd import volume as cinder_cmd_volume
 from cinder.common import config as cinder_common_config
 import cinder.compute
@@ -223,6 +224,7 @@ def list_opts():
                 cinder_backup_drivers_swift.swiftbackup_service_opts,
                 cinder_backup_drivers_tsm.tsm_opts,
                 cinder_backup_manager.backup_manager_opts,
+                [cinder_cmd_backup.backup_workers_opt],
                 [cinder_cmd_volume.cluster_opt],
                 cinder_common_config.core_opts,
                 cinder_common_config.global_opts,
