@@ -430,7 +430,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
                     src_vol = objects.Volume.get_by_id(
                         ctxt, tgt_lun.source_volid)
                 except exception.VolumeNotFound:
-                    LOG.error("Failed to get source volume %(src) for "
+                    LOG.error("Failed to get source volume %(src)s for "
                               "target volume %(tgt)s",
                               {'src': tgt_lun.source_volid,
                                'tgt': tgt_lun.ds_id})
