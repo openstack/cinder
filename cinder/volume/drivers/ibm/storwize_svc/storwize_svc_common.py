@@ -703,14 +703,14 @@ class StorwizeSSH(object):
                    '-filtervalue', 'node_id=%s' % node_id]
         return self.run_ssh_info(ssh_cmd, with_header=True)
 
-    def lstargetportfc(self, own_node_id=None, host_io_permitted=None):
+    def lstargetportfc(self, current_node_id=None, host_io_permitted=None):
         ssh_cmd = ['svcinfo', 'lstargetportfc', '-delim', '!']
-        if own_node_id and host_io_permitted:
+        if current_node_id and host_io_permitted:
             ssh_cmd += ['-filtervalue', '%s:%s' % (
-                'owning_node_id=%s' % own_node_id,
+                'current_node_id=%s' % current_node_id,
                 'host_io_permitted=%s' % host_io_permitted)]
-        elif own_node_id:
-            ssh_cmd += ['-filtervalue', 'owning_node_id=%s' % own_node_id]
+        elif current_node_id:
+            ssh_cmd += ['-filtervalue', 'current_node_id=%s' % current_node_id]
         return self.run_ssh_info(ssh_cmd, with_header=True)
 
     def migratevdisk(self, vdisk, dest_pool, copy_id='0'):
@@ -968,7 +968,7 @@ class StorwizeHelpers(object):
         wwpns = set()
         # In the response of lstargetportfc, the host_io_permitted
         # indicates whether the port can be used for host I/O
-        resp = self.ssh.lstargetportfc(own_node_id=node_id,
+        resp = self.ssh.lstargetportfc(current_node_id=node_id,
                                        host_io_permitted=host_io)
         for port_info in resp:
             wwpns.add(port_info['WWPN'])
