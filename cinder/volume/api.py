@@ -1156,7 +1156,6 @@ class API(base.Base):
                     '%s status.') % volume['status']
             LOG.info(msg, resource=volume)
             raise exception.InvalidVolume(reason=msg)
-        utils.check_metadata_properties(metadata)
         return self.db.volume_metadata_update(context, volume['id'],
                                               metadata, delete, meta_type)
 

@@ -238,7 +238,8 @@ class VolumeImageMetadataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
 
         self.assertRaises(exception.PolicyNotAuthorized,
-                          self.controller.create, req, fake.VOLUME_ID, None)
+                          self.controller.create, req, fake.VOLUME_ID,
+                          body=body)
 
     def test_create_with_keys_case_insensitive(self):
         # If the keys in uppercase_and_lowercase, should return the one
@@ -277,8 +278,9 @@ class VolumeImageMetadataTest(test.TestCase):
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, fake.VOLUME_ID, None)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, fake.VOLUME_ID,
+                          body=None)
 
     def test_create_nonexistent_volume(self):
         self.mock_object(volume.api.API, 'get', return_volume_nonexistent)
@@ -292,7 +294,8 @@ class VolumeImageMetadataTest(test.TestCase):
         }
         req.body = jsonutils.dump_as_bytes(body)
         self.assertRaises(exception.VolumeNotFound,
-                          self.controller.create, req, fake.VOLUME_ID, body)
+                          self.controller.create, req, fake.VOLUME_ID,
+                          body=body)
 
     def test_invalid_metadata_items_on_create(self):
         self.mock_object(db, 'volume_metadata_update',
@@ -308,24 +311,27 @@ class VolumeImageMetadataTest(test.TestCase):
 
         # Test for long key
         req.body = jsonutils.dump_as_bytes(data)
-        self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
-                          self.controller.create, req, fake.VOLUME_ID, data)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, fake.VOLUME_ID,
+                          body=data)
 
         # Test for long value
         data = {"os-set_image_metadata": {
             "metadata": {"key": "v" * 260}}
         }
         req.body = jsonutils.dump_as_bytes(data)
-        self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
-                          self.controller.create, req, fake.VOLUME_ID, data)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, fake.VOLUME_ID,
+                          body=data)
 
         # Test for empty key.
         data = {"os-set_image_metadata": {
             "metadata": {"": "value1"}}
         }
         req.body = jsonutils.dump_as_bytes(data)
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, fake.VOLUME_ID, data)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, fake.VOLUME_ID,
+                          body=data)
 
     def test_delete(self):
         self.mock_object(db, 'volume_metadata_delete',
@@ -361,8 +367,9 @@ class VolumeImageMetadataTest(test.TestCase):
         }
         req.body = jsonutils.dump_as_bytes(body)
 
-        self.assertRaises(exception.PolicyNotAuthorized,
-                          self.controller.delete, req, fake.VOLUME_ID, None)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.delete, req, fake.VOLUME_ID,
+                          body=None)
 
     def test_delete_meta_not_found(self):
         data = {"os-unset_image_metadata": {
@@ -375,7 +382,8 @@ class VolumeImageMetadataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(exception.GlanceMetadataNotFound,
-                          self.controller.delete, req, fake.VOLUME_ID, data)
+                          self.controller.delete, req, fake.VOLUME_ID,
+                          body=data)
 
     def test_delete_nonexistent_volume(self):
         self.mock_object(db, 'volume_metadata_delete',
@@ -391,7 +399,18 @@ class VolumeImageMetadataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(exception.GlanceMetadataNotFound,
-                          self.controller.delete, req, fake.VOLUME_ID, body)
+                          self.controller.delete, req, fake.VOLUME_ID,
+                          body=body)
+
+    def test_delete_empty_body(self):
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, fake.VOLUME_ID))
+        req.method = 'POST'
+        req.headers["content-type"] = "application/json"
+
+        self.assertRaises(exception.ValidationError,
+                          self.controller.delete, req, fake.VOLUME_ID,
+                          body=None)
 
     def test_show_image_metadata(self):
         body = {"os-show_image_metadata": None}
