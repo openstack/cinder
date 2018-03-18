@@ -227,8 +227,9 @@ class API(base.Base):
 
         previous_status = volume['status']
         volume_host = volume_utils.extract_host(volume.host, 'host')
-        host = self._get_available_backup_service_host(
-            volume_host, volume.availability_zone)
+        availability_zone = availability_zone or volume.availability_zone
+        host = self._get_available_backup_service_host(volume_host,
+                                                       availability_zone)
 
         # Reserve a quota before setting volume status and backup status
         try:
@@ -307,6 +308,7 @@ class API(base.Base):
                 'parent_id': parent_id,
                 'size': volume['size'],
                 'host': host,
+                'availability_zone': availability_zone,
                 'snapshot_id': snapshot_id,
                 'data_timestamp': data_timestamp,
                 'metadata': metadata or {}

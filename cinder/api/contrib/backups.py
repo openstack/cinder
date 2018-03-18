@@ -144,7 +144,8 @@ class BackupsController(wsgi.Controller):
     # - maybe also do validation of swift container name
     @wsgi.response(http_client.ACCEPTED)
     @validation.schema(backup.create, '2.0', '3.42')
-    @validation.schema(backup.create_backup_v343, '3.43')
+    @validation.schema(backup.create_backup_v343, '3.43', '3.50')
+    @validation.schema(backup.create_backup_v351, mv.BACKUP_AZ)
     def create(self, req, body):
         """Create a new backup."""
         LOG.debug('Creating new backup %s', body)
@@ -166,16 +167,24 @@ class BackupsController(wsgi.Controller):
         snapshot_id = backup.get('snapshot_id', None)
         metadata = backup.get('metadata', None) if req_version.matches(
             mv.BACKUP_METADATA) else None
+
+        if req_version.matches(mv.BACKUP_AZ):
+            availability_zone = backup.get('availability_zone', None)
+        else:
+            availability_zone = None
+        az_text = ' in az %s' % availability_zone if availability_zone else ''
+
         LOG.info("Creating backup of volume %(volume_id)s in container"
-                 " %(container)s",
-                 {'volume_id': volume_id, 'container': container},
+                 " %(container)s%(az)s",
+                 {'volume_id': volume_id, 'container': container,
+                  'az': az_text},
                  context=context)
 
         try:
             new_backup = self.backup_api.create(context, name, description,
                                                 volume_id, container,
-                                                incremental, None, force,
-                                                snapshot_id, metadata)
+                                                incremental, availability_zone,
+                                                force, snapshot_id, metadata)
         except (exception.InvalidVolume,
                 exception.InvalidSnapshot,
                 exception.InvalidVolumeMetadata,

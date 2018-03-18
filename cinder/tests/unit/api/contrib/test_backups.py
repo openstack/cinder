@@ -595,6 +595,38 @@ class BackupsAPITestCase(test.TestCase):
 
         volume.destroy()
 
+    @mock.patch('cinder.objects.Service.is_up', mock.Mock(return_value=True))
+    @mock.patch('cinder.db.service_get_all')
+    def test_create_backup_with_availability_zone(self, _mock_service_get_all):
+        vol_az = 'az1'
+        backup_svc_az = 'az2'
+        _mock_service_get_all.return_value = [
+            {'availability_zone': backup_svc_az, 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
+
+        volume = utils.create_volume(self.context, availability_zone=vol_az,
+                                     size=1)
+        # Create a backup with metadata
+        body = {'backup': {'name': 'nightly001',
+                           'volume_id': volume.id,
+                           'container': 'nightlybackups',
+                           'availability_zone': backup_svc_az}}
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers = mv.get_mv_header(mv.BACKUP_AZ)
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_context))
+
+        self.assertEqual(202, res.status_code)
+
+        res_dict = jsonutils.loads(res.body)
+        backup = objects.Backup.get_by_id(self.context,
+                                          res_dict['backup']['id'])
+        self.assertEqual(backup_svc_az, backup.availability_zone)
+
     @mock.patch('cinder.db.service_get_all')
     def test_create_backup_inuse_no_force(self,
                                           _mock_service_get_all):

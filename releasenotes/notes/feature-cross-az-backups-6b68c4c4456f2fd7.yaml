@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Cinder backup creation can now (since microversion 3.51) receive the
+    availability zone where the backup should be stored.

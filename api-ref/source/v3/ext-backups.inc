@@ -292,6 +292,7 @@ Request
    - name: name_optional
    - snapshot_id: snapshot_id_3
    - metadata: metadata_9
+   - availability_zone: availability_zone_4
 
 Request Example
 ---------------

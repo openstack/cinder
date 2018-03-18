@@ -519,6 +519,13 @@ availability_zone_3:
   in: body
   required: true
   type: string
+availability_zone_4:
+  description: |
+    The backup availability zone key value pair.
+  in: body
+  required: false
+  type: string
+  min_version: 3.51
 backend_id:
   description: |
     ID of backend to failover to. Default is ``None``.

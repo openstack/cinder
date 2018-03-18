@@ -400,3 +400,7 @@ Support report backend storage state in service list.
 Services supporting this microversion are capable of volume multiattach.
 This version does not need to be requested when creating the volume, but can
 be used as a way to query if the capability exists in the Cinder service.
+
+3.51
+----
+  Add support for cross AZ backups.
