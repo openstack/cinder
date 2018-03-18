@@ -45,11 +45,11 @@ snapshots_policies = [
     policy.DocumentedRuleDefault(
         name=EXTEND_ATTRIBUTE,
         check_str=base.RULE_ADMIN_OR_OWNER,
-        description="List snapshots with extended attributes.",
+        description="List or show snapshots with extended attributes.",
         operations=[
             {
                 'method': 'GET',
-                'path': '/snapshots'
+                'path': '/snapshots/{snapshot_id}'
             },
             {
                 'method': 'GET',
