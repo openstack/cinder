@@ -559,8 +559,7 @@ class RBDTestCase(test.TestCase):
                           self.volume_a, existing_ref)
 
         # Make sure the exception was raised
-        self.assertEqual(RAISED_EXCEPTIONS,
-                         [self.mock_rbd.ImageExists])
+        self.assertEqual([self.mock_rbd.ImageExists], RAISED_EXCEPTIONS)
 
     @common_mocks
     def test_manage_existing_with_invalid_rbd_image(self):
@@ -650,7 +649,7 @@ class RBDTestCase(test.TestCase):
         self.assertIsNone(self.driver.delete_volume(self.volume_a))
         self.mock_rbd.Image.assert_called_once_with()
         # Make sure the exception was raised
-        self.assertEqual(RAISED_EXCEPTIONS, [self.mock_rbd.ImageNotFound])
+        self.assertEqual([self.mock_rbd.ImageNotFound], RAISED_EXCEPTIONS)
 
     @common_mocks
     def test_delete_busy_volume(self):
@@ -715,8 +714,8 @@ class RBDTestCase(test.TestCase):
                     self.assertEqual(
                         1, self.mock_rbd.RBD.return_value.remove.call_count)
                     # Make sure the exception was raised
-                    self.assertEqual(RAISED_EXCEPTIONS,
-                                     [self.mock_rbd.ImageNotFound])
+                    self.assertEqual([self.mock_rbd.ImageNotFound],
+                                     RAISED_EXCEPTIONS)
 
     @common_mocks
     @mock.patch('cinder.objects.Volume.get_by_id')
@@ -877,7 +876,7 @@ class RBDTestCase(test.TestCase):
         self.assertEqual(2, volume.set_snap.call_count)
         volume.parent_info.assert_called_once_with()
         # Make sure the exception was raised
-        self.assertEqual(RAISED_EXCEPTIONS, [self.mock_rbd.ImageNotFound])
+        self.assertEqual([self.mock_rbd.ImageNotFound], RAISED_EXCEPTIONS)
 
     @common_mocks
     def test_get_clone_info_deleted_volume(self):
@@ -1963,8 +1962,7 @@ class RBDTestCase(test.TestCase):
                           self.snapshot_b, existing_ref)
 
         # Make sure the exception was raised
-        self.assertEqual(RAISED_EXCEPTIONS,
-                         [self.mock_rbd.ImageExists])
+        self.assertEqual([self.mock_rbd.ImageExists], RAISED_EXCEPTIONS)
 
     @mock.patch('cinder.volume.drivers.rbd.RBDVolumeProxy')
     @mock.patch('cinder.volume.drivers.rbd.RADOSClient')
