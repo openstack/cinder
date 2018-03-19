@@ -1,3 +1,4 @@
+setuptools===38.7.0
 # taken from openstack/requirements stable/newton @ aec3ee5a
 APScheduler===3.2.0
 Babel===2.3.4
