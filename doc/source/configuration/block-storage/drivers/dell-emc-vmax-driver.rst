@@ -30,8 +30,7 @@ at ``support.emc.com``.
 Required VMAX software suites for OpenStack
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-There are five Dell EMC Software Suites sold with the VMAX All Flash and
-Hybrid arrays:
+There are five Dell EMC Software Suites sold with the VMAX Hybrid arrays:
 
 - Base Suite
 - Advanced Suite
@@ -41,10 +40,13 @@ Hybrid arrays:
 
 The Dell EMC VMAX Cinder driver requires the Advanced Suite and the Local
 Replication Suite or the Total Productivity Pack (it includes the Advanced
-Suite and the Local Replication Suite) for the VMAX All Flash and Hybrid.
+Suite and the Local Replication Suite) for the VMAX Hybrid.
 
 Using VMAX Remote Replication functionality will also require the Remote
 Replication Suite.
+
+For full functionality including SRDF for the VMAX All Flash, the FX package,
+or the F package plus the SRDF ``a la carte`` add on is required.
 
 The storage system also requires a Unisphere for VMAX (SMC) eLicence.
 
@@ -183,6 +185,13 @@ VMAX Driver Integration
    |  SSLVerify      | driver_ssl_cert_verify | False   | No       | The path to the           |
    |                 | driver_ssl_cert_path   | None    | No       | ``my_unisphere_host.pem`` |
    +-----------------+------------------------+---------+----------+---------------------------+
+
+   .. note::
+
+      ``san_rest_port`` is ``8443`` by default but can be changed if
+      necessary. For the purposes of this documentation the default is
+      assumed so the tag will not appear in any of the ``cinder.conf``
+      extracts below.
 
    .. note::
 
@@ -400,7 +409,7 @@ SSL support
 
       .. code-block:: console
 
-         $ openssl s_client --connect {ip_address}:{port} -CAfile {cert_name}.pem -verify 9
+         $ openssl s_client -connect {ip_address}:{port} -CAfile {cert_name}.pem -verify 9
 
    #. If requests is up to date and the cert is created correctly and verified
       but the hostname error still persists, install ``ipaddress`` to
@@ -1675,48 +1684,13 @@ on the volume:
      if empty. The volume is reverted back to the original storage group.
 
 
-Libvirt configuration
----------------------
+Live migration configuration
+----------------------------
 
-Make the following updates on all nodes, controller and compute nodes, that
-are involved in live migration. Update the libvirt configurations. Please
-refer to following link for further information:
-http://libvirt.org/remote.html
+Please refer to the following for more information:
 
-#. Update the libvirt configurations. Modify the ``/etc/libvirt/libvirtd.conf``
-   file
-
-   .. code-block:: console
-
-      before : #listen_tls = 0
-      after : listen_tls = 0
-
-      before : #listen_tcp = 1
-      after : listen_tcp = 1
-      add: auth_tcp = "none"
-
-#. Modify the /etc/libvirt/qemu.conf file:
-
-   .. code-block:: console
-
-      before : #dynamic_ownership = 1
-      after : dynamic_ownership = 0
-      before : #security_driver = "selinux"
-      after : security_driver = "none"
-      before : #user = "root"
-      after : user = "root"
-      before : #group = "root"
-      after : group = "root"
-
-#. Modify the /etc/default/libvirtd file:
-
-   .. code-block:: console
-
-      before: libvirtd_opts=" -d"
-      after: libvirtd_opts=" -d -l"
-
-#. Restart libvirt. After you run the command below, ensure that libvirt is
-   successfully restarted:
+https://docs.openstack.org/nova/queens/admin/live-migration-usage.html
+https://docs.openstack.org/nova/queens/admin/configuring-migrations.html
 
 .. note::
 
