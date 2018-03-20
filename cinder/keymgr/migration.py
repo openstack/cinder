@@ -14,6 +14,7 @@
 # under the License.
 
 import binascii
+import itertools
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -42,7 +43,7 @@ class KeyMigrator(object):
         self.fixed_key_bytes = None
         self.fixed_key_length = None
 
-    def handle_key_migration(self, volumes):
+    def handle_key_migration(self, volumes, backups):
         castellan_options.set_defaults(self.conf)
         try:
             self.conf.import_opt(name='fixed_key',
@@ -70,17 +71,17 @@ class KeyMigrator(object):
                         "the '%s' key_manager backend is not supported.",
                         backend)
             self._log_migration_status()
-        elif not volumes:
+        elif not volumes and not backups:
             LOG.info("Not migrating encryption keys because there are no "
-                     "volumes associated with this host.")
+                     "volumes or backups associated with this host.")
             self._log_migration_status()
         else:
             self.fixed_key_bytes = bytes(binascii.unhexlify(fixed_key))
             self.fixed_key_length = len(self.fixed_key_bytes) * 8
-            self._migrate_keys(volumes)
+            self._migrate_keys(volumes, backups)
             self._log_migration_status()
 
-    def _migrate_keys(self, volumes):
+    def _migrate_keys(self, volumes, backups):
         LOG.info("Starting migration of ConfKeyManager keys.")
 
         # Establish a Barbican client session that will be used for the entire
@@ -98,9 +99,9 @@ class KeyMigrator(object):
             return
 
         errors = 0
-        for volume in volumes:
+        for item in itertools.chain(volumes, backups):
             try:
-                self._migrate_volume_key(volume)
+                self._migrate_encryption_key(item)
             except Exception as e:
                 LOG.error("Error migrating encryption key: %s", e)
                 # NOTE(abishop): There really shouldn't be any soft errors, so
@@ -113,14 +114,12 @@ class KeyMigrator(object):
                               "(too many errors).")
                     break
 
-    @coordination.synchronized('{volume.id}-{f_name}')
-    def _migrate_volume_key(self, volume):
-        if volume.encryption_key_id == self.fixed_key_id:
-            self._update_encryption_key_id(volume)
+    @coordination.synchronized('{item.id}-{f_name}')
+    def _migrate_encryption_key(self, item):
+        if item.encryption_key_id == self.fixed_key_id:
+            self._update_encryption_key_id(item)
 
-    def _update_encryption_key_id(self, volume):
-        LOG.info("Migrating volume %s encryption key to Barbican", volume.id)
-
+    def _get_barbican_key_id(self, user_id):
         # Create a Barbican secret using the same fixed_key algorithm.
         secret = self.barbican.secrets.create(algorithm='AES',
                                               bit_length=self.fixed_key_length,
@@ -129,34 +128,61 @@ class KeyMigrator(object):
                                               payload=self.fixed_key_bytes)
         secret_ref = secret.store()
 
-        # Create a Barbican ACL so the volume's user can access the secret.
+        # Create a Barbican ACL so the user can access the secret.
         acl = self.barbican.acls.create(entity_ref=secret_ref,
-                                        users=[volume.user_id])
+                                        users=[user_id])
         acl.submit()
 
         _, _, encryption_key_id = secret_ref.rpartition('/')
-        volume.encryption_key_id = encryption_key_id
-        volume.save()
+        return encryption_key_id
 
-        snapshots = objects.snapshot.SnapshotList.get_all_for_volume(
-            self.admin_context,
-            volume.id)
-        for snapshot in snapshots:
-            snapshot.encryption_key_id = encryption_key_id
-            snapshot.save()
+    def _update_encryption_key_id(self, item):
+        LOG.info("Migrating %(item_type)s %(item_id)s encryption key "
+                 "to Barbican",
+                 {'item_type': type(item).__name__, 'item_id': item.id})
+
+        encryption_key_id = self._get_barbican_key_id(item.user_id)
+        item.encryption_key_id = encryption_key_id
+        item.save()
+
+        if isinstance(item, objects.volume.Volume):
+            snapshots = objects.snapshot.SnapshotList.get_all_for_volume(
+                self.admin_context,
+                item.id)
+            for snapshot in snapshots:
+                snapshot.encryption_key_id = encryption_key_id
+                snapshot.save()
 
     def _log_migration_status(self):
-        num_to_migrate = len(objects.volume.VolumeList.get_all(
+        volumes_to_migrate = len(objects.volume.VolumeList.get_all(
             context=self.admin_context,
             filters={'encryption_key_id': self.fixed_key_id}))
-        if num_to_migrate == 0:
+        if volumes_to_migrate == 0:
             LOG.info("No volumes are using the ConfKeyManager's "
                      "encryption_key_id.")
         else:
             LOG.warning("There are still %d volume(s) using the "
                         "ConfKeyManager's all-zeros encryption key ID.",
-                        num_to_migrate)
+                        volumes_to_migrate)
+
+        backups_to_migrate = len(objects.backup.BackupList.get_all(
+            context=self.admin_context,
+            filters={'encryption_key_id': self.fixed_key_id}))
+        if backups_to_migrate == 0:
+            # Old backups may exist that were created prior to when the
+            # encryption_key_id is stored in the backup table. It's not
+            # easy to tell whether the backup was of an encrypted volume,
+            # in which case an all-zeros encryption key ID might be present
+            # in the backup's metadata.
+            LOG.info("No backups are known to be using the ConfKeyManager's "
+                     "encryption_key_id.")
+        else:
+            LOG.warning("There are still %d backups(s) using the "
+                        "ConfKeyManager's all-zeros encryption key ID.",
+                        backups_to_migrate)
 
 
-def migrate_fixed_key(volumes, conf=CONF):
-    KeyMigrator(conf).handle_key_migration(volumes)
+def migrate_fixed_key(volumes=None, backups=None, conf=CONF):
+    volumes = volumes or []
+    backups = backups or []
+    KeyMigrator(conf).handle_key_migration(volumes, backups)

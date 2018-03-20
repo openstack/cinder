@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    When encryption keys based on the ConfKeyManager's fixed_key are migrated
+    to Barbican, ConfKeyManager keys stored in the Backup table are included
+    in the migration process.
+    Fixes `bug 1757235 <https://bugs.launchpad.net/tripleo/+bug/1757235>`__.
