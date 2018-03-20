@@ -190,8 +190,9 @@ class RADOSClient(object):
 
 
 @interface.volumedriver
-class RBDDriver(driver.CloneableImageVD,
-                driver.MigrateVD, driver.ManageableVD, driver.BaseVD):
+class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+                driver.ManageableVD, driver.ManageableSnapshotsVD,
+                driver.BaseVD):
     """Implements RADOS block device (RBD) volume commands."""
 
     VERSION = '1.2.0'
@@ -1730,3 +1731,7 @@ class RBDDriver(driver.CloneableImageVD,
             snapshot_name = existing_ref['source-name']
             volume.rename_snap(utils.convert_str(snapshot_name),
                                utils.convert_str(snapshot.name))
+
+    def unmanage_snapshot(self, snapshot):
+        """Removes the specified snapshot from Cinder management."""
+        pass
