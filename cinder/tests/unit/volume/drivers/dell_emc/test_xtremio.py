@@ -1,4 +1,4 @@
-# Copyright (c) 2012 - 2014 EMC Corporation, Inc.
+# Copyright (c) 2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,12 +20,15 @@ import time
 import mock
 import six
 
+from cinder import context
 from cinder import exception
+from cinder.objects import volume_attachment
 from cinder import test
 from cinder.tests.unit.consistencygroup import fake_consistencygroup as fake_cg
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit.fake_volume import fake_volume_obj
+from cinder.tests.unit.fake_volume import fake_volume_type_obj
 from cinder.volume.drivers.dell_emc import xtremio
 
 typ2id = {'volumes': 'vol-id',
@@ -243,7 +246,7 @@ class D(dict):
 
 
 class CommonData(object):
-    context = {'user': 'admin', }
+    context = context.RequestContext('admin', 'fake', True)
     connector = {'ip': '10.0.0.2',
                  'initiator': 'iqn.1993-08.org.debian:01:222',
                  'wwpns': ["123456789012345", "123456789054321"],
@@ -251,19 +254,25 @@ class CommonData(object):
                  'host': 'fakehost',
                  }
 
+    test_volume_type = fake_volume_type_obj(
+        context=context
+    )
+
     test_volume = fake_volume_obj(context,
+                                  volume_type = test_volume_type,
                                   name='vol1',
-                                  size=1,
                                   volume_name='vol1',
+                                  display_name='vol1',
+                                  display_description='test volume',
+                                  size=1,
                                   id='192eb39b-6c2f-420c-bae3-3cfd117f0001',
                                   provider_auth=None,
                                   project_id='project',
-                                  display_name='vol1',
-                                  display_description='test volume',
                                   volume_type_id=None,
                                   consistencygroup_id=
                                   '192eb39b-6c2f-420c-bae3-3cfd117f0345',
                                   )
+
     test_snapshot = D()
     test_snapshot.update({'name': 'snapshot1',
                           'size': 1,
@@ -318,6 +327,10 @@ class CommonData(object):
         'id': '192eb39b-6c2f-420c-bae3-3cfd117f9876',
         'consistencygroup_id': None,
         'group_id': group['id'], }
+
+    test_volume_attachment = volume_attachment.VolumeAttachment(
+        id='2b06255d-f5f0-4520-a953-b029196add6b', volume_id=test_volume.id,
+        connector=connector)
 
 
 class BaseXtremIODriverTestCase(test.TestCase):
@@ -697,7 +710,9 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
 
     def test_get_ig_indexes_from_initiators_called_once(self, req):
         req.side_effect = xms_request
-        self.driver.create_volume(self.data.test_volume)
+        volume1 = copy.deepcopy(self.data.test_volume)
+        volume1.volume_attachment.objects = [self.data.test_volume_attachment]
+        self.driver.create_volume(volume1)
         map_data = self.driver.initialize_connection(self.data.test_volume,
                                                      self.data.connector)
         i1 = xms_data['initiators'][1]

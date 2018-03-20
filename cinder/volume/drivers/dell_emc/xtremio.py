@@ -1,4 +1,4 @@
-# Copyright (c) 2012 - 2014 EMC Corporation.
+# Copyright (c) 2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -30,6 +30,7 @@ supported XtremIO version 2.4 and up
   1.0.8 - support for volume retype, CG fixes
   1.0.9 - performance improvements, support force detach, support for X2
   1.0.10 - option to clean unused IGs
+  1.0.11 - add support for multiattach
 """
 
 import json
@@ -409,7 +410,7 @@ class XtremIOClient42(XtremIOClient4):
 class XtremIOVolumeDriver(san.SanDriver):
     """Executes commands relating to Volumes."""
 
-    VERSION = '1.0.10'
+    VERSION = '1.0.11'
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_XIO_CI"
@@ -616,7 +617,7 @@ class XtremIOVolumeDriver(san.SanDriver):
                        'reserved_percentage':
                        self.configuration.reserved_percentage,
                        'QoS_support': False,
-                       'multiattach': False,
+                       'multiattach': True,
                        }
         self._stats.update(self.client.get_extra_capabilities())
 
@@ -725,6 +726,23 @@ class XtremIOVolumeDriver(san.SanDriver):
             LOG.info('Force detach volume %(vol)s from luns %(luns)s.',
                      {'vol': vol['name'], 'luns': ig_indexes})
         else:
+            host = connector['host']
+            attachment_list = volume.volume_attachment
+            LOG.debug("Volume attachment list: %(atl)s. "
+                      "Attachment type: %(at)s",
+                      {'atl': attachment_list, 'at': type(attachment_list)})
+            try:
+                att_list = attachment_list.objects
+            except AttributeError:
+                att_list = attachment_list
+            if att_list is not None:
+                host_list = [att.connector['host'] for att in att_list if
+                             att is not None and att.connector is not None]
+                current_host_occurances = host_list.count(host)
+                if current_host_occurances > 1:
+                    LOG.info("Volume is attached to multiple instances on "
+                             "this host. Not removing the lun map.")
+                    return
             vol = self.client.req('volumes', name=volume.id,
                                   data={'prop': 'index'})['content']
             ig_indexes = self._get_ig_indexes_from_initiators(connector)
