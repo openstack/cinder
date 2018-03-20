@@ -31,7 +31,7 @@ CONF = cfg.CONF
 
 @base.CinderObjectRegistry.register
 class Backup(base.CinderPersistentObject, base.CinderObject,
-             base.CinderObjectDictCompat):
+             base.CinderObjectDictCompat, base.CinderComparableObject):
     # Version 1.0: Initial version
     # Version 1.1: Add new field num_dependent_backups and extra fields
     #              is_incremental and has_dependent_backups.

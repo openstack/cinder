@@ -50,6 +50,7 @@ from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
+from cinder.keymgr import migration as key_migration
 from cinder import manager
 from cinder import objects
 from cinder.objects import fields
@@ -163,6 +164,12 @@ class BackupManager(manager.ThreadPoolManager):
         except Exception:
             # Don't block startup of the backup service.
             LOG.exception("Problem cleaning incomplete backup operations.")
+
+        # Migrate any ConfKeyManager keys based on fixed_key to the currently
+        # configured key manager.
+        backups = objects.BackupList.get_all_by_host(ctxt, self.host)
+        self._add_to_threadpool(key_migration.migrate_fixed_key,
+                                backups=backups)
 
     def _setup_backup_driver(self, ctxt):
         backup_service = self.get_backup_driver(ctxt)

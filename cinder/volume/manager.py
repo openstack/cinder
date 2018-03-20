@@ -510,7 +510,8 @@ class VolumeManager(manager.CleanableManager,
 
         # Migrate any ConfKeyManager keys based on fixed_key to the currently
         # configured key manager.
-        self._add_to_threadpool(key_migration.migrate_fixed_key, volumes)
+        self._add_to_threadpool(key_migration.migrate_fixed_key,
+                                volumes=volumes)
 
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)
