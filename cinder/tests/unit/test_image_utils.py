@@ -260,6 +260,24 @@ class TestConvertImage(test.TestCase):
                                               '-O', out_format, '-t', 'none',
                                               source, dest, run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.utils.is_blk_device', return_value=False)
+    @mock.patch('cinder.volume.utils.check_for_odirect_support')
+    def test_convert_to_vhd(self, mock_check_odirect, mock_isblk,
+                            mock_exec, mock_info):
+        source = mock.sentinel.source
+        dest = mock.sentinel.dest
+        out_format = "vhd"
+        mock_info.return_value.virtual_size = 1048576
+
+        output = image_utils.convert_image(source, dest, out_format)
+        self.assertIsNone(output)
+        # Qemu uses the legacy "vpc" format name, instead of "vhd".
+        mock_exec.assert_called_once_with('qemu-img', 'convert',
+                                          '-O', 'vpc',
+                                          source, dest, run_as_root=True)
+
 
 class TestResizeImage(test.TestCase):
     @mock.patch('cinder.utils.execute')
