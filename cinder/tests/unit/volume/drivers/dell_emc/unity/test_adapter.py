@@ -141,6 +141,12 @@ class MockClient(object):
             raise ex.DetachIsCalled()
 
     @staticmethod
+    def detach_all(lun):
+        error_ids = ['lun_44']
+        if lun.get_id() in error_ids:
+            raise ex.DetachAllIsCalled()
+
+    @staticmethod
     def get_iscsi_target_info(allowed_ports=None):
         return [{'portal': '1.2.3.4:1234', 'iqn': 'iqn.1-1.com.e:c.a.a0'},
                 {'portal': '1.2.3.5:1234', 'iqn': 'iqn.1-1.com.e:c.a.a1'}]
@@ -441,6 +447,13 @@ class CommonAdapterTest(unittest.TestCase):
             self.adapter.terminate_connection(volume, connector)
 
         self.assertRaises(ex.DetachIsCalled, f)
+
+    def test_terminate_connection_force_detach(self):
+        def f():
+            volume = MockOSResource(provider_location='id^lun_44', id='id_44')
+            self.adapter.terminate_connection(volume, None)
+
+        self.assertRaises(ex.DetachAllIsCalled, f)
 
     def test_terminate_connection_snapshot(self):
         def f():
