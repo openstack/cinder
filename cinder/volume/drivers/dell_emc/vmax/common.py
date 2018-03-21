@@ -4363,8 +4363,11 @@ class VMAXCommon(object):
         LOG.debug("Finding Masking View for volume %(volume)s.",
                   {'volume': volume})
         volumeInstance = self._find_lun(volume)
-        return self.masking.get_masking_view_by_volume(
-            self.conn, volumeInstance, connector)
+        if volumeInstance:
+            return self.masking.get_masking_view_by_volume(
+                self.conn, volumeInstance, connector)
+        else:
+            return None
 
     def get_masking_views_by_port_group(self, portGroupInstanceName):
         """Given port group, retrieve the masking view instance name.

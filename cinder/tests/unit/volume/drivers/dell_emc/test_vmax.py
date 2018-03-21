@@ -386,7 +386,7 @@ class VMAXCommonData(object):
                       'SystemCreationClassName': u'Symm_StorageSystem'}
     provider_location = {'classname': 'Symm_StorageVolume',
                          'keybindings': keybindings,
-                         'version': '2.5.1'}
+                         'version': '2.5.2'}
     provider_location2 = {'classname': 'Symm_StorageVolume',
                           'keybindings': keybindings2}
     provider_location3 = {'classname': 'Symm_StorageVolume',
@@ -9205,6 +9205,26 @@ class VMAXCommonTest(test.TestCase):
         driver.db = FakeDB()
         self.driver = driver
         self.driver.utils = utils.VMAXUtils(object)
+
+    def test_get_masking_view_by_volume(self):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        masking_view = {'CreationClassName': 'Symm_LunMaskingView',
+                        'ElementName': 'OS-fakehost-gold-I-MV'}
+        data = common.get_masking_view_by_volume(
+            self.data.test_volume, self.data.connector)
+        self.assertEqual(masking_view, data)
+
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_find_lun',
+        return_value=None)
+    def test_get_masking_view_by_volume_none(self, mock_lun):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        data = common.get_masking_view_by_volume(
+            self.data.test_volume, self.data.connector)
+        self.assertIsNone(data)
 
     @mock.patch.object(
         common.VMAXCommon,
