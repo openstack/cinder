@@ -26,7 +26,8 @@ class RequestSpec(base.CinderObject, base.CinderObjectDictCompat,
     # Version 1.1: Added group_id and group_backend
     # Version 1.2 Added ``resource_backend``
     # Version 1.3: Added backup_id
-    VERSION = '1.3'
+    # Version 1.4: Add 'operation'
+    VERSION = '1.4'
 
     fields = {
         'consistencygroup_id': fields.UUIDField(nullable=True),
@@ -45,6 +46,7 @@ class RequestSpec(base.CinderObject, base.CinderObjectDictCompat,
         'group_backend': fields.StringField(nullable=True),
         'resource_backend': fields.StringField(nullable=True),
         'backup_id': fields.UUIDField(nullable=True),
+        'operation': fields.StringField(nullable=True),
     }
 
     obj_extra_fields = ['resource_properties']
@@ -96,7 +98,9 @@ class RequestSpec(base.CinderObject, base.CinderObjectDictCompat,
         super(RequestSpec, self).obj_make_compatible(primitive, target_version)
         target_version = versionutils.convert_version_to_tuple(target_version)
         added_fields = (((1, 1), ('group_id', 'group_backend')),
-                        ((1, 2), ('resource_backend')))
+                        ((1, 2), ('resource_backend')),
+                        ((1, 3), ('backup_id')),
+                        ((1, 4), ('operation')))
         for version, remove_fields in added_fields:
             if target_version < version:
                 for obj_field in remove_fields:

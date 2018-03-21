@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    Now scheduler plugins are aware of operation type via ``operation`` attribute in
+    RequestSpec dictionary, plugins can support backend filtering according to backend
+    status as well as operation type. Current possible values for ``operation`` are:
+
+    - create_volume
+    - extend_volume
+    - create_snapshot
+    - retype_volume
+    - migrate_volume
+    - manage_existing
+    - manage_existing_snapshot
+    - create_group
