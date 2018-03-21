@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-02-17 00:08+0000\n"
+"POT-Creation-Date: 2018-03-20 18:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -22,7 +22,7 @@ msgstr ""
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.0\n"
-"X-Generator: Zanata 3.9.6\n"
+"X-Generator: Zanata 4.3.3\n"
 "Language-Team: German\n"
 
 #, python-format
@@ -4352,9 +4352,6 @@ msgstr ""
 msgid "Path to REST server's certificate must be specified."
 msgstr "Pfad zum Zertifikat des REST-Servers muss angegeben werden."
 
-msgid "Please specify a name for QoS specs."
-msgstr "Geben Sie einen Namen für die QoS-Spezifikationen an."
-
 #, python-format
 msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "Richtlinie lässt Ausführung von %(action)s nicht zu."
@@ -5145,9 +5142,6 @@ msgstr ""
 "Der Host ist nicht für die Zurücksetzung bereit. Synchronisieren Sie erneut "
 "die Datenträger und nehmen Sie die Replikation an den LeftHand-Backends "
 "wieder auf. "
-
-msgid "The key cannot be None."
-msgstr "Der Schlüssel kann nicht None sein."
 
 msgid "The method update_migrated_volume is not implemented."
 msgstr "Die Methode update_migrated_volume ist nicht implementiert."

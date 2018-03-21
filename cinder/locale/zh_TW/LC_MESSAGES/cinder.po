@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-02-28 21:24+0000\n"
+"POT-Creation-Date: 2018-03-20 18:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3861,9 +3861,6 @@ msgstr ""
 msgid "Path to REST server's certificate must be specified."
 msgstr "必須指定 REST 伺服器憑證的路徑。"
 
-msgid "Please specify a name for QoS specs."
-msgstr "請為服務品質規格指定名稱。"
-
 #, python-format
 msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "原則不容許執行 %(action)s。"
@@ -4556,9 +4553,6 @@ msgid ""
 "and resume replication on the LeftHand backends."
 msgstr ""
 "主機尚未備妥以進行失效回復。請重新同步磁區，並回復 LeftHand 後端上的抄寫。"
-
-msgid "The key cannot be None."
-msgstr "金鑰不能是「無」。"
 
 msgid "The method update_migrated_volume is not implemented."
 msgstr "未實作方法 update_migrated_volume。"

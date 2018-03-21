@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-02-17 00:08+0000\n"
+"POT-Creation-Date: 2018-03-20 18:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -21,7 +21,7 @@ msgstr ""
 "%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n"
 "%100>=11 && n%100<=14)? 2 : 3);\n"
 "Generated-By: Babel 2.0\n"
-"X-Generator: Zanata 3.9.6\n"
+"X-Generator: Zanata 4.3.3\n"
 "Language-Team: Russian\n"
 
 #, python-format
@@ -4142,9 +4142,6 @@ msgstr ""
 msgid "Path to REST server's certificate must be specified."
 msgstr "Необходимо указать путь к сертификату сервера REST."
 
-msgid "Please specify a name for QoS specs."
-msgstr "Укажите имя спецификации QoS."
-
 #, python-format
 msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "Политика не допускает выполнения %(action)s."
@@ -4889,9 +4886,6 @@ msgid ""
 msgstr ""
 "Хост не готов к обратному переключению. Выполните повторную синхронизацию "
 "томов и возобновите репликацию в базовых системах LeftHand."
-
-msgid "The key cannot be None."
-msgstr "Ключ не может быть None."
 
 msgid "The method update_migrated_volume is not implemented."
 msgstr "Метод update_migrated_volume не реализован."
