@@ -14,6 +14,7 @@
 #    under the License.
 """Unit tests for INFINIDAT InfiniBox volume driver."""
 
+import functools
 import mock
 from oslo_utils import units
 
@@ -41,11 +42,24 @@ test_connector = dict(wwpns=[TEST_WWN_1],
                       initiator=TEST_IQN)
 
 
+def skip_driver_setup(func):
+    @functools.wraps(func)
+    def f(*args, **kwargs):
+        return func(*args, **kwargs)
+    f.__skip_driver_setup = True
+    return f
+
+
 class FakeInfinisdkException(Exception):
     pass
 
 
 class InfiniboxDriverTestCaseBase(test.TestCase):
+    def _test_skips_driver_setup(self):
+        test_method_name = self.id().split('.')[-1]
+        test_method = getattr(self, test_method_name)
+        return getattr(test_method, '__skip_driver_setup', False)
+
     def setUp(self):
         super(InfiniboxDriverTestCaseBase, self).setUp()
 
@@ -82,7 +96,9 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         capacity.GiB = units.Gi
         infinisdk.core.exceptions.InfiniSDKException = FakeInfinisdkException
         infinisdk.InfiniBox.return_value = self._system
-        self.driver.do_setup(None)
+
+        if not self._test_skips_driver_setup():
+            self.driver.do_setup(None)
 
     def _infinibox_mock(self):
         result = mock.Mock()
@@ -121,6 +137,21 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
 
 
 class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
+    @skip_driver_setup
+    def test__setup_and_get_system_object(self):
+        # This test should skip the driver setup, as it generates more calls to
+        # the add_auto_retry, set_source_identifier and login methods:
+        auth = (self.configuration.san_login,
+                self.configuration.san_password)
+
+        self.driver._setup_and_get_system_object(
+            self.configuration.san_ip, auth)
+
+        self._system.api.add_auto_retry.assert_called_once()
+        self._system.api.set_source_identifier.assert_called_once_with(
+            infinidat._INFINIDAT_CINDER_IDENTIFIER)
+        self._system.login.assert_called_once()
+
     def test_initialize_connection(self):
         self._system.hosts.safe_get.return_value = None
         result = self.driver.initialize_connection(test_volume, test_connector)
