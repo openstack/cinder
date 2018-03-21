@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Corrected support to force detach a volume from all hosts on Unity.

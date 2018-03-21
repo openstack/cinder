@@ -223,8 +223,12 @@ class CommonAdapter(object):
 
     @cinder_utils.trace
     def _terminate_connection(self, lun_or_snap, connector):
-        host = self.client.create_host(connector['host'])
-        self.client.detach(host, lun_or_snap)
+        is_force_detach = connector is None
+        if is_force_detach:
+            self.client.detach_all(lun_or_snap)
+        else:
+            host = self.client.create_host(connector['host'])
+            self.client.detach(host, lun_or_snap)
 
     @cinder_utils.trace
     def terminate_connection(self, volume, connector):

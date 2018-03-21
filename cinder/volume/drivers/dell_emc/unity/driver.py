@@ -53,9 +53,11 @@ class UnityDriver(driver.ManageableVD,
         1.0.2 - Fixes bug 1775518 to make sure driver succeed to initialize
                 even though the value of unity_io_ports and
                 unity_storage_pool_names are empty
+        1.0.3 - Fixed bug 1741831: corrected support to force detach a volume
+                from all its attached hosts.
     """
 
-    VERSION = '01.00.02'
+    VERSION = '01.00.03'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
