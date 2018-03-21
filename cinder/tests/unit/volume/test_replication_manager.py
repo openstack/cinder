@@ -663,3 +663,33 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
                                           out_volumes, out_snapshots,
                                           [], [], [],
                                           self.manager.FAILBACK_SENTINEL)
+
+    @mock.patch('cinder.utils.log_unsupported_driver_warning', mock.Mock())
+    @mock.patch('cinder.utils.require_driver_initialized', mock.Mock())
+    def test_init_host_with_rpc_clustered_replication(self):
+        # These are not OVOs but ORM instances
+        cluster = utils.create_cluster(self.context)
+        service = utils.create_service(self.context,
+                                       {'cluster_name': cluster.name,
+                                        'binary': cluster.binary})
+        self.assertNotEqual(fields.ReplicationStatus.ENABLED,
+                            cluster.replication_status)
+        self.assertNotEqual(fields.ReplicationStatus.ENABLED,
+                            service.replication_status)
+
+        vol_manager = manager.VolumeManager(
+            'cinder.tests.fake_driver.FakeHAReplicatedLoggingVolumeDriver',
+            host=service.host, cluster=cluster.name)
+        vol_manager.driver = mock.Mock()
+        vol_manager.driver.get_volume_stats.return_value = {
+            'replication_enabled': True
+        }
+        vol_manager.init_host_with_rpc()
+
+        cluster_ovo = objects.Cluster.get_by_id(self.context, cluster.id)
+        service_ovo = objects.Service.get_by_id(self.context, service.id)
+
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         cluster_ovo.replication_status)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         service_ovo.replication_status)

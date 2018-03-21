@@ -397,3 +397,11 @@ class FakeGateDriver(lvm.LVMVolumeDriver):
             snapshot_model_updates.append(snapshot_model_update)
 
         return model_update, snapshot_model_updates
+
+
+class FakeHAReplicatedLoggingVolumeDriver(FakeLoggingVolumeDriver):
+    SUPPORTS_ACTIVE_ACTIVE = True
+
+    @utils.trace_method
+    def failover_completed(self, context, active_backend_id=None):
+        pass
