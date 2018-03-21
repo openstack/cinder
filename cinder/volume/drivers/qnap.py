@@ -21,7 +21,6 @@ from collections import OrderedDict
 import eventlet
 import functools
 import re
-import ssl
 import threading
 import time
 
@@ -32,8 +31,8 @@ from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import units
+import requests
 import six
-from six.moves import http_client
 from six.moves import urllib
 
 from cinder import exception
@@ -47,12 +46,13 @@ LOG = logging.getLogger(__name__)
 
 qnap_opts = [
     cfg.URIOpt('qnap_management_url',
-               help='The URL to management QNAP Storage'),
+               help='The URL to management QNAP Storage. '
+                    'Driver does not support IPv6 address in URL.'),
     cfg.StrOpt('qnap_poolname',
                help='The pool name in the QNAP Storage'),
     cfg.StrOpt('qnap_storage_protocol',
                default='iscsi',
-               help='Communication protocol to access QNAP storage'),
+               help='Communication protocol to access QNAP storage')
 ]
 
 CONF = cfg.CONF
@@ -74,6 +74,8 @@ class QnapISCSIDriver(san.SanISCSIDriver):
           1.2.002:
                 Add support for QES fw 2.0.0.
 
+    NOTE: Set driver_ssl_cert_verify as True under backend section to
+          enable SSL verification.
     """
 
     # ThirdPartySystems wiki page
@@ -152,7 +154,8 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         self.api_executor = QnapAPIExecutor(
             username=self.configuration.san_login,
             password=self.configuration.san_password,
-            management_url=self.configuration.qnap_management_url)
+            management_url=self.configuration.qnap_management_url,
+            verify_ssl=self.configuration.driver_ssl_cert_verify)
 
         nas_model_name, internal_model_name, fw_version = (
             self.api_executor.get_basic_info(
@@ -190,7 +193,8 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 return (QnapAPIExecutorTS(
                     username=self.configuration.san_login,
                     password=self.configuration.san_password,
-                    management_url=self.configuration.qnap_management_url))
+                    management_url=self.configuration.qnap_management_url,
+                    verify_ssl=self.configuration.driver_ssl_cert_verify))
         elif model_type in tes_model_types:
             if 'TS' in internal_model_name:
                 if (fw_version >= "4.2") and (fw_version <= "4.4"):
@@ -202,20 +206,23 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                     return (QnapAPIExecutorTS(
                         username=self.configuration.san_login,
                         password=self.configuration.san_password,
-                        management_url=self.configuration.qnap_management_url))
+                        management_url=self.configuration.qnap_management_url,
+                        verify_ssl=self.configuration.driver_ssl_cert_verify))
             elif "1.1.2" <= fw_version <= "2.0.9999":
                 LOG.debug('Create TES API Executor')
                 return (QnapAPIExecutorTES(
                     username=self.configuration.san_login,
                     password=self.configuration.san_password,
-                    management_url=self.configuration.qnap_management_url))
+                    management_url=self.configuration.qnap_management_url,
+                    verify_ssl=self.configuration.driver_ssl_cert_verify))
         elif model_type in es_model_types:
             if "1.1.2" <= fw_version <= "2.0.9999":
                 LOG.debug('Create ES API Executor')
                 return (QnapAPIExecutor(
                     username=self.configuration.san_login,
                     password=self.configuration.san_password,
-                    management_url=self.configuration.qnap_management_url))
+                    management_url=self.configuration.qnap_management_url,
+                    verify_ssl=self.configuration.driver_ssl_cert_verify))
 
         msg = _('Model not support')
         raise exception.VolumeDriverException(message=msg)
@@ -1119,9 +1126,15 @@ class QnapAPIExecutor(object):
         self.password = kwargs['password']
         self.ip, self.port, self.ssl = (
             self._parse_management_url(kwargs['management_url']))
+        self.verify_ssl = kwargs['verify_ssl']
         self._login()
 
     def _parse_management_url(self, management_url):
+        # NOTE(Ibad): This parser isn't compatible with IPv6 address.
+        # Typical IPv6 address will have : as delimiters and
+        # URL is represented as https://[3ffe:2a00:100:7031::1]:8080
+        # since the regular expression below uses : to identify ip and port
+        # it won't work with IPv6 address.
         pattern = re.compile(r"(http|https)\:\/\/(\S+)\:(\d+)")
         matches = pattern.match(management_url)
         if matches.group(1) == 'http':
@@ -1136,23 +1149,10 @@ class QnapAPIExecutor(object):
         """Get the basic information of NAS."""
         management_ip, management_port, management_ssl = (
             self._parse_management_url(management_url))
-        connection = None
-        if management_ssl:
-            if hasattr(ssl, '_create_unverified_context'):
-                context = ssl._create_unverified_context()
-                connection = http_client.HTTPSConnection(management_ip,
-                                                         port=management_port,
-                                                         context=context)
-            else:
-                connection = http_client.HTTPSConnection(management_ip,
-                                                         port=management_port)
-        else:
-            connection = (
-                http_client.HTTPConnection(management_ip, management_port))
 
-        connection.request('GET', '/cgi-bin/authLogin.cgi')
-        response = connection.getresponse()
-        data = response.read()
+        response = self._get_response(management_ip, management_port,
+                                      management_ssl, '/cgi-bin/authLogin.cgi')
+        data = response.text
 
         root = ET.fromstring(data)
 
@@ -1162,6 +1162,29 @@ class QnapAPIExecutor(object):
 
         return nas_model_name, internal_model_name, fw_version
 
+    def _get_response(self, host_ip, host_port, use_ssl, action, body=None):
+        """"Execute http request and return response."""
+        method = 'GET'
+        headers = None
+        protocol = 'https' if use_ssl else 'http'
+        verify = self.verify_ssl if use_ssl else False
+        # NOTE(ibad): URL formed here isn't IPv6 compatible
+        # we should surround host ip with [] when IPv6 is supported
+        # so the final URL can be like https://[3ffe:2a00:100:7031::1]:8080
+        url = '%s://%s:%s%s' % (protocol, host_ip, host_port, action)
+
+        if body:
+            method = 'POST'
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'charset': 'utf-8'
+            }
+
+        response = requests.request(method, url, data=body, headers=headers,
+                                    verify=verify)
+
+        return response
+
     def _execute_and_get_response_details(self, nas_ip, url, post_parm=None):
         """Will prepare response after executing an http request."""
         LOG.debug('_execute_and_get_response_details url: %s', url)
@@ -1169,53 +1192,23 @@ class QnapAPIExecutor(object):
 
         res_details = {}
 
-        start_time1 = time.time()
-
-        # Prepare the connection
-        if self.ssl:
-            if hasattr(ssl, '_create_unverified_context'):
-                context = ssl._create_unverified_context()
-                connection = http_client.HTTPSConnection(nas_ip,
-                                                         port=self.port,
-                                                         context=context)
-            else:
-                connection = http_client.HTTPSConnection(
-                    nas_ip, port=self.port)
-        else:
-            connection = http_client.HTTPConnection(nas_ip, self.port)
-
-        elapsed_time1 = time.time() - start_time1
-        LOG.debug('connection elapsed_time: %s', elapsed_time1)
-
-        start_time2 = time.time()
-
         # Make the connection
-        if post_parm is None:
-            connection.request('GET', url)
-        else:
-            headers = {
-                "Content-Type": "application/x-www-form-urlencoded",
-                "charset": "utf-8"}
-            connection.request('POST', url, post_parm, headers)
-
+        start_time2 = time.time()
+        response = self._get_response(
+            nas_ip, self.port, self.ssl, url, post_parm)
         elapsed_time2 = time.time() - start_time2
         LOG.debug('request elapsed_time: %s', elapsed_time2)
 
-        # Extract the response as the connection was successful
-        start_time = time.time()
-        response = connection.getresponse()
-        elapsed_time = time.time() - start_time
-        LOG.debug('cgi elapsed_time: %s', elapsed_time)
         # Read the response
-        data = response.read()
-        LOG.debug('response status: %s', response.status)
+        data = response.text
+        LOG.debug('response status: %s', response.status_code)
+
         # Extract http error msg if any
         error_details = None
         res_details['data'] = data
         res_details['error'] = error_details
-        res_details['http_status'] = response.status
+        res_details['http_status'] = response.status_code
 
-        connection.close()
         return res_details
 
     def execute_login(self):
