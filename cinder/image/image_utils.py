@@ -145,7 +145,7 @@ def _get_qemu_convert_cmd(src, dest, out_format, src_format=None,
 
     if out_format == 'vhd':
         # qemu-img still uses the legacy vpc name
-        out_format == 'vpc'
+        out_format = 'vpc'
 
     cmd = ['qemu-img', 'convert', '-O', out_format]
 
