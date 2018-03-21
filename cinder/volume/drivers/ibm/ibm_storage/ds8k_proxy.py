@@ -1047,14 +1047,65 @@ class DS8KProxy(proxy.IBMStorageProxy):
     @proxy.logger
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         """Detach a volume from a host."""
+        ret_info = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {}
+        }
         lun = Lun(volume)
-        LOG.info('Detach the volume %s.', lun.ds_id)
-        if lun.group and lun.failed_over:
+        if (lun.group and lun.failed_over) and not self._active_backend_id:
             backend_helper = self._replication.get_target_helper()
         else:
             backend_helper = self._helper
-        return backend_helper.terminate_connection(lun.ds_id, connector,
-                                                   force, **kwargs)
+        if isinstance(backend_helper, helper.DS8KECKDHelper):
+            LOG.info('Detach the volume %s.', lun.ds_id)
+            return backend_helper.terminate_connection(lun.ds_id, connector,
+                                                       force, **kwargs)
+        else:
+            vol_mapped, host_id, map_info = (
+                backend_helper.check_vol_mapped_to_host(connector, lun.ds_id))
+            if host_id is None or not vol_mapped:
+                if host_id is None and not lun.type_replication:
+                    msg = (_('Failed to find the Host information.'))
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+                if host_id and not lun.type_replication and not vol_mapped:
+                    LOG.warning("Volume %(vol)s is already not mapped to "
+                                "host %(host)s.",
+                                {'vol': lun.ds_id, 'host': host_id})
+                    return ret_info
+                if lun.type_replication:
+                    if backend_helper == self._replication.get_target_helper():
+                        backend_helper = self._replication.get_source_helper()
+                    else:
+                        backend_helper = self._replication.get_target_helper()
+                    try:
+                        if backend_helper.lun_exists(lun.replica_ds_id):
+                            LOG.info('Detaching volume %s from the '
+                                     'Secondary site.', lun.replica_ds_id)
+                            mapped, host_id, map_info = (
+                                backend_helper.check_vol_mapped_to_host(
+                                    connector, lun.replica_ds_id))
+                        else:
+                            msg = (_('Failed to find the attached '
+                                     'Volume %s.') % lun.ds_id)
+                            LOG.error(msg)
+                            raise exception.VolumeDriverException(message=msg)
+                    except Exception as ex:
+                        LOG.warning('Failed to get host mapping for volume '
+                                    '%(volume)s in the secondary site. '
+                                    'Exception: %(err)s.',
+                                    {'volume': lun.replica_ds_id, 'err': ex})
+                        return ret_info
+                    if not mapped:
+                        return ret_info
+                    else:
+                        LOG.info('Detach the volume %s.', lun.replica_ds_id)
+                        return backend_helper.terminate_connection(
+                            lun.replica_ds_id, host_id, connector, map_info)
+            elif host_id and vol_mapped:
+                LOG.info('Detaching volume %s.', lun.ds_id)
+                return backend_helper.terminate_connection(lun.ds_id, host_id,
+                                                           connector, map_info)
 
     @proxy.logger
     def create_group(self, ctxt, group):
@@ -1427,8 +1478,6 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 volume_update = lun.get_volume_update()
                 # failover_host in base cinder has considered previous status
                 # of the volume, it doesn't need to return it for update.
-                volume_update['status'] = (
-                    lun.previous_status or 'available')
                 volume_update['replication_status'] = (
                     fields.ReplicationStatus.FAILED_OVER
                     if self._active_backend_id else
@@ -1581,9 +1630,6 @@ class DS8KProxy(proxy.IBMStorageProxy):
             volume_model_update = lun.get_volume_update()
             # base cinder doesn't consider previous status of the volume
             # in failover_replication, so here returns it for update.
-            volume_model_update['previous_status'] = lun.status
-            volume_model_update['status'] = (
-                lun.previous_status or 'available')
             volume_model_update['replication_status'] = (
                 model_update['replication_status'])
             volume_model_update['id'] = lun.os_id
