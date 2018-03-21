@@ -9,16 +9,17 @@
 # Yongbok Kim <ruo91@yongbok.net>, 2014
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 # Ian Y. Choi <ianyrchoi@gmail.com>, 2017. #zanata
+# Jaewook Oh <kyle.oh95@gmail.com>, 2018. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-02-28 21:24+0000\n"
+"POT-Creation-Date: 2018-03-20 18:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2017-08-19 07:36+0000\n"
-"Last-Translator: Ian Y. Choi <ianyrchoi@gmail.com>\n"
+"PO-Revision-Date: 2018-03-20 12:19+0000\n"
+"Last-Translator: Jaewook Oh <kyle.oh95@gmail.com>\n"
 "Language: ko_KR\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
@@ -379,6 +380,10 @@ msgstr "올바르지 않은 인증 키로 %s 전송을 시도했습니다. "
 #, python-format
 msgid "Authentication failed, verify the switch credentials, error code %s."
 msgstr "인증 실패, 스위치 자격 증명 확인, 오류 코드 %s."
+
+#, python-format
+msgid "Availability zone '%(az)s' is invalid."
+msgstr "가용성 구역 '%(az)s'이(가) 올바르지 않습니다. "
 
 #, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
@@ -3257,6 +3262,10 @@ msgid "Invalid disk type: %s."
 msgstr "올바르지 않은 디스크 유형: %s."
 
 #, python-format
+msgid "Invalid group type: %(reason)s"
+msgstr "잘못된 그룹 타입: %(reason)s"
+
+#, python-format
 msgid "Invalid host: %(reason)s"
 msgstr "잘못된 호스트: %(reason)s"
 
@@ -4054,9 +4063,6 @@ msgstr ""
 msgid "Path to REST server's certificate must be specified."
 msgstr "REST 서버 인증서의 경로를 지정해야 합니다. "
 
-msgid "Please specify a name for QoS specs."
-msgstr "QoS 스펙에 대한 이름을 지정하십시오. "
-
 #, python-format
 msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "정책이 %(action)s이(가) 수행되도록 허용하지 않습니다."
@@ -4776,9 +4782,6 @@ msgid ""
 msgstr ""
 "호스트를 장애 복구할 준비가 되지 않았습니다. 볼륨을 다시 동기화하고 LeftHand "
 "백엔드에서 복제를 재개하십시오."
-
-msgid "The key cannot be None."
-msgstr "키는 None이 되어서는 안 됩니다. "
 
 msgid "The method update_migrated_volume is not implemented."
 msgstr "update_migrated_volume 메소드가 구현되지 않았습니다. "

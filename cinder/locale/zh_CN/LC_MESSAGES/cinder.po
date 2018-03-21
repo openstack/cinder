@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-02-28 21:24+0000\n"
+"POT-Creation-Date: 2018-03-20 18:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4459,9 +4459,6 @@ msgstr "必须指定 REST 服务器的证书的路径。"
 msgid "Please provide at least one volume for parameter %s"
 msgstr "请为参数 %s 提供至少一个卷"
 
-msgid "Please specify a name for QoS specs."
-msgstr "请为 QoS 规范指定名称。"
-
 #, python-format
 msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "政策不允许 %(action)s 被执行。"
@@ -5305,9 +5302,6 @@ msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
 "and resume replication on the LeftHand backends."
 msgstr "主机未准备好故障返回。请重新同步卷并在 LeftHand 后端上继续进行复制。"
-
-msgid "The key cannot be None."
-msgstr "键不能为“无”。"
 
 msgid "The method update_migrated_volume is not implemented."
 msgstr "未实现方法 update_migrated_volume。"
