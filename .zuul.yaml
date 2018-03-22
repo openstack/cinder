@@ -17,6 +17,7 @@
               - ^contrib/block-box.*$
               - ^doc/.*$
               - ^releasenotes/.*$
+        - openstack-tox-lower-constraints
     gate:
       jobs:
         - cinder-tox-compliance
@@ -33,6 +34,7 @@
               - ^doc/.*$
               - ^releasenotes/.*$
 
+        - openstack-tox-lower-constraints
 - job:
     # Previously named legacy-tempest-dsvm-full-lio
     name: cinder-tempest-dsvm-lvm-lio-barbican
