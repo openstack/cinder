@@ -1,0 +1,5 @@
+---
+features:
+  - Added support for active-active replication to the RBD driver.  This allows
+    users to configure multiple volume backends that are all a member of the
+    same cluster participating in replication.

@@ -1804,7 +1804,7 @@ class RBDTestCase(test.TestCase):
             [mock.call(mock.ANY, v, remote, False,
                        fields.ReplicationStatus.FAILED_OVER)
              for v in volumes])
-        mock_get_cfg.assert_called_once_with(secondary_id)
+        mock_get_cfg.assert_called_with(secondary_id)
 
     @mock.patch.object(driver.RBDDriver, '_failover_volume', autospec=True)
     def test_failover_host_failback(self, mock_failover_vol):

@@ -200,6 +200,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Cinder_Jenkins"
 
+    SUPPORTS_ACTIVE_ACTIVE = True
+
     SYSCONFDIR = '/etc/ceph/'
 
     def __init__(self, active_backend_id=None, *args, **kwargs):
@@ -1185,8 +1187,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             secondary_id = candidates.pop()
         return secondary_id, self._get_target_config(secondary_id)
 
-    def failover_host(self, context, volumes, secondary_id=None, groups=None):
-        """Failover to replication target."""
+    def failover(self, context, volumes, secondary_id=None, groups=None):
+        """Failover replicated volumes."""
         LOG.info('RBD driver failover started.')
         if not self._is_replication_enabled:
             raise exception.UnableToFailOver(
@@ -1201,14 +1203,34 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
         # Try to demote the volumes first
         demotion_results = self._demote_volumes(volumes)
+
         # Do the failover taking into consideration if they have been demoted
         updates = [self._failover_volume(volume, remote, is_demoted,
                                          replication_status)
                    for volume, is_demoted in zip(volumes, demotion_results)]
-        self._active_backend_id = secondary_id
-        self._active_config = remote
+
         LOG.info('RBD driver failover completed.')
         return secondary_id, updates, []
+
+    def failover_completed(self, context, secondary_id=None):
+        """Failover to replication target."""
+        LOG.info('RBD driver failover completion started.')
+        secondary_id, remote = self._get_failover_target_config(secondary_id)
+
+        self._active_backend_id = secondary_id
+        self._active_config = remote
+        LOG.info('RBD driver failover completion completed.')
+
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
+        """Failover to replication target.
+
+        This function combines calls to failover() and failover_completed() to
+        perform failover when Active/Active is not enabled.
+        """
+        active_backend_id, volume_update_list, group_update_list = (
+            self.failover(context, volumes, secondary_id, groups))
+        self.failover_completed(context, secondary_id)
+        return active_backend_id, volume_update_list, group_update_list
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""
