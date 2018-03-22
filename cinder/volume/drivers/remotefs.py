@@ -682,7 +682,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
     """
 
     _VALID_IMAGE_EXTENSIONS = []
-    # The following flag may be overriden by the concrete drivers in order
+    # The following flag may be overridden by the concrete drivers in order
     # to avoid using temporary volume snapshots when creating volume clones,
     # when possible.
 
