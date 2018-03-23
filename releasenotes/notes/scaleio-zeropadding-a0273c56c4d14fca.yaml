@@ -1,0 +1,8 @@
+---
+security:
+  - |
+    Removed the ability to create volumes in a ScaleIO Storage Pool that has
+    zero-padding disabled. A new configuration option
+    ``sio_allow_non_padded_volumes`` has been added to override this new
+    behavior and allow unpadded volumes, but should not be enabled if multiple
+    tenants will utilize volumes from a shared Storage Pool.
