@@ -138,9 +138,6 @@ class KeyMigrator(object):
         volume.encryption_key_id = encryption_key_id
         volume.save()
 
-        # TODO(abishop): need to determine if any snapshot creations are
-        # in-flight that might be added to the db with the volume's old
-        # fixed key ID.
         snapshots = objects.snapshot.SnapshotList.get_all_for_volume(
             self.admin_context,
             volume.id)
