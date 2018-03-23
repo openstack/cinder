@@ -39,6 +39,7 @@ Supported operations
 - Create a consistency group from consistency group snapshots.
 - Replication v2.1 support.
 - Generic Group support.
+- Revert a volume to a snapshot.
 
 Preparation
 ~~~~~~~~~~~

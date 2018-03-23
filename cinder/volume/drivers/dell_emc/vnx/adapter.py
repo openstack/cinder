@@ -811,6 +811,11 @@ class CommonAdapter(replication.ReplicationAdapter):
         """Deletes a snapshot."""
         self.client.delete_snapshot(snapshot.name)
 
+    def restore_snapshot(self, volume, snapshot):
+        """Restores a snapshot."""
+        lun_id = self.client.get_lun_id(volume)
+        self.client.restore_snapshot(lun_id, snapshot.name)
+
     def _get_referenced_lun(self, existing_ref):
         lun = None
         if 'source-id' in existing_ref:

@@ -32,7 +32,7 @@ rados # LGPLv2.1
 rbd # LGPLv2.1
 
 # Dell EMC VNX
-storops>=0.4.8 # Apache-2.0
+storops>=0.5.7 # Apache-2.0
 
 # Violin
 vmemclient>=1.1.8 # Apache-2.0

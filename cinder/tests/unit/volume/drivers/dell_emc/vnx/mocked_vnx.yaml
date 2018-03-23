@@ -696,6 +696,15 @@ test_modify_snapshot:
     _methods:
       get_snap: *snap_modify
 
+test_restore_snapshot: &test_restore_snapshot
+  lun: &lun_restore
+    _methods:
+      restore_snap:
+
+  vnx:
+    _methods:
+      get_lun: *lun_restore
+
 test_create_cg_snapshot: &test_create_cg_snapshot
   cg_snap: &cg_snap_exist
     _properties:
@@ -1613,6 +1622,8 @@ test_extend_volume: *test_expand_lun
 test_create_snapshot_adapter: *test_create_snapshot
 
 test_delete_snapshot_adapter: *test_delete_snapshot
+
+test_restore_snapshot_adapter: *test_restore_snapshot
 
 test_create_cgsnapshot: *test_create_cg_snapshot
 
