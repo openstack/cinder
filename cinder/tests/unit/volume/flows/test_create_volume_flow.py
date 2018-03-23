@@ -894,6 +894,9 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                 '_cleanup_cg_in_volume')
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'
+                '_prepare_image_cache_entry')
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.'
                 '_handle_bootable_volume_glance_meta')
     @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -903,12 +906,14 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                                                 mock_qemu_img,
                                                 mock_fetch_img,
                                                 mock_handle_bootable,
+                                                mock_prepare_image_cache,
                                                 mock_cleanup_cg):
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
         fake_volume_manager = mock.MagicMock()
+        fake_cache = mock.MagicMock()
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
-            fake_volume_manager, fake_db, fake_driver)
+            fake_volume_manager, fake_db, fake_driver, fake_cache)
         volume = fake_volume.fake_volume_obj(
             self.ctxt,
             encryption_key_id=fakes.ENCRYPTION_KEY_ID,
@@ -930,6 +935,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
         fake_driver.create_volume.assert_called_once_with(volume)
         fake_driver.copy_image_to_encrypted_volume.assert_called_once_with(
             self.ctxt, volume, fake_image_service, image_id)
+        mock_prepare_image_cache.assert_not_called()
         mock_handle_bootable.assert_called_once_with(self.ctxt, volume,
                                                      image_id=image_id,
                                                      image_meta=image_meta)
@@ -1872,3 +1878,56 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         # Make sure we didn't try and create a cache entry
         self.assertFalse(self.mock_cache.ensure_space.called)
         self.assertFalse(self.mock_cache.create_cache_entry.called)
+
+    @ddt.data(None, {'volume_id': fakes.VOLUME_ID})
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.'
+                '_create_from_image_cache_or_download')
+    def test_prepare_image_cache_entry(
+            self,
+            mock_cache_entry,
+            mock_create_from_image_cache_or_download,
+            mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
+        self.mock_cache.get_entry.return_value = mock_cache_entry
+        volume = fake_volume.fake_volume_obj(self.ctxt,
+                                             id=fakes.VOLUME_ID,
+                                             host='host@backend#pool')
+        image_location = 'someImageLocationStr'
+        image_id = fakes.IMAGE_ID
+        image_meta = {'virtual_size': '1073741824', 'size': 1073741824}
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+        model_update, cloned = manager._prepare_image_cache_entry(
+            self.ctxt,
+            volume,
+            image_location,
+            image_id,
+            image_meta,
+            self.mock_image_service)
+
+        if mock_cache_entry:
+            # Entry is in cache, so basically don't do anything.
+            self.assertFalse(cloned)
+            self.assertIsNone(model_update)
+            mock_create_from_image_cache_or_download.assert_not_called()
+        else:
+            # Entry is not in cache, so do the work that will add it.
+            self.assertTrue(cloned)
+            self.assertEqual(
+                mock_create_from_image_cache_or_download.return_value,
+                model_update)
+            mock_create_from_image_cache_or_download.assert_called_once_with(
+                self.ctxt,
+                volume,
+                image_location,
+                image_id,
+                image_meta,
+                self.mock_image_service,
+                update_cache=True)
