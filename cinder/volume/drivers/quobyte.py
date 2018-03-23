@@ -35,7 +35,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.1.8'
+VERSION = '1.1.9'
 
 LOG = logging.getLogger(__name__)
 
@@ -97,6 +97,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.1.6 - Optimizes volume creation
         1.1.7 - Support fuse subtype based Quobyte mount validation
         1.1.8 - Adds optional snapshot merge caching
+        1.1.9 - Support for Qemu >= 2.10.0
 
     """
 
@@ -243,9 +244,10 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
             LOG.warning("The NAS file permissions mode will be 666 "
                         "(allowing other/world read & write access).")
 
-    def _qemu_img_info(self, path, volume_name):
+    def _qemu_img_info(self, path, volume_name, force_share=True):
         return super(QuobyteDriver, self)._qemu_img_info_base(
-            path, volume_name, self.configuration.quobyte_mount_point_base)
+            path, volume_name, self.configuration.quobyte_mount_point_base,
+            force_share=True)
 
     @utils.synchronized('quobyte', external=False)
     def create_cloned_volume(self, volume, src_vref):
