@@ -302,9 +302,8 @@ class VMAXCommon(object):
             group_name, volume_name, extra_specs)
         # Add remote volume to remote group, if required
         if volume.group.is_replicated:
-            self._add_remote_vols_to_volume_group(
-                extra_specs[utils.ARRAY],
-                [volume], volume.group, extra_specs, rep_driver_data)
+            self.masking.add_remote_vols_to_volume_group(
+                volume, volume.group, extra_specs, rep_driver_data)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
@@ -2220,14 +2219,6 @@ class VMAXCommon(object):
                 {'name': volume_name})
             return False
 
-        if self.utils.is_replication_enabled(extra_specs):
-            LOG.error("Volume %(name)s is replicated - "
-                      "Replicated volumes are not eligible for "
-                      "storage assisted retype. Host assisted "
-                      "retype is supported.",
-                      {'name': volume_name})
-            return False
-
         return self._slo_workload_migration(device_id, volume, host,
                                             volume_name, new_type, extra_specs)
 
@@ -2243,6 +2234,10 @@ class VMAXCommon(object):
         :param extra_specs: extra specifications
         :returns: boolean -- True if migration succeeded, False if error.
         """
+        vol_is_replicated = self.utils.is_replication_enabled(extra_specs)
+        # Check if old type and new type have different replication types
+        do_change_replication = self.utils.change_replication(
+            vol_is_replicated, new_type)
         is_compression_disabled = self.utils.is_compression_disabled(
             extra_specs)
         # Check if old type and new type have different compression types
@@ -2252,7 +2247,7 @@ class VMAXCommon(object):
             self._is_valid_for_storage_assisted_migration(
                 device_id, host, extra_specs[utils.ARRAY],
                 extra_specs[utils.SRP], volume_name,
-                do_change_compression))
+                do_change_compression, do_change_replication))
 
         if not is_valid:
             LOG.error(
@@ -2260,14 +2255,15 @@ class VMAXCommon(object):
                 "assisted migration using retype.",
                 {'name': volume_name})
             return False
-        if volume.host != host['host'] or do_change_compression:
+        if (volume.host != host['host'] or do_change_compression
+                or do_change_replication):
             LOG.debug(
                 "Retype Volume %(name)s from source host %(sourceHost)s "
-                "to target host %(targetHost)s. Compression change is %(cc)r.",
-                {'name': volume_name,
-                 'sourceHost': volume.host,
+                "to target host %(targetHost)s. Compression change is %(cc)r. "
+                "Replication change is %(rc)s",
+                {'name': volume_name, 'sourceHost': volume.host,
                  'targetHost': host['host'],
-                 'cc': do_change_compression})
+                 'cc': do_change_compression, 'rc': do_change_replication})
             return self._migrate_volume(
                 extra_specs[utils.ARRAY], volume, device_id,
                 extra_specs[utils.SRP], target_slo,
@@ -2293,6 +2289,7 @@ class VMAXCommon(object):
         :param extra_specs: the extra specifications
         :returns: bool
         """
+        model_update, rep_mode, move_target = None, None, False
         target_extra_specs = new_type['extra_specs']
         target_extra_specs[utils.SRP] = srp
         target_extra_specs[utils.ARRAY] = array
@@ -2302,28 +2299,82 @@ class VMAXCommon(object):
         target_extra_specs[utils.RETRIES] = extra_specs[utils.RETRIES]
         is_compression_disabled = self.utils.is_compression_disabled(
             target_extra_specs)
+        if self.rep_config and self.rep_config.get('mode'):
+            rep_mode = self.rep_config['mode']
+            target_extra_specs[utils.REP_MODE] = rep_mode
+        was_rep_enabled = self.utils.is_replication_enabled(extra_specs)
+        is_rep_enabled = self.utils.is_replication_enabled(target_extra_specs)
+        if was_rep_enabled:
+            if not is_rep_enabled:
+                # Disable replication is True
+                self._remove_vol_and_cleanup_replication(
+                    array, device_id, volume_name, extra_specs, volume)
+                model_update = {'replication_status': REPLICATION_DISABLED,
+                                'replication_driver_data': None}
+            else:
+                # Ensure both source and target volumes are retyped
+                move_target = True
+        else:
+            if is_rep_enabled:
+                # Setup_volume_replication will put volume in correct sg
+                rep_status, rdf_dict = self.setup_volume_replication(
+                    array, volume, device_id, target_extra_specs)
+                model_update = {
+                    'replication_status': rep_status,
+                    'replication_driver_data': six.text_type(rdf_dict)}
+                return True, model_update
 
         try:
             target_sg_name = self.masking.get_or_create_default_storage_group(
                 array, srp, target_slo, target_workload, extra_specs,
-                is_compression_disabled)
+                is_compression_disabled, is_rep_enabled, rep_mode)
         except Exception as e:
             LOG.error("Failed to get or create storage group. "
                       "Exception received was %(e)s.", {'e': e})
             return False
 
+        success = self._retype_volume(
+            array, device_id, volume_name, target_sg_name,
+            volume, target_extra_specs)
+        if success and move_target:
+            success = self._retype_remote_volume(
+                array, volume, device_id, volume_name,
+                rep_mode, is_rep_enabled, target_extra_specs)
+
+        return success, model_update
+
+    def _retype_volume(self, array, device_id, volume_name, target_sg_name,
+                       volume, extra_specs):
+        """Move the volume to the correct storagegroup.
+
+        Add the volume to the target storage group, or to the correct default
+        storage group, and check if it is there.
+        :param array: the array serial
+        :param device_id: the device id
+        :param volume_name: the volume name
+        :param target_sg_name: the target sg name
+        :param volume: the volume object
+        :param extra_specs: the target extra specifications
+        :returns bool
+        """
         storagegroups = self.rest.get_storage_groups_from_volume(
             array, device_id)
         if not storagegroups:
             LOG.warning("Volume : %(volume_name)s does not currently "
                         "belong to any storage groups.",
                         {'volume_name': volume_name})
+            # Add the volume to the target storage group
             self.masking.add_volume_to_storage_group(
                 array, device_id, target_sg_name, volume_name, extra_specs)
+            # Check if volume should be member of GVG
+            self.masking.return_volume_to_volume_group(
+                array, volume, device_id, volume_name, extra_specs)
         else:
+            # Move the volume to the correct default storage group for
+            # its volume type
             self.masking.remove_and_reset_members(
-                array, volume, device_id, volume_name, target_extra_specs,
-                reset=True)
+                array, volume, device_id, volume_name,
+                extra_specs, reset=True)
 
         # Check that it has been added.
         vol_check = self.rest.is_volume_in_storagegroup(
@@ -2338,9 +2389,48 @@ class VMAXCommon(object):
 
         return True
 
+    def _retype_remote_volume(self, array, volume, device_id,
+                              volume_name, rep_mode, is_re, extra_specs):
+        """Retype the remote volume.
+
+        :param array: the array serial number
+        :param volume: the volume object
+        :param device_id: the device id
+        :param volume_name: the volume name
+        :param rep_mode: the replication mode
+        :param is_re: replication enabled
+        :param extra_specs: the target extra specs
+        :returns: bool
+        """
+        success = True
+        (target_device, remote_array, _, _, _) = (
+            self.get_remote_target_device(array, volume, device_id))
+        rep_extra_specs = self._get_replication_extra_specs(
+            extra_specs, self.rep_config)
+        rep_compr_disabled = self.utils.is_compression_disabled(
+            rep_extra_specs)
+        remote_sg_name = self.masking.get_or_create_default_storage_group(
+            remote_array, rep_extra_specs[utils.SRP],
+            rep_extra_specs[utils.SLO], rep_extra_specs[utils.WORKLOAD],
+            rep_extra_specs, rep_compr_disabled,
+            is_re=is_re, rep_mode=rep_mode)
+        found_storage_group_list = self.rest.get_storage_groups_from_volume(
+            remote_array, target_device)
+        move_rqd = True
+        for found_storage_group_name in found_storage_group_list:
+            # Check if remote volume is already in the correct sg
+            if found_storage_group_name == remote_sg_name:
+                move_rqd = False
+                break
+        if move_rqd:
+            success = self._retype_volume(
+                remote_array, target_device, volume_name, remote_sg_name,
+                volume, rep_extra_specs)
+        return success
+
     def _is_valid_for_storage_assisted_migration(
-            self, device_id, host, source_array,
-            source_srp, volume_name, do_change_compression):
+            self, device_id, host, source_array, source_srp, volume_name,
+            do_change_compression, do_change_replication):
         """Check if volume is suitable for storage assisted (pool) migration.
 
         :param device_id: the volume device id
@@ -2349,6 +2439,7 @@ class VMAXCommon(object):
         :param source_srp: the volume's current pool name
         :param volume_name: the name of the volume to be migrated
         :param do_change_compression: do change compression
+        :param do_change_replication: flag indicating replication change
         :returns: boolean -- True/False
         :returns: string -- targetSlo
         :returns: string -- targetWorkload
@@ -2375,6 +2466,8 @@ class VMAXCommon(object):
                 target_workload = 'NONE'
             else:
                 raise IndexError
+            if target_slo.lower() == 'none':
+                target_slo = None
         except IndexError:
             LOG.error("Error parsing array, pool, SLO and workload.")
             return false_ret
@@ -2415,9 +2508,11 @@ class VMAXCommon(object):
                                       % {'targetSlo': target_slo,
                                          'targetWorkload': target_workload})
                 if target_combination == emc_fast_setting:
-                    # Check if migration is from compression to non compression
-                    # or vice versa
-                    if not do_change_compression:
+                    # Check if migration is to change compression
+                    # or replication types
+                    action_rqd = (True if do_change_compression
+                                  or do_change_replication else False)
+                    if not action_rqd:
                         LOG.warning(
                             "No action required. Volume: %(volume_name)s is "
                             "already part of slo/workload combination: "
@@ -3632,8 +3727,8 @@ class VMAXCommon(object):
                     array, add_device_ids, vol_grp_name, interval_retries_dict)
                 if group.is_replicated:
                     # Add remote volumes to remote storage group
-                    self._add_remote_vols_to_volume_group(
-                        array, add_vols, group, interval_retries_dict)
+                    self.masking.add_remote_vols_to_volume_group(
+                        add_vols, group, interval_retries_dict)
             # Remove volume(s) from the group
             if remove_device_ids:
                 self.masking.remove_volumes_from_storage_group(
@@ -3654,34 +3749,6 @@ class VMAXCommon(object):
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         return model_update, None, None
-
-    def _add_remote_vols_to_volume_group(
-            self, array, volumes, group,
-            extra_specs, rep_driver_data=None):
-        """Add the remote volumes to their volume group.
-
-        :param array: the array serial number
-        :param volumes: list of volumes
-        :param group: the id of the group
-        :param extra_specs: the extra specifications
-        :param rep_driver_data: replication driver data, optional
-        """
-        remote_device_list = []
-        __, remote_array = self.get_rdf_details(array)
-        for vol in volumes:
-            try:
-                remote_loc = ast.literal_eval(vol.replication_driver_data)
-            except (ValueError, KeyError):
-                remote_loc = ast.literal_eval(rep_driver_data)
-            founddevice_id = self.rest.check_volume_device_id(
-                remote_array, remote_loc['device_id'], vol.id)
-            if founddevice_id is not None:
-                remote_device_list.append(founddevice_id)
-        group_name = self.provision.get_or_create_volume_group(
-            remote_array, group, extra_specs)
-        self.masking.add_volumes_to_storage_group(
-            remote_array, remote_device_list, group_name, extra_specs)
-        LOG.info("Added volumes to remote volume group.")
 
     def _remove_remote_vols_from_volume_group(
             self, array, volumes, group, extra_specs):

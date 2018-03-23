@@ -1,0 +1,3 @@
+---
+features:
+  - Support for retype (storage-assisted migration) of replicated volumes on VMAX cinder driver.
