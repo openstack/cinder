@@ -13,12 +13,6 @@ admin_project_id:
   in: path
   required: true
   type: string
-all_tenants:
-  description: |
-    Shows details for all projects.
-  in: path
-  required: false
-  type: string
 attachment_id_1:
   description: |
     The ID of the attachment.
@@ -176,23 +170,11 @@ transfer_id:
   in: path
   required: true
   type: string
-vol_type_id:
-  description: |
-    The UUID for an existing volume type.
-  in: path
-  required: true
-  type: string
 volume_id_path:
   description: |
     The UUID of the volume.
   in: path
   required: true
-  type: string
-volume_type:
-  description: |
-    The ID of Volume Type to be accessed by project.
-  in: path
-  required: false
   type: string
 volume_type_access:
   description: |
@@ -2848,6 +2830,12 @@ volume_name:
 volume_name_1:
   description: |
     The volume name.
+  in: body
+  required: false
+  type: string
+volume_type:
+  description: |
+    The ID of Volume Type to be accessed by project.
   in: body
   required: false
   type: string
