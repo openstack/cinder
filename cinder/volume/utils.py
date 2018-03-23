@@ -991,7 +991,6 @@ def get_max_over_subscription_ratio(str_value, supports_auto=False):
 
     :param str_value: Configuration object
     :param supports_auto: Tell if the calling driver supports auto MOSR.
-    :param drv_msg: Error message from the caller
     :response: value of mosr
     """
 
