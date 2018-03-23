@@ -17,8 +17,12 @@
    * - Configuration option = Default value
      - Description
 
-   * - **[DEFAULT]**
-     -
+   * - ``sio_allow_non_padded_thick_volumes`` = ``False``
+
+     - (Boolean) Allow thick volumes to be created in Storage Pools
+       when zero padding is disabled. This option should
+       not be enabled if multiple tenants will utilize
+       thick volumes from a shared Storage Pool.
 
    * - ``sio_max_over_subscription_ratio`` = ``10.0``
 
