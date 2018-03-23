@@ -4035,7 +4035,33 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
 
         self.fc_driver.initialize_connection(volume_fc, connector)
+        self.fc_driver.initialize_connection(volume_fc, connector)
         self.fc_driver.terminate_connection(volume_fc, connector)
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSSH,
+                'mkvdiskhostmap') as mkvdiskhostmap:
+            ex = exception.VolumeBackendAPIException(data='CMMVC5879E')
+            mkvdiskhostmap.side_effect = [ex, ex, mock.MagicMock()]
+            self.fc_driver.initialize_connection(volume_fc, connector)
+            self.fc_driver.terminate_connection(volume_fc, connector)
+            mkvdiskhostmap.side_effect = ex
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.fc_driver.initialize_connection,
+                              volume_fc,
+                              connector)
+            ex1 = exception.VolumeBackendAPIException(data='CMMVC6071E')
+            mkvdiskhostmap.side_effect = ex1
+            self._set_flag('storwize_svc_multihostmap_enabled', False)
+            self.assertRaises(exception.VolumeDriverException,
+                              self.fc_driver.initialize_connection,
+                              volume_fc,
+                              connector)
+            ex2 = exception.VolumeBackendAPIException(data='CMMVC5707E')
+            mkvdiskhostmap.side_effect = ex2
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.fc_driver.initialize_connection,
+                              volume_fc,
+                              connector)
 
     def test_storwize_initialize_fc_connection_with_host_site(self):
         connector = {'host': 'storwize-svc-host',
@@ -7914,33 +7940,19 @@ class StorwizeSSHTestCase(test.TestCase):
 
     def test_mkvdiskhostmap(self):
         # mkvdiskhostmap should not be returning anything
-        self.fake_driver.fake_storage._volumes_list['9999'] = {
-            'name': ' 9999', 'id': '0', 'uid': '0',
-            'IO_group_id': '0', 'IO_group_name': 'fakepool'}
-        self.fake_driver.fake_storage._hosts_list['HOST1'] = {
-            'name': 'HOST1', 'id': '0', 'host_name': 'HOST1'}
-        self.fake_driver.fake_storage._hosts_list['HOST2'] = {
-            'name': 'HOST2', 'id': '1', 'host_name': 'HOST2'}
-        self.fake_driver.fake_storage._hosts_list['HOST3'] = {
-            'name': 'HOST3', 'id': '2', 'host_name': 'HOST3'}
-
-        ret = self.storwize_ssh.mkvdiskhostmap('HOST1', '9999', '511', False)
-        self.assertEqual('511', ret)
-
-        ret = self.storwize_ssh.mkvdiskhostmap('HOST2', '9999', '512', True)
-        self.assertEqual('512', ret)
-
-        ret = self.storwize_ssh.mkvdiskhostmap('HOST3', '9999', None, True)
-        self.assertIsNotNone(ret)
-
         with mock.patch.object(
                 storwize_svc_common.StorwizeSSH,
                 'run_ssh_check_created') as run_ssh_check_created:
+            run_ssh_check_created.return_value = None
+            ret = self.storwize_ssh.mkvdiskhostmap('HOST1', 9999, 511, False)
+            self.assertIsNone(ret)
+            ret = self.storwize_ssh.mkvdiskhostmap('HOST2', 9999, 511, True)
+            self.assertIsNone(ret)
             ex = exception.VolumeBackendAPIException(data='CMMVC6071E')
             run_ssh_check_created.side_effect = ex
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.storwize_ssh.mkvdiskhostmap,
-                              'HOST3', '9999', 511, True)
+                              'HOST3', 9999, 511, True)
 
     @ddt.data((exception.VolumeBackendAPIException(data='CMMVC6372W'), None),
               (exception.VolumeBackendAPIException(data='CMMVC6372W'),
