@@ -61,6 +61,11 @@ BACKEND_QOS_CONSUMERS = frozenset(['back-end', 'both'])
 QOS_MAX_IOPS = 'maxIOPS'
 QOS_MAX_BWS = 'maxBWS'
 
+# Max retries for the REST API client in case of a failure:
+_API_MAX_RETRIES = 5
+_INFINIDAT_CINDER_IDENTIFIER = (
+    "cinder/%s" % version.version_info.release_string())
+
 infinidat_opts = [
     cfg.StrOpt('infinidat_pool_name',
                help='Name of the pool from which volumes are allocated'),
@@ -127,6 +132,16 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         self.configuration.append_config_values(infinidat_opts)
         self._lookup_service = fczm_utils.create_lookup_service()
 
+    def _setup_and_get_system_object(self, management_address, auth):
+        system = infinisdk.InfiniBox(management_address, auth=auth)
+        system.api.add_auto_retry(
+            lambda e: isinstance(
+                e, infinisdk.core.exceptions.APITransportFailure) and
+            "Interrupted system call" in e.error_desc, _API_MAX_RETRIES)
+        system.api.set_source_identifier(_INFINIDAT_CINDER_IDENTIFIER)
+        system.login()
+        return system
+
     def do_setup(self, context):
         """Driver initialization"""
         if infinisdk is None:
@@ -136,8 +151,8 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         auth = (self.configuration.san_login,
                 self.configuration.san_password)
         self.management_address = self.configuration.san_ip
-        self._system = infinisdk.InfiniBox(self.management_address, auth=auth)
-        self._system.login()
+        self._system = (
+            self._setup_and_get_system_object(self.management_address, auth))
         backend_name = self.configuration.safe_get('volume_backend_name')
         self._backend_name = backend_name or self.__class__.__name__
         self._volume_stats = None
