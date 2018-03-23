@@ -232,11 +232,12 @@ class AdminActionsTest(BaseAdminTest):
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('error', volume['status'])
 
-    def test_reset_status_as_non_admin(self):
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_reset_status_as_non_admin(self, fake_get):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         volume = db.volume_create(self.ctx,
                                   {'status': 'error', 'size': 1})
-
+        fake_get.return_value = volume
         resp = self._issue_volume_reset(ctx,
                                         volume,
                                         {'status': 'error'})
@@ -634,11 +635,13 @@ class AdminActionsTest(BaseAdminTest):
         volume = self._migrate_volume_exec(self.ctx, volume, host,
                                            expected_status)
 
-    def test_migrate_volume_as_non_admin(self):
+    @mock.patch("cinder.volume.api.API.get")
+    def test_migrate_volume_as_non_admin(self, fake_get):
         expected_status = http_client.FORBIDDEN
         host = 'test2'
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         volume = self._migrate_volume_prep()
+        fake_get.return_value = volume
         self._migrate_volume_exec(ctx, volume, host, expected_status)
 
     def test_migrate_volume_without_host_parameter(self):
@@ -716,11 +719,13 @@ class AdminActionsTest(BaseAdminTest):
         else:
             self.assertNotIn('save_volume_id', resp_dict)
 
-    def test_migrate_volume_comp_as_non_admin(self):
+    @mock.patch("cinder.volume.api.API.get")
+    def test_migrate_volume_comp_as_non_admin(self, fake_get):
         volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID})
         new_volume = db.volume_create(self.ctx, {'id': fake.VOLUME2_ID})
         expected_status = http_client.FORBIDDEN
         expected_id = None
+        fake_get.return_value = volume
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
                                        expected_status, expected_id)

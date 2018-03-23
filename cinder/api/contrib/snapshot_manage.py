@@ -84,13 +84,13 @@ class SnapshotManageController(wsgi.Controller):
 
         """
         context = req.environ['cinder.context']
-        context.authorize(policy.MANAGE_POLICY)
 
         snapshot = body['snapshot']
         # Check whether volume exists
         volume_id = snapshot['volume_id']
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, volume_id)
+        context.authorize(policy.MANAGE_POLICY, target_obj=volume)
 
         LOG.debug('Manage snapshot request body: %s', body)
 

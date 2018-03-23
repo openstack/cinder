@@ -57,7 +57,7 @@ class MessagesController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         message = self.message_api.get(context, id)
 
-        context.authorize(policy.GET_POLICY)
+        context.authorize(policy.GET_POLICY, target_obj=message)
 
         self._build_user_message(message)
         return self._view_builder.detail(req, message)

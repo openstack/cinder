@@ -25,6 +25,7 @@ from cinder.api.schemas import volume_image_metadata
 from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
+from cinder import objects
 from cinder.policies import volume_metadata as policy
 from cinder import volume
 
@@ -88,7 +89,9 @@ class VolumeImageMetadataController(wsgi.Controller):
     @validation.schema(volume_image_metadata.set_image_metadata)
     def create(self, req, id, body):
         context = req.environ['cinder.context']
-        if context.authorize(policy.IMAGE_METADATA_POLICY):
+        volume = objects.Volume.get_by_id(context, id)
+        if context.authorize(policy.IMAGE_METADATA_POLICY,
+                             target_obj=volume):
             metadata = body['os-set_image_metadata']['metadata']
             new_metadata = self._update_volume_image_metadata(context,
                                                               id,
@@ -128,7 +131,8 @@ class VolumeImageMetadataController(wsgi.Controller):
     def delete(self, req, id, body):
         """Deletes an existing image metadata."""
         context = req.environ['cinder.context']
-        if context.authorize(policy.IMAGE_METADATA_POLICY):
+        volume = objects.Volume.get_by_id(context, id)
+        if context.authorize(policy.IMAGE_METADATA_POLICY, target_obj=volume):
             key = body['os-unset_image_metadata']['key']
 
             vol, metadata = self._get_image_metadata(context, id)

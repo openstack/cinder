@@ -12,6 +12,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+import mock
 import uuid
 
 from oslo_policy import policy as oslo_policy
@@ -201,7 +202,8 @@ class VolumeImageMetadataTest(test.TestCase):
         self.assertEqual({'key1': 'value1', 'key2': 'value2'},
                          self._get_image_metadata_list(res.body)[0])
 
-    def test_create_image_metadata(self):
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_create_image_metadata(self, fake_get):
         self.mock_object(volume.api.API, 'get_volume_image_metadata',
                          return_empty_image_metadata)
         self.mock_object(db, 'volume_metadata_update',
@@ -213,6 +215,7 @@ class VolumeImageMetadataTest(test.TestCase):
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
+        fake_get.return_value = {}
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
@@ -220,12 +223,14 @@ class VolumeImageMetadataTest(test.TestCase):
         self.assertEqual(fake_image_metadata,
                          jsonutils.loads(res.body)["metadata"])
 
-    def test_create_image_metadata_policy_not_authorized(self):
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_create_image_metadata_policy_not_authorized(self, fake_get):
         rules = {
             metadata_policy.IMAGE_METADATA_POLICY: base_policy.RULE_ADMIN_API
         }
         policy.set_rules(oslo_policy.Rules.from_dict(rules))
         self.addCleanup(policy.reset)
+        fake_get.return_value = {}
 
         req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID), use_admin_context=False)
@@ -241,13 +246,15 @@ class VolumeImageMetadataTest(test.TestCase):
                           self.controller.create, req, fake.VOLUME_ID,
                           body=body)
 
-    def test_create_with_keys_case_insensitive(self):
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_create_with_keys_case_insensitive(self, fake_get):
         # If the keys in uppercase_and_lowercase, should return the one
         # which server added
         self.mock_object(volume.api.API, 'get_volume_image_metadata',
                          return_empty_image_metadata)
         self.mock_object(db, 'volume_metadata_update',
                          fake_create_volume_metadata)
+        fake_get.return_value = {}
 
         body = {
             "os-set_image_metadata": {
@@ -272,11 +279,13 @@ class VolumeImageMetadataTest(test.TestCase):
         self.assertEqual(fake_image_metadata,
                          jsonutils.loads(res.body)["metadata"])
 
-    def test_create_empty_body(self):
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_create_empty_body(self, fake_get):
         req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
+        fake_get.return_value = {}
 
         self.assertRaises(exception.ValidationError,
                           self.controller.create, req, fake.VOLUME_ID,
@@ -297,7 +306,8 @@ class VolumeImageMetadataTest(test.TestCase):
                           self.controller.create, req, fake.VOLUME_ID,
                           body=body)
 
-    def test_invalid_metadata_items_on_create(self):
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_invalid_metadata_items_on_create(self, fake_get):
         self.mock_object(db, 'volume_metadata_update',
                          fake_create_volume_metadata)
         req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
@@ -308,6 +318,7 @@ class VolumeImageMetadataTest(test.TestCase):
         data = {"os-set_image_metadata": {
             "metadata": {"a" * 260: "value1"}}
         }
+        fake_get.return_value = {}
 
         # Test for long key
         req.body = jsonutils.dump_as_bytes(data)
@@ -333,7 +344,8 @@ class VolumeImageMetadataTest(test.TestCase):
                           self.controller.create, req, fake.VOLUME_ID,
                           body=data)
 
-    def test_delete(self):
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_delete(self, fake_get):
         self.mock_object(db, 'volume_metadata_delete',
                          volume_metadata_delete)
 
@@ -345,17 +357,20 @@ class VolumeImageMetadataTest(test.TestCase):
         req.method = 'POST'
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
+        fake_get.return_value = {}
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
         self.assertEqual(http_client.OK, res.status_int)
 
-    def test_delete_image_metadata_policy_not_authorized(self):
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_delete_image_metadata_policy_not_authorized(self, fake_get):
         rules = {
             metadata_policy.IMAGE_METADATA_POLICY: base_policy.RULE_ADMIN_API
         }
         policy.set_rules(oslo_policy.Rules.from_dict(rules))
         self.addCleanup(policy.reset)
+        fake_get.return_value = {}
 
         req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID), use_admin_context=False)
@@ -371,7 +386,8 @@ class VolumeImageMetadataTest(test.TestCase):
                           self.controller.delete, req, fake.VOLUME_ID,
                           body=None)
 
-    def test_delete_meta_not_found(self):
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_delete_meta_not_found(self, fake_get):
         data = {"os-unset_image_metadata": {
             "key": "invalid_id"}
         }
@@ -380,12 +396,14 @@ class VolumeImageMetadataTest(test.TestCase):
         req.method = 'POST'
         req.body = jsonutils.dump_as_bytes(data)
         req.headers["content-type"] = "application/json"
+        fake_get.return_value = {}
 
         self.assertRaises(exception.GlanceMetadataNotFound,
                           self.controller.delete, req, fake.VOLUME_ID,
                           body=data)
 
-    def test_delete_nonexistent_volume(self):
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_delete_nonexistent_volume(self, fake_get):
         self.mock_object(db, 'volume_metadata_delete',
                          return_volume_nonexistent)
 
@@ -397,6 +415,7 @@ class VolumeImageMetadataTest(test.TestCase):
         req.method = 'POST'
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
+        fake_get.return_value = {}
 
         self.assertRaises(exception.GlanceMetadataNotFound,
                           self.controller.delete, req, fake.VOLUME_ID,
