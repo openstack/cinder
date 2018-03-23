@@ -743,9 +743,45 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         return None, False
 
     @coordination.synchronized('{image_id}')
+    def _prepare_image_cache_entry(self, context, volume,
+                                   image_location, image_id,
+                                   image_meta, image_service):
+        internal_context = cinder_context.get_internal_tenant_context()
+        if not internal_context:
+            return None, False
+
+        cache_entry = self.image_volume_cache.get_entry(internal_context,
+                                                        volume,
+                                                        image_id,
+                                                        image_meta)
+
+        # If the entry is in the cache then return ASAP in order to minimize
+        # the scope of the lock. If it isn't in the cache then do the work
+        # that adds it. The work is done inside the locked region to ensure
+        # only one cache entry is created.
+        if cache_entry:
+            LOG.debug('Found cache entry for image = '
+                      '%(image_id)s on host %(host)s.',
+                      {'image_id': image_id, 'host': volume.host})
+            return None, False
+        else:
+            LOG.debug('Preparing cache entry for image = '
+                      '%(image_id)s on host %(host)s.',
+                      {'image_id': image_id, 'host': volume.host})
+            model_update = self._create_from_image_cache_or_download(
+                context,
+                volume,
+                image_location,
+                image_id,
+                image_meta,
+                image_service,
+                update_cache=True)
+            return model_update, True
+
     def _create_from_image_cache_or_download(self, context, volume,
                                              image_location, image_id,
-                                             image_meta, image_service):
+                                             image_meta, image_service,
+                                             update_cache=False):
         # NOTE(e0ne): check for free space in image_conversion_dir before
         # image downloading.
         # NOTE(mnaser): This check *only* happens if the backend is not able
@@ -784,8 +820,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                     image_id,
                     image_meta
                 )
-                # Don't cache encrypted volume.
-                if not cloned and not volume.encryption_key_id:
+                # Don't cache unless directed.
+                if not cloned and update_cache:
                     should_create_cache_entry = True
 
         # Fall back to default behavior of creating volume,
@@ -890,6 +926,21 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                                             volume,
                                                             image_location,
                                                             image_meta)
+
+        # If we're going to try using the image cache then prepare the cache
+        # entry. Note: encrypted volume images are not cached.
+        if not cloned and self.image_volume_cache and not volume_is_encrypted:
+            # If _prepare_image_cache_entry() has to create the cache entry
+            # then it will also create the volume. But if the volume image
+            # is already in the cache then it returns (None, False), and
+            # _create_from_image_cache_or_download() will use the cache.
+            model_update, cloned = self._prepare_image_cache_entry(
+                context,
+                volume,
+                image_location,
+                image_id,
+                image_meta,
+                image_service)
 
         # Try and use the image cache, and download if not cached.
         if not cloned:
