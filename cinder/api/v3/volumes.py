@@ -75,7 +75,7 @@ class VolumeController(volumes_v2.VolumeController):
                                cascade=cascade,
                                force=force)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @common.process_general_filtering('volume')
     def _process_volume_filtering(self, context=None, filters=None,
