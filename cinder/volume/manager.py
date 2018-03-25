@@ -522,14 +522,23 @@ class VolumeManager(manager.CleanableManager,
             with excutils.save_and_reraise_exception():
                 LOG.error("Service not found for updating replication_status.")
 
-        if service.replication_status != (
-                fields.ReplicationStatus.FAILED_OVER):
+        if service.replication_status != fields.ReplicationStatus.FAILED_OVER:
             if stats and stats.get('replication_enabled', False):
-                service.replication_status = fields.ReplicationStatus.ENABLED
+                replication_status = fields.ReplicationStatus.ENABLED
             else:
-                service.replication_status = fields.ReplicationStatus.DISABLED
+                replication_status = fields.ReplicationStatus.DISABLED
 
-        service.save()
+            if replication_status != service.replication_status:
+                service.replication_status = replication_status
+                service.save()
+
+        # Update the cluster replication status if necessary
+        cluster = service.cluster
+        if (cluster and
+                cluster.replication_status != service.replication_status):
+            cluster.replication_status = service.replication_status
+            cluster.save()
+
         LOG.info("Driver post RPC initialization completed successfully.",
                  resource={'type': 'driver',
                            'id': self.driver.__class__.__name__})
