@@ -193,12 +193,11 @@ class Service(service.Service):
             service_ref.save()
             Service.service_id = service_ref.id
         except exception.NotFound:
-            # We don't want to include cluster information on the service or
-            # create the cluster entry if we are upgrading.
             self._create_service_ref(ctxt, manager_class.RPC_API_VERSION)
-            # We don't want to include resources in the cluster during the
-            # start while we are still doing the rolling upgrade.
-            self.added_to_cluster = True
+            # Service entry Entry didn't exist because it was manually removed
+            # or it's the first time running, to be on the safe side we say we
+            # were added if we are clustered.
+            self.added_to_cluster = bool(cluster)
 
         self.report_interval = report_interval
         self.periodic_interval = periodic_interval
@@ -348,7 +347,6 @@ class Service(service.Service):
             'rpc_current_version': rpc_version or self.manager.RPC_API_VERSION,
             'object_current_version': objects_base.OBJ_VERSIONS.get_current(),
         }
-        # If we are upgrading we have to ignore the cluster value
         kwargs['cluster_name'] = self.cluster
         service_ref = objects.Service(context=context, **kwargs)
         service_ref.create()
