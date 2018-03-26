@@ -275,6 +275,14 @@ not efficient since a cloned volume will be created during backup.
 An effective approach to backups is to create a snapshot for the volume and
 connect this snapshot to the Block Storage host for volume backup.
 
+Force detach volume from all hosts
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The user could use `os-force_detach` action to detach a volume from all its
+attached hosts.
+For more detail, please refer to
+https://developer.openstack.org/api-ref/block-storage/v2/?expanded=force-detach-volume-detail#force-detach-volume
+
 Troubleshooting
 ~~~~~~~~~~~~~~~
 
