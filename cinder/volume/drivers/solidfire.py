@@ -16,7 +16,6 @@
 import inspect
 import json
 import math
-import random
 import re
 import socket
 import string
@@ -655,8 +654,9 @@ class SolidFireDriver(san.SanISCSIDriver):
     def _generate_random_string(self, length):
         """Generates random_string to use for CHAP password."""
 
-        char_set = string.ascii_uppercase + string.digits
-        return ''.join(random.sample(char_set, length))
+        return vol_utils.generate_password(
+            length=length,
+            symbolgroups=(string.ascii_uppercase + string.digits))
 
     def _get_model_info(self, sfaccount, sf_volume_id, endpoint=None):
         """Gets the connection info for specified account and volume."""

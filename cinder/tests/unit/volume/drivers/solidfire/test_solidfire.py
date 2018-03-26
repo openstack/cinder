@@ -15,6 +15,7 @@
 #    under the License.
 
 import datetime
+import re
 import six
 
 import ddt
@@ -2049,3 +2050,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                        'port': 443}
         ep = sfv._build_endpoint_info(mvip='1.2.3.4', password='nunyabiz')
         self.assertEqual(expected_ep, ep)
+
+    def test_generate_random_string(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        a = sfv._generate_random_string(12)
+        self.assertEqual(len(a), 12)
+        self.assertIsNotNone(re.match(r'[A-Z0-9]{12}', a), a)
