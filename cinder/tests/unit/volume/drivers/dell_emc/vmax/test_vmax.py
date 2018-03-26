@@ -3240,25 +3240,6 @@ class VMAXProvisionTest(test.TestCase):
                 self.data.rdf_group_no, self.data.device_id2, extra_specs)
             mock_del_rdf.assert_called_once()
 
-    def test_failover_volume(self):
-        array = self.data.array
-        device_id = self.data.device_id
-        rdf_group_name = self.data.rdf_group_name
-        extra_specs = self.data.extra_specs
-        with mock.patch.object(
-                self.provision.rest, 'modify_rdf_device_pair') as mod_rdf:
-            self.provision.failover_volume(
-                array, device_id, rdf_group_name,
-                extra_specs, '', True)
-            mod_rdf.assert_called_once_with(
-                array, device_id, rdf_group_name, extra_specs)
-            mod_rdf.reset_mock()
-            self.provision.failover_volume(
-                array, device_id, rdf_group_name,
-                extra_specs, '', False)
-            mod_rdf.assert_called_once_with(
-                array, device_id, rdf_group_name, extra_specs)
-
     @mock.patch.object(rest.VMAXRest, 'get_storage_group',
                        return_value=None)
     def test_create_volume_group_success(self, mock_get_sg):
@@ -7030,126 +7011,18 @@ class VMAXCommonReplicationTest(test.TestCase):
 
     def test_failover_host(self):
         volumes = [self.data.test_volume, self.data.test_clone_volume]
-        with mock.patch.object(self.common, '_failover_volume',
-                               return_value={}) as mock_fo:
+        with mock.patch.object(self.common, '_failover_replication',
+                               return_value=(None, {})) as mock_fo:
             self.common.failover_host(volumes)
-            self.assertEqual(2, mock_fo.call_count)
-
-    def test_failover_host_exception(self):
-        volumes = [self.data.test_volume, self.data.test_clone_volume]
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.common.failover_host,
-                          volumes, secondary_id="default")
+            mock_fo.assert_called_once()
 
     @mock.patch.object(common.VMAXCommon, 'failover_replication',
                        return_value=({}, {}))
-    @mock.patch.object(common.VMAXCommon, '_failover_volume',
-                       return_value={})
-    def test_failover_host_groups(self, mock_fv, mock_fg):
+    def test_failover_host_groups(self, mock_fg):
         volumes = [self.data.test_volume_group_member]
         group1 = self.data.test_group
         self.common.failover_host(volumes, None, [group1])
-        mock_fv.assert_not_called()
         mock_fg.assert_called_once()
-
-    def test_failover_volume(self):
-        ref_model_update = {
-            'volume_id': self.data.test_volume.id,
-            'updates':
-                {'replication_status': fields.ReplicationStatus.FAILED_OVER,
-                 'replication_driver_data': self.data.provider_location,
-                 'provider_location': self.data.provider_location3}}
-        model_update = self.common._failover_volume(
-            self.data.test_volume, True, self.extra_specs)
-
-        # Decode string representations of dicts into dicts, because
-        # the string representations are randomly ordered and therefore
-        # hard to compare.
-        model_update['updates']['replication_driver_data'] = ast.literal_eval(
-            model_update['updates']['replication_driver_data'])
-
-        model_update['updates']['provider_location'] = ast.literal_eval(
-            model_update['updates']['provider_location'])
-
-        self.assertEqual(ref_model_update, model_update)
-
-        ref_model_update2 = {
-            'volume_id': self.data.test_volume.id,
-            'updates':
-                {'replication_status': fields.ReplicationStatus.ENABLED,
-                 'replication_driver_data': self.data.provider_location,
-                 'provider_location': self.data.provider_location3}}
-        model_update2 = self.common._failover_volume(
-            self.data.test_volume, False, self.extra_specs)
-
-        # Decode string representations of dicts into dicts, because
-        # the string representations are randomly ordered and therefore
-        # hard to compare.
-        model_update2['updates']['replication_driver_data'] = ast.literal_eval(
-            model_update2['updates']['replication_driver_data'])
-
-        model_update2['updates']['provider_location'] = ast.literal_eval(
-            model_update2['updates']['provider_location'])
-
-        self.assertEqual(ref_model_update2, model_update2)
-
-    def test_failover_legacy_volume(self):
-        ref_model_update = {
-            'volume_id': self.data.test_volume.id,
-            'updates':
-                {'replication_status': fields.ReplicationStatus.FAILED_OVER,
-                 'replication_driver_data': self.data.legacy_provider_location,
-                 'provider_location': self.data.legacy_provider_location2}}
-        model_update = self.common._failover_volume(
-            self.data.test_legacy_vol, True, self.extra_specs)
-
-        # Decode string representations of dicts into dicts, because
-        # the string representations are randomly ordered and therefore
-        # hard to compare.
-        model_update['updates']['replication_driver_data'] = ast.literal_eval(
-            model_update['updates']['replication_driver_data'])
-
-        model_update['updates']['provider_location'] = ast.literal_eval(
-            model_update['updates']['provider_location'])
-
-        self.assertEqual(ref_model_update, model_update)
-
-    def test_failover_volume_exception(self):
-        with mock.patch.object(
-                self.provision, 'failover_volume',
-                side_effect=exception.VolumeBackendAPIException):
-            ref_model_update = {
-                'volume_id': self.data.test_volume.id,
-                'updates': {'replication_status':
-                            fields.ReplicationStatus.FAILOVER_ERROR,
-                            'replication_driver_data': six.text_type(
-                                self.data.provider_location3),
-                            'provider_location': six.text_type(
-                                self.data.provider_location)}}
-            model_update = self.common._failover_volume(
-                self.data.test_volume, True, self.extra_specs)
-            self.assertEqual(ref_model_update, model_update)
-
-    @mock.patch.object(
-        common.VMAXCommon, '_find_device_on_array',
-        side_effect=[None, VMAXCommonData.device_id,
-                     VMAXCommonData.device_id, VMAXCommonData.device_id])
-    @mock.patch.object(
-        common.VMAXCommon, '_get_masking_views_from_volume',
-        side_effect=['OS-host-MV', None, exception.VolumeBackendAPIException])
-    def test_recover_volumes_on_failback(self, mock_mv, mock_dev):
-        recovery1 = self.common.recover_volumes_on_failback(
-            self.data.test_volume, self.extra_specs)
-        self.assertEqual('error', recovery1['updates']['status'])
-        recovery2 = self.common.recover_volumes_on_failback(
-            self.data.test_volume, self.extra_specs)
-        self.assertEqual('in-use', recovery2['updates']['status'])
-        recovery3 = self.common.recover_volumes_on_failback(
-            self.data.test_volume, self.extra_specs)
-        self.assertEqual('available', recovery3['updates']['status'])
-        recovery4 = self.common.recover_volumes_on_failback(
-            self.data.test_volume, self.extra_specs)
-        self.assertEqual('available', recovery4['updates']['status'])
 
     def test_get_remote_target_device(self):
         target_device1, _, _, _, _ = (
@@ -7405,6 +7278,13 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.assertEqual(fields.ReplicationStatus.ERROR,
                              model_update['replication_status'])
 
+    @mock.patch.object(provision.VMAXProvision, 'failover_group')
+    def test_failover_replication_metro(self, mock_fo):
+        volumes = [self.data.test_volume]
+        _, vol_model_updates = self.common._failover_replication(
+            volumes, group, None, host=True, is_metro=True)
+        mock_fo.assert_not_called()
+
     @mock.patch.object(utils.VMAXUtils, 'get_volume_group_utils',
                        return_value=(VMAXCommonData.array, {}))
     @mock.patch.object(common.VMAXCommon, '_cleanup_group_replication')
@@ -7485,16 +7365,13 @@ class VMAXCommonReplicationTest(test.TestCase):
 
     @mock.patch.object(common.VMAXCommon, '_failover_replication',
                        return_value=({}, {}))
-    @mock.patch.object(common.VMAXCommon, '_failover_volume',
-                       return_value={})
-    def test_failover_host_async(self, mock_fv, mock_fg):
+    def test_failover_host_async(self, mock_fg):
         volumes = [self.data.test_volume]
         extra_specs = deepcopy(self.extra_specs)
         extra_specs['rep_mode'] = utils.REP_ASYNC
         with mock.patch.object(common.VMAXCommon, '_initial_setup',
                                return_value=extra_specs):
             self.async_driver.common.failover_host(volumes, None, [])
-        mock_fv.assert_not_called()
         mock_fg.assert_called_once()
 
     @mock.patch.object(common.VMAXCommon, '_retype_volume', return_value=True)
