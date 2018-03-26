@@ -4987,6 +4987,16 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self._assert_vol_exists(snap1['name'], False)
         self._reset_flags()
 
+        # Test falshcopy_rate out of range
+        spec = {'flashcopy_rate': 151}
+        type_ref = volume_types.create(self.ctxt, "fccopy_rate", spec)
+        vol2 = self._generate_vol_info(type_ref)
+        self.driver.create_volume(vol2)
+        snap2 = self._generate_snap_info(vol2.id)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_snapshot, snap2)
+        self._assert_vol_exists(snap2['name'], False)
+
         # Test prestartfcmap failing
         with mock.patch.object(
                 storwize_svc_common.StorwizeSSH, 'prestartfcmap') as prestart:
