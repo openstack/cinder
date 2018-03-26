@@ -218,15 +218,15 @@ class ClustersTestCase(test.TestCase):
     def test_show(self, get_mock):
         req = FakeRequest()
         expected = {'cluster': self._get_expected()[0]}
-        cluster = self.controller.show(req, mock.sentinel.name,
-                                       mock.sentinel.binary)
+        cluster = self.controller.show(req, 'cluster_name',
+                                       'cinder-volume')
         self.assertEqual(expected, cluster)
         get_mock.assert_called_once_with(
             req.environ['cinder.context'],
             None,
             services_summary=True,
-            name=mock.sentinel.name,
-            binary=mock.sentinel.binary)
+            name='cluster_name',
+            binary='cinder-volume')
 
     def test_show_unauthorized(self):
         req = FakeRequest(is_admin=False)
@@ -249,13 +249,13 @@ class ClustersTestCase(test.TestCase):
                                 'status': 'enabled',
                                 'disabled_reason': None}}
         res = self.controller.update(req, 'enable',
-                                     {'name': mock.sentinel.name,
-                                      'binary': mock.sentinel.binary})
+                                     body={'name': 'cluster_name',
+                                           'binary': 'cinder-volume'})
         self.assertEqual(expected, res)
         ctxt = req.environ['cinder.context']
         get_mock.assert_called_once_with(ctxt,
-                                         None, binary=mock.sentinel.binary,
-                                         name=mock.sentinel.name)
+                                         None, binary='cinder-volume',
+                                         name='cluster_name')
         update_mock.assert_called_once_with(ctxt, get_mock.return_value.id,
                                             {'disabled': False,
                                              'disabled_reason': None})
@@ -272,40 +272,55 @@ class ClustersTestCase(test.TestCase):
                                 'status': 'disabled',
                                 'disabled_reason': disabled_reason}}
         res = self.controller.update(req, 'disable',
-                                     {'name': mock.sentinel.name,
-                                      'binary': mock.sentinel.binary,
-                                      'disabled_reason': disabled_reason})
+                                     body={'name': 'cluster_name',
+                                           'binary': 'cinder-volume',
+                                           'disabled_reason': disabled_reason})
         self.assertEqual(expected, res)
         ctxt = req.environ['cinder.context']
         get_mock.assert_called_once_with(ctxt,
-                                         None, binary=mock.sentinel.binary,
-                                         name=mock.sentinel.name)
+                                         None, binary='cinder-volume',
+                                         name='cluster_name')
         update_mock.assert_called_once_with(
             ctxt, get_mock.return_value.id,
             {'disabled': True, 'disabled_reason': disabled_reason})
 
     def test_update_wrong_action(self):
         req = FakeRequest()
-        self.assertRaises(exception.NotFound, self.controller.update, req,
-                          'action', {})
+        self.assertRaises(exception.NotFound, self.controller.update,
+                          req, 'action', body={'name': 'cluster_name'})
 
     @ddt.data('enable', 'disable')
     def test_update_missing_name(self, action):
         req = FakeRequest()
-        self.assertRaises(exception.MissingRequired, self.controller.update,
-                          req, action, {'binary': mock.sentinel.binary})
+        self.assertRaises(exception.ValidationError, self.controller.update,
+                          req, action, body={'binary': 'cinder-volume'})
 
-    def test_update_wrong_disabled_reason(self):
+    def test_update_with_binary_more_than_255_characters(self):
         req = FakeRequest()
-        self.assertRaises(exception.InvalidInput, self.controller.update, req,
-                          'disable', {'name': mock.sentinel.name,
-                                      'disabled_reason': '   '})
+        self.assertRaises(exception.ValidationError, self.controller.update,
+                          req, 'enable', body={'name': 'cluster_name',
+                                               'binary': 'a' * 256})
+
+    def test_update_with_name_more_than_255_characters(self):
+        req = FakeRequest()
+        self.assertRaises(exception.ValidationError, self.controller.update,
+                          req, 'enable', body={'name': 'a' * 256,
+                                               'binary': 'cinder-volume'})
+
+    @ddt.data('a' * 256, '   ')
+    def test_update_wrong_disabled_reason(self, disabled_reason):
+        req = FakeRequest()
+        self.assertRaises(exception.InvalidInput, self.controller.update,
+                          req, 'disable',
+                          body={'name': 'cluster_name',
+                                'disabled_reason': disabled_reason})
 
     @ddt.data('enable', 'disable')
     def test_update_unauthorized(self, action):
         req = FakeRequest(is_admin=False)
         self.assertRaises(exception.PolicyNotAuthorized,
-                          self.controller.update, req, action, {})
+                          self.controller.update, req, action,
+                          body={'name': 'fake_name'})
 
     @ddt.data('enable', 'disable')
     def test_update_wrong_version(self, action):
