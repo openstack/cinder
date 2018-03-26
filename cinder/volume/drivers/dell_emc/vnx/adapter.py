@@ -61,6 +61,7 @@ class CommonAdapter(replication.ReplicationAdapter):
         self.allowed_ports = None
         self.force_delete_lun_in_sg = None
         self.max_over_subscription_ratio = None
+        self.max_luns_per_storage_group = None
         self.ignore_pool_full_threshold = None
         self.reserved_percentage = None
         self.destroy_empty_sg = None
@@ -81,6 +82,8 @@ class CommonAdapter(replication.ReplicationAdapter):
         self._normalize_config()
         self.client = self._build_client_from_config(
             self.config, self.queue_path)
+        self.client.set_max_luns_per_sg(
+            self.config.max_luns_per_storage_group)
         # Replication related
         if (self.active_backend_id in
                 common.ReplicationDeviceList.get_backend_ids(self.config)):

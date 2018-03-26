@@ -78,9 +78,11 @@ class VNXDriver(driver.ManageableVD,
           10.2.0 - Add replication group support
           11.0.0 - Fix failure of migration during cloning
           12.0.0 - Add `volume revert to snapshot` support
+          12.1.0 - Adjust max_luns_per_storage_group and
+                   check_max_pool_luns_threshold
     """
 
-    VERSION = '12.00.00'
+    VERSION = '12.01.00'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_VNX_CI"

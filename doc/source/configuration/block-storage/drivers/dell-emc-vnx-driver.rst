@@ -377,6 +377,11 @@ limit and will report 0 free capacity to the scheduler if the limit is reached.
 So the scheduler will be able to skip this kind of pool-based back end that
 runs out of the pool volume number.
 
+.. note::
+
+   From Queens, ``check_max_pool_luns_threshold`` is obsolete. And the behavior
+   is like where ``check_max_pool_luns_threshold`` is set to ``True``.
+
 iSCSI initiators
 ----------------
 

@@ -1,0 +1,10 @@
+---
+deprecations:
+  - |
+    Deprecate option `check_max_pool_luns_threshold`. The VNX driver will
+    always check the threshold.
+fixes:
+  - |
+    Add option `max_luns_per_storage_group` back. The max LUNs per storage
+    group was set to 255 before. With the new option, admin can set it to a
+    larger number.

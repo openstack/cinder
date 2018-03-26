@@ -97,8 +97,9 @@ VNX_OPTS = [
                 'By default, the value is False.'),
     cfg.BoolOpt('check_max_pool_luns_threshold',
                 default=False,
-                help='Report free_capacity_gb as 0 when the limit to '
-                'maximum number of pool LUNs is reached. '
+                deprecated_for_removal=True,
+                help='DEPRECATED: Report free_capacity_gb as 0 when the limit '
+                'to maximum number of pool LUNs is reached. '
                 'By default, the value is False.'),
     cfg.BoolOpt('force_delete_lun_in_storagegroup',
                 default=False,

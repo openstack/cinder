@@ -1181,6 +1181,10 @@ test_add_lun_to_ioclass:
     _methods:
       get_ioclass: *ioclass_true
 
+test_set_max_luns_per_sg:
+  vnx: *vnx_base
+
+
 ###########################################################
 # TestCommonAdapter
 ###########################################################
