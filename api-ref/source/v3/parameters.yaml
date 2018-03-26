@@ -1881,16 +1881,6 @@ namespace_1:
 new_size:
   description: |
     The new size of the volume, in gibibytes (GiB).
-
-    .. note:: Some volume backends require the storage to be in some multiple
-      value rather than incremental. For example, the EMC ScaleIO backend
-      requires storage in multiples of 8GB. There is a known limitation such
-      that a request to extend the size of a volume for these backends will be
-      rounded up to the nearest multiple but the actual physical size of the
-      storage will not be reflected back in the API for the volume size. For
-      example, a request to extend the size of an 8GB ScaleIO-backed volume
-      to 9GB will actually result in 16GB of physical storage but only 9GB will
-      be reflected in the API and counted for quota usage.
   in: body
   required: true
   type: integer
