@@ -1614,11 +1614,6 @@ class API(base.Base):
     def retype(self, context, volume, new_type, migration_policy=None):
         """Attempt to modify the type associated with an existing volume."""
         context.authorize(vol_action_policy.RETYPE_POLICY, target_obj=volume)
-        if migration_policy and migration_policy not in ('on-demand', 'never'):
-            msg = _('migration_policy must be \'on-demand\' or \'never\', '
-                    'passed: %s') % new_type
-            LOG.error(msg)
-            raise exception.InvalidInput(reason=msg)
 
         # Support specifying volume type by ID or name
         try:

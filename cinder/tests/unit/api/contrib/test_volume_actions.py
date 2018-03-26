@@ -20,11 +20,13 @@ import mock
 from oslo_config import cfg
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
+import six
 from six.moves import http_client
 import webob
 
 from cinder.api.contrib import volume_actions
 from cinder.api import microversions as mv
+from cinder.api.openstack import api_version_request as api_version
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -55,7 +57,7 @@ class VolumeActionsTest(test.TestCase):
         super(VolumeActionsTest, self).setUp()
         self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                               is_admin=False)
-        self.UUID = uuid.uuid4()
+        self.UUID = six.text_type(uuid.uuid4())
         self.controller = volume_actions.VolumeActionsController()
         self.api_patchers = {}
         for _meth in self._methods:
@@ -101,7 +103,8 @@ class VolumeActionsTest(test.TestCase):
         with mock.patch.object(volume_api.API,
                                'initialize_connection') as init_conn:
             init_conn.return_value = {}
-            body = {'os-initialize_connection': {'connector': 'fake'}}
+            body = {'os-initialize_connection': {'connector': {
+                'fake': 'fake'}}}
             req = webob.Request.blank('/v2/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, fake.VOLUME_ID))
             req.method = "POST"
@@ -147,7 +150,8 @@ class VolumeActionsTest(test.TestCase):
                                'initialize_connection') as init_conn:
             init_conn.side_effect = \
                 exception.VolumeBackendAPIException(data=None)
-            body = {'os-initialize_connection': {'connector': 'fake'}}
+            body = {'os-initialize_connection': {'connector': {
+                'fake': 'fake'}}}
             req = webob.Request.blank('/v2/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, fake.VOLUME_ID))
             req.method = "POST"
@@ -262,7 +266,7 @@ class VolumeActionsTest(test.TestCase):
                               self.controller._attach,
                               req,
                               id,
-                              body)
+                              body=body)
 
     def test_volume_attach_to_instance_raises_db_error(self):
         # In case of DB error 500 error code is returned to user
@@ -281,7 +285,7 @@ class VolumeActionsTest(test.TestCase):
                               self.controller._attach,
                               req,
                               id,
-                              body)
+                              body=body)
 
     def test_detach(self):
         body = {'os-detach': {'attachment_id': fake.ATTACHMENT_ID}}
@@ -309,7 +313,7 @@ class VolumeActionsTest(test.TestCase):
                               self.controller._detach,
                               req,
                               id,
-                              body)
+                              body=body)
 
     def test_volume_detach_raises_db_error(self):
         # In case of DB error 500 error code is returned to user
@@ -326,7 +330,7 @@ class VolumeActionsTest(test.TestCase):
                               self.controller._detach,
                               req,
                               id,
-                              body)
+                              body=body)
 
     def test_attach_with_invalid_arguments(self):
         # Invalid request to attach volume an invalid target
@@ -793,7 +797,6 @@ class VolumeImageActionsTest(test.TestCase):
         vol = {
             "container_format": 'bare',
             "disk_format": 'raw',
-            "updated_at": datetime.datetime(1, 1, 1, 1, 1, 1),
             "image_name": 'image_name',
             "force": True}
         body = {"os-volume_upload_image": vol}
@@ -853,7 +856,7 @@ class VolumeImageActionsTest(test.TestCase):
         body = {"os-volume_upload_image": img}
         req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, id))
-        res_dict = self.controller._volume_upload_image(req, id, body)
+        res_dict = self.controller._volume_upload_image(req, id, body=body)
         expected = {'os-volume_upload_image':
                     {'id': id,
                      'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
@@ -887,7 +890,7 @@ class VolumeImageActionsTest(test.TestCase):
                           self.controller._volume_upload_image,
                           req,
                           id,
-                          body)
+                          body=body)
 
     @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
     @mock.patch.object(volume_api.API, 'copy_volume_to_image',
@@ -905,7 +908,7 @@ class VolumeImageActionsTest(test.TestCase):
                           self.controller._volume_upload_image,
                           req,
                           id,
-                          body)
+                          body=body)
 
     @mock.patch.object(volume_api.API, 'get', fake_volume_get)
     def test_copy_volume_to_image_invalid_disk_format(self):
@@ -917,11 +920,11 @@ class VolumeImageActionsTest(test.TestCase):
         body = {"os-volume_upload_image": vol}
         req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action'
                                       % (fake.PROJECT_ID, id))
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller._volume_upload_image,
                           req,
                           id,
-                          body)
+                          body=body)
 
     @mock.patch.object(volume_api.API, "copy_volume_to_image")
     def test_copy_volume_to_image_disk_format_ploop(self,
@@ -938,7 +941,7 @@ class VolumeImageActionsTest(test.TestCase):
         image_metadata = {'container_format': 'bare',
                           'disk_format': 'ploop',
                           'name': 'image_name'}
-        self.controller._volume_upload_image(req, volume.id, body)
+        self.controller._volume_upload_image(req, volume.id, body=body)
 
         mock_copy_to_image.assert_called_once_with(
             req.environ['cinder.context'], volume, image_metadata, False)
@@ -959,7 +962,7 @@ class VolumeImageActionsTest(test.TestCase):
                           self.controller._volume_upload_image,
                           req,
                           id,
-                          body)
+                          body=body)
 
     @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
     @mock.patch.object(volume_api.API, 'copy_volume_to_image',
@@ -977,7 +980,35 @@ class VolumeImageActionsTest(test.TestCase):
                           self.controller._volume_upload_image,
                           req,
                           id,
-                          body)
+                          body=body)
+
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
+    @mock.patch.object(volume_api.API, 'copy_volume_to_image',
+                       side_effect=messaging.RemoteError)
+    @ddt.data(
+        ({"image_name": 'image_name', "protected": None},
+         exception.ValidationError),
+        ({"image_name": 'image_name', "protected": ' '},
+         exception.ValidationError),
+        ({"image_name": 'image_name', "protected": 'test'},
+         exception.ValidationError),
+        ({"image_name": 'image_name', "visibility": 'test'},
+         exception.ValidationError),
+        ({"image_name": 'image_name', "visibility": ' '},
+         exception.ValidationError),
+        ({"image_name": 'image_name', "visibility": None},
+         exception.ValidationError))
+    @ddt.unpack
+    def test_copy_volume_to_image_invalid_request_body(
+            self, vol, exception, mock_copy):
+        id = fake.VOLUME2_ID
+        body = {"os-volume_upload_image": vol}
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
+                                      (fake.PROJECT_ID, id))
+        req.api_version_request = api_version.APIVersionRequest("3.1")
+        self.assertRaises(exception,
+                          self.controller._volume_upload_image,
+                          req, id, body=body)
 
     def test_volume_upload_image_typeerror(self):
         id = fake.VOLUME2_ID
@@ -1011,11 +1042,11 @@ class VolumeImageActionsTest(test.TestCase):
         body = {'os-extend': {'new_size': 'fake'}}
         req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, id))
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller._extend,
                           req,
                           id,
-                          body)
+                          body=body)
 
     @ddt.data({'version': mv.get_prior_version(mv.VOLUME_EXTEND_INUSE),
                'status': 'available'},
@@ -1036,7 +1067,7 @@ class VolumeImageActionsTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, vol['id']))
         req.api_version_request = mv.get_api_version(version)
-        self.controller._extend(req, vol['id'], body)
+        self.controller._extend(req, vol['id'], body=body)
         if version == mv.VOLUME_EXTEND_INUSE and status == 'in-use':
             mock_extend.assert_called_with(req.environ['cinder.context'],
                                            vol, 2, attached=True)
@@ -1053,11 +1084,11 @@ class VolumeImageActionsTest(test.TestCase):
         body = {"os-volume_upload_image": vol}
         req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, id))
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller._volume_upload_image,
                           req,
                           id,
-                          body)
+                          body=body)
 
     def _create_volume_with_type(self, status='available',
                                  display_description='displaydesc', **kwargs):
@@ -1104,7 +1135,8 @@ class VolumeImageActionsTest(test.TestCase):
             use_admin_context=self.context.is_admin)
         body = self._get_os_volume_upload_image()
 
-        res_dict = self.controller._volume_upload_image(req, volume.id, body)
+        res_dict = self.controller._volume_upload_image(req, volume.id,
+                                                        body=body)
 
         self.assertDictEqual(expected, res_dict)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
@@ -1123,7 +1155,7 @@ class VolumeImageActionsTest(test.TestCase):
         body['os-volume_upload_image']['visibility'] = 'public'
         self.assertRaises(exception.PolicyNotAuthorized,
                           self.controller._volume_upload_image,
-                          req, id, body)
+                          req, id, body=body)
 
     @mock.patch.object(volume_api.API, "get_volume_image_metadata")
     @mock.patch.object(glance.GlanceImageService, "create")
@@ -1145,7 +1177,8 @@ class VolumeImageActionsTest(test.TestCase):
             '/v2/%s/volumes/%s/action' % (fake.PROJECT_ID, volume.id),
             use_admin_context=self.context.is_admin)
         body = self._get_os_volume_upload_image()
-        res_dict = self.controller._volume_upload_image(req, volume.id, body)
+        res_dict = self.controller._volume_upload_image(req, volume.id,
+                                                        body=body)
 
         self.assertDictEqual(expected, res_dict)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
@@ -1171,7 +1204,7 @@ class VolumeImageActionsTest(test.TestCase):
         body = self._get_os_volume_upload_image()
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._volume_upload_image, req, volume.id,
-                          body)
+                          body=body)
 
         self.assertFalse(mock_copy_to_image.called)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
@@ -1199,7 +1232,7 @@ class VolumeImageActionsTest(test.TestCase):
         body['os-volume_upload_image']['force'] = False
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._volume_upload_image, req, volume.id,
-                          body)
+                          body=body)
 
         self.assertFalse(mock_copy_to_image.called)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
@@ -1227,7 +1260,7 @@ class VolumeImageActionsTest(test.TestCase):
         body = self._get_os_volume_upload_image()
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._volume_upload_image, req, volume.id,
-                          body)
+                          body=body)
 
         self.assertFalse(mock_copy_to_image.called)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
@@ -1235,7 +1268,8 @@ class VolumeImageActionsTest(test.TestCase):
         self.assertIsNone(vol_db.previous_status)
 
         CONF.set_default('enable_force_upload', True)
-        res_dict = self.controller._volume_upload_image(req, volume.id, body)
+        res_dict = self.controller._volume_upload_image(req, volume.id,
+                                                        body=body)
 
         self.assertDictEqual(expected, res_dict)
 
@@ -1259,7 +1293,8 @@ class VolumeImageActionsTest(test.TestCase):
             use_admin_context=self.context.is_admin)
 
         body = self._get_os_volume_upload_image()
-        res_dict = self.controller._volume_upload_image(req, volume.id, body)
+        res_dict = self.controller._volume_upload_image(req, volume.id,
+                                                        body=body)
 
         self.assertDictEqual(expected, res_dict)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
@@ -1281,7 +1316,8 @@ class VolumeImageActionsTest(test.TestCase):
             use_admin_context=self.context.is_admin)
 
         body = self._get_os_volume_upload_image()
-        res_dict = self.controller._volume_upload_image(req, volume.id, body)
+        res_dict = self.controller._volume_upload_image(req, volume.id,
+                                                        body=body)
 
         self.assertDictEqual(expected, res_dict)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
@@ -1305,7 +1341,8 @@ class VolumeImageActionsTest(test.TestCase):
             '/v2/%s/volumes/%s/action' % (fake.PROJECT_ID, volume.id),
             use_admin_context=self.context.is_admin)
         body = self._get_os_volume_upload_image()
-        res_dict = self.controller._volume_upload_image(req, volume.id, body)
+        res_dict = self.controller._volume_upload_image(req, volume.id,
+                                                        body=body)
         self.assertDictEqual(expected, res_dict)
 
     @mock.patch.object(volume_api.API, "get_volume_image_metadata")
@@ -1334,11 +1371,12 @@ class VolumeImageActionsTest(test.TestCase):
         req.headers = mv.get_mv_header(mv.UPLOAD_IMAGE_PARAMS)
         req.api_version_request = mv.get_api_version(mv.UPLOAD_IMAGE_PARAMS)
         body = self._get_os_volume_upload_image()
+        body = self._get_os_volume_upload_image()
         body['os-volume_upload_image']['visibility'] = 'public'
         body['os-volume_upload_image']['protected'] = True
         res_dict = self.controller._volume_upload_image(req,
                                                         volume.id,
-                                                        body)
+                                                        body=body)
 
         expected['os-volume_upload_image'].update(visibility='public',
                                                   protected=True)
@@ -1360,7 +1398,8 @@ class VolumeImageActionsTest(test.TestCase):
         body['os-volume_upload_image']['container_format'] = 'bare'
         body['os-volume_upload_image']['disk_format'] = 'vhd'
 
-        res_dict = self.controller._volume_upload_image(req, volume.id, body)
+        res_dict = self.controller._volume_upload_image(req, volume.id,
+                                                        body=body)
 
         self.assertDictEqual(expected, res_dict)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
@@ -1383,7 +1422,8 @@ class VolumeImageActionsTest(test.TestCase):
         body['os-volume_upload_image']['container_format'] = 'bare'
         body['os-volume_upload_image']['disk_format'] = 'vhdx'
 
-        res_dict = self.controller._volume_upload_image(req, volume.id, body)
+        res_dict = self.controller._volume_upload_image(req, volume.id,
+                                                        body=body)
 
         self.assertDictEqual(expected, res_dict)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
