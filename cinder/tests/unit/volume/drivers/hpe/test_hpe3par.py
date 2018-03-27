@@ -7266,6 +7266,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
             self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
+            self.assertEqual('up', stats['pools'][0]['backend_state'])
             self.assertEqual(GOODNESS_FUNCTION,
                              stats['pools'][0]['goodness_function'])
             self.assertEqual(FILTER_FUNCTION,
