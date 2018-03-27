@@ -1167,51 +1167,6 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertFalse(mock_copy.called)
         self.assertFalse(mock_convert.called)
 
-    @mock.patch('psutil.disk_usage')
-    @mock.patch('cinder.image.image_utils.check_available_space')
-    @mock.patch('cinder.image.image_utils.convert_image')
-    @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
-    @mock.patch(
-        'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_format',
-                return_value=False)
-    @mock.patch('cinder.image.image_utils.fetch')
-    @mock.patch('cinder.image.image_utils.qemu_img_info')
-    @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_check_no_available_space_error(self, mock_conf, mock_temp,
-                                            mock_info, mock_fetch, mock_is_xen,
-                                            mock_repl_xen, mock_copy,
-                                            mock_convert, mock_check_space,
-                                            mock_disk_usage):
-        ctxt = mock.sentinel.context
-        image_service = mock.Mock(temp_images=None)
-        image_id = mock.sentinel.image_id
-        dest = mock.sentinel.dest
-        volume_format = mock.sentinel.volume_format
-        blocksize = mock.sentinel.blocksize
-        ctxt.user_id = user_id = mock.sentinel.user_id
-        project_id = mock.sentinel.project_id
-        size = 1234
-        run_as_root = mock.sentinel.run_as_root
-
-        mock_disk_usage.return_value = units.Gi - 1
-
-        data = mock_info.return_value
-        data.file_format = volume_format
-        data.backing_file = None
-        data.virtual_size = units.Gi
-
-        mock_check_space.side_effect = exception.ImageTooBig(
-            image_id='fake_image_id', reason='test')
-
-        self.assertRaises(
-            exception.ImageTooBig,
-            image_utils.fetch_to_volume_format,
-            ctxt, image_service, image_id, dest, volume_format, blocksize,
-            user_id=user_id, project_id=project_id, size=size,
-            run_as_root=run_as_root)
-
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(

@@ -490,10 +490,6 @@ def fetch_to_volume_format(context, image_service,
                 reason=_("fmt=%(fmt)s backed by:%(backing_file)s")
                 % {'fmt': fmt, 'backing_file': backing_file, })
 
-        # NOTE(e0ne): check for free space in destination directory before
-        # image conversion.
-        check_available_space(dest, data.virtual_size, image_id)
-
         # NOTE(jdg): I'm using qemu-img convert to write
         # to the volume regardless if it *needs* conversion or not
         # TODO(avishay): We can speed this up by checking if the image is raw
