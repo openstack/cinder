@@ -406,10 +406,11 @@ def fetch_verify_image(context, image_service, image_id, dest,
 
 
 def fetch_to_vhd(context, image_service,
-                 image_id, dest, blocksize,
+                 image_id, dest, blocksize, volume_subformat=None,
                  user_id=None, project_id=None, run_as_root=True):
     fetch_to_volume_format(context, image_service, image_id, dest, 'vpc',
-                           blocksize, user_id, project_id,
+                           blocksize, volume_subformat=volume_subformat,
+                           user_id=user_id, project_id=project_id,
                            run_as_root=run_as_root)
 
 
@@ -417,8 +418,8 @@ def fetch_to_raw(context, image_service,
                  image_id, dest, blocksize,
                  user_id=None, project_id=None, size=None, run_as_root=True):
     fetch_to_volume_format(context, image_service, image_id, dest, 'raw',
-                           blocksize, user_id, project_id, size,
-                           run_as_root=run_as_root)
+                           blocksize, user_id=user_id, project_id=project_id,
+                           size=size, run_as_root=run_as_root)
 
 
 def fetch_to_volume_format(context, image_service,
