@@ -1803,7 +1803,11 @@ class StorwizeHelpers(object):
     def check_flashcopy_rate(self, flashcopy_rate):
         sys_info = self.get_system_info()
         code_level = sys_info['code_level']
-        if code_level < (7, 8, 1, 0) and flashcopy_rate > 100:
+        if flashcopy_rate not in range(1, 151):
+            raise exception.InvalidInput(
+                reason=_('The configured flashcopy rate should be '
+                         'between 1 and 150.'))
+        elif code_level < (7, 8, 1, 0) and flashcopy_rate > 100:
             msg = (_('The configured flashcopy rate is %(fc_rate)s, The '
                      'storage code level is %(code_level)s, the flashcopy_rate'
                      ' range is 1-100 if the storwize code level '
