@@ -101,6 +101,7 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
               - Support for list manageable volumes and snapshots
                 (bp/vmax-list-manage-existing)
               - Fix for SSL verification/cert application (bug #1772924)
+              - Log VMAX metadata of a volume (bp vmax-metadata)
     """
 
     VERSION = "3.2.0"

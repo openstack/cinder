@@ -16,6 +16,7 @@
 import ast
 from copy import deepcopy
 import datetime
+import platform
 import time
 
 import mock
@@ -35,10 +36,12 @@ from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as test_utils
+from cinder import version as openstack_version
 from cinder.volume.drivers.dell_emc.vmax import common
 from cinder.volume.drivers.dell_emc.vmax import fc
 from cinder.volume.drivers.dell_emc.vmax import iscsi
 from cinder.volume.drivers.dell_emc.vmax import masking
+from cinder.volume.drivers.dell_emc.vmax import metadata
 from cinder.volume.drivers.dell_emc.vmax import provision
 from cinder.volume.drivers.dell_emc.vmax import rest
 from cinder.volume.drivers.dell_emc.vmax import utils
@@ -908,6 +911,42 @@ class VMAXCommonData(object):
                 "concurrentRDF": False,
                 "getDynamicRDFCapability": "RDF1_Capable", "RDFA": False},
             "timeFinderInfo": {"snapVXTgt": False, "snapVXSrc": False}}]
+
+    volume_info_dict = {
+        'volume_id': volume_id,
+        'service_level': 'Diamond',
+        'masking_view': 'OS-HostX-F-OS-fibre-PG-MV',
+        'host': fake_host,
+        'display_name': 'attach_vol_name',
+        'volume_updated_time': '2018-03-05 20:32:41',
+        'port_group': 'OS-fibre-PG',
+        'operation': 'attach', 'srp': 'SRP_1',
+        'initiator_group': 'OS-HostX-F-IG',
+        'serial_number': '000197800123',
+        'parent_storage_group': 'OS-HostX-F-OS-fibre-PG-SG',
+        'workload': 'DSS',
+        'child_storage_group': 'OS-HostX-SRP_1-DiamondDSS-OS-fibre-PG'}
+
+    data_dict = {volume_id: volume_info_dict}
+    platform = 'Linux-4.4.0-104-generic-x86_64-with-Ubuntu-16.04-xenial'
+    unisphere_version = u'V9.0.0.1'
+    openstack_release = '12.0.0.0b3.dev401'
+    openstack_version = '12.0.0'
+    python_version = '2.7.12'
+    vmax_driver_version = '3.1'
+    vmax_firmware_version = u'5977.1125.1125'
+    vmax_model = u'VMAX250F'
+
+    version_dict = {
+        'unisphere_version': unisphere_version,
+        'openstack_release': openstack_release,
+        'openstack_version': openstack_version,
+        'python_version': python_version,
+        'vmax_driver_version': vmax_driver_version,
+        'platform': platform,
+        'vmax_firmware_version': vmax_firmware_version,
+        'serial_number': array,
+        'vmax_model': vmax_model}
 
 
 class FakeLookupService(object):
@@ -7197,9 +7236,9 @@ class VMAXCommonReplicationTest(test.TestCase):
     @mock.patch.object(masking.VMAXMasking, 'add_volume_to_storage_group')
     @mock.patch.object(
         common.VMAXCommon, '_replicate_volume',
-        return_value={
+        return_value=({
             'replication_driver_data':
-                VMAXCommonData.test_volume.replication_driver_data})
+                VMAXCommonData.test_volume.replication_driver_data}, {}))
     def test_create_replicated_volume(self, mock_rep, mock_add, mock_match,
                                       mock_check, mock_get, mock_cg):
         extra_specs = deepcopy(self.extra_specs)
@@ -7219,7 +7258,7 @@ class VMAXCommonReplicationTest(test.TestCase):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         with mock.patch.object(self.common, '_replicate_volume',
-                               return_value={}) as mock_rep:
+                               return_value=({}, {})) as mock_rep:
             self.common.create_cloned_volume(
                 self.data.test_clone_volume, self.data.test_volume)
             volume_dict = self.data.provider_location
@@ -7231,7 +7270,7 @@ class VMAXCommonReplicationTest(test.TestCase):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         with mock.patch.object(self.common, '_replicate_volume',
-                               return_value={}) as mock_rep:
+                               return_value=({}, {})) as mock_rep:
             self.common.create_volume_from_snapshot(
                 self.data.test_clone_volume, self.data.test_snapshot)
             volume_dict = self.data.provider_location
@@ -7245,7 +7284,8 @@ class VMAXCommonReplicationTest(test.TestCase):
         volume_dict = self.data.provider_location
         rs_enabled = fields.ReplicationStatus.ENABLED
         with mock.patch.object(self.common, 'setup_volume_replication',
-                               return_value=(rs_enabled, {})) as mock_setup:
+                               return_value=(rs_enabled, {}, {}))\
+                as mock_setup:
             self.common._replicate_volume(
                 self.data.test_volume, "1", volume_dict, self.extra_specs)
             mock_setup.assert_called_once_with(
@@ -7396,7 +7436,7 @@ class VMAXCommonReplicationTest(test.TestCase):
 
     @mock.patch.object(common.VMAXCommon,
                        '_replicate_volume',
-                       return_value={})
+                       return_value=({}, {}))
     def test_manage_existing_is_replicated(self, mock_rep):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
@@ -7414,7 +7454,7 @@ class VMAXCommonReplicationTest(test.TestCase):
 
     @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
     def test_setup_volume_replication(self, mock_rm):
-        rep_status, rep_data = self.common.setup_volume_replication(
+        rep_status, rep_data, __ = self.common.setup_volume_replication(
             self.data.array, self.data.test_volume, self.data.device_id,
             self.extra_specs)
         self.assertEqual(fields.ReplicationStatus.ENABLED, rep_status)
@@ -7424,7 +7464,7 @@ class VMAXCommonReplicationTest(test.TestCase):
     @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
     @mock.patch.object(common.VMAXCommon, '_create_volume')
     def test_setup_volume_replication_target(self, mock_create, mock_rm):
-        rep_status, rep_data = self.common.setup_volume_replication(
+        rep_status, rep_data, __ = self.common.setup_volume_replication(
             self.data.array, self.data.test_volume, self.data.device_id,
             self.extra_specs, self.data.device_id2)
         self.assertEqual(fields.ReplicationStatus.ENABLED, rep_status)
@@ -7911,7 +7951,7 @@ class VMAXCommonReplicationTest(test.TestCase):
     def test_setup_volume_replication_async(self, mock_rm, mock_add):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs['rep_mode'] = utils.REP_ASYNC
-        rep_status, rep_data = (
+        rep_status, rep_data, __ = (
             self.async_driver.common.setup_volume_replication(
                 self.data.array, self.data.test_volume,
                 self.data.device_id, extra_specs))
@@ -7936,7 +7976,8 @@ class VMAXCommonReplicationTest(test.TestCase):
     @mock.patch.object(common.VMAXCommon, '_retype_remote_volume',
                        return_value=True)
     @mock.patch.object(common.VMAXCommon, 'setup_volume_replication',
-                       return_value=VMAXCommonData.provider_location2)
+                       return_value=(
+                           '', VMAXCommonData.provider_location2, ''))
     @mock.patch.object(common.VMAXCommon,
                        '_remove_vol_and_cleanup_replication')
     @mock.patch.object(utils.VMAXUtils, 'is_replication_enabled',
@@ -7970,3 +8011,230 @@ class VMAXCommonReplicationTest(test.TestCase):
                 self.data.test_volume.name, utils.REP_SYNC,
                 True, self.data.extra_specs)
         mock_retype.assert_called_once()
+
+
+class VMAXVolumeMetadataNoDebugTest(test.TestCase):
+    def setUp(self):
+        self.data = VMAXCommonData()
+
+        super(VMAXVolumeMetadataNoDebugTest, self).setUp()
+        is_debug = False
+        self.volume_metadata = metadata.VMAXVolumeMetadata(
+            rest.VMAXRest, '3.1', is_debug)
+
+    @mock.patch.object(metadata.VMAXVolumeMetadata, '_fill_volume_trace_dict',
+                       return_value={})
+    def test_gather_volume_info(self, mock_fvtd):
+        self.volume_metadata.gather_volume_info(
+            self.data.volume_id, 'create', False, volume_size=1)
+        mock_fvtd.assert_not_called()
+
+
+class VMAXVolumeMetadataDebugTest(test.TestCase):
+    def setUp(self):
+        self.data = VMAXCommonData()
+
+        super(VMAXVolumeMetadataDebugTest, self).setUp()
+        is_debug = True
+        self.volume_metadata = metadata.VMAXVolumeMetadata(
+            rest.VMAXRest, '3.1', is_debug)
+        self.utils = self.volume_metadata.utils
+        self.rest = self.volume_metadata.rest
+
+    @mock.patch.object(metadata.VMAXVolumeMetadata, '_fill_volume_trace_dict',
+                       return_value={})
+    def test_gather_volume_info(self, mock_fvtd):
+        self.volume_metadata.gather_volume_info(
+            self.data.volume_id, 'create', False, volume_size=1)
+        mock_fvtd.assert_called_once()
+
+    @mock.patch.object(metadata.VMAXVolumeMetadata,
+                       'update_volume_info_metadata',
+                       return_value={})
+    def test_capture_attach_info(self, mock_uvim):
+        self.volume_metadata.capture_attach_info(
+            self.data.test_volume, self.data.extra_specs,
+            self.data.masking_view_dict, self.data.fake_host,
+            False, False)
+        mock_uvim.assert_called_once()
+
+    @mock.patch.object(metadata.VMAXVolumeMetadata,
+                       'update_volume_info_metadata',
+                       return_value={})
+    def test_capture_create_volume(self, mock_uvim):
+        self.volume_metadata.capture_create_volume(
+            self.data.device_id, self.data.test_volume, "test_group",
+            "test_group_id", self.data.extra_specs, {}, 'create', None)
+        mock_uvim.assert_called_once()
+
+    @mock.patch.object(metadata.VMAXVolumeMetadata,
+                       'update_volume_info_metadata',
+                       return_value={})
+    def test_capture_manage_existing(self, mock_uvim):
+        self.volume_metadata.capture_manage_existing(
+            self.data.test_volume, {}, self.data.device_id,
+            self.data.extra_specs)
+        mock_uvim.assert_called_once()
+
+    @mock.patch.object(metadata.VMAXVolumeMetadata,
+                       'update_volume_info_metadata',
+                       return_value={})
+    def test_capture_failover_volume(self, mock_uvim):
+        self.volume_metadata.capture_failover_volume(
+            self.data.test_volume, self.data.device_id2,
+            self.data.remote_array, self.data.rdf_group_name,
+            self.data.device_id, self.data.array,
+            self.data.extra_specs, True, None,
+            fields.ReplicationStatus.FAILED_OVER, utils.REP_SYNC)
+        mock_uvim.assert_called_once()
+
+    @mock.patch.object(metadata.VMAXVolumeMetadata,
+                       'update_volume_info_metadata',
+                       return_value={})
+    def test_capture_modify_group(self, mock_uvim):
+        self.volume_metadata.capture_modify_group(
+            "test_group", "test_group_id", [self.data.test_volume],
+            [], self.data.array)
+        mock_uvim.assert_called_once()
+
+    @mock.patch.object(metadata.VMAXVolumeMetadata,
+                       'update_volume_info_metadata',
+                       return_value={})
+    def test_capture_extend_info(self, mock_uvim):
+        self.volume_metadata.capture_extend_info(
+            self.data.test_volume, 5, self.data.device_id,
+            self.data.extra_specs, self.data.array)
+        mock_uvim.assert_called_once()
+
+    @mock.patch.object(metadata.VMAXVolumeMetadata,
+                       'update_volume_info_metadata',
+                       return_value={})
+    def test_capture_detach_info(self, mock_uvim):
+        self.volume_metadata.capture_detach_info(
+            self.data.test_volume, self.data.extra_specs, self.data.device_id,
+            None, None)
+        mock_uvim.assert_called_once()
+
+    @mock.patch.object(metadata.VMAXVolumeMetadata,
+                       'update_volume_info_metadata',
+                       return_value={})
+    def test_capture_snapshot_info(self, mock_uvim):
+        self.volume_metadata.capture_snapshot_info(
+            self.data.test_volume, self.data.extra_specs, 'createSnapshot',
+            'ss-test-vol')
+        mock_uvim.assert_called_once()
+
+    @mock.patch.object(metadata.VMAXVolumeMetadata,
+                       'update_volume_info_metadata',
+                       return_value={})
+    def test_capture_retype_info(self, mock_uvim):
+        self.volume_metadata.capture_retype_info(
+            self.data.test_volume.id, 20, self.data.device_id, self.data.array,
+            self.data.srp, self.data.slo, self.data.workload,
+            self.data.storagegroup_name_target, False, None,
+            False)
+        mock_uvim.assert_called_once()
+
+    def test_update_volume_info_metadata(self):
+        volume_metadata = self.volume_metadata.update_volume_info_metadata(
+            self.data.data_dict, self.data.version_dict)
+        self.assertEqual('2.7.12', volume_metadata['python_version'])
+        self.assertEqual('VMAX250F', volume_metadata['vmax_model'])
+        self.assertEqual('DSS', volume_metadata['workload'])
+        self.assertEqual('OS-fibre-PG', volume_metadata['port_group'])
+
+    def test_fill_volume_trace_dict(self):
+        datadict = {}
+        volume_trace_dict = {}
+        volume_key_value = {}
+        result_dict = {'operation': 'create',
+                       'volume_id': self.data.test_volume.id}
+        volume_metadata = self.volume_metadata._fill_volume_trace_dict(
+            self.data.test_volume.id, 'create', False, target_name=None,
+            datadict=datadict, volume_key_value=volume_key_value,
+            volume_trace_dict=volume_trace_dict)
+        self.assertEqual(result_dict, volume_metadata)
+
+    def test_fill_volume_trace_dict_multi_attach(self):
+        mv_list = ['mv1', 'mv2', 'mv3']
+        sg_list = ['sg1', 'sg2', 'sg3']
+        datadict = {}
+        volume_trace_dict = {}
+        volume_key_value = {}
+        result_dict = {'masking_view_1': 'mv1',
+                       'masking_view_2': 'mv2',
+                       'masking_view_3': 'mv3',
+                       'operation': 'attach',
+                       'storage_group_1': 'sg1',
+                       'storage_group_2': 'sg2',
+                       'storage_group_3': 'sg3',
+                       'volume_id': self.data.test_volume.id}
+        volume_metadata = self.volume_metadata._fill_volume_trace_dict(
+            self.data.test_volume.id, 'attach', False, target_name=None,
+            datadict=datadict, volume_trace_dict=volume_trace_dict,
+            volume_key_value=volume_key_value, mv_list=mv_list,
+            sg_list=sg_list)
+        self.assertEqual(result_dict, volume_metadata)
+
+    @mock.patch.object(utils.VMAXUtils, 'merge_dicts',
+                       return_value={})
+    def test_consolidate_volume_trace_list(self, mock_m2d):
+        self.volume_metadata.volume_trace_list = [self.data.data_dict]
+        volume_trace_dict = {'volume_updated_time': '2018-03-06 16:51:40',
+                             'operation': 'delete',
+                             'volume_id': self.data.volume_id}
+        volume_key_value = {self.data.volume_id: volume_trace_dict}
+        self.volume_metadata._consolidate_volume_trace_list(
+            self.data.volume_id, volume_trace_dict, volume_key_value)
+        mock_m2d.assert_called_once()
+
+    def test_merge_dicts_multiple(self):
+        d1 = {'a': 1, 'b': 2}
+        d2 = {'c': 3, 'd': 4}
+        d3 = {'e': 5, 'f': 6}
+        res_d = {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6}
+        result_dict = self.utils.merge_dicts(
+            d1, d2, d3)
+        self.assertEqual(res_d, result_dict)
+
+    def test_merge_dicts_multiple_2(self):
+        d1 = {'a': 1, 'b': 2}
+        d2 = {'b': 3, 'd': 4}
+        d3 = {'d': 5, 'e': 6}
+        res_d = {'a': 1, 'b': 2, 'd': 4, 'e': 6}
+        result_dict = self.utils.merge_dicts(
+            d1, d2, d3)
+        self.assertEqual(res_d, result_dict)
+
+    def test_merge_dicts(self):
+        self.volume_metadata.volume_trace_list = [self.data.data_dict]
+        volume_trace_dict = {'volume_updated_time': '2018-03-06 16:51:40',
+                             'operation': 'delete',
+                             'volume_id': self.data.volume_id}
+        result_dict = self.utils.merge_dicts(
+            volume_trace_dict, self.data.volume_info_dict)
+        self.assertEqual('delete', result_dict['operation'])
+        self.assertEqual(
+            '2018-03-06 16:51:40', result_dict['volume_updated_time'])
+        self.assertEqual('OS-fibre-PG', result_dict['port_group'])
+
+    @mock.patch.object(platform, 'platform',
+                       return_value=VMAXCommonData.platform)
+    @mock.patch.object(platform, 'python_version',
+                       return_value=VMAXCommonData.python_version)
+    @mock.patch.object(openstack_version.version_info, 'version_string',
+                       return_value=VMAXCommonData.openstack_version)
+    @mock.patch.object(openstack_version.version_info, 'release_string',
+                       return_value=VMAXCommonData.openstack_release)
+    @mock.patch.object(rest.VMAXRest, 'get_unisphere_version',
+                       return_value={
+                           'version': VMAXCommonData.unisphere_version})
+    @mock.patch.object(rest.VMAXRest, 'get_array_serial',
+                       return_value={
+                           'ucode': VMAXCommonData.vmax_firmware_version,
+                           'model': VMAXCommonData.vmax_model})
+    def test_gather_version_info(
+            self, mock_vi, mock_ur, mock_or, mock_ov, mock_pv, mock_p):
+        self.volume_metadata.gather_version_info(self.data.array)
+        self.assertEqual(
+            self.data.version_dict, self.volume_metadata.version_dict)
