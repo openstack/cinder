@@ -1011,6 +1011,72 @@ class VMAXRest(object):
             pass
         return device_ids
 
+    def get_private_volume_list(self, array, params=None):
+        """Retrieve list with volume details.
+
+        :param array: the array serial number
+        :param params: filter parameters
+        :returns: list -- dicts with volume information
+        """
+        volumes = []
+        volume_info = self.get_resource(
+            array, SLOPROVISIONING, 'volume', params=params,
+            private='/private')
+        try:
+            volumes = volume_info['resultList']['result']
+            iterator_id = volume_info['id']
+            volume_count = volume_info['count']
+            max_page_size = volume_info['maxPageSize']
+            start_position = volume_info['resultList']['from']
+            end_position = volume_info['resultList']['to']
+        except (KeyError, TypeError):
+            return volumes
+
+        if volume_count > max_page_size:
+            LOG.info("More entries exist in the result list, retrieving "
+                     "remainder of results from iterator.")
+
+            start_position += 1000
+            end_position += 1000
+            iterator_response = self.get_iterator_page_list(
+                iterator_id, volume_count, start_position, end_position)
+
+            volumes += iterator_response
+
+        return volumes
+
+    def get_iterator_page_list(self, iterator_id, result_count, start_position,
+                               end_position):
+        """Iterate through response if more than one page available.
+
+        :param iterator_id: the iterator ID
+        :param result_count: the amount of results in the iterator
+        :param start_position: position to begin iterator from
+        :param end_position: position to stop iterator
+        :return: list -- merged results from multiple pages
+        """
+        iterator_result = []
+        has_more_entries = True
+
+        while has_more_entries:
+            if start_position <= result_count <= end_position:
+                end_position = result_count
+                has_more_entries = False
+
+            params = {'to': start_position, 'from': end_position}
+            target_uri = ('/common/Iterator/%(iterator_id)s/page' % {
+                'iterator_id': iterator_id})
+            iterator_response = self._get_request(target_uri, 'iterator',
+                                                  params)
+            try:
+                iterator_result += iterator_response['result']
+                start_position += 1000
+                end_position += 1000
+            except (KeyError, TypeError):
+                pass
+
+        return iterator_result
+
     def _modify_volume(self, array, device_id, payload):
         """Modify a volume (PUT operation).
 

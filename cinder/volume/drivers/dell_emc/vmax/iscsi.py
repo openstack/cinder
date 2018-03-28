@@ -98,6 +98,8 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         3.2.0 - Support for retyping replicated volumes (bp
                 vmax-retype-replicated-volumes)
               - Support for multiattach volumes (bp vmax-allow-multi-attach)
+              - Support for list manageable volumes and snapshots
+                (bp/vmax-list-manage-existing)
     """
 
     VERSION = "3.2.0"
@@ -439,6 +441,40 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         :param snapshot: the snapshot object
         """
         self.common.unmanage_snapshot(snapshot)
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        """Lists all manageable volumes.
+
+        :param cinder_volumes: List of currently managed Cinder volumes.
+                               Unused in driver.
+        :param marker: Begin returning volumes that appear later in the volume
+                       list than that represented by this reference.
+        :param limit: Maximum number of volumes to return. Default=1000.
+        :param offset: Number of volumes to skip after marker.
+        :param sort_keys: Results sort key. Valid keys: size, reference.
+        :param sort_dirs: Results sort direction. Valid dirs: asc, desc.
+        :return: List of dicts containing all manageable volumes.
+        """
+        return self.common.get_manageable_volumes(marker, limit, offset,
+                                                  sort_keys, sort_dirs)
+
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        """Lists all manageable snapshots.
+
+        :param cinder_snapshots: List of currently managed Cinder snapshots.
+                                 Unused in driver.
+        :param marker: Begin returning volumes that appear later in the
+                       snapshot list than that represented by this reference.
+        :param limit: Maximum number of snapshots to return. Default=1000.
+        :param offset: Number of snapshots to skip after marker.
+        :param sort_keys: Results sort key. Valid keys: size, reference.
+        :param sort_dirs: Results sort direction. Valid dirs: asc, desc.
+        :return: List of dicts containing all manageable snapshots.
+        """
+        return self.common.get_manageable_snapshots(marker, limit, offset,
+                                                    sort_keys, sort_dirs)
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Migrate volume to another host using retype.

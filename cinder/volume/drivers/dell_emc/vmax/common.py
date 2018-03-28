@@ -15,9 +15,11 @@
 
 import ast
 from copy import deepcopy
+import math
 import os.path
 import random
 import sys
+import time
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -2139,6 +2141,201 @@ class VMAXCommon(object):
         LOG.info("Snapshot %(snap_name)s is no longer managed in "
                  "OpenStack but still remains on VMAX source "
                  "%(array_id)s", {'snap_name': snap_name, 'array_id': array})
+
+    def get_manageable_volumes(self, marker, limit, offset, sort_keys,
+                               sort_dirs):
+        """Lists all manageable volumes.
+
+        :param marker: Begin returning volumes that appear later in the volume
+                       list than that represented by this reference. This
+                       reference should be json like. Default=None.
+        :param limit: Maximum number of volumes to return. Default=None.
+        :param offset: Number of volumes to skip after marker. Default=None.
+        :param sort_keys: Key to sort by, sort by size or reference. Valid
+                          keys: size, reference. Default=None.
+        :param sort_dirs: Direction to sort by. Valid dirs: asd, desc.
+                          Default=None.
+        :return: List of dicts containing all volumes valid for management
+        """
+        valid_vols = []
+        manageable_vols = []
+        array = self.pool_info['arrays_info'][0]["SerialNumber"]
+        LOG.info("Listing manageable volumes for array %(array_id)s", {
+            'array_id': array})
+        volumes = self.rest.get_private_volume_list(array)
+
+        # No volumes returned from VMAX
+        if not volumes:
+            LOG.warning("There were no volumes found on the backend VMAX. "
+                        "You need to create some volumes before they can be "
+                        "managed into Cinder.")
+            return manageable_vols
+
+        for device in volumes:
+            # Determine if volume is valid for management
+            if self.utils.is_volume_manageable(device):
+                valid_vols.append(device['volumeHeader'])
+
+        # For all valid vols, extract relevant data for Cinder response
+        for vol in valid_vols:
+            volume_dict = {'reference': {'source-id': vol['volumeId']},
+                           'safe_to_manage': True,
+                           'size': int(math.ceil(vol['capGB'])),
+                           'reason_not_safe': None, 'cinder_id': None,
+                           'extra_info': {
+                               'config': vol['configuration'],
+                               'emulation': vol['emulationType']}}
+            manageable_vols.append(volume_dict)
+
+        # If volume list is populated, perform filtering on user params
+        if len(manageable_vols) > 0:
+            # If sort keys selected, determine if by size or reference, and
+            # direction of sort
+            if sort_keys:
+                reverse = False
+                if sort_dirs:
+                    if 'desc' in sort_dirs[0]:
+                        reverse = True
+                if sort_keys[0] == 'size':
+                    manageable_vols = sorted(manageable_vols,
+                                             key=lambda k: k['size'],
+                                             reverse=reverse)
+                if sort_keys[0] == 'reference':
+                    manageable_vols = sorted(manageable_vols,
+                                             key=lambda k: k['reference'][
+                                                 'source-id'],
+                                             reverse=reverse)
+
+            # If marker provided, return only manageable volumes after marker
+            if marker:
+                vol_index = None
+                for vol in manageable_vols:
+                    if vol['reference']['source-id'] == marker:
+                        vol_index = manageable_vols.index(vol)
+                if vol_index:
+                    manageable_vols = manageable_vols[vol_index:]
+                else:
+                    msg = _("Volume marker not found, please check supplied "
+                            "device ID and try again.")
+                    raise exception.VolumeBackendAPIException(msg)
+
+            # If offset or limit provided, offset or limit result list
+            if offset:
+                manageable_vols = manageable_vols[offset:]
+            if limit:
+                manageable_vols = manageable_vols[:limit]
+
+        return manageable_vols
+
+    def get_manageable_snapshots(self, marker, limit, offset, sort_keys,
+                                 sort_dirs):
+        """Lists all manageable snapshots.
+
+        :param marker: Begin returning volumes that appear later in the volume
+                       list than that represented by this reference. This
+                       reference should be json like. Default=None.
+        :param limit: Maximum number of volumes to return. Default=None.
+        :param offset: Number of volumes to skip after marker. Default=None.
+        :param sort_keys: Key to sort by, sort by size or reference.
+                          Valid keys: size, reference. Default=None.
+        :param sort_dirs: Direction to sort by. Valid dirs: asd, desc.
+                          Default=None.
+        :return: List of dicts containing all volumes valid for management
+        """
+        manageable_snaps = []
+        array = self.pool_info['arrays_info'][0]["SerialNumber"]
+        LOG.info("Listing manageable snapshots for array %(array_id)s", {
+            'array_id': array})
+        volumes = self.rest.get_private_volume_list(array)
+
+        # No volumes returned from VMAX
+        if not volumes:
+            LOG.warning("There were no volumes found on the backend VMAX. "
+                        "You need to create some volumes before snapshots can "
+                        "be created and managed into Cinder.")
+            return manageable_snaps
+
+        for device in volumes:
+            # Determine if volume is valid for management
+            if self.utils.is_snapshot_manageable(device):
+                # Snapshot valid, extract relevant snap info
+                snap_info = device['timeFinderInfo']['snapVXSession'][0][
+                    'srcSnapshotGenInfo'][0]['snapshotHeader']
+                # Convert timestamp to human readable format
+                human_timestamp = time.strftime(
+                    "%Y/%m/%d, %H:%M:%S", time.localtime(
+                        float(six.text_type(
+                            snap_info['timestamp'])[:-3])))
+                # If TTL is set, convert value to human readable format
+                if int(snap_info['timeToLive']) > 0:
+                    human_ttl_timestamp = time.strftime(
+                        "%Y/%m/%d, %H:%M:%S", time.localtime(
+                            float(six.text_type(
+                                snap_info['timeToLive']))))
+                else:
+                    human_ttl_timestamp = 'N/A'
+
+                # For all valid snaps, extract relevant data for Cinder
+                # response
+                snap_dict = {
+                    'reference': {
+                        'source-name': snap_info['snapshotName']},
+                    'safe_to_manage': True,
+                    'size': int(
+                        math.ceil(device['volumeHeader']['capGB'])),
+                    'reason_not_safe': None, 'cinder_id': None,
+                    'extra_info': {
+                        'generation': snap_info['generation'],
+                        'secured': snap_info['secured'],
+                        'timeToLive': human_ttl_timestamp,
+                        'timestamp': human_timestamp},
+                    'source_reference': {'source-id': snap_info['device']}}
+                manageable_snaps.append(snap_dict)
+
+        # If snapshot list is populated, perform filtering on user params
+        if len(manageable_snaps) > 0:
+            # Order snapshots by source deviceID and not snapshot name
+            manageable_snaps = sorted(
+                manageable_snaps,
+                key=lambda k: k['source_reference']['source-id'])
+            # If sort keys selected, determine if by size or reference, and
+            # direction of sort
+            if sort_keys:
+                reverse = False
+                if sort_dirs:
+                    if 'desc' in sort_dirs[0]:
+                        reverse = True
+                if sort_keys[0] == 'size':
+                    manageable_snaps = sorted(manageable_snaps,
+                                              key=lambda k: k['size'],
+                                              reverse=reverse)
+                if sort_keys[0] == 'reference':
+                    manageable_snaps = sorted(manageable_snaps,
+                                              key=lambda k: k['reference'][
+                                                  'source-name'],
+                                              reverse=reverse)
+
+            # If marker provided, return only manageable volumes after marker
+            if marker:
+                snap_index = None
+                for snap in manageable_snaps:
+                    if snap['reference']['source-name'] == marker:
+                        snap_index = manageable_snaps.index(snap)
+                if snap_index:
+                    manageable_snaps = manageable_snaps[snap_index:]
+                else:
+                    msg = (_("Snapshot marker %(marker)s not found, marker "
+                             "provided must be a valid VMAX snapshot ID") %
+                           {'marker': marker})
+                    raise exception.VolumeBackendAPIException(msg)
+
+            # If offset or limit provided, offset or limit result list
+            if offset:
+                manageable_snaps = manageable_snaps[offset:]
+            if limit:
+                manageable_snaps = manageable_snaps[:limit]
+
+        return manageable_snaps
 
     def retype(self, volume, new_type, host):
         """Migrate volume to another host using retype.

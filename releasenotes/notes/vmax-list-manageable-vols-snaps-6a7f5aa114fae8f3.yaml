@@ -1,0 +1,4 @@
+---
+features:
+  - Dell EMC VMAX driver has added list manageable volumes and snapshots
+    support.

@@ -683,6 +683,232 @@ class VMAXCommonData(object):
 
     headroom = {"headroom": [{"headroomCapacity": 20348.29}]}
 
+    private_vol_rest_response_single = {
+        "id": "f3aab01c-a5a8-4fb4-af2b-16ae1c46dc9e_0", "count": 1,
+        "expirationTime": 1521650650793, "maxPageSize": 1000,
+        "resultList": {"to": 1, "from": 1, "result": [
+            {"volumeHeader": {
+                "capGB": 1.0, "capMB": 1026.0, "volumeId": "00001",
+                "status": "Ready", "configuration": "TDEV"}}]}}
+    private_vol_rest_response_none = {
+        "id": "f3aab01c-a5a8-4fb4-af2b-16ae1c46dc9e_0", "count": 0,
+        "expirationTime": 1521650650793, "maxPageSize": 1000,
+        "resultList": {"to": 0, "from": 0, "result": []}}
+    private_vol_rest_response_iterator_first = {
+        "id": "f3aab01c-a5a8-4fb4-af2b-16ae1c46dc9e_0", "count": 1500,
+        "expirationTime": 1521650650793, "maxPageSize": 1000,
+        "resultList": {"to": 1, "from": 1, "result": [
+            {"volumeHeader": {
+                "capGB": 1.0, "capMB": 1026.0, "volumeId": "00002",
+                "status": "Ready", "configuration": "TDEV"}}]}}
+    private_vol_rest_response_iterator_second = {
+        "to": 2000, "from": 1001, "result": [
+            {"volumeHeader": {
+                "capGB": 1.0, "capMB": 1026.0, "volumeId": "00001",
+                "status": "Ready", "configuration": "TDEV"}}]}
+    rest_iterator_resonse_one = {
+        "to": 1000, "from": 1, "result": [
+            {"volumeHeader": {
+                "capGB": 1.0, "capMB": 1026.0, "volumeId": "00001",
+                "status": "Ready", "configuration": "TDEV"}}]}
+    rest_iterator_resonse_two = {
+        "to": 1500, "from": 1001, "result": [
+            {"volumeHeader": {
+                "capGB": 1.0, "capMB": 1026.0, "volumeId": "00002",
+                "status": "Ready", "configuration": "TDEV"}}]}
+
+    # COMMON.PY
+    priv_vol_func_response_single = [
+        {"volumeHeader": {
+            "private": False, "capGB": 1.0, "capMB": 1026.0,
+            "serviceState": "Normal", "emulationType": "FBA",
+            "volumeId": "00001", "status": "Ready", "mapped": False,
+            "numStorageGroups": 0, "reservationInfo": {"reserved": False},
+            "encapsulated": False, "formattedName": "00001",
+            "system_resource": False, "numSymDevMaskingViews": 0,
+            "nameModifier": "", "configuration": "TDEV"},
+            "maskingInfo": {"masked": False},
+            "rdfInfo": {
+                "dynamicRDF": False, "RDF": False,
+                "concurrentRDF": False,
+                "getDynamicRDFCapability": "RDF1_Capable", "RDFA": False},
+            "timeFinderInfo": {
+                "mirror": False, "snapVXTgt": False,
+                "cloneTarget": False, "cloneSrc": False,
+                "snapVXSrc": True, "snapVXSession": [
+                    {"srcSnapshotGenInfo": [
+                        {"snapshotHeader": {
+                            "timestamp": 1512763278000, "expired": False,
+                            "secured": False, "snapshotName": "testSnap1",
+                            "device": "00001", "generation": 0, "timeToLive": 0
+                        }}]}]}}]
+
+    priv_vol_func_response_multi = [
+        {"volumeHeader": {
+            "private": False, "capGB": 100.0, "capMB": 102400.0,
+            "serviceState": "Normal", "emulationType": "FBA",
+            "volumeId": "00001", "status": "Ready", "numStorageGroups": 0,
+            "reservationInfo": {"reserved": False}, "mapped": False,
+            "encapsulated": False, "formattedName": "00001",
+            "system_resource": False, "numSymDevMaskingViews": 0,
+            "nameModifier": "", "configuration": "TDEV"},
+            "rdfInfo": {
+                "dynamicRDF": False, "RDF": False,
+                "concurrentRDF": False,
+                "getDynamicRDFCapability": "RDF1_Capable", "RDFA": False},
+            "maskingInfo": {"masked": False},
+            "timeFinderInfo": {
+                "mirror": False, "snapVXTgt": False,
+                "cloneTarget": False, "cloneSrc": False,
+                "snapVXSrc": True, "snapVXSession": [
+                    {"srcSnapshotGenInfo": [
+                        {"snapshotHeader": {
+                            "timestamp": 1512763278000, "expired": False,
+                            "secured": False, "snapshotName": "testSnap1",
+                            "device": "00001", "generation": 0, "timeToLive": 0
+                        }}]}]}},
+        {"volumeHeader": {
+            "private": False, "capGB": 200.0, "capMB": 204800.0,
+            "serviceState": "Normal", "emulationType": "FBA",
+            "volumeId": "00002", "status": "Ready", "numStorageGroups": 0,
+            "reservationInfo": {"reserved": False}, "mapped": False,
+            "encapsulated": False, "formattedName": "00002",
+            "system_resource": False, "numSymDevMaskingViews": 0,
+            "nameModifier": "", "configuration": "TDEV"},
+            "rdfInfo": {
+                "dynamicRDF": False, "RDF": False,
+                "concurrentRDF": False,
+                "getDynamicRDFCapability": "RDF1_Capable", "RDFA": False},
+            "maskingInfo": {"masked": False},
+            "timeFinderInfo": {
+                "mirror": False, "snapVXTgt": False,
+                "cloneTarget": False, "cloneSrc": False,
+                "snapVXSrc": True, "snapVXSession": [
+                    {"srcSnapshotGenInfo": [
+                        {"snapshotHeader": {
+                            "timestamp": 1512763278000, "expired": False,
+                            "secured": False, "snapshotName": "testSnap2",
+                            "device": "00002", "generation": 0, "timeToLive": 0
+                        }}]}]}},
+        {"volumeHeader": {
+            "private": False, "capGB": 300.0, "capMB": 307200.0,
+            "serviceState": "Normal", "emulationType": "FBA",
+            "volumeId": "00003", "status": "Ready", "numStorageGroups": 0,
+            "reservationInfo": {"reserved": False}, "mapped": False,
+            "encapsulated": False, "formattedName": "00003",
+            "system_resource": False, "numSymDevMaskingViews": 0,
+            "nameModifier": "", "configuration": "TDEV"},
+            "rdfInfo": {
+                "dynamicRDF": False, "RDF": False,
+                "concurrentRDF": False,
+                "getDynamicRDFCapability": "RDF1_Capable", "RDFA": False},
+            "maskingInfo": {"masked": False},
+            "timeFinderInfo": {
+                "mirror": False, "snapVXTgt": False,
+                "cloneTarget": False, "cloneSrc": False,
+                "snapVXSrc": True, "snapVXSession": [
+                    {"srcSnapshotGenInfo": [
+                        {"snapshotHeader": {
+                            "timestamp": 1512763278000, "expired": False,
+                            "secured": False, "snapshotName": "testSnap3",
+                            "device": "00003", "generation": 0, "timeToLive": 0
+                        }}]}]}},
+        {"volumeHeader": {
+            "private": False, "capGB": 400.0, "capMB": 409600.0,
+            "serviceState": "Normal", "emulationType": "FBA",
+            "volumeId": "00004", "status": "Ready", "numStorageGroups": 0,
+            "reservationInfo": {"reserved": False}, "mapped": False,
+            "encapsulated": False, "formattedName": "00004",
+            "system_resource": False, "numSymDevMaskingViews": 0,
+            "nameModifier": "", "configuration": "TDEV"},
+            "rdfInfo": {
+                "dynamicRDF": False, "RDF": False,
+                "concurrentRDF": False,
+                "getDynamicRDFCapability": "RDF1_Capable", "RDFA": False},
+            "maskingInfo": {"masked": False},
+            "timeFinderInfo": {
+                "mirror": False, "snapVXTgt": False,
+                "cloneTarget": False, "cloneSrc": False,
+                "snapVXSrc": True, "snapVXSession": [
+                    {"srcSnapshotGenInfo": [
+                        {"snapshotHeader": {
+                            "timestamp": 1512763278000, "expired": False,
+                            "secured": False, "snapshotName": "testSnap4",
+                            "device": "00004", "generation": 0, "timeToLive": 0
+                        }}]}]}}]
+
+    priv_vol_func_response_multi_invalid = [
+        {"volumeHeader": {
+            "private": False, "capGB": 1.0, "capMB": 10.0,
+            "serviceState": "Normal", "emulationType": "FBA",
+            "volumeId": "00001", "status": "Ready", "mapped": False,
+            "numStorageGroups": 0, "reservationInfo": {"reserved": False},
+            "encapsulated": False, "formattedName": "00001",
+            "system_resource": False, "numSymDevMaskingViews": 0,
+            "nameModifier": "", "configuration": "TDEV"},
+            "maskingInfo": {"masked": False},
+            "rdfInfo": {
+                "dynamicRDF": False, "RDF": False,
+                "concurrentRDF": False,
+                "getDynamicRDFCapability": "RDF1_Capable", "RDFA": False},
+            "timeFinderInfo": {"snapVXTgt": False, "snapVXSrc": False}},
+        {"volumeHeader": {
+            "private": False, "capGB": 1.0, "capMB": 1026.0,
+            "serviceState": "Normal", "emulationType": "FBA",
+            "volumeId": "00002", "status": "Ready", "mapped": False,
+            "numStorageGroups": 0, "reservationInfo": {"reserved": False},
+            "encapsulated": False, "formattedName": "00002",
+            "system_resource": False, "numSymDevMaskingViews": 1,
+            "nameModifier": "", "configuration": "TDEV"},
+            "maskingInfo": {"masked": False},
+            "rdfInfo": {
+                "dynamicRDF": False, "RDF": False,
+                "concurrentRDF": False,
+                "getDynamicRDFCapability": "RDF1_Capable", "RDFA": False},
+            "timeFinderInfo": {"snapVXTgt": False, "snapVXSrc": False}},
+        {"volumeHeader": {
+            "private": False, "capGB": 1.0, "capMB": 1026.0,
+            "serviceState": "Normal", "emulationType": "CKD",
+            "volumeId": "00003", "status": "Ready", "mapped": False,
+            "numStorageGroups": 0, "reservationInfo": {"reserved": False},
+            "encapsulated": False, "formattedName": "00003",
+            "system_resource": False, "numSymDevMaskingViews": 0,
+            "nameModifier": "", "configuration": "TDEV"},
+            "maskingInfo": {"masked": False},
+            "rdfInfo": {
+                "dynamicRDF": False, "RDF": False,
+                "concurrentRDF": False,
+                "getDynamicRDFCapability": "RDF1_Capable", "RDFA": False},
+            "timeFinderInfo": {"snapVXTgt": False, "snapVXSrc": False}},
+        {"volumeHeader": {
+            "private": False, "capGB": 1.0, "capMB": 1026.0,
+            "serviceState": "Normal", "emulationType": "FBA",
+            "volumeId": "00004", "status": "Ready", "mapped": False,
+            "numStorageGroups": 0, "reservationInfo": {"reserved": False},
+            "encapsulated": False, "formattedName": "00004",
+            "system_resource": False, "numSymDevMaskingViews": 0,
+            "nameModifier": "", "configuration": "TDEV"},
+            "maskingInfo": {"masked": False},
+            "rdfInfo": {
+                "dynamicRDF": False, "RDF": False,
+                "concurrentRDF": False,
+                "getDynamicRDFCapability": "RDF1_Capable", "RDFA": False},
+            "timeFinderInfo": {"snapVXTgt": True, "snapVXSrc": False}},
+        {"volumeHeader": {
+            "private": False, "capGB": 1.0, "capMB": 1026.0,
+            "serviceState": "Normal", "emulationType": "FBA",
+            "volumeId": "00005", "status": "Ready", "mapped": False,
+            "numStorageGroups": 0, "reservationInfo": {"reserved": False},
+            "encapsulated": False, "formattedName": "00005",
+            "system_resource": False, "numSymDevMaskingViews": 0,
+            "nameModifier": "OS-vol", "configuration": "TDEV"},
+            "maskingInfo": {"masked": False},
+            "rdfInfo": {
+                "dynamicRDF": False, "RDF": False,
+                "concurrentRDF": False,
+                "getDynamicRDFCapability": "RDF1_Capable", "RDFA": False},
+            "timeFinderInfo": {"snapVXTgt": False, "snapVXSrc": False}}]
+
 
 class FakeLookupService(object):
     def get_device_mapping_from_network(self, initiator_wwns, target_wwns):
@@ -1542,6 +1768,22 @@ class VMAXUtilsTest(test.TestCase):
             extra_specs_ma_true, extra_specs_ma_true))
         self.assertFalse(self.utils.change_multiattach(
             extra_specs_ma_false, extra_specs_ma_false))
+
+    def test_is_volume_manageable(self):
+        for volume in self.data.priv_vol_func_response_multi:
+            self.assertTrue(
+                self.utils.is_volume_manageable(volume))
+        for volume in self.data.priv_vol_func_response_multi_invalid:
+            self.assertFalse(
+                self.utils.is_volume_manageable(volume))
+
+    def test_is_snapshot_manageable(self):
+        for volume in self.data.priv_vol_func_response_multi:
+            self.assertTrue(
+                self.utils.is_snapshot_manageable(volume))
+        for volume in self.data.priv_vol_func_response_multi_invalid:
+            self.assertFalse(
+                self.utils.is_snapshot_manageable(volume))
 
 
 class VMAXRestTest(test.TestCase):
@@ -2939,6 +3181,68 @@ class VMAXRestTest(test.TestCase):
             self.data.extra_specs, link=False, unlink=False,
             rename=True, new_snap_name=new_snap_backend_name)
         mock_modify.assert_called_once()
+
+    def test_get_private_volume_list_pass(self):
+        array_id = self.data.array
+        response = [{"volumeHeader": {
+            "capGB": 1.0, "capMB": 1026.0, "volumeId": "00001",
+            "status": "Ready", "configuration": "TDEV"}}]
+
+        with mock.patch.object(
+                self.rest, 'get_resource',
+                return_value=self.data.private_vol_rest_response_single):
+            volume = self.rest.get_private_volume_list(array_id)
+            self.assertEqual(response, volume)
+
+    def test_get_private_volume_list_none(self):
+        array_id = self.data.array
+        response = []
+        with mock.patch.object(
+                self.rest, 'get_resource', return_value=
+                VMAXCommonData.private_vol_rest_response_none):
+            vol_list = self.rest.get_private_volume_list(array_id)
+            self.assertEqual(response, vol_list)
+
+    @mock.patch.object(
+        rest.VMAXRest, 'get_iterator_page_list', return_value=
+        VMAXCommonData.private_vol_rest_response_iterator_second['result'])
+    @mock.patch.object(
+        rest.VMAXRest, 'get_resource', return_value=
+        VMAXCommonData.private_vol_rest_response_iterator_first)
+    def test_get_private_volume_list_iterator(self, mock_get_resource,
+                                              mock_iterator):
+        array_id = self.data.array
+        response = [
+            {"volumeHeader": {
+                "capGB": 1.0, "capMB": 1026.0, "volumeId": "00002",
+                "status": "Ready", "configuration": "TDEV"}},
+            {"volumeHeader": {
+                "capGB": 1.0, "capMB": 1026.0, "volumeId": "00001",
+                "status": "Ready", "configuration": "TDEV"}}]
+        volume = self.rest.get_private_volume_list(array_id)
+        self.assertEqual(response, volume)
+
+    def test_get_iterator_list(self):
+        with mock.patch.object(
+                self.rest, '_get_request', side_effect=[
+                    self.data.rest_iterator_resonse_one,
+                    self.data.rest_iterator_resonse_two]):
+
+            expected_response = [
+                {"volumeHeader": {
+                    "capGB": 1.0, "capMB": 1026.0, "volumeId": "00001",
+                    "status": "Ready", "configuration": "TDEV"}},
+                {"volumeHeader": {
+                    "capGB": 1.0, "capMB": 1026.0, "volumeId": "00002",
+                    "status": "Ready", "configuration": "TDEV"}}]
+            iterator_id = 'test_iterator_id'
+            result_count = 1500
+            start_position = 1
+            end_position = 1000
+
+            actual_response = self.rest.get_iterator_page_list(
+                iterator_id, result_count, start_position, end_position)
+            self.assertEqual(expected_response, actual_response)
 
 
 class VMAXProvisionTest(test.TestCase):
@@ -5178,6 +5482,116 @@ class VMAXCommonTest(test.TestCase):
         self.common.configuration.initiator_check = True
         initiator_check = self.common._get_initiator_check_flag()
         self.assertTrue(initiator_check)
+
+    def test_get_manageable_volumes_success(self):
+        marker = limit = offset = sort_keys = sort_dirs = None
+        with mock.patch.object(
+                self.rest, 'get_private_volume_list',
+                return_value=self.data.priv_vol_func_response_single):
+            vols_lists = self.common.get_manageable_volumes(
+                marker, limit, offset, sort_keys, sort_dirs)
+            expected_response = [
+                {'reference': {'source-id': '00001'}, 'safe_to_manage': True,
+                 'size': 1.0, 'reason_not_safe': None, 'cinder_id': None,
+                 'extra_info': {'config': 'TDEV', 'emulation': 'FBA'}}]
+            self.assertEqual(vols_lists, expected_response)
+
+    def test_get_manageable_volumes_filters_set(self):
+        marker, limit, offset = '00002', 2, 1
+        sort_keys, sort_dirs = 'size', 'desc'
+        with mock.patch.object(
+                self.rest, 'get_private_volume_list',
+                return_value=self.data.priv_vol_func_response_multi):
+            vols_lists = self.common.get_manageable_volumes(
+                marker, limit, offset, sort_keys, sort_dirs)
+            expected_response = [
+                {'reference': {'source-id': '00003'}, 'safe_to_manage': True,
+                 'size': 300, 'reason_not_safe': None, 'cinder_id': None,
+                 'extra_info': {'config': 'TDEV', 'emulation': 'FBA'}},
+                {'reference': {'source-id': '00004'}, 'safe_to_manage': True,
+                 'size': 400, 'reason_not_safe': None, 'cinder_id': None,
+                 'extra_info': {'config': 'TDEV', 'emulation': 'FBA'}}]
+            self.assertEqual(vols_lists, expected_response)
+
+    def test_get_manageable_volumes_fail_no_vols(self):
+        marker = limit = offset = sort_keys = sort_dirs = None
+        with mock.patch.object(
+                self.rest, 'get_private_volume_list',
+                return_value=[]):
+            expected_response = []
+            vol_list = self.common.get_manageable_volumes(
+                marker, limit, offset, sort_keys, sort_dirs)
+            self.assertEqual(vol_list, expected_response)
+
+    def test_get_manageable_volumes_fail_no_valid_vols(self):
+        marker = limit = offset = sort_keys = sort_dirs = None
+        with mock.patch.object(
+                self.rest, 'get_private_volume_list',
+                return_value=self.data.priv_vol_func_response_multi_invalid):
+            expected_response = []
+            vol_list = self.common.get_manageable_volumes(
+                marker, limit, offset, sort_keys, sort_dirs)
+            self.assertEqual(vol_list, expected_response)
+
+    def test_get_manageable_snapshots_success(self):
+        marker = limit = offset = sort_keys = sort_dirs = None
+        with mock.patch.object(
+                self.rest, 'get_private_volume_list',
+                return_value=self.data.priv_vol_func_response_single):
+            snap_list = self.common.get_manageable_snapshots(
+                marker, limit, offset, sort_keys, sort_dirs)
+            expected_response = [{
+                'reference': {'source-name': 'testSnap1'},
+                'safe_to_manage': True, 'size': 1,
+                'reason_not_safe': None, 'cinder_id': None,
+                'extra_info': {
+                    'generation': 0, 'secured': False, 'timeToLive': 'N/A',
+                    'timestamp': '2017/12/08, 20:01:18'},
+                'source_reference': {'source-id': '00001'}}]
+            self.assertEqual(snap_list, expected_response)
+
+    def test_get_manageable_snapshots_filters_set(self):
+        marker, limit, offset = 'testSnap2', 2, 1
+        sort_keys, sort_dirs = 'size', 'desc'
+        with mock.patch.object(
+                self.rest, 'get_private_volume_list',
+                return_value=self.data.priv_vol_func_response_multi):
+            vols_lists = self.common.get_manageable_snapshots(
+                marker, limit, offset, sort_keys, sort_dirs)
+            expected_response = [
+                {'reference': {'source-name': 'testSnap3'},
+                 'safe_to_manage': True, 'size': 300, 'reason_not_safe': None,
+                 'cinder_id': None, 'extra_info': {
+                    'generation': 0, 'secured': False, 'timeToLive': 'N/A',
+                    'timestamp': '2017/12/08, 20:01:18'},
+                 'source_reference': {'source-id': '00003'}},
+                {'reference': {'source-name': 'testSnap4'},
+                 'safe_to_manage': True, 'size': 400, 'reason_not_safe': None,
+                 'cinder_id': None, 'extra_info': {
+                    'generation': 0, 'secured': False, 'timeToLive': 'N/A',
+                    'timestamp': '2017/12/08, 20:01:18'},
+                 'source_reference': {'source-id': '00004'}}]
+            self.assertEqual(vols_lists, expected_response)
+
+    def test_get_manageable_snapshots_fail_no_snaps(self):
+        marker = limit = offset = sort_keys = sort_dirs = None
+        with mock.patch.object(
+                self.rest, 'get_private_volume_list',
+                return_value=[]):
+            expected_response = []
+            vols_lists = self.common.get_manageable_snapshots(
+                marker, limit, offset, sort_keys, sort_dirs)
+            self.assertEqual(vols_lists, expected_response)
+
+    def test_get_manageable_snapshots_fail_no_valid_snaps(self):
+        marker = limit = offset = sort_keys = sort_dirs = None
+        with mock.patch.object(
+                self.rest, 'get_private_volume_list',
+                return_value=self.data.priv_vol_func_response_multi_invalid):
+            expected_response = []
+            vols_lists = self.common.get_manageable_snapshots(
+                marker, limit, offset, sort_keys, sort_dirs)
+            self.assertEqual(vols_lists, expected_response)
 
 
 class VMAXFCTest(test.TestCase):
