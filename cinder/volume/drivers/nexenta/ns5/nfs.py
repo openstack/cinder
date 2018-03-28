@@ -109,19 +109,12 @@ class NexentaNfsDriver(nfs.NfsDriver):
         pool_name, fs = self._get_share_datasets(self.share)
         url = 'storage/pools/%s' % (pool_name)
         self.nef.get(url)
-        url = 'storage/filesystems/%s' % '%2F'.join([pool_name, fs])
-        self.nef.get(url)
 
-        path = '/'.join([pool_name, fs])
-        shared = False
-        response = self.nef.get('nas/nfs')
-        for share in response['data']:
-            if share.get('filesystem') == path:
-                shared = True
-                break
-        if not shared:
-            raise LookupError(_("Dataset %s is not shared in Nexenta "
-                                "Store appliance") % path)
+        url = 'nas/nfs?filesystem=%s' % urllib.parse.quote_plus(self.share)
+        data = self.nef.get(url).get('data')
+        if not (data and data[0].get('shareState') == 'online'):
+            raise exception.NexentaException(
+                _('NFS share %s is not accessible') % self.share)
 
     def create_volume(self, volume):
         """Creates a volume.
