@@ -752,9 +752,9 @@ class XtremIOVolumeDriver(san.SanDriver):
                     LOG.warning('Failed to clean IG %d without mappings', idx)
 
     def _get_password(self):
-        return ''.join(RANDOM.choice
-                       (string.ascii_uppercase + string.digits)
-                       for _ in range(12))
+        return vutils.generate_password(
+            length=12,
+            symbolgroups=(string.ascii_uppercase + string.digits))
 
     def create_lun_map(self, volume, ig, lun_num=None):
         try:

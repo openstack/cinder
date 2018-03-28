@@ -14,6 +14,7 @@
 #    under the License.
 
 import copy
+import re
 import time
 
 import mock
@@ -1298,6 +1299,11 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
         self.assertRaises(exception.InvalidInput,
                           self.driver.create_group_from_src,
                           d.context, d.group, [], None, None, None, None)
+
+    def test_get_password(self, _req):
+        p = self.driver._get_password()
+        self.assertEqual(len(p), 12)
+        self.assertIsNotNone(re.match(r'[A-Z0-9]{12}', p), p)
 
 
 @mock.patch('requests.request')
