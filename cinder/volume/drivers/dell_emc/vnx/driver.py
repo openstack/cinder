@@ -80,9 +80,10 @@ class VNXDriver(driver.ManageableVD,
           12.0.0 - Add `volume revert to snapshot` support
           12.1.0 - Adjust max_luns_per_storage_group and
                    check_max_pool_luns_threshold
+          12.1.1 - Fix perf issue when create/delete volume
     """
 
-    VERSION = '12.01.00'
+    VERSION = '12.01.01'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_VNX_CI"

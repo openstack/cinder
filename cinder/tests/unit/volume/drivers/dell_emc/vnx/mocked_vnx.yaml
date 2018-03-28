@@ -176,6 +176,7 @@ test_create_lun: &test_create_lun
       name: pool1
     _methods:
       create_lun: *lun_test_create_lun
+      with_no_poll: _context
 
   vnx:
     _properties:
@@ -191,6 +192,7 @@ test_create_lun_error: &test_create_lun_error
       create_lun:
         _raise:
           VNXCreateLunError: Unkown Error
+      with_no_poll: _context
   vnx:
     _properties:
       <<: *vnx_base_prop
@@ -254,6 +256,7 @@ test_create_lun_compression:
       <<: *pool_base_prop
     _methods:
       create_lun: *lun_test_create_lun_compression
+      with_no_poll: _context
 
   vnx:
     _properties:
@@ -274,6 +277,7 @@ test_create_lun_already_existed:
     _properties:
       <<: *pool_base_prop
     _methods:
+      with_no_poll: _context
       create_lun:
         _raise:
           VNXLunNameInUseError: Lun already exists(0x712d8d04)
@@ -451,8 +455,6 @@ test_delete_smp: &test_delete_smp
     _properties:
       <<: *lun_base_prop
       name: lun_test_delete_smp
-      attached_snapshot: *snapshot_test_delete_smp
-      is_snap_mount_point: True
     _methods:
       delete:
 
@@ -461,6 +463,7 @@ test_delete_smp: &test_delete_smp
       <<: *vnx_base_prop
     _methods:
       get_lun: *lun_test_delete_smp
+      get_snap: *snapshot_test_delete_smp
 
 test_delete_lun_not_exist:
   lun: &lun_test_delete_lun_not_exist
@@ -1233,6 +1236,7 @@ test_migrate_volume:
   pool: &migrate_pool
     _methods:
       create_lun: *src_lun_1
+      with_no_poll: _context
   vnx:
     _methods:
       get_lun:
@@ -1282,6 +1286,7 @@ test_create_cloned_volume:
   pool: &migrate_pool_2
     _methods:
       create_lun: *smp_migrate
+      with_no_poll: _context
   vnx:
     _properties:
       serial: fake_serial

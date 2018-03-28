@@ -102,11 +102,12 @@ class Client(object):
                    qos_specs=None):
         pool = self.vnx.get_pool(name=pool)
         try:
-            lun = pool.create_lun(lun_name=name,
-                                  size_gb=size,
-                                  provision=provision,
-                                  tier=tier,
-                                  ignore_thresholds=ignore_thresholds)
+            with pool.with_no_poll():
+                lun = pool.create_lun(lun_name=name,
+                                      size_gb=size,
+                                      provision=provision,
+                                      tier=tier,
+                                      ignore_thresholds=ignore_thresholds)
         except storops_ex.VNXLunNameInUseError:
             lun = self.vnx.get_lun(name=name)
 
@@ -140,17 +141,15 @@ class Client(object):
             lun = self.get_lun(name=volume.name)
             return lun.lun_id
 
-    def delete_lun(self, name, force=False):
+    def delete_lun(self, name, force=False, snap_copy=False):
         """Deletes a LUN or mount point."""
         lun = self.get_lun(name=name)
-        smp_attached_snap = (lun.attached_snapshot if lun.is_snap_mount_point
-                             else None)
-
         try:
             # Do not delete the snapshots of the lun.
             lun.delete(force_detach=True, detach_from_sg=force)
-            if smp_attached_snap:
-                smp_attached_snap.delete()
+            if snap_copy:
+                snap = self.vnx.get_snap(name=snap_copy)
+                snap.delete()
         except storops_ex.VNXLunNotFoundError as ex:
             LOG.info("LUN %(name)s is already deleted. This message can "
                      "be safely ignored. Message: %(msg)s",
