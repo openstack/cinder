@@ -136,6 +136,9 @@ class UnityDriver(driver.ManageableVD,
         and a list of wwns which are visible to the remote wwn(s).
         Example return values:
         FC:
+
+        .. code-block:: json
+
             {
                 'driver_volume_type': 'fibre_channel'
                 'data': {
@@ -148,7 +151,11 @@ class UnityDriver(driver.ManageableVD,
                     }
                 }
             }
+
         iSCSI:
+
+        .. code-block:: json
+
             {
                 'driver_volume_type': 'iscsi'
                 'data': {
@@ -159,6 +166,7 @@ class UnityDriver(driver.ManageableVD,
                     'target_luns': [1, 1],
                 }
             }
+
         """
         return self.adapter.initialize_connection(volume, connector)
 
