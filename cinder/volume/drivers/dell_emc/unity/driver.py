@@ -48,6 +48,9 @@ class UnityDriver(driver.ManageableVD,
     """Unity Driver.
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial version (Ocata)
         1.0.1 - Fixed bug 170311: temp snapshot for backup was deleted twice
         1.0.2 - Fixes bug 1775518 to make sure driver succeed to initialize
@@ -55,9 +58,11 @@ class UnityDriver(driver.ManageableVD,
                 unity_storage_pool_names are empty
         1.0.3 - Fixed bug 1741831: corrected support to force detach a volume
                 from all its attached hosts.
+        1.0.4 - Fixes bug 1759175 to detach the lun correctly when auto zone
+                was enabled and the lun was the last one attached to the host.
     """
 
-    VERSION = '01.00.03'
+    VERSION = '01.00.04'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
