@@ -785,6 +785,19 @@ class FCAdapterTest(unittest.TestCase):
         target_wwn = ['100000051e55a100', '100000051e55a121']
         self.assertListEqual(target_wwn, data['target_wwn'])
 
+    def test_terminate_connection_auto_zone_enabled_none_host_luns(self):
+        connector = {'host': 'host-no-host_luns', 'wwpns': 'abcdefg'}
+        volume = MockOSResource(provider_location='id^lun_41', id='id_41')
+        ret = self.adapter.terminate_connection(volume, connector)
+        self.assertEqual('fibre_channel', ret['driver_volume_type'])
+        data = ret['data']
+        target_map = {
+            '200000051e55a100': ('100000051e55a100', '100000051e55a121'),
+            '200000051e55a121': ('100000051e55a100', '100000051e55a121')}
+        self.assertDictEqual(target_map, data['initiator_target_map'])
+        target_wwn = ['100000051e55a100', '100000051e55a121']
+        self.assertListEqual(target_wwn, data['target_wwn'])
+
     def test_validate_ports_whitelist_none(self):
         ports = self.adapter.validate_ports(None)
         self.assertEqual(set(('spa_iom_0_fc0', 'spa_iom_0_fc1')), set(ports))

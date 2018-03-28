@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Dell EMC Unity Driver: Fixes `bug 1759175
+    <https://bugs.launchpad.net/cinder/+bug/1759175>`__
+    to detach the lun correctly when auto zone was enabled and the lun was the
+    last one attached to the host.

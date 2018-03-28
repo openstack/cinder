@@ -161,6 +161,8 @@ class MockResource(object):
 
     @property
     def host_luns(self):
+        if self.name == 'host-no-host_luns':
+            return None
         return []
 
     @property
