@@ -49,14 +49,19 @@ class UnityDriver(driver.ManageableVD,
     """Unity Driver.
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial version
         2.0.0 - Add thin clone support
         3.0.0 - Add IPv6 support
         3.1.0 - Support revert to snapshot API
         3.1.1 - Enalbe SSL support
+        3.1.2 - Fixes bug 1759175 to detach the lun correctly when auto zone
+                was enabled and the lun was the last one attached to the host.
     """
 
-    VERSION = '03.01.01'
+    VERSION = '03.01.02'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
