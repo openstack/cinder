@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-03-20 18:45+0000\n"
+"POT-Creation-Date: 2018-03-29 04:10+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3666,13 +3666,6 @@ msgstr ""
 "Esecuzione del failover non riuscita perché la replica non è configurata "
 "correttamente."
 
-msgid ""
-"Key names can only contain alphanumeric characters, underscores, periods, "
-"colons and hyphens."
-msgstr ""
-"I nomi delle chiavi possono contenere solo caratteri alfanumerici, di "
-"sottolineatura, punti, due punti e trattini."
-
 #, python-format
 msgid "KeyError: %s"
 msgstr "KeyError: %s"
@@ -4521,9 +4514,6 @@ msgstr "Il corpo della richiesta contiene troppi elementi"
 msgid "Request body contains too many items."
 msgstr ""
 "Il corpo della richiesta contiene un numero troppo elevato di elementi."
-
-msgid "Request body empty"
-msgstr "Corpo della richiesta vuoto"
 
 #, python-format
 msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"

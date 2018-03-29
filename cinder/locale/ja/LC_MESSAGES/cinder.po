@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-03-20 18:45+0000\n"
+"POT-Creation-Date: 2018-03-29 04:10+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4465,13 +4465,6 @@ msgstr "再試行可能な Kaminario 例外: %(reason)s"
 msgid "KaminarioCinderDriver failure: %(reason)s"
 msgstr "Kaminario Cinder ドライバー障害です: %(reason)s"
 
-msgid ""
-"Key names can only contain alphanumeric characters, underscores, periods, "
-"colons and hyphens."
-msgstr ""
-"鍵の名前に含めることができるのは、英数字、アンダースコアー、ピリオド、コロ"
-"ン、およびハイフンのみです。"
-
 #, python-format
 msgid "KeyError: %s"
 msgstr "KeyError: %s"
@@ -5509,9 +5502,6 @@ msgstr "要求本体に含まれる項目が多すぎます"
 
 msgid "Request body contains too many items."
 msgstr "要求本体に含まれる項目が多すぎます。"
-
-msgid "Request body empty"
-msgstr "要求本体が空です"
 
 #, python-format
 msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
@@ -6892,9 +6882,6 @@ msgid ""
 "%(attr)s."
 msgstr ""
 " マッピング %(id)s の予期されないマッピング状態 %(status)s。属性: %(attr)s。"
-
-msgid "Unexpected 'disabled_reason' found on enable request."
-msgstr "enable request に予期しない  'disabled_reason'  が見つかりました。"
 
 #, python-format
 msgid ""

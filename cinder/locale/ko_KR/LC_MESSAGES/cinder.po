@@ -14,7 +14,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-03-20 18:45+0000\n"
+"POT-Creation-Date: 2018-03-29 04:10+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3491,12 +3491,6 @@ msgid ""
 "Issuing a fail-over failed because replication is not properly configured."
 msgstr "복제가 적절하게 구성되지 않았으므로 장애 복구 실행에 실패했습니다."
 
-msgid ""
-"Key names can only contain alphanumeric characters, underscores, periods, "
-"colons and hyphens."
-msgstr ""
-"키 이름은 영숫자 문자, 밑줄, 마침표, 콜론, 하이픈만 포함할 수 있습니다."
-
 #, python-format
 msgid "KeyError: %s"
 msgstr "KeyError: %s"
@@ -4310,9 +4304,6 @@ msgstr "요청 본문에 너무 많은 항목이 들어있음"
 
 msgid "Request body contains too many items."
 msgstr "요청 본문이 너무 많은 항목을 포함합니다."
-
-msgid "Request body empty"
-msgstr "요청 본문이 비어 있음"
 
 #, python-format
 msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"

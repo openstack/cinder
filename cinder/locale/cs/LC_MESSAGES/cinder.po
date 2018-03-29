@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-03-20 18:45+0000\n"
+"POT-Creation-Date: 2018-03-29 04:10+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2893,13 +2893,6 @@ msgstr ""
 "Vyvolání zavedení záložního systému, protože replikace není správně "
 "nastavena."
 
-msgid ""
-"Key names can only contain alphanumeric characters, underscores, periods, "
-"colons and hyphens."
-msgstr ""
-"Názvy klíče mohou obsahovat pouze alfanumerické znaky, podtržítka, tečky, "
-"dvojtečky a pomlčky."
-
 #, python-format
 msgid "KeyError: %s"
 msgstr "Chyba klíče: %s"
@@ -3591,9 +3584,6 @@ msgstr "Tělo požadavku obsahuje příliš mnoho položek"
 
 msgid "Request body contains too many items."
 msgstr "Tělo požadavku obsahuje příliš mnoho položek."
-
-msgid "Request body empty"
-msgstr "Tělo žádosti je prázdné"
 
 #, python-format
 msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
