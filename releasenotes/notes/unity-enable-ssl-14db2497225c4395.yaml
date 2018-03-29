@@ -1,0 +1,7 @@
+---
+features:
+  - Dell EMC Unity Cinder driver allows enabling/disabling the SSL verification.
+    Admin can set `True` or `False` for `driver_ssl_cert_verify` to enable
+    or disable this function, alternatively set the
+    `driver_ssl_cert_path=<PATH>` for customized CA path.
+    Both above 2 options should go under the driver section.
