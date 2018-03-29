@@ -178,6 +178,9 @@ class VNXDriver(driver.ManageableVD,
         and a list of wwns which are visible to the remote wwn(s).
         Example return values:
         FC:
+
+        .. code-block:: json
+
             {
                 'driver_volume_type': 'fibre_channel'
                 'data': {
@@ -190,7 +193,11 @@ class VNXDriver(driver.ManageableVD,
                     }
                 }
             }
+
         iSCSI:
+
+        .. code-block:: json
+
             {
                 'driver_volume_type': 'iscsi'
                 'data': {
@@ -201,6 +208,7 @@ class VNXDriver(driver.ManageableVD,
                     'target_luns': [1, 1],
                 }
             }
+
         """
         LOG.debug("Entering initialize_connection"
                   " - connector: %(connector)s.",

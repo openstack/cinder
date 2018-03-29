@@ -209,6 +209,9 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         The target_wwn can be a single entry or a list of wwns that
         correspond to the list of remote wwn(s) that will export the volume.
         Example return values:
+
+        .. code-block:: json
+
             {
                 'driver_volume_type': 'fibre_channel'
                 'data': {
@@ -228,6 +231,7 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
                     'target_wwn': ['1234567890123', '0987654321321'],
                 }
             }
+
         :param volume: the cinder volume object
         :param connector: the connector object
         :returns: dict -- the target_wwns and initiator_target_map
