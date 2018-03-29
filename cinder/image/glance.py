@@ -445,8 +445,7 @@ class GlanceImageService(object):
 
         return image_meta
 
-    @staticmethod
-    def _is_image_available(context, image):
+    def _is_image_available(self, context, image):
         """Check image availability.
 
         This check is needed in case Nova and Glance are deployed
@@ -467,6 +466,12 @@ class GlanceImageService(object):
 
         if context.project_id and ('project_id' in properties):
             return str(properties['project_id']) == str(context.project_id)
+
+        if image.visibility == 'shared':
+            for member in self.list_members(context, image.id):
+                if (context.project_id == member['member_id'] and
+                        member['status'] == 'accepted'):
+                    return True
 
         try:
             user_id = properties['user_id']
