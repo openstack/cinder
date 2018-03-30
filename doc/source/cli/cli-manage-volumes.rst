@@ -8,43 +8,6 @@ A volume is a detachable block storage device, similar to a USB hard
 drive. You can attach a volume to only one instance. Use  the ``openstack``
 client commands to create and manage volumes.
 
-Migrate a volume
-~~~~~~~~~~~~~~~~
-
-As an administrator, you can migrate a volume with its data from one
-location to another in a manner that is transparent to users and
-workloads. You can migrate only detached volumes with no snapshots.
-
-Possible use cases for data migration include:
-
-*  Bring down a physical storage device for maintenance without
-   disrupting workloads.
-
-*  Modify the properties of a volume.
-
-*  Free up space in a thinly-provisioned back end.
-
-Migrate a volume with the :command:`openstack volume migrate` command, as shown
-in the following example:
-
-.. code-block:: console
-
-   $ openstack volume migrate [-h] --host <host> [--force-host-copy]
-                                     [--lock-volume | --unlock-volume]
-                                     <volume>
-
-In this example, ``--force-host-copy`` forces the generic
-host-based migration mechanism and bypasses any driver optimizations.
-``--lock-volume | --unlock-volume`` applies to the available volume.
-To determine whether the termination of volume migration caused by other
-commands. ``--lock-volume`` locks the volume state and does not allow the
-migration to be aborted.
-
-.. note::
-
-   If the volume has snapshots, the specified host destination cannot accept
-   the volume. If the user is not an administrator, the migration fails.
-
 Create a volume
 ~~~~~~~~~~~~~~~
 
@@ -128,8 +91,8 @@ This example creates a ``my-new-volume`` volume based on an image.
 
 .. _Create_a_volume_from_specified_volume_type:
 
-Create a volume from specified volume type
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Volume Types
+------------
 
 Cinder supports these three ways to specify ``volume type`` during
 volume creation.
@@ -138,10 +101,9 @@ volume creation.
 #. cinder_img_volume_type (via glance image metadata)
 #. default_volume_type (via cinder.conf)
 
-.. _volume_type:
 
-volume_type
------------
+volume-type
++++++++++++
 
 User can specify `volume type` when creating a volume.
 
@@ -159,10 +121,8 @@ User can specify `volume type` when creating a volume.
                                <name>
 
 
-.. _cinder_img_volume_type:
-
 cinder_img_volume_type
-----------------------
+++++++++++++++++++++++
 
 If glance image has ``cinder_img_volume_type`` property, Cinder uses this
 parameter to specify ``volume type`` when creating a volume.
@@ -186,30 +146,31 @@ a volume from the image.
 
 
       $ openstack image show 376bd633-c9c9-4c5d-a588-342f4f66d086
-      +------------------+-----------------------------------------------------------+
-      | Field            | Value                                                     |
-      +------------------+-----------------------------------------------------------+
-      | checksum         | eb9139e4942121f22bbc2afc0400b2a4                          |
-      | container_format | ami                                                       |
-      | created_at       | 2016-10-13T03:28:55Z                                      |
-      | disk_format      | ami                                                       |
-      | file             | /v2/images/376bd633-c9c9-4c5d-a588-342f4f66d086/file      |
-      | id               | 376bd633-c9c9-4c5d-a588-342f4f66d086                      |
-      | min_disk         | 0                                                         |
-      | min_ram          | 0                                                         |
-      | name             | cirros-0.3.5-x86_64-uec                                   |
-      | owner            | 88ba456e3a884c318394737765e0ef4d                          |
-      | properties       | kernel_id='a5752de4-9faf-4c47-acbc-78a5efa7cc6e',         |
-      |                  | ramdisk_id='2c20fce7-2e68-45ee-ba8d-beba27a91ab5'         |
-      | protected        | False                                                     |
-      | schema           | /v2/schemas/image                                         |
-      | size             | 25165824                                                  |
-      | status           | active                                                    |
-      | tags             |                                                           |
-      | updated_at       | 2016-10-13T03:28:55Z                                      |
-      | virtual_size     | None                                                      |
-      | visibility       | public                                                    |
-      +------------------+-----------------------------------------------------------+
+      +------------------------+------------------------------------------------------+
+      | Field                  | Value                                                |
+      +------------------------+------------------------------------------------------+
+      | checksum               | eb9139e4942121f22bbc2afc0400b2a                      |
+      | cinder_img_volume_type | nfstype                                              |
+      | container_format       | ami                                                  |
+      | created_at             | 2016-10-13T03:28:55Z                                 |
+      | disk_format            | ami                                                  |
+      | file                   | /v2/images/376bd633-c9c9-4c5d-a588-342f4f66d086/file |
+      | id                     | 376bd633-c9c9-4c5d-a588-342f4f66d086                 |
+      | min_disk               | 0                                                    |
+      | min_ram                | 0                                                    |
+      | name                   | cirros-0.3.5-x86_64-uec                              |
+      | owner                  | 88ba456e3a884c318394737765e0ef4d                     |
+      | properties             | kernel_id='a5752de4-9faf-4c47-acbc-78a5efa7cc6e',    |
+      |                        | ramdisk_id='2c20fce7-2e68-45ee-ba8d-beba27a91ab5'    |
+      | protected              | False                                                |
+      | schema                 | /v2/schemas/image                                    |
+      | size                   | 25165824                                             |
+      | status                 | active                                               |
+      | tags                   |                                                      |
+      | updated_at             | 2016-10-13T03:28:55Z                                 |
+      | virtual_size           | None                                                 |
+      | visibility             | public                                               |
+      +------------------------+------------------------------------------------------+
 
       $ openstack volume create --image 376bd633-c9c9-4c5d-a588-342f4f66d086 \
         --size 1 --availability-zone nova test
@@ -232,15 +193,13 @@ a volume from the image.
       | snapshot_id         | None                                 |
       | source_volid        | None                                 |
       | status              | creating                             |
-      | type                | lvmdriver-1                          |
+      | type                | nfstype                              |
       | updated_at          | None                                 |
       | user_id             | 33fdc37314914796883706b33e587d51     |
       +---------------------+--------------------------------------+
 
-.. _default_volume_type:
-
 default_volume_type
--------------------
++++++++++++++++++++
 
 If above parameters are not set, Cinder uses default_volume_type which is
 defined in cinder.conf during volume creation.
@@ -253,6 +212,7 @@ Example cinder.conf file configuration.
    default_volume_type = lvmdriver-1
 
 .. _Attach_a_volume_to_an_instance:
+
 
 Attach a volume to an instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -293,7 +253,6 @@ Attach a volume to an instance
       | id                           | 573e024d-5235-49ce-8332-be1576d323f8          |
       | multiattach                  | False                                         |
       | name                         | my-new-volume                                 |
-      | os-vol-tenant-attr:tenant_id | 7ef070d3fee24bdfae054c17ad742e28              |
       | properties                   |                                               |
       | replication_status           | disabled                                      |
       | size                         | 8                                             |
@@ -303,13 +262,94 @@ Attach a volume to an instance
       | type                         | lvmdriver-1                                   |
       | updated_at                   | 2016-10-13T06:08:11.000000                    |
       | user_id                      | 33fdc37314914796883706b33e587d51              |
-      | volume_image_metadata        |{u'kernel_id': u'df430cc2...,                  |
-      |                              |        u'image_id': u'397e713c...,            |
-      |                              |        u'ramdisk_id': u'3cf852bd...,          |
-      |                              |u'image_name': u'cirros-0.3.5-x86_64-uec'}     |
       +------------------------------+-----------------------------------------------+
 
 
+Detach a volume from an instance
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#. Detach your volume from a server, specifying the server ID and the volume
+   ID:
+
+   .. code-block:: console
+
+      $ openstack server remove volume 84c6e57d-a6b1-44b6-81eb-fcb36afd31b5 \
+        573e024d-5235-49ce-8332-be1576d323f8
+
+#. Show information for your volume:
+
+   .. code-block:: console
+
+      $ openstack volume show 573e024d-5235-49ce-8332-be1576d323f8
+
+   The output shows that the volume is no longer attached to the server:
+
+   .. code-block:: console
+
+      +------------------------------+-----------------------------------------------+
+      | Field                        | Value                                         |
+      +------------------------------+-----------------------------------------------+
+      | attachments                  | []                                            |
+      | availability_zone            | nova                                          |
+      | bootable                     | true                                          |
+      | consistencygroup_id          | None                                          |
+      | created_at                   | 2016-10-13T06:08:07.000000                    |
+      | description                  | None                                          |
+      | encrypted                    | False                                         |
+      | id                           | 573e024d-5235-49ce-8332-be1576d323f8          |
+      | multiattach                  | False                                         |
+      | name                         | my-new-volume                                 |
+      | properties                   |                                               |
+      | replication_status           | disabled                                      |
+      | size                         | 8                                             |
+      | snapshot_id                  | None                                          |
+      | source_volid                 | None                                          |
+      | status                       | in-use                                        |
+      | type                         | lvmdriver-1                                   |
+      | updated_at                   | 2016-10-13T06:08:11.000000                    |
+      | user_id                      | 33fdc37314914796883706b33e587d51              |
+      +------------------------------+-----------------------------------------------+
+
+
+Delete a volume
+~~~~~~~~~~~~~~~
+
+#. To delete your volume, you must first detach it from the server.
+   To detach the volume from your server and check for the list of existing
+   volumes, see steps 1 and 2 in Resize_a_volume_.
+
+   Delete the volume using either the volume name or ID:
+
+   .. code-block:: console
+
+      $ openstack volume delete my-new-volume
+
+   This command does not provide any output.
+
+#. List the volumes again, and note that the status of your volume is
+   ``deleting``:
+
+   .. code-block:: console
+
+      $ openstack volume list
+      +----------------+-----------------+-----------+------+-------------+
+      |       ID       |   Display Name  |  Status   | Size | Attached to |
+      +----------------+-----------------+-----------+------+-------------+
+      | 573e024d-52... |  my-new-volume  |  deleting |  8   |             |
+      | bd7cf584-45... | my-bootable-vol | available |  8   |             |
+      +----------------+-----------------+-----------+------+-------------+
+
+   When the volume is fully deleted, it disappears from the list of
+   volumes:
+
+   .. code-block:: console
+
+      $ openstack volume list
+      +----------------+-----------------+-----------+------+-------------+
+      |       ID       |   Display Name  |  Status   | Size | Attached to |
+      +----------------+-----------------+-----------+------+-------------+
+      | bd7cf584-45... | my-bootable-vol | available |  8   |             |
+      +----------------+-----------------+-----------+------+-------------+
 
 .. _Resize_a_volume:
 
@@ -356,45 +396,42 @@ Resize a volume
       ``auto_activation_volume_list`` is defined in ``lvm.conf``. See
       ``lvm.conf`` for more information.
 
-Delete a volume
-~~~~~~~~~~~~~~~
+Migrate a volume
+~~~~~~~~~~~~~~~~
 
-#. To delete your volume, you must first detach it from the server.
-   To detach the volume from your server and check for the list of existing
-   volumes, see steps 1 and 2 in Resize_a_volume_.
+As an administrator, you can migrate a volume with its data from one
+location to another in a manner that is transparent to users and
+workloads. You can migrate only detached volumes with no snapshots.
 
-   Delete the volume using either the volume name or ID:
+Possible use cases for data migration include:
 
-   .. code-block:: console
+*  Bring down a physical storage device for maintenance without
+   disrupting workloads.
 
-      $ openstack volume delete my-new-volume
+*  Modify the properties of a volume.
 
-   This command does not provide any output.
+*  Free up space in a thinly-provisioned back end.
 
-#. List the volumes again, and note that the status of your volume is
-   ``deleting``:
+Migrate a volume with the :command:`openstack volume migrate` command, as shown
+in the following example:
 
-   .. code-block:: console
+.. code-block:: console
 
-      $ openstack volume list
-      +----------------+-----------------+-----------+------+-------------+
-      |       ID       |   Display Name  |  Status   | Size | Attached to |
-      +----------------+-----------------+-----------+------+-------------+
-      | 573e024d-52... |  my-new-volume  |  deleting |  8   |             |
-      | bd7cf584-45... | my-bootable-vol | available |  8   |             |
-      +----------------+-----------------+-----------+------+-------------+
+   $ openstack volume migrate [-h] --host <host> [--force-host-copy]
+                                     [--lock-volume | --unlock-volume]
+                                     <volume>
 
-   When the volume is fully deleted, it disappears from the list of
-   volumes:
+In this example, ``--force-host-copy`` forces the generic
+host-based migration mechanism and bypasses any driver optimizations.
+``--lock-volume | --unlock-volume`` applies to the available volume.
+To determine whether the termination of volume migration caused by other
+commands. ``--lock-volume`` locks the volume state and does not allow the
+migration to be aborted.
 
-   .. code-block:: console
+.. note::
 
-      $ openstack volume list
-      +----------------+-----------------+-----------+------+-------------+
-      |       ID       |   Display Name  |  Status   | Size | Attached to |
-      +----------------+-----------------+-----------+------+-------------+
-      | bd7cf584-45... | my-bootable-vol | available |  8   |             |
-      +----------------+-----------------+-----------+------+-------------+
+   If the volume has snapshots, the specified host destination cannot accept
+   the volume. If the user is not an administrator, the migration fails.
 
 Transfer a volume
 ~~~~~~~~~~~~~~~~~
@@ -677,21 +714,21 @@ The following example unmanages the ``my-snapshot-id`` image:
    $ openstack volume snapshot unset my-snapshot-id
 
 Report backend state in service list
-------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Currently, Cinder couldn't report backend state to service, operators only
-know that cinder-volume process is up, but isn't aware of whether the backend
-storage device is ok. Users still can create volume and go to fail over and
-over again. To make maintenance easier, operator could query storage device
-state via service list and fix the problem more quickly. If device state is
-*down*, that means volume creation will fail.
+Each of the Cinder services report a Status and a State. These are the
+administrative state and the runtime state, respectively.
 
-To do so, use the Block Storage API: service list to get the backend state.
-Run this command:
+To get a listing of all Cinder services and their states, run the command:
 
 .. code-block:: console
 
    $ openstack volume service list
 
-Add backend_state: up/down into response body of service list. This feature
-is supported after microversion 3.49.
+   +------------------+-------------------+------+---------+-------+----------------------------+
+   | Binary           | Host              | Zone | Status  | State | Updated At                 |
+   +------------------+-------------------+------+---------+-------+----------------------------+
+   | cinder-scheduler | tower             | nova | enabled | up    | 2018-03-30T21:16:11.000000 |
+   | cinder-volume    | tower@lvmdriver-1 | nova | enabled | up    | 2018-03-30T21:16:15.000000 |
+   | cinder-backup    | tower             | nova | enabled | up    | 2018-03-30T21:16:14.000000 |
+   +------------------+-------------------+------+---------+-------+----------------------------+
