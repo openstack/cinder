@@ -2030,6 +2030,13 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         (host, rp, folder, summary) = self._select_ds_for_volume(volume)
         datastore = summary.datastore
         disk_type = VMwareVcVmdkDriver._get_disk_type(volume)
+        device_changes = None
+        if volume['size']:
+            new_size_in_kb = volume['size'] * units.Gi / units.Ki
+            disk_device = self.volumeops._get_disk_device(template)
+            if new_size_in_kb > disk_device.capacityInKB:
+                device_changes = self.volumeops._create_spec_for_disk_expand(disk_device, new_size_in_kb)
+
         tmp_backing = self.volumeops.clone_backing(tmp_name,
                                                    template,
                                                    None,
@@ -2038,7 +2045,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                                    disk_type=disk_type,
                                                    host=host,
                                                    resource_pool=rp,
-                                                   folder=folder)
+                                                   folder=folder,
+                                                   device_changes=device_changes)
 
         self._create_volume_from_temp_backing(volume, tmp_backing)
 
@@ -2104,10 +2112,14 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                     'instance': instance})
 
         tmp_name = tmp_name or uuidutils.generate_uuid()
+        
+        device_changes = self.volumeops._create_device_change_for_disk_removal(
+            instance, disks_to_clone=[vol_dev_uuid])
+
         return self.volumeops.clone_backing(
             tmp_name, instance, None, volumeops.FULL_CLONE_TYPE, datastore,
             host=host, resource_pool=rp, folder=folder,
-            disks_to_clone=[vol_dev_uuid])
+            device_changes=device_changes)
 
     def _create_volume_from_temp_backing(self, volume, tmp_backing):
         try:

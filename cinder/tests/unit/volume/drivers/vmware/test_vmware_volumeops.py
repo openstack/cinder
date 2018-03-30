@@ -1051,9 +1051,6 @@ class VolumeOpsTestCase(test.TestCase):
         else:
             disk_device = None
 
-        dev_change = mock.sentinel.dev_change
-        create_device_change_for_disk_removal.return_value = dev_change
-
         datastore = mock.sentinel.datastore
         disk_move_type = mock.sentinel.disk_move_type
         snapshot = mock.sentinel.snapshot
@@ -1073,7 +1070,7 @@ class VolumeOpsTestCase(test.TestCase):
                                         host=host,
                                         resource_pool=rp,
                                         extra_config=extra_config,
-                                        disks_to_clone=disks_to_clone)
+                                        device_changes='fake-device-changes')
 
         self.assertEqual(relocate_spec, ret.location)
         self.assertFalse(ret.powerOn)
@@ -1088,9 +1085,7 @@ class VolumeOpsTestCase(test.TestCase):
                                                   disk_move_type, disk_type,
                                                   disk_device)
         self._verify_extra_config(ret.config.extraConfig, key, value)
-        create_device_change_for_disk_removal.assert_called_once_with(
-            backing, disks_to_clone)
-        self.assertEqual(dev_change, ret.config.deviceChange)
+        self.assertEqual('fake-device-changes', ret.config.deviceChange)
 
     def test_get_clone_spec(self):
         self._test_get_clone_spec()
@@ -1167,7 +1162,7 @@ class VolumeOpsTestCase(test.TestCase):
         get_clone_spec.assert_called_once_with(
             datastore, exp_disk_move_type, snapshot, backing, disk_type,
             host=host, resource_pool=resource_pool, extra_config=extra_config,
-            disks_to_clone=None)
+            device_changes=None)
 
         exp_folder = folder if folder else backing_folder
         self.session.invoke_api.assert_called_once_with(
