@@ -266,11 +266,12 @@ class HPE3PARCommon(object):
                 extra-specs. bug #1744025
         4.0.6 - Monitor task of promoting a virtual copy. bug #1749642
         4.0.7 - Handle force detach case. bug #1686745
+        4.0.8 - Added support for report backend state in service list.
 
 
     """
 
-    VERSION = "4.0.7"
+    VERSION = "4.0.8"
 
     stats = {}
 
@@ -1472,7 +1473,15 @@ class HPE3PARCommon(object):
         # set in the child classes
 
         pools = []
-        info = self.client.getStorageSystemInfo()
+        try:
+            info = self.client.getStorageSystemInfo()
+            backend_state = 'up'
+        except Exception as ex:
+            info = {}
+            backend_state = 'down'
+            LOG.warning("Exception at getStorageSystemInfo() "
+                        "Reason: '%(reason)s'", {'reason': ex})
+
         qos_support = True
         thin_support = True
         remotecopy_support = True
@@ -1572,7 +1581,7 @@ class HPE3PARCommon(object):
                     'reserved_percentage': (
                         self.config.safe_get('reserved_percentage')),
                     'location_info': ('HPE3PARDriver:%(sys_id)s:%(dest_cpg)s' %
-                                      {'sys_id': info['serialNumber'],
+                                      {'sys_id': info.get('serialNumber'),
                                        'dest_cpg': cpg_name}),
                     'total_volumes': total_volumes,
                     'capacity_utilization': capacity_utilization,
@@ -1588,7 +1597,8 @@ class HPE3PARCommon(object):
                     'consistent_group_snapshot_enabled': True,
                     'compression': compression_support,
                     'consistent_group_replication_enabled':
-                        self._replication_enabled
+                        self._replication_enabled,
+                    'backend_state': backend_state
                     }
 
             if remotecopy_support:
@@ -1598,11 +1608,11 @@ class HPE3PARCommon(object):
 
             pools.append(pool)
 
-        self.stats = {'driver_version': '3.0',
+        self.stats = {'driver_version': '4.0',
                       'storage_protocol': None,
                       'vendor_name': 'Hewlett Packard Enterprise',
                       'volume_backend_name': None,
-                      'array_id': info['id'],
+                      'array_id': info.get('id'),
                       'replication_enabled': self._replication_enabled,
                       'replication_targets': self._get_replication_targets(),
                       'pools': pools}
