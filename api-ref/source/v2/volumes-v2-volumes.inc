@@ -99,7 +99,6 @@ Response Parameters
    - os-vol-host-attr:host: os-vol-host-attr:host
    - encrypted: encrypted
    - updated_at: updated_at
-   - os-volume-replication:extended_status: os-volume-replication:extended_status
    - replication_status: replication_status
    - snapshot_id: snapshot_id
    - id: id
@@ -118,7 +117,6 @@ Response Parameters
    - name: name
    - bootable: bootable_response
    - created_at: created_at
-   - os-volume-replication:driver_data: os-volume-replication:driver_data
    - volumes: volumes
    - volume_type: volume_type
 
@@ -329,7 +327,6 @@ Response Parameters
    - os-vol-host-attr:host: os-vol-host-attr:host
    - encrypted: encrypted
    - updated_at: updated_at
-   - os-volume-replication:extended_status: os-volume-replication:extended_status
    - replication_status: replication_status
    - snapshot_id: snapshot_id
    - id: id
@@ -349,7 +346,6 @@ Response Parameters
    - name: name
    - bootable: bootable_response
    - created_at: created_at
-   - os-volume-replication:driver_data: os-volume-replication:driver_data
    - volume_type: volume_type
 
 

@@ -24,8 +24,6 @@
         "volume_type": "None",
         "os-vol-tenant-attr:tenant_id": "0c2eba2c5af04d3f9e9d0d410b371fde",
         "size": 1,
-        "os-volume-replication:driver_data": null,
-        "os-volume-replication:extended_status": null,
         "metadata": {
             "contents": "not junk"
         }

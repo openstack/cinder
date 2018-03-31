@@ -1265,25 +1265,6 @@ os-vol-tenant-attr:tenant_id:
   in: body
   required: true
   type: string
-os-volume-replication:driver_data:
-  description: |
-    The name of the volume replication driver.
-  in: body
-  required: false
-  type: string
-os-volume-replication:extended_status:
-  description: |
-    The volume replication status managed by the
-    driver of backend storage.
-  in: body
-  required: false
-  type: string
-os-volume-replication:extended_status_1:
-  description: |
-    The status of the volume replication.
-  in: body
-  required: false
-  type: string
 perVolumeGigabytes:
   description: |
     The maximum amount of storage per volume, in gibibytes (GiB).
