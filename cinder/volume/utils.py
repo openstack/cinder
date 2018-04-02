@@ -1011,3 +1011,14 @@ def get_max_over_subscription_ratio(str_value, supports_auto=False):
         LOG.error(msg)
         raise exception.InvalidParameterValue(message=msg)
     return mosr
+
+
+def make_initiator_target_all2all_map(initiator_wwpns, target_wwpns):
+    """Build a simplistic all-to-all mapping."""
+    i_t_map = {}
+    for i_wwpn in initiator_wwpns:
+        i_t_map[str(i_wwpn)] = []
+        for t_wwpn in target_wwpns:
+            i_t_map[i_wwpn].append(t_wwpn)
+
+    return i_t_map
