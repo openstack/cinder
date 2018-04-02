@@ -5,11 +5,22 @@ Dell EMC SC Series Fibre Channel and iSCSI drivers
 The Dell EMC Storage Center volume driver interacts with configured Storage
 Center arrays.
 
-The Dell EMC Storage Center driver manages Storage Center arrays through
-the Dell EMC Storage Manager (DSM). DSM connection settings and Storage
-Center options are defined in the ``cinder.conf`` file.
+The Dell EMC Storage Center driver manages a Storage Center array via the
+Dell EMC Storage Manager (DSM) Data Collector or by directly connecting to
+the Storage Center at the cost of replication and Live Volume functionality.
+Also note that the directly connecting to the Storage Center is only
+supported with Storage Center OS 7.1.1 or later. Any version of Storage
+Center OS supported by DSM is supported if connecting via the Data
+Collector.
 
-Prerequisite: Dell EMC Storage Manager 2015 R1 or later must be used.
+Driver configuration settings and Storage Center options are defined in the
+``cinder.conf`` file.
+
+Prerequisites:
+
+- Storage Center OS version 7.1.1 or later and OpenStack Ocata or later
+  must be used if connecting directly to the Storage Center.
+- Dell EMC Storage Manager 2015 R1 or later if connecting through DSM.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -27,8 +38,9 @@ volume operations:
 -  Create, delete, list and update a consistency group.
 -  Create, delete, and list consistency group snapshots.
 -  Manage an existing volume.
--  Failover-host for replicated back ends.
--  Create a replication using Live Volume.
+-  Replication (Requires DSM.)
+-  Failover-host for replicated back ends. (Requires DSM.)
+-  Create a replication using Live Volume. (Requires DSM.)
 
 Extra spec options
 ~~~~~~~~~~~~~~~~~~
@@ -36,7 +48,7 @@ Extra spec options
 Volume type extra specs can be used to enable a variety of Dell EMC Storage
 Center options. Selecting Storage Profiles, Replay Profiles, enabling
 replication, replication options including Live Volume and Active Replay
-replication.
+replication. (Replication options are available when connected via DSM.)
 
 Storage Profiles control how Storage Center manages volume data. For a
 given volume, the selected Storage Profile dictates which disk tier
@@ -171,7 +183,7 @@ Use the following instructions to update the configuration file for iSCSI:
     volume_backend_name = delliscsi
     # The iSCSI driver to load
     volume_driver = cinder.volume.drivers.dell_emc.sc.storagecenter_iscsi.SCISCSIDriver
-    # IP address of DSM
+    # IP address of the DSM or the Storage Center if attaching directly.
     san_ip = 172.23.8.101
     # DSM user name
     san_login = Admin
@@ -206,7 +218,7 @@ channel:
     # The FC driver to load
     volume_driver = cinder.volume.drivers.dell_emc.sc.storagecenter_fc.SCFCDriver
 
-    # IP address of the DSM
+    # IP address of the DSM or the Storage Center if attaching directly.
     san_ip = 172.23.8.101
     # DSM user name
     san_login = Admin
@@ -251,6 +263,8 @@ to use the secondary. It will continue to use the secondary until the volume
 service is restarted or the secondary fails at which point it will attempt to
 use the primary.
 
+Note: Requires two DSM Data Collectors.
+
 Replication configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -270,6 +284,10 @@ slow things down, however.
 
 A volume is only replicated if the volume is of a volume-type that has
 the extra spec ``replication_enabled`` set to ``<is> True``.
+
+Warning: replication_device requires DSM. If this is on a backend that
+is directly connected to the Storage Center the driver will not load
+as it is unable to meet the replication requirement.
 
 Replication notes
 ~~~~~~~~~~~~~~~~~
@@ -314,7 +332,7 @@ This option allows one to set a default Server OS type to use when creating
 a server definition on the Dell EMC Storage Center.
 
 When attaching a volume to a node the Dell EMC Storage Center driver creates a
-server definition on the storage array. This defition includes a Server OS
+server definition on the storage array. This definition includes a Server OS
 type. The type used by the Dell EMC Storage Center cinder driver is
 "Red Hat Linux 6.x". This is a modern operating system definition that supports
 all the features of an OpenStack node.
