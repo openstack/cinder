@@ -142,8 +142,8 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         self.obj_reset_changes(fields=(attrname,))
 
     @classmethod
-    def get_by_host_and_topic(cls, context, host, topic):
-        db_service = db.service_get(context, disabled=False, host=host,
+    def get_by_host_and_topic(cls, context, host, topic, disabled=False):
+        db_service = db.service_get(context, disabled=disabled, host=host,
                                     topic=topic)
         return cls._from_db_object(context, cls(context), db_service)
 
