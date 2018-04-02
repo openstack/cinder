@@ -386,7 +386,7 @@ class GroupsController(wsgi.Controller):
                 exception.InvalidVolume, exception.InvalidVolumeType) as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("disable_replication")
@@ -407,7 +407,7 @@ class GroupsController(wsgi.Controller):
                 exception.InvalidVolume, exception.InvalidVolumeType) as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("failover_replication")
@@ -440,7 +440,7 @@ class GroupsController(wsgi.Controller):
                 exception.InvalidVolume, exception.InvalidVolumeType) as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("list_replication_targets")
