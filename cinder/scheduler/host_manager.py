@@ -414,6 +414,8 @@ class HostManager(object):
         self.filter_handler = filters.BackendFilterHandler('cinder.scheduler.'
                                                            'filters')
         self.filter_classes = self.filter_handler.get_all_classes()
+        self.enabled_filters = self._choose_backend_filters(
+            CONF.scheduler_default_filters)
         self.weight_handler = importutils.import_object(
             CONF.scheduler_weight_handler,
             'cinder.scheduler.weights')
@@ -430,8 +432,6 @@ class HostManager(object):
         of acceptable filters (all loaded filters). If input is None,
         it uses CONF.scheduler_default_filters instead.
         """
-        if filter_cls_names is None:
-            filter_cls_names = CONF.scheduler_default_filters
         if not isinstance(filter_cls_names, (list, tuple)):
             filter_cls_names = [filter_cls_names]
         good_filters = []
@@ -481,7 +481,10 @@ class HostManager(object):
     def get_filtered_backends(self, backends, filter_properties,
                               filter_class_names=None):
         """Filter backends and return only ones passing all filters."""
-        filter_classes = self._choose_backend_filters(filter_class_names)
+        if filter_class_names is not None:
+            filter_classes = self._choose_backend_filters(filter_class_names)
+        else:
+            filter_classes = self.enabled_filters
         return self.filter_handler.get_filtered_objects(filter_classes,
                                                         backends,
                                                         filter_properties)
