@@ -30,7 +30,6 @@ from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_log import log as logging
 import oslo_messaging as messaging
-from oslo_service import loopingcall
 from oslo_service import service
 from oslo_service import wsgi
 from oslo_utils import importutils
@@ -204,7 +203,6 @@ class Service(service.Service):
         self.periodic_fuzzy_delay = periodic_fuzzy_delay
         self.basic_config_check()
         self.saved_args, self.saved_kwargs = args, kwargs
-        self.timers = []
 
         setup_profiler(binary, host)
         self.rpcserver = None
@@ -266,23 +264,16 @@ class Service(service.Service):
         self.manager.init_host_with_rpc()
 
         if self.report_interval:
-            pulse = loopingcall.FixedIntervalLoopingCall(
-                self.report_state)
-            pulse.start(interval=self.report_interval,
-                        initial_delay=self.report_interval)
-            self.timers.append(pulse)
+            self.tg.add_timer(self.report_interval, self.report_state,
+                              initial_delay=self.report_interval)
 
         if self.periodic_interval:
             if self.periodic_fuzzy_delay:
                 initial_delay = random.randint(0, self.periodic_fuzzy_delay)
             else:
                 initial_delay = None
-
-            periodic = loopingcall.FixedIntervalLoopingCall(
-                self.periodic_tasks)
-            periodic.start(interval=self.periodic_interval,
-                           initial_delay=initial_delay)
-            self.timers.append(periodic)
+            self.tg.add_timer(self.periodic_interval, self.periodic_tasks,
+                              initial_delay=initial_delay)
 
     def basic_config_check(self):
         """Perform basic config checks before starting service."""
@@ -414,13 +405,6 @@ class Service(service.Service):
         except Exception:
             pass
 
-        self.timers_skip = []
-        for x in self.timers:
-            try:
-                x.stop()
-            except Exception:
-                self.timers_skip.append(x)
-
         if self.coordination:
             try:
                 coordination.COORDINATOR.stop()
@@ -429,13 +413,6 @@ class Service(service.Service):
         super(Service, self).stop(graceful=True)
 
     def wait(self):
-        skip = getattr(self, 'timers_skip', [])
-        for x in self.timers:
-            if x not in skip:
-                try:
-                    x.wait()
-                except Exception:
-                    pass
         if self.rpcserver:
             self.rpcserver.wait()
         if self.backend_rpcserver:
