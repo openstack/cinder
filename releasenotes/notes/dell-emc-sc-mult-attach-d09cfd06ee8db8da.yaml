@@ -1,0 +1,4 @@
+---
+features:
+  - Enabled Cinder Multi-Attach capability in the Dell
+    EMC Storage Center Cinder driver.
