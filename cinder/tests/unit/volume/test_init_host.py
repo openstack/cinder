@@ -278,5 +278,6 @@ class VolumeInitHostTestCase(base.BaseVolumeTestCase):
                                      mock_migrate_fixed_key):
 
         self.volume.init_host(service_id=self.service_id)
-        mock_add_threadpool.assert_called_once_with(mock_migrate_fixed_key,
-                                                    mock_get_my_volumes())
+        mock_add_threadpool.assert_called_once_with(
+            mock_migrate_fixed_key,
+            volumes=mock_get_my_volumes())

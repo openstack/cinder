@@ -313,7 +313,21 @@ class BackupTestCase(BaseBackupTest):
         calls = [mock.call(self.backup_mgr.delete_backup, mock.ANY, backup1),
                  mock.call(self.backup_mgr.delete_backup, mock.ANY, backup2)]
         mock_add_threadpool.assert_has_calls(calls, any_order=True)
-        self.assertEqual(2, mock_add_threadpool.call_count)
+        # 3 calls because 1 is always made to handle encryption key migration.
+        self.assertEqual(3, mock_add_threadpool.call_count)
+
+    @mock.patch('cinder.keymgr.migration.migrate_fixed_key')
+    @mock.patch('cinder.objects.BackupList.get_all_by_host')
+    @mock.patch('cinder.manager.ThreadPoolManager._add_to_threadpool')
+    def test_init_host_key_migration(self,
+                                     mock_add_threadpool,
+                                     mock_get_all_by_host,
+                                     mock_migrate_fixed_key):
+
+        self.backup_mgr.init_host()
+        mock_add_threadpool.assert_called_once_with(
+            mock_migrate_fixed_key,
+            backups=mock_get_all_by_host())
 
     @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
