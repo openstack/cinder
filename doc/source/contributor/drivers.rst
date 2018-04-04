@@ -55,6 +55,18 @@ Core Functionality
 * Clone Volume
 * Extend Volume
 
+Security Requirements
+---------------------
+
+* Drivers must delete volumes in a way where volumes deleted from the backend
+  will not leak data into new volumes when they are created.  Cinder operates
+  in multi-tenant environments and this is critical to ensure data safety.
+* Drivers should support secure TLS/SSL communication between the cinder
+  volume service and the backend as configured by the "driver_ssl_cert_verify"
+  and "driver_ssl_cert_path" options in cinder.conf.
+* Drivers should use standard Python libraries to handle encryption-related
+  functionality, and not contain custom implementations of encryption code.
+
 Volume Stats
 ------------
 
