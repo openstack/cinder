@@ -541,12 +541,21 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
     def test_delete_file(self):
         mock_get_vs_ip = self.mock_object(self.driver, '_get_export_ip_path')
-        mock_get_vs_ip.return_value = (fake.VSERVER_NAME, '/%s' % fake.FLEXVOL)
+        mock_get_vs_ip.return_value = (fake.SHARE_IP, fake.EXPORT_PATH)
+        mock_get_vserver = self.mock_object(self.driver, '_get_vserver_for_ip')
+        mock_get_vserver.return_value = fake.VSERVER_NAME
+        mock_zapi_get_vol = self.driver.zapi_client.get_vol_by_junc_vserver
+        mock_zapi_get_vol.return_value = fake.FLEXVOL
         mock_zapi_delete = self.driver.zapi_client.delete_file
 
         self.driver._delete_file(
             fake.test_snapshot['volume_id'], fake.test_snapshot['name'])
 
+        mock_get_vs_ip.assert_called_once_with(
+            volume_id=fake.test_snapshot['volume_id'])
+        mock_get_vserver.assert_called_once_with(fake.SHARE_IP)
+        mock_zapi_get_vol.assert_called_once_with(
+            fake.VSERVER_NAME, fake.EXPORT_PATH)
         mock_zapi_delete.assert_called_once_with(
             '/vol/%s/%s' % (fake.FLEXVOL, fake.test_snapshot['name']))
 
