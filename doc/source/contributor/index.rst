@@ -32,7 +32,6 @@ Programming HowTos and Tutorials
     testing
     api_microversion_dev
     api_conditional_updates
-    api_microversion_history
     addmethod.openstackapi
     drivers
     gmr

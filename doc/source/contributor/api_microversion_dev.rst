@@ -327,3 +327,13 @@ header, for example::
     res = controller.index(req)
     ... assertions about the response ...
 
+REST API Version History
+------------------------
+
+Details for each existing microversion change can be found in the
+:doc:`REST API Version History <api_microversion_history>` documentation.
+
+.. toctree::
+    :hidden:
+
+    api_microversion_history
