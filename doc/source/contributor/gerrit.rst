@@ -87,6 +87,6 @@ to the submitter with a request for the addition of unit test.
    does not include a unit test execution.
 
 .. _Review guidelines: https://docs.openstack.org/doc-contrib-guide/docs-review-guidelines.html
-.. _Gerrit: https://review.openstack.org/#/q/project:openstack/cinder+status:open 
+.. _Gerrit: https://review.openstack.org/#/q/project:openstack/cinder+status:open
 .. _Development Workflow: https://docs.openstack.org/infra/manual/developers.html#development-workflow
 .. _Gerrit Workflow Quick Reference: https://docs.openstack.org/infra/manual/developers.html#development-workflow

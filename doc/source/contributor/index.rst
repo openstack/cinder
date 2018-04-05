@@ -72,26 +72,7 @@ Other Resources
    jenkins
    releasenotes
 
-API Reference
--------------
-.. toctree::
-   :maxdepth: 3
-
-   ./api/autoindex
-
-Module Reference
-----------------
-.. toctree::
-   :maxdepth: 3
-
-   services
-   database
-   volume
-   auth
-   api
-   scheduler
-   fakes
-   cinder
+   Module Reference <api/modules>
 
 Indices and tables
 ------------------

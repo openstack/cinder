@@ -52,8 +52,7 @@ sys.path.insert(0, os.path.abspath('./'))
 # They can be extensions coming with Sphinx (named 'sphinx.ext.*')
 # or your custom ones.
 
-extensions = ['sphinx.ext.autodoc',
-              'sphinx.ext.coverage',
+extensions = ['sphinx.ext.coverage',
               'sphinx.ext.graphviz',
               'openstackdocstheme',
               'stevedore.sphinxext',
@@ -61,7 +60,24 @@ extensions = ['sphinx.ext.autodoc',
               'ext.cinder_driverlist',
               'oslo_policy.sphinxext',
               'oslo_policy.sphinxpolicygen',
+              'sphinxcontrib.apidoc',
               ]
+
+# sphinxcontrib.apidoc options
+apidoc_module_dir = '../../cinder'
+apidoc_output_dir = 'contributor/api'
+apidoc_excluded_paths = [
+    'tests/*',
+    'tests',
+    'db/sqlalchemy/*',
+    'db/sqlalchemy',
+    'volume/drivers/*',
+    'volume/drivers',
+    'zonemanager/drivers/*',
+    'zonemanager/drivers',
+    'backup/drivers/*',
+    'backup/drivers']
+apidoc_separate_modules = True
 
 config_generator_config_file = (
     '../../tools/config/cinder-config-generator.conf')
@@ -70,12 +86,6 @@ sample_config_basename = '_static/cinder'
 policy_generator_config_file = (
     '../../tools/config/cinder-policy-generator.conf')
 sample_policy_basename = '_static/cinder'
-
-# autodoc generation is a bit aggressive and a nuisance
-# when doing heavy text edit cycles. Execute "export SPHINX_DEBUG=1"
-# in your terminal to disable
-if not os.getenv('SPHINX_DEBUG'):
-    extensions += ['ext.cinder_autodoc']
 
 todo_include_todos = True
 
