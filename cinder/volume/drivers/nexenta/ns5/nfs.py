@@ -345,7 +345,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
 
         field = 'originalSnapshot'
         origin = self.nef.get(url).get(field)
-        url = 'storage/filesystems/%s?snapshots=true' % '%2F'.join(
+        url = 'storage/filesystems/%s?force=true&snapshots=true' % '%2F'.join(
             [pool, fs, volume['name']])
         try:
             self.nef.delete(url)
