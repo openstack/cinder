@@ -13,7 +13,7 @@ Force-delete backup
 
 Force-deletes a backup. Specify the ``os-force_delete`` action in the request body.
 
-This operations deletes the backup and any backup data.
+This operation deletes the backup and any backup data.
 
 The backup driver returns the ``405`` status code if it does not
 support this operation.
