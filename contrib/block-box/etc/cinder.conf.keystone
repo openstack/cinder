@@ -16,7 +16,7 @@ enabled_backends = solidfire
 connection = mysql+pymysql://cinder:password@mariadb/cinder?charset=utf8
 
 [keystone_authtoken]
-auth_uri = http://keystone:5000
+www_authenticate_uri = http://keystone:5000
 auth_url = http://keystone:35357
 memcached_servers = keystone:11211
 auth_type = password
