@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    NetApp ONTAP (bug 1762424): Fix ONTAP NetApp driver not being able to extend
+    a volume to a size greater than the corresponding LUN max geometry.
