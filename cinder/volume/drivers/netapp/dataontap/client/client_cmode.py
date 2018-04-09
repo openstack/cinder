@@ -383,19 +383,16 @@ class Client(client_base.Client):
     def clone_lun(self, volume, name, new_name, space_reserved='true',
                   qos_policy_group_name=None, src_block=0, dest_block=0,
                   block_count=0, source_snapshot=None, is_snapshot=False):
-        # zAPI can only handle 2^24 blocks per range
-        bc_limit = 2 ** 24  # 8GB
-        # zAPI can only handle 32 block ranges per call
-        br_limit = 32
-        z_limit = br_limit * bc_limit  # 256 GB
-        z_calls = int(math.ceil(block_count / float(z_limit)))
+        # ONTAP handles only 128 MB per call as of v9.1
+        bc_limit = 2 ** 18  # 2^18 blocks * 512 bytes/block = 128 MB
+        z_calls = int(math.ceil(block_count / float(bc_limit)))
         zbc = block_count
         if z_calls == 0:
             z_calls = 1
         for _call in range(0, z_calls):
-            if zbc > z_limit:
-                block_count = z_limit
-                zbc -= z_limit
+            if zbc > bc_limit:
+                block_count = bc_limit
+                zbc -= bc_limit
             else:
                 block_count = zbc
 
