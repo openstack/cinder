@@ -562,6 +562,60 @@ class TestZFSSAISCSIDriver(test.TestCase):
             [])
 
     @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_get_provider_info')
+    def test_volume_attach_detach_multipath(self, _get_provider_info):
+        lcfg = self.configuration
+        test_target_iqn = 'iqn.1986-03.com.sun:02:00000-aaaa-bbbb-cccc-ddddd'
+        self.drv._get_provider_info.return_value = {
+            'provider_location': '%s %s' % (lcfg.zfssa_target_portal,
+                                            test_target_iqn)
+        }
+
+        def side_effect_get_initiator_initiatorgroup(arg):
+            return [{
+                'iqn.1-0.org.deb:01:d7': 'test-init-grp1',
+                'iqn.1-0.org.deb:01:d9': 'test-init-grp2',
+            }[arg]]
+
+        self.drv.zfssa.get_initiator_initiatorgroup.side_effect = (
+            side_effect_get_initiator_initiatorgroup)
+
+        initiator = 'iqn.1-0.org.deb:01:d7'
+        initiator_group = 'test-init-grp1'
+        lu_number = '246'
+
+        self.drv.zfssa.get_lun.side_effect = iter([
+            {'initiatorgroup': [], 'number': []},
+            {'initiatorgroup': [initiator_group], 'number': [lu_number]},
+            {'initiatorgroup': [initiator_group], 'number': [lu_number]},
+        ])
+
+        connector = {
+            'initiator': initiator,
+            'multipath': True
+        }
+        props = self.drv.initialize_connection(self.test_vol, connector)
+        self.drv._get_provider_info.assert_called_once_with()
+        self.assertEqual('iscsi', props['driver_volume_type'])
+        self.assertEqual(self.test_vol['id'], props['data']['volume_id'])
+        self.assertEqual([lcfg.zfssa_target_portal],
+                         props['data']['target_portals'])
+        self.assertEqual([test_target_iqn], props['data']['target_iqns'])
+        self.assertEqual([int(lu_number)], props['data']['target_luns'])
+        self.assertFalse(props['data']['target_discovered'])
+        self.drv.zfssa.set_lun_initiatorgroup.assert_called_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            self.test_vol['name'],
+            [initiator_group])
+
+        self.drv.terminate_connection(self.test_vol, connector)
+        self.drv.zfssa.set_lun_initiatorgroup.assert_called_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            self.test_vol['name'],
+            [])
+
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_get_provider_info')
     def test_volume_attach_detach_live_migration(self, _get_provider_info):
         lcfg = self.configuration
         test_target_iqn = 'iqn.1986-03.com.sun:02:00000-aaaa-bbbb-cccc-ddddd'

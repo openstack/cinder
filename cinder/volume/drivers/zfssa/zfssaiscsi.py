@@ -783,8 +783,6 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
 
         (target_portal, target_iqn) = provider['provider_location'].split()
         iscsi_properties['target_discovered'] = False
-        iscsi_properties['target_portal'] = target_portal
-        iscsi_properties['target_iqn'] = target_iqn
 
         # Get LUN again to discover new initiator group mapping
         lun = self.zfssa.get_lun(lcfg.zfssa_pool, project, volume['name'])
@@ -796,7 +794,22 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         # presented to all of them, the same LU number is assigned to all of
         # them, so we can use the first initator group containing the
         # initiator to lookup the right LU number in our mapping
-        iscsi_properties['target_lun'] = int(lu_map[init_groups[0]])
+        target_lun = int(lu_map[init_groups[0]])
+
+        # Including both singletons and lists below allows basic operation when
+        # the connector is using multipath, although only one path will be
+        # provided. This is necessary to handle the case where the ZFSSA
+        # cluster node has failed, and the other node has taken over the pool.
+        # In that case, the network interface of the remaining node responds to
+        # an iSCSI sendtargets discovery with BOTH targets, which os-brick
+        # interprets as both targets providing paths to the desired LUN, which
+        # can cause one instance to attempt to access another instance's LUN.
+        iscsi_properties['target_portal'] = target_portal
+        iscsi_properties['target_portals'] = [target_portal]
+        iscsi_properties['target_iqn'] = target_iqn
+        iscsi_properties['target_iqns'] = [target_iqn]
+        iscsi_properties['target_lun'] = target_lun
+        iscsi_properties['target_luns'] = [target_lun]
 
         iscsi_properties['volume_id'] = volume['id']
 
