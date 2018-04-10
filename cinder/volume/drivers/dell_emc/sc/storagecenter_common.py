@@ -982,11 +982,13 @@ class SCCommonDriver(driver.ManageableVD,
             for volume, src_vol in zip(volumes, source_vols):
                 update = self.create_cloned_volume(volume, src_vol)
                 update['status'] = fields.GroupStatus.AVAILABLE
+                update['id'] = volume['id']
                 volumes_model_update.append(update.copy())
         else:
             for volume, src_snap in zip(volumes, snapshots):
                 update = self.create_volume_from_snapshot(volume, src_snap)
                 update['status'] = fields.GroupStatus.AVAILABLE
+                update['id'] = volume['id']
                 volumes_model_update.append(update.copy())
 
         # So, in theory, everything has been created. Now is the time to
