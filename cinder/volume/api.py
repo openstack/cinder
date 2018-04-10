@@ -2094,6 +2094,10 @@ class API(base.Base):
             override = False
             if instance_uuid:
                 override = True
+                # Refresh the volume reference in case multiple instances were
+                # being concurrently attached to the same non-multiattach
+                # volume.
+                vref = objects.Volume.get_by_id(ctxt, vref.id)
                 for attachment in vref.volume_attachment:
                     if attachment.instance_uuid != instance_uuid:
                         override = False
