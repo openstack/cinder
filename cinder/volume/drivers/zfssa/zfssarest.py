@@ -44,7 +44,12 @@ class ZFSSAApi(object):
             self.rclient.logout()
 
     def _is_pool_owned(self, pdata):
-        """Returns True if the pool's owner is the same as the host."""
+        """Check pool ownership.
+
+           Returns True if the pool's owner is the same as the host, or
+           the peer, if (and only if) it's stripped from the cluster
+        """
+
         svc = '/api/system/v1/version'
         ret = self.rclient.get(svc)
         if ret.status != restclient.Status.OK:
@@ -58,9 +63,33 @@ class ZFSSAApi(object):
             LOG.error(exception_msg)
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
-        vdata = json.loads(ret.data)
-        return vdata['version']['asn'] == pdata['pool']['asn'] and \
-            vdata['version']['nodename'] == pdata['pool']['owner']
+        vdata = json.loads(ret.data)['version']
+        if vdata['asn'] == pdata['pool']['asn'] and \
+                vdata['nodename'] == pdata['pool']['owner']:
+            return True
+
+        svc = '/api/hardware/v1/cluster'
+        ret = self.rclient.get(svc)
+        if ret.status != restclient.Status.OK:
+            exception_msg = (_('Error getting cluster: '
+                               'svc: %(svc)s.'
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'svc': svc,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        cdata = json.loads(ret.data)['cluster']
+        if cdata['peer_asn'] == pdata['pool']['asn'] and \
+                cdata['peer_hostname'] == pdata['pool']['owner'] and \
+                cdata['peer_state'] == 'AKCS_STRIPPED':
+            LOG.warning('Cluster node %(nodename)s is stripped',
+                        {'nodename': pdata['pool']['owner']})
+            return True
+
+        return False
 
     def get_pool_details(self, pool):
         """Get properties of a pool."""
