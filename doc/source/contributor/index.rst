@@ -29,10 +29,10 @@ Programming HowTos and Tutorials
     :maxdepth: 3
 
     development.environment
+    testing
     api_microversion_dev
     api_conditional_updates
     api_microversion_history
-    testing
     addmethod.openstackapi
     drivers
     gmr
