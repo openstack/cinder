@@ -1701,6 +1701,48 @@ class TestZFSSAApi(test.TestCase):
                           self.pool,
                           self.project)
 
+    def test_get_pool_stats_not_owned(self):
+        # Case where the pool is owned by the cluster peer when cluster
+        # is active. In this case, we should fail, because the driver is
+        # configured to talk to the wrong control head.
+        pool_data = {'pool': {'asn': 'fake-asn-b',
+                     'owner': 'fakepeer'}}
+        version_data = {'version': {'asn': 'fake-asn-a',
+                        'nodename': 'fakehost'}}
+        cluster_data = {'cluster': {'peer_hostname': 'fakepeer',
+                                    'peer_asn': 'fake-asn-b',
+                                    'peer_state': 'AKCS_CLUSTERED'}}
+        self.zfssa.rclient.get.side_effect = [
+            self._create_response(client.Status.OK,
+                                  json.dumps(pool_data)),
+            self._create_response(client.Status.OK,
+                                  json.dumps(version_data)),
+            self._create_response(client.Status.OK,
+                                  json.dumps(cluster_data))]
+        self.assertRaises(exception.InvalidInput,
+                          self.zfssa.get_pool_details,
+                          self.pool)
+
+    def test_get_pool_stats_stripped(self):
+        # Case where the pool is owned by the cluster peer when it is in a
+        # stripped state. In this case, so long as the owner and ASN for the
+        # pool match the peer, we should not fail.
+        pool_data = {'pool': {'asn': 'fake-asn-a',
+                     'owner': 'fakehost'}}
+        version_data = {'version': {'asn': 'fake-asn-b',
+                        'nodename': 'fakepeer'}}
+        cluster_data = {'cluster': {'peer_hostname': 'fakehost',
+                                    'peer_asn': 'fake-asn-a',
+                                    'peer_state': 'AKCS_STRIPPED'}}
+        self.zfssa.rclient.get.side_effect = [
+            self._create_response(client.Status.OK,
+                                  json.dumps(pool_data)),
+            self._create_response(client.Status.OK,
+                                  json.dumps(version_data)),
+            self._create_response(client.Status.OK,
+                                  json.dumps(cluster_data))]
+        self.zfssa.get_pool_details(self.pool)
+
 
 class TestZFSSANfsApi(test.TestCase):
 
