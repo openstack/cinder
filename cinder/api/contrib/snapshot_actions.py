@@ -18,6 +18,8 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import snapshot_actions
+from cinder.api import validation
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
@@ -31,6 +33,7 @@ class SnapshotActionsController(wsgi.Controller):
         LOG.debug("SnapshotActionsController initialized")
 
     @wsgi.action('os-update_snapshot_status')
+    @validation.schema(snapshot_actions.update_snapshot_status)
     def _update_snapshot_status(self, req, id, body):
         """Update database fields related to status of a snapshot.
 
@@ -41,11 +44,8 @@ class SnapshotActionsController(wsgi.Controller):
 
         context = req.environ['cinder.context']
         LOG.debug("body: %s", body)
-        try:
-            status = body['os-update_snapshot_status']['status']
-        except KeyError:
-            msg = _("'status' must be specified.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        status = body['os-update_snapshot_status']['status']
 
         # Allowed state transitions
         status_map = {fields.SnapshotStatus.CREATING:
@@ -78,15 +78,6 @@ class SnapshotActionsController(wsgi.Controller):
 
         progress = body['os-update_snapshot_status'].get('progress', None)
         if progress:
-            # This is expected to be a string like '73%'
-            msg = _('progress must be an integer percentage')
-            try:
-                integer = int(progress[:-1])
-            except ValueError:
-                raise webob.exc.HTTPBadRequest(explanation=msg)
-            if integer < 0 or integer > 100 or progress[-1] != '%':
-                raise webob.exc.HTTPBadRequest(explanation=msg)
-
             update_dict.update({'progress': progress})
 
         LOG.info("Updating snapshot %(id)s with info %(dict)s",
