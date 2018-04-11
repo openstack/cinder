@@ -30,7 +30,11 @@ Supported operations
 - Copy an image to a volume.
 - Clone a volume.
 - Extend a volume.
+- Migrate a volume.
 - Get volume statistics.
+- Efficient non-disruptive volume backup.
+- Manage and unmanage a volume.
+- Manage and unmanage a snapshot.
 
 
 Preparation
@@ -63,15 +67,20 @@ For details of each command, see the NEC Storage Manager Command Reference
 - iSCSI only
 
   #. Set IP addresses of each iSCSI port. (iSMcfg setiscsiport)
-  #. Create a LD Set with setting multi-target mode on. (iSMcfg addldset)
-  #. Register initiator names of each node. (iSMcfg addldsetinitiator)
+  #. Create LD Sets for each node with setting multi-target mode on.
+     (iSMcfg addldset)
+  #. Delete some iscsi portal settings of each LD Sets to set to
+     ``nec_iscsi_portals_per_cont`` parameter. (iSMcfg delldsetportal)
+  #. Register initiator names of each node to the corresponding LD Set.
+     (iSMcfg addldsetinitiator)
 
 
 - Fibre Channel only
 
   #. Start access control. (iSMcfg startacc)
-  #. Create a LD Set. (iSMcfg addldset)
-  #. Register WWPNs of each node. (iSMcfg addldsetpath)
+  #. Create LD Sets for each node. (iSMcfg addldset)
+  #. Register WWPNs of each node to the corresponding LD Set.
+     (iSMcfg addldsetpath)
 
 
 Configuration
