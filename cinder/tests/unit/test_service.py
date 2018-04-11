@@ -532,7 +532,7 @@ class TestWSGIService(test.TestCase):
     @mock.patch('oslo_service.wsgi.Loader')
     def test_workers_set_negative_user_setting(self, mock_loader):
         self.override_config('osapi_volume_workers', -1)
-        self.assertRaises(exception.InvalidInput,
+        self.assertRaises(exception.InvalidConfigurationValue,
                           service.WSGIService, "osapi_volume")
         self.assertTrue(mock_loader.called)
 
