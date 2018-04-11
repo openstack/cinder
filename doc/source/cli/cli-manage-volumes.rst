@@ -418,15 +418,22 @@ in the following example:
 .. code-block:: console
 
    $ openstack volume migrate [-h] --host <host> [--force-host-copy]
-                                     [--lock-volume | --unlock-volume]
-                                     <volume>
+                                     [--lock-volume] <volume>
 
-In this example, ``--force-host-copy`` forces the generic
-host-based migration mechanism and bypasses any driver optimizations.
-``--lock-volume | --unlock-volume`` applies to the available volume.
-To determine whether the termination of volume migration caused by other
-commands. ``--lock-volume`` locks the volume state and does not allow the
-migration to be aborted.
+The arguments for this command are:
+
+host
+  The destination host in the format `host@backend-name#pool`.
+
+volume
+  The ID of the volume to migrate.
+
+*force-host-copy*
+  Disables any driver optimizations and forces the data to be copied by the
+  host.
+
+*lock-volume*
+  Prevents other processes from aborting the migration.
 
 .. note::
 
