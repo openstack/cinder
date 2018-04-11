@@ -356,12 +356,39 @@ class TestCinderManageCmd(test.TestCase):
         ex = self.assertRaises(SystemExit, db_cmds.purge, age_in_days)
         self.assertEqual(1, ex.code)
 
+    @mock.patch('cinder.objects.ServiceList.get_all')
     @mock.patch('cinder.db.migration.db_sync')
-    def test_db_commands_sync(self, db_sync):
+    def test_db_commands_sync(self, db_sync, service_get_mock):
         version = 11
         db_cmds = cinder_manage.DbCommands()
         db_cmds.sync(version=version)
         db_sync.assert_called_once_with(version)
+        service_get_mock.assert_not_called()
+
+    @mock.patch('cinder.objects.Service.save')
+    @mock.patch('cinder.objects.ServiceList.get_all')
+    @mock.patch('cinder.db.migration.db_sync')
+    def test_db_commands_sync_bump_versions(self, db_sync, service_get_mock,
+                                            service_save):
+        ctxt = context.get_admin_context()
+        services = [fake_service.fake_service_obj(ctxt,
+                                                  binary='cinder-' + binary,
+                                                  rpc_current_version='0.1',
+                                                  object_current_version='0.2')
+                    for binary in ('volume', 'scheduler', 'backup')]
+        service_get_mock.return_value = services
+
+        version = 11
+        db_cmds = cinder_manage.DbCommands()
+        db_cmds.sync(version=version, bump_versions=True)
+        db_sync.assert_called_once_with(version)
+
+        self.assertEqual(3, service_save.call_count)
+        for service in services:
+            self.assertEqual(cinder_manage.RPC_VERSIONS[service.binary],
+                             service.rpc_current_version)
+            self.assertEqual(cinder_manage.OVO_VERSION,
+                             service.object_current_version)
 
     @mock.patch('oslo_db.sqlalchemy.migration.db_version')
     def test_db_commands_version(self, db_version):
