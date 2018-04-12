@@ -69,6 +69,15 @@ consumer side (e.g. Hyper-V).
    cinder create $size --volume-type $volume_type_id
 .. end
 
+The ``Cinder Backup Service`` can be run on Windows. This driver stores
+the volumes using vhdx images stored on SMB shares which can be attached
+in order to retrieve the volume data and send it to the backup service.
+
+Prerequisites:
+
+* All physical disks must be in byte mode
+* rb+ must be used when writing backups to disk
+
 Clustering support
 ------------------
 Active-Active Cinder clustering is currently experimental and should not be
