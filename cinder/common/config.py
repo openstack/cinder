@@ -104,6 +104,7 @@ global_opts = [
                default='cinder.scheduler.manager.SchedulerManager',
                help='Full class name for the Manager for scheduler'),
     cfg.HostAddressOpt('host',
+                       sample_default='localhost',
                        default=socket.gethostname(),
                        help='Name of this node.  This can be an opaque '
                             'identifier. It is not necessarily a host name, '
