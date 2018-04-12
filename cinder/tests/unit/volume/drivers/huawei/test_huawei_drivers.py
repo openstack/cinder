@@ -544,7 +544,8 @@ FAKE_CREATE_SNAPSHOT_INFO_RESPONSE = """
     },
     "data": {
         "ID": "11",
-        "NAME": "YheUoRwbSX2BxN7"
+        "NAME": "YheUoRwbSX2BxN7",
+        "WWN": "fake-wwn"
     }
 }
 """
@@ -558,7 +559,8 @@ FAKE_GET_SNAPSHOT_INFO_RESPONSE = """
     },
     "data": {
         "ID": "11",
-        "NAME": "YheUoRwbSX2BxN7"
+        "NAME": "YheUoRwbSX2BxN7",
+        "WWN": "fake-wwn"
     }
 }
 """
@@ -2068,15 +2070,6 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview/associate/portgroup?TYPE=245&ASSOC'
 REPLICA_BACKEND_ID = 'huawei-replica-1'
 
 
-def cg_or_cg_snapshot(func):
-    def wrapper(self, *args, **kwargs):
-        self.mock_object(volume_utils,
-                         'is_group_a_cg_snapshot_type',
-                         return_value=True)
-        return func(self, *args, **kwargs)
-    return wrapper
-
-
 class FakeHuaweiConf(huawei_conf.HuaweiConf):
     def __init__(self, conf, protocol):
         self.conf = conf
@@ -2322,14 +2315,16 @@ class HuaweiTestBase(test.TestCase):
     @mock.patch.object(rest_client, 'RestClient')
     def test_create_snapshot_success(self, mock_client):
         lun_info = self.driver.create_snapshot(self.snapshot)
-        self.assertDictEqual({"huawei_snapshot_id": "11"},
-                             json.loads(lun_info['provider_location']))
+        self.assertDictEqual(
+            {"huawei_snapshot_id": "11", "huawei_snapshot_wwn": "fake-wwn"},
+            json.loads(lun_info['provider_location']))
 
         self.snapshot.volume_id = ID
         self.snapshot.volume = self.volume
         lun_info = self.driver.create_snapshot(self.snapshot)
-        self.assertDictEqual({"huawei_snapshot_id": "11"},
-                             json.loads(lun_info['provider_location']))
+        self.assertDictEqual(
+            {"huawei_snapshot_id": "11", "huawei_snapshot_wwn": "fake-wwn"},
+            json.loads(lun_info['provider_location']))
 
     @ddt.data('1', '', '0')
     def test_copy_volume(self, input_speed):
@@ -4537,53 +4532,53 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         iqn = self.driver.client._get_tgt_iqn_from_rest(ip)
         self.assertIsNone(iqn)
 
-    @cg_or_cg_snapshot
     def test_create_group_snapshot(self):
         test_snapshots = [self.snapshot]
         ctxt = context.get_admin_context()
-        model, snapshots = (
-            self.driver.create_group_snapshot(ctxt, self.group_snapshot,
-                                              test_snapshots))
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=True)
+        model, snapshots = self.driver.create_group_snapshot(
+            ctxt, self.group_snapshot, test_snapshots)
 
         self.assertEqual('21ec7341-9256-497b-97d9-ef48edcf0635',
                          snapshots[0]['id'])
         self.assertEqual('available', snapshots[0]['status'])
-        self.assertDictEqual({'huawei_snapshot_id': '11'},
-                             json.loads(snapshots[0]['provider_location']))
+        self.assertDictEqual(
+            {'huawei_snapshot_id': '11', 'huawei_snapshot_wwn': 'fake-wwn'},
+            json.loads(snapshots[0]['provider_location']))
         self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE, model['status'])
 
-    @cg_or_cg_snapshot
     def test_create_group_snapshot_with_create_snapshot_fail(self):
         test_snapshots = [self.snapshot]
         ctxt = context.get_admin_context()
-        self.mock_object(rest_client.RestClient, 'create_snapshot',
-                         side_effect=(
-                             exception.VolumeBackendAPIException(data='err')))
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=True)
+        self.mock_object(
+            rest_client.RestClient, 'create_snapshot',
+            side_effect=exception.VolumeBackendAPIException(data='err'))
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_group_snapshot,
-                          ctxt,
-                          self.group_snapshot,
-                          test_snapshots)
+                          ctxt, self.group_snapshot, test_snapshots)
 
-    @cg_or_cg_snapshot
     def test_create_group_snapshot_with_active_snapshot_fail(self):
         test_snapshots = [self.snapshot]
         ctxt = context.get_admin_context()
-        self.mock_object(rest_client.RestClient, 'activate_snapshot',
-                         side_effect=(
-                             exception.VolumeBackendAPIException(data='err')))
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=True)
+        self.mock_object(
+            rest_client.RestClient, 'activate_snapshot',
+            side_effect=exception.VolumeBackendAPIException(data='err'))
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_group_snapshot,
-                          ctxt,
-                          self.group_snapshot,
-                          test_snapshots)
+                          ctxt, self.group_snapshot, test_snapshots)
 
-    @cg_or_cg_snapshot
     def test_delete_group_snapshot(self):
         test_snapshots = [self.snapshot]
         ctxt = context.get_admin_context()
-        self.driver.delete_group_snapshot(ctxt, self.group_snapshot,
-                                          test_snapshots)
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=True)
+        self.driver.delete_group_snapshot(
+            ctxt, self.group_snapshot, test_snapshots)
 
 
 class FCSanLookupService(object):
@@ -5386,82 +5381,79 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         res = self.driver.client.is_host_associated_to_hostgroup('1')
         self.assertFalse(res)
 
-    @mock.patch.object(huawei_driver.HuaweiBaseDriver,
-                       '_get_group_type',
-                       return_value=[{"hypermetro": "true"}])
-    @cg_or_cg_snapshot
-    def test_create_hypermetro_group_success(self, mock_grouptype):
-        """Test that create_group return successfully."""
-        ctxt = context.get_admin_context()
-        # Create group
-        model_update = self.driver.create_group(ctxt, self.group)
+    @ddt.data([{"hypermetro": "true"}], [])
+    def test_create_group_success(self, cg_type):
+        self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_group_type',
+                         return_value=cg_type)
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=True)
+        model_update = self.driver.create_group(None, self.group)
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
 
-        self.assertEqual(fields.GroupStatus.AVAILABLE,
-                         model_update['status'],
-                         "Group created failed")
+    @ddt.data(
+        ([fake_snapshot.fake_snapshot_obj(
+            None, provider_location=SNAP_PROVIDER_LOCATION, id=ID)],
+         [], False),
+        ([], [fake_volume.fake_volume_obj(
+            None, provider_location=PROVIDER_LOCATION, id=ID)], True),
+    )
+    @ddt.unpack
+    def test_create_group_from_src(self, snapshots, source_vols, tmp_snap):
+        self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_group_type',
+                         return_value=[])
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=True)
 
-    @mock.patch.object(huawei_driver.HuaweiBaseDriver,
-                       '_get_group_type',
-                       return_value=[{"hypermetro": "false"}])
-    @cg_or_cg_snapshot
-    def test_create_normal_group_success(self, mock_grouptype):
-        """Test that create_group return successfully."""
-        ctxt = context.get_admin_context()
-        # Create group
-        model_update = self.driver.create_group(ctxt, self.group)
+        create_snap_mock = self.mock_object(
+            self.driver, '_create_group_snapshot',
+            wraps=self.driver._create_group_snapshot)
+        delete_snap_mock = self.mock_object(
+            self.driver, '_delete_group_snapshot',
+            wraps=self.driver._delete_group_snapshot)
 
-        self.assertEqual(fields.GroupStatus.AVAILABLE,
-                         model_update['status'],
-                         "Group created failed")
+        model_update, volumes_model_update = self.driver.create_group_from_src(
+            None, self.group, [self.volume], snapshots=snapshots,
+            source_vols=source_vols)
 
-    @mock.patch.object(huawei_driver.HuaweiBaseDriver,
-                       '_get_group_type',
-                       return_value=[{"hypermetro": "true"}])
-    @cg_or_cg_snapshot
-    def test_delete_hypermetro_group_success(self, mock_grouptype):
-        """Test that delete_group return successfully."""
+        if tmp_snap:
+            create_snap_mock.assert_called_once()
+            delete_snap_mock.assert_called_once()
+        else:
+            create_snap_mock.assert_not_called()
+            delete_snap_mock.assert_not_called()
+
+        self.assertDictEqual({'status': fields.GroupStatus.AVAILABLE},
+                             model_update)
+        self.assertEqual(1, len(volumes_model_update))
+        self.assertEqual(ID, volumes_model_update[0]['id'])
+
+    @ddt.data([{"hypermetro": "true"}], [])
+    def test_delete_group_success(self, cg_type):
         test_volumes = [self.volume]
         ctxt = context.get_admin_context()
-        # Delete group
-        model, volumes = self.driver.delete_group(ctxt, self.group,
-                                                  test_volumes)
-        self.assertEqual(fields.GroupStatus.DELETED,
-                         model['status'],
-                         "Group deleted failed")
+        self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_group_type',
+                         return_value=cg_type)
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=True)
+        model, volumes = self.driver.delete_group(
+            ctxt, self.group, test_volumes)
+        self.assertEqual(fields.GroupStatus.DELETED, model['status'])
 
-    @mock.patch.object(huawei_driver.HuaweiBaseDriver,
-                       '_get_group_type',
-                       return_value=[{"hypermetro": "false"}])
-    @cg_or_cg_snapshot
-    def test_delete_normal_group_success(self, mock_grouptype):
-        """Test that delete_group return successfully."""
-        ctxt = context.get_admin_context()
-        test_volumes = [self.volume]
-        # Delete group
-        model, volumes = self.driver.delete_group(ctxt, self.group,
-                                                  test_volumes)
-        self.assertEqual(fields.GroupStatus.DELETED,
-                         model['status'],
-                         "Group deleted failed")
-
-    @mock.patch.object(huawei_driver.HuaweiBaseDriver,
-                       '_get_group_type',
+    @mock.patch.object(huawei_driver.HuaweiBaseDriver, '_get_group_type',
                        return_value=[{"hypermetro": "true"}])
     @mock.patch.object(huawei_driver.huawei_utils, 'get_lun_metadata',
                        return_value={'hypermetro_id': '3400a30d844d0007',
                                      'remote_lun_id': '59'})
-    @cg_or_cg_snapshot
     def test_update_group_success(self, mock_grouptype, mock_metadata):
-        """Test that update_group return successfully."""
         ctxt = context.get_admin_context()
         add_volumes = [self.volume]
         remove_volumes = [self.volume]
-        # Update group
-        model_update = self.driver.update_group(ctxt, self.group,
-                                                add_volumes, remove_volumes)
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=True)
+        model_update = self.driver.update_group(
+            ctxt, self.group, add_volumes, remove_volumes)
         self.assertEqual(fields.GroupStatus.AVAILABLE,
-                         model_update[0]['status'],
-                         "Group update failed")
+                         model_update[0]['status'])
 
     def test_is_initiator_associated_to_host_raise(self):
         self.assertRaises(exception.VolumeBackendAPIException,
