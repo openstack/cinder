@@ -31,6 +31,7 @@ from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder import objects
 from cinder.objects import fields
 from cinder.volume import configuration
 from cinder.volume import driver
@@ -194,6 +195,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             pool['thick_provisioning_support'] = True
             pool['thin_provisioning_support'] = True
             pool['smarttier'] = True
+            pool['consistencygroup_support'] = True
             pool['consistent_group_snapshot_enabled'] = True
 
             if self.configuration.san_product == "Dorado":
@@ -225,28 +227,6 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         opts = self._get_volume_params_from_specs(specs)
         return opts
-
-    def _get_group_type(self, group):
-        opts = []
-        vol_types = group.volume_types
-
-        for vol_type in vol_types:
-            specs = vol_type.extra_specs
-            opts.append(self._get_volume_params_from_specs(specs))
-
-        return opts
-
-    def _check_volume_type_support(self, opts, vol_type):
-        if not opts:
-            return False
-
-        support = True
-        for opt in opts:
-            if opt.get(vol_type) != 'true':
-                support = False
-                break
-
-        return support
 
     def _get_volume_params_from_specs(self, specs):
         """Return the volume parameters from extra specs."""
@@ -687,7 +667,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                                   self.configuration.lun_policy)
 
         lun_params = {
-            'NAME': dst_volume_name,
+            'NAME': huawei_utils.encode_name(dst_volume_name),
             'PARENTID': pool_info['ID'],
             'DESCRIPTION': lun_info['DESCRIPTION'],
             'ALLOCTYPE': opts.get('LUNType', lun_info['ALLOCTYPE']),
@@ -887,7 +867,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         self.client.extend_lun(lun_id, new_size)
 
-    def create_snapshot(self, snapshot):
+    def _create_snapshot_base(self, snapshot):
         volume = snapshot.volume
         if not volume:
             msg = _("Can't get volume id from snapshot, snapshot: %(id)s"
@@ -902,11 +882,23 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                                                     snapshot_name,
                                                     snapshot_description)
         snapshot_id = snapshot_info['ID']
-        self.client.activate_snapshot(snapshot_id)
+        return snapshot_id
 
-        location = huawei_utils.to_string(huawei_snapshot_id=snapshot_id)
-        return {'provider_location': location,
-                'lun_info': snapshot_info}
+    def create_snapshot(self, snapshot):
+        snapshot_id = self._create_snapshot_base(snapshot)
+        try:
+            self.client.activate_snapshot(snapshot_id)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error("Active snapshot %s failed, now deleting it.",
+                          snapshot_id)
+                self.client.delete_snapshot(snapshot_id)
+
+        snapshot_info = self.client.get_snapshot_info(snapshot_id)
+        location = huawei_utils.to_string(
+            huawei_snapshot_id=snapshot_id,
+            huawei_snapshot_wwn=snapshot_info['WWN'])
+        return {'provider_location': location}
 
     def delete_snapshot(self, snapshot):
         LOG.info('Delete snapshot %s.', snapshot.id)
@@ -1592,52 +1584,135 @@ class HuaweiBaseDriver(driver.VolumeDriver):
            self.client.is_host_associated_to_hostgroup(host_id)):
             self.client.remove_host(host_id)
 
-    @huawei_utils.check_whether_operate_consistency_group
+    def _get_group_type(self, group):
+        opts = []
+        for vol_type in group.volume_types:
+            specs = vol_type.extra_specs
+            opts.append(self._get_volume_params_from_specs(specs))
+
+        return opts
+
+    def _check_group_type_support(self, opts, vol_type):
+        if not opts:
+            return False
+
+        for opt in opts:
+            if opt.get(vol_type) == 'true':
+                return True
+
+        return False
+
+    def _get_group_type_value(self, opts, vol_type):
+        if not opts:
+            return
+
+        for opt in opts:
+            if vol_type in opt:
+                return opt[vol_type]
+
     def create_group(self, context, group):
         """Creates a group."""
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+
         model_update = {'status': fields.GroupStatus.AVAILABLE}
         opts = self._get_group_type(group)
-        if self._check_volume_type_support(opts, 'hypermetro'):
+
+        if self._check_group_type_support(opts, 'hypermetro'):
+            if not self.check_func_support("HyperMetro_ConsistentGroup"):
+                msg = _("Can't create consistency group, array does not "
+                        "support hypermetro consistentgroup, "
+                        "group id: %(group_id)s."
+                        ) % {"group_id": group.id}
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
             metro = hypermetro.HuaweiHyperMetro(self.client,
                                                 self.rmt_client,
                                                 self.configuration)
             metro.create_consistencygroup(group)
             return model_update
 
-        # Array will create group at create_group_snapshot time. Cinder will
-        # maintain the group and volumes relationship in the db.
         return model_update
 
-    @huawei_utils.check_whether_operate_consistency_group
-    def delete_group(self, context, group, volumes):
-        opts = self._get_group_type(group)
-        if self._check_volume_type_support(opts, 'hypermetro'):
-            metro = hypermetro.HuaweiHyperMetro(self.client,
-                                                self.rmt_client,
-                                                self.configuration)
-            return metro.delete_consistencygroup(context, group, volumes)
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
 
-        model_update = {}
+        model_update = self.create_group(context, group)
         volumes_model_update = []
-        model_update.update({'status': fields.GroupStatus.DELETED})
+        delete_snapshots = False
 
-        for volume_ref in volumes:
-            try:
-                self.delete_volume(volume_ref)
-                volumes_model_update.append(
-                    {'id': volume_ref.id, 'status': 'deleted'})
-            except Exception:
-                volumes_model_update.append(
-                    {'id': volume_ref.id, 'status': 'error_deleting'})
+        if not snapshots and source_vols:
+            snapshots = []
+            for src_vol in source_vols:
+                vol_kwargs = {
+                    'id': src_vol.id,
+                    'provider_location': src_vol.provider_location,
+                }
+                snapshot_kwargs = {'id': six.text_type(uuid.uuid4()),
+                                   'volume': objects.Volume(**vol_kwargs)}
+                snapshot = objects.Snapshot(**snapshot_kwargs)
+                snapshots.append(snapshot)
+
+            snapshots_model_update = self._create_group_snapshot(snapshots)
+            for i, model in enumerate(snapshots_model_update):
+                snapshot = snapshots[i]
+                snapshot.provider_location = model['provider_location']
+
+            delete_snapshots = True
+
+        if snapshots:
+            for i, vol in enumerate(volumes):
+                snapshot = snapshots[i]
+                vol_model_update = self.create_volume_from_snapshot(
+                    vol, snapshot)
+                vol_model_update.update({'id': vol.id})
+                volumes_model_update.append(vol_model_update)
+
+        if delete_snapshots:
+            self._delete_group_snapshot(snapshots)
 
         return model_update, volumes_model_update
 
-    @huawei_utils.check_whether_operate_consistency_group
+    def delete_group(self, context, group, volumes):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+
+        opts = self._get_group_type(group)
+        model_update = {'status': fields.GroupStatus.DELETED}
+        volumes_model_update = []
+
+        if self._check_group_type_support(opts, 'hypermetro'):
+            metro = hypermetro.HuaweiHyperMetro(self.client,
+                                                self.rmt_client,
+                                                self.configuration)
+            metro.delete_consistencygroup(context, group, volumes)
+
+        for volume in volumes:
+            volume_model_update = {'id': volume.id}
+            try:
+                self.delete_volume(volume)
+            except Exception:
+                LOG.exception('Delete volume %s failed.', volume)
+                volume_model_update.update({'status': 'error_deleting'})
+            else:
+                volume_model_update.update({'status': 'deleted'})
+
+            volumes_model_update.append(volume_model_update)
+
+        return model_update, volumes_model_update
+
     def update_group(self, context, group,
                      add_volumes=None, remove_volumes=None):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+
         model_update = {'status': fields.GroupStatus.AVAILABLE}
         opts = self._get_group_type(group)
-        if self._check_volume_type_support(opts, 'hypermetro'):
+        if self._check_group_type_support(opts, 'hypermetro'):
             metro = hypermetro.HuaweiHyperMetro(self.client,
                                                 self.rmt_client,
                                                 self.configuration)
@@ -1646,92 +1721,90 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                                           remove_volumes)
             return model_update, None, None
 
-        # Array will create group at create_group_snapshot time. Cinder will
-        # maintain the group and volumes relationship in the db.
+        for volume in add_volumes:
+            self._check_volume_exist_on_array(
+                volume, constants.VOLUME_NOT_EXISTS_RAISE)
+
         return model_update, None, None
 
-    @huawei_utils.check_whether_operate_consistency_group
-    def create_group_from_src(self, context, group, volumes,
-                              group_snapshot=None, snapshots=None,
-                              source_group=None, source_vols=None):
-        err_msg = _("Huawei Storage doesn't support create_group_from_src.")
-        LOG.error(err_msg)
-        raise exception.VolumeBackendAPIException(data=err_msg)
-
-    @huawei_utils.check_whether_operate_consistency_group
     def create_group_snapshot(self, context, group_snapshot, snapshots):
         """Create group snapshot."""
-        LOG.info('Create group snapshot for group'
-                 ': %(group_id)s', {'group_id': group_snapshot.group_id})
+        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            raise NotImplementedError()
 
-        model_update = {}
+        LOG.info('Create group snapshot for group: %(group_id)s',
+                 {'group_id': group_snapshot.group_id})
+
+        snapshots_model_update = self._create_group_snapshot(snapshots)
+        model_update = {'status': fields.GroupSnapshotStatus.AVAILABLE}
+        return model_update, snapshots_model_update
+
+    def _create_group_snapshot(self, snapshots):
         snapshots_model_update = []
         added_snapshots_info = []
 
         try:
             for snapshot in snapshots:
-                volume = snapshot.volume
-                if not volume:
-                    msg = _("Can't get volume id from snapshot, "
-                            "snapshot: %(id)s") % {'id': snapshot.id}
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
-
-                lun_id, lun_wwn = huawei_utils.get_volume_lun_id(
-                    self.client, volume)
-                snapshot_name = huawei_utils.encode_name(snapshot.id)
-                snapshot_description = snapshot.id
-                info = self.client.create_snapshot(lun_id,
-                                                   snapshot_name,
-                                                   snapshot_description)
+                snapshot_id = self._create_snapshot_base(snapshot)
+                info = self.client.get_snapshot_info(snapshot_id)
                 location = huawei_utils.to_string(
-                    huawei_snapshot_id=info['ID'])
-                snap_model_update = {'id': snapshot.id,
-                                     'status': fields.SnapshotStatus.AVAILABLE,
-                                     'provider_location': location}
-                snapshots_model_update.append(snap_model_update)
+                    huawei_snapshot_id=info['ID'],
+                    huawei_snapshot_wwn=info['WWN'])
+                snapshot_model_update = {
+                    'id': snapshot.id,
+                    'status': fields.SnapshotStatus.AVAILABLE,
+                    'provider_location': location,
+                }
+                snapshots_model_update.append(snapshot_model_update)
                 added_snapshots_info.append(info)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error("Create group snapshots failed. "
-                          "Group snapshot id: %s.", group_snapshot.id)
+                for added_snapshot in added_snapshots_info:
+                    self.client.delete_snapshot(added_snapshot['ID'])
+
         snapshot_ids = [added_snapshot['ID']
                         for added_snapshot in added_snapshots_info]
         try:
             self.client.activate_snapshot(snapshot_ids)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error("Active group snapshots failed. "
-                          "Group snapshot id: %s.", group_snapshot.id)
+                LOG.error("Active group snapshots %s failed.", snapshot_ids)
+                for snapshot_id in snapshot_ids:
+                    self.client.delete_snapshot(snapshot_id)
 
-        model_update['status'] = fields.GroupSnapshotStatus.AVAILABLE
+        return snapshots_model_update
 
-        return model_update, snapshots_model_update
-
-    @huawei_utils.check_whether_operate_consistency_group
     def delete_group_snapshot(self, context, group_snapshot, snapshots):
         """Delete group snapshot."""
+        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            raise NotImplementedError()
+
         LOG.info('Delete group snapshot %(snap_id)s for group: '
                  '%(group_id)s',
                  {'snap_id': group_snapshot.id,
                   'group_id': group_snapshot.group_id})
 
-        model_update = {}
-        snapshots_model_update = []
-        model_update['status'] = fields.GroupSnapshotStatus.DELETED
+        try:
+            snapshots_model_update = self._delete_group_snapshot(snapshots)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error("Delete group snapshots failed. "
+                          "Group snapshot id: %s", group_snapshot.id)
 
-        for snapshot in snapshots:
-            try:
-                self.delete_snapshot(snapshot)
-                snapshot_model = {'id': snapshot.id,
-                                  'status': fields.SnapshotStatus.DELETED}
-                snapshots_model_update.append(snapshot_model)
-            except Exception:
-                with excutils.save_and_reraise_exception():
-                    LOG.error("Delete group snapshot failed. "
-                              "Group snapshot id: %s", group_snapshot.id)
-
+        model_update = {'status': fields.GroupSnapshotStatus.DELETED}
         return model_update, snapshots_model_update
+
+    def _delete_group_snapshot(self, snapshots):
+        snapshots_model_update = []
+        for snapshot in snapshots:
+            self.delete_snapshot(snapshot)
+            snapshot_model_update = {
+                'id': snapshot.id,
+                'status': fields.SnapshotStatus.DELETED
+            }
+            snapshots_model_update.append(snapshot_model_update)
+
+        return snapshots_model_update
 
     def _classify_volume(self, volumes):
         normal_volumes = []
