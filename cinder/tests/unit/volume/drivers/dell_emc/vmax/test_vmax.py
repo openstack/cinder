@@ -1150,6 +1150,8 @@ class FakeConfiguration(object):
                 self.san_password = value
             elif key == 'san_ip':
                 self.san_ip = value
+            elif key == 'san_api_port':
+                self.san_api_port = value
             elif key == 'san_rest_port':
                 self.san_rest_port = value
             elif key == 'vmax_srp':
@@ -5351,7 +5353,30 @@ class VMAXCommonTest(test.TestCase):
         self.assertEqual(ref_dev_id, src_dev_id1)
         self.assertEqual(ref_dev_id, src_dev_id2)
 
-    def test_get_attributes_from_cinder_config(self):
+    def test_get_attributes_from_cinder_config_new(self):
+        kwargs_expected = (
+            {'RestServerIp': '1.1.1.1',
+             'RestServerPort': 8443,
+             'RestUserName': 'smc',
+             'RestPassword': 'smc',
+             'SSLCert': None,
+             'SSLVerify': False,
+             'SerialNumber': self.data.array,
+             'srpName': 'SRP_1',
+             'PortGroup': self.data.port_group_name_i})
+        backup_conf = self.common.configuration
+        configuration = FakeConfiguration(
+            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
+        self.common.configuration = configuration
+        kwargs_returned = self.common.get_attributes_from_cinder_config()
+        self.assertEqual(kwargs_expected, kwargs_returned)
+        self.common.configuration = backup_conf
+        kwargs = self.common.get_attributes_from_cinder_config()
+        self.assertIsNone(kwargs)
+
+    def test_get_attributes_from_cinder_config_old(self):
         kwargs_expected = (
             {'RestServerIp': '1.1.1.1',
              'RestServerPort': 8443,
@@ -5373,6 +5398,63 @@ class VMAXCommonTest(test.TestCase):
         self.common.configuration = backup_conf
         kwargs = self.common.get_attributes_from_cinder_config()
         self.assertIsNone(kwargs)
+
+    def test_get_attributes_from_cinder_config_with_port_override_old(self):
+        kwargs_expected = (
+            {'RestServerIp': '1.1.1.1',
+             'RestServerPort': 3448,
+             'RestUserName': 'smc',
+             'RestPassword': 'smc',
+             'SSLCert': None,
+             'SSLVerify': False,
+             'SerialNumber': self.data.array,
+             'srpName': 'SRP_1',
+             'PortGroup': self.data.port_group_name_i})
+        configuration = FakeConfiguration(
+            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_rest_port=3448, vmax_port_groups=[self.data.port_group_name_i])
+        self.common.configuration = configuration
+        kwargs_returned = self.common.get_attributes_from_cinder_config()
+        self.assertEqual(kwargs_expected, kwargs_returned)
+
+    def test_get_attributes_from_cinder_config_with_port_override_new(self):
+        kwargs_expected = (
+            {'RestServerIp': '1.1.1.1',
+             'RestServerPort': 3448,
+             'RestUserName': 'smc',
+             'RestPassword': 'smc',
+             'SSLCert': None,
+             'SSLVerify': False,
+             'SerialNumber': self.data.array,
+             'srpName': 'SRP_1',
+             'PortGroup': self.data.port_group_name_i})
+        configuration = FakeConfiguration(
+            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_api_port=3448, vmax_port_groups=[self.data.port_group_name_i])
+        self.common.configuration = configuration
+        kwargs_returned = self.common.get_attributes_from_cinder_config()
+        self.assertEqual(kwargs_expected, kwargs_returned)
+
+    def test_get_attributes_from_cinder_config_no_port(self):
+        kwargs_expected = (
+            {'RestServerIp': '1.1.1.1',
+             'RestServerPort': 8443,
+             'RestUserName': 'smc',
+             'RestPassword': 'smc',
+             'SSLCert': None,
+             'SSLVerify': False,
+             'SerialNumber': self.data.array,
+             'srpName': 'SRP_1',
+             'PortGroup': self.data.port_group_name_i})
+        configuration = FakeConfiguration(
+            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            vmax_port_groups=[self.data.port_group_name_i])
+        self.common.configuration = configuration
+        kwargs_returned = self.common.get_attributes_from_cinder_config()
+        self.assertEqual(kwargs_expected, kwargs_returned)
 
     @mock.patch.object(rest.VMAXRest,
                        'get_size_of_device_on_array',

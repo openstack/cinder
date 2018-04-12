@@ -164,7 +164,7 @@ VMAX Driver Integration
    |  RestServerIp   | san_ip                 | "       | Yes      | IP address of the         |
    |                 |                        |         |          | Unisphere server          |
    +-----------------+------------------------+---------+----------+---------------------------+
-   |  RestServerPort | san_rest_port          | 8443    | No       | Port of the               |
+   |  RestServerPort | san_api_port           | 8443    | No       | Port of the               |
    |                 |                        |         |          | Unisphere server          |
    +-----------------+------------------------+---------+----------+---------------------------+
    |  RestUserName   | san_login              | 'admin' | Yes      | Username of the           |
@@ -188,7 +188,7 @@ VMAX Driver Integration
 
    .. note::
 
-      ``san_rest_port`` is ``8443`` by default but can be changed if
+      ``san_api_port`` is ``8443`` by default but can be changed if
       necessary. For the purposes of this documentation the default is
       assumed so the tag will not appear in any of the ``cinder.conf``
       extracts below.

@@ -1,0 +1,5 @@
+---
+deprecations:
+  - |
+    VMAX driver - configuration tag san_rest_port will be replaced by
+    san_api_port in the next release.

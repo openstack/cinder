@@ -73,6 +73,8 @@ RDF_ACTIVE = 'active'
 RDF_ACTIVEACTIVE = 'activeactive'
 RDF_ACTIVEBIAS = 'activebias'
 METROBIAS = 'metro_bias'
+DEFAULT_PORT = 8443
+
 # Multiattach constants
 IS_MULTIATTACH = 'multiattach'
 OTHER_PARENT_SG = 'other_parent_sg_name'
@@ -83,7 +85,8 @@ NO_SLO_SG = 'no_slo_sg'
 VMAX_SERVER_IP = 'san_ip'
 VMAX_USER_NAME = 'san_login'
 VMAX_PASSWORD = 'san_password'
-VMAX_SERVER_PORT = 'san_rest_port'
+VMAX_SERVER_PORT_NEW = 'san_api_port'
+VMAX_SERVER_PORT_OLD = 'san_rest_port'
 VMAX_ARRAY = 'vmax_array'
 VMAX_WORKLOAD = 'vmax_workload'
 VMAX_SRP = 'vmax_srp'
