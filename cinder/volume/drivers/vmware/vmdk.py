@@ -1730,6 +1730,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             profile_id,
             dest_path.get_descriptor_ds_file_path())
         self.volumeops.update_backing_disk_uuid(backing, volume['id'])
+        return backing
 
     def manage_existing(self, volume, existing_ref):
         """Brings an existing virtual disk under Cinder management.
@@ -2123,10 +2124,18 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             host=host, resource_pool=rp, folder=folder,
             disks_to_clone=[vol_dev_uuid])
 
+    def _extend_if_needed(self, volume, backing):
+        volume_size = volume.size * units.Gi
+        disk_size = self.volumeops.get_disk_size(backing)
+        if volume_size > disk_size:
+            self._extend_backing(backing, volume.size)
+
     def _create_volume_from_temp_backing(self, volume, tmp_backing):
         try:
             disk_device = self.volumeops._get_disk_device(tmp_backing)
-            self._manage_existing_int(volume, tmp_backing, disk_device)
+            backing = self._manage_existing_int(
+                volume, tmp_backing, disk_device)
+            self._extend_if_needed(volume, backing)
         finally:
             self._delete_temp_backing(tmp_backing)
 
