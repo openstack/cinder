@@ -53,9 +53,10 @@ class UnityDriver(driver.ManageableVD,
         2.0.0 - Add thin clone support
         3.0.0 - Add IPv6 support
         3.1.0 - Support revert to snapshot API
+        3.1.1 - Enalbe SSL support
     """
 
-    VERSION = '03.01.00'
+    VERSION = '03.01.01'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"

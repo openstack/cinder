@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Dell Inc. or its subsidiaries.
+# Copyright (c) 2016 - 2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -43,7 +43,7 @@ class MockConfig(object):
         self.san_ip = '1.2.3.4'
         self.san_login = 'user'
         self.san_password = 'pass'
-        self.driver_ssl_cert_verify = False
+        self.driver_ssl_cert_verify = True
         self.driver_ssl_cert_path = None
 
     def safe_get(self, name):
@@ -412,7 +412,7 @@ class CommonAdapterTest(test.TestCase):
         self.assertEqual('1.2.3.4', self.adapter.ip)
         self.assertEqual('user', self.adapter.username)
         self.assertEqual('pass', self.adapter.password)
-        self.assertFalse(self.adapter.array_cert_verify)
+        self.assertTrue(self.adapter.array_cert_verify)
         self.assertIsNone(self.adapter.array_ca_cert_path)
 
     def test_do_setup_version_before_4_1(self):
