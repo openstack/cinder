@@ -552,7 +552,7 @@ class StorwizeSVCManagementSimulator(object):
                      '1', '0', '3573412790272', '256',
                      '3529432325160', '1693247906775', '26843545600',
                      '38203734097', '47', '80', 'auto', 'inactive', ''])
-        rows.append([str(pool_num + 2), 'openstack3', 'online',
+        rows.append([str(pool_num + 2), 'openstack3', 'offline',
                      '1', '0', '3573412790272', '128',
                      '3529432325160', '1693247906775', '26843545600',
                      '38203734097', '47', '80', 'auto', 'inactive', ''])
@@ -579,7 +579,7 @@ class StorwizeSVCManagementSimulator(object):
             elif pool_name == 'openstack2':
                 row = rows[-4]
             elif pool_name == 'openstack3':
-                row = rows[-4]
+                row = rows[-3]
             elif pool_name == 'hyperswap1':
                 row = rows[-2]
             elif pool_name == 'hyperswap2':
@@ -5496,6 +5496,22 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                 if is_thin_provisioning_enabled:
                     self.assertAlmostEqual(
                         1576.96, each_pool['provisioned_capacity_gb'])
+
+    def test_storwize_svc_get_volume_stats_backend_state(self):
+        self._set_flag('storwize_svc_volpool_name', ['openstack', 'openstack1',
+                                                     'openstack2'])
+
+        stats = self.driver.get_volume_stats()
+        for each_pool in stats['pools']:
+            self.assertEqual('up', each_pool['backend_state'])
+
+        self._reset_flags()
+        self._set_flag('storwize_svc_volpool_name', ['openstack3',
+                                                     'openstack4',
+                                                     'openstack5'])
+        stats = self.driver.get_volume_stats(True)
+        for each_pool in stats['pools']:
+            self.assertEqual('down', each_pool['backend_state'])
 
     def test_get_pool(self):
         ctxt = testutils.get_test_admin_context()

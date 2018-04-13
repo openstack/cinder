@@ -5292,47 +5292,49 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         """Build pool status"""
         QoS_support = True
         pool_stats = {}
-        try:
-            pool_data = self._helpers.get_pool_attrs(pool)
-            if pool_data:
-                easy_tier = pool_data['easy_tier'] in ['on', 'auto']
-                total_capacity_gb = float(pool_data['capacity']) / units.Gi
-                free_capacity_gb = float(pool_data['free_capacity']) / units.Gi
-                allocated_capacity_gb = (float(pool_data['used_capacity']) /
-                                         units.Gi)
-                provisioned_capacity_gb = float(
-                    pool_data['virtual_capacity']) / units.Gi
+        pool_data = self._helpers.get_pool_attrs(pool)
+        if pool_data:
+            easy_tier = pool_data['easy_tier'] in ['on', 'auto']
+            total_capacity_gb = float(pool_data['capacity']) / units.Gi
+            free_capacity_gb = float(pool_data['free_capacity']) / units.Gi
+            allocated_capacity_gb = (float(pool_data['used_capacity']) /
+                                     units.Gi)
+            provisioned_capacity_gb = float(
+                pool_data['virtual_capacity']) / units.Gi
 
-                rsize = self.configuration.safe_get(
-                    'storwize_svc_vol_rsize')
-                # rsize of -1 or 100 means fully allocate the mdisk
-                use_thick_provisioning = rsize == -1 or rsize == 100
-                over_sub_ratio = self.configuration.safe_get(
-                    'max_over_subscription_ratio')
-                location_info = ('StorwizeSVCDriver:%(sys_id)s:%(pool)s' %
-                                 {'sys_id': self._state['system_id'],
-                                  'pool': pool_data['name']})
-                multiattach = (self.configuration.
-                               storwize_svc_multihostmap_enabled)
-                pool_stats = {
-                    'pool_name': pool_data['name'],
-                    'total_capacity_gb': total_capacity_gb,
-                    'free_capacity_gb': free_capacity_gb,
-                    'allocated_capacity_gb': allocated_capacity_gb,
-                    'provisioned_capacity_gb': provisioned_capacity_gb,
-                    'compression_support': self._state['compression_enabled'],
-                    'reserved_percentage':
-                        self.configuration.reserved_percentage,
-                    'QoS_support': QoS_support,
-                    'consistencygroup_support': True,
-                    'location_info': location_info,
-                    'easytier_support': easy_tier,
-                    'multiattach': multiattach,
-                    'thin_provisioning_support': not use_thick_provisioning,
-                    'thick_provisioning_support': use_thick_provisioning,
-                    'max_over_subscription_ratio': over_sub_ratio,
-                    'consistent_group_snapshot_enabled': True,
-                }
+            rsize = self.configuration.safe_get(
+                'storwize_svc_vol_rsize')
+            # rsize of -1 or 100 means fully allocate the mdisk
+            use_thick_provisioning = rsize == -1 or rsize == 100
+            over_sub_ratio = self.configuration.safe_get(
+                'max_over_subscription_ratio')
+            location_info = ('StorwizeSVCDriver:%(sys_id)s:%(pool)s' %
+                             {'sys_id': self._state['system_id'],
+                              'pool': pool_data['name']})
+            multiattach = (self.configuration.
+                           storwize_svc_multihostmap_enabled)
+            backend_state = ('up' if pool_data['status'] == 'online' else
+                             'down')
+            pool_stats = {
+                'pool_name': pool_data['name'],
+                'total_capacity_gb': total_capacity_gb,
+                'free_capacity_gb': free_capacity_gb,
+                'allocated_capacity_gb': allocated_capacity_gb,
+                'provisioned_capacity_gb': provisioned_capacity_gb,
+                'compression_support': self._state['compression_enabled'],
+                'reserved_percentage':
+                    self.configuration.reserved_percentage,
+                'QoS_support': QoS_support,
+                'consistencygroup_support': True,
+                'location_info': location_info,
+                'easytier_support': easy_tier,
+                'multiattach': multiattach,
+                'thin_provisioning_support': not use_thick_provisioning,
+                'thick_provisioning_support': use_thick_provisioning,
+                'max_over_subscription_ratio': over_sub_ratio,
+                'consistent_group_snapshot_enabled': True,
+                'backend_state': backend_state,
+            }
             if self._replica_enabled:
                 pool_stats.update({
                     'replication_enabled': self._replica_enabled,
@@ -5342,9 +5344,18 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     'consistent_group_replication_enabled': True
                 })
 
-        except exception.VolumeBackendAPIException:
-            msg = _('Failed getting details for pool %s.') % pool
-            raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            LOG.error('Failed getting details for pool %s.', pool)
+            pool_stats = {'pool_name': pool,
+                          'total_capacity_gb': 0,
+                          'free_capacity_gb': 0,
+                          'allocated_capacity_gb': 0,
+                          'provisioned_capacity_gb': 0,
+                          'thin_provisioning_support': True,
+                          'thick_provisioning_support': False,
+                          'max_over_subscription_ratio': 0,
+                          'reserved_percentage': 0,
+                          'backend_state': 'down'}
 
         return pool_stats
 
