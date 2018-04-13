@@ -2478,7 +2478,9 @@ class XIVProxy(proxy.IBMStorageProxy):
                     fcaddress=wwpn)
             if len(connected_wwpns) == 0:
                 LOG.error(CONNECTIVITY_FC_NO_TARGETS)
-                raise self._get_exception()(CONNECTIVITY_FC_NO_TARGETS)
+                all_target_ports = self._get_all_target_ports()
+                fc_targets = list(set([target.get('wwpn')
+                                  for target in all_target_ports]))
         else:
             msg = _("No Fibre Channel HBA's are defined on the host.")
             LOG.error(msg)
@@ -2600,13 +2602,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         raise self._get_exception()(msg)
 
     @proxy._trace_time
-    def _get_fc_targets(self, host):
-        """Get FC targets
-
-        :host: host bunch
-        :returns: array of FC target WWPNs
-        """
-        target_wwpns = []
+    def _get_all_target_ports(self):
         all_target_ports = []
 
         fc_port_list = self._call_xiv_xcli("fc_port_list")
@@ -2614,6 +2610,17 @@ class XIVProxy(proxy.IBMStorageProxy):
                               t.get('wwpn') != '0000000000000000' and
                               t.get('role') == 'Target' and
                               t.get('port_state') == 'Online'])
+        return all_target_ports
+
+    @proxy._trace_time
+    def _get_fc_targets(self, host):
+        """Get FC targets
+
+        :host: A dictionary describing the host
+        :returns: array of FC target WWPNs
+        """
+        target_wwpns = []
+        all_target_ports = self._get_all_target_ports()
 
         if host:
             host_conect_list = self._call_xiv_xcli("host_connectivity_list",
