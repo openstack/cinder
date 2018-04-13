@@ -1945,9 +1945,11 @@ class RBDTestCase(test.TestCase):
         exist_snapshot = 'snapshot-exist'
         existing_ref = {'source-name': exist_snapshot}
         proxy.rename_snap.return_value = 0
+        proxy.is_protected_snap.return_value = False
         self.driver.manage_existing_snapshot(self.snapshot_b, existing_ref)
         proxy.rename_snap.assert_called_with(exist_snapshot,
                                              self.snapshot_b.name)
+        proxy.protect_snap.assert_called_with(self.snapshot_b.name)
 
     @common_mocks
     def test_manage_existing_snapshot_with_exist_rbd_image(self):
@@ -1963,6 +1965,15 @@ class RBDTestCase(test.TestCase):
 
         # Make sure the exception was raised
         self.assertEqual([self.mock_rbd.ImageExists], RAISED_EXCEPTIONS)
+
+    @common_mocks
+    def test_unmanage_snapshot(self):
+        proxy = self.mock_proxy.return_value
+        proxy.__enter__.return_value = proxy
+        proxy.list_children.return_value = []
+        proxy.is_protected_snap.return_value = True
+        self.driver.unmanage_snapshot(self.snapshot_b)
+        proxy.unprotect_snap.assert_called_with(self.snapshot_b.name)
 
     @mock.patch('cinder.volume.drivers.rbd.RBDVolumeProxy')
     @mock.patch('cinder.volume.drivers.rbd.RADOSClient')
