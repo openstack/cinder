@@ -250,6 +250,106 @@ class TestGlanceImageService(test.TestCase):
         actual = self.service.show(self.context, image_id)
         self.assertDictEqual(expected, actual)
 
+    def test_show_shared_image_membership_success(self):
+        """Test Create Shared Image Membership Success
+
+        Ensure we can get access to a shared image
+        """
+        fixture = {'name': 'test image', 'is_public': False,
+                   'protected': False, 'visibility': 'shared'}
+        # pid = self.context.project_id
+        image_id = self.service.create(self.context, fixture)['id']
+        image = {
+            'id': image_id,
+            'name': 'test image',
+            'protected': False,
+            'size': None,
+            'min_disk': None,
+            'min_ram': None,
+            'disk_format': None,
+            'container_format': None,
+            'checksum': None,
+            'created_at': self.NOW_DATETIME,
+            'updated_at': self.NOW_DATETIME,
+            'deleted': None,
+            'status': None,
+            'properties': {'is_public': False},
+            'owner': None,
+            'visibility': None,
+        }
+        member_id = '50fcc79f25524744a2c34682a1a74914'
+        with mock.patch.object(self.service, '_client') as client_mock:
+            with mock.patch.object(
+                    self.service, '_translate_from_glance') as tg_mock:
+                tg_mock.return_value = {}
+                mock_image = mock.Mock()
+                mock_image.is_public = False
+                mock_image.properties = {'is_public': False}
+                mock_image.visibility = 'shared'
+                mock_image.keys.return_value = image.keys()
+                client_mock.call.side_effect = [
+                    mock_image,
+                    self._make_image_member_fixtures(image_id=image_id,
+                                                     member_id=member_id,
+                                                     status='accepted')]
+                self.context.project_id = member_id
+                self.context.is_admin = False
+                self.context.user_id = image_id
+                self.context.auth_token = False
+                self.service.show(self.context, image_id)
+
+    def test_show_shared_image_membership_fail_status(self):
+        """Test Create Shared Image Membership Failure
+
+        Ensure we can't get access to a shared image with the wrong membership
+        status (in this case 'pending')
+        """
+        fixture = {'name': 'test image', 'is_public': False,
+                   'protected': False, 'visibility': 'shared'}
+        # pid = self.context.project_id
+        image_id = self.service.create(self.context, fixture)['id']
+        image = {
+            'id': image_id,
+            'name': 'test image',
+            'protected': False,
+            'size': None,
+            'min_disk': None,
+            'min_ram': None,
+            'disk_format': None,
+            'container_format': None,
+            'checksum': None,
+            'created_at': self.NOW_DATETIME,
+            'updated_at': self.NOW_DATETIME,
+            'deleted': None,
+            'status': None,
+            'properties': {'is_public': False},
+            'owner': None,
+            'visibility': None,
+        }
+        member_id = '50fcc79f25524744a2c34682a1a74914'
+        with mock.patch.object(self.service, '_client') as client_mock:
+            with mock.patch.object(
+                    self.service, '_translate_from_glance') as tg_mock:
+                tg_mock.return_value = {}
+                mock_image = mock.Mock()
+                mock_image.is_public = False
+                mock_image.properties = {'is_public': False}
+                mock_image.visibility = 'shared'
+                mock_image.keys.return_value = image.keys()
+                client_mock.call.side_effect = [
+                    mock_image,
+                    self._make_image_member_fixtures(image_id=image_id,
+                                                     member_id=member_id,
+                                                     status='pending')]
+                self.context.project_id = member_id
+                self.context.is_admin = False
+                self.context.user_id = image_id
+                self.context.auth_token = False
+                self.assertRaises(exception.ImageNotFound,
+                                  self.service.show,
+                                  self.context,
+                                  image_id)
+
     def test_create(self):
         fixture = self._make_fixture(name='test image')
         num_images = len(self.service.detail(self.context))
