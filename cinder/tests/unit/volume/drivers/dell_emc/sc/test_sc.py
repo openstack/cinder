@@ -2568,14 +2568,17 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         volumes = [{'id': fake.VOLUME3_ID}, {'id': fake.VOLUME4_ID}]
         source_group = {'id': fake.GROUP_ID}
         source_volumes = [{'id': fake.VOLUME_ID}, {'id': fake.VOLUME2_ID}]
-        mock_create_cloned_volume.side_effect = [{'id': fake.VOLUME3_ID},
-                                                 {'id': fake.VOLUME4_ID}]
+        # create_cloned_volume returns the sc specific provider_id.
+        mock_create_cloned_volume.side_effect = [{'provider_id': '12345.1'},
+                                                 {'provider_id': '12345.2'}]
         mock_create_group.return_value = {'status': 'available'}
         model_update, volumes_model_update = self.driver.create_group_from_src(
             context, group, volumes, group_snapshot=None, snapshots=None,
             source_group=source_group, source_vols=source_volumes)
-        expected = [{'id': fake.VOLUME3_ID, 'status': 'available'},
-                    {'id': fake.VOLUME4_ID, 'status': 'available'}]
+        expected = [{'id': fake.VOLUME3_ID, 'provider_id': '12345.1',
+                     'status': 'available'},
+                    {'id': fake.VOLUME4_ID, 'provider_id': '12345.2',
+                     'status': 'available'}]
         self.assertEqual({'status': 'available'}, model_update)
         self.assertEqual(expected, volumes_model_update)
 
@@ -2598,15 +2601,18 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         group_snapshot = {'id': fake.GROUP_SNAPSHOT_ID}
         source_snapshots = [{'id': fake.SNAPSHOT_ID},
                             {'id': fake.SNAPSHOT2_ID}]
+        # create_volume_from_snapshot returns the sc specific provider_id.
         mock_create_volume_from_snapshot.side_effect = [
-            {'id': fake.VOLUME_ID}, {'id': fake.VOLUME2_ID}]
+            {'provider_id': '12345.1'}, {'provider_id': '12345.2'}]
         mock_create_group.return_value = {'status': 'available'}
         model_update, volumes_model_update = self.driver.create_group_from_src(
             context, group, volumes,
             group_snapshot=group_snapshot, snapshots=source_snapshots,
             source_group=None, source_vols=None)
-        expected = [{'id': fake.VOLUME_ID, 'status': 'available'},
-                    {'id': fake.VOLUME2_ID, 'status': 'available'}]
+        expected = [{'id': fake.VOLUME_ID, 'provider_id': '12345.1',
+                     'status': 'available'},
+                    {'id': fake.VOLUME2_ID, 'provider_id': '12345.2',
+                     'status': 'available'}]
         self.assertEqual({'status': 'available'}, model_update)
         self.assertEqual(expected, volumes_model_update)
 
