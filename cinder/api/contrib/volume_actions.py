@@ -16,7 +16,6 @@
 from castellan import key_manager
 from oslo_config import cfg
 import oslo_messaging as messaging
-from oslo_utils import encodeutils
 from oslo_utils import strutils
 import six
 from six.moves import http_client
@@ -25,11 +24,11 @@ import webob
 from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volume_actions as volume_action
+from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
-from cinder.image import image_utils
 from cinder.policies import volume_actions as policy
-from cinder import utils
 from cinder import volume
 
 
@@ -52,6 +51,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-attach')
+    @validation.schema(volume_action.attach)
     def _attach(self, req, id, body):
         """Add attachment metadata."""
         context = req.environ['cinder.context']
@@ -66,23 +66,9 @@ class VolumeActionsController(wsgi.Controller):
         # Keep API backward compatibility
         if 'host_name' in body['os-attach']:
             host_name = body['os-attach']['host_name']
-        if 'mountpoint' not in body['os-attach']:
-            msg = _("Must specify 'mountpoint'")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
         mountpoint = body['os-attach']['mountpoint']
-        if 'mode' in body['os-attach']:
-            mode = body['os-attach']['mode']
-        else:
-            mode = 'rw'
+        mode = body['os-attach'].get('mode', 'rw')
 
-        if instance_uuid is None and host_name is None:
-            msg = _("Invalid request to attach volume to an invalid target")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        if mode not in ('rw', 'ro'):
-            msg = _("Invalid request to attach volume with an invalid mode. "
-                    "Attaching mode should be 'rw' or 'ro'")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
         try:
             self.volume_api.attach(context, volume,
                                    instance_uuid, host_name, mountpoint, mode)
@@ -101,6 +87,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-detach')
+    @validation.schema(volume_action.detach)
     def _detach(self, req, id, body):
         """Clear attachment metadata."""
         context = req.environ['cinder.context']
@@ -108,8 +95,7 @@ class VolumeActionsController(wsgi.Controller):
         volume = self.volume_api.get(context, id)
 
         attachment_id = None
-        if body['os-detach']:
-            attachment_id = body['os-detach'].get('attachment_id', None)
+        attachment_id = body['os-detach'].get('attachment_id', None)
 
         try:
             self.volume_api.detach(context, volume, attachment_id)
@@ -166,16 +152,13 @@ class VolumeActionsController(wsgi.Controller):
         self.volume_api.roll_detaching(context, volume)
 
     @wsgi.action('os-initialize_connection')
+    @validation.schema(volume_action.initialize_connection)
     def _initialize_connection(self, req, id, body):
         """Initialize volume attachment."""
         context = req.environ['cinder.context']
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
-        try:
-            connector = body['os-initialize_connection']['connector']
-        except KeyError:
-            raise webob.exc.HTTPBadRequest(
-                explanation=_("Must specify 'connector'"))
+        connector = body['os-initialize_connection']['connector']
         try:
             info = self.volume_api.initialize_connection(context,
                                                          volume,
@@ -195,16 +178,13 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-terminate_connection')
+    @validation.schema(volume_action.terminate_connection)
     def _terminate_connection(self, req, id, body):
         """Terminate volume attachment."""
         context = req.environ['cinder.context']
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
-        try:
-            connector = body['os-terminate_connection']['connector']
-        except KeyError:
-            raise webob.exc.HTTPBadRequest(
-                explanation=_("Must specify 'connector'"))
+        connector = body['os-terminate_connection']['connector']
         try:
             self.volume_api.terminate_connection(context, volume, connector)
         except exception.VolumeBackendAPIException:
@@ -213,37 +193,23 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-volume_upload_image')
+    @validation.schema(volume_action.volume_upload_image, '2.0', '3.0')
+    @validation.schema(volume_action.volume_upload_image_v31, '3.1')
     def _volume_upload_image(self, req, id, body):
         """Uploads the specified volume to image service."""
         context = req.environ['cinder.context']
         params = body['os-volume_upload_image']
         req_version = req.api_version_request
-        if not params.get("image_name"):
-            msg = _("No image_name was specified in request.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
 
         force = params.get('force', 'False')
-        try:
-            force = strutils.bool_from_string(force, strict=True)
-        except ValueError as error:
-            err_msg = encodeutils.exception_to_unicode(error)
-            msg = _("Invalid value for 'force': '%s'") % err_msg
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        force = strutils.bool_from_string(force, strict=True)
 
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
 
-        context.authorize(policy.UPLOAD_IMAGE_POLICY, target_obj=volume)
+        context.authorize(policy.UPLOAD_IMAGE_POLICY)
         # check for valid disk-format
         disk_format = params.get("disk_format", "raw")
-        if not image_utils.validate_disk_format(disk_format):
-            msg = _("Invalid disk-format '%(disk_format)s' is specified. "
-                    "Allowed disk-formats are %(allowed_disk_formats)s.") % {
-                "disk_format": disk_format,
-                "allowed_disk_formats": ", ".join(
-                    image_utils.VALID_DISK_FORMATS)
-            }
-            raise webob.exc.HTTPBadRequest(explanation=msg)
 
         image_metadata = {"container_format": params.get(
             "container_format", "bare"),
@@ -267,14 +233,11 @@ class VolumeActionsController(wsgi.Controller):
                 mv.UPLOAD_IMAGE_PARAMS):
 
             image_metadata['visibility'] = params.get('visibility', 'private')
-            image_metadata['protected'] = params.get('protected', 'False')
+            image_metadata['protected'] = strutils.bool_from_string(
+                params.get('protected', 'False'), strict=True)
 
             if image_metadata['visibility'] == 'public':
-                context.authorize(policy.UPLOAD_PUBLIC_POLICY,
-                                  target_obj=volume)
-
-            image_metadata['protected'] = (
-                utils.get_bool_param('protected', image_metadata))
+                context.authorize(policy.UPLOAD_PUBLIC_POLICY)
 
         try:
             response = self.volume_api.copy_volume_to_image(context,
@@ -295,6 +258,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-extend')
+    @validation.schema(volume_action.extend)
     def _extend(self, req, id, body):
         """Extend size of volume."""
         context = req.environ['cinder.context']
@@ -302,12 +266,7 @@ class VolumeActionsController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
 
-        try:
-            size = int(body['os-extend']['new_size'])
-        except (KeyError, ValueError, TypeError):
-            msg = _("New volume size must be specified as an integer.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
+        size = int(body['os-extend']['new_size'])
         try:
             if (req_version.matches(mv.VOLUME_EXTEND_INUSE) and
                     volume.status in ['in-use']):
@@ -319,64 +278,43 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-update_readonly_flag')
+    @validation.schema(volume_action.volume_readonly_update)
     def _volume_readonly_update(self, req, id, body):
         """Update volume readonly flag."""
         context = req.environ['cinder.context']
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
 
-        try:
-            readonly_flag = body['os-update_readonly_flag']['readonly']
-        except KeyError:
-            msg = _("Must specify readonly in request.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        readonly_flag = body['os-update_readonly_flag']['readonly']
 
-        try:
-            readonly_flag = strutils.bool_from_string(readonly_flag,
-                                                      strict=True)
-        except ValueError as error:
-            err_msg = encodeutils.exception_to_unicode(error)
-            msg = _("Invalid value for 'readonly': '%s'") % err_msg
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        readonly_flag = strutils.bool_from_string(readonly_flag,
+                                                  strict=True)
 
         self.volume_api.update_readonly_flag(context, volume, readonly_flag)
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-retype')
+    @validation.schema(volume_action.retype)
     def _retype(self, req, id, body):
         """Change type of existing volume."""
         context = req.environ['cinder.context']
         volume = self.volume_api.get(context, id)
-        try:
-            new_type = body['os-retype']['new_type']
-        except KeyError:
-            msg = _("New volume type must be specified.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        new_type = body['os-retype']['new_type']
         policy = body['os-retype'].get('migration_policy')
 
         self.volume_api.retype(context, volume, new_type, policy)
 
     @wsgi.response(http_client.OK)
     @wsgi.action('os-set_bootable')
+    @validation.schema(volume_action.set_bootable)
     def _set_bootable(self, req, id, body):
         """Update bootable status of a volume."""
         context = req.environ['cinder.context']
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
 
-        try:
-            bootable = body['os-set_bootable']['bootable']
-        except KeyError:
-            msg = _("Must specify bootable in request.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        try:
-            bootable = strutils.bool_from_string(bootable,
-                                                 strict=True)
-        except ValueError as error:
-            err_msg = encodeutils.exception_to_unicode(error)
-            msg = _("Invalid value for 'bootable': '%s'") % err_msg
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        bootable = strutils.bool_from_string(
+            body['os-set_bootable']['bootable'], strict=True)
 
         update_dict = {'bootable': bootable}
 

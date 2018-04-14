@@ -201,3 +201,10 @@ backup_service = {'type': 'string', 'minLength': 0, 'maxLength': 255}
 nullable_string = {
     'type': ('string', 'null'), 'minLength': 0, 'maxLength': 255
 }
+
+
+volume_size = {
+    'type': ['integer', 'string'],
+    'pattern': '^[0-9]+$',
+    'minimum': 1
+}

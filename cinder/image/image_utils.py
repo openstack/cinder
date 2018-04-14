@@ -60,8 +60,6 @@ QEMU_IMG_LIMITS = processutils.ProcessLimits(
     cpu_time=8,
     address_space=1 * units.Gi)
 
-VALID_DISK_FORMATS = ('raw', 'vmdk', 'vdi', 'qcow2',
-                      'vhd', 'vhdx', 'ploop')
 
 QEMU_IMG_FORMAT_MAP = {
     # Convert formats of Glance images to how they are processed with qemu-img.
@@ -74,10 +72,6 @@ QEMU_IMG_FORMAT_MAP_INV = {v: k for k, v in QEMU_IMG_FORMAT_MAP.items()}
 QEMU_IMG_VERSION = None
 QEMU_IMG_MIN_FORCE_SHARE_VERSION = [2, 10, 0]
 QEMU_IMG_MIN_CONVERT_LUKS_VERSION = '2.10'
-
-
-def validate_disk_format(disk_format):
-    return disk_format in VALID_DISK_FORMATS
 
 
 def fixup_disk_format(disk_format):
