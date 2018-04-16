@@ -206,7 +206,7 @@ class VMAXCommonData(object):
         context=ctx, name='vol1', size=2, provider_auth=None,
         provider_location=six.text_type(provider_location2),
         host=fake_host, source_volid=test_volume.id,
-        snapshot_id=snapshot_id)
+        snapshot_id=snapshot_id, _name_id=test_volume.id)
 
     test_volume_snap_manage = fake_volume.fake_volume_obj(
         context=ctx, name='vol1', size=2, provider_auth=None,
@@ -1989,6 +1989,14 @@ class VMAXRestTest(test.TestCase):
         found_dev_id2 = self.rest.check_volume_device_id(
             self.data.array, self.data.device_id3, element_name)
         self.assertIsNone(found_dev_id2)
+
+    def test_check_volume_device_id_host_migration_case(self):
+        element_name = self.utils.get_volume_element_name(
+            self.data.test_clone_volume.id)
+        found_dev_id = self.rest.check_volume_device_id(
+            self.data.array, self.data.device_id, element_name,
+            name_id=self.data.test_clone_volume._name_id)
+        self.assertEqual(self.data.device_id, found_dev_id)
 
     def test_find_mv_connections_for_vol(self):
         device_id = self.data.device_id

@@ -991,7 +991,10 @@ class VMAXCommon(object):
         """
         founddevice_id = None
         volume_name = volume.id
-
+        try:
+            name_id = volume._name_id
+        except AttributeError:
+            name_id = None
         loc = volume.provider_location
 
         if isinstance(loc, six.string_types):
@@ -1005,7 +1008,7 @@ class VMAXCommon(object):
                 device_id = None
             try:
                 founddevice_id = self.rest.check_volume_device_id(
-                    array, device_id, volume_name)
+                    array, device_id, volume_name, name_id)
             except exception.VolumeBackendAPIException:
                 pass
 
