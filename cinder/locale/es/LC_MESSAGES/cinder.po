@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-03-29 04:10+0000\n"
+"POT-Creation-Date: 2018-04-17 01:13+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -223,9 +223,6 @@ msgstr "Es necesario especificar el 'consistencygroup_id'"
 
 msgid "'qemu-img info' parsing failed."
 msgstr "Se ha encontrado un error en el análisis de 'qemu-img info'."
-
-msgid "'status' must be specified."
-msgstr "se debe especificar 'status'."
 
 #, python-format
 msgid ""
@@ -3563,16 +3560,6 @@ msgstr ""
 msgid "Invalid qos specs: %(reason)s"
 msgstr "Especificaciones de qos no válidas: %(reason)s"
 
-msgid "Invalid request to attach volume to an invalid target"
-msgstr "Solicitud no válida para adjuntar un volumen a un destino no válido"
-
-msgid ""
-"Invalid request to attach volume with an invalid mode. Attaching mode should "
-"be 'rw' or 'ro'"
-msgstr ""
-"Solicitud no válida para adjuntar un volumen con el modo no válido. "
-"Adjuntando modo debe ser 'rw' o 'ro'"
-
 #, python-format
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "Caducidad de reserva no válida %(expire)s."
@@ -3618,18 +3605,6 @@ msgstr "Valor de actualización no válido: '%s' "
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "Valor no válido %s' para forzar."
-
-#, python-format
-msgid "Invalid value for 'bootable': '%s'"
-msgstr "Valor no válido para 'bootable': '%s'"
-
-#, python-format
-msgid "Invalid value for 'force': '%s'"
-msgstr "Valor no válido para 'force': '%s'"
-
-#, python-format
-msgid "Invalid value for 'readonly': '%s'"
-msgstr "Valor no válido para 'readonly': '%s'"
 
 msgid "Invalid value for 'scheduler_max_attempts', must be >=1"
 msgstr "Valor no válido para 'scheduler_max_attempts', debe ser >= 1 "
@@ -3968,9 +3943,6 @@ msgstr ""
 "policy.json de Keystone, que permite al administrador de nube listar y "
 "obtener cualquier proyecto."
 
-msgid "Must specify 'connector'"
-msgstr "Debe especificar 'connector'"
-
 msgid "Must specify 'new_volume'"
 msgstr "Debe especificar 'new_volume'"
 
@@ -4008,12 +3980,6 @@ msgstr "Debe especificar un estado válido"
 
 msgid "Must specify an ExtensionManager class"
 msgstr "Debe especificar una clase ExtensionManager"
-
-msgid "Must specify bootable in request."
-msgstr "Debe especificar bootable en la solicitud."
-
-msgid "Must specify readonly in request."
-msgstr "Debe especificar sólo lectura en solicitud."
 
 msgid "Must specify snapshot source-name or source-id."
 msgstr ""
@@ -4083,12 +4049,6 @@ msgstr ""
 "El nuevo tamaño debe ser mayor que el tamaño real del almacenamiento de "
 "fondo. tamaño real: %(oldsize)s, tamaño nuevo: %(newsize)s."
 
-msgid "New volume size must be specified as an integer."
-msgstr "Se debe especificar el nuevo tamaño de volumen como un entero."
-
-msgid "New volume type must be specified."
-msgstr "Se debe especificar tipo de volumen nuevo."
-
 msgid "New volume type not specified in request_spec."
 msgstr "No se ha especificado el tipo de volumen nuevo en request_spec."
 
@@ -4148,10 +4108,6 @@ msgstr "No se ha encontrado ningún portal iscsi bueno para %s."
 
 msgid "No iSCSI-enabled ports on target array."
 msgstr "No hay puertos habilitados para iSCSI en la matriz de destino."
-
-msgid "No image_name was specified in request."
-msgstr ""
-"No se ha especificado ningún nombre de imagen (image_name) en la solicitud."
 
 msgid "No initiator connected to fabric."
 msgstr "No hay ningún iniciador conectado al tejido."
@@ -7287,10 +7243,6 @@ msgstr ""
 #, python-format
 msgid "mdiskgrp missing quotes %s"
 msgstr "mdiskgrp no tiene comillas %s"
-
-#, python-format
-msgid "migration_policy must be 'on-demand' or 'never', passed: %s"
-msgstr "migration_policy debe ser 'on-demand' o 'never', se ha pasado: %s"
 
 #, python-format
 msgid "mkfs failed on volume %(vol)s, error message was: %(err)s."

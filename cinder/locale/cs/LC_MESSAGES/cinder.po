@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-03-29 04:10+0000\n"
+"POT-Creation-Date: 2018-04-17 01:13+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -197,9 +197,6 @@ msgstr "'consistencygroup_id' musí být zadáno"
 
 msgid "'qemu-img info' parsing failed."
 msgstr "zpracování 'qemu-img info' selhalo."
-
-msgid "'status' must be specified."
-msgstr "'status' musí být zadáno."
 
 #, python-format
 msgid ""
@@ -2757,16 +2754,6 @@ msgstr ""
 msgid "Invalid qos specs: %(reason)s"
 msgstr "Neplatné specifikace qos: %(reason)s"
 
-msgid "Invalid request to attach volume to an invalid target"
-msgstr "Neplatná žádost o připojení svazku k neplatnému hostiteli"
-
-msgid ""
-"Invalid request to attach volume with an invalid mode. Attaching mode should "
-"be 'rw' or 'ro'"
-msgstr ""
-"Neplatná žádost o připojení svazku s neplatným režimem. Režim připojení by "
-"měl být 'rw' nebo 'ro'"
-
 #, python-format
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "Neplatné vypršení rezervace %(expire)s."
@@ -2803,18 +2790,6 @@ msgstr "Neplatné nastavení aktualizace: '%s'"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "Neplatná hodnota '%s' pro vynucení."
-
-#, python-format
-msgid "Invalid value for 'bootable': '%s'"
-msgstr "Neplatná hodnota pro 'bootable': '%s'"
-
-#, python-format
-msgid "Invalid value for 'force': '%s'"
-msgstr "Neplatná hodnota pro 'force': '%s'"
-
-#, python-format
-msgid "Invalid value for 'readonly': '%s'"
-msgstr "Neplatná hodnota pro 'readonly': '%s'"
 
 msgid "Invalid value for 'scheduler_max_attempts', must be >=1"
 msgstr "Neplatná hodnota pro 'scheduler_max_attempts', musí být >=1"
@@ -3081,9 +3056,6 @@ msgstr "Je nutné zavést schedule_get_pools"
 msgid "Must pass wwpn or host to lsfabric."
 msgstr "lsfabric je nutné předat wwpn nebo host."
 
-msgid "Must specify 'connector'"
-msgstr "Musíte zadat 'connector'"
-
 msgid "Must specify 'new_volume'"
 msgstr "Musíte zadat 'new_volume'"
 
@@ -3120,12 +3092,6 @@ msgstr "Musíte zadat platný stav"
 
 msgid "Must specify an ExtensionManager class"
 msgstr "Musí být určena třída ExtensionManager"
-
-msgid "Must specify bootable in request."
-msgstr "V žádosti musíte zadat bootable."
-
-msgid "Must specify readonly in request."
-msgstr "V žádosti musíte zadat readonly."
 
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr "Musíte zadat zásoby úložiště. Volba: sio_storage_pools."
@@ -3178,12 +3144,6 @@ msgstr ""
 "Nová velikost pro rozšíření musí být větší než současná. (současná: "
 "%(size)s, rozšířená: %(new_size)s)."
 
-msgid "New volume size must be specified as an integer."
-msgstr "Nová velikost svazku musí být zadána jako celé číslo."
-
-msgid "New volume type must be specified."
-msgstr "Musíte zadat nový typ svazku."
-
 msgid "New volume type not specified in request_spec."
 msgstr "Nový typ svazku nebyl zadán ve specifikaci žádosti."
 
@@ -3229,9 +3189,6 @@ msgstr "Pro %s nenalezeny žádné vhodné portály iscsi."
 
 msgid "No iSCSI-enabled ports on target array."
 msgstr "V cílovém poli není žádný port umožňující iSCSI."
-
-msgid "No image_name was specified in request."
-msgstr "V žádosti nebyl zadán název obrazu."
 
 #, python-format
 msgid "No initiator group found for initiator %s"
@@ -5321,10 +5278,6 @@ msgstr ""
 #, python-format
 msgid "mdiskgrp missing quotes %s"
 msgstr "mdiskgrp chybí uvozovky %s"
-
-#, python-format
-msgid "migration_policy must be 'on-demand' or 'never', passed: %s"
-msgstr "zásady přesunu musí být 'on-demand' nebo 'never', předáno: %s"
 
 #, python-format
 msgid "mkfs failed on volume %(vol)s, error message was: %(err)s."

@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-03-29 04:10+0000\n"
+"POT-Creation-Date: 2018-04-17 01:13+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -221,9 +221,6 @@ msgstr "'consistencygroup_id' muss angegeben werden."
 
 msgid "'qemu-img info' parsing failed."
 msgstr "Auswertung von 'qemu-img info' fehlgeschlagen."
-
-msgid "'status' must be specified."
-msgstr "'status' muss angegeben werden."
 
 #, python-format
 msgid ""
@@ -3592,18 +3589,6 @@ msgstr ""
 msgid "Invalid qos specs: %(reason)s"
 msgstr "Ungültige QoS-Spezifikationen: %(reason)s"
 
-msgid "Invalid request to attach volume to an invalid target"
-msgstr ""
-"Die Anforderung, einen Datenträger an ein ungültiges Ziel anzuhängen, ist "
-"nicht zulässig."
-
-msgid ""
-"Invalid request to attach volume with an invalid mode. Attaching mode should "
-"be 'rw' or 'ro'"
-msgstr ""
-"Die Anforderung, einen Datenträger mit einem ungültigen Modus anzuhängen, "
-"ist nicht zulässig. Der Anhangmodus muss 'rw' oder 'ro' sein."
-
 #, python-format
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "Ungültiges Ende für Reservierung: %(expire)s."
@@ -3647,18 +3632,6 @@ msgstr "Ungültige Aktualisierungseinstellung: '%s'"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "Wert '%s' für Zwangsausführung ungültig."
-
-#, python-format
-msgid "Invalid value for 'bootable': '%s'"
-msgstr "Ungültiger Wert für 'bootable': '%s'"
-
-#, python-format
-msgid "Invalid value for 'force': '%s'"
-msgstr "Ungültiger Wert für 'force': '%s'"
-
-#, python-format
-msgid "Invalid value for 'readonly': '%s'"
-msgstr "Ungültiger Wert für 'readonly': '%s'"
 
 msgid "Invalid value for 'scheduler_max_attempts', must be >=1"
 msgstr "Ungültiger Wert für scheduler_max_attempts. Der Wert muss >= 1 sein."
@@ -3976,9 +3949,6 @@ msgstr ""
 "Richtliniendatei 'policy.json' ausgeführt werden, damit der "
 "Cloudadministrator beliebige Projekte auflisten und abrufen kann. "
 
-msgid "Must specify 'connector'"
-msgstr "'connector' muss angegeben werden."
-
 msgid "Must specify 'new_volume'"
 msgstr "'new_volume' muss angegeben werden."
 
@@ -4016,12 +3986,6 @@ msgstr "Ein gültiger Status muss angegeben werden."
 
 msgid "Must specify an ExtensionManager class"
 msgstr "Eine ExtensionManager-Klasse muss angegeben werden."
-
-msgid "Must specify bootable in request."
-msgstr "'bootable' muss in der Anforderung angegeben werden."
-
-msgid "Must specify readonly in request."
-msgstr "'readonly' muss in der Anforderung angegeben werden."
 
 msgid "Must specify snapshot source-name or source-id."
 msgstr ""
@@ -4089,12 +4053,6 @@ msgstr ""
 "Die neue Größe muss größer sein als die tatsächliche Größe aus dem "
 "Backendspeicher. Tatsächliche Größe: %(oldsize)s, neue Größe: %(newsize)s."
 
-msgid "New volume size must be specified as an integer."
-msgstr "Neue Datenträgergröße muss als Ganzzahl angegeben werden."
-
-msgid "New volume type must be specified."
-msgstr "Neuer Datenträgertyp muss angegeben werden."
-
 msgid "New volume type not specified in request_spec."
 msgstr "Der neue Datenträgertyp wurde nicht in request_spec angegeben."
 
@@ -4151,9 +4109,6 @@ msgstr "Keine gültigen iSCSI-Portals für %s gefunden."
 
 msgid "No iSCSI-enabled ports on target array."
 msgstr "Keine iSCSI-fähigen Ports auf Zielarray."
-
-msgid "No image_name was specified in request."
-msgstr "Kein image_name in Anforderung angegeben."
 
 msgid "No initiator connected to fabric."
 msgstr "Kein Initiator mit Fabric verbunden."
@@ -7308,10 +7263,6 @@ msgstr ""
 #, python-format
 msgid "mdiskgrp missing quotes %s"
 msgstr "Fehlende Anführungszeichen für mdiskgrp %s"
-
-#, python-format
-msgid "migration_policy must be 'on-demand' or 'never', passed: %s"
-msgstr "migration_policy muss 'on-demand' oder 'never' sein, übergeben: %s"
 
 #, python-format
 msgid "mkfs failed on volume %(vol)s, error message was: %(err)s."

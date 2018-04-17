@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-03-29 04:10+0000\n"
+"POT-Creation-Date: 2018-04-17 01:13+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -271,9 +271,6 @@ msgstr "'consistencygroup_id' を指定する必要があります。"
 
 msgid "'qemu-img info' parsing failed."
 msgstr "'qemu-img info' の解析に失敗しました。"
-
-msgid "'status' must be specified."
-msgstr "'status' を指定する必要があります。"
 
 msgid "'success' not found"
 msgstr "'success' が見つかりません。"
@@ -4195,14 +4192,6 @@ msgid "Invalid disk type: %s."
 msgstr "ディスクタイプが無効です: %s。"
 
 #, python-format
-msgid ""
-"Invalid disk-format '%(disk_format)s' is specified. Allowed disk-formats are "
-"%(allowed_disk_formats)s."
-msgstr ""
-"無効なディスクフォーマット '%(disk_format)s'  が指定されました。許可される"
-"ディスクフォーマットは %(allowed_disk_formats)s です。"
-
-#, python-format
 msgid "Invalid filter keys: %s"
 msgstr "無効なフィルターキー :  %s"
 
@@ -4290,16 +4279,6 @@ msgstr ""
 msgid "Invalid qos specs: %(reason)s"
 msgstr "qos 仕様が無効です: %(reason)s"
 
-msgid "Invalid request to attach volume to an invalid target"
-msgstr "ボリュームを無効なターゲットに接続する要求は無効です"
-
-msgid ""
-"Invalid request to attach volume with an invalid mode. Attaching mode should "
-"be 'rw' or 'ro'"
-msgstr ""
-"無効なモードでボリュームを接続しようとしているため、要求は無効です。接続モー"
-"ドは 'rw' または 'ro' でなければなりません"
-
 #, python-format
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "予約の有効期限 %(expire)s が無効です。"
@@ -4355,18 +4334,6 @@ msgstr "delete-volumes フラッグの値 '%s' が無効です。"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "force の値 '%s' は無効です。"
-
-#, python-format
-msgid "Invalid value for 'bootable': '%s'"
-msgstr " 'bootable' の値 '%s' は無効です。"
-
-#, python-format
-msgid "Invalid value for 'force': '%s'"
-msgstr "'force' の値 '%s' は無効です。"
-
-#, python-format
-msgid "Invalid value for 'readonly': '%s'"
-msgstr " 'readonly' の値 '%s' は無効です。"
 
 msgid "Invalid value for 'scheduler_max_attempts', must be >=1"
 msgstr "'scheduler_max_attempts' の値が無効です。1 以上でなければなりません"
@@ -4768,9 +4735,6 @@ msgstr ""
 "policy.json を使用して、クラウド管理者としてこのコマンドを実行する必要があり"
 "ます。"
 
-msgid "Must specify 'connector'"
-msgstr "'connector' を指定する必要があります"
-
 msgid "Must specify 'new_volume'"
 msgstr "'new_volume' を指定する必要があります。"
 
@@ -4808,18 +4772,12 @@ msgstr "有効な状態を指定してください。"
 msgid "Must specify an ExtensionManager class"
 msgstr "ExtensionManager クラスを指定する必要があります"
 
-msgid "Must specify bootable in request."
-msgstr "要求にブート可能を指定する必要があります。"
-
 msgid ""
 "Must specify one or more of the following keys to update: name, description, "
 "add_volumes, remove_volumes."
 msgstr ""
 "更新を行うには、次のキーを一つ以上指定する必要があります : 名前、説明、 "
 "add_volumes 、 remove_volumes"
-
-msgid "Must specify readonly in request."
-msgstr "要求内で読み取り専用を指定する必要があります。"
 
 msgid "Must specify snapshot source-name or source-id."
 msgstr ""
@@ -4888,12 +4846,6 @@ msgstr ""
 "新規サイズはバックエンドストレージの実サイズよりも大きくなければなりません。"
 "実サイズ: %(oldsize)s、新規サイズ: %(newsize)s。"
 
-msgid "New volume size must be specified as an integer."
-msgstr "新しいボリュームサイズを整数で指定する必要があります。"
-
-msgid "New volume type must be specified."
-msgstr "新規ボリュームタイプを指定する必要があります。"
-
 msgid "New volume type not specified in request_spec."
 msgstr "新規のボリュームタイプが要求仕様に指定されていません。"
 
@@ -4956,9 +4908,6 @@ msgstr "id %s のグループスナップショットは存在しません。"
 
 msgid "No iSCSI-enabled ports on target array."
 msgstr "ターゲット配列に iSCSI に対応するポートがありません。"
-
-msgid "No image_name was specified in request."
-msgstr "要求に image_name が指定されていませんでした。"
 
 msgid "No initiator connected to fabric."
 msgstr "ファブリックに接続されたイニシエーターはありません。"
@@ -8716,12 +8665,6 @@ msgstr "マーカーが見つかりません: %s"
 #, python-format
 msgid "mdiskgrp missing quotes %s"
 msgstr "mdiskgrp に引用符 %s がありません"
-
-#, python-format
-msgid "migration_policy must be 'on-demand' or 'never', passed: %s"
-msgstr ""
-"migration_policy は 'on-demand' または 'never' でなければなりません。%s が渡"
-"されました"
 
 #, python-format
 msgid "mkfs failed on volume %(vol)s, error message was: %(err)s."

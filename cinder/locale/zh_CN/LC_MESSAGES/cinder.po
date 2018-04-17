@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-03-29 04:10+0000\n"
+"POT-Creation-Date: 2018-04-17 01:13+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -257,9 +257,6 @@ msgstr "必须指定“consistencygroup_id”"
 
 msgid "'qemu-img info' parsing failed."
 msgstr "'qemu-img info'解析失败"
-
-msgid "'status' must be specified."
-msgstr "必须指定“status”。"
 
 #, python-format
 msgid ""
@@ -3598,14 +3595,6 @@ msgid "Invalid disk type: %s."
 msgstr "无效磁盘类型：%s。"
 
 #, python-format
-msgid ""
-"Invalid disk-format '%(disk_format)s' is specified. Allowed disk-formats are "
-"%(allowed_disk_formats)s."
-msgstr ""
-"指定的磁盘格式\"%(disk_format)s\"无效。允许的磁盘格式"
-"为%(allowed_disk_formats)s。"
-
-#, python-format
 msgid "Invalid filter keys: %s"
 msgstr "无效的筛选键:%s"
 
@@ -3690,14 +3679,6 @@ msgstr "配置了无效预取类型“%s”。PrefetchType 必须为 0、1、2 �
 msgid "Invalid qos specs: %(reason)s"
 msgstr "qos 规范无效：%(reason)s"
 
-msgid "Invalid request to attach volume to an invalid target"
-msgstr "关于将卷连接至无效目标的请求无效"
-
-msgid ""
-"Invalid request to attach volume with an invalid mode. Attaching mode should "
-"be 'rw' or 'ro'"
-msgstr "以无效方式连接卷的请求无效。连接方式应该为“rw”或“ro”"
-
 #, python-format
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "预留到期 %(expire)s 无效。"
@@ -3753,18 +3734,6 @@ msgstr "删除卷标志的值\"%s\"无效。"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "值“%s”对于 force 无效。"
-
-#, python-format
-msgid "Invalid value for 'bootable': '%s'"
-msgstr "“bootable”的值无效：“%s”"
-
-#, python-format
-msgid "Invalid value for 'force': '%s'"
-msgstr "“force”的值无效：“%s”"
-
-#, python-format
-msgid "Invalid value for 'readonly': '%s'"
-msgstr "“readonly”的值无效：“%s”"
 
 msgid "Invalid value for 'scheduler_max_attempts', must be >=1"
 msgstr "值对于“scheduler_max_attempts”无效，必须 >= 1"
@@ -4101,9 +4070,6 @@ msgstr ""
 "必须以云管理员身份使用 Keystone policy.json（它允许云管理员列示和获取任何项"
 "目）运行此命令。"
 
-msgid "Must specify 'connector'"
-msgstr "必须指定“connector”"
-
 msgid "Must specify 'new_volume'"
 msgstr "必须指定“new_volume”"
 
@@ -4136,16 +4102,10 @@ msgstr "必须指定有效状态"
 msgid "Must specify an ExtensionManager class"
 msgstr "必须明确一个ExtensionManager类"
 
-msgid "Must specify bootable in request."
-msgstr "必须在请求中指定 bootable。"
-
 msgid ""
 "Must specify one or more of the following keys to update: name, description, "
 "add_volumes, remove_volumes."
 msgstr "更新时必须指定如下的一个或多个键:名称，描述，添加卷，删除卷。"
-
-msgid "Must specify readonly in request."
-msgstr "必须在请求中指定 readonly。"
 
 msgid "Must specify snapshot source-name or source-id."
 msgstr "必须指定快照 source-name 或 source-id。"
@@ -4207,12 +4167,6 @@ msgstr ""
 "新大小应该大于后端存储器中的实际大小。realsize：%(oldsize)s，newsize："
 "%(newsize)s。"
 
-msgid "New volume size must be specified as an integer."
-msgstr "新卷的大小必须指定为整数。"
-
-msgid "New volume type must be specified."
-msgstr "必须指定新的卷类型。"
-
 msgid "New volume type not specified in request_spec."
 msgstr "在 request_spec 中，未指定新的卷类型。"
 
@@ -4269,9 +4223,6 @@ msgstr "不存在任何具有标识 %s 的组快照"
 
 msgid "No iSCSI-enabled ports on target array."
 msgstr "目标阵列上没有可支持 iSCSI 的端口。"
-
-msgid "No image_name was specified in request."
-msgstr "未在请求中指定任何 image_name。"
 
 msgid "No initiator connected to fabric."
 msgstr "没有任何启动程序连接至光纤网络。"
@@ -7460,10 +7411,6 @@ msgstr "没有找到标记： %s"
 #, python-format
 msgid "mdiskgrp missing quotes %s"
 msgstr "Mdisk 组缺少引号 %s"
-
-#, python-format
-msgid "migration_policy must be 'on-demand' or 'never', passed: %s"
-msgstr "migration_policy 必须为“on-demand”或“never”，已传递：%s"
 
 #, python-format
 msgid "mkfs failed on volume %(vol)s, error message was: %(err)s."

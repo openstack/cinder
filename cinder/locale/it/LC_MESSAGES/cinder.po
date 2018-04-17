@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-03-29 04:10+0000\n"
+"POT-Creation-Date: 2018-04-17 01:13+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -212,9 +212,6 @@ msgstr "è necessario specificare 'consistencygroup_id'"
 
 msgid "'qemu-img info' parsing failed."
 msgstr "analisi di 'qemu-img info' non riuscita."
-
-msgid "'status' must be specified."
-msgstr "È necessario specificare 'status'."
 
 #, python-format
 msgid ""
@@ -3515,17 +3512,6 @@ msgstr ""
 msgid "Invalid qos specs: %(reason)s"
 msgstr "Specifiche qos non valide: %(reason)s"
 
-msgid "Invalid request to attach volume to an invalid target"
-msgstr ""
-"Richiesta non valida per collegare il volume a una destinazione non valida"
-
-msgid ""
-"Invalid request to attach volume with an invalid mode. Attaching mode should "
-"be 'rw' or 'ro'"
-msgstr ""
-"Richiesta non valida per collegare il volume con una modalità non valida. La "
-"modalità di collegamento deve essere 'rw' o 'ro'"
-
 #, python-format
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "Scadenza prenotazione non valida %(expire)s."
@@ -3570,18 +3556,6 @@ msgstr "Impostazione di aggiornamento non valida: '%s'"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "Valore non valido '%s' per force."
-
-#, python-format
-msgid "Invalid value for 'bootable': '%s'"
-msgstr "Valore non valido per 'bootable': '%s'"
-
-#, python-format
-msgid "Invalid value for 'force': '%s'"
-msgstr "Valore non valido per 'force': '%s'"
-
-#, python-format
-msgid "Invalid value for 'readonly': '%s'"
-msgstr "Valore non valido per 'readonly': '%s'"
 
 msgid "Invalid value for 'scheduler_max_attempts', must be >=1"
 msgstr "Valore non valido per 'scheduler_max_attempts', deve essere >= 1"
@@ -3896,9 +3870,6 @@ msgstr ""
 "Eseguire questo comando come admin cloud utilizzando un Keystone policy.json "
 "che consenta all'admin cloud di visualizzare e ottenere qualsiasi progetto."
 
-msgid "Must specify 'connector'"
-msgstr "È necessario  specificare 'connector'"
-
 msgid "Must specify 'new_volume'"
 msgstr "È necessario specificare 'new_volume'"
 
@@ -3936,12 +3907,6 @@ msgstr "È necessario specificare uno stato valido"
 
 msgid "Must specify an ExtensionManager class"
 msgstr "È necessario specificare una classe ExtensionManager"
-
-msgid "Must specify bootable in request."
-msgstr "È necessario specificare bootable nella richiesta."
-
-msgid "Must specify readonly in request."
-msgstr "È necessario specificare readonly nella richiesta."
 
 msgid "Must specify snapshot source-name or source-id."
 msgstr "È necessario specificare source-name o source-id dell'istantanea."
@@ -4010,13 +3975,6 @@ msgstr ""
 "dell'archiviazione di backend. dimensione reale: %(oldsize)s, nuova "
 "dimensione: %(newsize)s."
 
-msgid "New volume size must be specified as an integer."
-msgstr ""
-"La nuova dimensione di volume deve essere specificata come numero intero."
-
-msgid "New volume type must be specified."
-msgstr "È necessario specificare il tipo del nuovo volume."
-
 msgid "New volume type not specified in request_spec."
 msgstr "Nuovo tipo di volume non specificato in request_spec."
 
@@ -4071,9 +4029,6 @@ msgstr "Nessun portale iscsi valido trovato in %s."
 
 msgid "No iSCSI-enabled ports on target array."
 msgstr "Nessuna porta abilitata a iSCSI nell'array di destinazione."
-
-msgid "No image_name was specified in request."
-msgstr "Nessun image_name specificato nella richiesta."
 
 msgid "No initiator connected to fabric."
 msgstr "Nessun iniziatore collegato a fabric."
@@ -7100,11 +7055,6 @@ msgstr ""
 #, python-format
 msgid "mdiskgrp missing quotes %s"
 msgstr "apici mancanti per mdiskgrp %s"
-
-#, python-format
-msgid "migration_policy must be 'on-demand' or 'never', passed: %s"
-msgstr ""
-"migration_policy deve essere 'on-demand' o 'never', è stato passato: %s"
 
 #, python-format
 msgid "mkfs failed on volume %(vol)s, error message was: %(err)s."

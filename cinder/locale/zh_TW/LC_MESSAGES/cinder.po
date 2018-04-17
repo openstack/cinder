@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-03-29 04:10+0000\n"
+"POT-Creation-Date: 2018-04-17 01:13+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -199,9 +199,6 @@ msgstr "必須指定 'consistencygroup_id'"
 
 msgid "'qemu-img info' parsing failed."
 msgstr "'qemu-img info' 剖析失敗。"
-
-msgid "'status' must be specified."
-msgstr "必須指定 'status'。"
 
 #, python-format
 msgid ""
@@ -3184,14 +3181,6 @@ msgstr "所配置的預先提取類型 %s 無效。PrefetchType 必須位於 0�
 msgid "Invalid qos specs: %(reason)s"
 msgstr "無效的服務品質規格：%(reason)s"
 
-msgid "Invalid request to attach volume to an invalid target"
-msgstr "將磁區連接至無效目標的要求無效"
-
-msgid ""
-"Invalid request to attach volume with an invalid mode. Attaching mode should "
-"be 'rw' or 'ro'"
-msgstr "以無效模式來連接磁區的要求無效。連接模式應該是 'rw' 或 'ro'"
-
 #, python-format
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "無效的預約有效期限 %(expire)s。"
@@ -3235,18 +3224,6 @@ msgstr "無效的更新設定：'%s'"
 #, python-format
 msgid "Invalid value '%s' for force."
 msgstr "force 的值 '%s' 無效。"
-
-#, python-format
-msgid "Invalid value for 'bootable': '%s'"
-msgstr "'bootable' 的值無效：'%s'"
-
-#, python-format
-msgid "Invalid value for 'force': '%s'"
-msgstr "'force' 的值 '%s' 無效"
-
-#, python-format
-msgid "Invalid value for 'readonly': '%s'"
-msgstr "'readonly' 的值無效：'%s'"
 
 msgid "Invalid value for 'scheduler_max_attempts', must be >=1"
 msgstr "'scheduler_max_attempts' 的值無效，必須 >= 1"
@@ -3526,9 +3503,6 @@ msgstr ""
 "必須以雲端管理者身分使用 Keystone policy.json 來執行此指令，此 policy.json 容"
 "許雲端管理者列出和取得任何專案。"
 
-msgid "Must specify 'connector'"
-msgstr "必須指定 'connector'"
-
 msgid "Must specify 'new_volume'"
 msgstr "必須指定 'new_volume'"
 
@@ -3560,12 +3534,6 @@ msgstr "必須指定有效的狀態"
 
 msgid "Must specify an ExtensionManager class"
 msgstr "必須指定 ExtensionManager 類別"
-
-msgid "Must specify bootable in request."
-msgstr "必須在要求中指定 bootable。"
-
-msgid "Must specify readonly in request."
-msgstr "必須在要求中指定 readonly。"
 
 msgid "Must specify snapshot source-name or source-id."
 msgstr "必須指定 Snapshot source-name 或 source-id。"
@@ -3628,12 +3596,6 @@ msgstr ""
 "新大小應該大於後端儲存體中的實際大小。實際大小：%(oldsize)s，新大小："
 "%(newsize)s。"
 
-msgid "New volume size must be specified as an integer."
-msgstr "必須將新的磁區大小指定為整數。"
-
-msgid "New volume type must be specified."
-msgstr "必須指定新的磁區類型。"
-
 msgid "New volume type not specified in request_spec."
 msgstr "request_spec 中沒有指定新的磁區類型。"
 
@@ -3686,9 +3648,6 @@ msgstr "找不到 %s 的良好 iSCSI 入口網站。"
 
 msgid "No iSCSI-enabled ports on target array."
 msgstr "目標陣列上沒有支援 iSCSI 的埠。"
-
-msgid "No image_name was specified in request."
-msgstr "未在要求中指定 image_name。"
 
 msgid "No initiator connected to fabric."
 msgstr "沒有起始器已連接至光纖。"
@@ -6455,10 +6414,6 @@ msgstr ""
 #, python-format
 msgid "mdiskgrp missing quotes %s"
 msgstr "mdiskgrp 遺漏引用 %s"
-
-#, python-format
-msgid "migration_policy must be 'on-demand' or 'never', passed: %s"
-msgstr "migration_policy 必須是 'on-demand' 或 'never'，已傳遞：%s"
 
 #, python-format
 msgid "mkfs failed on volume %(vol)s, error message was: %(err)s."
