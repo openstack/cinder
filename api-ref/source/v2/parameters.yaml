@@ -1487,8 +1487,8 @@ source_replica:
   type: string
 source_volid:
   description: |
-    The UUID of the source volume. The API creates a
-    new volume with the same size as the source volume.
+    The UUID of the source volume. The API creates a new volume with the same
+    size as the source volume unless a larger size is requested.
   in: body
   required: false
   type: string
