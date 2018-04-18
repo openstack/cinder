@@ -94,14 +94,16 @@ class NetAppCmodeFibreChannelDriver(driver.BaseVD,
     def unmanage(self, volume):
         return self.library.unmanage(volume)
 
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
-        return self.library.initialize_connection_fc(volume, connector)
+        conn_info = self.library.initialize_connection_fc(volume, connector)
+        fczm_utils.add_fc_zone(conn_info)
+        return conn_info
 
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
-        return self.library.terminate_connection_fc(volume, connector,
-                                                    **kwargs)
+        conn_info = self.library.terminate_connection_fc(volume, connector,
+                                                         **kwargs)
+        fczm_utils.remove_fc_zone(conn_info)
+        return conn_info
 
     def get_pool(self, volume):
         return self.library.get_pool(volume)

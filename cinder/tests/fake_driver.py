@@ -240,38 +240,42 @@ class FakeISERDriver(FakeLoggingVolumeDriver):
 
 class FakeFibreChannelDriver(driver.FibreChannelDriver):
 
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
-        return {
+        conn_info = {
             'driver_volume_type': 'fibre_channel',
             'data': {
                 'initiator_target_map': {'fake_wwn': ['fake_wwn2']},
             }}
+        fczm_utils.add_fc_zone(conn_info)
+        return conn_info
 
-    @fczm_utils.add_fc_zone
     def no_zone_initialize_connection(self, volume, connector):
         """This shouldn't call the ZM."""
-        return {
+        conn_info = {
             'driver_volume_type': 'bogus',
             'data': {
                 'initiator_target_map': {'fake_wwn': ['fake_wwn2']},
             }}
+        fczm_utils.add_fc_zone(conn_info)
+        return conn_info
 
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
-        return {
+        conn_info = {
             'driver_volume_type': 'fibre_channel',
             'data': {
                 'initiator_target_map': {'fake_wwn': ['fake_wwn2']},
             }}
+        fczm_utils.remove_fc_zone(conn_info)
+        return conn_info
 
-    @fczm_utils.remove_fc_zone
     def no_zone_terminate_connection(self, volume, connector, **kwargs):
-        return {
+        conn_info = {
             'driver_volume_type': 'bogus',
             'data': {
                 'initiator_target_map': {'fake_wwn': ['fake_wwn2']},
             }}
+        fczm_utils.remove_fc_zone(conn_info)
+        return conn_info
 
 
 class FakeGateDriver(lvm.LVMVolumeDriver):

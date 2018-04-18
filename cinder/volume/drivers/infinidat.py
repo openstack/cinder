@@ -330,11 +330,13 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         target_wwpns = list(self._get_online_fc_ports())
         target_wwpns, init_target_map = self._build_initiator_target_map(
             connector, target_wwpns)
-        return dict(driver_volume_type='fibre_channel',
-                    data=dict(target_discovered=False,
-                              target_wwn=target_wwpns,
-                              target_lun=lun,
-                              initiator_target_map=init_target_map))
+        conn_info = dict(driver_volume_type='fibre_channel',
+                         data=dict(target_discovered=False,
+                                   target_wwn=target_wwpns,
+                                   target_lun=lun,
+                                   initiator_target_map=init_target_map))
+        fczm_utils.add_fc_zone(conn_info)
+        return conn_info
 
     def _get_iscsi_network_space(self, netspace_name):
         netspace = self._system.network_spaces.safe_get(
@@ -417,7 +419,6 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             ports = [iqn.IQN(connector['initiator'])]
         return ports
 
-    @fczm_utils.add_fc_zone
     @infinisdk_to_cinder_exceptions
     @coordination.synchronized('infinidat-{self.management_address}-lock')
     def initialize_connection(self, volume, connector):
@@ -427,7 +428,6 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         else:
             return self._initialize_connection_iscsi(volume, connector)
 
-    @fczm_utils.remove_fc_zone
     @infinisdk_to_cinder_exceptions
     @coordination.synchronized('infinidat-{self.management_address}-lock')
     def terminate_connection(self, volume, connector, **kwargs):
@@ -462,8 +462,11 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                                                          target_wwpns))
                     result_data = dict(target_wwn=target_wwpns,
                                        initiator_target_map=target_map)
-        return dict(driver_volume_type=volume_type,
-                    data=result_data)
+        conn_info = dict(driver_volume_type=volume_type,
+                         data=result_data)
+        if self._protocol == 'FC':
+            fczm_utils.remove_fc_zone(conn_info)
+        return conn_info
 
     @infinisdk_to_cinder_exceptions
     def get_volume_stats(self, refresh=False):

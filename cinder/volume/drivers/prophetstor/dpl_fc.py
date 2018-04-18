@@ -218,7 +218,6 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
 
         return init_targ_map
 
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         """
@@ -336,10 +335,11 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
         LOG.info('Connect initialization info: '
                  '{driver_volume_type: fibre_channel, '
                  'data: %(properties)s', {'properties': properties})
-        return {'driver_volume_type': 'fibre_channel',
-                'data': properties}
+        conn_info = {'driver_volume_type': 'fibre_channel',
+                     'data': properties}
+        fczm_utils.add_fc_zone(conn_info)
+        return conn_info
 
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         """
@@ -397,6 +397,7 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                                                              lsTargets)
             info['data'] = {'target_wwn': lsTargets,
                             'initiator_target_map': init_targ_map}
+            fczm_utils.remove_fc_zone(info)
 
         return info
 

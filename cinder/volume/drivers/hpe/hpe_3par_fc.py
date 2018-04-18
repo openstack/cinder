@@ -123,7 +123,6 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         self.protocol = 'FC'
 
     @utils.trace
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
 
@@ -200,12 +199,12 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
 
             encryption_key_id = volume.get('encryption_key_id', None)
             info['data']['encrypted'] = encryption_key_id is not None
+            fczm_utils.add_fc_zone(info)
             return info
         finally:
             self._logout(common)
 
     @utils.trace
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         common = self._login()
@@ -247,7 +246,7 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
 
                 info['data'] = {'target_wwn': target_wwns,
                                 'initiator_target_map': init_targ_map}
-
+                fczm_utils.remove_fc_zone(info)
             return info
 
         finally:

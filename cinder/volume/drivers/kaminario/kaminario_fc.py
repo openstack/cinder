@@ -49,7 +49,6 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
         self._protocol = 'FC'
         self.lookup_service = fczm_utils.create_lookup_service()
 
-    @fczm_utils.add_fc_zone
     @utils.trace
     @coordination.synchronized('{self.k2_lock_name}')
     def initialize_connection(self, volume, connector):
@@ -76,13 +75,14 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
         if temp_client:
             self.client = temp_client
         # Return target volume information.
-        return {'driver_volume_type': 'fibre_channel',
-                'data': {"target_discovered": True,
-                         "target_lun": lun,
-                         "target_wwn": target_wwpns,
-                         "initiator_target_map": init_target_map}}
+        conn_info = {'driver_volume_type': 'fibre_channel',
+                     'data': {"target_discovered": True,
+                              "target_lun": lun,
+                              "target_wwn": target_wwpns,
+                              "initiator_target_map": init_target_map}}
+        fczm_utils.add_fc_zone(conn_info)
+        return conn_info
 
-    @fczm_utils.remove_fc_zone
     @utils.trace
     @coordination.synchronized('{self.k2_lock_name}')
     def terminate_connection(self, volume, connector, **kwargs):
@@ -105,6 +105,8 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
                 connector, target_wwpns)
             properties["data"] = {"target_wwn": target_wwpns,
                                   "initiator_target_map": init_target_map}
+            fczm_utils.remove_fc_zone(properties)
+
         # To support replication failback
         if temp_client:
             self.client = temp_client

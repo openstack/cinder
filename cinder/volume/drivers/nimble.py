@@ -860,7 +860,6 @@ class NimbleFCDriver(NimbleBaseVolumeDriver, driver.FibreChannelDriver):
 
         return init_targ_map
 
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Driver entry point to attach a volume to an instance."""
         LOG.info('Entering initialize_connection volume=%(vol)s'
@@ -899,10 +898,9 @@ class NimbleFCDriver(NimbleBaseVolumeDriver, driver.FibreChannelDriver):
 
         LOG.info("Return FC data for zone addition: %(data)s.",
                  {'data': data})
-
+        fczm_utils.add_fc_zone(data)
         return data
 
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         LOG.info('Entering terminate_connection volume=%(vol)s'
@@ -934,6 +932,10 @@ class NimbleFCDriver(NimbleBaseVolumeDriver, driver.FibreChannelDriver):
         data = {'driver_volume_type': 'fibre_channel',
                 'data': {'target_wwn': target_wwns}}
 
+        # FIXME: need to optionally add the initiator_target_map here when
+        # there are no more volumes exported to the initiator / target pair
+        # otherwise the zone will never get removed.
+        fczm_utils.remove_fc_zone(data)
         return data
 
     def get_wwpns_from_array(self, array_name):

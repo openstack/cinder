@@ -83,7 +83,6 @@ class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
     def delete_volume(self, volume):
         self.common.delete_volume(volume)
 
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         self.common.client_login()
         try:
@@ -98,11 +97,11 @@ class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
             data['initiator_target_map'] = init_targ_map
             info = {'driver_volume_type': 'fibre_channel',
                     'data': data}
+            fczm_utils.add_fc_zone(info)
             return info
         finally:
             self.common.client_logout()
 
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         info = {'driver_volume_type': 'fibre_channel', 'data': {}}
         try:
@@ -112,6 +111,7 @@ class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
                 ports, init_targ_map = self.get_init_targ_map(connector)
                 info['data'] = {'target_wwn': ports,
                                 'initiator_target_map': init_targ_map}
+                fczm_utils.remove_fc_zone(info)
         finally:
             return info
 

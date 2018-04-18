@@ -159,7 +159,6 @@ class EMCCoprHDFCDriver(driver.FibreChannelDriver):
         """Make sure volume is exported."""
         pass
 
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info."""
 
@@ -196,12 +195,13 @@ class EMCCoprHDFCDriver(driver.FibreChannelDriver):
             properties['auth_password'] = auth_secret
 
         LOG.debug('FC properties: %s', properties)
-        return {
+        conn_info = {
             'driver_volume_type': 'fibre_channel',
             'data': properties,
         }
+        fczm_utils.add_fc_zone(conn_info)
+        return conn_info
 
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to detach a volume from an instance."""
 
@@ -221,6 +221,7 @@ class EMCCoprHDFCDriver(driver.FibreChannelDriver):
                 'data': {
                     'target_wwn': target_wwns,
                     'initiator_target_map': initiator_target_map}}
+            fczm_utils.remove_fc_zone(data)
 
         LOG.debug('Return FC data: %s', data)
         return data
