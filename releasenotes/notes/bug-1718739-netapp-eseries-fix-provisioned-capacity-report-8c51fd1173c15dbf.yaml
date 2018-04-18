@@ -1,0 +1,7 @@
+---
+fixes:
+  - NetApp E-series (bug 1718739):The NetApp E-series driver has
+    been fixed to correctly report the "provisioned_capacity_gb".
+    Now it sums the capacity of all the volumes in the configured
+    backend to get the correct value. This bug fix affects all the
+    protocols supported by the driver (FC and iSCSI).

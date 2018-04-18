@@ -491,6 +491,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
     def test_update_volume_stats_provisioning(self):
         """Validate pool capacity calculations"""
         fake_pool = copy.deepcopy(eseries_fake.STORAGE_POOL)
+        fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         self.library._get_storage_pools = mock.Mock(return_value=[fake_pool])
         self.mock_object(self.library, '_ssc_stats',
                          {fake_pool["volumeGroupRef"]: {
@@ -504,6 +505,11 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         total_gb = int(fake_pool['totalRaidedSpace']) / units.Gi
         used_gb = int(fake_pool['usedSpace']) / units.Gi
         free_gb = total_gb - used_gb
+        provisioned_gb = int(fake_eseries_volume['capacity']) * 10 / units.Gi
+
+        # Testing with 10 fake volumes
+        self.library._client.list_volumes = mock.Mock(
+            return_value=[eseries_fake.VOLUME for _ in range(10)])
 
         self.library._update_volume_stats()
 
@@ -514,7 +520,8 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         self.assertEqual(over_subscription_ratio,
                          pool_stats['max_over_subscription_ratio'])
         self.assertEqual(total_gb, pool_stats.get('total_capacity_gb'))
-        self.assertEqual(used_gb, pool_stats.get('provisioned_capacity_gb'))
+        self.assertEqual(provisioned_gb,
+                         pool_stats.get('provisioned_capacity_gb'))
         self.assertEqual(free_gb, pool_stats.get('free_capacity_gb'))
 
     @ddt.data(False, True)
