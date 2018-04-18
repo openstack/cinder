@@ -864,12 +864,12 @@ class Resource(wsgi.Application):
             decoded_body = encodeutils.safe_decode(body, errors='ignore')
             msg = ("Action: '%(action)s', calling method: %(meth)s, body: "
                    "%(body)s") % {'action': action,
-                                  'body': six.text_type(decoded_body),
-                                  'meth': six.text_type(meth)}
+                                  'body': decoded_body,
+                                  'meth': meth.__name__}
             LOG.debug(strutils.mask_password(msg))
         else:
             LOG.debug("Calling method '%(meth)s'",
-                      {'meth': six.text_type(meth)})
+                      {'meth': meth.__name__})
 
         # Now, deserialize the request body...
         try:
