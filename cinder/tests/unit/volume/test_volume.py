@@ -1804,6 +1804,28 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         self.assertEqual(attachment.attach_status, 'reserved')
 
+    def test_attachment_reserve_conditional_update_attach_race(self):
+        # Tests a scenario where two instances are racing to attach the
+        # same multiattach=False volume. One updates the volume status to
+        # "reserved" but the other fails the conditional update which is
+        # then validated to not be the same instance that is already attached
+        # to the multiattach=False volume which triggers a failure.
+        volume = tests_utils.create_volume(self.context)
+        # Assert that we're not dealing with a multiattach volume and that
+        # it does not have any existing attachments.
+        self.assertFalse(volume.multiattach)
+        self.assertEqual(0, len(volume.volume_attachment))
+        # Attach the first instance which is OK and should update the volume
+        # status to 'reserved'.
+        self.volume_api._attachment_reserve(self.context, volume, fake.UUID1)
+        # Try attaching a different instance to the same volume which should
+        # fail.
+        ex = self.assertRaises(exception.InvalidVolume,
+                               self.volume_api._attachment_reserve,
+                               self.context, volume, fake.UUID2)
+        self.assertIn("status must be available or downloading",
+                      six.text_type(ex))
+
     def test_unreserve_volume_success_in_use(self):
         UUID = six.text_type(uuid.uuid4())
         volume = tests_utils.create_volume(self.context, status='attaching')
