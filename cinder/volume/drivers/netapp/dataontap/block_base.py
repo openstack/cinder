@@ -589,6 +589,16 @@ class NetAppBlockStorageLibrary(object):
                     int(new_size_bytes)):
                 self.zapi_client.do_direct_resize(path, new_size_bytes)
             else:
+                if volume['attach_status'] != 'detached':
+                    msg = _('Volume %(vol_id)s cannot be resized from '
+                            '%(old_size)s to %(new_size)s, because would '
+                            'exceed its max geometry %(max_geo)s while not '
+                            'being detached.')
+                    raise exception.VolumeBackendAPIException(data=msg % {
+                        'vol_id': name,
+                        'old_size': curr_size_bytes,
+                        'new_size': new_size_bytes,
+                        'max_geo': lun_geometry.get("max_resize")})
                 self._do_sub_clone_resize(
                     path, new_size_bytes,
                     qos_policy_group_name=qos_policy_group_name)

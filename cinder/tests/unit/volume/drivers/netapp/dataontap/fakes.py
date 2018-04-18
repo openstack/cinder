@@ -45,6 +45,8 @@ NFS_SHARE_PATH = '/export'
 NFS_EXPORT_1 = '%s:%s' % (NFS_HOST, NFS_SHARE_PATH)
 NFS_EXPORT_2 = 'nfs-host2:/export'
 MOUNT_POINT = '/mnt/nfs'
+ATTACHED = 'attached'
+DETACHED = 'detached'
 LUN_METADATA = {
     'OsType': None,
     'SpaceReserved': 'true',
@@ -57,6 +59,7 @@ VOLUME = {
     'size': SIZE,
     'id': VOLUME_ID,
     'host': HOST_STRING,
+    'attach_status': DETACHED,
 }
 NFS_VOLUME = {
     'name': NFS_FILE_PATH,
