@@ -20,6 +20,8 @@
         - openstack-tox-lower-constraints
         - cinder-tox-functional-py36
         - cinder-tox-py36
+        - cinder-rally-task:
+            voting: false
     gate:
       jobs:
         - cinder-tox-compliance
@@ -133,3 +135,14 @@
       - ^doc/.*$
       - ^releasenotes/.*$
       - ^tools/.*$
+
+- job:
+    name: cinder-rally-task
+    parent: rally-task-cinder
+    timeout: 7800
+    vars:
+      devstack_plugins:
+        rally-openstack: https://git.openstack.org/openstack/rally-openstack
+      rally_task: rally-jobs/cinder.yaml
+    required-projects:
+      - openstack/rally-openstack
