@@ -119,6 +119,8 @@ from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc as \
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_iscsi as \
     cinder_volume_drivers_ibm_storwize_svc_storwizesvciscsi
 from cinder.volume.drivers import infinidat as cinder_volume_drivers_infinidat
+from cinder.volume.drivers.inspur.as13000 import as13000_driver as \
+    cinder_volume_drivers_inspur_as13000_as13000driver
 from cinder.volume.drivers.inspur.instorage import instorage_common as \
     cinder_volume_drivers_inspur_instorage_instoragecommon
 from cinder.volume.drivers.inspur.instorage import instorage_iscsi as \
@@ -247,6 +249,8 @@ def list_opts():
                 cinder_volume_driver.nvmet_opts,
                 cinder_volume_drivers_datacore_driver.datacore_opts,
                 cinder_volume_drivers_datacore_iscsi.datacore_iscsi_opts,
+                cinder_volume_drivers_inspur_as13000_as13000driver.
+                inspur_as13000_opts,
                 cinder_volume_drivers_inspur_instorage_instoragecommon.
                 instorage_mcs_opts,
                 cinder_volume_drivers_inspur_instorage_instorageiscsi.

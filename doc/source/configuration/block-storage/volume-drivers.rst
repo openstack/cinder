@@ -51,6 +51,7 @@ Driver Configuration Reference
    drivers/ibm-storage-volume-driver
    drivers/ibm-storwize-svc-driver
    drivers/infinidat-volume-driver
+   drivers/inspur-as13000-driver
    drivers/inspur-instorage-driver
    drivers/kaminario-driver
    drivers/lenovo-driver
