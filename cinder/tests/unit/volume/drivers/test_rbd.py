@@ -1968,38 +1968,33 @@ class RBDTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.rbd.RADOSClient')
     @mock.patch('cinder.volume.drivers.rbd.RBDDriver.RBDProxy')
     def test__get_usage_info(self, rbdproxy_mock, client_mock, volproxy_mock):
-        def FakeVolProxy(size):
-            if size == -1:
-                size_mock = mock.Mock(side_effect=MockImageNotFoundException)
-            else:
-                size_mock = mock.Mock(return_value=size * units.Gi)
-            return mock.Mock(return_value=mock.Mock(size=size_mock))
+
+        def FakeVolProxy(size_or_exc):
+            return mock.Mock(return_value=mock.Mock(
+                size=mock.Mock(side_effect=(size_or_exc,))))
 
         volumes = ['volume-1', 'non-existent', 'non-cinder-volume']
 
         client = client_mock.return_value.__enter__.return_value
         rbdproxy_mock.return_value.list.return_value = volumes
 
-        volproxy_mock.side_effect = [
-            mock.Mock(**{'__enter__': FakeVolProxy(1.0),
-                         '__exit__': mock.Mock()}),
-            mock.Mock(**{'__enter__': FakeVolProxy(-1),
-                         '__exit__': mock.Mock()}),
-            mock.Mock(**{'__enter__': FakeVolProxy(2.0),
-                         '__exit__': mock.Mock()})
-        ]
-
-        with mock.patch.object(self.driver, 'rbd') as mock_rbd:
-            mock_rbd.ImageNotFound = MockImageNotFoundException
+        with mock.patch.object(self.driver, 'rbd',
+                               ImageNotFound=MockImageNotFoundException):
+            volproxy_mock.side_effect = [
+                mock.MagicMock(**{'__enter__': FakeVolProxy(s)})
+                for s in (1.0 * units.Gi,
+                          self.driver.rbd.ImageNotFound,
+                          2.0 * units.Gi)
+            ]
             total_provision = self.driver._get_usage_info()
 
         rbdproxy_mock.return_value.list.assert_called_once_with(client.ioctx)
-        volproxy_mock.assert_has_calls([
-            mock.call(self.driver, volumes[0], read_only=True,
-                      client=client.cluster, ioctx=client.ioctx),
-            mock.call(self.driver, volumes[1], read_only=True,
-                      client=client.cluster, ioctx=client.ioctx),
-        ])
+
+        expected_volproxy_calls = [
+            mock.call(self.driver, v, read_only=True,
+                      client=client.cluster, ioctx=client.ioctx)
+            for v in volumes]
+        self.assertEqual(expected_volproxy_calls, volproxy_mock.mock_calls)
 
         self.assertEqual(3.00, total_provision)
 
