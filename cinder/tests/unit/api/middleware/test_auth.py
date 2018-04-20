@@ -75,3 +75,35 @@ class TestCinderKeystoneContextMiddleware(test.TestCase):
         self.request.environ[request_id.ENV_REQUEST_ID] = req_id
         self.request.get_response(self.middleware)
         self.assertEqual(req_id, self.context.request_id)
+
+    def test_request_project_domain_id(self):
+        self.request.headers['X_USER_ID'] = 'testuserid'
+        self.request.headers['X_PROJECT_DOMAIN_ID'] = 'domain1'
+
+        self.request.get_response(self.middleware)
+
+        self.assertEqual('domain1', self.context.project_domain)
+
+    def test_request_project_domain_name(self):
+        self.request.headers['X_USER_ID'] = 'testuserid'
+        self.request.headers['X_PROJECT_DOMAIN_NAME'] = 'mydomain'
+
+        self.request.get_response(self.middleware)
+
+        self.assertEqual('mydomain', self.context.project_domain_name)
+
+    def test_request_user_domain_id(self):
+        self.request.headers['X_USER_ID'] = 'testuserid'
+        self.request.headers['X_USER_DOMAIN_ID'] = 'domain2'
+
+        self.request.get_response(self.middleware)
+
+        self.assertEqual('domain2', self.context.user_domain)
+
+    def test_request_user_domain_name(self):
+        self.request.headers['X_USER_ID'] = 'testuserid'
+        self.request.headers['X_USER_DOMAIN_NAME'] = 'mydomain2'
+
+        self.request.get_response(self.middleware)
+
+        self.assertEqual('mydomain2', self.context.user_domain_name)
