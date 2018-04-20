@@ -579,14 +579,17 @@ class RBDTestCase(test.TestCase):
     @mock.patch.object(driver.RBDDriver, '_get_image_status')
     def test_get_manageable_volumes(self, mock_get_image_status):
         cinder_vols = [{'id': '00000000-0000-0000-0000-000000000000'}]
-        vols = ['volume-00000000-0000-0000-0000-000000000000', 'vol1', 'vol2']
+        vols = ['volume-00000000-0000-0000-0000-000000000000', 'vol1', 'vol2',
+                'volume-11111111-1111-1111-1111-111111111111.deleted']
         self.mock_rbd.RBD.return_value.list.return_value = vols
         image = self.mock_proxy.return_value.__enter__.return_value
-        image.size.side_effect = [2 * units.Gi, 4 * units.Gi, 6 * units.Gi]
+        image.size.side_effect = [2 * units.Gi, 4 * units.Gi, 6 * units.Gi,
+                                  8 * units.Gi]
         mock_get_image_status.side_effect = [
             {'watchers': []},
             {'watchers': [{"address": "192.168.120.61:0\/3012034728",
-                           "client": 44431941, "cookie": 94077162321152}]}]
+                           "client": 44431941, "cookie": 94077162321152}]},
+            {'watchers': []}]
         res = self.driver.get_manageable_volumes(
             cinder_vols, None, 1000, 0, ['size'], ['asc'])
         exp = [{'size': 2, 'reason_not_safe': 'already managed',
@@ -599,7 +602,13 @@ class RBDTestCase(test.TestCase):
                 'cinder_id': None, 'extra_info': None},
                {'size': 6, 'reason_not_safe': 'volume in use',
                 'safe_to_manage': False, 'reference': {'source-name': 'vol2'},
-                'cinder_id': None, 'extra_info': None}]
+                'cinder_id': None, 'extra_info': None},
+               {'size': 8, 'reason_not_safe': 'volume marked as deleted',
+                'safe_to_manage': False, 'cinder_id': None, 'extra_info': None,
+                'reference': {
+                    'source-name':
+                        'volume-11111111-1111-1111-1111-111111111111.deleted'}}
+               ]
         self.assertEqual(exp, res)
 
     @common_mocks
