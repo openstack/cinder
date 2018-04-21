@@ -4508,7 +4508,7 @@ class VolumeManager(manager.CleanableManager,
             # TODO(jdg): object method here
             self.db.volume_attachment_update(
                 context, attachment.get('id'),
-                {'attach_status': 'error_detaching'})
+                {'attach_status': fields.VolumeAttachStatus.ERROR_DETACHING})
         else:
             self.db.volume_detached(context.elevated(), vref.id,
                                     attachment.get('id'))

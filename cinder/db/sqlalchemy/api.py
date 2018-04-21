@@ -2091,7 +2091,7 @@ def attachment_destroy(context, attachment_id):
     utcnow = timeutils.utcnow()
     session = get_session()
     with session.begin():
-        updated_values = {'attach_status': 'deleted',
+        updated_values = {'attach_status': fields.VolumeAttachStatus.DELETED,
                           'deleted': True,
                           'deleted_at': utcnow,
                           'updated_at': literal_column('updated_at')}
