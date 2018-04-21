@@ -238,7 +238,7 @@ class FilterScheduler(driver.Scheduler):
                    'last_backend': last_backend,
                    'exc': exc})
 
-    def _populate_retry(self, filter_properties, properties):
+    def _populate_retry(self, filter_properties, request_spec):
         """Populate filter properties with history of retries for request.
 
         If maximum retries is exceeded, raise NoValidBackend.
@@ -261,15 +261,16 @@ class FilterScheduler(driver.Scheduler):
             }
         filter_properties['retry'] = retry
 
-        volume_id = properties.get('volume_id')
-        self._log_volume_error(volume_id, retry)
+        resource_id = request_spec.get(
+            'volume_id') or request_spec.get("group_id")
+        self._log_volume_error(resource_id, retry)
 
         if retry['num_attempts'] > max_attempts:
             raise exception.NoValidBackend(
                 reason=_("Exceeded max scheduling attempts %(max_attempts)d "
-                         "for volume %(volume_id)s") %
+                         "for resource %(resource_id)s") %
                 {'max_attempts': max_attempts,
-                 'volume_id': volume_id})
+                 'resource_id': resource_id})
 
     def _get_weighted_candidates(self, context, request_spec,
                                  filter_properties=None):
@@ -290,7 +291,7 @@ class FilterScheduler(driver.Scheduler):
         if filter_properties is None:
             filter_properties = {}
         self._populate_retry(filter_properties,
-                             request_spec['volume_properties'])
+                             request_spec)
 
         request_spec_dict = jsonutils.to_primitive(request_spec)
 
@@ -378,7 +379,7 @@ class FilterScheduler(driver.Scheduler):
                 filter_properties = filter_properties_list[index]
                 if filter_properties is None:
                     filter_properties = {}
-            self._populate_retry(filter_properties, resource_properties)
+            self._populate_retry(filter_properties, request_spec)
 
             # Add group_support in extra_specs if it is not there.
             # Make sure it is populated in filter_properties
