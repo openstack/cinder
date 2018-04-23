@@ -95,7 +95,7 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
         islivevol = self._is_live_vol(volume)
         initiator_name = connector.get('initiator')
         multipath = connector.get('multipath', False)
-        LOG.info('initialize_ connection: %(vol)s:%(pid)s:'
+        LOG.info('initialize_connection: %(vol)s:%(pid)s:'
                  '%(intr)s. Multipath is %(mp)r',
                  {'vol': volume_name,
                   'pid': provider_id,
