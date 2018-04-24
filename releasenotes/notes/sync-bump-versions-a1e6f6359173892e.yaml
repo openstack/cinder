@@ -1,0 +1,16 @@
+---
+features:
+  - Cinder-manage DB sync command can now bump the RPC and Objects versions of
+    the services to avoid a second restart when doing offline upgrades.
+upgrade:
+  - On offline upgrades, due to the rolling upgrade mechanism we need to
+    restart the cinder services twice to complete the installation just like in
+    the rolling upgrades case.  First you stop the cinder services, then you
+    upgrade them, you sync your DB, then you start all the cinder services, and
+    then you restart them all.  To avoid this last restart we can now instruct
+    the DB sync to bump the services after the migration is completed, the
+    command to do this is `cinder-manage db sync --bump-versions`
+fixes:
+  - After an offline upgrade we had to restart all Cinder services twice, now
+    with the `cinder-manage db sync --bump-versions` command we can avoid the
+    second restart.

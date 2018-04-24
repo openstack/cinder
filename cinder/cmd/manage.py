@@ -68,6 +68,7 @@ from oslo_log import log as logging
 from oslo_utils import timeutils
 
 # Need to register global_opts
+from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import config  # noqa
 from cinder.common import constants
 from cinder import context
@@ -78,13 +79,23 @@ from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder.objects import base as ovo_base
 from cinder import rpc
+from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as vutils
 
 
 CONF = cfg.CONF
+
+RPC_VERSIONS = {
+    'cinder-scheduler': scheduler_rpcapi.SchedulerAPI.RPC_API_VERSION,
+    'cinder-volume': volume_rpcapi.VolumeAPI.RPC_API_VERSION,
+    'cinder-backup': backup_rpcapi.BackupAPI.RPC_API_VERSION,
+}
+
+OVO_VERSION = ovo_base.OBJ_VERSIONS.get_current()
 
 
 def _get_non_shared_target_hosts(ctxt):
@@ -267,17 +278,39 @@ class DbCommands(object):
 
     @args('version', nargs='?', default=None, type=int,
           help='Database version')
-    def sync(self, version=None):
+    @args('--bump-versions', dest='bump_versions', default=False,
+          action='store_true',
+          help='Update RPC and Objects versions when doing offline upgrades, '
+               'with this we no longer need to restart the services twice '
+               'after the upgrade to prevent ServiceTooOld exceptions.')
+    def sync(self, version=None, bump_versions=False):
         """Sync the database up to the most recent version."""
         if version is not None and version > db.MAX_INT:
             print(_('Version should be less than or equal to '
                     '%(max_version)d.') % {'max_version': db.MAX_INT})
             sys.exit(1)
         try:
-            return db_migration.db_sync(version)
+            result = db_migration.db_sync(version)
         except db_exc.DBMigrationError as ex:
             print("Error during database migration: %s" % ex)
             sys.exit(1)
+
+        try:
+            if bump_versions:
+                ctxt = context.get_admin_context()
+                services = objects.ServiceList.get_all(ctxt)
+                for service in services:
+                    rpc_version = RPC_VERSIONS[service.binary]
+                    if (service.rpc_current_version != rpc_version or
+                            service.object_current_version != OVO_VERSION):
+                        service.rpc_current_version = rpc_version
+                        service.object_current_version = OVO_VERSION
+                        service.save()
+        except Exception as ex:
+            print(_('Error during service version bump: %s') % ex)
+            sys.exit(2)
+
+        return result
 
     def version(self):
         """Print the current database version."""
