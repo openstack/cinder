@@ -334,12 +334,13 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         while True:
             created_lun = self.api_executor.get_lun_info(
                 LUNIndex=create_lun_index)
-            if created_lun.find('LUNNAA') is not None:
+            if (created_lun is not None and
+                    created_lun.find('LUNNAA').text is not None):
                 lun_naa = created_lun.find('LUNNAA').text
 
             try_times = try_times + 3
             eventlet.sleep(self.TIME_INTERVAL)
-            if(try_times > max_wait_sec or lun_naa is not None):
+            if(try_times > max_wait_sec or lun_naa != ""):
                 break
 
         LOG.debug('LUNNAA: %s', lun_naa)
@@ -510,14 +511,15 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         while True:
             created_lun = self.api_executor.get_lun_info(
                 LUNName=cloned_lun_name)
-            if created_lun.find('LUNNAA') is not None:
+            if (created_lun is not None and
+                    created_lun.find('LUNNAA') is not None):
                 lun_naa = created_lun.find('LUNNAA').text
                 lun_index = created_lun.find('LUNIndex').text
                 LOG.debug('LUNIndex: %s', lun_index)
 
             try_times = try_times + 3
             eventlet.sleep(self.TIME_INTERVAL)
-            if(try_times > max_wait_sec or lun_naa is not None):
+            if(try_times > max_wait_sec or lun_naa != ""):
                 break
 
         LOG.debug('LUNNAA: %s', lun_naa)
@@ -564,12 +566,13 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         while True:
             created_snapshot = self.api_executor.get_snapshot_info(
                 lun_index=lun_index, snapshot_name=create_snapshot_name)
-            if created_snapshot is not None:
+            if (created_snapshot is not None and
+                    created_snapshot.find('snapshot_id').text is not None):
                 snapshot_id = created_snapshot.find('snapshot_id').text
 
             try_times = try_times + 3
             eventlet.sleep(self.TIME_INTERVAL)
-            if(try_times > max_wait_sec or created_snapshot is not None):
+            if(try_times > max_wait_sec or snapshot_id != ""):
                 break
 
         LOG.debug('created_snapshot: %s', created_snapshot)
@@ -621,14 +624,16 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         while True:
             created_lun = self.api_executor.get_lun_info(
                 LUNName=create_lun_name)
-            if created_lun.find('LUNNAA') is not None:
+            if (created_lun is not None and
+                    created_lun.find('LUNNAA') is not None):
                 lun_naa = created_lun.find('LUNNAA').text
                 lun_index = created_lun.find('LUNIndex').text
+                LOG.debug('LUNNAA: %s', lun_naa)
                 LOG.debug('LUNIndex: %s', lun_index)
 
             try_times = try_times + 3
             eventlet.sleep(self.TIME_INTERVAL)
-            if(try_times > max_wait_sec or lun_naa is not None):
+            if(try_times > max_wait_sec or lun_naa != ""):
                 break
 
         if (volume['size'] > snapshot['volume_size']):

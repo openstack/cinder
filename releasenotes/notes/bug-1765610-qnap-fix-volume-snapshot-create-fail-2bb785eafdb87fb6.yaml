@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed QNAP driver failures to create volume and snapshot in some
+    cases.
