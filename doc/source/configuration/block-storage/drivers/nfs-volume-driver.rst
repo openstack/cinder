@@ -33,7 +33,12 @@ in the ``cinder.conf`` configuration file:
 
 The following table contains the options supported by the NFS driver.
 
-.. include:: ../../tables/cinder-storage_nfs.inc
+.. _cinder-storage_nfs:
+
+.. config-table::
+   :config-target: NFS storage
+
+   cinder.volume.drivers.nfs
 
 .. note::
 
