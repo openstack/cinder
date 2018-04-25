@@ -45,7 +45,11 @@ Driver options
 The following table contains the configuration options specific to the
 CoprHD volume driver.
 
-.. include:: ../../tables/cinder-coprhd.inc
+.. config-table::
+   :config-target: CoprHD
+
+   cinder.volume.drivers.coprhd.common
+   cinder.volume.drivers.coprhd.scaleio
 
 
 Preparation
