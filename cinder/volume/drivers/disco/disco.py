@@ -113,7 +113,7 @@ CONF.register_opts(disco_opts, group=configuration.SHARED_CONF_GROUP)
 class DiscoDriver(driver.VolumeDriver):
     """Execute commands related to DISCO Volumes.
 
-    .. code:: text
+    .. code-block:: text
 
       Version history:
           1.0 - disco volume driver using SOAP
