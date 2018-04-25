@@ -748,7 +748,7 @@ class FCAdapter(CommonAdapter):
                 'data': {}
             }
             host = self.client.create_host(connector['host'])
-            if len(host.host_luns) == 0:
+            if not host.host_luns:
                 targets = self.client.get_fc_target_info(
                     logged_in_only=True, allowed_ports=self.allowed_ports)
                 ret['data'] = self._get_fc_zone_info(connector['wwpns'],

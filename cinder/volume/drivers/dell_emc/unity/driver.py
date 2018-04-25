@@ -49,11 +49,16 @@ class UnityDriver(driver.ManageableVD,
     """Unity Driver.
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial version
         2.0.0 - Add thin clone support
+        2.0.1 - Fixes bug 1759175 to detach the lun correctly when auto zone
+                was enabled and the lun was the last one attached to the host.
     """
 
-    VERSION = '02.00.00'
+    VERSION = '02.00.01'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
