@@ -7,7 +7,6 @@ These options can also be set in the ``cinder.conf`` file.
 .. include:: ../tables/cinder-api.inc
 .. include:: ../tables/cinder-auth.inc
 .. include:: ../tables/cinder-backups.inc
-.. include:: ../tables/cinder-block-device.inc
 .. include:: ../tables/cinder-common.inc
 .. include:: ../tables/cinder-compute.inc
 .. include:: ../tables/cinder-coordination.inc
