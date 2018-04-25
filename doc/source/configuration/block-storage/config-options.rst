@@ -14,8 +14,6 @@ These options can also be set in the ``cinder.conf`` file.
 .. include:: ../tables/cinder-drbd.inc
 .. include:: ../tables/cinder-flashsystem.inc
 .. include:: ../tables/cinder-hgst.inc
-.. include:: ../tables/cinder-hpelefthand.inc
-.. include:: ../tables/cinder-hpexp.inc
 .. include:: ../tables/cinder-huawei.inc
 .. include:: ../tables/cinder-hyperv.inc
 .. include:: ../tables/cinder-images.inc

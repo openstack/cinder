@@ -414,4 +414,7 @@ service log files for errors.
 The following table contains all the configuration options supported by
 the HPE 3PAR Fibre Channel and iSCSI drivers.
 
-.. include:: ../../tables/cinder-hpe3par.inc
+.. config-table::
+   :config-target: 3PAR
+
+   cinder.volume.drivers.hpe.hpe_3par_common
