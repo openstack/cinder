@@ -12,7 +12,6 @@ These options can also be set in the ``cinder.conf`` file.
 .. include:: ../tables/cinder-coordination.inc
 .. include:: ../tables/cinder-debug.inc
 .. include:: ../tables/cinder-drbd.inc
-.. include:: ../tables/cinder-eternus.inc
 .. include:: ../tables/cinder-flashsystem.inc
 .. include:: ../tables/cinder-hgst.inc
 .. include:: ../tables/cinder-hpelefthand.inc
