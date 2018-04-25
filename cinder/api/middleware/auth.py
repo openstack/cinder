@@ -110,6 +110,18 @@ class CinderKeystoneContext(base_wsgi.Middleware):
             LOG.debug("Neither X_USER_ID nor X_USER found in request")
             return webob.exc.HTTPUnauthorized()
 
+        if req.environ.get('X_PROJECT_DOMAIN_ID'):
+            ctx.project_domain = req.environ['X_PROJECT_DOMAIN_ID']
+
+        if req.environ.get('X_PROJECT_DOMAIN_NAME'):
+            ctx.project_domain_name = req.environ['X_PROJECT_DOMAIN_NAME']
+
+        if req.environ.get('X_USER_DOMAIN_ID'):
+            ctx.user_domain = req.environ['X_USER_DOMAIN_ID']
+
+        if req.environ.get('X_USER_DOMAIN_NAME'):
+            ctx.user_domain_name = req.environ['X_USER_DOMAIN_NAME']
+
         req.environ['cinder.context'] = ctx
         return self.application
 
