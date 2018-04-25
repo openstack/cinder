@@ -126,12 +126,12 @@ class GoodnessWeigher(weights.BaseHostWeigher):
                 host_caps['goodness_function'] is not None):
             goodness_function = six.text_type(host_caps['goodness_function'])
 
-        qos_specs = weight_properties.get('qos_specs', {})
+        qos_specs = weight_properties.get('qos_specs', {}) or {}
 
-        volume_type = weight_properties.get('volume_type', {})
+        volume_type = weight_properties.get('volume_type', {}) or {}
         extra_specs = volume_type.get('extra_specs', {})
 
-        request_spec = weight_properties.get('request_spec', {})
+        request_spec = weight_properties.get('request_spec', {}) or {}
         volume_stats = request_spec.get('volume_properties', {})
 
         stats = {
