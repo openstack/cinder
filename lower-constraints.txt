@@ -122,6 +122,7 @@ python-swiftclient==3.2.0
 pytz==2013.6
 pyudev==0.21.0
 PyYAML==3.12
+reno==2.5.0
 repoze.lru==0.7
 requests==2.14.2
 requestsexceptions==1.4.0
