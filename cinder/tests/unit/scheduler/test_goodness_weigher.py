@@ -193,3 +193,18 @@ class GoodnessWeigherTestCase(test.TestCase):
         weight_properties = {}
         weight = weigher._weigh_object(host_state, weight_properties)
         self.assertEqual(0, weight)
+
+    def test_goodness_weigher_untyped_volume(self):
+        weigher = goodness.GoodnessWeigher()
+        host_state = fakes.FakeBackendState('host1', {
+            'host': 'host.example.com',
+            'capabilities': {
+                'goodness_function': '67'
+            }
+        })
+
+        weight_properties = {
+            'volume_type': None,
+        }
+        weight = weigher._weigh_object(host_state, weight_properties)
+        self.assertEqual(67, weight)
