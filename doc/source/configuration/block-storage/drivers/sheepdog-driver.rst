@@ -45,4 +45,7 @@ Set the following option in the ``cinder.conf`` file:
 The following table contains the configuration options supported by the
 Sheepdog driver:
 
-.. include:: ../../tables/cinder-sheepdog.inc
+.. config-table::
+   :config-target: Sheepdog
+
+   cinder.volume.drivers.sheepdog
