@@ -403,15 +403,15 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         total_provisioned = 0
         with RADOSClient(self) as client:
             for t in self.RBDProxy().list(client.ioctx):
-                with RBDVolumeProxy(self, t, read_only=True,
-                                    client=client.cluster,
-                                    ioctx=client.ioctx) as v:
-                    try:
+                try:
+                    with RBDVolumeProxy(self, t, read_only=True,
+                                        client=client.cluster,
+                                        ioctx=client.ioctx) as v:
                         size = v.size()
-                    except self.rbd.ImageNotFound:
-                        LOG.debug("Image %s is not found.", t)
-                    else:
-                        total_provisioned += size
+                except self.rbd.ImageNotFound:
+                    LOG.debug("Image %s is not found.", t)
+                else:
+                    total_provisioned += size
 
         total_provisioned = math.ceil(float(total_provisioned) / units.Gi)
         return total_provisioned
