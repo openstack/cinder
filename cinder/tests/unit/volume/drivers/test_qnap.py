@@ -31,6 +31,7 @@ from six.moves import urllib
 from cinder import exception
 from cinder import test
 from cinder import utils
+from cinder.volume import driver
 from cinder.volume.drivers import qnap
 
 CONF = cfg.CONF
@@ -1263,6 +1264,7 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
         self.assertEqual(ssl, self.driver.api_executor.ssl)
 
 
+@ddt
 class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
     """Tests volume related api's."""
 
@@ -2368,6 +2370,77 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
         self.driver.update_migrated_volume('context',
                                            fake_volume, fake_new_volume,
                                            'fakeOriginalVolumeStatus')
+
+    @data({
+        'fake_spec': {},
+        'expect_spec': {
+            'force': False,
+            'ignore_errors': False,
+            'remote': False
+        }
+    }, {
+        'fake_spec': {
+            'force': mock.sentinel.force,
+            'ignore_errors': mock.sentinel.ignore_errors,
+            'remote': mock.sentinel.remote
+        },
+        'expect_spec': {
+            'force': mock.sentinel.force,
+            'ignore_errors': mock.sentinel.ignore_errors,
+            'remote': mock.sentinel.remote
+        }
+    })
+    @unpack
+    @mock.patch.object(driver.BaseVD, '_detach_volume')
+    @mock.patch('cinder.volume.drivers.qnap.QnapAPIExecutor')
+    def test_detach_volume(
+            self,
+            mock_api_executor,
+            mock_detach_volume,
+            fake_spec, expect_spec):
+        """Test detach volume."""
+
+        mock_detach_volume.return_value = None
+        mock_api_executor.return_value.get_basic_info.return_value = (
+            'ES1640dc ', 'ES1640dc ', '1.1.3')
+        self.driver = qnap.QnapISCSIDriver(
+            configuration=create_configuration(
+                'admin',
+                'qnapadmin',
+                'http://1.2.3.4:8080',
+                '1.2.3.4',
+                'Pool1',
+                True))
+        self.driver.do_setup('context')
+        self.driver._detach_volume('context',
+                                   'attach_info', 'volume',
+                                   'property', **fake_spec)
+        mock_detach_volume.assert_called_once_with(
+            'context', 'attach_info', 'volume', 'property', **expect_spec)
+
+    @mock.patch.object(driver.BaseVD, '_attach_volume')
+    @mock.patch('cinder.volume.drivers.qnap.QnapAPIExecutor')
+    def test_attach_volume(
+            self,
+            mock_api_executor,
+            mock_attach_volume):
+        """Test attach volume."""
+
+        mock_attach_volume.return_value = None
+        mock_api_executor.return_value.get_basic_info.return_value = (
+            'ES1640dc ', 'ES1640dc ', '1.1.3')
+        self.driver = qnap.QnapISCSIDriver(
+            configuration=create_configuration(
+                'admin',
+                'qnapadmin',
+                'http://1.2.3.4:8080',
+                '1.2.3.4',
+                'Pool1',
+                True))
+        self.driver.do_setup('context')
+        self.driver._attach_volume('context', 'volume', 'properties')
+        mock_attach_volume.assert_called_once_with(
+            'context', 'volume', 'properties', False)
 
 
 class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
