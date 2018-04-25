@@ -68,8 +68,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         min_ldn = 0
         for pool in nominated_pools:
             nld = len(pool['ld_list'])
-            if (nld < self._numofld_per_pool and
-                    (selected_pool == -1 or min_ldn > nld)):
+            if selected_pool == -1 or min_ldn > nld:
                 selected_pool = pool['pool_num']
                 min_ldn = nld
         if selected_pool < 0:
