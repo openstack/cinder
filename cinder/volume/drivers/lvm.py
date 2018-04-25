@@ -62,18 +62,6 @@ volume_opts = [
                     'this setting is ignored if the specified file does '
                     'not exist (You can also specify \'None\' to not use '
                     'a conf file even if one exists).'),
-    cfg.FloatOpt('lvm_max_over_subscription_ratio',
-                 # This option exists to provide a default value for the
-                 # LVM driver which is different than the global default.
-                 deprecated_for_removal=True,
-                 deprecated_since="12.0.0",
-                 deprecated_reason='Oversubscription ratio should now be '
-                                   'set using the common max_over_subscription'
-                                   '_ratio config option instead.',
-                 default=None,
-                 help='max_over_subscription_ratio setting for the LVM '
-                      'driver. If set to None (the default), the general max_'
-                      'over_subscription_ratio is used.'),
     cfg.BoolOpt('lvm_suppress_fd_warnings',
                 default=False,
                 help='Suppress leaked file descriptor warnings in LVM '
@@ -121,10 +109,6 @@ class LVMVolumeDriver(driver.VolumeDriver):
             executor=self._execute)
         self.protocol = self.target_driver.protocol
         self._sparse_copy_volume = False
-
-        if self.configuration.lvm_max_over_subscription_ratio is not None:
-            self.configuration.max_over_subscription_ratio = \
-                self.configuration.lvm_max_over_subscription_ratio
 
     def _sizestr(self, size_in_g):
         return '%sg' % size_in_g
