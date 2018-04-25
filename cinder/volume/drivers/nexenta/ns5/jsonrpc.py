@@ -1,4 +1,4 @@
-# Copyright 2015 Nexenta Systems, Inc.
+# Copyright 2018 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,7 +20,7 @@ import time
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI, _LW
 from cinder.utils import retry
 from oslo_serialization import jsonutils
 from requests.cookies import extract_cookies_to_jar
@@ -85,7 +85,8 @@ class RESTCaller(object):
             response = getattr(
                 self.__proxy.session, self.__method)(url, **kwargs)
         except requests.exceptions.ConnectionError:
-            LOG.warning('ConnectionError on call to NS: %s %s, data: %s',
+            LOG.warning(_LW("ConnectionError on call to NS: %(url)s"
+                            " %(method)s, data: %(data)s"),
                         self.__proxy.url, self.__method, data)
             self.handle_failover()
             url = self.get_full_url(args[0])
@@ -95,8 +96,9 @@ class RESTCaller(object):
             check_error(response)
         except exception.NexentaException as exc:
             if exc.kwargs['message']['code'] == 'ENOENT':
-                LOG.warning('NexentaException on call to NS: %s %s, data: %s ,'
-                            'returned message: %s',
+                LOG.warning(_LW("NexentaException on call to NS:"
+                                " %(url)s %(method)s, data: %(data)s,"
+                                " returned message: %s"),
                             url, self.__method, data, exc.kwargs['message'])
                 self.handle_failover()
                 url = self.get_full_url(args[0])

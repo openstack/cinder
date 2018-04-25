@@ -1,4 +1,4 @@
-# Copyright 2016 Nexenta Systems, Inc.
+# Copyright 2018 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import math
+import random
 import uuid
 
 from eventlet import greenthread
@@ -29,7 +31,7 @@ from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.1'
+VERSION = '1.3.2'
 LOG = logging.getLogger(__name__)
 
 
@@ -46,6 +48,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         1.3.0 - Removed target/TG caching, added support for target portals
                 and host groups.
         1.3.1 - Refactored _do_export to query exact lunMapping.
+        1.3.2 - Refactored LUN creation, use host group for LUN mappings.
     """
 
     VERSION = VERSION
@@ -67,12 +70,17 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                 options.NEXENTA_RRMGR_OPTS)
         self.verify_ssl = self.configuration.driver_ssl_cert_verify
         self.target_prefix = self.configuration.nexenta_target_prefix
+        self.target_group_prefix = (
+            self.configuration.nexenta_target_group_prefix)
+        self.host_group_prefix = self.configuration.nexenta_host_group_prefix
+        self.luns_per_target = self.configuration.nexenta_luns_per_target
+        self.lu_writebackcache_disabled = (
+            self.configuration.nexenta_lu_writebackcache_disabled)
         self.use_https = self.configuration.nexenta_use_https
         self.nef_host = self.configuration.nexenta_rest_address
         self.iscsi_host = self.configuration.nexenta_host
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
-        self.host_group = self.configuration.nexenta_iscsi_target_host_group
         self.nef_password = self.configuration.nexenta_password
         self.storage_pool = self.configuration.nexenta_volume
         self.volume_group = self.configuration.nexenta_volume_group
@@ -285,43 +293,42 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             raise
 
     def create_export(self, _ctx, volume, connector):
-        """Create new export for zfs volume.
-
-        :param volume: reference of volume to be exported
-        :return: iscsiadm-formatted provider location string
-        """
-        model_update = self._do_export(_ctx, volume)
-        return model_update
+        """Export a volume."""
+        pass
 
     def ensure_export(self, _ctx, volume):
-        """Recreate parts of export if necessary.
-
-        :param volume: reference of volume to be exported
-        """
-        self._do_export(_ctx, volume)
+        """Synchronously recreate an export for a volume."""
+        pass
 
     def remove_export(self, _ctx, volume):
-        """Destroy all resources created to export zfs volume.
+        """Remove an export for a volume."""
+        pass
 
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Remove LUN mapping.
 
-        :param volume: reference of volume to be unexported
+        :param volume: the volume object
+        :param connector: the connector object
         """
+        LOG.debug('Terminate connection for volume %s and connector: %s',
+                  volume, connector)
+        host_groups = [options.DEFAULT_HOST_GROUP]
         volume_path = self._get_volume_path(volume)
+        params = {'fields': 'id', 'volume': volume_path}
+        host_iqn = connector.get('initiator')
+        host_group = self._get_host_group(host_iqn)
+        if host_group:
+            host_groups.append(host_group)
 
-        # Get ID of a LUN mapping if the volume is exported
-        url = 'san/lunMappings?volume={}&fields=id'.format(
-            urllib.parse.quote_plus(volume_path)
-        )
-        data = self.nef.get(url)['data']
-        if data:
-            url = 'san/lunMappings/%s' % data[0]['id']
-            try:
-                self.nef.delete(url)
-            except exception.NexentaException as e:
-                if 'No such lun mapping' in e.args[0]:
-                    LOG.debug('LU already deleted from appliance')
-                else:
-                    raise
+        for host_group in host_groups:
+            params['hostGroup'] = host_group
+            url = 'san/lunMappings?%s' % urllib.parse.urlencode(params)
+            data = self.nef.get(url).get('data')
+            if not data:
+                continue
+            url = 'san/lunMappings/%s' % urllib.parse.quote_plus(data[0]['id'])
+            LOG.debug('Deleting LUN mapping for %s', params)
+            self.nef.delete(url)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
@@ -385,148 +392,299 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             self.configuration.nexenta_target_group_prefix
         )
 
-    def _check_target_and_portals(self, tg):
-        members = self.nef.get('san/targetgroups/%s' % urllib.parse.quote_plus(
-            tg)).get('members')
-        target_name = members[0] if members else ''
-        if target_name:
-            target = self.nef.get('san/iscsi/targets/%s' % target_name)
-            for portal in target['portals']:
-                if portal['address'] == self.iscsi_host:
-                    return target_name
-        return ''
+    def _get_target_name(self, target_group_name):
+        """Return Nexenta iSCSI target name for volume."""
+        return target_group_name.replace(
+            self.configuration.nexenta_target_group_prefix,
+            self.configuration.nexenta_target_prefix
+        )
 
-    def _do_export(self, _ctx, volume):
+    def initialize_connection(self, volume, connector):
         """Do all steps to get zfs volume exported at separate target.
 
         :param volume: reference of volume to be exported
         """
+        LOG.debug('Initialize connection for volume: %s and connector: %s',
+                  volume, connector)
+
+        config_portals = []
+        if self.iscsi_host:
+            if self.portal_port:
+                portal_port = int(self.portal_port)
+            else:
+                portal_port = options.DEFAULT_ISCSI_PORT
+            config_portal = '%s:%s' % (self.iscsi_host, portal_port)
+            if config_portal not in config_portals:
+                config_portals.append(config_portal)
+
+        for portal in self.portals.split(','):
+            if not portal:
+                continue
+            host_port = portal.split(':')
+            portal_host = host_port[0]
+            if len(host_port) == 2:
+                portal_port = int(host_port[1])
+            else:
+                portal_port = options.DEFAULT_ISCSI_PORT
+            config_portal = '%s:%s' % (portal_host, portal_port)
+            if config_portal not in config_portals:
+                config_portals.append(config_portal)
+
+        LOG.debug('Configured portals: %s', config_portals)
+
+        host_iqn = connector.get('initiator')
+        host_groups = [options.DEFAULT_HOST_GROUP]
+        host_group_name = self._get_host_group(host_iqn)
+        if host_group_name:
+            host_groups.append(host_group_name)
+
+        props_portals = []
+        props_iqns = []
+        props_luns = []
         volume_path = self._get_volume_path(volume)
-        lpt = self.configuration.nexenta_luns_per_target
-        # Check whether the volume is exported
-        url = 'san/lunMappings?volume=%s' % urllib.parse.quote_plus(
-            volume_path)
-        data = self.nef.get(url).get('data')
-        if data and not data[0]['targetGroup'].lower() == 'all':
-            tg_data = self.nef.get(
-                'san/targetgroups?name=%s' % urllib.parse.quote_plus(
-                    data[0]['targetGroup']))
-            target_name = tg_data['data'][0]['members'][0]
-            provider_location = (
-                '%(host)s:%(port)s %(name)s %(lun)s') % {
-                'host': self.iscsi_host,
-                'port': self.portal_port,
-                'name': target_name,
-                'lun': data[0]['lun'],
-            }
-            return {'provider_location': provider_location}
+        params = {'volume': volume_path}
+        url = 'san/lunMappings?%s' % urllib.parse.urlencode(params)
+        mappings = self.nef.get(url).get('data')
+        for mapping in mappings:
+            if mapping['hostGroup'] not in host_groups:
+                LOG.debug('Skip LUN mapping %s', mapping)
+                continue
+            url = 'san/targetgroups/%s' % urllib.parse.quote_plus(
+                mapping['targetGroup'])
+            target_iqns = self.nef.get(url).get('members')
+            for target_iqn in target_iqns:
+                url = 'san/iscsi/targets/%s' % \
+                    urllib.parse.quote_plus(target_iqn)
+                target_portals = self.nef.get(url).get('portals')
+                common_portals = set(target_portals) & set(config_portals)
+                props_portals += common_portals
+                props_iqns += [target_iqn] * len(common_portals)
+                props_luns += [mapping['lun']] * len(common_portals)
 
-        # Find correct TG with the fewest LUNs
+        props = {}
+        props['target_discovered'] = False
+        props['encrypted'] = False
+        props['qos_specs'] = None
+        props['volume_id'] = volume['id']
+        props['access_mode'] = 'rw'
+        multipath = connector.get('multipath', False)
+
+        if props_luns:
+            if multipath:
+                props['target_portals'] = props_portals
+                props['target_iqns'] = props_iqns
+                props['target_luns'] = props_luns
+            else:
+                index = random.randrange(0, len(props_luns))
+                props['target_portal'] = props_portals[index]
+                props['target_iqn'] = props_iqns[index]
+                props['target_lun'] = props_luns[index]
+            LOG.debug('Return existing LUN mapping(s) %s', props)
+            return {'driver_volume_type': 'iscsi', 'data': props}
+
+        if host_group_name is None:
+            host_group_name = '%s-%s' % \
+                (self.host_group_prefix, uuid.uuid4().hex)
+            self._create_host_group(host_group_name, host_iqn)
+
+        mappings_spread = {}
+        members_spread = {}
         url = 'san/targetgroups'
-        tg_list = [
-            tg for tg in self.nef.get(url)['data'] if tg['name'].startswith(
-                self.configuration.nexenta_target_group_prefix)]
-        if tg_list:
-            for tg in tg_list:
-                tg_name = tg['name']
-                url = 'san/lunMappings?targetGroup=%s' % tg_name
-                if len(self.nef.get(url).get('data')) < lpt:
-                    if not tg['members']:
-                        target_name = tg_name.replace(
-                            self.configuration.nexenta_target_group_prefix,
-                            self.configuration.nexenta_target_prefix)
-                        url = 'san/iscsi/targets'
-                        portals = []
-                        if self.portals:
-                            for portal in self.portals.split(','):
-                                address, port = portal.split(':')
-                                port = int(port) if port else 3260
-                                portals.append({
-                                    'address': address,
-                                    'port': port
-                                })
-                        if not portals:
-                            portals = [{"address": self.iscsi_host}]
-                        data = {
-                            "portals": portals,
-                            'name': target_name
-                        }
-                        self.nef.post(url, data)
-                        url = 'san/targetgroups/%s' % tg_name
-                        data = {'members': [target_name]}
-                        self.nef.put(url, data)
-                    else:
-                        target_name = tg['members'][0]
-                    break
-        else:
-            # Create new target and TG
-            target_name = self.target_prefix + '-' + uuid.uuid4().hex
-            url = 'san/iscsi/targets'
-            portals = []
-            if self.portals:
-                for portal in self.portals.split(','):
-                    address, port = portal.split(':')
-                    port = int(port) if port else 3260
-                    portals.append({
-                        'address': address,
-                        'port': port
-                    })
-            if not portals:
-                portals = [{"address": self.iscsi_host}]
-            data = {
-                "portals": portals,
-                'name': target_name
-            }
-            try:
-                self.nef.post(url, data)
-            except exception.NexentaException as e:
-                if 'EEXIST' not in e.args[0]:
-                    raise
-            tg_name = self._get_target_group_name(target_name)
-            self._create_target_group(tg_name, target_name)
+        target_groups = self.nef.get(url).get('data')
+        for target_group in target_groups:
+            if not target_group['name'].startswith(self.target_group_prefix):
+                LOG.debug('Skip target group %s', target_group['name'])
+                continue
+            if len(target_group['members']) == 0:
+                LOG.debug('Found target group %s with no targets',
+                          target_group['name'])
+                mappings_spread[target_group['name']] = None
+                members_spread[target_group['name']] = []
+                continue
+            params = {'targetGroup': target_group['name']}
+            url = 'san/lunMappings?%s' % urllib.parse.urlencode(params)
+            mappings = self.nef.get(url).get('data')
+            if not len(mappings) < self.luns_per_target:
+                LOG.debug('Skip target group %s, members limit reached: %s',
+                          target_group['name'], len(mappings))
+                continue
+            LOG.debug('Found target group %s with %s members',
+                      target_group['name'], len(mappings))
+            mappings_spread[target_group['name']] = len(mappings)
+            members_spread[target_group['name']] = target_group['members']
 
-        # Export the volume
+        if len(mappings_spread) == 0:
+            target_name = '%s-%s' % (self.target_prefix, uuid.uuid4().hex)
+            target_group_name = self._get_target_group_name(target_name)
+            LOG.debug('Create new target group %s with member %s',
+                      target_group_name, target_name)
+            self._create_target(target_name, self._s2d(config_portals))
+            self._create_target_group(target_group_name, [target_name])
+            props_portals += config_portals
+            props_iqns += [target_name] * len(config_portals)
+        elif min(mappings_spread.values()) is None:
+            target_group_name = min(mappings_spread, key=mappings_spread.get)
+            target_name = self._get_target_name(target_group_name)
+            LOG.debug('Update existing target group %s with new member %s',
+                      target_group_name, target_name)
+            self._create_target(target_name, config_portals)
+            self._update_target_group(target_group_name, [target_name])
+            props_portals += config_portals
+            props_iqns += [target_name] * len(config_portals)
+        else:
+            target_group_name = min(mappings_spread, key=mappings_spread.get)
+            target_group_members = members_spread[target_group_name]
+            LOG.debug('Use existing target group %s with members %s',
+                      target_group_name, target_group_members)
+            url = 'san/iscsi/targets'
+            targets = self.nef.get(url).get('data')
+            for target in targets:
+                if target['name'] in target_group_members:
+                    props_portals += self._d2s(target['portals'])
+                    props_iqns += [target['name']] * len(target['portals'])
+
         url = 'san/lunMappings'
         data = {
-            "hostGroup": self.host_group,
-            "targetGroup": tg_name,
-            'volume': volume_path
+            'volume': volume_path,
+            'targetGroup': target_group_name,
+            'hostGroup': host_group_name
         }
+        LOG.debug('Create LUN mapping for %s', data)
         self.nef.post(url, data)
 
-        # Get LUN of just created volume
-        vol_map_url = 'san/lunMappings?volume=%s&fields=lun' % (
-            urllib.parse.quote_plus(volume_path))
-        data = self.nef.get(vol_map_url).get('data')
-        counter = 0
-        while not data and counter < lpt:
-            greenthread.sleep(1)
-            counter += 1
-            data = self.nef.get(vol_map_url).get('data')
-        lun = data[0]['lun']
-
-        if not self.configuration.nexenta_lu_writebackcache_disabled:
-            url = 'san/logicalUnits?fields=guid&volume=%s' % volume_path
-            lu_guid = self.nef.get(url)['data'][0]['guid']
-            url = 'san/logicalUnits/%s' % lu_guid
-            self.nef.put(url, {"writebackCacheDisabled": False})
-
-        provider_location = '%(host)s:%(port)s %(name)s %(lun)s' % {
-            'host': self.iscsi_host,
-            'port': self.configuration.nexenta_iscsi_target_portal_port,
-            'name': target_name,
-            'lun': lun,
+        LOG.debug('Get LUN number of LUN mapping for %s', data)
+        params = {
+            'fields': 'lun',
+            'volume': volume_path,
+            'targetGroup': target_group_name,
+            'hostGroup': host_group_name
         }
-        return {'provider_location': provider_location}
+        url = 'san/lunMappings?%s' % urllib.parse.urlencode(params)
+        data = self._poll_result(url)
+        props_luns = [data[0]['lun']] * len(props_iqns)
 
-    def _create_target_group(self, tg_name, target_name):
-        # Create new target group
+        if multipath:
+            props['target_portals'] = props_portals
+            props['target_iqns'] = props_iqns
+            props['target_luns'] = props_luns
+        else:
+            index = random.randrange(0, len(props_luns))
+            props['target_portal'] = props_portals[index]
+            props['target_iqn'] = props_iqns[index]
+            props['target_lun'] = props_luns[index]
+
+        if not self.lu_writebackcache_disabled:
+            LOG.debug('Get LUN guid for volume %s', volume_path)
+            params = {'fields': 'guid', 'volume': volume_path}
+            url = 'san/logicalUnits?%s' % urllib.parse.urlencode(params)
+            guid = self.nef.get(url)['data'][0]['guid']
+            LOG.debug('Enable Write Back Cache for LUN %s', guid)
+            url = 'san/logicalUnits/%s' % urllib.parse.quote_plus(guid)
+            data = {'writebackCacheDisabled': False}
+            self.nef.put(url, data)
+
+        LOG.debug('Created new LUN mapping(s) %s', props)
+        return {'driver_volume_type': 'iscsi', 'data': props}
+
+    def _create_target_group(self, name, members):
+        """Create a new target group with members.
+
+        :param name: group name
+        :param members: group members dict
+        """
         url = 'san/targetgroups'
         data = {
-            'name': tg_name,
-            'members': [target_name]
+            'name': name,
+            'members': members
         }
         self.nef.post(url, data)
+
+    def _update_target_group(self, name, members):
+        """Update a existing target group with new members.
+
+        :param name: group name
+        :param members: group members dict
+        """
+        url = 'san/targetgroups/%s' % urllib.parse.quote_plus(name)
+        data = {
+            'members': members
+        }
+        self.nef.put(url, data)
+
+    def _create_target(self, name, portals):
+        """Create a new target with portals.
+
+        :param name: target name
+        :param portals: target portals dict
+        """
+        url = 'san/iscsi/targets'
+        data = {
+            'name': name,
+            'portals': portals
+        }
+        self.nef.post(url, data)
+
+    def _get_host_group(self, member):
+        """Find existing host group by group member.
+
+        :param member: host group member
+        :return: host group name
+        """
+        url = 'san/hostgroups'
+        host_groups = self.nef.get(url).get('data')
+        for host_group in host_groups:
+            if member in host_group['members']:
+                return host_group['name']
+        return None
+
+    def _create_host_group(self, name, member):
+        """Create a new host group.
+
+        :param name: host group name
+        :param member: host group member
+        """
+        url = 'san/hostgroups'
+        data = {
+            'name': name,
+            'members': [member]
+        }
+        self.nef.post(url, data)
+
+    def _poll_result(self, url):
+        """Poll non-empty response data for NEF get method.
+
+        :param url: NEF URL
+        :return: response data list
+        """
+        for retry in range(0, options.POLL_RETRIES):
+            data = self.nef.get(url).get('data')
+            if data:
+                return data
+            greenthread.sleep(int(math.exp(retry)))
+        return []
+
+    def _s2d(self, css):
+        """Parse list of colon-separated address and port to dictionary.
+
+        :param css: list of colon-separated address and port
+        :return: dictionary
+        """
+        result = []
+        for key_val in css:
+            key, val = key_val.split(':')
+            result.append({'address': key, 'port': int(val)})
+        return result
+
+    def _d2s(self, kvp):
+        """Parse dictionary to list of colon-separated address and port.
+
+        :param kvp: dictionary
+        :return: list of colon-separated address and port
+        """
+        result = []
+        for key_val in kvp:
+            result.append('%s:%s' % (key_val['address'], key_val['port']))
+        return result
 
     def _get_snapshot_volume(self, snapshot):
         ctxt = context.get_admin_context()
