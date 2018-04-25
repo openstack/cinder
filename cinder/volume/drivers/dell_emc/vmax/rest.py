@@ -457,16 +457,22 @@ class VMAXRest(object):
                                         resource_name=srp, params=None)
         return srp_details
 
-    def get_slo_list(self, array):
+    def get_slo_list(self, array, srp):
         """Retrieve the list of slo's from the array
 
         :param array: the array serial number
+        :param srp: return service levels associated with this srp
         :returns: slo_list -- list of service level names
         """
         slo_list = []
-        slo_dict = self.get_resource(array, SLOPROVISIONING, 'slo')
-        if slo_dict and slo_dict.get('sloId'):
-            slo_list = slo_dict['sloId']
+        res_name = '%s/service_level_demand_report' % srp
+        slo_dict = self.get_resource(array, SLOPROVISIONING, 'srp',
+                                     resource_name=res_name, version='90')
+        if slo_dict and slo_dict.get('serviceLevelDemand'):
+            for d in slo_dict['serviceLevelDemand']:
+                slo = d.get('serviceLevelId')
+                if slo and slo not in slo_list:
+                    slo_list.append(slo)
         return slo_list
 
     def get_workload_settings(self, array):

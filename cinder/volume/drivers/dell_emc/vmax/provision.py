@@ -436,7 +436,7 @@ class VMAXProvision(object):
         if slo and slo.lower() == 'none':
             slo = None
 
-        valid_slos = self.rest.get_slo_list(array)
+        valid_slos = self.rest.get_slo_list(array, srp)
         valid_workloads = self.rest.get_workload_settings(array)
         for valid_slo in valid_slos:
             if slo == valid_slo:
