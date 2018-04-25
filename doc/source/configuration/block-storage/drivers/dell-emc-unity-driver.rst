@@ -158,7 +158,10 @@ Driver configuration
 Driver options
 ~~~~~~~~~~~~~~
 
-.. include:: ../../tables/cinder-dell_emc_unity.inc
+.. config-table::
+   :config-target: Unity
+
+   cinder.volume.drivers.dell_emc.unity.driver
 
 FC or iSCSI ports option
 ------------------------

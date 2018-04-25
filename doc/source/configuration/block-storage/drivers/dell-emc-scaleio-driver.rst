@@ -207,7 +207,10 @@ Configuration options
 
 The ScaleIO driver supports these configuration options:
 
-.. include:: ../../tables/cinder-emc_sio.inc
+.. config-table::
+   :config-target: ScaleIO
+
+   cinder.volume.drivers.dell_emc.scaleio.driver
 
 Volume Types
 ------------

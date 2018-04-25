@@ -1,6 +1,6 @@
-==============================================
-EMC XtremIO Block Storage driver configuration
-==============================================
+=====================================
+Dell EMC XtremIO Block Storage driver
+=====================================
 
 The high performance XtremIO All Flash Array (AFA) offers Block Storage
 services to OpenStack. Using the driver, OpenStack Block Storage hosts
@@ -53,7 +53,10 @@ under a separate section in case of multiple back ends (for example
 [XTREMIO]). The configuration file is usually located under the
 following path ``/etc/cinder/cinder.conf``.
 
-.. include:: ../../tables/cinder-emc_xtremio.inc
+.. config-table::
+   :config-target: XtremIO
+
+   cinder.volume.drivers.dell_emc.xtremio
 
 For a configuration example, refer to the configuration
 :ref:`emc_extremio_configuration_example`.
@@ -68,13 +71,13 @@ Configure the driver name by setting the following parameter in the
 
    .. code-block:: ini
 
-      volume_driver = cinder.volume.drivers.emc.xtremio.XtremIOISCSIDriver
+      volume_driver = cinder.volume.drivers.dell_emc.xtremio.XtremIOISCSIDriver
 
 -  For Fibre Channel:
 
    .. code-block:: ini
 
-      volume_driver = cinder.volume.drivers.emc.xtremio.XtremIOFibreChannelDriver
+      volume_driver = cinder.volume.drivers.dell_emc.xtremio.XtremIOFibreChannelDriver
 
 XtremIO management server (XMS) IP
 ----------------------------------
@@ -243,7 +246,7 @@ follows:
    enabled_backends = XtremIO
 
    [XtremIO]
-   volume_driver = cinder.volume.drivers.emc.xtremio.XtremIOFibreChannelDriver
+   volume_driver = cinder.volume.drivers.dell_emc.xtremio.XtremIOFibreChannelDriver
    san_ip = XMS_IP
    xtremio_cluster_name = Cluster01
    san_login = XMS_USER

@@ -398,4 +398,7 @@ Driver options
 The following table contains the configuration options specific to the
 Dell EMC Storage Center volume driver.
 
-.. include:: ../../tables/cinder-dellsc.inc
+.. config-table::
+   :config-target: SC Series
+
+   cinder.volume.drivers.dell_emc.sc.storagecenter_common
