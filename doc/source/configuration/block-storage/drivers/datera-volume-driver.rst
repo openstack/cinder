@@ -32,9 +32,10 @@ Prerequisites
   * open-iscsi-utils
   * wget
 
-.. include:: ../../tables/cinder-datera.inc
+.. config-table::
+   :config-target: Datera
 
-
+   cinder.volume.drivers.datera.datera_iscsi
 
 Configuring the Datera volume driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
