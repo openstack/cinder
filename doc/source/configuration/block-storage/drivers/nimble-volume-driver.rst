@@ -17,9 +17,9 @@ later.
 
 Nimble Storage Cinder driver does not support port binding with multiple
 interfaces on the same subnet due to existing limitation in os-brick. This
-is partially referenced in the bug https://bugs.launchpad
-.net/os-brick/+bug/1722432 but does not resolve for multiple software
-iscsi ifaces
+is partially referenced in the bug
+https://bugs.launchpad.net/os-brick/+bug/1722432 but does not resolve
+for multiple software iscsi ifaces.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
