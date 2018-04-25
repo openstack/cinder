@@ -24,6 +24,7 @@ from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder.objects import fields
 from cinder.policies import attachments as attachment_policy
 from cinder import utils
 from cinder.volume import api as volume_api
@@ -271,7 +272,8 @@ class AttachmentsController(wsgi.Controller):
             attachment_ref.volume_id)
         context.authorize(attachment_policy.COMPLETE_POLICY,
                           target_obj=attachment_ref)
-        attachment_ref.update({'attach_status': 'attached'})
+        attachment_ref.update(
+            {'attach_status': fields.VolumeAttachStatus.ATTACHED})
         attachment_ref.save()
         volume_ref.update({'status': 'in-use', 'attach_status': 'attached'})
         volume_ref.save()

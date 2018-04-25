@@ -2163,7 +2163,7 @@ class API(base.Base):
         ctxt.authorize(attachment_policy.DELETE_POLICY,
                        target_obj=attachment)
         volume = objects.Volume.get_by_id(ctxt, attachment.volume_id)
-        if attachment.attach_status == 'reserved':
+        if attachment.attach_status == fields.VolumeAttachStatus.RESERVED:
             self.db.volume_detached(ctxt.elevated(), attachment.volume_id,
                                     attachment.get('id'))
             self.db.volume_admin_metadata_delete(ctxt.elevated(),
