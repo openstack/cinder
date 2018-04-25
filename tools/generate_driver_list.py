@@ -17,6 +17,7 @@
 import argparse
 import os
 import json
+import textwrap
 
 from cinder.interface import util
 from cinder import objects
@@ -68,9 +69,9 @@ class Output(object):
 def format_description(desc, output):
     desc = desc or '<None>'
     lines = desc.rstrip('\n').split('\n')
-    for line in lines:
-        output.write('    %s' % line)
-
+    output.write('* Description: %s' % lines[0])
+    output.write('')
+    output.write(textwrap.dedent('\n'.join(lines[1:])))
 
 def print_drivers(drivers, config_name, output):
     for driver in sorted(drivers, key=lambda x: x.class_fqn):
@@ -85,7 +86,6 @@ def print_drivers(drivers, config_name, output):
         if driver.ci_wiki_name and 'Cinder_Jenkins' not in driver.ci_wiki_name:
             output.write('* CI info: %s%s' % (CI_WIKI_ROOT,
                                               driver.ci_wiki_name))
-        output.write('* Description:')
         format_description(driver.desc, output)
         output.write('')
     output.write('')
