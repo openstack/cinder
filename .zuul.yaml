@@ -18,6 +18,8 @@
               - ^doc/.*$
               - ^releasenotes/.*$
         - openstack-tox-lower-constraints
+        - cinder-tox-functional-py36
+        - cinder-tox-py36
     gate:
       jobs:
         - cinder-tox-compliance
@@ -97,3 +99,17 @@
       - ^releasenotes/.*$
       - ^setup.cfg$
       - ^tools/.*$
+- job:
+    # Testing running on bionic
+    name: cinder-tox-functional-py36
+    parent: openstack-tox
+    nodeset: ubuntu-bionic
+    vars:
+        tox_envlist: functional-py36
+- job:
+    # Testing running on bionic
+    name: cinder-tox-py36
+    parent: openstack-tox
+    nodeset: ubuntu-bionic
+    vars:
+        tox_envlist: py36
