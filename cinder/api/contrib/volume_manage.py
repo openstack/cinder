@@ -13,6 +13,7 @@
 #   under the License.
 
 from oslo_log import log as logging
+from oslo_utils import strutils
 from six.moves import http_client
 
 from cinder.api import common
@@ -20,7 +21,9 @@ from cinder.api.contrib import resource_common_manage
 from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volume_manage
 from cinder.api.v2.views import volumes as volume_views
+from cinder.api import validation
 from cinder.api.views import manageable_volumes as list_manageable_view
 from cinder import exception
 from cinder.i18n import _
@@ -43,6 +46,8 @@ class VolumeManageController(wsgi.Controller):
         self._list_manageable_view = list_manageable_view.ViewBuilder()
 
     @wsgi.response(http_client.ACCEPTED)
+    @validation.schema(volume_manage.volume_manage_create, '2.0', '3.15')
+    @validation.schema(volume_manage.volume_manage_create_v316, '3.16')
     def create(self, req, body):
         """Instruct Cinder to manage a storage object.
 
@@ -98,16 +103,7 @@ class VolumeManageController(wsgi.Controller):
         """
         context = req.environ['cinder.context']
         context.authorize(policy.MANAGE_POLICY)
-
-        self.assert_valid_body(body, 'volume')
-
         volume = body['volume']
-        self.validate_name_and_description(volume)
-
-        # Check that the required keys are present, return an error if they
-        # are not.
-        if 'ref' not in volume:
-            raise exception.MissingRequired(element='ref')
 
         cluster_name, host = common.get_cluster_host(
             req, volume, mv.VOLUME_MIGRATE_CLUSTER)
@@ -127,13 +123,15 @@ class VolumeManageController(wsgi.Controller):
         else:
             kwargs['volume_type'] = {}
 
-        kwargs['name'] = volume.get('name', None)
-        kwargs['description'] = volume.get('description', None)
+        if volume.get('name'):
+            kwargs['name'] = volume.get('name').strip()
+        if volume.get('description'):
+            kwargs['description'] = volume.get('description').strip()
+
         kwargs['metadata'] = volume.get('metadata', None)
         kwargs['availability_zone'] = volume.get('availability_zone', None)
-        kwargs['bootable'] = utils.get_bool_param('bootable', volume)
-
-        utils.check_metadata_properties(kwargs['metadata'])
+        bootable = volume.get('bootable', False)
+        kwargs['bootable'] = strutils.bool_from_string(bootable, strict=True)
 
         try:
             new_volume = self.volume_api.manage_existing(context,

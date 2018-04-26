@@ -201,11 +201,8 @@ class VolumeManageTest(test.TestCase):
         res = req.get_response(app_v3())
         return res
 
-    @ddt.data(False, True)
     @mock.patch('cinder.volume.api.API.manage_existing', wraps=api_manage)
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_manage_volume_ok(self, cluster, mock_validate, mock_api_manage):
+    def test_manage_volume_ok(self, mock_api_manage):
         """Test successful manage volume execution.
 
         Tests for correct operation when valid arguments are passed in the
@@ -215,9 +212,7 @@ class VolumeManageTest(test.TestCase):
         """
         body = {'volume': {'host': 'host_ok',
                            'ref': 'fake_ref'}}
-        # This will be ignored
-        if cluster:
-            body['volume']['cluster'] = 'cluster'
+
         res = self._get_resp_post(body)
         self.assertEqual(http_client.ACCEPTED, res.status_int)
 
@@ -225,9 +220,7 @@ class VolumeManageTest(test.TestCase):
         self.assertEqual(1, mock_api_manage.call_count)
         args = mock_api_manage.call_args[0]
         self.assertEqual(body['volume']['host'], args[1])
-        self.assertIsNone(args[2])  # Cluster argument
         self.assertEqual(body['volume']['ref'], args[3])
-        self.assertTrue(mock_validate.called)
 
     def _get_resp_create(self, body, version=mv.BASE_VERSION):
         url = '/v3/%s/os-volume-manage' % fake.PROJECT_ID
@@ -238,13 +231,11 @@ class VolumeManageTest(test.TestCase):
         req.environ['cinder.context'] = self._admin_ctxt
         req.body = jsonutils.dump_as_bytes(body)
         req.api_version_request = mv.get_api_version(version)
-        res = self.controller.create(req, body)
+        res = self.controller.create(req, body=body)
         return res
 
     @mock.patch('cinder.volume.api.API.manage_existing', wraps=api_manage)
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_manage_volume_ok_cluster(self, mock_validate, mock_api_manage):
+    def test_manage_volume_ok_cluster(self, mock_api_manage):
         body = {'volume': {'cluster': 'cluster',
                            'ref': 'fake_ref'}}
         res = self._get_resp_create(body, mv.VOLUME_MIGRATE_CLUSTER)
@@ -256,11 +247,8 @@ class VolumeManageTest(test.TestCase):
         self.assertIsNone(args[1])
         self.assertEqual(body['volume']['cluster'], args[2])
         self.assertEqual(body['volume']['ref'], args[3])
-        self.assertTrue(mock_validate.called)
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_manage_volume_fail_host_cluster(self, mock_validate):
+    def test_manage_volume_fail_host_cluster(self):
         body = {'volume': {'host': 'host_ok',
                            'cluster': 'cluster',
                            'ref': 'fake_ref'}}
@@ -322,9 +310,7 @@ class VolumeManageTest(test.TestCase):
         self.assertTrue(mock_is_up.called)
 
     @mock.patch('cinder.volume.api.API.manage_existing', api_manage)
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_manage_volume_volume_type_by_uuid(self, mock_validate):
+    def test_manage_volume_volume_type_by_uuid(self):
         """Tests for correct operation when a volume type is specified by ID.
 
         We wrap cinder.volume.api.API.manage_existing so that managing is not
@@ -336,12 +322,9 @@ class VolumeManageTest(test.TestCase):
                            'bootable': True}}
         res = self._get_resp_post(body)
         self.assertEqual(http_client.ACCEPTED, res.status_int)
-        self.assertTrue(mock_validate.called)
 
     @mock.patch('cinder.volume.api.API.manage_existing', api_manage)
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_manage_volume_volume_type_by_name(self, mock_validate):
+    def test_manage_volume_volume_type_by_name(self):
         """Tests for correct operation when a volume type is specified by name.
 
         We wrap cinder.volume.api.API.manage_existing so that managing is not
@@ -352,7 +335,6 @@ class VolumeManageTest(test.TestCase):
                            'volume_type': 'good_fakevt'}}
         res = self._get_resp_post(body)
         self.assertEqual(http_client.ACCEPTED, res.status_int)
-        self.assertTrue(mock_validate.called)
 
     def test_manage_volume_bad_volume_type_by_uuid(self):
         """Test failure on nonexistent volume type specified by ID."""
@@ -506,3 +488,8 @@ class VolumeManageTest(test.TestCase):
         self.assertEqual(1, mock_api_manage.call_count)
         self.assertEqual('creating',
                          jsonutils.loads(res.body)['volume']['status'])
+
+    @ddt.data({'volume': {}}, None)
+    def test_manage_volume_with_invalid_body(self, body):
+        res = self._get_resp_post(body)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
