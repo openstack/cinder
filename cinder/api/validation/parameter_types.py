@@ -208,3 +208,27 @@ volume_size = {
     'pattern': '^[0-9]+$',
     'minimum': 1
 }
+
+
+hostname = {
+    'type': ['string', 'null'], 'minLength': 1, 'maxLength': 255,
+    # NOTE: 'host' is defined in "services" table, and that
+    # means a hostname. The hostname grammar in RFC952 does
+    # not allow for underscores in hostnames. However, this
+    # schema allows them, because it sometimes occurs in
+    # real systems.
+    'pattern': '^[a-zA-Z0-9-._#@]*$'
+}
+
+
+resource_type = {'type': ['string', 'null'], 'minLength': 0, 'maxLength': 40}
+
+
+service_id = {
+    'type': ['integer', 'string', 'null'],
+    'pattern': '^[0-9]*$', 'maxLength': 11
+}
+
+
+optional_uuid = {'oneOf': [{'type': 'null'},
+                           {'type': 'string', 'format': 'uuid'}]}
