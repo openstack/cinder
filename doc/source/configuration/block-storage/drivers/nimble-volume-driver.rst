@@ -163,12 +163,13 @@ Configuring mulitpathing varies by system depending on the environment. In a
 scenario where solely Nimble devices are being created by Cinder, the
 following ``/etc/multipath.conf`` file may be used:
 
-.. code-block:: json
+.. code-block:: text
 
    defaults {
        user_friendly_names yes
        find_multipaths     no
    }
+
    blacklist {
        devnode "^(ram|raw|loop|fd|md|dm-|sr|scd|st)[0-9]*"
        devnode "^hd[a-z]"
@@ -177,12 +178,14 @@ following ``/etc/multipath.conf`` file may be used:
            product ".*"
        }
    }
+
    blacklist_exceptions {
        device {
            vendor  "Nimble"
            product "Server"
        }
    }
+
    devices {
        device {
            vendor               "Nimble"
@@ -243,4 +246,5 @@ To validate that instances get properly connected to the multipath device,
 inspect the instance devices:
 
 .. code-block:: console
+
    # virsh dumpxml <Instance ID | Instance Name | Instance UUID>
