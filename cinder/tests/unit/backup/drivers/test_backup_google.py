@@ -25,6 +25,7 @@ import hashlib
 import os
 import shutil
 import tempfile
+import threading
 import zlib
 
 import mock
@@ -547,14 +548,27 @@ class GoogleBackupDriverTestCase(test.TestCase):
 
     @gcs_client
     def test_prepare_output_data_effective_compression(self):
+        """Test compression works on a native thread."""
+        # Use dictionary to share data between threads
+        thread_dict = {}
+        original_compress = zlib.compress
+
+        def my_compress(data, *args, **kwargs):
+            thread_dict['compress'] = threading.current_thread()
+            return original_compress(data)
+
         service = google_dr.GoogleBackupDriver(self.ctxt)
         # Set up buffer of 128 zeroed bytes
         fake_data = b'\0' * 128
 
-        result = service._prepare_output_data(fake_data)
+        with mock.patch.object(service.compressor, 'compress',
+                               side_effect=my_compress):
+            result = service._prepare_output_data(fake_data)
 
         self.assertEqual('zlib', result[0])
         self.assertGreater(len(fake_data), len(result[1]))
+        self.assertNotEqual(threading.current_thread(),
+                            thread_dict['compress'])
 
     @gcs_client
     def test_prepare_output_data_no_compresssion(self):
