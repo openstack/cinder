@@ -263,14 +263,17 @@ class FlashSystemDriver(san.SanDriver,
             {'src': src_vdisk_name, 'dest': dest_vdisk_name})
 
     def _create_and_copy_vdisk_data(self, src_vdisk_name, src_vdisk_id,
-                                    dest_vdisk_name, dest_vdisk_id):
-        vdisk_attr = self._get_vdisk_attributes(src_vdisk_name)
-        self._driver_assert(
-            vdisk_attr is not None,
-            (_('_create_and_copy_vdisk_data: Failed to get attributes for '
-               'vdisk %s.') % src_vdisk_name))
+                                    dest_vdisk_name, dest_vdisk_id,
+                                    dest_vdisk_size=None):
+        if dest_vdisk_size is None:
+            vdisk_attr = self._get_vdisk_attributes(src_vdisk_name)
+            self._driver_assert(
+                vdisk_attr is not None,
+                (_('_create_and_copy_vdisk_data: Failed to get attributes for '
+                   'vdisk %s.') % src_vdisk_name))
+            dest_vdisk_size = vdisk_attr['capacity']
 
-        self._create_vdisk(dest_vdisk_name, vdisk_attr['capacity'], 'b', None)
+        self._create_vdisk(dest_vdisk_name, dest_vdisk_size, 'b', None)
 
         # create a timer to lock vdisk that will be used to data copy
         timer = loopingcall.FixedIntervalLoopingCall(
@@ -296,7 +299,7 @@ class FlashSystemDriver(san.SanDriver,
         ssh_cmd = ['svctask', 'mkvdisk', '-name', name, '-mdiskgrp',
                    FLASHSYSTEM_VOLPOOL_NAME, '-iogrp',
                    six.text_type(FLASHSYSTEM_VOL_IOGRP),
-                   '-size', size, '-unit', unit]
+                   '-size', six.text_type(size), '-unit', unit]
         out, err = self._ssh(ssh_cmd)
         self._assert_ssh_return(out.strip(), '_create_vdisk',
                                 ssh_cmd, out, err)
@@ -1101,9 +1104,9 @@ class FlashSystemDriver(san.SanDriver,
             'enter: create_volume_from_snapshot: create %(vol)s from '
             '%(snap)s.', {'vol': volume['name'], 'snap': snapshot['name']})
 
-        if volume['size'] != snapshot['volume_size']:
-            msg = _('create_volume_from_snapshot: Volume size is different '
-                    'from snapshot based volume.')
+        if volume['size'] < snapshot['volume_size']:
+            msg = _('create_volume_from_snapshot: Volume is smaller than '
+                    'snapshot.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -1114,10 +1117,13 @@ class FlashSystemDriver(san.SanDriver,
                      'The invalid status is: %s.') % status)
             raise exception.InvalidSnapshot(msg)
 
-        self._create_and_copy_vdisk_data(snapshot['name'],
-                                         snapshot['id'],
-                                         volume['name'],
-                                         volume['id'])
+        self._create_and_copy_vdisk_data(
+            snapshot['name'],
+            snapshot['id'],
+            volume['name'],
+            volume['id'],
+            dest_vdisk_size=volume['size'] * units.Gi
+        )
 
         LOG.debug(
             'leave: create_volume_from_snapshot: create %(vol)s from '
@@ -1129,16 +1135,19 @@ class FlashSystemDriver(san.SanDriver,
         LOG.debug('enter: create_cloned_volume: create %(vol)s from %(src)s.',
                   {'src': src_volume['name'], 'vol': volume['name']})
 
-        if src_volume['size'] != volume['size']:
-            msg = _('create_cloned_volume: Source and destination '
-                    'size differ.')
+        if src_volume['size'] > volume['size']:
+            msg = _('create_cloned_volume: Source volume larger than '
+                    'destination volume')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
-        self._create_and_copy_vdisk_data(src_volume['name'],
-                                         src_volume['id'],
-                                         volume['name'],
-                                         volume['id'])
+        self._create_and_copy_vdisk_data(
+            src_volume['name'],
+            src_volume['id'],
+            volume['name'],
+            volume['id'],
+            dest_vdisk_size=volume['size'] * units.Gi
+        )
 
         LOG.debug('leave: create_cloned_volume: create %(vol)s from %(src)s.',
                   {'src': src_volume['name'], 'vol': volume['name']})
