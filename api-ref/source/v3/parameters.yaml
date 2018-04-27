@@ -1236,8 +1236,8 @@ guaranteed_until:
   type: string
 has_dependent_backups:
   description: |
-    If this value is ``true``, the backup depends on
-    other backups.
+    If this value is ``true``, there are other backups depending on
+    this backup.
   in: body
   required: false
   type: boolean
