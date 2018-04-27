@@ -331,6 +331,43 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                        mock.Mock(return_value=[]))
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
+                                 'nimble:perfpol-name': 'default',
+                                 'nimble:encryption': 'yes'}))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    def test_create_volume_with_unicode(self):
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_RESPONSE)
+        self.mock_client_service.get_netconfig.return_value = (
+            FAKE_POSITIVE_NETCONFIG_RESPONSE)
+
+        self.assertEqual({
+            'provider_location': '172.18.108.21:3260 iqn.test',
+            'provider_auth': None},
+            self.driver.create_volume({'name': 'testvolume',
+                                       'size': 1,
+                                       'volume_type_id': None,
+                                       'display_name': u'unicode_name',
+                                       'display_description': ''}))
+
+        self.mock_client_service.create_vol.assert_called_once_with(
+            {'name': 'testvolume',
+             'size': 1,
+             'volume_type_id': None,
+             'display_name': u'unicode_name',
+             'display_description': ''},
+            'default',
+            False,
+            'iSCSI',
+            False)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
+                       mock.Mock(type_id=FAKE_TYPE_ID, return_value={
                            'nimble:perfpol-name': 'default',
                            'nimble:encryption': 'yes',
                            'nimble:multi-initiator': 'false'}))
