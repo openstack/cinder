@@ -49,7 +49,16 @@ kaminario_opts = [
     cfg.BoolOpt('auto_calc_max_oversubscription_ratio',
                 default=False,
                 help="K2 driver will calculate max_oversubscription_ratio "
-                     "on setting this option as True.")]
+                     "on setting this option as True."),
+    cfg.BoolOpt('unique_fqdn_network',
+                default=True,
+                help="Whether or not our private network has unique FQDN on "
+                     "each initiator or not.  For example networks with QA "
+                     "systems usually have multiple servers/VMs with the same "
+                     "FQDN.  When true this will create host entries on K2 "
+                     "using the FQDN, when false it will use the reversed "
+                     "IQN/WWNN."),
+]
 
 CONF = cfg.CONF
 CONF.register_opts(kaminario_opts)
@@ -835,13 +844,20 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                       'kaminario:replication': True}
 
     def get_initiator_host_name(self, connector):
-        """Return the initiator host name.
+        """Return the initiator host name or unique ID.
+
+        Unique ID when configuration's unique_fqdn_network is false will be
+        the reversed IQN/WWPNS.
 
         Valid characters: 0-9, a-z, A-Z, '-', '_'
         All other characters are replaced with '_'.
         Total characters in initiator host name: 32
         """
-        return re.sub('[^0-9a-zA-Z-_]', '_', connector.get('host', ''))[:32]
+        name = connector.get('initiator',
+                             connector.get('wwnns', [''])[0])[::-1]
+        if self.configuration.unique_fqdn_network:
+            name = connector.get('host', name)
+        return re.sub('[^0-9a-zA-Z-_]', '_', name[:32])
 
     def get_volume_group_name(self, vid):
         """Return the volume group name."""
