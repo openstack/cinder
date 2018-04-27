@@ -16,11 +16,13 @@
 from oslo_config import cfg
 import testtools
 
-from tempest.api.volume import base as volume_base
 from tempest.common import waiters
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest import test
+
+from cinder.tests.tempest.api.volume import base
+
 
 # TODO(obutenko): Remove this when liberty-eol happens.
 snapshot_backup_opt = cfg.BoolOpt('snapshot_backup',
@@ -32,7 +34,7 @@ CONF = config.CONF
 CONF.register_opt(snapshot_backup_opt, group='volume-feature-enabled')
 
 
-class VolumesBackupsTest(volume_base.BaseVolumeTest):
+class VolumesBackupsTest(base.BaseVolumeTest):
 
     @classmethod
     def skip_checks(cls):
@@ -119,7 +121,7 @@ class VolumesBackupsTest(volume_base.BaseVolumeTest):
             wait_until='ACTIVE')
 
         # Delete VM
-        self.servers_client.delete_server(server['id'])
+        self.os_primary.servers_client.delete_server(server['id'])
         # Create incremental backup
         waiters.wait_for_volume_resource_status(self.volumes_client,
                                                 volume['id'], 'available')
