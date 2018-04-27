@@ -178,7 +178,7 @@ class TestClient(test.TestCase):
 
     @res_mock.patch_client
     def test_delete_smp(self, client, mocked):
-        client.delete_lun(mocked['lun'].name)
+        client.delete_lun(mocked['lun'].name, snap_copy='snap-as-vol')
 
     @res_mock.patch_client
     def test_delete_lun_not_exist(self, client, mocked):

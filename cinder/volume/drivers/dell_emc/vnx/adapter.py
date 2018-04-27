@@ -777,10 +777,13 @@ class CommonAdapter(replication.ReplicationAdapter):
     def delete_volume(self, volume):
         """Deletes an EMC volume."""
         async_migrate = utils.is_async_migrate_enabled(volume)
+        snap_copy = (utils.construct_snap_name(volume) if
+                     utils.is_snapcopy_enabled(volume) else None)
         self.cleanup_lun_replication(volume)
         try:
             self.client.delete_lun(volume.name,
-                                   force=self.force_delete_lun_in_sg)
+                                   force=self.force_delete_lun_in_sg,
+                                   snap_copy=snap_copy)
         except storops_ex.VNXLunUsedByFeatureError:
             # Case 1. Migration not finished, cleanup related stuff.
             if async_migrate:
@@ -794,8 +797,9 @@ class CommonAdapter(replication.ReplicationAdapter):
             # Here, we assume no Cinder managed snaps, and add it to queue
             # for later deletion
             self.client.delay_delete_lun(volume.name)
-        # Case 2. Migration already finished, delete temp snap if exists.
-        if async_migrate:
+        # Case 2. Migration already finished, try to delete the temp snap
+        # only when it's a cloned volume.
+        if async_migrate and volume.source_volid:
             self.client.delete_snapshot(utils.construct_snap_name(volume))
 
     def extend_volume(self, volume, new_size):

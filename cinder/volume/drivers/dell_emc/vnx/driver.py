@@ -77,9 +77,10 @@ class VNXDriver(driver.ManageableVD,
           10.1.0 - Add QoS support
           10.2.0 - Add replication group support
           11.0.0 - Fix failure of migration during cloning
+          11.0.1 - Fix perf issue when create/delete volume
     """
 
-    VERSION = '11.00.00'
+    VERSION = '11.00.01'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_VNX_CI"
