@@ -180,8 +180,11 @@ class RequestContext(context.RequestContext):
                    is_admin=values.get('is_admin'),
                    roles=values.get('roles'),
                    auth_token=values.get('auth_token'),
-                   user_domain_id=values.get('user_domain_id'),
-                   project_domain_id=values.get('project_domain_id'))
+                   user_domain_id=values.get('user_domain'),
+                   project_domain_id=values.get('project_domain'),
+                   user_domain=values.get('user_domain'),
+                   project_domain=values.get('project_domain'),
+                   )
 
     def authorize(self, action, target=None, target_obj=None, fatal=True):
         """Verifies that the given action is valid on the target in this context.
