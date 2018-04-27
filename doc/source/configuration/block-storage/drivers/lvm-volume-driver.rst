@@ -22,7 +22,10 @@ Use the following options to configure for the iSER transport:
    volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
    iscsi_protocol = iser
 
-.. include:: ../../tables/cinder-lvm.inc
+.. config-table::
+   :config-target: LVM
+
+   cinder.volume.drivers.lvm
 
 .. caution::
 

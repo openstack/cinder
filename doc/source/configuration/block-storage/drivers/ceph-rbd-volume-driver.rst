@@ -87,4 +87,7 @@ Driver options
 The following table contains the configuration options supported by the
 Ceph RADOS Block Device driver.
 
-.. include:: ../../tables/cinder-storage_ceph.inc
+.. config-table::
+   :config-target: Ceph storage
+
+   cinder.volume.drivers.rbd
