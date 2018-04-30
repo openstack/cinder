@@ -343,9 +343,16 @@ class VMAXProvision(object):
                       {'vol': source_device, 'snap_name': snap_name})
             linked_list = self.rest.get_snap_linked_device_list(
                 array, source_device, snap_name)
-            for link in linked_list:
-                target_device = link['targetDevice']
+            if len(linked_list) == 1:
+                target_device = linked_list[0]['targetDevice']
                 list_device_pairs.append((source_device, target_device))
+            else:
+                for link in linked_list:
+                    # If a single source volume has multiple targets,
+                    # we must unlink each target individually
+                    target_device = link['targetDevice']
+                    self._unlink_volume(array, source_device, target_device,
+                                        snap_name, extra_specs)
         if list_device_pairs:
             self._unlink_volume(array, "", "", snap_name, extra_specs,
                                 list_volume_pairs=list_device_pairs)
