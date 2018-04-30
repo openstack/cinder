@@ -132,6 +132,9 @@ class VolumeDriverCore(base.CinderInterface):
         * sparse_copy_volume (Boolean)
             Whether copies performed by the volume manager for operations such
             as migration should attempt to preserve sparseness.
+        * online_extend_support (Boolean)
+            Whether the backend supports in-use volume extend or not. Defaults
+            to True.
 
         The returned dict may also contain a list, "pools", which has a similar
         dict for each pool being used with the backend.
@@ -255,6 +258,9 @@ class VolumeDriverCore(base.CinderInterface):
 
         :param volume: The volume to extend.
         :param new_size: The new desired size of the volume.
+
+        Note that if the volume backend doesn't support extending an in-use
+        volume, the driver should report online_extend_support=False.
         """
 
     def create_snapshot(self, snapshot):

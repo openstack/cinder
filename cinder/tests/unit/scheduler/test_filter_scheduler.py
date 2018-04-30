@@ -427,6 +427,42 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertTrue(_mock_service_get_topic.called)
 
     @mock.patch('cinder.db.service_get_all')
+    def test_backend_passes_filters_online_extend_support_happy_day(
+            self, _mock_service_get_topic):
+        """Do a successful online extend with backend_passes_filters()."""
+        sched, ctx = self._backend_passes_filters_setup(
+            _mock_service_get_topic)
+        request_spec = {'volume_id': fake.VOLUME_ID,
+                        'volume_type': {'name': 'LVM_iSCSI'},
+                        'volume_properties': {'project_id': 1,
+                                              'size': 1,
+                                              'attach_status': 'attached'},
+                        'operation': 'extend_volume'}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
+        # host1#lvm1 has online_extend_support = True
+        sched.backend_passes_filters(ctx, 'host1#lvm1', request_spec, {})
+        self.assertTrue(_mock_service_get_topic.called)
+
+    @mock.patch('cinder.db.service_get_all')
+    def test_backend_passes_filters_no_online_extend_support(
+            self, _mock_service_get_topic):
+        """Fail the host due to lack of online extend support."""
+        sched, ctx = self._backend_passes_filters_setup(
+            _mock_service_get_topic)
+        request_spec = {'volume_id': fake.VOLUME_ID,
+                        'volume_type': {'name': 'LVM_iSCSI'},
+                        'volume_properties': {'project_id': 1,
+                                              'size': 1,
+                                              'attach_status': 'attached'},
+                        'operation': 'extend_volume'}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
+        # host2#lvm2 has online_extend_support = False
+        self.assertRaises(exception.NoValidBackend,
+                          sched.backend_passes_filters,
+                          ctx, 'host2#lvm2', request_spec, {})
+        self.assertTrue(_mock_service_get_topic.called)
+
+    @mock.patch('cinder.db.service_get_all')
     def test_retype_policy_never_migrate_pass(self, _mock_service_get_topic):
         # Retype should pass if current host passes filters and
         # policy=never. host4 doesn't have enough space to hold an additional

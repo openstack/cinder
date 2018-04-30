@@ -15,6 +15,7 @@
 
 from oslo_log import log as logging
 
+from cinder.objects.fields import VolumeAttachStatus
 from cinder.scheduler import filters
 from cinder.scheduler.filters import extra_specs_ops
 
@@ -24,13 +25,27 @@ LOG = logging.getLogger(__name__)
 class CapabilitiesFilter(filters.BaseBackendFilter):
     """BackendFilter to work with resource (instance & volume) type records."""
 
-    def _satisfies_extra_specs(self, capabilities, resource_type):
+    def _satisfies_extra_specs(self, capabilities, filter_properties):
         """Check if capabilities satisfy resource type requirements.
 
         Check that the capabilities provided by the services satisfy
         the extra specs associated with the resource type.
         """
 
+        req_spec = filter_properties.get('request_spec')
+        if req_spec and req_spec.get('operation') == 'extend_volume':
+            # NOTE(erlon): By default, cinder considers that every backend
+            # supports volume online extending. Those backends that don't
+            # support it should report online_extend_support=False.
+            online_extends = capabilities.get('online_extend_support', True)
+            if online_extends is False:
+                vol_prop = req_spec.get('volume_properties')
+                attach_status = vol_prop.get('attach_status')
+                if attach_status != VolumeAttachStatus.DETACHED:
+                    LOG.debug("Backend doesn't support attached volume extend")
+                    return False
+
+        resource_type = filter_properties.get('resource_type')
         if not resource_type:
             return True
 
@@ -80,9 +95,8 @@ class CapabilitiesFilter(filters.BaseBackendFilter):
         # Note(zhiteng) Currently only Cinder and Nova are using
         # this filter, so the resource type is either instance or
         # volume.
-        resource_type = filter_properties.get('resource_type')
         if not self._satisfies_extra_specs(backend_state.capabilities,
-                                           resource_type):
+                                           filter_properties):
             LOG.debug("%(backend_state)s fails resource_type extra_specs "
                       "requirements", {'backend_state': backend_state})
             return False
