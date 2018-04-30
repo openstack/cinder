@@ -10,6 +10,29 @@ deletes attachment.
           microversion. `Complete attachment` is new as of the 3.44
           microversion.
 
+When you create, list, update, or delete attachment, the possible
+status values are:
+
+**VolumeAttachment statuses**
+
++------------------+--------------------------------------------------------+
+| Status           | Description                                            |
++------------------+--------------------------------------------------------+
+| attached         | A volume is attached for the attachment.               |
++------------------+--------------------------------------------------------+
+| attaching        | A volume is attaching for the attachment.              |
++------------------+--------------------------------------------------------+
+| detached         | A volume is detached for the attachment.               |
++------------------+--------------------------------------------------------+
+| reserved         | A volume is reserved for the attachment.               |
++------------------+--------------------------------------------------------+
+| error_attaching  | A volume is error attaching for the attachment.        |
++------------------+--------------------------------------------------------+
+| error_detaching  | A volume is error detaching for the attachment.        |
++------------------+--------------------------------------------------------+
+| deleted          | The attachment is deleted.                             |
++------------------+--------------------------------------------------------+
+
 
 Delete attachment
 ~~~~~~~~~~~~~~~~~
