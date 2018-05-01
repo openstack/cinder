@@ -63,16 +63,16 @@ CONF.register_opts(qnap_opts, group=configuration.SHARED_CONF_GROUP)
 class QnapISCSIDriver(san.SanISCSIDriver):
     """QNAP iSCSI based cinder driver
 
-      .. code-block:: default
+    .. code-block:: default
 
-        Version History:
-          1.0.0:
-                Initial driver (Only iSCSI).
-          1.2.001:
-                Add supports for Thin Provisioning, SSD Cache, Deduplication
-                , Compression and CHAP.
-          1.2.002:
-                Add support for QES fw 2.0.0.
+      Version History:
+        1.0.0:
+              Initial driver (Only iSCSI).
+        1.2.001:
+              Add supports for Thin Provisioning, SSD Cache, Deduplication,
+              Compression and CHAP.
+        1.2.002:
+              Add support for QES fw 2.0.0.
 
     NOTE: Set driver_ssl_cert_verify as True under backend section to
           enable SSL verification.
