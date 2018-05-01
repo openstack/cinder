@@ -2285,12 +2285,44 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             disks_to_clone=[vol_dev_uuid])
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_extend_backing')
+    def _test_extend_backing_if_needed(
+            self, extend_backing, vops, extend=True):
+        if extend:
+            vol_size = 2
+        else:
+            vol_size = 1
+
+        vops.get_disk_size.return_value = units.Gi
+
+        volume = self._create_volume_obj(size=vol_size)
+        backing = mock.sentinel.backing
+        self._driver._extend_if_needed(volume, backing)
+
+        vops.get_disk_size.assert_called_once_with(backing)
+        if extend:
+            extend_backing.assert_called_once_with(backing, vol_size)
+        else:
+            extend_backing.assert_not_called()
+
+    def test_extend_backing_if_needed(self):
+        self._test_extend_backing_if_needed()
+
+    def test_extend_backing_if_needed_no_extend(self):
+        self._test_extend_backing_if_needed(extend=False)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_manage_existing_int')
+    @mock.patch.object(VMDK_DRIVER, '_extend_if_needed')
     @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
     def test_create_volume_from_temp_backing(
-            self, delete_temp_backing, manage_existing_int, vops):
+            self, delete_temp_backing, extend_if_needed, manage_existing_int,
+            vops):
         disk_device = mock.sentinel.disk_device
         vops._get_disk_device.return_value = disk_device
+
+        backing = mock.sentinel.backing
+        manage_existing_int.return_value = backing
 
         volume = self._create_volume_dict()
         tmp_backing = mock.sentinel.tmp_backing
@@ -2299,6 +2331,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops._get_disk_device.assert_called_once_with(tmp_backing)
         manage_existing_int.assert_called_once_with(
             volume, tmp_backing, disk_device)
+        extend_if_needed.assert_called_once_with(volume, backing)
         delete_temp_backing.assert_called_once_with(tmp_backing)
 
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
@@ -2997,8 +3030,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         src_path = mock.sentinel.src_path
         disk_backing = mock.Mock(fileName=src_path)
         disk_device = mock.Mock(backing=disk_backing, capacityInKB=1048576)
-        self._driver._manage_existing_int(volume, vm, disk_device)
+        ret = self._driver._manage_existing_int(volume, vm, disk_device)
 
+        self.assertEqual(backing, ret)
         create_backing.assert_called_once_with(
             volume, create_params={vmdk.CREATE_PARAM_DISK_LESS: True})
         vops.detach_disk_from_backing.assert_called_once_with(vm, disk_device)
