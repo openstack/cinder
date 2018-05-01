@@ -21,4 +21,7 @@ The DISCO driver supports the following features:
 Configuration options
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. include:: ../../tables/cinder-disco.inc
+.. config-table::
+   :config-target: Disco
+
+   cinder.volume.drivers.disco.disco
