@@ -156,4 +156,7 @@ Driver-specific options
 The following table contains the configuration options that are specific
 to the Lenovo drivers.
 
-.. include:: ../../tables/cinder-lenovo.inc
+.. config-table::
+   :config-target: Lenovo
+
+   cinder.volume.drivers.lenovo.lenovo_common
