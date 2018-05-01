@@ -16,9 +16,7 @@
 import ast
 from copy import deepcopy
 import datetime
-import tempfile
 import time
-from xml.dom import minidom
 
 import mock
 import requests
@@ -154,7 +152,7 @@ class VMAXCommonData(object):
 
     # cinder volume info
     ctx = context.RequestContext('admin', 'fake', True)
-    provider_location = {'array': six.text_type(array),
+    provider_location = {'array': array,
                          'device_id': device_id}
 
     provider_location2 = {'array': six.text_type(array),
@@ -283,8 +281,8 @@ class VMAXCommonData(object):
     extra_specs_rep_enabled['replication_enabled'] = True
     rep_extra_specs = deepcopy(extra_specs_rep_enabled)
     rep_extra_specs['array'] = remote_array
-    rep_extra_specs['interval'] = 0
-    rep_extra_specs['retries'] = 0
+    rep_extra_specs['interval'] = 1
+    rep_extra_specs['retries'] = 1
     rep_extra_specs['srp'] = srp2
     rep_extra_specs['rep_mode'] = 'Synchronous'
     rep_extra_specs2 = deepcopy(rep_extra_specs)
@@ -1183,89 +1181,15 @@ class FakeConfiguration(object):
         pass
 
 
-class FakeXML(object):
-
-    def __init__(self):
-        """"""
-        self.tempdir = tempfile.mkdtemp()
-        self.data = VMAXCommonData()
-
-    def create_fake_config_file(self, config_group, portgroup,
-                                ssl_verify=False):
-
-        doc = minidom.Document()
-        emc = doc.createElement("EMC")
-        doc.appendChild(emc)
-        doc = self.add_array_info(doc, emc, portgroup, ssl_verify)
-        filename = 'cinder_dell_emc_config_%s.xml' % config_group
-        config_file_path = self.tempdir + '/' + filename
-
-        f = open(config_file_path, 'w')
-        doc.writexml(f)
-        f.close()
-        return config_file_path
-
-    def add_array_info(self, doc, emc, portgroup_name, ssl_verify):
-        array = doc.createElement("Array")
-        arraytext = doc.createTextNode(self.data.array)
-        emc.appendChild(array)
-        array.appendChild(arraytext)
-
-        ecomserverip = doc.createElement("RestServerIp")
-        ecomserveriptext = doc.createTextNode("1.1.1.1")
-        emc.appendChild(ecomserverip)
-        ecomserverip.appendChild(ecomserveriptext)
-
-        ecomserverport = doc.createElement("RestServerPort")
-        ecomserverporttext = doc.createTextNode("8443")
-        emc.appendChild(ecomserverport)
-        ecomserverport.appendChild(ecomserverporttext)
-
-        ecomusername = doc.createElement("RestUserName")
-        ecomusernametext = doc.createTextNode("smc")
-        emc.appendChild(ecomusername)
-        ecomusername.appendChild(ecomusernametext)
-
-        ecompassword = doc.createElement("RestPassword")
-        ecompasswordtext = doc.createTextNode("smc")
-        emc.appendChild(ecompassword)
-        ecompassword.appendChild(ecompasswordtext)
-
-        portgroup = doc.createElement("PortGroup")
-        portgrouptext = doc.createTextNode(portgroup_name)
-        portgroup.appendChild(portgrouptext)
-
-        portgroups = doc.createElement("PortGroups")
-        portgroups.appendChild(portgroup)
-        emc.appendChild(portgroups)
-
-        srp = doc.createElement("SRP")
-        srptext = doc.createTextNode("SRP_1")
-        emc.appendChild(srp)
-        srp.appendChild(srptext)
-
-        if ssl_verify:
-            restcert = doc.createElement("SSLCert")
-            restcerttext = doc.createTextNode("/path/cert.crt")
-            emc.appendChild(restcert)
-            restcert.appendChild(restcerttext)
-
-            restverify = doc.createElement("SSLVerify")
-            restverifytext = doc.createTextNode("/path/cert.pem")
-            emc.appendChild(restverify)
-            restverify.appendChild(restverifytext)
-        return doc
-
-
 class VMAXUtilsTest(test.TestCase):
     def setUp(self):
         self.data = VMAXCommonData()
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
         super(VMAXUtilsTest, self).setUp()
-        config_group = 'UtilsTests'
-        fake_xml = FakeXML().create_fake_config_file(
-            config_group, self.data.port_group_name_i, True)
-        configuration = FakeConfiguration(fake_xml, config_group)
+        configuration = FakeConfiguration(
+            None, 'UtilsTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
         rest.VMAXRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
         driver = iscsi.VMAXISCSIDriver(configuration=configuration)
@@ -1298,48 +1222,6 @@ class VMAXUtilsTest(test.TestCase):
             {'name': 'no_type_id'})
         self.assertEqual({}, extra_specs)
 
-    def test_get_random_portgroup(self):
-        # 4 portgroups
-        data = ("<?xml version='1.0' encoding='UTF-8'?>\n<EMC>\n"
-                "<PortGroups>"
-                "<PortGroup>OS-PG1</PortGroup>\n"
-                "<PortGroup>OS-PG2</PortGroup>\n"
-                "<PortGroup>OS-PG3</PortGroup>\n"
-                "<PortGroup>OS-PG4</PortGroup>\n"
-                "</PortGroups>"
-                "</EMC>")
-        dom = minidom.parseString(data)
-        portgroup = self.utils._get_random_portgroup(dom)
-        self.assertIn('OS-PG', portgroup)
-
-        # Duplicate portgroups
-        data = ("<?xml version='1.0' encoding='UTF-8'?>\n<EMC>\n"
-                "<PortGroups>"
-                "<PortGroup>OS-PG1</PortGroup>\n"
-                "<PortGroup>OS-PG1</PortGroup>\n"
-                "<PortGroup>OS-PG1</PortGroup>\n"
-                "<PortGroup>OS-PG2</PortGroup>\n"
-                "</PortGroups>"
-                "</EMC>")
-        dom = minidom.parseString(data)
-        portgroup = self.utils._get_random_portgroup(dom)
-        self.assertIn('OS-PG', portgroup)
-
-    def test_get_random_portgroup_none(self):
-        # Missing PortGroup tag
-        data = ("<?xml version='1.0' encoding='UTF-8'?>\n<EMC>\n"
-                "</EMC>")
-        dom = minidom.parseString(data)
-        self.assertIsNone(self.utils._get_random_portgroup(dom))
-
-        # Missing portgroups
-        data = ("<?xml version='1.0' encoding='UTF-8'?>\n<EMC>\n"
-                "<PortGroups>"
-                "</PortGroups>"
-                "</EMC>")
-        dom = minidom.parseString(data)
-        self.assertIsNone(self.utils._get_random_portgroup(dom))
-
     def test_get_host_short_name(self):
         host_under_16_chars = 'host_13_chars'
         host1 = self.utils.get_host_short_name(
@@ -1364,53 +1246,6 @@ class VMAXUtilsTest(test.TestCase):
         volume_element_name = self.utils.get_volume_element_name(volume_id)
         expect_vol_element_name = ('OS-' + volume_id)
         self.assertEqual(expect_vol_element_name, volume_element_name)
-
-    def test_parse_file_to_get_array_map(self):
-        kwargs = (
-            {'RestServerIp': '1.1.1.1',
-             'RestServerPort': '8443',
-             'RestUserName': 'smc',
-             'RestPassword': 'smc',
-             'SSLCert': '/path/cert.crt',
-             'SSLVerify': '/path/cert.pem',
-             'SerialNumber': self.data.array,
-             'srpName': 'SRP_1',
-             'PortGroup': self.data.port_group_name_i})
-        array_info = self.utils.parse_file_to_get_array_map(
-            self.common.configuration.cinder_dell_emc_config_file)
-        self.assertEqual(kwargs, array_info)
-
-    @mock.patch.object(utils.VMAXUtils,
-                       '_get_connection_info')
-    @mock.patch.object(utils.VMAXUtils,
-                       '_get_random_portgroup')
-    def test_parse_file_to_get_array_map_errors(self, mock_port, mock_conn):
-        tempdir = tempfile.mkdtemp()
-        doc = minidom.Document()
-        emc = doc.createElement("EMC")
-        doc.appendChild(emc)
-        filename = 'cinder_dell_emc_config_%s.xml' % 'fake_xml'
-        config_file_path = tempdir + '/' + filename
-        f = open(config_file_path, 'w')
-        doc.writexml(f)
-        f.close()
-        array_info = self.utils.parse_file_to_get_array_map(
-            config_file_path)
-        self.assertIsNone(array_info['SerialNumber'])
-
-    def test_parse_file_to_get_array_map_conn_errors(self):
-        tempdir = tempfile.mkdtemp()
-        doc = minidom.Document()
-        emc = doc.createElement("EMC")
-        doc.appendChild(emc)
-        filename = 'cinder_dell_emc_config_%s.xml' % 'fake_xml'
-        config_file_path = tempdir + '/' + filename
-        f = open(config_file_path, 'w')
-        doc.writexml(f)
-        f.close()
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.utils.parse_file_to_get_array_map,
-                          config_file_path)
 
     def test_truncate_string(self):
         # string is less than max number
@@ -1796,10 +1631,10 @@ class VMAXRestTest(test.TestCase):
 
         super(VMAXRestTest, self).setUp()
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
-        config_group = 'RestTests'
-        fake_xml = FakeXML().create_fake_config_file(
-            config_group, self.data.port_group_name_f)
-        configuration = FakeConfiguration(fake_xml, config_group)
+        configuration = FakeConfiguration(
+            None, 'RestTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
         rest.VMAXRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
         driver = fc.VMAXFCDriver(configuration=configuration)
@@ -3255,10 +3090,10 @@ class VMAXProvisionTest(test.TestCase):
 
         super(VMAXProvisionTest, self).setUp()
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
-        config_group = 'ProvisionTests'
-        self.fake_xml = FakeXML().create_fake_config_file(
-            config_group, self.data.port_group_name_i)
-        configuration = FakeConfiguration(self.fake_xml, config_group)
+        configuration = FakeConfiguration(
+            None, 'ProvisionTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
         rest.VMAXRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
         driver = iscsi.VMAXISCSIDriver(configuration=configuration)
@@ -3760,11 +3595,10 @@ class VMAXCommonTest(test.TestCase):
         super(VMAXCommonTest, self).setUp()
         self.mock_object(volume_utils, 'get_max_over_subscription_ratio',
                          return_value=1.0)
-        config_group = 'CommonTests'
-        self.fake_xml = FakeXML().create_fake_config_file(
-            config_group, self.data.port_group_name_f)
-        configuration = FakeConfiguration(self.fake_xml, config_group,
-                                          1, 1)
+        configuration = FakeConfiguration(
+            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_f])
         rest.VMAXRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
         driver = fc.VMAXFCDriver(configuration=configuration)
@@ -3782,16 +3616,15 @@ class VMAXCommonTest(test.TestCase):
     @mock.patch.object(common.VMAXCommon,
                        '_get_slo_workload_combinations',
                        return_value=[])
-    @mock.patch.object(utils.VMAXUtils,
-                       'parse_file_to_get_array_map',
+    @mock.patch.object(common.VMAXCommon,
+                       'get_attributes_from_cinder_config',
                        return_value=[])
     def test_gather_info_no_opts(self, mock_parse, mock_combo, mock_rest):
         configuration = FakeConfiguration(None, 'config_group', None, None)
         fc.VMAXFCDriver(configuration=configuration)
 
     def test_get_slo_workload_combinations_success(self):
-        array_info = self.utils.parse_file_to_get_array_map(
-            self.common.pool_info['config_file'])
+        array_info = self.common.get_attributes_from_cinder_config()
         finalarrayinfolist = self.common._get_slo_workload_combinations(
             array_info)
         self.assertTrue(len(finalarrayinfolist) > 1)
@@ -4123,23 +3956,6 @@ class VMAXCommonTest(test.TestCase):
             data = self.common.update_volume_stats()
             self.assertEqual('CommonTests', data['volume_backend_name'])
 
-    def test_set_config_file_and_get_extra_specs(self):
-        volume = self.data.test_volume
-        extra_specs, config_file, qos_specs = (
-            self.common._set_config_file_and_get_extra_specs(volume))
-        self.assertEqual(self.data.vol_type_extra_specs, extra_specs)
-        self.assertEqual(self.fake_xml, config_file)
-
-    def test_set_config_file_and_get_extra_specs_no_specs(self):
-        volume = self.data.test_volume
-        ref_config = '/etc/cinder/cinder_dell_emc_config.xml'
-        with mock.patch.object(self.utils, 'get_volumetype_extra_specs',
-                               return_value=None):
-            extra_specs, config_file, qos_specs = (
-                self.common._set_config_file_and_get_extra_specs(volume))
-            self.assertIsNone(extra_specs)
-            self.assertEqual(ref_config, config_file)
-
     def test_find_device_on_array_success(self):
         volume = self.data.test_volume
         extra_specs = self.data.extra_specs
@@ -4240,18 +4056,6 @@ class VMAXCommonTest(test.TestCase):
             volume, None, extra_specs)
         self.assertEqual(ref_masked, maskedvols)
 
-    def test_register_config_file_from_config_group_exists(self):
-        config_group_name = 'CommonTests'
-        config_file = self.common._register_config_file_from_config_group(
-            config_group_name)
-        self.assertEqual(self.fake_xml, config_file)
-
-    def test_register_config_file_from_config_group_does_not_exist(self):
-        config_group_name = 'IncorrectName'
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.common._register_config_file_from_config_group,
-                          config_group_name)
-
     def test_initial_setup_success(self):
         volume = self.data.test_volume
         ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)
@@ -4261,8 +4065,9 @@ class VMAXCommonTest(test.TestCase):
 
     def test_initial_setup_failed(self):
         volume = self.data.test_volume
-        with mock.patch.object(self.utils, 'parse_file_to_get_array_map',
-                               return_value=None):
+        with mock.patch.object(
+                self.common, 'get_attributes_from_cinder_config',
+                return_value=None):
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.common._initial_setup, volume)
 
@@ -4475,8 +4280,7 @@ class VMAXCommonTest(test.TestCase):
             volume_name, volume_size, extra_specs)
 
     def test_set_vmax_extra_specs(self):
-        srp_record = self.utils.parse_file_to_get_array_map(
-            self.fake_xml)
+        srp_record = self.common.get_attributes_from_cinder_config()
         extra_specs = self.common._set_vmax_extra_specs(
             self.data.vol_type_extra_specs, srp_record)
         ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)
@@ -4484,16 +4288,14 @@ class VMAXCommonTest(test.TestCase):
         self.assertEqual(ref_extra_specs, extra_specs)
 
     def test_set_vmax_extra_specs_no_srp_name(self):
-        srp_record = self.utils.parse_file_to_get_array_map(
-            self.fake_xml)
+        srp_record = self.common.get_attributes_from_cinder_config()
         extra_specs = self.common._set_vmax_extra_specs({}, srp_record)
         self.assertEqual('Optimized', extra_specs['slo'])
 
     def test_set_vmax_extra_specs_compr_disabled(self):
         with mock.patch.object(self.rest, 'is_compression_capable',
                                return_value=True):
-            srp_record = self.utils.parse_file_to_get_array_map(
-                self.fake_xml)
+            srp_record = self.common.get_attributes_from_cinder_config()
             extra_specs = self.common._set_vmax_extra_specs(
                 self.data.vol_type_extra_specs_compr_disabled, srp_record)
             ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)
@@ -4502,8 +4304,7 @@ class VMAXCommonTest(test.TestCase):
             self.assertEqual(ref_extra_specs, extra_specs)
 
     def test_set_vmax_extra_specs_compr_disabled_not_compr_capable(self):
-        srp_record = self.utils.parse_file_to_get_array_map(
-            self.fake_xml)
+        srp_record = self.common.get_attributes_from_cinder_config()
         extra_specs = self.common._set_vmax_extra_specs(
             self.data.vol_type_extra_specs_compr_disabled, srp_record)
         ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)
@@ -4511,16 +4312,20 @@ class VMAXCommonTest(test.TestCase):
         self.assertEqual(ref_extra_specs, extra_specs)
 
     def test_set_vmax_extra_specs_portgroup_as_spec(self):
-        srp_record = self.utils.parse_file_to_get_array_map(
-            self.fake_xml)
+        srp_record = self.common.get_attributes_from_cinder_config()
         extra_specs = self.common._set_vmax_extra_specs(
             {utils.PORTGROUPNAME: 'extra_spec_pg'}, srp_record)
         self.assertEqual('extra_spec_pg', extra_specs[utils.PORTGROUPNAME])
 
     def test_set_vmax_extra_specs_no_portgroup_set(self):
-        fake_xml = FakeXML().create_fake_config_file(
-            'test_no_pg_set', '')
-        srp_record = self.utils.parse_file_to_get_array_map(fake_xml)
+        srp_record = {'srpName': 'SRP_1',
+                      'RestServerIp': '1.1.1.1',
+                      'RestPassword': 'smc',
+                      'SSLCert': None,
+                      'RestServerPort': 8443,
+                      'SSLVerify': False,
+                      'RestUserName': 'smc',
+                      'SerialNumber': '000197800123'}
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.common._set_vmax_extra_specs,
                           {}, srp_record)
@@ -5375,7 +5180,7 @@ class VMAXCommonTest(test.TestCase):
         self.assertEqual(ref_dev_id, src_dev_id1)
         self.assertEqual(ref_dev_id, src_dev_id2)
 
-    def test_get_attributes_from_cinder_config_new(self):
+    def test_get_attributes_from_cinder_config_new_and_old(self):
         kwargs_expected = (
             {'RestServerIp': '1.1.1.1',
              'RestServerPort': 8443,
@@ -5386,7 +5191,7 @@ class VMAXCommonTest(test.TestCase):
              'SerialNumber': self.data.array,
              'srpName': 'SRP_1',
              'PortGroup': self.data.port_group_name_i})
-        backup_conf = self.common.configuration
+        old_conf = FakeConfiguration(None, 'CommonTests', 1, 1)
         configuration = FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
@@ -5394,30 +5199,7 @@ class VMAXCommonTest(test.TestCase):
         self.common.configuration = configuration
         kwargs_returned = self.common.get_attributes_from_cinder_config()
         self.assertEqual(kwargs_expected, kwargs_returned)
-        self.common.configuration = backup_conf
-        kwargs = self.common.get_attributes_from_cinder_config()
-        self.assertIsNone(kwargs)
-
-    def test_get_attributes_from_cinder_config_old(self):
-        kwargs_expected = (
-            {'RestServerIp': '1.1.1.1',
-             'RestServerPort': 8443,
-             'RestUserName': 'smc',
-             'RestPassword': 'smc',
-             'SSLCert': None,
-             'SSLVerify': False,
-             'SerialNumber': self.data.array,
-             'srpName': 'SRP_1',
-             'PortGroup': self.data.port_group_name_i})
-        backup_conf = self.common.configuration
-        configuration = FakeConfiguration(
-            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_rest_port=8443, vmax_port_groups=[self.data.port_group_name_i])
-        self.common.configuration = configuration
-        kwargs_returned = self.common.get_attributes_from_cinder_config()
-        self.assertEqual(kwargs_expected, kwargs_returned)
-        self.common.configuration = backup_conf
+        self.common.configuration = old_conf
         kwargs = self.common.get_attributes_from_cinder_config()
         self.assertIsNone(kwargs)
 
@@ -5703,11 +5485,11 @@ class VMAXFCTest(test.TestCase):
         self.data = VMAXCommonData()
 
         super(VMAXFCTest, self).setUp()
-        config_group = 'FCTests'
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
-        self.fake_xml = FakeXML().create_fake_config_file(
-            config_group, self.data.port_group_name_f)
-        self.configuration = FakeConfiguration(self.fake_xml, config_group)
+        self.configuration = FakeConfiguration(
+            None, 'FCTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
         rest.VMAXRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
         driver = fc.VMAXFCDriver(configuration=self.configuration)
@@ -5961,11 +5743,10 @@ class VMAXISCSITest(test.TestCase):
         self.data = VMAXCommonData()
 
         super(VMAXISCSITest, self).setUp()
-        config_group = 'ISCSITests'
-        self.fake_xml = FakeXML().create_fake_config_file(
-            config_group, self.data.port_group_name_i)
-        volume_utils.get_max_over_subscription_ratio = mock.Mock()
-        configuration = FakeConfiguration(self.fake_xml, config_group)
+        configuration = FakeConfiguration(
+            None, 'ISCSITests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
         rest.VMAXRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
         driver = iscsi.VMAXISCSIDriver(configuration=configuration)
@@ -7266,9 +7047,6 @@ class VMAXCommonReplicationTest(test.TestCase):
         self.data = VMAXCommonData()
 
         super(VMAXCommonReplicationTest, self).setUp()
-        config_group = 'CommonReplicationTests'
-        self.fake_xml = FakeXML().create_fake_config_file(
-            config_group, self.data.port_group_name_f)
         self.replication_device = {
             'target_device_id': self.data.remote_array,
             'remote_port_group': self.data.port_group_name_f,
@@ -7276,16 +7054,21 @@ class VMAXCommonReplicationTest(test.TestCase):
             'rdf_group_label': self.data.rdf_group_name,
             'allow_extend': 'True'}
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
+
         configuration = FakeConfiguration(
-            self.fake_xml, config_group,
+            None, 'CommonReplicationTests', 1, 1, san_ip='1.1.1.1',
+            san_login='smc', vmax_array=self.data.array, vmax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            vmax_port_groups=[self.data.port_group_name_f],
             replication_device=self.replication_device)
         rest.VMAXRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
         driver = fc.VMAXFCDriver(configuration=configuration)
-        iscsi_fake_xml = FakeXML().create_fake_config_file(
-            config_group, self.data.port_group_name_i)
         iscsi_config = FakeConfiguration(
-            iscsi_fake_xml, config_group,
+            None, 'CommonReplicationTests', 1, 1, san_ip='1.1.1.1',
+            san_login='smc', vmax_array=self.data.array, vmax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            vmax_port_groups=[self.data.port_group_name_i],
             replication_device=self.replication_device)
         iscsi_driver = iscsi.VMAXISCSIDriver(configuration=iscsi_config)
         self.iscsi_common = iscsi_driver.common
@@ -7299,8 +7082,8 @@ class VMAXCommonReplicationTest(test.TestCase):
             mock.Mock(
                 return_value=self.data.vol_type_extra_specs_rep_enabled))
         self.extra_specs = deepcopy(self.data.extra_specs_rep_enabled)
-        self.extra_specs['retries'] = 0
-        self.extra_specs['interval'] = 0
+        self.extra_specs['retries'] = 1
+        self.extra_specs['interval'] = 1
         self.extra_specs['rep_mode'] = 'Synchronous'
         self.async_rep_device = {
             'target_device_id': self.data.remote_array,
@@ -7309,7 +7092,10 @@ class VMAXCommonReplicationTest(test.TestCase):
             'rdf_group_label': self.data.rdf_group_name,
             'allow_extend': 'True', 'mode': 'async'}
         async_configuration = FakeConfiguration(
-            self.fake_xml, config_group,
+            None, 'CommonReplicationTests', 1, 1, san_ip='1.1.1.1',
+            san_login='smc', vmax_array=self.data.array, vmax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            vmax_port_groups=[self.data.port_group_name_f],
             replication_device=self.async_rep_device)
         self.async_driver = fc.VMAXFCDriver(configuration=async_configuration)
         self.metro_rep_device = {
@@ -7319,7 +7105,10 @@ class VMAXCommonReplicationTest(test.TestCase):
             'rdf_group_label': self.data.rdf_group_name,
             'allow_extend': 'True', 'mode': 'metro'}
         metro_configuration = FakeConfiguration(
-            self.fake_xml, config_group,
+            None, 'CommonReplicationTests', 1, 1, san_ip='1.1.1.1',
+            san_login='smc', vmax_array=self.data.array, vmax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            vmax_port_groups=[self.data.port_group_name_f],
             replication_device=self.metro_rep_device)
         self.metro_driver = fc.VMAXFCDriver(configuration=metro_configuration)
 
@@ -7521,7 +7310,7 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.data.device_id, volume_name, "5", extra_specs)
 
     def test_set_config_file_get_extra_specs_rep_enabled(self):
-        extra_specs, _, _ = self.common._set_config_file_and_get_extra_specs(
+        extra_specs, _ = self.common._set_config_file_and_get_extra_specs(
             self.data.test_volume)
         self.assertTrue(extra_specs['replication_enabled'])
 
@@ -7853,8 +7642,7 @@ class VMAXCommonReplicationTest(test.TestCase):
     def test_get_secondary_stats(self):
         rep_config = self.utils.get_replication_config(
             [self.replication_device])
-        array_map = self.utils.parse_file_to_get_array_map(
-            self.common.pool_info['config_file'])
+        array_map = self.common.get_attributes_from_cinder_config()
         finalarrayinfolist = self.common._get_slo_workload_combinations(
             array_map)
         array_info = finalarrayinfolist[0]
