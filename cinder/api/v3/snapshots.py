@@ -72,7 +72,6 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
     def _items(self, req, is_detail=True):
         """Returns a list of snapshots, transformed through view builder."""
         context = req.environ['cinder.context']
-        req_version = req.api_version_request
         # Pop out non search_opts and create local variables
         search_opts = req.GET.copy()
         sort_keys, sort_dirs = common.get_sort_params(search_opts)
