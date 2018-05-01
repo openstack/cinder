@@ -53,19 +53,21 @@ class NVMeOF(driver.Target):
 
         In NVMeOF driver, :driver_volume_type: is set to 'nvmeof',
         :data: is the driver data that has the value of
-        _get_connection_properties
-        Example return value::
+        _get_connection_properties.
+
+        Example return value:
 
         .. code-block:: json
 
             {
-                'driver_volume_type': 'nvmeof'
-                'data': {
-                    'target_portal': '1.1.1.1',
-                    'target_port': 4420,
-                    'nqn': 'nqn.volume-0001',
-                    'transport_type': 'rdma',
-                    'ns_id': 10,
+                "driver_volume_type": "nvmeof",
+                "data":
+                {
+                    "target_portal": "1.1.1.1",
+                    "target_port": 4420,
+                    "nqn": "nqn.volume-0001",
+                    "transport_type": "rdma",
+                    "ns_id": 10
                 }
             }
         """
