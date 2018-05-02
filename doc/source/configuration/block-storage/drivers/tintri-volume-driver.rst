@@ -78,4 +78,7 @@ following actions:
       {vmstore_data_ip}:/tintri/{submount2}
 
 
-.. include:: ../../tables/cinder-tintri.inc
+.. config-table::
+   :config-target: Tintri
+
+   cinder.volume.drivers.tintri
