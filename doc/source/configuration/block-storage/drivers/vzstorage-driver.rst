@@ -11,4 +11,7 @@ options to configure it.
 
    volume_driver = cinder.volume.drivers.vzstorage.VZStorageDriver
 
-.. include:: ../../tables/cinder-vzstorage.inc
+.. config-table::
+   :config-target: Virtuozzo Storage
+
+   cinder.volume.drivers.vzstorage
