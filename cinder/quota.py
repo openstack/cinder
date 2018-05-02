@@ -1234,3 +1234,4 @@ class GroupQuotaEngine(QuotaEngine):
 QUOTAS = VolumeTypeQuotaEngine()
 CGQUOTAS = CGQuotaEngine()
 GROUP_QUOTAS = GroupQuotaEngine()
+NON_QUOTA_KEYS = ['tenant_id', 'id']
