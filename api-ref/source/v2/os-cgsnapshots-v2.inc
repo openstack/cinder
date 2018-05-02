@@ -27,7 +27,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - cgsnapshot_id: cgsnapshot_id
+   - cgsnapshot_id: cgsnapshot_id_1
 
 
 Show consistency group snapshot details
@@ -50,7 +50,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - cgsnapshot_id: cgsnapshot_id
+   - cgsnapshot_id: cgsnapshot_id_1
 
 
 Response Parameters
