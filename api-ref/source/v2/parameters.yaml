@@ -1586,6 +1586,12 @@ totalVolumesUsed:
   in: body
   required: true
   type: integer
+transfer:
+  description: |
+    The volume transfer object.
+  in: body
+  required: true
+  type: object
 updated:
   description: |
     The date and time stamp when the extension was

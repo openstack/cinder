@@ -41,6 +41,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - transfer: transfer
    - volume_id: volume_id
    - id: id
    - links: links
