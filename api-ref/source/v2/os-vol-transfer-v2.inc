@@ -27,6 +27,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - auth_key: auth_key
+   - transfer: transfer
    - transfer_id: transfer_id
    - project_id: project_id_path
 
@@ -72,6 +73,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - transfer: transfer
    - name: name
    - volume_id: volume_id
    - project_id: project_id_path
