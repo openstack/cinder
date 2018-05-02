@@ -17,11 +17,12 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import quota_classes as quota_class
+from cinder.api import validation
 from cinder import db
 from cinder import exception
 from cinder.policies import quota_class as policy
 from cinder import quota
-from cinder import utils
 
 
 QUOTAS = quota.QUOTAS
@@ -50,6 +51,7 @@ class QuotaClassSetsController(wsgi.Controller):
 
         return self._format_quota_set(id, quota_set)
 
+    @validation.schema(quota_class.update_quota_class)
     def update(self, req, id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.MANAGE_POLICY)
@@ -57,18 +59,14 @@ class QuotaClassSetsController(wsgi.Controller):
                                     min_length=1, max_length=255)
 
         quota_class = id
-        self.assert_valid_body(body, 'quota_class_set')
 
         for key, value in body['quota_class_set'].items():
-            if key in QUOTAS or key in GROUP_QUOTAS:
-                try:
-                    value = utils.validate_integer(value, key, min_value=-1,
-                                                   max_value=db.MAX_INT)
-                    db.quota_class_update(context, quota_class, key, value)
-                except exception.QuotaClassNotFound:
-                    db.quota_class_create(context, quota_class, key, value)
-                except exception.AdminRequired:
-                    raise webob.exc.HTTPForbidden()
+            try:
+                db.quota_class_update(context, quota_class, key, value)
+            except exception.QuotaClassNotFound:
+                db.quota_class_create(context, quota_class, key, value)
+            except exception.AdminRequired:
+                raise webob.exc.HTTPForbidden()
 
         quota_set = QUOTAS.get_class_quotas(context, quota_class)
         group_quota_set = GROUP_QUOTAS.get_class_quotas(context, quota_class)

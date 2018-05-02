@@ -239,6 +239,20 @@ def _validate_quota_set(quota_set):
     return True
 
 
+@jsonschema.FormatChecker.cls_checks('quota_class_set')
+def _validate_quota_class_set(instance):
+    bad_keys = []
+    for key in instance:
+        if key not in QUOTAS and key not in GROUP_QUOTAS:
+            bad_keys.append(key)
+
+    if len(bad_keys) > 0:
+        msg = _("Bad key(s) in quota class set: %s") % ", ".join(bad_keys)
+        raise exception.InvalidInput(reason=msg)
+
+    return True
+
+
 class FormatChecker(jsonschema.FormatChecker):
     """A FormatChecker can output the message from cause exception
 

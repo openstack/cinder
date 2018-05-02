@@ -20,9 +20,6 @@ Tests for cinder.api.contrib.quota_classes.py
 
 import mock
 
-import webob.exc
-
-
 from cinder.api.contrib import quota_classes
 from cinder import context
 from cinder import exception
@@ -110,48 +107,46 @@ class QuotaClassSetsControllerTest(test.TestCase):
         volume_types.create(self.ctxt, 'fake_type')
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, tenant_id=None)
-        result = self.controller.update(self.req, fake.PROJECT_ID, body)
+        result = self.controller.update(self.req, fake.PROJECT_ID, body=body)
         self.assertDictEqual(body, result)
 
     @mock.patch('cinder.api.openstack.wsgi.Controller.validate_string_length')
-    @mock.patch('cinder.utils.validate_integer')
-    def test_update_limit(self, mock_validate_integer, mock_validate):
-        mock_validate_integer.return_value = 5
+    def test_update_limit(self, mock_validate):
         volume_types.create(self.ctxt, 'fake_type')
-        body = make_body(volumes=5)
-        result = self.controller.update(self.req, fake.PROJECT_ID, body)
+        body = make_body(volumes=5, tenant_id=None)
+        result = self.controller.update(self.req, fake.PROJECT_ID, body=body)
         self.assertEqual(5, result['quota_class_set']['volumes'])
         self.assertTrue(mock_validate.called)
-        self.assertTrue(mock_validate_integer.called)
 
     def test_update_wrong_key(self):
         volume_types.create(self.ctxt, 'fake_type')
-        body = {'quota_class_set': {'bad': 'bad'}}
-        result = self.controller.update(self.req, fake.PROJECT_ID, body)
-        self.assertDictEqual(make_body(tenant_id=None), result)
+        body = {'quota_class_set': {'bad': 100}}
+        self.assertRaises(exception.InvalidInput, self.controller.update,
+                          self.req, fake.PROJECT_ID, body=body)
 
     def test_update_invalid_key_value(self):
         body = {'quota_class_set': {'gigabytes': "should_be_int"}}
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, fake.PROJECT_ID, body)
+        self.assertRaises(exception.ValidationError, self.controller.update,
+                          self.req, fake.PROJECT_ID, body=body)
 
     def test_update_bad_quota_limit(self):
         body = {'quota_class_set': {'gigabytes': -1000}}
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, fake.PROJECT_ID, body)
+        self.assertRaises(exception.ValidationError, self.controller.update,
+                          self.req, fake.PROJECT_ID, body=body)
 
     def test_update_no_admin(self):
         self.req.environ['cinder.context'].is_admin = False
+        volume_types.create(self.ctxt, 'fake_type')
         self.assertRaises(exception.PolicyNotAuthorized,
                           self.controller.update, self.req, fake.PROJECT_ID,
-                          make_body(tenant_id=None))
+                          body=make_body(tenant_id=None))
 
     def test_update_with_more_volume_types(self):
         volume_types.create(self.ctxt, 'fake_type_1')
         volume_types.create(self.ctxt, 'fake_type_2')
         body = {'quota_class_set': {'gigabytes_fake_type_1': 1111,
                                     'volumes_fake_type_2': 2222}}
-        result = self.controller.update(self.req, fake.PROJECT_ID, body)
+        result = self.controller.update(self.req, fake.PROJECT_ID, body=body)
         self.assertDictEqual(make_response_body(ctxt=self.ctxt,
                                                 quota_class=fake.PROJECT_ID,
                                                 request_body=body,
