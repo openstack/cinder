@@ -63,6 +63,8 @@ class MockResource(object):
             raise ex.UnityResourceNotFoundError()
         elif self.get_id() == 'snap_in_use':
             raise ex.UnityDeleteAttachedSnapError()
+        elif self.name == 'empty_host':
+            raise ex.HostDeleteIsCalled()
 
     @property
     def pool(self):
@@ -545,3 +547,15 @@ class ClientTest(unittest.TestCase):
     def test_restore_snapshot(self):
         back_snap = self.client.restore_snapshot('snap1')
         self.assertEqual("internal_snap", back_snap.name)
+
+    def test_delete_host_wo_lock(self):
+        host = MockResource(name='empty-host')
+        self.client.host_cache['empty-host'] = host
+        self.assertRaises(ex.HostDeleteIsCalled,
+                          self.client.delete_host_wo_lock(host))
+
+    def test_delete_host_wo_lock_remove_from_cache(self):
+        host = MockResource(name='empty-host-in-cache')
+        self.client.host_cache['empty-host-in-cache'] = host
+        self.client.delete_host_wo_lock(host)
+        self.assertNotIn(host.name, self.client.host_cache)
