@@ -45,6 +45,7 @@ class MockConfig(object):
         self.san_password = 'pass'
         self.driver_ssl_cert_verify = False
         self.driver_ssl_cert_path = None
+        self.remove_empty_host = False
 
     def safe_get(self, name):
         return getattr(self, name)
@@ -70,6 +71,7 @@ class MockDriver(object):
 class MockClient(object):
     def __init__(self):
         self._system = test_client.MockSystem()
+        self.host = '10.10.10.10'  # fake unity IP
 
     @staticmethod
     def get_pools():
@@ -129,6 +131,15 @@ class MockClient(object):
     @staticmethod
     def create_host(name):
         return test_client.MockResource(name=name)
+
+    @staticmethod
+    def create_host_wo_lock(name):
+        return test_client.MockResource(name=name)
+
+    @staticmethod
+    def delete_host_wo_lock(host):
+        if host.name == 'empty-host':
+            raise ex.HostDeleteIsCalled()
 
     @staticmethod
     def attach(host, lun_or_snap):
@@ -463,6 +474,16 @@ class CommonAdapterTest(unittest.TestCase):
 
         self.assertRaises(ex.DetachIsCalled, f)
 
+    def test_terminate_connection_remove_empty_host(self):
+        self.adapter.remove_empty_host = True
+
+        def f():
+            connector = {'host': 'empty-host'}
+            vol = MockOSResource(provider_location='id^lun_45', id='id_45')
+            self.adapter.terminate_connection(vol, connector)
+
+        self.assertRaises(ex.HostDeleteIsCalled, f)
+
     def test_manage_existing_by_name(self):
         ref = {'source-id': 12}
         volume = MockOSResource(name='lun1')
@@ -787,6 +808,20 @@ class FCAdapterTest(unittest.TestCase):
 
     def test_terminate_connection_auto_zone_enabled_none_host_luns(self):
         connector = {'host': 'host-no-host_luns', 'wwpns': 'abcdefg'}
+        volume = MockOSResource(provider_location='id^lun_41', id='id_41')
+        ret = self.adapter.terminate_connection(volume, connector)
+        self.assertEqual('fibre_channel', ret['driver_volume_type'])
+        data = ret['data']
+        target_map = {
+            '200000051e55a100': ('100000051e55a100', '100000051e55a121'),
+            '200000051e55a121': ('100000051e55a100', '100000051e55a121')}
+        self.assertDictEqual(target_map, data['initiator_target_map'])
+        target_wwn = ['100000051e55a100', '100000051e55a121']
+        self.assertListEqual(target_wwn, data['target_wwn'])
+
+    def test_terminate_connection_remove_empty_host_return_data(self):
+        self.adapter.remove_empty_host = True
+        connector = {'host': 'empty-host-return-data', 'wwpns': 'abcdefg'}
         volume = MockOSResource(provider_location='id^lun_41', id='id_41')
         ret = self.adapter.terminate_connection(volume, connector)
         self.assertEqual('fibre_channel', ret['driver_volume_type'])

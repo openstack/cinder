@@ -37,7 +37,11 @@ UNITY_OPTS = [
     cfg.ListOpt('unity_io_ports',
                 default=None,
                 help='A comma-separated list of iSCSI or FC ports to be used. '
-                     'Each port can be Unix-style glob expressions.')]
+                     'Each port can be Unix-style glob expressions.'),
+    cfg.BoolOpt('remove_empty_host',
+                default=False,
+                help='To remove the host from Unity when the last LUN is '
+                     'detached from it. By default, it is False.')]
 
 CONF.register_opts(UNITY_OPTS, group=configuration.SHARED_CONF_GROUP)
 
@@ -56,9 +60,10 @@ class UnityDriver(driver.ManageableVD,
         2.0.0 - Add thin clone support
         2.0.1 - Fixes bug 1759175 to detach the lun correctly when auto zone
                 was enabled and the lun was the last one attached to the host.
+        2.0.2 - Support remove empty host
     """
 
-    VERSION = '02.00.01'
+    VERSION = '02.00.02'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
