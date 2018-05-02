@@ -59,7 +59,7 @@ class ConfigTableDirective(rst.Directive):
             return opt.sample_default
 
         if type(opt.default) == list:
-            return ', '.join(str(item) for item in opt.default)
+            return "[%s]" % ', '.join(str(item) for item in opt.default)
 
         result = str(opt.default)
         if not result:
