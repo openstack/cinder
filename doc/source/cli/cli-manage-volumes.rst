@@ -682,8 +682,8 @@ The arguments to be passed are:
  multiple properties)
 
 ``--state <state>``
- New snapshot state. (“available”, “error”, “creating”, “deleting”,
- or “error_deleting”)
+ New snapshot state. ("available", "error", "creating", "deleting",
+ or "error_deleting")
  (admin only) (This option simply changes the state of the snapshot in the
  database with no regard to actual status, exercise caution when using)
 
