@@ -299,6 +299,18 @@ class VolumeActionsTest(test.TestCase):
             fake_auth_context=self.context))
         self.assertEqual(http_client.ACCEPTED, res.status_int)
 
+    def test_detach_null_attachment_id(self):
+        body = {'os-detach': {'attachment_id': None}}
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+                                  (fake.PROJECT_ID, fake.VOLUME_ID))
+        req.method = "POST"
+        req.body = jsonutils.dump_as_bytes(body)
+        req.headers["content-type"] = "application/json"
+
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.context))
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
+
     def test_volume_detach_raises_remote_error(self):
         volume_remote_error = \
             messaging.RemoteError(exc_type='VolumeAttachmentNotFound')

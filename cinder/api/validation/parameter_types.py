@@ -182,7 +182,7 @@ name_allow_zero_min_length = {
 
 
 uuid_allow_null = {
-    'type': ['string', 'null']
+    'oneOf': [uuid, {'type': 'null'}]
 }
 
 

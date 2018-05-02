@@ -988,6 +988,25 @@ class BackupsAPITestCase(test.TestCase):
                          fake.WILL_NOT_BE_FOUND_ID,
                          res_dict['itemNotFound']['message'])
 
+    def test_create_backup_with_invalid_volume_id_format(self):
+        body = {"backup": {"name": "nightly001",
+                           "description":
+                           "Nightly Backup 03-Sep-2012",
+                           "volume_id": 'not a uuid',
+                           "container": "nightlybackups",
+                           }
+                }
+        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_context))
+        res_dict = jsonutils.loads(res.body)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertIn("'not a uuid' is not a 'uuid'",
+                      res_dict['badRequest']['message'])
+
     def test_create_backup_with_InvalidVolume(self):
         # need to create the volume referenced below first
         volume = utils.create_volume(self.context, size=5, status='restoring')
