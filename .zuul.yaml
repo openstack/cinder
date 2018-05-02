@@ -106,6 +106,16 @@
     nodeset: ubuntu-bionic
     vars:
         tox_envlist: functional-py36
+    irrelevant-files:
+      - ^.*\.rst$
+      - ^api-ref/.*$
+      - ^cinder/hacking/.*$
+      - ^cinder/locale/.*$
+      - ^cinder/tests/unit.*$
+      - ^contrib/block-box.*$
+      - ^doc/.*$
+      - ^releasenotes/.*$
+      - ^tools/.*$
 - job:
     # Testing running on bionic
     name: cinder-tox-py36
@@ -113,3 +123,13 @@
     nodeset: ubuntu-bionic
     vars:
         tox_envlist: py36
+    irrelevant-files:
+      - ^.*\.rst$
+      - ^api-ref/.*$
+      - ^cinder/hacking/.*$
+      - ^cinder/locale/.*$
+      - ^cinder/tests/functional.*$
+      - ^contrib/block-box.*$
+      - ^doc/.*$
+      - ^releasenotes/.*$
+      - ^tools/.*$
