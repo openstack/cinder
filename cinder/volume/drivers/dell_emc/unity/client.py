@@ -188,6 +188,9 @@ class UnityClient(object):
 
     @coordination.synchronized('{self.host}-{name}')
     def create_host(self, name):
+        return self.create_host_wo_lock(name)
+
+    def create_host_wo_lock(self, name):
         """Provides existing host if exists else create one."""
         if name not in self.host_cache:
             try:
@@ -201,6 +204,10 @@ class UnityClient(object):
         else:
             host = self.host_cache[name]
         return host
+
+    def delete_host_wo_lock(self, host):
+        host.delete()
+        del self.host_cache[host.name]
 
     def update_host_initiators(self, host, uids):
         """Updates host with the supplied uids."""

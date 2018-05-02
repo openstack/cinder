@@ -37,7 +37,11 @@ UNITY_OPTS = [
     cfg.ListOpt('unity_io_ports',
                 default=None,
                 help='A comma-separated list of iSCSI or FC ports to be used. '
-                     'Each port can be Unix-style glob expressions.')]
+                     'Each port can be Unix-style glob expressions.'),
+    cfg.BoolOpt('remove_empty_host',
+                default=False,
+                help='To remove the host from Unity when the last LUN is '
+                     'detached from it. By default, it is False.')]
 
 CONF.register_opts(UNITY_OPTS, group=configuration.SHARED_CONF_GROUP)
 
@@ -53,9 +57,10 @@ class UnityDriver(driver.ManageableVD,
         2.0.0 - Add thin clone support
         3.0.0 - Add IPv6 support
         3.1.0 - Support revert to snapshot API
+        4.0.0 - Support remove empty host
     """
 
-    VERSION = '03.01.00'
+    VERSION = '04.00.00'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
