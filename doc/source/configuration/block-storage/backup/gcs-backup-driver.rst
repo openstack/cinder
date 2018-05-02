@@ -15,4 +15,7 @@ To enable the GCS backup driver, include the following option in the
 The following configuration options are available for the GCS backup
 driver.
 
-.. include:: ../../tables/cinder-backups_gcs.inc
+.. config-table::
+   :config-target: GCS backup driver
+
+   cinder.backup.drivers.google
