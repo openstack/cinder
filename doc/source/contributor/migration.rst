@@ -189,7 +189,7 @@ Two volume types need to be created. One is with the extra specs:
 What can be tracked during volume migration
 -------------------------------------------
 The volume migration is an administrator only action and it may take
-a relatively long time to finish. The property ‘migration status’ will
+a relatively long time to finish. The property 'migration status' will
 indicate the stage of the migration process for the volume. The
 administrator can check the 'migration status' via the 'cinder list'
 or 'cinder show <volume-id>' command. The 'cinder list' command presents

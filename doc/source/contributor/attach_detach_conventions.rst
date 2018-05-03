@@ -48,14 +48,14 @@ reserve_volume(self, context, volume)
 -------------------------------------
 
 Probably the most simple call in to Cinder.  This method simply checks that
-the specified volume is in an “available” state and can be attached.
+the specified volume is in an "available" state and can be attached.
 Any other state results in an Error response notifying Nova that the volume
-is NOT available.  The only valid state for this call to succeed is “available”.
+is NOT available.  The only valid state for this call to succeed is "available".
 
 NOTE: multi-attach will add "in-use" to the above acceptable states.
 
 If the volume is in fact available, we immediately issue an update to the Cinder
-database and mark the status of the volume to “attaching” thereby reserving the
+database and mark the status of the volume to "attaching" thereby reserving the
 volume so that it won't be used by another API call anywhere else.
 
 initialize_connection(self, context, volume, connector)
