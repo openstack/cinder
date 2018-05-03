@@ -618,6 +618,18 @@ class DrbdManageIscsiTestCase(test.TestCase):
         self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
         self.assertEqual("run_external_plugin", dmd.odm.next_call())
 
+    def test_unit_conversions(self):
+        dmd = drv.DrbdManageIscsiDriver(configuration=self.configuration)
+
+        self.assertEqual(1048576, dmd._vol_size_to_dm(1))
+        self.assertEqual(1, dmd._vol_size_to_cinder(1048576))
+
+        self.assertEqual(5368709120, dmd._vol_size_to_dm(5120))
+        self.assertEqual(5120, dmd._vol_size_to_cinder(5368709120))
+
+        self.assertEqual(10737418240, dmd._vol_size_to_dm(10240))
+        self.assertEqual(10240, dmd._vol_size_to_cinder(10737418240))
+
 
 class DrbdManageDrbdTestCase(DrbdManageIscsiTestCase):
 
