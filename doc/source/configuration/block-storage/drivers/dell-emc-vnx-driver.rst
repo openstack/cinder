@@ -453,7 +453,7 @@ Use the following command to update the extra spec of a volume type:
 
 .. code-block:: console
 
-   $ openstack volume type set --property provisioning:type=thin thick_provisioning_support='<is> True' demoVolumeType
+   $ openstack volume type set --property provisioning:type=thin --property thick_provisioning_support='<is> True' demoVolumeType
 
 The following sections describe the VNX extra keys.
 
@@ -473,7 +473,7 @@ Provisioning type
       .. code-block:: console
 
          $ openstack volume type create ThickVolumeType
-         $ openstack volume type set --property provisioning:type=thick thick_provisioning_support='<is> True' ThickVolumeType
+         $ openstack volume type set --property provisioning:type=thick --property thick_provisioning_support='<is> True' ThickVolumeType
 
    -  ``thin``
 
@@ -484,7 +484,7 @@ Provisioning type
       .. code-block:: console
 
          $ openstack volume type create ThinVolumeType
-         $ openstack volume type set --property provisioning:type=thin thin_provisioning_support='<is> True' ThinVolumeType
+         $ openstack volume type set --property provisioning:type=thin --property thin_provisioning_support='<is> True' ThinVolumeType
 
    -  ``deduplicated``
 
@@ -499,7 +499,7 @@ Provisioning type
       .. code-block:: console
 
          $ openstack volume type create DeduplicatedVolumeType
-         $ openstack volume type set --property provisioning:type=deduplicated deduplicated_support='<is> True' DeduplicatedVolumeType
+         $ openstack volume type set --property provisioning:type=deduplicated --property deduplicated_support='<is> True' DeduplicatedVolumeType
 
    -  ``compressed``
 
@@ -515,7 +515,7 @@ Provisioning type
       .. code-block:: console
 
          $ openstack volume type create CompressedVolumeType
-         $ openstack volume type set --property provisioning:type=compressed compression_support='<is> True' CompressedVolumeType
+         $ openstack volume type set --property provisioning:type=compressed --property compression_support='<is> True' CompressedVolumeType
 
 -  Default: ``thick``
 
@@ -550,7 +550,7 @@ Run the following commands to create a volume type with tiering policy:
 .. code-block:: console
 
    $ openstack volume type create ThinVolumeOnAutoTier
-   $ openstack volume type set --property provisioning:type=thin storagetype:tiering=Auto fast_support='<is> True' ThinVolumeOnAutoTier
+   $ openstack volume type set --property provisioning:type=thin --property storagetype:tiering=Auto --property fast_support='<is> True' ThinVolumeOnAutoTier
 
 .. note::
 
@@ -593,7 +593,7 @@ Run the following commands to create the volume type:
 .. code-block:: console
 
    $ openstack volume type create HighPerf
-   $ openstack volume type set --property pool_name=Pool_02_SASFLASH volume_backend_name=vnx_41 HighPerf
+   $ openstack volume type set --property pool_name=Pool_02_SASFLASH --property volume_backend_name=vnx_41 HighPerf
 
 Obsolete extra specs
 --------------------
