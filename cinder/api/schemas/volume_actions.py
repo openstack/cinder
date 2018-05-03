@@ -73,7 +73,8 @@ detach = {
         'os-detach': {
             'type': ['object', 'null'],
             'properties': {
-                'attachment_id': parameter_types.uuid,
+                # NOTE(mriedem): This allows null for backward compatibility.
+                'attachment_id': parameter_types.uuid_allow_null,
             },
             'additionalProperties': False,
         },

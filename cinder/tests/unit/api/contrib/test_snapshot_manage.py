@@ -253,10 +253,12 @@ class SnapshotManageTest(test.TestCase):
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)
 
     def test_manage_snapshot_error_volume_id(self):
-        """Test correct failure when volume can't be found."""
+        """Test correct failure when volume id is invalid format."""
         body = {'snapshot': {'volume_id': 'error_volume_id', 'ref': {}}}
         res = self._get_resp_post(body)
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertIn("'error_volume_id' is not a 'uuid'",
+                      jsonutils.loads(res.body)['badRequest']['message'])
 
     def _get_resp_get(self, host, detailed, paging, admin=True):
         """Helper to execute a GET os-snapshot-manage API call."""
