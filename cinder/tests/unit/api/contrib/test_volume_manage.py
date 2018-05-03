@@ -201,8 +201,11 @@ class VolumeManageTest(test.TestCase):
         res = req.get_response(app_v3())
         return res
 
+    @ddt.data({'host': 'host_ok'},
+              {'host': 'user@host#backend:/vol_path'})
+    @ddt.unpack
     @mock.patch('cinder.volume.api.API.manage_existing', wraps=api_manage)
-    def test_manage_volume_ok(self, mock_api_manage):
+    def test_manage_volume_ok(self, mock_api_manage, host):
         """Test successful manage volume execution.
 
         Tests for correct operation when valid arguments are passed in the
@@ -210,7 +213,7 @@ class VolumeManageTest(test.TestCase):
         called with the correct arguments, and that we return the correct HTTP
         code to the caller.
         """
-        body = {'volume': {'host': 'host_ok',
+        body = {'volume': {'host': host,
                            'ref': 'fake_ref'}}
 
         res = self._get_resp_post(body)
@@ -221,6 +224,18 @@ class VolumeManageTest(test.TestCase):
         args = mock_api_manage.call_args[0]
         self.assertEqual(body['volume']['host'], args[1])
         self.assertEqual(body['volume']['ref'], args[3])
+
+    def test_manage_volume_not_ok(self):
+        """Test not successful manage volume execution.
+
+        Tests for error raised when invalid arguments are passed in the
+        request body.
+        """
+        body = {'volume': {'host': 'host not ok',
+                           'ref': 'fake_ref'}}
+
+        res = self._get_resp_post(body)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
 
     def _get_resp_create(self, body, version=mv.BASE_VERSION):
         url = '/v3/%s/os-volume-manage' % fake.PROJECT_ID
