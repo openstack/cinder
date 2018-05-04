@@ -1438,8 +1438,7 @@ key_size:
   type: integer
 keys:
   description: |
-    List of Keys. For example, CryptsetupEncryptor, LuksEncryptor or
-    NoOpEncryptor.
+    List of Keys.
   in: body
   required: true
   type: array
