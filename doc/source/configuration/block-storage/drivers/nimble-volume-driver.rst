@@ -151,8 +151,10 @@ Configuration options
 
 The Nimble storage driver supports these configuration options:
 
-.. include:: ../../tables/cinder-nimble.inc
+.. config-table::
+   :config-target: Nimble
 
+   cinder.volume.drivers.nimble
 
 Multipathing
 ~~~~~~~~~~~~
