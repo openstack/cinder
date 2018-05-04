@@ -29,7 +29,9 @@ class ThrottleTestCase(test.TestCase):
             self.assertEqual([], cmd['prefix'])
 
     @mock.patch.object(utils, 'get_blkdev_major_minor')
-    def test_BlkioCgroup(self, mock_major_minor):
+    @mock.patch('cinder.privsep.cgroup.cgroup_create')
+    @mock.patch('cinder.privsep.cgroup.cgroup_limit')
+    def test_BlkioCgroup(self, mock_limit, mock_create, mock_major_minor):
 
         def fake_get_blkdev_major_minor(path):
             return {'src_volume1': "253:0", 'dst_volume1': "253:1",
@@ -37,38 +39,25 @@ class ThrottleTestCase(test.TestCase):
 
         mock_major_minor.side_effect = fake_get_blkdev_major_minor
 
-        self.exec_cnt = 0
+        throttle = throttling.BlkioCgroup(1024, 'fake_group')
+        with throttle.subcommand('src_volume1', 'dst_volume1') as cmd:
+            self.assertEqual(['cgexec', '-g', 'blkio:fake_group'],
+                             cmd['prefix'])
 
-        def fake_execute(*cmd, **kwargs):
-            cmd_set = ['cgset', '-r',
-                       'blkio.throttle.%s_bps_device=%s %d', 'fake_group']
-            set_order = [None,
-                         ('read', '253:0', 1024),
-                         ('write', '253:1', 1024),
-                         # a nested job starts; bps limit are set to the half
-                         ('read', '253:0', 512),
-                         ('read', '253:2', 512),
-                         ('write', '253:1', 512),
-                         ('write', '253:3', 512),
-                         # a nested job ends; bps limit is resumed
-                         ('read', '253:0', 1024),
-                         ('write', '253:1', 1024)]
-
-            if set_order[self.exec_cnt] is None:
-                self.assertEqual(('cgcreate', '-g', 'blkio:fake_group'), cmd)
-            else:
-                cmd_set[2] %= set_order[self.exec_cnt]
-                self.assertEqual(tuple(cmd_set), cmd)
-
-            self.exec_cnt += 1
-
-        with mock.patch.object(utils, 'execute', side_effect=fake_execute):
-            throttle = throttling.BlkioCgroup(1024, 'fake_group')
-            with throttle.subcommand('src_volume1', 'dst_volume1') as cmd:
+            # a nested job
+            with throttle.subcommand('src_volume2', 'dst_volume2') as cmd:
                 self.assertEqual(['cgexec', '-g', 'blkio:fake_group'],
                                  cmd['prefix'])
 
-                # a nested job
-                with throttle.subcommand('src_volume2', 'dst_volume2') as cmd:
-                    self.assertEqual(['cgexec', '-g', 'blkio:fake_group'],
-                                     cmd['prefix'])
+        mock_create.assert_has_calls([mock.call('fake_group')])
+        mock_limit.assert_has_calls([
+            mock.call('fake_group', 'read', '253:0', 1024),
+            mock.call('fake_group', 'write', '253:1', 1024),
+            # a nested job starts; bps limit are set to the half
+            mock.call('fake_group', 'read', '253:0', 512),
+            mock.call('fake_group', 'read', '253:2', 512),
+            mock.call('fake_group', 'write', '253:1', 512),
+            mock.call('fake_group', 'write', '253:3', 512),
+            # a nested job ends; bps limit is resumed
+            mock.call('fake_group', 'read', '253:0', 1024),
+            mock.call('fake_group', 'write', '253:1', 1024)])

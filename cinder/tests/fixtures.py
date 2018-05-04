@@ -1,4 +1,6 @@
 # Copyright 2016 IBM Corp.
+# Copyright 2017 Rackspace Australia
+# Copyright 2018 Michael Still and Aptira
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -21,6 +23,7 @@ import os
 import warnings
 
 import fixtures
+from oslo_privsep import daemon as privsep_daemon
 
 _TRUE_VALUES = ('True', 'true', '1', 'yes')
 
@@ -131,3 +134,29 @@ class WarningsFixture(fixtures.Fixture):
                     ' This key is deprecated. Please update your policy '
                     'file to use the standard policy values.')
         self.addCleanup(warnings.resetwarnings)
+
+
+class UnHelperfulClientChannel(privsep_daemon._ClientChannel):
+    def __init__(self, context):
+        raise Exception('You have attempted to start a privsep helper. '
+                        'This is not allowed in the gate, and '
+                        'indicates a failure to have mocked your tests.')
+
+
+class PrivsepNoHelperFixture(fixtures.Fixture):
+    """A fixture to catch failures to mock privsep's rootwrap helper.
+
+    If you fail to mock away a privsep'd method in a unit test, then
+    you may well end up accidentally running the privsep rootwrap
+    helper. This will fail in the gate, but it fails in a way which
+    doesn't identify which test is missing a mock. Instead, we
+    raise an exception so that you at least know where you've missed
+    something.
+    """
+
+    def setUp(self):
+        super(PrivsepNoHelperFixture, self).setUp()
+
+        self.useFixture(fixtures.MonkeyPatch(
+            'oslo_privsep.daemon.RootwrapClientChannel',
+            UnHelperfulClientChannel))

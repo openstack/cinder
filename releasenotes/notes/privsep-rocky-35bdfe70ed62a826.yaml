@@ -1,0 +1,14 @@
+---
+security:
+  - |
+    Privsep transitions. Cinder is transitioning from using the older style
+    rootwrap privilege escalation path to the new style Oslo privsep path.
+    This should improve performance and security of Cinder in the long term.
+  - |
+    Privsep daemons are now started by Cinder when required. These daemons can
+    be started via rootwrap if required. rootwrap configs therefore need to
+    be updated to include new privsep daemon invocations.
+upgrade:
+  - |
+    The following commands are no longer required to be listed in your rootwrap
+    configuration: cgcreate; and cgset.
