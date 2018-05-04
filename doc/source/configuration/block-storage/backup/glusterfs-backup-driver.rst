@@ -14,4 +14,7 @@ To enable the GlusterFS backup driver, include the following option in the
 The following configuration options are available for the GlusterFS backup
 driver.
 
-.. include:: ../../tables/cinder-backups_glusterfs.inc
+.. config-table::
+   :config-target: GlusterFS backup driver
+
+   cinder.backup.drivers.glusterfs

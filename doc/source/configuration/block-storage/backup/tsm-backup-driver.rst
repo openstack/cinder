@@ -20,7 +20,10 @@ To enable the IBM TSM backup driver, include the following option in
 The following configuration options are available for the TSM backup
 driver.
 
-.. include:: ../../tables/cinder-backups_tsm.inc
+.. config-table::
+   :config-target: IBM Tivoli Storage Manager backup driver
+
+   cinder.backup.drivers.tsm
 
 This example shows the default options for the TSM backup driver.
 

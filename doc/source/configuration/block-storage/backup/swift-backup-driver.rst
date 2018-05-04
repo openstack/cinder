@@ -15,7 +15,10 @@ To enable the swift backup driver, include the following option in the
 The following configuration options are available for the Swift back-end
 backup driver.
 
-.. include:: ../../tables/cinder-backups_swift.inc
+.. config-table::
+   :config-target: Swift backup driver
+
+   cinder.backup.drivers.swift
 
 To enable the swift backup driver for 1.0, 2.0, or 3.0  authentication version,
 specify ``1``, ``2``, or ``3`` correspondingly. For example:
