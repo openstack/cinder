@@ -1,6 +1,6 @@
-======================================
-HP MSA Fibre Channel and iSCSI drivers
-======================================
+=======================================
+HPE MSA Fibre Channel and iSCSI drivers
+=======================================
 
 The ``HPMSAFCDriver`` and ``HPMSAISCSIDriver`` Cinder drivers allow HP MSA
 2040 or 1040 arrays to be used for Block Storage in OpenStack deployments.
@@ -162,4 +162,7 @@ Driver-specific options
 The following table contains the configuration options that are specific to
 the HP MSA drivers.
 
-.. include:: ../../tables/cinder-hpmsa.inc
+.. config-table::
+   :config-target: HPE MSA
+
+   cinder.volume.drivers.san.hp.hpmsa_common
