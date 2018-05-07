@@ -35,8 +35,8 @@ from cinder.backup import api as cinder_backup_api
 from cinder.backup import chunkeddriver as cinder_backup_chunkeddriver
 from cinder.backup import driver as cinder_backup_driver
 from cinder.backup.drivers import ceph as cinder_backup_drivers_ceph
+from cinder.backup.drivers import gcs as cinder_backup_drivers_gcs
 from cinder.backup.drivers import glusterfs as cinder_backup_drivers_glusterfs
-from cinder.backup.drivers import google as cinder_backup_drivers_google
 from cinder.backup.drivers import nfs as cinder_backup_drivers_nfs
 from cinder.backup.drivers import posix as cinder_backup_drivers_posix
 from cinder.backup.drivers import swift as cinder_backup_drivers_swift
@@ -217,8 +217,8 @@ def list_opts():
                 cinder_backup_chunkeddriver.chunkedbackup_service_opts,
                 cinder_backup_driver.service_opts,
                 cinder_backup_drivers_ceph.service_opts,
+                cinder_backup_drivers_gcs.gcsbackup_service_opts,
                 cinder_backup_drivers_glusterfs.glusterfsbackup_service_opts,
-                cinder_backup_drivers_google.gcsbackup_service_opts,
                 cinder_backup_drivers_nfs.nfsbackup_service_opts,
                 cinder_backup_drivers_posix.posixbackup_service_opts,
                 cinder_backup_drivers_swift.swiftbackup_service_opts,

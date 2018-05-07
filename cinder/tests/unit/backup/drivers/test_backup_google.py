@@ -32,7 +32,7 @@ from eventlet import tpool
 import mock
 from oslo_utils import units
 
-from cinder.backup.drivers import google as google_dr
+from cinder.backup.drivers import gcs as google_dr
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -219,21 +219,17 @@ class GoogleBackupDriverTestCase(test.TestCase):
     @gcs_client
     @mock.patch('httplib2.proxy_info_from_url')
     def test_backup_proxy_configured(self, mock_proxy_info):
-        google_dr.CONF.set_override("backup_gcs_proxy_url",
-                                    "http://myproxy.example.com")
+        # Configuration overwrites enviromental variable
+        proxy_cfg = "http://myproxy.example.com"
+        os.environ['http_proxy'] = proxy_cfg + '_fake'
+        google_dr.CONF.set_override("backup_gcs_proxy_url", proxy_cfg)
         google_dr.GoogleBackupDriver(self.ctxt)
-        mock_proxy_info.assert_called_with("http://myproxy.example.com")
+        self.assertEqual(proxy_cfg, os.environ.get('http_proxy'))
 
     @gcs_client
-    @mock.patch('httplib2.proxy_info_from_environment')
-    def test_backup_proxy_environment(self, mock_proxy_env):
-        google_dr.GoogleBackupDriver(self.ctxt)
-        mock_proxy_env.assert_called_once_with()
-
-    @gcs_client
-    @mock.patch('cinder.backup.drivers.google.GoogleBackupDriver.'
+    @mock.patch('cinder.backup.drivers.gcs.GoogleBackupDriver.'
                 '_send_progress_end')
-    @mock.patch('cinder.backup.drivers.google.GoogleBackupDriver.'
+    @mock.patch('cinder.backup.drivers.gcs.GoogleBackupDriver.'
                 '_send_progress_notification')
     def test_backup_default_container_notify(self, _send_progress,
                                              _send_progress_end):
@@ -612,3 +608,54 @@ class GoogleBackupDriverTestCase(test.TestCase):
 
         self.assertEqual('none', result[0])
         self.assertEqual(already_compressed_data, result[1])
+
+    @mock.patch('googleapiclient.__version__', '1.5.5')
+    @mock.patch.object(google_dr.client.GoogleCredentials, 'from_stream')
+    @mock.patch.object(google_dr.discovery, 'build')
+    @mock.patch.object(google_dr, 'service_account')
+    def test_non_google_auth_version(self, account, build, from_stream):
+        # Prior to v1.6.0 Google api client doesn't support google-auth library
+        google_dr.CONF.set_override('backup_gcs_credential_file',
+                                    'credentials_file')
+
+        google_dr.GoogleBackupDriver(self.ctxt)
+
+        from_stream.assert_called_once_with('credentials_file')
+        account.Credentials.from_service_account_file.assert_not_called()
+        build.assert_called_once_with('storage', 'v1', cache_discovery=False,
+                                      credentials=from_stream.return_value)
+
+    @mock.patch('googleapiclient.__version__', '1.6.6')
+    @mock.patch.object(google_dr.client.GoogleCredentials, 'from_stream')
+    @mock.patch.object(google_dr.discovery, 'build')
+    @mock.patch.object(google_dr, 'service_account', None)
+    def test_no_httplib2_auth(self, build, from_stream):
+        # Google api client requires google-auth-httplib2 if not present we
+        # use legacy credentials
+        google_dr.CONF.set_override('backup_gcs_credential_file',
+                                    'credentials_file')
+
+        google_dr.GoogleBackupDriver(self.ctxt)
+
+        from_stream.assert_called_once_with('credentials_file')
+        build.assert_called_once_with('storage', 'v1', cache_discovery=False,
+                                      credentials=from_stream.return_value)
+
+    @mock.patch('googleapiclient.__version__', '1.6.6')
+    @mock.patch.object(google_dr, 'gexceptions', mock.Mock())
+    @mock.patch.object(google_dr.client.GoogleCredentials, 'from_stream')
+    @mock.patch.object(google_dr.discovery, 'build')
+    @mock.patch.object(google_dr, 'service_account')
+    def test_google_auth_used(self, account, build, from_stream):
+        # Google api client requires google-auth-httplib2 if not present we
+        # use legacy credentials
+        google_dr.CONF.set_override('backup_gcs_credential_file',
+                                    'credentials_file')
+
+        google_dr.GoogleBackupDriver(self.ctxt)
+
+        from_stream.assert_not_called()
+        create_creds = account.Credentials.from_service_account_file
+        create_creds.assert_called_once_with('credentials_file')
+        build.assert_called_once_with('storage', 'v1', cache_discovery=False,
+                                      credentials=create_creds.return_value)

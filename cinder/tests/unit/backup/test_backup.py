@@ -1823,6 +1823,7 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         service_name = ('cinder.tests.unit.backup.'
                         'fake_service_with_verify.FakeBackupServiceWithVerify')
         self.override_config('backup_driver', service_name)
+        self.backup_mgr.driver_name = service_name
         vol_id = self._create_volume_db_entry(status='available',
                                               size=1)
         backup = self._create_backup_db_entry(status=fields.BackupStatus.ERROR,

@@ -1,0 +1,13 @@
+---
+features:
+  - Google backup driver now supports ``google-auth`` library, and is the
+    preferred library if both ``google-auth`` (together with
+    ``google-auth-httplib2``) and ``oauth2client`` libraries are present in the
+    system.
+deprecations:
+  - Cinder's Google backup driver is now called gcs, so ``backup_driver``
+    configuration for Google Cloud Storage should be updated from
+    ``cinder.backup.drivers.google`` to ``cinder.backup.driver.gcs``.
+fixes:
+  - Google backup driver now works when using ``google-api-python-client``
+    version 1.6.0 or higher.
