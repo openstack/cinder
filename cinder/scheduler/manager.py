@@ -62,6 +62,23 @@ QUOTAS = quota.QUOTAS
 LOG = logging.getLogger(__name__)
 
 
+def append_operation_type(name=None):
+    def _decorator(schedule_function):
+        @six.wraps(schedule_function)
+        def inject_operation_decorator(*args, **kwargs):
+
+            request_spec = kwargs.get('request_spec', None)
+            request_spec_list = kwargs.get('request_spec_list', None)
+            if request_spec:
+                request_spec['operation'] = name or schedule_function.__name__
+            if request_spec_list:
+                for rs in request_spec_list:
+                    rs['operation'] = name or schedule_function.__name__
+            return schedule_function(*args, **kwargs)
+        return inject_operation_decorator
+    return _decorator
+
+
 class SchedulerManager(manager.CleanableManager, manager.Manager):
     """Chooses a host to create volumes."""
 
@@ -146,6 +163,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         while self._startup_delay and not self.driver.is_ready():
             eventlet.sleep(1)
 
+    @append_operation_type()
     def create_group(self, context, group, group_spec=None,
                      group_filter_properties=None, request_spec_list=None,
                      filter_properties_list=None):
@@ -172,6 +190,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                 group.save()
 
     @objects.Volume.set_workers
+    @append_operation_type()
     def create_volume(self, context, volume, snapshot_id=None, image_id=None,
                       request_spec=None, filter_properties=None,
                       backup_id=None):
@@ -194,6 +213,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
             flow_engine.run()
 
+    @append_operation_type()
     def create_snapshot(self, ctxt, volume, snapshot, backend,
                         request_spec=None, filter_properties=None):
         """Create snapshot for a volume.
@@ -230,6 +250,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
     def request_service_capabilities(self, context):
         volume_rpcapi.VolumeAPI().publish_service_capabilities(context)
 
+    @append_operation_type()
     def migrate_volume(self, context, volume, backend, force_copy,
                        request_spec, filter_properties):
         """Ensure that the backend exists and can accept the volume."""
@@ -267,6 +288,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         return self.migrate_volume(context, volume, host, force_host_copy,
                                    request_spec, filter_properties)
 
+    @append_operation_type(name='retype_volume')
     def retype(self, context, volume, request_spec, filter_properties=None):
         """Schedule the modification of a volume's type.
 
@@ -321,6 +343,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                                              reservations,
                                              old_reservations)
 
+    @append_operation_type()
     def manage_existing(self, context, volume, request_spec,
                         filter_properties=None):
         """Ensure that the host exists and can accept the volume."""
@@ -352,6 +375,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
             volume_rpcapi.VolumeAPI().manage_existing(context, volume,
                                                       request_spec.get('ref'))
 
+    @append_operation_type()
     def manage_existing_snapshot(self, context, volume, snapshot, ref,
                                  request_spec, filter_properties=None):
         """Ensure that the host exists and can accept the snapshot."""
@@ -383,6 +407,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         """
         return self.driver.get_pools(context, filters)
 
+    @append_operation_type(name='create_group')
     def validate_host_capacity(self, context, backend, request_spec,
                                filter_properties):
         try:
@@ -398,6 +423,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
             return False
         return True
 
+    @append_operation_type()
     def extend_volume(self, context, volume, new_size, reservations,
                       request_spec=None, filter_properties=None):
 
