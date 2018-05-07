@@ -1083,10 +1083,13 @@ class QnapISCSIDriver(san.SanISCSIDriver):
 
     @utils.synchronized('_attach_volume')
     def _detach_volume(self, context, attach_info, volume, properties,
-                       force=False, remote=False):
-        super(QnapISCSIDriver, self)._detach_volume(context, attach_info,
-                                                    volume, properties,
-                                                    force, remote)
+                       force=False, remote=False, ignore_errors=False):
+        super(QnapISCSIDriver, self)._detach_volume(
+            context, attach_info,
+            volume, properties,
+            force=force, remote=remote,
+            ignore_errors=ignore_errors
+        )
 
     @utils.synchronized('_attach_volume')
     def _attach_volume(self, context, volume, properties, remote=False):

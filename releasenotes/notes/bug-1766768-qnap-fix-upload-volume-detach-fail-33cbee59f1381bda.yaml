@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed QNAP driver failures to detach iscsi device while uploading volume
+    to image.
