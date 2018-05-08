@@ -226,6 +226,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.configuration.dell_sc_api_port = 3033
         self.configuration.target_ip_address = '192.168.1.1'
         self.configuration.target_port = 3260
+        self.configuration.excluded_domain_ip = None
+        self.configuration.excluded_domain_ips = []
         self._context = context.get_admin_context()
 
         self.driver = storagecenter_iscsi.SCISCSIDriver(

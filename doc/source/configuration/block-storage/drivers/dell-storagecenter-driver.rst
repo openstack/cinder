@@ -353,14 +353,14 @@ not have to match the actual OS used on the node.
 Excluding a domain
 ~~~~~~~~~~~~~~~~~~
 
-This option excludes a Storage Center ISCSI fault domain from the ISCSI
-properties returned by the initialize_connection call. This only applies to
-the ISCSI driver.
+This option excludes a list of Storage Center ISCSI fault domains from
+the ISCSI properties returned by the initialize_connection call. This
+only applies to the ISCSI driver.
 
-Add the excluded_domain_ip option into the backend config for each fault domain
-to be excluded. This option takes the specified Target IPv4 Address listed
-under the fault domain. Older versions of DSM (EM) may list this as the Well
-Known IP Address.
+Add the excluded_domain_ips option into the backend config for several fault
+domains to be excluded. This option takes a comma separated list of Target
+IPv4 Addresses listed under the fault domain. Older versions of DSM (EM) may
+list this as the Well Known IP Address.
 
 Add the following to the back-end specification to exclude the domains at
 172.20.25.15 and 172.20.26.15.
@@ -368,8 +368,9 @@ Add the following to the back-end specification to exclude the domains at
 .. code-block:: ini
 
     [dell]
-    excluded_domain_ip=172.20.25.15
-    excluded_domain_ip=172.20.26.15
+    excluded_domain_ips=172.20.25.15, 172.20.26.15
+
+
 
 Setting Dell EMC SC REST API timeouts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

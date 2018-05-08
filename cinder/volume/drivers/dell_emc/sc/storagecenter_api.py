@@ -356,9 +356,17 @@ class SCApiHelper(object):
         # about.
         connection.vfname = self.config.dell_sc_volume_folder
         connection.sfname = self.config.dell_sc_server_folder
-        connection.excluded_domain_ips = self.config.excluded_domain_ip
-        if not connection.excluded_domain_ips:
-            connection.excluded_domain_ips = []
+        connection.excluded_domain_ips = self.config.excluded_domain_ips
+        if self.config.excluded_domain_ip:
+            LOG.info("Using excluded_domain_ip for "
+                     "excluding domain IPs is deprecated in the "
+                     "Stein release of OpenStack. Please use the "
+                     "excluded_domain_ips configuration option.")
+            connection.excluded_domain_ips += self.config.excluded_domain_ip
+
+        # Remove duplicates
+        connection.excluded_domain_ips = list(set(
+                                              connection.excluded_domain_ips))
         # Our primary SSN doesn't change
         connection.primaryssn = self.primaryssn
         if self.storage_protocol == 'FC':
@@ -435,10 +443,11 @@ class SCApi(object):
         3.7.0 - Support for Data Reduction, Group QOS and Volume QOS.
         4.0.0 - Driver moved to dell_emc.
         4.1.0 - Timeouts added to rest calls.
+        4.1.1 - excluded_domain_ips support.
 
     """
 
-    APIDRIVERVERSION = '4.1.0'
+    APIDRIVERVERSION = '4.1.1'
 
     def __init__(self, host, port, user, password, verify,
                  asynctimeout, synctimeout, apiversion):

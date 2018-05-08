@@ -9029,6 +9029,112 @@ class DellStorageCenterApiHelperTestCase(test.TestCase):
 
     @mock.patch.object(storagecenter_api.SCApi,
                        'open_connection')
+    def test_setup_connection_excluded1(self,
+                                        mock_open_connection):
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.dell_sc_volume_folder = 'a'
+        config.dell_sc_server_folder = 'a'
+        config.dell_sc_verify_cert = False
+        config.san_port = 3033
+        config.excluded_domain_ip = ['192.168.0.1']
+        config.excluded_domain_ips = ['192.168.0.2', '192.168.0.3']
+        helper = storagecenter_api.SCApiHelper(config, None, 'FC')
+        ret = helper._setup_connection()
+        self.assertEqual(set(ret.excluded_domain_ips), set(['192.168.0.2',
+                         '192.168.0.3', '192.168.0.1']))
+        self.assertEqual(12345, ret.primaryssn)
+        self.assertEqual(12345, ret.ssn)
+        self.assertEqual('FibreChannel', ret.protocol)
+        mock_open_connection.assert_called_once_with()
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'open_connection')
+    def test_setup_connection_excluded2(self,
+                                        mock_open_connection):
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.dell_sc_volume_folder = 'a'
+        config.dell_sc_server_folder = 'a'
+        config.dell_sc_verify_cert = False
+        config.san_port = 3033
+        config.excluded_domain_ip = None
+        config.excluded_domain_ips = ['192.168.0.2', '192.168.0.3']
+        helper = storagecenter_api.SCApiHelper(config, None, 'FC')
+        ret = helper._setup_connection()
+        self.assertEqual(set(ret.excluded_domain_ips), set(['192.168.0.2',
+                         '192.168.0.3']))
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'open_connection')
+    def test_setup_connection_excluded3(self,
+                                        mock_open_connection):
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.dell_sc_volume_folder = 'a'
+        config.dell_sc_server_folder = 'a'
+        config.dell_sc_verify_cert = False
+        config.san_port = 3033
+        config.excluded_domain_ip = ['192.168.0.1']
+        config.excluded_domain_ips = []
+        helper = storagecenter_api.SCApiHelper(config, None, 'FC')
+        ret = helper._setup_connection()
+        self.assertEqual(ret.excluded_domain_ips, ['192.168.0.1'])
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'open_connection')
+    def test_setup_connection_excluded4(self,
+                                        mock_open_connection):
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.dell_sc_volume_folder = 'a'
+        config.dell_sc_server_folder = 'a'
+        config.dell_sc_verify_cert = False
+        config.san_port = 3033
+        config.excluded_domain_ip = None
+        config.excluded_domain_ips = []
+        helper = storagecenter_api.SCApiHelper(config, None, 'FC')
+        ret = helper._setup_connection()
+        self.assertEqual(ret.excluded_domain_ips, [])
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'open_connection')
+    def test_setup_connection_excluded5(self,
+                                        mock_open_connection):
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.dell_sc_volume_folder = 'a'
+        config.dell_sc_server_folder = 'a'
+        config.dell_sc_verify_cert = False
+        config.san_port = 3033
+        config.excluded_domain_ip = ['192.168.0.1']
+        config.excluded_domain_ips = ['192.168.0.1', '192.168.0.2']
+        helper = storagecenter_api.SCApiHelper(config, None, 'FC')
+        ret = helper._setup_connection()
+        self.assertEqual(set(ret.excluded_domain_ips), set(['192.168.0.2',
+                         '192.168.0.1']))
+        self.assertEqual(12345, ret.primaryssn)
+        self.assertEqual(12345, ret.ssn)
+        self.assertEqual('FibreChannel', ret.protocol)
+        mock_open_connection.assert_called_once_with()
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'open_connection')
     def test_setup_connection_iscsi(self,
                                     mock_open_connection):
         config = mock.MagicMock()

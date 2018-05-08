@@ -63,10 +63,11 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
         3.7.0 - Support for Data Reduction, Group QOS and Volume QOS.
         4.0.0 - Driver moved to dell_emc.
         4.1.0 - Timeouts added to rest calls.
+        4.1.1 - excluded_domain_ips support.
 
     """
 
-    VERSION = '4.1.0'
+    VERSION = '4.1.1'
     CI_WIKI_NAME = "Dell_EMC_SC_Series_CI"
 
     def __init__(self, *args, **kwargs):
