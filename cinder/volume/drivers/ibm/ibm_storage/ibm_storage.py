@@ -77,9 +77,10 @@ class IBMStorageDriver(san.SanDriver,
         2.1.0 - Support Consistency groups through Generic volume groups
               - Support XIV/A9000 Volume independent QoS
               - Support Consistency groups replication
+        2.3.0 - Support Report backend state
     """
 
-    VERSION = "2.1.0"
+    VERSION = "2.3.0"
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_STORAGE_CI"
