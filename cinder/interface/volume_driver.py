@@ -256,3 +256,31 @@ class VolumeDriverCore(base.CinderInterface):
         :param volume: The volume to extend.
         :param new_size: The new desired size of the volume.
         """
+
+    def create_snapshot(self, snapshot):
+        """Creates a snapshot.
+
+        :param snapshot: Information for the snapshot to be created.
+        """
+
+    def delete_snapshot(self, snapshot):
+        """Deletes a snapshot.
+
+        :param snapshot: The snapshot to delete.
+        """
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot.
+
+        If volume_type extra specs includes 'replication: <is> True'
+        the driver needs to create a volume replica (secondary),
+        and setup replication between the newly created volume and
+        the secondary volume.
+
+        An optional larger size for the new snapshot can be specified. Drivers
+        should check this value and create or expand the new volume to match.
+
+        :param volume: The volume to be created.
+        :param snapshot: The snapshot from which to create the volume.
+        :returns: A dict of database updates for the new volume.
+        """
