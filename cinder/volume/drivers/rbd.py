@@ -1550,6 +1550,12 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                             # image is considered to be used by client(s).
                             image_info['safe_to_manage'] = False
                             image_info['reason_not_safe'] = 'volume in use'
+                        elif image_name.endswith('.deleted'):
+                            # parent of cloned volume which marked as deleted
+                            # should not be manageable.
+                            image_info['safe_to_manage'] = False
+                            image_info['reason_not_safe'] = (
+                                'volume marked as deleted')
                         else:
                             image_info['safe_to_manage'] = True
                             image_info['reason_not_safe'] = None
