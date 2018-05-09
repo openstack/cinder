@@ -1731,7 +1731,14 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             snapshot_name = existing_ref['source-name']
             volume.rename_snap(utils.convert_str(snapshot_name),
                                utils.convert_str(snapshot.name))
+            if not volume.is_protected_snap(snapshot.name):
+                volume.protect_snap(snapshot.name)
 
     def unmanage_snapshot(self, snapshot):
         """Removes the specified snapshot from Cinder management."""
-        pass
+        with RBDVolumeProxy(self, snapshot.volume_name) as volume:
+            volume.set_snap(snapshot.name)
+            children = volume.list_children()
+            volume.set_snap(None)
+            if not children and volume.is_protected_snap(snapshot.name):
+                volume.unprotect_snap(snapshot.name)
