@@ -1354,3 +1354,12 @@ class ServiceUserTokenNoAuth(CinderException):
 class UnsupportedNVMETProtocol(Invalid):
     message = _("An invalid 'target_protocol' "
                 "value was provided: %(protocol)s")
+
+
+# NVMET driver
+class NVMETTargetAddError(CinderException):
+    message = "Failed to add subsystem: %(subsystem)s"
+
+
+class NVMETTargetDeleteError(CinderException):
+    message = "Failed to delete subsystem: %(subsystem)s"

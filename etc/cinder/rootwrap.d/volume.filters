@@ -229,3 +229,5 @@ drv_cfg: CommandFilter, /opt/emc/scaleio/sdc/bin/drv_cfg, root, /opt/emc/scaleio
 mount.quobyte: CommandFilter, mount.quobyte, root
 umount.quobyte: CommandFilter, umount.quobyte, root
 
+# cinder/volume/targets/nvmet.py
+nvmetcli: CommandFilter, nvmetcli, root

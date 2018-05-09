@@ -95,12 +95,12 @@ volume_opts = [
                deprecated_name='iscsi_helper',
                default='tgtadm',
                choices=['tgtadm', 'lioadm', 'scstadmin', 'iscsictl',
-                        'ietadm', 'fake'],
-               help='iSCSI target user-land tool to use. tgtadm is default, '
+                        'ietadm', 'nvmet', 'fake'],
+               help='Target user-land tool to use. tgtadm is default, '
                     'use lioadm for LIO iSCSI support, scstadmin for SCST '
                     'target support, ietadm for iSCSI Enterprise Target, '
-                    'iscsictl for Chelsio iSCSI '
-                    'Target or fake for testing.'),
+                    'iscsictl for Chelsio iSCSI Target, nvmet for NVMEoF '
+                    'support, or fake for testing.'),
     cfg.StrOpt('volumes_dir',
                default='$state_path/volumes',
                help='Volume configuration file storage '
@@ -412,7 +412,8 @@ class BaseVD(object):
             'lioadm': 'cinder.volume.targets.lio.LioAdm',
             'tgtadm': 'cinder.volume.targets.tgt.TgtAdm',
             'scstadmin': 'cinder.volume.targets.scst.SCSTAdm',
-            'iscsictl': 'cinder.volume.targets.cxt.CxtAdm'}
+            'iscsictl': 'cinder.volume.targets.cxt.CxtAdm',
+            'nvmet': 'cinder.volume.targets.nvmet.NVMET'}
 
         # set True by manager after successful check_for_setup
         self._initialized = False
