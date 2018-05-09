@@ -147,7 +147,6 @@ class RBDVolumeProxy(object):
                                            read_only=read_only)
             self.volume = tpool.Proxy(self.volume)
         except driver.rbd.Error:
-            LOG.exception("error opening rbd image %s", name)
             if self._close_conn:
                 driver._disconnect_from_rados(rados_client, rados_ioctx)
             raise
