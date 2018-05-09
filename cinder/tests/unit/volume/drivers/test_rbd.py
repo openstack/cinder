@@ -1646,6 +1646,39 @@ class RBDTestCase(test.TestCase):
         mock_exec.assert_called_once_with(self.volume_a.name, remote,
                                           'mirror_image_promote', False)
 
+    @mock.patch('cinder.volume.drivers.rbd.RBDVolumeProxy')
+    @mock.patch('cinder.volume.drivers.rbd.RADOSClient')
+    @mock.patch('cinder.volume.drivers.rbd.RBDDriver.RBDProxy')
+    def test__get_usage_info(self, rbdproxy_mock, client_mock, volproxy_mock):
+
+        def FakeVolProxy(size_or_exc):
+            return mock.Mock(return_value=mock.Mock(
+                size=mock.Mock(side_effect=(size_or_exc,))))
+
+        volumes = ['volume-1', 'non-existent', 'non-cinder-volume']
+
+        client = client_mock.return_value.__enter__.return_value
+        rbdproxy_mock.return_value.list.return_value = volumes
+
+        with mock.patch.object(self.driver, 'rbd',
+                               ImageNotFound=MockImageNotFoundException):
+            volproxy_mock.side_effect = [
+                mock.MagicMock(**{'__enter__': FakeVolProxy(s)})
+                for s in (1.0 * units.Gi,
+                          self.driver.rbd.ImageNotFound,
+                          2.0 * units.Gi)
+            ]
+            total_provision = self.driver._get_usage_info()
+
+        rbdproxy_mock.return_value.list.assert_called_once_with(client.ioctx)
+
+        expected_volproxy_calls = [
+            mock.call(self.driver, v, read_only=True)
+            for v in volumes]
+        self.assertEqual(expected_volproxy_calls, volproxy_mock.mock_calls)
+
+        self.assertEqual(3.00, total_provision)
+
 
 class ManagedRBDTestCase(test_volume.DriverTestCase):
     driver_name = "cinder.volume.drivers.rbd.RBDDriver"
