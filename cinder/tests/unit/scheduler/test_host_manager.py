@@ -64,20 +64,31 @@ class HostManagerTestCase(test.TestCase):
         # For a second scheduler service.
         self.host_manager_1 = host_manager.HostManager()
 
+    @mock.patch(
+        'cinder.scheduler.filters.BackendFilterHandler.get_all_classes')
+    def test_initialzie_with_default_filters(self, mock_get_all_classes):
+        self.flags(scheduler_default_filters=
+                   'FakeFilterClass1,FakeFilterClass2')
+        mock_get_all_classes.return_value = [
+            FakeFilterClass1, FakeFilterClass2, FakeFilterClass3]
+        h_manager = host_manager.HostManager()
+        self.assertListEqual([FakeFilterClass1, FakeFilterClass2],
+                             h_manager.enabled_filters)
+
     def test_choose_backend_filters_not_found(self):
-        self.flags(scheduler_default_filters='FakeFilterClass3')
         self.host_manager.filter_classes = [FakeFilterClass1,
                                             FakeFilterClass2]
         self.assertRaises(exception.SchedulerHostFilterNotFound,
-                          self.host_manager._choose_backend_filters, None)
+                          self.host_manager._choose_backend_filters,
+                          'FakeFilterClass3')
 
     def test_choose_backend_filters(self):
-        self.flags(scheduler_default_filters=['FakeFilterClass2'])
         self.host_manager.filter_classes = [FakeFilterClass1,
                                             FakeFilterClass2]
 
         # Test 'volume' returns 1 correct function
-        filter_classes = self.host_manager._choose_backend_filters(None)
+        filter_classes = self.host_manager._choose_backend_filters(
+            'FakeFilterClass2')
         self.assertEqual(1, len(filter_classes))
         self.assertEqual('FakeFilterClass2', filter_classes[0].__name__)
 
@@ -94,9 +105,9 @@ class HostManagerTestCase(test.TestCase):
         expected = []
         for fake_backend in self.fake_backends:
             expected.append(mock.call(fake_backend, fake_properties))
-
-        result = self.host_manager.get_filtered_backends(self.fake_backends,
-                                                         fake_properties)
+        host_manager1 = host_manager.HostManager()
+        result = host_manager1.get_filtered_backends(self.fake_backends,
+                                                     fake_properties)
         self.assertEqual(expected, mock_func.call_args_list)
         self.assertEqual(set(self.fake_backends), set(result))
 
@@ -1066,10 +1077,10 @@ class HostManagerTestCase(test.TestCase):
             'volume_backend_name': 'AAA',
             'qos_specs': 'BBB',
         }
-
-        res = self.host_manager._filter_pools_by_volume_type(context,
-                                                             mock_volume_type,
-                                                             hosts)
+        host_manager1 = host_manager.HostManager()
+        res = host_manager1._filter_pools_by_volume_type(context,
+                                                         mock_volume_type,
+                                                         hosts)
         expected = {'host1': {'volume_backend_name': 'AAA',
                               'total_capacity_gb': 512,
                               'free_capacity_gb': 200,
