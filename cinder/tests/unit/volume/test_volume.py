@@ -681,6 +681,38 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                               'description', multiattach=True)
 
     @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
+    def test_create_volume_with_encrypted_volume_type_multiattach(self):
+        ctxt = context.get_admin_context()
+
+        cipher = 'aes-xts-plain64'
+        key_size = 256
+        control_location = 'front-end'
+
+        db.volume_type_create(ctxt,
+                              {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
+                               'name': 'LUKS',
+                               'extra_specs': {'multiattach': '<is> True'}})
+        db.volume_type_encryption_create(
+            ctxt,
+            '61298380-0c12-11e3-bfd6-4b48424183be',
+            {'control_location': control_location,
+             'provider': ENCRYPTION_PROVIDER,
+             'cipher': cipher,
+             'key_size': key_size})
+
+        volume_api = cinder.volume.api.API()
+
+        db_vol_type = db.volume_type_get_by_name(ctxt, 'LUKS')
+
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.create,
+                          self.context,
+                          1,
+                          'name',
+                          'description',
+                          volume_type=db_vol_type)
+
+    @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
     def test_create_volume_with_encrypted_volume_type_aes(self):
         ctxt = context.get_admin_context()
 
