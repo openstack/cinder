@@ -49,7 +49,7 @@ follows:
 
 .. code-block:: ini
 
-  volume_driver = cinder.volume.drivers.ibm.ibm_storage.IBMStorageDriver
+  volume_driver = cinder.volume.drivers.ibm.ibm_storage.ibm_storage.IBMStorageDriver
 
 .. include:: ../../tables/cinder-ibm_storage.inc
 
