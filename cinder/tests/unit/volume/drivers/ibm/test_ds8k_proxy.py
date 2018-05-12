@@ -1259,7 +1259,8 @@ class DS8KProxyTest(test.TestCase):
             "consistent_group_snapshot_enabled": True,
             "group_replication_enabled": True,
             "consistent_group_replication_enabled": True,
-            "multiattach": False
+            "multiattach": False,
+            "backend_state": 'up'
         }
 
         self.driver._update_stats()
@@ -1283,8 +1284,56 @@ class DS8KProxyTest(test.TestCase):
         with mock.patch.object(helper.DS8KCommonHelper,
                                'get_pools') as mock_get_pools:
             mock_get_pools.return_value = []
-            self.assertRaises(exception.CinderException,
-                              self.driver._update_stats)
+            stats = self.driver.get_volume_stats()
+            self.assertEqual('down', stats['backend_state'])
+            self.assertEqual('None', stats['extent_pools'])
+            self.assertEqual(0, stats['total_capacity_gb'])
+            self.assertEqual(0, stats['free_capacity_gb'])
+
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_pools')
+    def test_get_volume_status(self, mock_get_pools):
+        self.configuration.san_clustername = 'P0, P1'
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        from collections import OrderedDict
+        mock_get_pools.side_effect = [OrderedDict([('P0',
+                                                    {'node': 0,
+                                                     'cap': 21474836480,
+                                                     'capavail': 21474836480,
+                                                     'name': 'pool1',
+                                                     'stgtype': 'fb'}),
+                                                   ('P1',
+                                                    {'node': 1,
+                                                     'cap': 21474836480,
+                                                     'capavail': 21474836480,
+                                                     'name': 'pool1',
+                                                     'stgtype': 'fb'})]),
+                                      OrderedDict([('P1',
+                                                    {'node': 1,
+                                                     'cap': 21474836480,
+                                                     'capavail': 21474836480,
+                                                     'name': 'pool1',
+                                                     'stgtype': 'fb'})])]
+        self.driver.setup(self.ctxt)
+        expected_result = {
+            "volume_backend_name": TEST_VOLUME_BACKEND_NAME,
+            "serial_number": TEST_SOURCE_SYSTEM_UNIT,
+            "extent_pools": 'P1',
+            "vendor_name": 'IBM',
+            "driver_version": 'IBM Storage (v2.0.0)',
+            "storage_protocol": storage.XIV_CONNECTION_TYPE_FC,
+            "total_capacity_gb": 20,
+            "free_capacity_gb": 20,
+            "reserved_percentage": 0,
+            "consistent_group_snapshot_enabled": True,
+            "group_replication_enabled": True,
+            "consistent_group_replication_enabled": True,
+            "multiattach": False,
+            "backend_state": 'up'
+        }
+
+        stats = self.driver.get_volume_stats()
+        self.assertDictEqual(expected_result, stats)
 
     def test_find_pool_should_choose_biggest_pool(self):
         """create volume should choose biggest pool."""

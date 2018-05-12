@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added flag 'backend_state' which will give backend state info in service list.
