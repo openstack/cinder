@@ -827,11 +827,6 @@ class API(base.Base):
     def reset_status(self, context, group, status):
         """Reset status of generic group"""
         context.authorize(gp_action_policy.RESET_STATUS, target_obj=group)
-        if status not in c_fields.GroupStatus.ALL:
-            msg = _("Group status: %(status)s is invalid, valid status "
-                    "are: %(valid)s.") % {'status': status,
-                                          'valid': c_fields.GroupStatus.ALL}
-            raise exception.InvalidGroupStatus(reason=msg)
         field = {'updated_at': timeutils.utcnow(),
                  'status': status}
         group.update(field)
