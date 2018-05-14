@@ -60,8 +60,8 @@ class NVMET(nvmeof.NVMeOF):
             LOG.info('Added subsystem: %s', newly_added_subsystem)
             search_for_subsystem = newly_added_subsystem
         else:
-            LOG.info('Skip creating subsystem %s as '
-                     'it already exists.', search_for_subsystem)
+            LOG.debug('Skip creating subsystem %s as '
+                      'it already exists.', search_for_subsystem)
         return {
             'location': self.get_nvmeof_location(
                 search_for_subsystem,
@@ -128,7 +128,7 @@ class NVMET(nvmeof.NVMeOF):
         nvmf_subsystems['subsystems'].append(subsystem_section)
 
         LOG.info(
-            'Trying to load the following subsystems:%s', nvmf_subsystems)
+            'Trying to load the following subsystems: %s', nvmf_subsystems)
 
         self._restore(nvmf_subsystems)
 
