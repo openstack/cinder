@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The LVM driver specific `lvm_max_over_subscription_ratio` setting had been
+    deprecated and is now removed. Over subscription should now be managed
+    using the generic `max_over_subscription_ratio` setting.

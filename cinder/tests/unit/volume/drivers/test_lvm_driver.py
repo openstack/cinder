@@ -849,26 +849,6 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                 'extra_info': None}]
         self.assertEqual(exp, res)
 
-    # Global setting, LVM setting, expected outcome
-    @ddt.data((10.0, 2.0, 2.0))
-    @ddt.data((10.0, None, 10.0))
-    @ddt.unpack
-    def test_lvm_max_over_subscription_ratio(self,
-                                             global_value,
-                                             lvm_value,
-                                             expected_value):
-        configuration = conf.Configuration(fake_opt, 'fake_group')
-        configuration.max_over_subscription_ratio = global_value
-        configuration.lvm_max_over_subscription_ratio = lvm_value
-
-        fake_vg = mock.Mock(fake_lvm.FakeBrickLVM('cinder-volumes', False,
-                                                  None, 'default'))
-        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration,
-                                         vg_obj=fake_vg, db=db)
-
-        self.assertEqual(expected_value,
-                         lvm_driver.configuration.max_over_subscription_ratio)
-
 
 class LVMISCSITestCase(test_driver.BaseDriverTestCase):
     """Test Case for LVMISCSIDriver"""
