@@ -27,13 +27,26 @@ Server-centric flow is used for authentication.
 """
 
 import base64
+from distutils import version
 import hashlib
-import httplib2
+import os
 
+try:
+    from google.auth import exceptions as gexceptions
+    from google.oauth2 import service_account
+    import google_auth_httplib2
+except ImportError:
+    service_account = google_auth_httplib2 = gexceptions = None
+
+try:
+    from oauth2client import client
+except ImportError:
+    client = None
+
+import googleapiclient
 from googleapiclient import discovery
 from googleapiclient import errors
 from googleapiclient import http
-from oauth2client import client
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
@@ -99,6 +112,7 @@ gcsbackup_service_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(gcsbackup_service_opts)
+OAUTH_EXCEPTIONS = None
 
 
 def gcs_logger(func):
@@ -107,7 +121,7 @@ def gcs_logger(func):
             return func(self, *args, **kwargs)
         except errors.Error as err:
             raise exception.GCSApiFailure(reason=err)
-        except client.Error as err:
+        except OAUTH_EXCEPTIONS as err:
             raise exception.GCSOAuth2Failure(reason=err)
         except Exception as err:
             raise exception.GCSConnectionFailure(reason=err)
@@ -120,8 +134,8 @@ class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete of backup objects within GCS."""
 
     def __init__(self, context, db=None):
+        global OAUTH_EXCEPTIONS
         backup_bucket = CONF.backup_gcs_bucket
-        backup_credential = CONF.backup_gcs_credential_file
         self.gcs_project_id = CONF.backup_gcs_project_id
         chunk_size_bytes = CONF.backup_gcs_object_size
         sha_block_size_bytes = CONF.backup_gcs_block_size
@@ -131,26 +145,40 @@ class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                                  backup_bucket,
                                                  enable_progress_timer,
                                                  db)
-        credentials = client.GoogleCredentials.from_stream(backup_credential)
         self.reader_chunk_size = CONF.backup_gcs_reader_chunk_size
         self.writer_chunk_size = CONF.backup_gcs_writer_chunk_size
         self.bucket_location = CONF.backup_gcs_bucket_location
         self.storage_class = CONF.backup_gcs_storage_class
         self.num_retries = CONF.backup_gcs_num_retries
-        http_user_agent = http.set_user_agent(
-            httplib2.Http(proxy_info=self.get_gcs_proxy_info()),
-            CONF.backup_gcs_user_agent)
+
+        # Set or overwrite environmental proxy variables for httplib2 since
+        # it's the only mechanism supported when using googleapiclient with
+        # google-auth
+        if CONF.backup_gcs_proxy_url:
+            os.environ['http_proxy'] = CONF.backup_gcs_proxy_url
+
+        backup_credential = CONF.backup_gcs_credential_file
+        # If we have google client that support google-auth library
+        # (v1.6.0 or higher) and all required libraries are installed use
+        # google-auth for the credentials
+        if (version.LooseVersion(googleapiclient.__version__) >=
+                version.LooseVersion('1.6.0') and service_account):
+            creds = service_account.Credentials.from_service_account_file(
+                backup_credential)
+            OAUTH_EXCEPTIONS = (gexceptions.RefreshError,
+                                gexceptions.DefaultCredentialsError)
+
+        # Can't use google-auth, use deprecated oauth2client
+        else:
+            creds = client.GoogleCredentials.from_stream(backup_credential)
+            OAUTH_EXCEPTIONS = client.Error
+
         self.conn = discovery.build('storage',
                                     'v1',
-                                    http=http_user_agent,
-                                    credentials=credentials)
+                                    # Avoid log error on oauth2client >= 4.0.0
+                                    cache_discovery=False,
+                                    credentials=creds)
         self.resumable = self.writer_chunk_size != -1
-
-    def get_gcs_proxy_info(self):
-        if CONF.backup_gcs_proxy_url:
-            return httplib2.proxy_info_from_url(CONF.backup_gcs_proxy_url)
-        else:
-            return httplib2.proxy_info_from_environment()
 
     def check_for_setup_error(self):
         required_options = ('backup_gcs_bucket', 'backup_gcs_credential_file',
