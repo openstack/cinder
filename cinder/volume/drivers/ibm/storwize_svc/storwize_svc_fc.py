@@ -169,7 +169,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
 
         host_site = self._get_volume_host_site_from_conf(volume,
                                                          connector)
-        is_hyper_volume = backend_helper.is_volume_hyperswap(volume_name)
+        is_hyper_volume = self.is_volume_hyperswap(volume)
         # The host_site is necessary for hyperswap volume.
         if is_hyper_volume and host_site is None:
             msg = (_('There is no correct storwize_preferred_host_site '

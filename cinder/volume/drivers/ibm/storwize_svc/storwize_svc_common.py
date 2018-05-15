@@ -2387,16 +2387,6 @@ class StorwizeHelpers(object):
                          'same site as peer_pool %(peer_pool)s. ') %
                 {'pool': pool, 'peer_pool': peer_pool})
 
-    def is_volume_hyperswap(self, vol_name):
-        """Returns True if the volume rcrelationship is activeactive."""
-        is_hyper_volume = False
-        vol_attrs = self.get_vdisk_attributes(vol_name)
-        if vol_attrs and vol_attrs['RC_name']:
-            relationship = self.ssh.lsrcrelationship(vol_attrs['RC_name'])
-            if relationship[0]['copy_type'] == 'activeactive':
-                is_hyper_volume = True
-        return is_hyper_volume
-
 
 class CLIResponse(object):
     """Parse SVC CLI output and generate iterable."""
@@ -2943,7 +2933,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         LOG.debug('enter: delete_volume: volume %s', volume['name'])
         ctxt = context.get_admin_context()
 
-        hyper_volume = self._helpers.is_volume_hyperswap(volume.name)
+        hyper_volume = self.is_volume_hyperswap(volume)
         if hyper_volume:
             LOG.debug('Volume %s to be deleted is a hyperswap '
                       'volume.', volume.name)
@@ -3119,7 +3109,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
     def _extend_volume_op(self, volume, new_size, old_size=None):
         LOG.debug('enter: _extend_volume_op: volume %s', volume['id'])
         volume_name = self._get_target_vol(volume)
-        if self._helpers.is_volume_hyperswap(volume_name):
+        if self.is_volume_hyperswap(volume):
             msg = _('_extend_volume_op: Extending a hyperswap volume is '
                     'not supported.')
             LOG.error(msg)
@@ -3777,6 +3767,15 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             replication_type = self._get_specs_replicated_type(volume_type)
         return replication_type
 
+    def is_volume_hyperswap(self, volume):
+        """Returns True if the volume type is hyperswap."""
+        is_hyper_volume = False
+        if 'volume_type_id' in volume:
+            opts = self._get_vdisk_params(volume.volume_type_id)
+            if opts['volume_topology'] == 'hyperswap':
+                is_hyper_volume = True
+        return is_hyper_volume
+
     def _get_storwize_config(self):
         # Update the storwize state
         try:
@@ -4272,7 +4271,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                   {'id': volume['id'], 'host': host['host']})
 
         # hyperswap volume doesn't support migrate
-        if self._helpers.is_volume_hyperswap(volume['name']):
+        if self.is_volume_hyperswap(volume):
             msg = _('migrate_volume: Migrating a hyperswap volume is '
                     'not supported.')
             LOG.error(msg)
@@ -5546,7 +5545,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         # Add remote copy relationship to rccg
         added_vols = []
         for volume in add_volumes:
-            hyper_volume = self._helpers.is_volume_hyperswap(volume.name)
+            hyper_volume = self.is_volume_hyperswap(volume)
             if not hyper_volume:
                 LOG.error("Failed to update rccg: the non hyperswap volume"
                           " of %(vol)s can't be added to hyperswap group.",
