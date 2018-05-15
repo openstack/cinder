@@ -590,3 +590,209 @@ Response Example
 
 .. literalinclude:: ./samples/volume-upload-to-image-response.json
    :language: javascript
+
+
+Reserve volume
+~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
+
+Mark volume as reserved. Specify the ``os-reserve`` action in the
+request body.
+
+Preconditions
+
+- Volume status must be ``available``.
+
+Response codes
+--------------
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - os-reserve: os-reserve
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-reserve-request.json
+   :language: javascript
+
+
+Unmark volume as reserved.
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
+
+Unmark volume as reserved. Specify the ``os-unreserve`` action in
+the request body.
+
+Response codes
+--------------
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - os-unreserve: os-unreserve
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-unreserve-request.json
+   :language: javascript
+
+
+Update volume status to detaching
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
+
+Update volume status to 'detaching'.. Specify the ``os-begin_detaching`` action
+in the request body.
+
+
+Response codes
+--------------
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - os-begin_detaching: os-begin_detaching
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-begin-detaching-request.json
+   :language: javascript
+
+
+
+Roll back volume status to in-use
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
+
+Roll back volume status to 'in-use'. Specify the ``os-roll_detaching`` action
+in the request body.
+
+Response codes
+--------------
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - os-roll_detaching: os-roll_detaching
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-roll-detaching-request.json
+   :language: javascript
+
+
+Terminate volume attachment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
+
+Terminate volume attachment. Specify the ``os-terminate_connection``
+action in the request body.
+
+Preconditions
+
+- Volume status must be ``in-use``.
+
+Response codes
+--------------
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - os-terminate_connection: os-terminate_connection
+   - connector: connector
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-terminate-connection-request.json
+   :language: javascript
+
+
+
+Initialize volume attachment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
+
+Initialize volume attachment. Specify the ``os-initialize_connection``
+action in the request body.
+
+Response codes
+--------------
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - os-initialize_connection: os-initialize_connection
+   - connector: connector
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-initialize-connection-request.json
+   :language: javascript
+
