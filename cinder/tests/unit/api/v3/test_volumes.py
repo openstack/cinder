@@ -277,7 +277,6 @@ class VolumeApiTest(test.TestCase):
         get_snapshot.side_effect = v2_fakes.fake_snapshot_get
         volume_type_get.side_effect = v2_fakes.fake_volume_type_get
 
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(
             image_id="b0a599e0-41d7-3582-b260-769f443c862a")
 

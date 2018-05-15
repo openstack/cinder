@@ -309,16 +309,15 @@ class VolumeController(volumes_v2.VolumeController):
             # Not found exception will be handled at the wsgi level
             kwargs['group'] = self.group_api.get(context, group_id)
 
-        if self.ext_mgr.is_loaded('os-image-create'):
-            image_ref = volume.get('imageRef')
-            if image_ref is not None:
-                image_uuid = self._image_uuid_from_ref(image_ref, context)
-                image_snapshot = self._get_image_snapshot(context, image_uuid)
-                if (req_version.matches(mv.get_api_version(
-                        mv.SUPPORT_NOVA_IMAGE)) and image_snapshot):
-                    kwargs['snapshot'] = image_snapshot
-                else:
-                    kwargs['image_id'] = image_uuid
+        image_ref = volume.get('imageRef')
+        if image_ref is not None:
+            image_uuid = self._image_uuid_from_ref(image_ref, context)
+            image_snapshot = self._get_image_snapshot(context, image_uuid)
+            if (req_version.matches(mv.get_api_version(
+                    mv.SUPPORT_NOVA_IMAGE)) and image_snapshot):
+                kwargs['snapshot'] = image_snapshot
+            else:
+                kwargs['image_id'] = image_uuid
 
         backup_id = volume.get('backup_id')
         if backup_id:
