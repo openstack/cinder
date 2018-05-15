@@ -121,9 +121,10 @@ Also, set ``volume_backend_name``.
 
 This table shows configuration options for NEC Storage M series driver.
 
-.. include:: ../../tables/cinder-nec_m.inc
+.. config-table::
+   :config-target: NEC Storage M Series
 
-
+   cinder.volume.drivers.nec.volume_common
 
 Required options
 ----------------
