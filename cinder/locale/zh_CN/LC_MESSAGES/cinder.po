@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-04-17 01:13+0000\n"
+"POT-Creation-Date: 2018-05-15 01:12+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -870,13 +870,6 @@ msgid ""
 msgstr ""
 "无法同时提供“cgsnapshot_id”和“source_cgid”以从源创建一致性组 %(name)s。"
 
-#, python-format
-msgid ""
-"Cannot provide both 'group_snapshot_id' and 'source_group_id' to create "
-"group %(name)s from source."
-msgstr ""
-"无法同时提供“group_snapshot_id”和“source_group_id”以通过源创建组 %(name)s。"
-
 msgid "Cannot register resource"
 msgstr "无法注册资源"
 
@@ -1617,13 +1610,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Either 'group_snapshot_id' or 'source_group_id' must be provided to create "
-"group %(name)s from source."
-msgstr ""
-"必须提供“group_snapshot_id”或者“source_group_id”，才能通过源创建组 %(name)s。"
-
-#, python-format
-msgid ""
 "Either SLO: %(slo)s or workload %(workload)s is invalid. Examine previous "
 "error statement for valid values."
 msgstr ""
@@ -2215,11 +2201,6 @@ msgstr ""
 #, python-format
 msgid "Error[status] %(stat)s - [result] %(res)s] while getting volume id."
 msgstr "获取卷标识时发生错误 [status] %(stat)s - [result] %(res)s]。"
-
-#, python-format
-msgid ""
-"Exceeded max scheduling attempts %(max_attempts)d for volume %(volume_id)s"
-msgstr "对于卷 %(volume_id)s，已超过最大调度尝试次数 %(max_attempts)d"
 
 msgid "Exceeded the limit of snapshots per volume"
 msgstr "超出每个卷的快照数限制"
@@ -3726,10 +3707,6 @@ msgstr "无效传输类型。"
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "无效的更新设置：'%s'"
-
-#, python-format
-msgid "Invalid value '%s' for delete-volumes flag."
-msgstr "删除卷标志的值\"%s\"无效。"
 
 #, python-format
 msgid "Invalid value '%s' for force."
@@ -7312,10 +7289,6 @@ msgstr "已更改组快照"
 msgid "group_snapshots assigned"
 msgstr "已分配组快照"
 
-#, python-format
-msgid "group_type must be provided to create group %(name)s."
-msgstr "创建组%(name)s时必须提供group_type。"
-
 msgid "group_type_id cannot be None"
 msgstr "group_type_id 不能为None"
 
@@ -7673,10 +7646,6 @@ msgstr "已分配卷类型"
 #, python-format
 msgid "volume_types must be provided to create consistency group %(name)s."
 msgstr "必须提供 volume_types，才能创建一致性组 %(name)s。"
-
-#, python-format
-msgid "volume_types must be provided to create group %(name)s."
-msgstr "必须提供volume_types，才能创建组 %(name)s。"
 
 msgid "volumes assigned"
 msgstr "已分配卷"
