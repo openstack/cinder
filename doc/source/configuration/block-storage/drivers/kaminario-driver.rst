@@ -270,4 +270,7 @@ Driver options
 The following table contains the configuration options that are specific
 to the Kaminario K2 FC and iSCSI Block Storage drivers.
 
-.. include:: ../../tables/cinder-kaminario.inc
+.. config-table::
+   :config-target: Kaminario
+
+   cinder.volume.drivers.kaminario.kaminario_common
