@@ -1470,7 +1470,7 @@ snapshot_id_2:
   description: |
     The UUID of the source volume snapshot.
   in: body
-  required: true
+  required: false
   type: string
 source_cgid:
   description: |

@@ -263,7 +263,7 @@ Create a backup
 
 .. rest_method::  POST /v3/{project_id}/backups
 
-Creates a Block Storage backup from a volume.
+Creates a Block Storage backup from a volume or snapshot.
 
 Response codes
 --------------

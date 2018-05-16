@@ -2398,11 +2398,9 @@ snapshot_id_2:
   type: string
 snapshot_id_3:
   description: |
-    The UUID of the source volume snapshot. The API
-    creates a new volume snapshot with the same size as the source
-    volume snapshot unless a larger size is requested.
+    The UUID of the source snapshot that you want to back up.
   in: body
-  required: true
+  required: false
   type: string
 snapshot_id_4:
   description: |
