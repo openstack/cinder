@@ -643,6 +643,13 @@ class BackupManager(manager.ThreadPoolManager):
             else:
                 backup_service.restore(backup, volume.id,
                                        tpool.Proxy(device_path))
+        except exception.BackupRestoreCancel:
+            raise
+        except Exception:
+            LOG.exception('Restoring backup %(backup_id)s to volume '
+                          '%(volume_id)s failed.', {'backup_id': backup.id,
+                                                    'volume_id': volume.id})
+            raise
         finally:
             self._detach_device(context, attach_info, volume, properties,
                                 force=True)
