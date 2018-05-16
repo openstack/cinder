@@ -17,8 +17,6 @@
 Tests for volume transfer code.
 """
 
-import mock
-
 from oslo_serialization import jsonutils
 from six.moves import http_client
 import webob
@@ -186,9 +184,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         db.transfer_destroy(context.get_admin_context(), transfer1['id'])
         db.volume_destroy(context.get_admin_context(), volume_id_1)
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_string_length')
-    def test_create_transfer_json(self, mock_validate):
+    def test_create_transfer_json(self):
         volume_id = self._create_volume(status='available', size=5)
         body = {"transfer": {"name": "transfer1",
                              "volume_id": volume_id}}
@@ -209,7 +205,6 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertIn('created_at', res_dict['transfer'])
         self.assertIn('name', res_dict['transfer'])
         self.assertIn('volume_id', res_dict['transfer'])
-        self.assertTrue(mock_validate.called)
 
         db.volume_destroy(context.get_admin_context(), volume_id)
 
@@ -227,9 +222,6 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)
         self.assertEqual(http_client.BAD_REQUEST,
                          res_dict['badRequest']['code'])
-        self.assertEqual("Missing required element 'transfer' in "
-                         "request body.",
-                         res_dict['badRequest']['message'])
 
     def test_create_transfer_with_body_KeyError(self):
         body = {"transfer": {"name": "transfer1"}}
@@ -245,10 +237,8 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)
         self.assertEqual(http_client.BAD_REQUEST,
                          res_dict['badRequest']['code'])
-        self.assertEqual('Incorrect request body format',
-                         res_dict['badRequest']['message'])
 
-    def test_create_transfer_with_VolumeNotFound(self):
+    def test_create_transfer_with_invalid_volume_id_value(self):
         body = {"transfer": {"name": "transfer1",
                              "volume_id": 1234}}
 
@@ -261,11 +251,9 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
-                         res_dict['itemNotFound']['code'])
-        self.assertEqual('Volume 1234 could not be found.',
-                         res_dict['itemNotFound']['message'])
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST,
+                         res_dict['badRequest']['code'])
 
     def test_create_transfer_with_InvalidVolume(self):
         volume_id = self._create_volume(status='attached')
@@ -286,6 +274,26 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual('Invalid volume: status must be available',
                          res_dict['badRequest']['message'])
 
+        db.volume_destroy(context.get_admin_context(), volume_id)
+
+    def test_create_transfer_with_leading_trailing_spaces_for_name(self):
+        volume_id = self._create_volume(status='available', size=5)
+        body = {"transfer": {"name": "    transfer1   ",
+                             "volume_id": volume_id}}
+
+        req = webob.Request.blank('/v2/%s/os-volume-transfer' %
+                                  fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(body['transfer']['name'].strip(),
+                         res_dict['transfer']['name'])
         db.volume_destroy(context.get_admin_context(), volume_id)
 
     def test_delete_transfer_awaiting_transfer(self):
@@ -340,8 +348,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         transfer = self._create_transfer(volume_id)
 
         svc = self.start_service('volume', host='fake_host')
-        body = {"accept": {"id": transfer['id'],
-                           "auth_key": transfer['auth_key']}}
+        body = {"accept": {"auth_key": transfer['auth_key']}}
         req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
         req.method = 'POST'
@@ -374,9 +381,8 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)
         self.assertEqual(http_client.BAD_REQUEST,
                          res_dict['badRequest']['code'])
-        self.assertEqual("Missing required element 'accept' in request body.",
-                         res_dict['badRequest']['message'])
 
+        db.transfer_destroy(context.get_admin_context(), transfer['id'])
         db.volume_destroy(context.get_admin_context(), volume_id)
 
     def test_accept_transfer_with_body_KeyError(self):
@@ -398,15 +404,15 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)
         self.assertEqual(http_client.BAD_REQUEST,
                          res_dict['badRequest']['code'])
-        self.assertEqual("Missing required element 'accept' in request body.",
-                         res_dict['badRequest']['message'])
+
+        db.transfer_destroy(context.get_admin_context(), transfer['id'])
+        db.volume_destroy(context.get_admin_context(), volume_id)
 
     def test_accept_transfer_invalid_id_auth_key(self):
         volume_id = self._create_volume()
         transfer = self._create_transfer(volume_id)
 
-        body = {"accept": {"id": transfer['id'],
-                           "auth_key": 1}}
+        body = {"accept": {"auth_key": 1}}
         req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
         req.method = 'POST'
@@ -430,8 +436,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         volume_id = self._create_volume()
         transfer = self._create_transfer(volume_id)
 
-        body = {"accept": {"id": transfer['id'],
-                           "auth_key": 1}}
+        body = {"accept": {"auth_key": 1}}
         req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
             fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'POST'
@@ -467,8 +472,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         volume_id = self._create_volume()
         transfer = self._create_transfer(volume_id)
 
-        body = {"accept": {"id": transfer['id'],
-                           "auth_key": transfer['auth_key']}}
+        body = {"accept": {"auth_key": transfer['auth_key']}}
         req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
 
@@ -486,6 +490,9 @@ class VolumeTransferAPITestCase(test.TestCase):
                          '2G has been consumed.',
                          res_dict['overLimit']['message'])
 
+        db.transfer_destroy(context.get_admin_context(), transfer['id'])
+        db.volume_destroy(context.get_admin_context(), volume_id)
+
     def test_accept_transfer_with_VolumeLimitExceeded(self):
 
         def fake_transfer_api_accept_throwing_VolumeLimitExceeded(cls,
@@ -500,8 +507,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         volume_id = self._create_volume()
         transfer = self._create_transfer(volume_id)
 
-        body = {"accept": {"id": transfer['id'],
-                           "auth_key": transfer['auth_key']}}
+        body = {"accept": {"auth_key": transfer['auth_key']}}
         req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
 
@@ -517,3 +523,28 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual("VolumeLimitExceeded: Maximum number of volumes "
                          "allowed (1) exceeded for quota 'volumes'.",
                          res_dict['overLimit']['message'])
+
+        db.transfer_destroy(context.get_admin_context(), transfer['id'])
+        db.volume_destroy(context.get_admin_context(), volume_id)
+
+    def test_accept_transfer_with_auth_key_null(self):
+        volume_id = self._create_volume(size=5)
+        transfer = self._create_transfer(volume_id)
+        body = {"accept": {"auth_key": None}}
+
+        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
+                                  fake.PROJECT_ID, transfer['id']))
+        req.body = jsonutils.dump_as_bytes(body)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.headers['Accept'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual(http_client.BAD_REQUEST,
+                         res_dict['badRequest']['code'])
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+
+        db.transfer_destroy(context.get_admin_context(), transfer['id'])
+        db.volume_destroy(context.get_admin_context(), volume_id)
