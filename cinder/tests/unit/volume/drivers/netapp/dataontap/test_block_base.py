@@ -165,12 +165,12 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual(1, block_base.LOG.exception.call_count)
 
     def test_create_volume_no_pool_provided_by_scheduler(self):
-        fake_volume = copy.deepcopy(fake.VOLUME)
+        volume_copy = copy.deepcopy(fake.VOLUME)
         # Set up fake volume whose 'host' field is missing pool information.
-        fake_volume['host'] = '%s@%s' % (fake.HOST_NAME, fake.BACKEND_NAME)
+        volume_copy['host'] = '%s@%s' % (fake.HOST_NAME, fake.BACKEND_NAME)
 
         self.assertRaises(exception.InvalidHost, self.library.create_volume,
-                          fake_volume)
+                          volume_copy)
 
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_get_lun_attr')
@@ -1114,8 +1114,6 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         new_size_bytes = new_size * units.Gi
         max_size = fake.LUN_SIZE * 10
         max_size_bytes = max_size * units.Gi
-        fake_volume = copy.copy(fake.VOLUME)
-        fake_volume['size'] = new_size
 
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE,
                                         fake.LUN_ID,
@@ -1144,6 +1142,45 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual(six.text_type(new_size_bytes),
                          self.library.lun_table[fake.VOLUME['name']].size)
 
+    def test__extend_attached_volume_direct(self):
+
+        current_size = fake.LUN_SIZE
+        current_size_bytes = current_size * units.Gi
+        new_size = fake.LUN_SIZE * 2
+        new_size_bytes = new_size * units.Gi
+        max_size = fake.LUN_SIZE * 10
+        max_size_bytes = max_size * units.Gi
+        volume_copy = copy.copy(fake.VOLUME)
+        volume_copy['size'] = new_size
+        volume_copy['attach_status'] = fake.ATTACHED
+
+        fake_lun = block_base.NetAppLun(fake.LUN_HANDLE,
+                                        fake.LUN_ID,
+                                        current_size_bytes,
+                                        fake.LUN_METADATA)
+        mock_get_lun_from_table = self.mock_object(
+            self.library, '_get_lun_from_table', return_value=fake_lun)
+        fake_lun_geometry = {'max_resize': six.text_type(max_size_bytes)}
+        mock_get_lun_geometry = self.mock_object(
+            self.library.zapi_client, 'get_lun_geometry',
+            return_value=fake_lun_geometry)
+        mock_do_direct_resize = self.mock_object(self.library.zapi_client,
+                                                 'do_direct_resize')
+        mock_do_sub_clone_resize = self.mock_object(self.library,
+                                                    '_do_sub_clone_resize')
+        self.library.lun_table = {volume_copy['name']: fake_lun}
+
+        self.library._extend_volume(volume_copy, new_size, 'fake_qos_policy')
+
+        mock_get_lun_from_table.assert_called_once_with(volume_copy['name'])
+        mock_get_lun_geometry.assert_called_once_with(
+            fake.LUN_METADATA['Path'])
+        mock_do_direct_resize.assert_called_once_with(
+            fake.LUN_METADATA['Path'], six.text_type(new_size_bytes))
+        self.assertFalse(mock_do_sub_clone_resize.called)
+        self.assertEqual(six.text_type(new_size_bytes),
+                         self.library.lun_table[volume_copy['name']].size)
+
     def test__extend_volume_clone(self):
 
         current_size = fake.LUN_SIZE
@@ -1152,8 +1189,6 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         new_size_bytes = new_size * units.Gi
         max_size = fake.LUN_SIZE * 10
         max_size_bytes = max_size * units.Gi
-        fake_volume = copy.copy(fake.VOLUME)
-        fake_volume['size'] = new_size
 
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE,
                                         fake.LUN_ID,
@@ -1183,15 +1218,15 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual(six.text_type(new_size_bytes),
                          self.library.lun_table[fake.VOLUME['name']].size)
 
-    def test__extend_volume_no_change(self):
+    def test__extend_attached_volume_clone_error(self):
 
         current_size = fake.LUN_SIZE
         current_size_bytes = current_size * units.Gi
-        new_size = fake.LUN_SIZE
+        new_size = fake.LUN_SIZE * 20
         max_size = fake.LUN_SIZE * 10
         max_size_bytes = max_size * units.Gi
-        fake_volume = copy.copy(fake.VOLUME)
-        fake_volume['size'] = new_size
+        volume_copy = copy.copy(fake.VOLUME)
+        volume_copy['attach_status'] = fake.ATTACHED
 
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE,
                                         fake.LUN_ID,
@@ -1207,11 +1242,51 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                                  'do_direct_resize')
         mock_do_sub_clone_resize = self.mock_object(self.library,
                                                     '_do_sub_clone_resize')
-        self.library.lun_table = {fake_volume['name']: fake_lun}
+        self.library.lun_table = {volume_copy['name']: fake_lun}
 
-        self.library._extend_volume(fake_volume, new_size, 'fake_qos_policy')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.library._extend_volume,
+                          volume_copy,
+                          new_size,
+                          fake.QOS_POLICY_GROUP_NAME)
 
-        mock_get_lun_from_table.assert_called_once_with(fake_volume['name'])
+        mock_get_lun_from_table.assert_called_once_with(volume_copy['name'])
+        mock_get_lun_geometry.assert_called_once_with(
+            fake.LUN_METADATA['Path'])
+        self.assertFalse(mock_do_direct_resize.called)
+        self.assertFalse(mock_do_sub_clone_resize.called)
+        self.assertEqual(current_size_bytes,
+                         self.library.lun_table[volume_copy['name']].size)
+
+    def test__extend_volume_no_change(self):
+
+        current_size = fake.LUN_SIZE
+        current_size_bytes = current_size * units.Gi
+        new_size = fake.LUN_SIZE
+        max_size = fake.LUN_SIZE * 10
+        max_size_bytes = max_size * units.Gi
+        volume_copy = copy.copy(fake.VOLUME)
+        volume_copy['size'] = new_size
+
+        fake_lun = block_base.NetAppLun(fake.LUN_HANDLE,
+                                        fake.LUN_ID,
+                                        current_size_bytes,
+                                        fake.LUN_METADATA)
+        mock_get_lun_from_table = self.mock_object(
+            self.library, '_get_lun_from_table', return_value=fake_lun)
+        fake_lun_geometry = {'max_resize': six.text_type(max_size_bytes)}
+        mock_get_lun_geometry = self.mock_object(
+            self.library.zapi_client, 'get_lun_geometry',
+            return_value=fake_lun_geometry)
+        mock_do_direct_resize = self.mock_object(self.library.zapi_client,
+                                                 'do_direct_resize')
+        mock_do_sub_clone_resize = self.mock_object(self.library,
+                                                    '_do_sub_clone_resize')
+        self.library.lun_table = {volume_copy['name']: fake_lun}
+
+        self.library._extend_volume(volume_copy, new_size, 'fake_qos_policy')
+
+        mock_get_lun_from_table.assert_called_once_with(volume_copy['name'])
         self.assertFalse(mock_get_lun_geometry.called)
         self.assertFalse(mock_do_direct_resize.called)
         self.assertFalse(mock_do_sub_clone_resize.called)
