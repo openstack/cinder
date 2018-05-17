@@ -464,6 +464,12 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             source_volume,
             image_meta)
 
+        if encryption_key_id is not None and volume_type is not None:
+            extra_specs = volume_type.get('extra_specs', {})
+            if extra_specs.get('multiattach', '') == '<is> True':
+                msg = _('Multiattach cannot be used with encrypted volumes.')
+                raise exception.InvalidVolume(reason=msg)
+
         specs = {}
         if volume_type_id:
             qos_specs = volume_types.get_volume_type_qos_specs(volume_type_id)
