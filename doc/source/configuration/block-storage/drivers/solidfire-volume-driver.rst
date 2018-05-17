@@ -48,7 +48,10 @@ To configure the use of a SolidFire cluster with Block Storage, modify your
    deployment it is recommended to add the Cluster as if it were a second
    backend and disable new deployments to the current back end.
 
-.. include:: ../../tables/cinder-solidfire.inc
+.. config-table::
+   :config-target: SolidFire
+
+   cinder.volume.drivers.solidfire
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
