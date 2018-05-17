@@ -131,16 +131,12 @@ class TestZFSSAISCSIDriver(test.TestCase):
         'size': test_vol['size']
     }
 
-    def __init__(self, method):
-        super(TestZFSSAISCSIDriver, self).__init__(method)
-
-    @mock.patch.object(iscsi, 'factory_zfssa')
-    def setUp(self, _factory_zfssa):
+    def setUp(self):
         super(TestZFSSAISCSIDriver, self).setUp()
         self._create_fake_config()
+        self.mock_object(iscsi, 'factory_zfssa', spec=rest.ZFSSAApi)
         self.mock_object(volume_utils, 'get_max_over_subscription_ratio',
                          return_value=1.0)
-        _factory_zfssa.return_value = mock.MagicMock(spec=rest.ZFSSAApi)
         iscsi.ZFSSAISCSIDriver._execute = fake_utils.fake_execute
         self.drv = iscsi.ZFSSAISCSIDriver(configuration=self.configuration)
         self.drv.do_setup({})
@@ -1087,14 +1083,10 @@ class TestZFSSANFSDriver(test.TestCase):
         'size': test_vol['size']
     }
 
-    def __init__(self, method):
-        super(TestZFSSANFSDriver, self).__init__(method)
-
-    @mock.patch.object(zfssanfs, 'factory_zfssa')
-    def setUp(self, _factory_zfssa):
+    def setUp(self):
         super(TestZFSSANFSDriver, self).setUp()
         self._create_fake_config()
-        _factory_zfssa.return_value = mock.MagicMock(spec=rest.ZFSSANfsApi)
+        self.mock_object(zfssanfs, 'factory_zfssa', spec=rest.ZFSSAApi)
         self.mock_object(volume_utils, 'get_max_over_subscription_ratio',
                          return_value=1.0)
         self.drv = zfssanfs.ZFSSANFSDriver(configuration=self.configuration)
@@ -1576,9 +1568,7 @@ class TestZFSSANFSDriver(test.TestCase):
 
 
 class TestZFSSAApi(test.TestCase):
-
-    @mock.patch.object(rest, 'factory_restclient')
-    def setUp(self, _restclient):
+    def setUp(self):
         super(TestZFSSAApi, self).setUp()
         self.host = 'fakehost'
         self.user = 'fakeuser'
@@ -1589,7 +1579,7 @@ class TestZFSSAApi(test.TestCase):
         self.snap = 'fakesnapshot'
         self.clone = 'fakeclone'
         self.targetalias = 'fakealias'
-        _restclient.return_value = mock.MagicMock(spec=client.RestClientURL)
+        self.mock_object(rest, 'factory_restclient', spec=rest.ZFSSAApi)
         self.zfssa = rest.ZFSSAApi()
         self.zfssa.set_host('fakehost')
         self.pool_url = '/api/storage/v1/pools/'
@@ -1799,9 +1789,7 @@ class TestZFSSAApi(test.TestCase):
 
 
 class TestZFSSANfsApi(test.TestCase):
-
-    @mock.patch.object(rest, 'factory_restclient')
-    def setUp(self, _restclient):
+    def setUp(self):
         super(TestZFSSANfsApi, self).setUp()
         self.host = 'fakehost'
         self.user = 'fakeuser'
@@ -1811,7 +1799,7 @@ class TestZFSSANfsApi(test.TestCase):
         self.share = 'fakeshare'
         self.snap = 'fakesnapshot'
         self.targetalias = 'fakealias'
-        _restclient.return_value = mock.MagicMock(spec=client.RestClientURL)
+        self.mock_object(rest, 'factory_restclient', spec=rest.ZFSSAApi)
         self.webdavclient = mock.MagicMock(spec=webdavclient.ZFSSAWebDAVClient)
         self.zfssa = rest.ZFSSANfsApi()
         self.zfssa.set_host('fakehost')
