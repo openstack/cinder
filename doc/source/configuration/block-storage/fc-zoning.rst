@@ -17,9 +17,13 @@ If Block Storage is configured to use a Fibre Channel volume driver that
 supports Zone Manager, update ``cinder.conf`` to add the following
 configuration options to enable Fibre Channel Zone Manager.
 
-Make the following changes in the ``/etc/cinder/cinder.conf`` file.
+Make the following changes in the ``/etc/cinder/cinder.conf`` file under a
+``[fc-zone-manager]`` section.
 
-.. include:: ../tables/cinder-zoning.inc
+.. config-table::
+   :config-target: zoning
+
+   cinder.zonemanager.fc_zone_manager
 
 To use different Fibre Channel Zone Drivers, use the parameters
 described in this section.
@@ -46,14 +50,21 @@ Brocade Fibre Channel Zone Driver
 Brocade Fibre Channel Zone Driver performs zoning operations
 through HTTP, HTTPS, or SSH.
 
-Set the following options in the ``cinder.conf`` configuration file.
+Set the following options in the ``cinder.conf`` configuration file under the
+``[fc-zone-manager]`` section.
 
-.. include:: ../tables/cinder-zoning_manager_brcd.inc
+.. config-table::
+   :config-target: Brocade zoning manager
 
-Configure SAN fabric parameters in the form of fabric groups as
-described in the example below:
+   cinder.zonemanager.drivers.brocade.brcd_fc_zone_driver
 
-.. include:: ../tables/cinder-zoning_fabric_brcd.inc
+Configure SAN fabric parameters under a section matching the name used in
+``fc_fabric_names`` as described in the example below:
+
+.. config-table::
+   :config-target: Brocade zoning fabrics
+
+   cinder.zonemanager.drivers.brocade.brcd_fabric_opts
 
 .. note::
 
@@ -99,12 +110,18 @@ Set the following options in the ``cinder.conf`` configuration file.
     fc_fabric_names = CISCO_FABRIC_EXAMPLE
     cisco_sb_connector = cinder.zonemanager.drivers.cisco.cisco_fc_zone_client_cli.CiscoFCZoneClientCLI
 
-.. include:: ../tables/cinder-zoning_manager_cisco.inc
+.. config-table::
+   :config-target: Cisco zoning manager
 
-Configure SAN fabric parameters in the form of fabric groups as
-described in the example below:
+   cinder.zonemanager.drivers.cisco.cisco_fc_zone_driver
 
-.. include:: ../tables/cinder-zoning_fabric_cisco.inc
+Configure SAN fabric parameters under a section matching the name used in
+``fc_fabric_names`` as described in the example below:
+
+.. config-table::
+   :config-target: Cisco zoning fabrics
+
+   cinder.zonemanager.drivers.cisco.cisco_fabric_opts
 
 .. note::
 
