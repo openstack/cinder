@@ -35,11 +35,11 @@ Driver Configuration Reference
    drivers/datacore-volume-driver
    drivers/datera-volume-driver
    drivers/dell-equallogic-driver
-   drivers/dell-emc-scaleio-driver
    drivers/dell-storagecenter-driver
    drivers/dell-emc-unity-driver
    drivers/dell-emc-vnx-driver
    drivers/dell-emc-vmax-driver
+   drivers/dell-emc-vxflex-driver
    drivers/emc-xtremio-driver
    drivers/fujitsu-eternus-dx-driver
    drivers/hpe-3par-driver

@@ -57,7 +57,7 @@ LOG = logging.getLogger(__name__)
 scaleio_opts = [
     cfg.StrOpt('sio_rest_server_port',
                default='443',
-               help='REST server port.'),
+               help='Gateway REST server port.'),
     cfg.BoolOpt('sio_verify_server_certificate',
                 default=False,
                 help='Verify server certificate.'),
@@ -65,12 +65,18 @@ scaleio_opts = [
                help='Server certificate path.'),
     cfg.BoolOpt('sio_round_volume_capacity',
                 default=True,
-                help='Round up volume capacity.'),
+                help='Round volume sizes up to 8GB boundaries. '
+                     'VxFlex OS/ScaleIO requires volumes to be sized '
+                     'in multiples of 8GB. If set to False, volume '
+                     'creation will fail for volumes not sized properly'),
     cfg.BoolOpt('sio_unmap_volume_before_deletion',
                 default=False,
-                help='Unmap volume before deletion.'),
+                help='Unmap volumes before deletion.'),
     cfg.StrOpt('sio_storage_pools',
-               help='Storage Pools.'),
+               help='Storage Pools. Comma separated list of storage '
+                    'pools used to provide volumes. Each pool should '
+                    'be specified as a '
+                    'protection_domain_name:storage_pool_name value'),
     cfg.StrOpt('sio_protection_domain_id',
                deprecated_for_removal=True,
                deprecated_reason="Replaced by sio_storage_pools option",
@@ -92,16 +98,15 @@ scaleio_opts = [
                deprecated_since="Pike",
                help='DEPRECATED: Storage Pool ID.'),
     cfg.StrOpt('sio_server_api_version',
-               help='ScaleIO API version.'),
+               help='VxFlex OS/ScaleIO API version. This value should be '
+                    'left as the default value unless otherwise instructed '
+                    'by technical support.'),
     cfg.FloatOpt('sio_max_over_subscription_ratio',
                  # This option exists to provide a default value for the
                  # ScaleIO driver which is different than the global default.
                  default=10.0,
-                 help='max_over_subscription_ratio setting for the ScaleIO '
-                      'driver. This replaces the general '
-                      'max_over_subscription_ratio which has no effect '
-                      'in this driver.'
-                      'Maximum value allowed for ScaleIO is 10.0.'),
+                 help='max_over_subscription_ratio setting for the driver. '
+                      'Maximum value allowed is 10.0.'),
     cfg.BoolOpt('sio_allow_non_padded_thick_volumes',
                 default=False,
                 help='Allow thick volumes to be created in Storage Pools '

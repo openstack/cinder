@@ -1,53 +1,62 @@
-=====================================
-Dell EMC ScaleIO Block Storage driver
-=====================================
+===========================================
+Dell EMC VxFlex OS (ScaleIO) Storage driver
+===========================================
 
 Overview
 --------
 
-ScaleIO is a software-only solution that uses existing servers' local
+Dell EMC VxFlex OS (formerly named Dell EMC ScaleIO) is a software-only
+solution that uses existing servers local
 disks and LAN to create a virtual SAN that has all of the benefits of
 external storage, but at a fraction of the cost and complexity. Using the
-driver, Block Storage hosts can connect to a ScaleIO Storage
+driver, Block Storage hosts can connect to a VxFlex OS Storage
 cluster.
 
-.. _scale_io_docs:
+The Dell EMC VxFlex OS Cinder driver is designed and tested to work with
+both VxFlex OS and with ScaleIO. The
+:ref:`configuration options <cg_configuration_options_emc>`
+are identical for both VxFlex OS and ScaleIO.
 
-Official ScaleIO documentation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. _scaleio_docs:
 
-To find the ScaleIO documentation:
+Official VxFlex OS documentation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#. Go to the `ScaleIO product documentation page <https://support.emc.com/products/33925_ScaleIO/Documentation/?source=promotion>`_.
+To find the VxFlex OS documentation:
 
-#. From the left-side panel, select the relevant ScaleIO version.
+#. Go to the `VxFlex OS product documentation page <https://support.emc.com/products/33925_ScaleIO/Documentation/?source=promotion>`_.
 
-Supported ScaleIO Versions
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+#. From the left-side panel, select the relevant VxFlex OS version.
 
-The Dell EMC ScaleIO Block Storage driver has been tested against the
-following versions of ScaleIO and found to be compatible:
+Supported VxFlex OS and ScaleIO Versions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Dell EMC VxFlex OS Block Storage driver has been tested against the
+following versions of ScaleIO and VxFlex OS and found to be compatible:
 
 * ScaleIO 2.0.x
 * ScaleIO 2.5.x
+* VxFlex OS 2.6.x
 
-Please consult the :ref:`scale_io_docs`
-to determine supported operating systems for each version of ScaleIO.
+Please consult the :ref:`scaleio_docs`
+to determine supported operating systems for each version
+of VxFlex OS or ScaleIO.
 
 Deployment prerequisites
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-* ScaleIO Gateway must be installed and accessible in the network.
+* The VxFlex OS Gateway must be installed and accessible in the network.
   For installation steps, refer to the Preparing the installation Manager
-  and the Gateway section in ScaleIO Deployment Guide. See
-  :ref:`scale_io_docs`.
+  and the Gateway section in VxFlex OS Deployment Guide. See
+  :ref:`scaleio_docs`.
 
-* ScaleIO Data Client (SDC) must be installed on all OpenStack nodes.
+* VxFlex OS Storage Data Client (SDC) must be installed
+  on all OpenStack nodes.
 
-.. note:: Ubuntu users must follow the specific instructions in the ScaleIO
-          Deployment Guide for Ubuntu environments. See the ``Deploying on
-          Ubuntu Servers`` section in ScaleIO Deployment Guide. See
-          :ref:`scale_io_docs`.
+.. note:: Ubuntu users must follow the specific instructions in the VxFlex
+          OS Deployment Guide for Ubuntu environments. See the ``Deploying
+          on Ubuntu Servers`` section in VxFlex OS Deployment Guide. See
+          :ref:`scaleio_docs`.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -71,11 +80,11 @@ Supported operations
 * Create, list, update, and delete consistency group snapshots
 
 
-ScaleIO Block Storage driver configuration
-------------------------------------------
+VxFlex OS Block Storage driver configuration
+--------------------------------------------
 
 This section explains how to configure and connect the block storage
-nodes to a ScaleIO storage cluster.
+nodes to a VxFlex OS storage cluster.
 
 Edit the ``cinder.conf`` file by adding the configuration below under
 a new section (for example, ``[scaleio]``) and change the ``enable_backends``
@@ -86,8 +95,8 @@ The configuration file is usually located at
 For a configuration example, refer to the example
 :ref:`cinder.conf <cg_configuration_example_emc>` .
 
-ScaleIO driver name
-~~~~~~~~~~~~~~~~~~~
+VxFlex OS driver name
+~~~~~~~~~~~~~~~~~~~~~
 
 Configure the driver name by adding the following parameter:
 
@@ -95,19 +104,19 @@ Configure the driver name by adding the following parameter:
 
    volume_driver = cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver
 
-ScaleIO Gateway server IP
-~~~~~~~~~~~~~~~~~~~~~~~~~
+VxFlex OS Gateway server IP
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ScaleIO Gateway provides a REST interface to ScaleIO.
+The VxFlex OS Gateway provides a REST interface to VxFlex OS.
 
 Configure the Gateway server IP address by adding the following parameter:
 
 .. code-block:: ini
 
-   san_ip = <ScaleIO GATEWAY IP>
+   san_ip = <VxFlex OS GATEWAY IP>
 
-ScaleIO Storage Pools
-~~~~~~~~~~~~~~~~~~~~~
+VxFlex OS Storage Pools
+~~~~~~~~~~~~~~~~~~~~~~~
 
 Multiple Storage Pools and Protection Domains can be listed for use by
 the virtual machines. The list should include every Protection Domain and
@@ -122,14 +131,14 @@ Configure the available Storage Pools by adding the following parameter:
 
    sio_storage_pools = <Comma-separated list of protection domain:storage pool name>
 
-ScaleIO user credentials
-~~~~~~~~~~~~~~~~~~~~~~~~
+VxFlex OS user credentials
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Block Storage requires a ScaleIO user with administrative
-privileges. ScaleIO recommends creating a dedicated OpenStack user
+Block Storage requires a VxFlex OS user with administrative
+privileges. Dell EMC recommends creating a dedicated OpenStack user
 account that has an administrative user role.
 
-Refer to the ScaleIO User Guide for details on user account management.
+Refer to the VxFlex OS User Guide for details on user account management.
 
 Configure the user credentials by adding the following parameters:
 
@@ -142,7 +151,7 @@ Oversubscription
 ~~~~~~~~~~~~~~~~
 
 Configure the oversubscription ratio by adding the following parameter
-under the separate section for ScaleIO:
+under the separate section for VxFlex OS:
 
 .. code-block:: ini
 
@@ -156,7 +165,7 @@ under the separate section for ScaleIO:
 Oversubscription is calculated correctly by the Block Storage service
 only if the extra specification ``provisioning:type``
 appears in the volume type regardless of the default provisioning type.
-Maximum oversubscription value supported for ScaleIO is 10.0.
+Maximum oversubscription value supported for VxFlex OS is 10.0.
 
 Default provisioning type
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -202,10 +211,12 @@ parameters as follows:
    san_password = SIO_PASSWD
    san_thin_provision = false
 
+.. _cg_configuration_options_emc:
+
 Configuration options
 ~~~~~~~~~~~~~~~~~~~~~
 
-The ScaleIO driver supports these configuration options:
+The VxFlex OS driver supports these configuration options:
 
 .. config-table::
    :config-target: ScaleIO
@@ -216,11 +227,11 @@ Volume Types
 ------------
 
 Volume types can be used to specify characteristics of volumes allocated via the
-ScaleIO Driver. These characteristics are defined as ``Extra Specs`` within
+VxFlex OS Driver. These characteristics are defined as ``Extra Specs`` within
 ``Volume Types``.
 
-ScaleIO Protection Domain and Storage Pool
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+VxFlex OS Protection Domain and Storage Pool
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When multiple storage pools are specified in the Cinder configuration,
 users can specify which pool should be utilized by adding the ``pool``
@@ -233,8 +244,8 @@ requested protection_domain:storage_pool.
    $ openstack volume type set --property volume_backend_name=scaleio sio_type_1
    $ openstack volume type set --property pool=Domain2:Pool2 sio_type_1
 
-ScaleIO thin provisioning support
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+VxFlex OS thin provisioning support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The Block Storage driver supports creation of thin-provisioned and
 thick-provisioned volumes.
@@ -246,10 +257,10 @@ of the volume type, as follows:
    $ openstack volume type create sio_type_thick
    $ openstack volume type set --property provisioning:type=thick sio_type_thick
 
-ScaleIO QoS support
-~~~~~~~~~~~~~~~~~~~
+VxFlex OS QoS support
+~~~~~~~~~~~~~~~~~~~~~
 
-QoS support for the ScaleIO driver includes the ability to set the
+QoS support for the VxFlex OS driver includes the ability to set the
 following capabilities:
 
 ``maxIOPS``
@@ -287,8 +298,8 @@ and the relevant calculated value of ``maxIOPSperGB`` or ``maxBWSperGB``.
 Since the limits are per SDC, they will be applied after the volume
 is attached to an instance, and thus to a compute node/SDC.
 
-Using ScaleIO Storage with a containerized overcloud
-----------------------------------------------------
+Using VxFlex OS Storage with a containerized overcloud
+------------------------------------------------------
 
 When using a containerized overcloud, such as one deployed via TripleO or RedHat
 Openstack version 12 and above, there is an additional step that must be
@@ -297,7 +308,7 @@ performed.
 Before deploying the overcloud
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After ensuring that the ScaleIO Data Client (SDC) is installed on all nodes and
+After ensuring that the Storage Data Client (SDC) is installed on all nodes and
 before deploying the overcloud,
 modify the TripleO Heat Template for the nova-compute and cinder-volume
 containers to add volume mappings for directories containing the SDC

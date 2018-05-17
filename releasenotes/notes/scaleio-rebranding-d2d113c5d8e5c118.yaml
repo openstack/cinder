@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Dell EMC ScaleIO has been renamed to Dell EMC VxFlex OS.
+    Documentation for the driver can be found under the new name.
+    The driver maintains full backwards compatability with prior
+    ScaleIO releases and no configuration changes are needed upon
+    upgrade to the new version of the driver.
