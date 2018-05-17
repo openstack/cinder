@@ -1,8 +1,8 @@
 {
     "cleaning": [
         {
-            "id": "dd233343-er34-fr43-54ss-vfdfft433fdf",
-            "host": "127.0.0.1",
+            "id" "1",
+            "host": "host1@lvmdriver",
             "binary": "cinder-volume",
             "cluster_name": "test"
         }
