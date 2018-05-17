@@ -65,6 +65,7 @@
           DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsTest.test_volume_backup_create_get_detailed_list_restore_delete)'
           DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsTest.test_volume_snapshot_backup)'
           DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsV39Test.test_update_backup)'
+          DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*TestVolumeBackupRestore.test_volume_backup_restore)'
           export DEVSTACK_GATE_TEMPEST_REGEX
           export BRANCH_OVERRIDE=default
           if [ "$BRANCH_OVERRIDE" != "default" ] ; then
