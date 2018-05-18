@@ -16,7 +16,6 @@ Cinder Service Configuration
    block-storage/volume-encryption.rst
    block-storage/config-options.rst
    block-storage/samples/index.rst
-   tables/conf-changes/cinder.rst
 
 .. note::
 
