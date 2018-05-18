@@ -75,11 +75,15 @@ vmax_opts = [
     cfg.StrOpt(utils.VMAX_ARRAY,
                help='Serial number of the array to connect to.'),
     cfg.StrOpt(utils.VMAX_SRP,
-               help='Storage resource pool on array to use for provisioning.'),
+               help='Storage resource pool on array to use for '
+                    'provisioning.'),
     cfg.StrOpt(utils.VMAX_SERVICE_LEVEL,
-               help='Service level to use for provisioning storage.'),
+               help='Service level to use for provisioning storage. '
+                    'Setting this as an extra spec in pool_name '
+                    'is preferable.'),
     cfg.StrOpt(utils.VMAX_WORKLOAD,
-               help='Workload'),
+               help='Workload, setting this as an extra spec in '
+                    'pool_name is preferable.'),
     cfg.ListOpt(utils.VMAX_PORT_GROUPS,
                 bounds=True,
                 help='List of port groups containing frontend ports '

@@ -151,39 +151,16 @@ VMAX Driver Integration
 
 #. Configure Block Storage in cinder.conf
 
+    .. config-table::
+       :config-target: VMAX
+
+       cinder.volume.drivers.dell_emc.vmax.common
+
    .. note::
 
       For security and backend uniformity, the use of the XML file for VMAX
       backend configuration was deprecated in Queens and removed entirely
       in Rocky.
-
-   +-----------------+------------------------+---------+----------+---------------------------+
-   |  VMAX parameter | cinder.conf parameter  | Default | Required | Description               |
-   +=================+========================+=========+==========+===========================+
-   |  RestServerIp   | san_ip                 | "       | Yes      | IP address of the         |
-   |                 |                        |         |          | Unisphere server          |
-   +-----------------+------------------------+---------+----------+---------------------------+
-   |  RestServerPort | san_api_port           | 8443    | No       | Port of the               |
-   |                 |                        |         |          | Unisphere server          |
-   +-----------------+------------------------+---------+----------+---------------------------+
-   |  RestUserName   | san_login              | 'admin' | Yes      | Username of the           |
-   |                 |                        |         |          | Unisphere server          |
-   +-----------------+------------------------+---------+----------+---------------------------+
-   |  RestPassword   | san_password           | "       | Yes      | Password of the           |
-   |                 |                        |         |          | Unisphere server          |
-   +-----------------+------------------------+---------+----------+---------------------------+
-   |  Array          | vmax_array             | None    | Yes      | Unique VMAX array         |
-   |                 |                        |         |          | serial number             |
-   +-----------------+------------------------+---------+----------+---------------------------+
-   |  SRP            | vmax_srp               | None    | Yes      | Name of the               |
-   |                 |                        |         |          | storage resource pool     |
-   +-----------------+------------------------+---------+----------+---------------------------+
-   |  PortGroups     | vmax_port_groups       | None    | Yes      | The name(s) of VMAX       |
-   |                 |                        |         |          | port group(s)             |
-   +-----------------+------------------------+---------+----------+---------------------------+
-   |  SSLVerify      | driver_ssl_cert_verify | False   | No       | The path to the           |
-   |                 | driver_ssl_cert_path   | None    | No       | ``my_unisphere_host.pem`` |
-   +-----------------+------------------------+---------+----------+---------------------------+
 
    .. note::
 
