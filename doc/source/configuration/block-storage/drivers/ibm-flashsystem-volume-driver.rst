@@ -5,6 +5,29 @@ IBM FlashSystem volume driver
 The volume driver for FlashSystem provides OpenStack Block Storage hosts
 with access to IBM FlashSystems.
 
+Supported operations
+~~~~~~~~~~~~~~~~~~~~
+
+These operations are supported:
+
+-  Create, delete, attach, and detach volumes.
+
+-  Create, list, and delete volume snapshots.
+
+-  Create a volume from a snapshot.
+
+-  Copy an image to a volume.
+
+-  Copy a volume to an image.
+
+-  Clone a volume.
+
+-  Extend a volume.
+
+-  Get volume statistics.
+
+-  Manage and unmanage a volume.
+
 Configure FlashSystem
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -38,6 +61,32 @@ Using password authentication, assign a password to the user on the
 FlashSystem. For more detail, see the driver configuration flags
 for the user and password here: :ref:`config_fc_flags`
 or :ref:`config_iscsi_flags`.
+
+There are some common configuration options for either driver:
+
+.. list-table:: List of common configuration options for IBM FlashSystem drivers
+   :header-rows: 1
+
+   * - Flag name
+     - Type
+     - Default
+     - Description
+   * - ``san_ip``
+     - Required
+     -
+     - Management IP or host name
+   * - ``san_ssh_port``
+     - Optional
+     - 22
+     - Management port
+   * - ``san_login``
+     - Required
+     -
+     - Management login user name
+   * - ``san_password``
+     - Required
+     -
+     - Management login password
 
 IBM FlashSystem FC driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -75,49 +124,11 @@ as follows:
 To enable the IBM FlashSystem FC driver, configure the following options in the
 ``cinder.conf`` configuration file:
 
-.. list-table:: List of configuration flags for IBM FlashSystem FC driver
-   :header-rows: 1
+.. config-table::
+   :config-target: IBM FlashSystem FC
 
-   * - Flag name
-     - Type
-     - Default
-     - Description
-   * - ``san_ip``
-     - Required
-     -
-     - Management IP or host name
-   * - ``san_ssh_port``
-     - Optional
-     - 22
-     - Management port
-   * - ``san_login``
-     - Required
-     -
-     - Management login user name
-   * - ``san_password``
-     - Required
-     -
-     - Management login password
-   * - ``flashsystem_connection_protocol``
-     - Required
-     -
-     - Connection protocol should be set to ``FC``
-   * - ``flashsystem_multipath_enabled``
-     - Required
-     -
-     - Enable multipath for FC connections
-   * - ``flashsystem_multihost_enabled``
-     - Optional
-     - ``True``
-     - Enable mapping vdisks to multiple hosts  [1]_
-
-.. [1]
-   This option allows the driver to map a vdisk to more than one host at
-   a time. This scenario occurs during migration of a virtual machine
-   with an attached volume; the volume is simultaneously mapped to both
-   the source and destination compute hosts. If your deployment does not
-   require attaching vdisks to multiple hosts, setting this flag to
-   ``False`` will provide added safety.
+   cinder.volume.drivers.ibm.flashsystem_common
+   cinder.volume.drivers.ibm.flashsystem_fc
 
 IBM FlashSystem iSCSI driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -151,60 +162,19 @@ follows:
 To enable IBM FlashSystem iSCSI driver, configure the following options
 in the ``cinder.conf`` configuration file:
 
+.. config-table::
+   :config-target: IBM FlashSystem iSCSI
 
-.. list-table:: List of configuration flags for IBM FlashSystem iSCSI driver
-   :header-rows: 1
+   cinder.volume.drivers.ibm.flashsystem_common
+   cinder.volume.drivers.ibm.flashsystem_iscsi
 
-   * - Flag name
-     - Type
-     - Default
-     - Description
-   * - ``san_ip``
-     - Required
-     -
-     - Management IP or host name
-   * - ``san_ssh_port``
-     - Optional
-     - 22
-     - Management port
-   * - ``san_login``
-     - Required
-     -
-     - Management login user name
-   * - ``san_password``
-     - Required
-     -
-     - Management login password
-   * - ``flashsystem_connection_protocol``
-     - Required
-     -
-     - Connection protocol should be set to ``iSCSI``
-   * - ``flashsystem_multihost_enabled``
-     - Optional
-     - ``True``
-     - Enable mapping vdisks to multiple hosts  [2]_
-   * - ``iscsi_ip_address``
-     - Required
-     -
-     - Set to one of the iSCSI IP addresses obtained by FlashSystem GUI or CLI  [3]_
-   * - ``flashsystem_iscsi_portid``
-     - Required
-     -
-     - Set to the id of the ``iscsi_ip_address`` obtained by FlashSystem GUI or CLI  [4]_
+.. note::
 
-.. [2]
-   This option allows the driver to map a vdisk to more than one host at
-   a time. This scenario occurs during migration of a virtual machine
-   with an attached volume; the volume is simultaneously mapped to both
-   the source and destination compute hosts. If your deployment does not
-   require attaching vdisks to multiple hosts, setting this flag to
-   ``False`` will provide added safety.
-
-.. [3]
    On the cluster of the FlashSystem, the ``iscsi_ip_address`` column is the
    seventh column ``IP_address`` of the output of ``lsportip``.
 
-.. [4]
+.. note::
+
    On the cluster of the FlashSystem, port ID column is the first
    column ``id`` of the output of ``lsportip``,
    not the sixth column ``port_id``.
@@ -218,25 +188,11 @@ IBM FlashSystem only works when:
 
    open_access_enabled=off
 
-Supported operations
-~~~~~~~~~~~~~~~~~~~~
+.. note::
 
-These operations are supported:
-
--  Create, delete, attach, and detach volumes.
-
--  Create, list, and delete volume snapshots.
-
--  Create a volume from a snapshot.
-
--  Copy an image to a volume.
-
--  Copy a volume to an image.
-
--  Clone a volume.
-
--  Extend a volume.
-
--  Get volume statistics.
-
--  Manage and unmanage a volume.
+    The ``flashsystem_multihost_enabled`` setting allows the driver to map a
+    vdisk to more than one host at a time. This scenario occurs during
+    migration of a virtual machine with an attached volume; the volume is
+    simultaneously mapped to both the source and destination compute hosts. If
+    your deployment does not require attaching vdisks to multiple hosts,
+    setting this flag to ``False`` will provide added safety.
