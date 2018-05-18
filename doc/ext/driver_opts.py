@@ -30,16 +30,19 @@ class ConfigTableDirective(rst.Directive):
     option_spec = {
         'table-title': directives.unchanged,
         'config-target': directives.unchanged,
+        'exclude-list': directives.unchanged,
     }
 
     has_content = True
 
-    def _doc_module(self, module):
+    def _doc_module(self, module, filters):
         """Extract config options from module."""
         options = []
         try:
             mod = importlib.import_module(module)
             for prop in dir(mod):
+                if prop in filters:
+                    continue
                 thing = getattr(mod, prop)
                 if isinstance(thing, cfg.Opt):
                     # An individual config option
@@ -84,6 +87,10 @@ class ConfigTableDirective(rst.Directive):
             'table-title',
             'Description of {} configuration options'.format(target))
 
+        # See if there are option sets that need to be ignored
+        exclude = self.options.get('exclude-list', '')
+        exclude_list = [e.strip() for e in exclude.split(',') if e.strip()]
+
         result.append('.. _{}:'.format(title.replace(' ', '-')), source)
         result.append('', source)
         result.append('.. list-table:: {}'.format(title), source)
@@ -95,7 +102,7 @@ class ConfigTableDirective(rst.Directive):
 
         options = []
         for module in modules:
-            retval = self._doc_module(module)
+            retval = self._doc_module(module, exclude_list)
             if retval:
                 options.extend(retval)
             else:
