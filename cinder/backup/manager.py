@@ -423,8 +423,9 @@ class BackupManager(manager.ThreadPoolManager):
 
         # Restore the original status.
         if snapshot_id:
-            self.db.snapshot_update(context, snapshot_id,
-                                    {'status': fields.BackupStatus.AVAILABLE})
+            self.db.snapshot_update(
+                context, snapshot_id,
+                {'status': fields.SnapshotStatus.AVAILABLE})
         else:
             self.db.volume_update(context, volume_id,
                                   {'status': previous_status,
