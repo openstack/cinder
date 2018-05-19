@@ -620,4 +620,5 @@ class SchedulerDriverModuleTestCase(test.TestCase):
         _mock_vol_update.assert_called_once_with(
             self.context, volume.id, {'host': 'fake_host',
                                       'cluster_name': 'fake_cluster',
-                                      'scheduled_at': scheduled_at})
+                                      'scheduled_at': scheduled_at,
+                                      'availability_zone': None})

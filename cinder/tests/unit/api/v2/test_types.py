@@ -186,7 +186,8 @@ class VolumeTypesApiTest(test.TestCase):
     def test_volume_types_index_with_invalid_filter(self):
         req = fakes.HTTPRequest.blank(
             '/v2/%s/types?id=%s' % (fake.PROJECT_ID, self.type_id1))
-        req.environ['cinder.context'] = self.ctxt
+        req.environ['cinder.context'] = context.RequestContext(
+            user_id=fake.USER_ID, project_id=fake.PROJECT_ID, is_admin=False)
         res = self.controller.index(req)
 
         self.assertEqual(3, len(res['volume_types']))

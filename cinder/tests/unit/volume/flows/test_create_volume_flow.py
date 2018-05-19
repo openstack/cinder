@@ -14,7 +14,9 @@
 #    under the License.
 """ Tests for create_volume TaskFlow """
 
+import six
 import sys
+import uuid
 
 import ddt
 import mock
@@ -268,7 +270,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['size'] = 1
         fake_image_service.create(self.ctxt, image_meta)
         fake_key_manager = mock_key_manager.MockKeyManager()
-        volume_type = 'type1'
+        volume_type = {'name': 'type1'}
 
         task = create_volume.ExtractVolumeRequestTask(
             fake_image_service,
@@ -294,7 +296,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
-                           'availability_zone': 'nova',
+                           'availability_zones': ['nova'],
                            'volume_type': volume_type,
                            'volume_type_id': 1,
                            'encryption_key_id': None,
@@ -312,7 +314,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
     @mock.patch('cinder.volume.flows.api.create_volume.'
                 'ExtractVolumeRequestTask.'
                 '_get_volume_type_id')
-    def test_extract_availability_zone_without_fallback(
+    def test_extract_availability_zones_without_fallback(
             self,
             fake_get_type_id,
             fake_get_qos,
@@ -325,7 +327,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['size'] = 1
         fake_image_service.create(self.ctxt, image_meta)
         fake_key_manager = mock_key_manager.MockKeyManager()
-        volume_type = 'type1'
+        volume_type = {'name': 'type1'}
 
         task = create_volume.ExtractVolumeRequestTask(
             fake_image_service,
@@ -356,7 +358,117 @@ class CreateVolumeFlowTestCase(test.TestCase):
     @mock.patch('cinder.volume.flows.api.create_volume.'
                 'ExtractVolumeRequestTask.'
                 '_get_volume_type_id')
-    def test_extract_availability_zone_with_fallback(
+    def test_extract_availability_zones_with_azs_not_matched(
+            self,
+            fake_get_type_id,
+            fake_get_qos,
+            fake_is_encrypted):
+        fake_image_service = fake_image.FakeImageService()
+        image_id = six.text_type(uuid.uuid4())
+        image_meta = {}
+        image_meta['id'] = image_id
+        image_meta['status'] = 'active'
+        image_meta['size'] = 1
+        fake_image_service.create(self.ctxt, image_meta)
+        fake_key_manager = mock_key_manager.MockKeyManager()
+        volume_type = {'name': 'type1',
+                       'extra_specs':
+                           {'RESKEY:availability_zones': 'nova3'}}
+
+        task = create_volume.ExtractVolumeRequestTask(
+            fake_image_service, {'nova1', 'nova2'})
+
+        fake_is_encrypted.return_value = False
+        fake_get_type_id.return_value = 1
+        fake_get_qos.return_value = {'qos_specs': None}
+        self.assertRaises(exception.InvalidTypeAvailabilityZones,
+                          task.execute,
+                          self.ctxt,
+                          size=1,
+                          snapshot=None,
+                          image_id=image_id,
+                          source_volume=None,
+                          availability_zone='notnova',
+                          volume_type=volume_type,
+                          metadata=None,
+                          key_manager=fake_key_manager,
+                          consistencygroup=None,
+                          cgsnapshot=None,
+                          group=None,
+                          group_snapshot=None,
+                          backup=None)
+
+    @ddt.data({'type_azs': 'nova3',
+               'self_azs': ['nova3'],
+               'expected': ['nova3']},
+              {'type_azs': 'nova3, nova2',
+               'self_azs': ['nova3'],
+               'expected': ['nova3']},
+              {'type_azs': 'nova3,,,',
+               'self_azs': ['nova3'],
+               'expected': ['nova3']},
+              {'type_azs': 'nova3',
+               'self_azs': ['nova2'],
+               'expected': exception.InvalidTypeAvailabilityZones},
+              {'type_azs': ',,',
+               'self_azs': ['nova2'],
+               'expected': exception.InvalidTypeAvailabilityZones}
+              )
+    @ddt.unpack
+    def test__extract_availability_zones_az_not_specified(self, type_azs,
+                                                          self_azs, expected):
+        fake_image_service = fake_image.FakeImageService()
+        image_id = six.text_type(uuid.uuid4())
+        image_meta = {}
+        image_meta['id'] = image_id
+        image_meta['status'] = 'active'
+        image_meta['size'] = 1
+        fake_image_service.create(self.ctxt, image_meta)
+        volume_type = {'name': 'type1',
+                       'extra_specs':
+                           {'RESKEY:availability_zones': type_azs}}
+
+        task = create_volume.ExtractVolumeRequestTask(
+            fake_image_service,
+            {'nova'})
+        task.availability_zones = self_azs
+        if isinstance(expected, list):
+            result = task._extract_availability_zones(
+                None, {}, {}, {}, volume_type=volume_type)
+            self.assertEqual(expected, result[0])
+        else:
+            self.assertRaises(
+                expected, task._extract_availability_zones,
+                None, {}, {}, {}, volume_type=volume_type)
+
+    def test__extract_availability_zones_az_not_in_type_azs(self):
+        self.override_config('allow_availability_zone_fallback', False)
+        fake_image_service = fake_image.FakeImageService()
+        image_id = six.text_type(uuid.uuid4())
+        image_meta = {}
+        image_meta['id'] = image_id
+        image_meta['status'] = 'active'
+        image_meta['size'] = 1
+        fake_image_service.create(self.ctxt, image_meta)
+        volume_type = {'name': 'type1',
+                       'extra_specs':
+                           {'RESKEY:availability_zones': 'nova1, nova2'}}
+
+        task = create_volume.ExtractVolumeRequestTask(
+            fake_image_service,
+            {'nova'})
+        task.availability_zones = ['nova1']
+
+        self.assertRaises(exception.InvalidAvailabilityZone,
+                          task._extract_availability_zones,
+                          'nova2', {}, {}, {}, volume_type=volume_type)
+
+    @mock.patch('cinder.volume.volume_types.is_encrypted')
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.flows.api.create_volume.'
+                'ExtractVolumeRequestTask.'
+                '_get_volume_type_id')
+    def test_extract_availability_zones_with_fallback(
             self,
             fake_get_type_id,
             fake_get_qos,
@@ -372,7 +484,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['size'] = 1
         fake_image_service.create(self.ctxt, image_meta)
         fake_key_manager = mock_key_manager.MockKeyManager()
-        volume_type = 'type1'
+        volume_type = {'name': 'type1'}
 
         task = create_volume.ExtractVolumeRequestTask(
             fake_image_service,
@@ -398,7 +510,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
-                           'availability_zone': 'nova',
+                           'availability_zones': ['nova'],
                            'volume_type': volume_type,
                            'volume_type_id': 1,
                            'encryption_key_id': None,
@@ -434,7 +546,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
                       'size': 1}
         fake_image_service.create(self.ctxt, image_meta)
         fake_key_manager = mock_key_manager.MockKeyManager()
-        volume_type = 'type1'
+        volume_type = {'name': 'type1'}
 
         with mock.patch.object(fake_key_manager, 'create_key',
                                side_effect=castellan_exc.KeyManagerError):
@@ -483,7 +595,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['size'] = 1
         fake_image_service.create(self.ctxt, image_meta)
         fake_key_manager = mock_key_manager.MockKeyManager()
-        volume_type = 'type1'
+        volume_type = {'name': 'type1'}
 
         task = create_volume.ExtractVolumeRequestTask(
             fake_image_service,
@@ -509,7 +621,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         expected_result = {'size': (sys.maxsize + 1),
                            'snapshot_id': None,
                            'source_volid': None,
-                           'availability_zone': 'nova',
+                           'availability_zones': ['nova'],
                            'volume_type': volume_type,
                            'volume_type_id': 1,
                            'encryption_key_id': None,
@@ -541,7 +653,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['size'] = 1
         fake_image_service.create(self.ctxt, image_meta)
         fake_key_manager = mock_key_manager.MockKeyManager()
-        volume_type = 'type1'
+        volume_type = {'name': 'type1'}
 
         task = create_volume.ExtractVolumeRequestTask(
             fake_image_service,
@@ -568,7 +680,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
-                           'availability_zone': 'nova',
+                           'availability_zones': ['nova'],
                            'volume_type': volume_type,
                            'volume_type_id': 1,
                            'encryption_key_id': None,
@@ -596,7 +708,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
             fake_get_qos,
             fake_is_encrypted):
 
-        image_volume_type = 'type_from_image'
+        image_volume_type = {'name': 'type_from_image'}
         fake_image_service = fake_image.FakeImageService()
         image_id = 6
         image_meta = {}
@@ -634,7 +746,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
-                           'availability_zone': 'nova',
+                           'availability_zones': ['nova'],
                            'volume_type': image_volume_type,
                            'volume_type_id': 1,
                            'encryption_key_id': None,
@@ -680,7 +792,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
 
         fake_is_encrypted.return_value = False
         fake_get_type_id.return_value = 1
-        fake_get_def_vol_type.return_value = 'fake_vol_type'
+        fake_get_def_vol_type.return_value = {'name': 'fake_vol_type'}
         fake_db_get_vol_type.side_effect = (
             exception.VolumeTypeNotFoundByName(volume_type_name='invalid'))
         fake_get_qos.return_value = {'qos_specs': None}
@@ -701,8 +813,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
-                           'availability_zone': 'nova',
-                           'volume_type': 'fake_vol_type',
+                           'availability_zones': ['nova'],
+                           'volume_type': {'name': 'fake_vol_type'},
                            'volume_type_id': 1,
                            'encryption_key_id': None,
                            'qos_specs': None,
@@ -748,7 +860,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
 
         fake_is_encrypted.return_value = False
         fake_get_type_id.return_value = 1
-        fake_get_def_vol_type.return_value = 'fake_vol_type'
+        fake_get_def_vol_type.return_value = {'name': 'fake_vol_type'}
         fake_get_qos.return_value = {'qos_specs': None}
         result = task.execute(self.ctxt,
                               size=1,
@@ -767,8 +879,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
-                           'availability_zone': 'nova',
-                           'volume_type': 'fake_vol_type',
+                           'availability_zones': ['nova'],
+                           'volume_type': {'name': 'fake_vol_type'},
                            'volume_type_id': 1,
                            'encryption_key_id': None,
                            'qos_specs': None,
