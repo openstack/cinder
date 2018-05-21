@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    [`bug 1772421 <https://bugs.launchpad.net/keystone/+bug/1772421>`_]
+    INFINIDAT fixed a bug in volume extension feature where volumes
+    were not extended to target size but added the given target size.
+

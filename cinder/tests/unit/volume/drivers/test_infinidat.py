@@ -103,6 +103,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
     def _infinibox_mock(self):
         result = mock.Mock()
         self._mock_volume = mock.Mock()
+        self._mock_volume.get_size.return_value = 1 * units.Gi
         self._mock_volume.has_children.return_value = False
         self._mock_volume.get_logical_units.return_value = []
         self._mock_volume.create_child.return_value = self._mock_volume
@@ -299,6 +300,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
 
     def test_extend_volume(self):
         self.driver.extend_volume(test_volume, 2)
+        self._mock_volume.resize.assert_called_with(1 * units.Gi)
 
     def test_extend_volume_api_fail(self):
         self._mock_volume.resize.side_effect = self._raise_infinisdk
