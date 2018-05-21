@@ -10,7 +10,7 @@ if [[ ! -z $YUM ]]; then
 	yum update -y
 	yum install -y scsi-target-utils
 elif [[ ! -z $APT ]]; then
-	apgt-get update -y
+	apt-get update -y
 	apt-get install -y thin-provisioning-tools
 
 else:
