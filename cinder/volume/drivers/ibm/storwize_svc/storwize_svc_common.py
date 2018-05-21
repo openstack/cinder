@@ -78,7 +78,7 @@ storwize_svc_opts = [
     cfg.IntOpt('storwize_svc_vol_grainsize',
                default=256,
                help='Storage system grain size parameter for volumes '
-                    '(32/64/128/256)'),
+                    '(8/32/64/128/256)'),
     cfg.BoolOpt('storwize_svc_vol_compression',
                 default=False,
                 help='Storage system compression option for volumes'),
@@ -802,6 +802,14 @@ class StorwizeHelpers(object):
         attrs = self.get_pool_attrs(pool_name)
         return attrs is not None
 
+    def is_data_reduction_pool(self, pool_name):
+        """Check if pool is data reduction pool."""
+        pool_data = self.get_pool_attrs(pool_name)
+        if (pool_data and 'data_reduction' in pool_data and
+                pool_data['data_reduction'] == 'yes'):
+            return True
+        return False
+
     def get_available_io_groups(self):
         """Return list of available IO groups."""
         iogrps = []
@@ -1286,7 +1294,7 @@ class StorwizeHelpers(object):
     @staticmethod
     def check_vdisk_opts(state, opts):
         # Check that grainsize is 32/64/128/256
-        if opts['grainsize'] not in [32, 64, 128, 256]:
+        if opts['grainsize'] not in [8, 32, 64, 128, 256]:
             raise exception.InvalidInput(
                 reason=_('Illegal value specified for '
                          'storwize_svc_vol_grainsize: set to either '
@@ -1481,29 +1489,110 @@ class StorwizeHelpers(object):
         self.check_vdisk_opts(state, opts)
         return opts
 
+    def check_data_reduction_pool_params(self, opts):
+        """Check the configured parameters if vol in data reduction pool."""
+        if opts['warning'] != 0:
+            msg = (_('You cannot specify -warning for thin-provisioned or '
+                     'compressed volumes that are in data reduction '
+                     'pools. The configured warning is '
+                     '%s.') % opts['warning'])
+            raise exception.VolumeDriverException(message=msg)
+        if not opts['easytier']:
+            msg = (_('You cannot specify -easytier for thin-provisioned '
+                     'or compressed volumes that are in data reduction '
+                     'pools. The configured easytier is '
+                     '%s') % opts['easytier'])
+            raise exception.VolumeDriverException(message=msg)
+        if opts['grainsize'] != 256 and opts['grainsize'] != 8:
+            msg = (_('You cannot specify -grainsize for thin-provisioned '
+                     'or compressed volumes that are in data reduction '
+                     'pools. This type of volume will be created with a '
+                     'grainsize of 8 KB. The configured grainsize is '
+                     '%s.') % opts['grainsize'])
+            raise exception.VolumeDriverException(message=msg)
+        if opts['rsize'] != 2:
+            if opts['volume_topology'] == 'hyperswap':
+                msg = (_('You cannot specify -buffersize for Hyperswap volumes'
+                         ' that are in data reduction pools, The configured '
+                         'buffersize is %s.') % opts['rsize'])
+                raise exception.VolumeDriverException(message=msg)
+            else:
+                msg = (_('You cannot specify -rsize for thin-provisioned '
+                         'or compressed volumes that are in data reduction '
+                         'pools. The -rsize parameter will be ignored in '
+                         'mkvdisk. Only its presence or absence is used to '
+                         'determine if the disk is a data reduction volume '
+                         'copy or a thick volume copy. The '
+                         'configured rsize is %s.') % opts['rsize'])
+                raise exception.VolumeDriverException(message=msg)
+        if not opts['autoexpand']:
+            msg = (_('You cannot set the autoexpand to disable for '
+                     'thin-provisioned or compressed volumes that are in data '
+                     'reduction pool. The configured'
+                     ' autoexpand is %s.') % opts['autoexpand'])
+            raise exception.VolumeDriverException(message=msg)
+        else:
+            LOG.info('You cannot specify warning, grainsize and '
+                     'easytier for thin-provisioned or compressed'
+                     ' volumes that are in data reduction pools. '
+                     'The rsize parameter will be ignored, the '
+                     'autoexpand must be enabled.')
+
+    def is_volume_type_dr_pools(self, pool, opts, rep_type=None,
+                                rep_target_pool=None):
+        """Check every configured pools is data reduction pool."""
+        if self.is_data_reduction_pool(pool):
+            LOG.debug('The configured pool %s is a data reduction pool.', pool)
+            return True
+
+        if opts['mirror_pool'] and self.is_data_reduction_pool(
+                opts['mirror_pool']):
+            LOG.debug('The mirror_pool %s is a data reduction pool.',
+                      opts['mirror_pool'])
+            return True
+
+        if (opts['volume_topology'] == 'hyperswap' and
+                self.is_data_reduction_pool(opts['peer_pool'])):
+            LOG.debug('The peer_pool %s is a data reduction pool.',
+                      opts['peer_pool'])
+            return True
+
+        if rep_type and self.is_data_reduction_pool(rep_target_pool):
+            LOG.debug('The replica target pool %s is a data reduction pool.',
+                      rep_target_pool)
+            return True
+
+        return False
+
     @staticmethod
-    def _get_vdisk_create_params(opts, add_copies=False):
+    def _get_vdisk_create_params(opts, is_dr_pool, add_copies=False):
         easytier = 'on' if opts['easytier'] else 'off'
         if opts['rsize'] == -1:
             params = []
             if opts['nofmtdisk']:
                 params.append('-nofmtdisk')
         else:
-            params = ['-rsize', '%s%%' % str(opts['rsize']),
-                      '-autoexpand', '-warning',
-                      '%s%%' % str(opts['warning'])]
-            if not opts['autoexpand']:
-                params.remove('-autoexpand')
-
-            if opts['compression']:
-                params.append('-compressed')
+            if is_dr_pool:
+                params = ['-rsize', '%s%%' % str(opts['rsize']), '-autoexpand']
+                if opts['compression']:
+                    params.append('-compressed')
             else:
-                params.extend(['-grainsize', str(opts['grainsize'])])
+                params = ['-rsize', '%s%%' % str(opts['rsize']),
+                          '-autoexpand', '-warning',
+                          '%s%%' % str(opts['warning'])]
+                if not opts['autoexpand']:
+                    params.remove('-autoexpand')
+
+                if opts['compression']:
+                    params.append('-compressed')
+                else:
+                    params.extend(['-grainsize', str(opts['grainsize'])])
 
         if add_copies and opts['mirror_pool']:
             params.extend(['-copies', '2'])
 
-        params.extend(['-easytier', easytier])
+        if not is_dr_pool:
+            params.extend(['-easytier', easytier])
         return params
 
     def create_vdisk(self, name, size, units, pool, opts):
@@ -1517,19 +1606,31 @@ class StorwizeHelpers(object):
             # The syntax of pool SVC expects is pool:mirror_pool in
             # mdiskgrp for mirror volume
             mdiskgrp = '%s:%s' % (pool, opts['mirror_pool'])
+
+        is_dr_pool = False
+        if opts['rsize'] != -1:
+            is_dr_pool = self.is_volume_type_dr_pools(pool, opts)
+            if is_dr_pool:
+                self.check_data_reduction_pool_params(opts)
         params = self._get_vdisk_create_params(
-            opts, add_copies=True if opts['mirror_pool'] else False)
+            opts, is_dr_pool,
+            add_copies=True if opts['mirror_pool'] else False)
         self.ssh.mkvdisk(name, size, units, mdiskgrp, opts, params)
         LOG.debug('Leave: _create_vdisk: volume %s.', name)
 
-    def _get_hyperswap_volume_create_params(self, opts):
+    def _get_hyperswap_volume_create_params(self, opts, is_dr_pool):
         # Storwize/svc use cli command mkvolume to create hyperswap volume.
         # You must specify -thin with grainsize.
         # You must specify either -thin or -compressed with warning.
         params = []
         LOG.debug('The I/O groups of a hyperswap volume will be selected by '
                   'storage.')
-        if opts['rsize'] != -1:
+        if is_dr_pool:
+            if opts['compression']:
+                params.append('-compressed')
+            else:
+                params.append('-thin')
+        else:
             params.extend(['-buffersize', '%s%%' % str(opts['rsize']),
                            '-warning',
                            '%s%%' % six.text_type(opts['warning'])])
@@ -1544,16 +1645,23 @@ class StorwizeHelpers(object):
 
     def create_hyperswap_volume(self, vol_name, size, units, pool, opts):
         vol_name = '"%s"' % vol_name
-        params = self._get_hyperswap_volume_create_params(opts)
-        self.ssh.mkvolume(vol_name, six.text_type(size), units, pool, params)
+        params = []
+        if opts['rsize'] != -1:
+            is_dr_pool = self.is_volume_type_dr_pools(pool, opts)
+            if is_dr_pool:
+                self.check_data_reduction_pool_params(opts)
+            params = self._get_hyperswap_volume_create_params(opts, is_dr_pool)
+        hyperpool = '%s:%s' % (pool, opts['peer_pool'])
+        self.ssh.mkvolume(vol_name, six.text_type(size), units,
+                          hyperpool, params)
 
     def convert_volume_to_hyperswap(self, vol_name, opts, state):
         vol_name = '%s' % vol_name
         if not self.is_system_topology_hyperswap(state):
-            reason = _('Convert volume to hyperswap failed, the system is '
-                       'below release 7.6.0.0 or it is not hyperswap '
-                       'topology.')
-            raise exception.VolumeDriverException(reason=reason)
+            msg = _('Convert volume to hyperswap failed, the system is '
+                    'below release 7.6.0.0 or it is not hyperswap '
+                    'topology.')
+            raise exception.VolumeDriverException(message=msg)
         else:
             attr = self.get_vdisk_attributes(vol_name)
             if attr is None:
@@ -1564,7 +1672,10 @@ class StorwizeHelpers(object):
             pool = attr['mdisk_grp_name']
             self.check_hyperswap_pool(pool, opts['peer_pool'])
             hyper_pool = '%s' % opts['peer_pool']
-            params = self._get_hyperswap_volume_create_params(opts)
+            is_dr_pool = self.is_volume_type_dr_pools(pool, opts)
+            if is_dr_pool and opts['rsize'] != -1:
+                self.check_data_reduction_pool_params(opts)
+            params = self._get_hyperswap_volume_create_params(opts, is_dr_pool)
             self.ssh.addvolumecopy(vol_name, hyper_pool, params)
 
     def convert_hyperswap_volume_to_normal(self, vol_name, peer_pool):
@@ -2213,7 +2324,10 @@ class StorwizeHelpers(object):
         else:
             opts = self.get_vdisk_params(config, state, volume_type['id'],
                                          volume_type=volume_type)
-        params = self._get_vdisk_create_params(opts)
+        is_dr_pool = self.is_data_reduction_pool(dest_pool)
+        if is_dr_pool and opts['rsize'] != -1:
+            self.check_data_reduction_pool_params(opts)
+        params = self._get_vdisk_create_params(opts, is_dr_pool)
         try:
             new_copy_id = self.ssh.addvdiskcopy(vdisk, dest_pool, params,
                                                 auto_delete)
@@ -2904,14 +3018,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                            'replication enabled is not supported.')
                 raise exception.InvalidInput(reason=reason)
             if not opts['easytier']:
-                raise exception.InvalidInput(
-                    reason=_('The default easytier of hyperswap volume is '
-                             'on, it does not support easytier off.'))
+                msg = _('The default easytier of hyperswap volume is '
+                        'on, it does not support easytier off.')
+                raise exception.VolumeDriverException(message=msg)
             self._helpers.check_hyperswap_pool(pool, opts['peer_pool'])
-            hyperpool = '%s:%s' % (pool, opts['peer_pool'])
-            self._helpers.create_hyperswap_volume(volume.name,
-                                                  volume.size, 'gb',
-                                                  hyperpool, opts)
+            self._helpers.create_hyperswap_volume(volume.name, volume.size,
+                                                  'gb', pool, opts)
         else:
             if opts['mirror_pool'] and rep_type:
                 reason = _('Create mirror volume with replication enabled is '
@@ -4293,6 +4405,21 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         resp = self._helpers.lsvdiskcopy(volume.name)
         if len(resp) > 1:
             copies = self._helpers.get_vdisk_copies(volume.name)
+            src_pool = copies['primary']['mdisk_grp_name']
+            mirror_pool = copies['secondary']['mdisk_grp_name']
+            opts = self._get_vdisk_params(volume.volume_type_id)
+            if opts['rsize'] != -1:
+                if (self._helpers.is_data_reduction_pool(src_pool) or
+                        self._helpers.is_data_reduction_pool(mirror_pool)):
+                    msg = _('Unable to migrate: the thin-provisioned or '
+                            'compressed volume can not be migrated from a data'
+                            ' reduction pool. ')
+                    raise exception.VolumeDriverException(message=msg)
+                elif self._helpers.is_data_reduction_pool(dest_pool):
+                    msg = _('Unable to migrate: the thin-provisioned or '
+                            'compressed volume can not be migrated to a data '
+                            'reduction pool.')
+                    raise exception.VolumeDriverException(message=msg)
             self._helpers.migratevdisk(volume.name, dest_pool,
                                        copies['primary']['copy_id'])
         else:
@@ -4309,8 +4436,17 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                   {'id': volume.id, 'host': host['host']})
         return (True, None)
 
+    def _verify_iogrp(self, rsize, pool, opts, rep_type, status):
+        if rsize != -1 and self._helpers.is_volume_type_dr_pools(
+                pool, opts, rep_type, rep_target_pool=self._replica_target[
+                    'pool_name'] if rep_type else None):
+            msg = _('Unable to retype: the thin-provisioned or compressed '
+                    'vol in data reduction pool can not modify iogrp.')
+            raise exception.VolumeDriverException(message=msg)
+
     def _verify_retype_params(self, volume, new_opts, old_opts, need_copy,
-                              change_mirror, new_rep_type, old_rep_type):
+                              change_mirror, new_rep_type, old_rep_type,
+                              vdisk_changes, old_pool, new_pool):
         # Some volume parameters can not be changed or changed at the same
         # time during volume retype operation. This function checks the
         # retype parameters.
@@ -4319,6 +4455,16 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             msg = (_('Unable to retype: volume %s is a mirrorred vol. But it '
                      'has only one copy in storage.') % volume.name)
             raise exception.VolumeDriverException(message=msg)
+
+        is_old_type_dr_pool = self._helpers.is_volume_type_dr_pools(
+            old_pool, old_opts, old_rep_type,
+            rep_target_pool=self._replica_target[
+                'pool_name'] if old_rep_type else None)
+        is_new_type_dr_pool = self._helpers.is_volume_type_dr_pools(
+            new_pool, new_opts, new_rep_type,
+            rep_target_pool=self._replica_target[
+                'pool_name'] if new_rep_type else None)
+        need_check_dr_pool_param = False
 
         if need_copy:
             # mirror volume can not add volume-copy again.
@@ -4332,6 +4478,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                          'it is not allowed for mirror volume '
                          '%s.') % volume.name)
                 raise exception.VolumeDriverException(message=msg)
+            need_check_dr_pool_param = True
 
         if change_mirror:
             if (new_opts['mirror_pool'] and
@@ -4340,6 +4487,16 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 msg = (_('Unable to retype: The pool %s in which mirror copy '
                          'is stored is not valid') % new_opts['mirror_pool'])
                 raise exception.VolumeDriverException(message=msg)
+            # migrate second copy to a dr pool or from a dr pool is not allowed
+            if (old_opts['mirror_pool'] and new_opts[
+                    'mirror_pool'] and old_opts['rsize'] != -1):
+                if is_old_type_dr_pool or is_new_type_dr_pool:
+                    msg = _('Unable to retype: the thin-provisioned or '
+                            'compressed vol can not be migrated from a dr pool'
+                            ' or to a dr pool.')
+                raise exception.VolumeDriverException(message=msg)
+            if not old_opts['mirror_pool'] and new_opts['mirror_pool']:
+                need_check_dr_pool_param = True
 
         # There are four options for rep_type: None, metro, global, gmcv
         if new_rep_type or old_rep_type:
@@ -4367,6 +4524,15 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                         'new_rep_type': new_rep_type})
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
+            if not old_rep_type and new_rep_type:
+                if new_opts['rsize'] != -1 and is_new_type_dr_pool:
+                    try:
+                        self._helpers.check_data_reduction_pool_params(
+                            new_opts)
+                    except Exception as err:
+                        msg = (_("Failed to retype volume, the error is "
+                                 "%s") % err)
+                        raise exception.VolumeDriverException(message=msg)
         elif storwize_const.GMCV == new_rep_type:
             # To gmcv, we may change cycle_period_seconds if needed
             previous_cps = old_opts.get('cycle_period_seconds')
@@ -4374,6 +4540,22 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             if previous_cps != new_cps:
                 self._helpers.change_relationship_cycleperiod(volume.name,
                                                               new_cps)
+
+        if (is_new_type_dr_pool and new_opts[
+                'rsize'] != -1 and need_check_dr_pool_param == 1):
+            try:
+                self._helpers.check_data_reduction_pool_params(new_opts)
+            except Exception as err:
+                msg = (_("Failed to retype volume, the error is "
+                         "%s") % err)
+                raise exception.VolumeDriverException(message=msg)
+
+        if vdisk_changes and not need_copy:
+            if is_old_type_dr_pool or is_new_type_dr_pool:
+                msg = _('The volume specified is a thin or compressed volume '
+                        'in a data reduction pool. The autoexpand and warning'
+                        ' and easytier can not be changed.')
+                raise exception.VolumeDriverException(message=msg)
 
     def _check_hyperswap_retype_params(self, volume, new_opts, old_opts,
                                        change_mirror, new_rep_type,
@@ -4413,13 +4595,23 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 raise exception.InvalidInput(
                     reason=_('The default easytier of hyperswap volume is '
                              'on, it does not support easytier off.'))
-            if (old_opts['volume_topology'] != 'hyperswap' and
-                    self._helpers._get_vdisk_fc_mappings(volume.name)):
-                msg = _('Unable to retype: it is not allowed to change a '
-                        'normal volume with snapshot to a hyperswap '
-                        'volume.')
-                LOG.error(msg)
-                raise exception.InvalidInput(message=msg)
+            if old_opts['volume_topology'] != 'hyperswap':
+                is_new_type_dr_pool = self._helpers.is_volume_type_dr_pools(
+                    new_pool, new_opts)
+                if is_new_type_dr_pool and new_opts['rsize'] != -1:
+                    try:
+                        self._helpers.check_data_reduction_pool_params(
+                            new_opts)
+                    except Exception as err:
+                        msg = (_("Failed to retype volume, the error is "
+                                 "%s") % err)
+                        raise exception.VolumeDriverException(reason=msg)
+                if self._helpers._get_vdisk_fc_mappings(volume.name):
+                    msg = _('Unable to retype: it is not allowed to change a '
+                            'normal volume with snapshot to a hyperswap '
+                            'volume.')
+                    LOG.error(msg)
+                    raise exception.InvalidInput(message=msg)
             if (old_opts['volume_topology'] == 'hyperswap' and
                     old_opts['peer_pool'] != new_opts['peer_pool']):
                 msg = _('Unable to retype: it is not allowed to change a '
@@ -4529,7 +4721,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                                    new_opts, new_pool)
 
         self._verify_retype_params(volume, new_opts, old_opts, need_copy,
-                                   change_mirror, new_rep_type, old_rep_type)
+                                   change_mirror, new_rep_type, old_rep_type,
+                                   vdisk_changes, old_pool, new_pool)
 
         if old_opts['volume_topology'] or new_opts['volume_topology']:
             self._check_hyperswap_retype_params(volume, new_opts, old_opts,
@@ -4540,6 +4733,11 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                           old_pool, new_pool, vdisk_changes,
                                           need_copy, new_type)
         else:
+            # hyperswap volume will select iogrp by storage. ignore iogrp here.
+            if old_io_grp != new_io_grp:
+                self._verify_iogrp(old_opts['rsize'], old_pool, old_opts,
+                                   old_rep_type,
+                                   volume.previous_status)
             if need_copy:
                 self._check_volume_copy_ops()
                 dest_pool = self._helpers.can_migrate_to_host(host,
@@ -4732,6 +4930,17 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                         'type_cps': rep_cps})
                 raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
 
+        pool = utils.extract_host(volume['host'], 'pool')
+        if copies['primary']['mdisk_grp_name'] != pool:
+            msg = (_("Failed to manage existing volume due to the "
+                     "pool of the volume to be managed does not "
+                     "match the backend pool. Pool of the "
+                     "volume to be managed is %(vdisk_pool)s. Pool "
+                     "of the backend is %(backend_pool)s.") %
+                   {'vdisk_pool': copies['primary']['mdisk_grp_name'],
+                    'backend_pool': pool})
+            raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
         if volume['volume_type_id']:
             opts = self._get_vdisk_params(volume['volume_type_id'],
                                           volume_metadata=
@@ -4822,17 +5031,17 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                        {'vdisk_iogrp': vdisk['IO_group_name'],
                         'opt_iogrp': opts['iogrp']})
                 raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
-        pool = utils.extract_host(volume['host'], 'pool')
-        if copies['primary']['mdisk_grp_name'] != pool:
-            msg = (_("Failed to manage existing volume due to the "
-                     "pool of the volume to be managed does not "
-                     "match the backend pool. Pool of the "
-                     "volume to be managed is %(vdisk_pool)s. Pool "
-                     "of the backend is %(backend_pool)s.") %
-                   {'vdisk_pool': copies['primary']['mdisk_grp_name'],
-                    'backend_pool': pool})
-            raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
 
+            if opts['rsize'] != -1 and self._helpers.is_volume_type_dr_pools(
+                    pool, opts, rep_type, rep_target_pool=self._replica_target[
+                        'pool_name'] if rep_type else None):
+                try:
+                    self._helpers.check_data_reduction_pool_params(opts)
+                except Exception as err:
+                    msg = (_("Failed to manage existing volume, the error is "
+                             "%s") % err)
+                    raise exception.ManageExistingVolumeTypeMismatch(
+                        reason=msg)
         model_update = {'replication_status':
                         fields.ReplicationStatus.NOT_CAPABLE}
         self._helpers.rename_vdisk(vdisk['name'], volume['name'])
