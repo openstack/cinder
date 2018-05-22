@@ -52,7 +52,7 @@ migrations are banned from schema migration scripts. Instead, the migrations
 should be done by background process in a manner that doesn't interrupt running
 services (you can also execute online data migrations with services turned off
 if you're doing a cold upgrade). In Ocata a new ``cinder-manage db
-online-data-migrations`` utility was added for that purpose.  Before upgrading
+online_data_migrations`` utility was added for that purpose.  Before upgrading
 Ocata to Pike, you need to run this tool in the background, until it tells you
 no more migrations are needed.  Note that you won't be able to apply Pike's
 schema migrations before completing Ocata's online data migrations.
@@ -237,7 +237,7 @@ After maintenance window
   be supported for one cycle, but should be removed before your next
   upgrade is performed.
 
-* Since Ocata, you also need to run ``cinder-manage db online-data-migrations``
+* Since Ocata, you also need to run ``cinder-manage db online_data_migrations``
   command to make sure data migrations are applied. The tool let's you limit
   the impact of the data migrations by using ``--max_number`` option to limit
   number of migrations executed in one run. You need to complete all of the
