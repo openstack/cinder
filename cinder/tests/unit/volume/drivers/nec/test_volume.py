@@ -20,6 +20,7 @@ import mock
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.nec import cli
 from cinder.volume.drivers.nec import volume_common
 from cinder.volume.drivers.nec import volume_helper
 
@@ -733,6 +734,11 @@ class BindLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
             self.vol, self.vol.size, None,
             self._convert_id2name,
             self._select_leastused_poolnumber)
+
+    def test_bindld_CreateCloneWaitingInterval(self):
+        self.assertEqual(10, cli.get_sleep_time_for_clone(0))
+        self.assertEqual(12, cli.get_sleep_time_for_clone(2))
+        self.assertEqual(60, cli.get_sleep_time_for_clone(19))
 
 
 class BindLDTest_Snap(volume_helper.MStorageDSVDriver, test.TestCase):
