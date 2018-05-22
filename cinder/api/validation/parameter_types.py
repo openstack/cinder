@@ -221,7 +221,7 @@ hostname = {
     # real systems. As it is a cinder host, not a hostname,
     # and due to some driver needs, colons and forward slashes
     # were also included in the regex.
-    'pattern': '^[a-zA-Z0-9-._#@:/]*$'
+    'pattern': '^[a-zA-Z0-9-._#@:/+]*$'
 }
 
 
