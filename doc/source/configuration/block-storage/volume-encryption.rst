@@ -39,10 +39,10 @@ Update ``nova-compute`` servers:
       [key_manager]
       backend = barbican
 
-     .. note::
+   .. note::
 
-        Use a '#' prefix to comment out the line in this section that
-        begins with 'fixed_key'.
+      Use a '#' prefix to comment out the line in this section that
+      begins with 'fixed_key'.
 
 #. Restart ``nova-compute``.
 
