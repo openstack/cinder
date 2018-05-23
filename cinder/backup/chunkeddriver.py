@@ -328,7 +328,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 container, object_name, extra_metadata=extra_metadata
         ) as writer:
             writer.write(output_data)
-        md5 = hashlib.md5(data).hexdigest()
+        md5 = eventlet.tpool.execute(hashlib.md5, data).hexdigest()
         obj[object_name]['md5'] = md5
         LOG.debug('backup MD5 for %(object_name)s: %(md5)s',
                   {'object_name': object_name, 'md5': md5})
@@ -421,6 +421,25 @@ class ChunkedBackupDriver(driver.BackupDriver):
                                                extra_usage_info=
                                                object_meta)
 
+    def _calculate_sha(self, data):
+        """Calculate SHA256 of a data chunk.
+
+        This method cannot log anything as it is called on a native thread.
+        """
+        # NOTE(geguileo): Using memoryview to avoid data copying when slicing
+        # for the sha256 call.
+        chunk = memoryview(data)
+        shalist = []
+        off = 0
+        datalen = len(chunk)
+        while off < datalen:
+            chunk_end = min(datalen, off + self.sha_block_size_bytes)
+            block = chunk[off:chunk_end]
+            sha = hashlib.sha256(block).hexdigest()
+            shalist.append(sha)
+            off += self.sha_block_size_bytes
+        return shalist
+
     def backup(self, backup, volume_file, backup_metadata=True):
         """Backup the given volume.
 
@@ -499,18 +518,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 break
 
             # Calculate new shas with the datablock.
-            shalist = []
-            off = 0
-            datalen = len(data)
-            while off < datalen:
-                chunk_start = off
-                chunk_end = chunk_start + self.sha_block_size_bytes
-                if chunk_end > datalen:
-                    chunk_end = datalen
-                chunk = data[chunk_start:chunk_end]
-                sha = hashlib.sha256(chunk).hexdigest()
-                shalist.append(sha)
-                off += self.sha_block_size_bytes
+            shalist = eventlet.tpool.execute(self._calculate_sha, data)
             sha256_list.extend(shalist)
 
             # If parent_backup is not None, that means an incremental
@@ -537,7 +545,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
 
                 # The last extent extends to the end of data buffer.
                 if extent_off != -1:
-                    extent_end = datalen
+                    extent_end = len(data)
                     segment = data[extent_off:extent_end]
                     self._backup_chunk(backup, container, segment,
                                        data_offset + extent_off,
