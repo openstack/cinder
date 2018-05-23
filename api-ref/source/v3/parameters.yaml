@@ -433,6 +433,7 @@ alias:
 allow_attached_volume:
   description: |
     Whether to allow failover if any volumes are 'in-use'.
+    See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: true
   type: boolean
@@ -602,6 +603,7 @@ bootable:
   description: |
     Enables or disables the bootable attribute. You
     can boot an instance from a bootable volume.
+    See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: true
   type: boolean
@@ -609,6 +611,7 @@ bootable_1:
   description: |
     Enables or disables the bootable attribute. You
     can boot an instance from a bootable volume.
+    See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: false
   type: boolean
@@ -815,6 +818,7 @@ delete-volumes:
   description: |
     If set to ``true``, allows deletion of a
     group as well as all volumes in the group.
+    See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: false
   type: boolean
@@ -975,6 +979,7 @@ detached_at:
 disabled:
   description: |
     Filter by disabled status.
+    See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: false
   type: boolean
@@ -1072,6 +1077,7 @@ force:
   description: |
     Indicates whether to backup, even if the volume
     is attached. Default is ``false``.
+    See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: false
   type: boolean
@@ -1093,6 +1099,7 @@ force_4:
   description: |
     Enables or disables upload of a volume that is
     attached to an instance. Default=False.
+    See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: false
   type: boolean
@@ -1375,7 +1382,7 @@ incremental:
   description: |
     The backup mode. A valid value is ``true`` for
     incremental backup mode or ``false`` for full backup mode. Default
-    is ``false``.
+    is ``false``. See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: false
   type: boolean
@@ -1402,6 +1409,7 @@ is_incremental:
 is_public_group_type_optional:
   description: |
     Whether the group type is publicly visible.
+    See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: false
   type: boolean
@@ -1414,6 +1422,7 @@ is_public_group_type_required:
 is_public_volume_type_optional:
   description: |
     Whether the volume type is publicly visible.
+    See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: false
   type: boolean
@@ -1426,6 +1435,7 @@ is_public_volume_type_required:
 is_up:
   description: |
     Filter by up/down status.
+    See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: false
   type: boolean
@@ -1745,7 +1755,7 @@ multiattach_req:
     To enable this volume to attach to more than one
     server, set this value to ``true``. Default is ``false``.
     Note that support for multiattach volumes depends on the volume
-    type being used.
+    type being used. See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: false
   type: boolean
@@ -2179,6 +2189,7 @@ properties:
 protected:
   description: |
     Whether the new image is protected. Default=False.
+    See :ref:`valid boolean values <valid-boolean-values>`
   in: body
   required: false
   type: boolean

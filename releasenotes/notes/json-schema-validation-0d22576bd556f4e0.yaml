@@ -1,0 +1,26 @@
+---
+other:
+  - |
+    Added schema validation support using jsonschema `[json-schema-validation]`_
+    for all supported v3 APIs.
+
+    Following APIs were accepting boolean parameters with leading and trailing
+    white spaces (for e.g. " true "). But now with schema validation support,
+    all these boolean parameters henceforth will not accept leading and trailing
+    whitespaces to maintain consistency.
+
+    * Generic volume groups:
+
+      * delete group: "POST /v3/{project_id}/groups/{group_id}/action"
+
+      * failover replication: "POST /v3/{project_id}/groups/{group_id}/action"
+    * Volume Snapshots:
+
+      * create a snapshot: "POST /v3/{project_id}/snapshots"
+    * Volume_actions:
+
+      * set bootable: "POST /v3/{project_id}/volumes/{volume_id}/action"
+
+      * volume readonly update: "POST /v3/{project_id}/volumes/{volume_id}/action"
+
+    .. _`[json-schema-validation]`: https://blueprints.launchpad.net/cinder/+spec/json-schema-validation
