@@ -96,6 +96,11 @@ VMAX_SRP = 'vmax_srp'
 VMAX_SERVICE_LEVEL = 'vmax_service_level'
 VMAX_PORT_GROUPS = 'vmax_port_groups'
 VMAX_SNAPVX_UNLINK_LIMIT = 'vmax_snapvx_unlink_limit'
+U4P_FAILOVER_TIMEOUT = 'u4p_failover_timeout'
+U4P_FAILOVER_RETRIES = 'u4p_failover_retries'
+U4P_FAILOVER_BACKOFF_FACTOR = 'u4p_failover_backoff_factor'
+U4P_FAILOVER_AUTOFAILBACK = 'u4p_failover_autofailback'
+U4P_FAILOVER_TARGETS = 'u4p_failover_target'
 
 
 class VMAXUtils(object):

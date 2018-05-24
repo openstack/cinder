@@ -21,6 +21,7 @@ import sys
 import time
 
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log as logging
 from oslo_utils import strutils
 import six
@@ -94,7 +95,32 @@ vmax_opts = [
     cfg.ListOpt(utils.VMAX_PORT_GROUPS,
                 bounds=True,
                 help='List of port groups containing frontend ports '
-                     'configured prior for server connection.')]
+                     'configured prior for server connection.'),
+    cfg.IntOpt(utils.U4P_FAILOVER_TIMEOUT,
+               default=20.0,
+               help='How long to wait for the server to send data before '
+                    'giving up.'),
+    cfg.IntOpt(utils.U4P_FAILOVER_RETRIES,
+               default=3,
+               help='The maximum number of retries each connection should '
+                    'attempt. Note, this applies only to failed DNS lookups, '
+                    'socket connections and connection timeouts, never to '
+                    'requests where data has made it to the server.'),
+    cfg.IntOpt(utils.U4P_FAILOVER_BACKOFF_FACTOR,
+               default=1,
+               help='A backoff factor to apply between attempts after the '
+                    'second try (most errors are resolved immediately by a '
+                    'second try without a delay). Retries will sleep for: '
+                    '{backoff factor} * (2 ^ ({number of total retries} - 1)) '
+                    'seconds.'),
+    cfg.BoolOpt(utils.U4P_FAILOVER_AUTOFAILBACK,
+                default=True,
+                help='If the driver should automatically failback to the '
+                     'primary instance of Unisphere when a successful '
+                     'connection is re-established.'),
+    cfg.MultiOpt(utils.U4P_FAILOVER_TARGETS,
+                 item_type=types.Dict(),
+                 help='Dictionary of Unisphere failover target info.')]
 
 CONF.register_opts(vmax_opts, group=configuration.SHARED_CONF_GROUP)
 
@@ -134,6 +160,7 @@ class VMAXCommon(object):
         self.active_backend_id = active_backend_id
         self.failover = False
         self._get_replication_info()
+        self._get_u4p_failover_info()
         self._gather_info()
         self.version_dict = {}
         self.nextGen = False
@@ -173,6 +200,84 @@ class VMAXCommon(object):
             "backend %(backendName)s.",
             {'emcConfigFileName': self.pool_info['config_file'],
              'backendName': self.pool_info['backend_name']})
+
+    def _get_u4p_failover_info(self):
+        """Gather Unisphere failover target information, if provided."""
+
+        key_dict = {'san_ip': 'RestServerIp',
+                    'san_api_port': 'RestServerPort',
+                    'san_login': 'RestUserName',
+                    'san_password': 'RestPassword',
+                    'driver_ssl_cert_verify': 'SSLVerify',
+                    'driver_ssl_cert_path': 'SSLPath'}
+
+        if self.configuration.safe_get('u4p_failover_target'):
+            u4p_targets = self.configuration.safe_get('u4p_failover_target')
+            formatted_target_list = list()
+            for target in u4p_targets:
+                formatted_target = {key_dict[key]: value for key, value in
+                                    target.items()}
+
+                try:
+                    formatted_target['SSLVerify'] = formatted_target['SSLPath']
+                    del formatted_target['SSLPath']
+                except KeyError:
+                    if formatted_target['SSLVerify'] == 'False':
+                        formatted_target['SSLVerify'] = False
+                    else:
+                        formatted_target['SSLVerify'] = True
+
+                formatted_target_list.append(formatted_target)
+
+            u4p_failover_config = dict()
+            u4p_failover_config['u4p_failover_targets'] = formatted_target_list
+            u4p_failover_config['u4p_failover_backoff_factor'] = (
+                self.configuration.safe_get('u4p_failover_backoff_factor'))
+            u4p_failover_config['u4p_failover_retries'] = (
+                self.configuration.safe_get('u4p_failover_retries'))
+            u4p_failover_config['u4p_failover_timeout'] = (
+                self.configuration.safe_get('u4p_failover_timeout'))
+            u4p_failover_config['u4p_failover_autofailback'] = (
+                self.configuration.safe_get('u4p_failover_autofailback'))
+            u4p_failover_config['u4p_primary'] = (
+                self.get_attributes_from_cinder_config())
+
+            self.rest.set_u4p_failover_config(u4p_failover_config)
+        else:
+            LOG.warning("There has been no failover instances of Unisphere "
+                        "configured for this instance of Cinder. If your "
+                        "primary instance of Unisphere goes down then your "
+                        "VMAX will be inaccessible until the Unisphere REST "
+                        "API is responsive again.")
+
+    def retest_primary_u4p(self):
+        """Retest connection to the primary instance of Unisphere."""
+        primary_array_info = self.get_attributes_from_cinder_config()
+        temp_conn = rest.VMAXRest()
+        temp_conn.set_rest_credentials(primary_array_info)
+        LOG.debug(
+            "Running connection check to primary instance of Unisphere "
+            "at %(primary)s", {
+                'primary': primary_array_info['RestServerIp']})
+        sc, response = temp_conn.request(target_uri='/system/version',
+                                         method='GET', u4p_check=True,
+                                         request_object=None)
+        if sc and int(sc) == 200:
+            self._get_u4p_failover_info()
+            self.rest.set_rest_credentials(primary_array_info)
+            self.rest.u4p_in_failover = False
+            LOG.info("Connection to primary instance of Unisphere at "
+                     "%(primary)s restored, available failover instances of "
+                     "Unisphere reset to default.", {
+                         'primary': primary_array_info['RestServerIp']})
+        else:
+            LOG.debug(
+                "Connection check to primary instance of Unisphere at "
+                "%(primary)s failed, maintaining session with backup "
+                "instance of Unisphere at %(bu_in_use)s", {
+                    'primary': primary_array_info['RestServerIp'],
+                    'bu_in_use': self.rest.base_uri})
+        temp_conn.session.close()
 
     def _get_initiator_check_flag(self):
         """Reads the configuration for initator_check flag.
@@ -870,6 +975,8 @@ class VMAXCommon(object):
 
     def update_volume_stats(self):
         """Retrieve stats info."""
+        if self.rest.u4p_in_failover and self.rest.u4p_failover_autofailback:
+            self.retest_primary_u4p()
         pools = []
         # Dictionary to hold the arrays for which the SRP details
         # have already been queried.
@@ -891,7 +998,6 @@ class VMAXCommon(object):
                     self.rep_config, array_info)
             # Add both SLO & Workload name in the pool name
             # Only insert the array details in the dict once
-            self.rest.set_rest_credentials(array_info)
             if array_info['SerialNumber'] not in arrays:
                 (location_info, total_capacity_gb, free_capacity_gb,
                  provisioned_capacity_gb,
@@ -1261,8 +1367,6 @@ class VMAXCommon(object):
                     "supported."))
                 raise exception.VolumeBackendAPIException(
                     message=exception_message)
-
-            self.rest.set_rest_credentials(array_info)
 
             extra_specs = self._set_vmax_extra_specs(extra_specs, array_info)
             if qos_specs and qos_specs.get('consumer') != "front-end":

@@ -1,0 +1,4 @@
+---
+features:
+  - Dell EMC VMAX driver has added support for failover to second
+    instance of Unisphere.

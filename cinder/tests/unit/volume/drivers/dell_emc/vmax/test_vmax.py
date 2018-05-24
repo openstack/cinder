@@ -984,6 +984,43 @@ class VMAXCommonData(object):
         'serial_number': array,
         'vmax_model': vmax_model}
 
+    u4p_failover_config = {
+        'u4p_failover_backoff_factor': '2',
+        'u4p_failover_retries': '3',
+        'u4p_failover_timeout': '10',
+        'u4p_primary': '10.10.10.10',
+        'u4p_failover_autofailback': 'True',
+        'u4p_failover_targets': [
+            {'san_ip': '10.10.10.11',
+             'san_api_port': '8443',
+             'san_login': 'test',
+             'san_password': 'test',
+             'driver_ssl_cert_verify': '/path/to/cert',
+             'driver_ssl_cert_path': 'True'},
+            {'san_ip': '10.10.10.12',
+             'san_api_port': '8443',
+             'san_login': 'test',
+             'san_password': 'test',
+             'driver_ssl_cert_verify': 'True'},
+            {'san_ip': '10.10.10.11',
+             'san_api_port': '8443',
+             'san_login': 'test',
+             'san_password': 'test',
+             'driver_ssl_cert_verify': '/path/to/cert',
+             'driver_ssl_cert_path': 'False'}]}
+
+    u4p_failover_target = [{
+        'RestServerIp': '10.10.10.11',
+        'RestServerPort': '8443',
+        'RestUserName': 'test',
+        'RestPassword': 'test',
+        'SSLVerify': '/path/to/cert'},
+        {'RestServerIp': '10.10.10.12',
+         'RestServerPort': '8443',
+         'RestUserName': 'test',
+         'RestPassword': 'test',
+         'SSLVerify': 'True'}]
+
 
 class FakeLookupService(object):
     def get_device_mapping_from_network(self, initiator_wwns, target_wwns):
@@ -1001,6 +1038,15 @@ class FakeResponse(object):
             return self.return_object
         else:
             raise ValueError
+
+    def status_code(self):
+        return self.status_code()
+
+    def raise_for_status(self):
+        if 200 <= self.status_code <= 204:
+            return False
+        else:
+            return True
 
 
 class FakeRequestsSession(object):
@@ -1025,6 +1071,18 @@ class FakeRequestsSession(object):
 
         elif method == 'EXCEPTION':
             raise Exception
+
+        elif method == 'CONNECTION':
+            raise requests.ConnectionError
+
+        elif method == 'HTTP':
+            raise requests.HTTPError
+
+        elif method == 'SSL':
+            raise requests.exceptions.SSLError
+
+        elif method == 'EXCEPTION':
+            raise exception.VolumeBackendAPIException
 
         return FakeResponse(status_code, return_object)
 
@@ -1207,6 +1265,9 @@ class FakeRequestsSession(object):
     def session(self):
         return FakeRequestsSession()
 
+    def close(self):
+        pass
+
 
 class FakeConfiguration(object):
 
@@ -1218,7 +1279,6 @@ class FakeConfiguration(object):
         self.volume_backend_name = volume_backend_name
         self.config_group = volume_backend_name
         self.san_is_local = False
-        self.max_over_subscription_ratio = 1
         if replication_device:
             self.replication_device = [replication_device]
         for key, value in kwargs.items():
@@ -1252,6 +1312,16 @@ class FakeConfiguration(object):
                 self.driver_ssl_cert_verify = value
             elif key == 'driver_ssl_cert_path':
                 self.driver_ssl_cert_path = value
+            elif key == 'u4p_failover_target':
+                self.u4p_failover_target = value
+            elif key == 'u4p_failover_backoff_factor':
+                self.u4p_failover_backoff_factor = value
+            elif key == 'u4p_failover_retries':
+                self.u4p_failover_retries = value
+            elif key == 'u4p_failover_timeout':
+                self.u4p_failover_timeout = value
+            elif key == 'u4p_primary':
+                self.u4p_primary = value
 
     def safe_get(self, key):
         try:
@@ -1747,12 +1817,42 @@ class VMAXRestTest(test.TestCase):
         self.rest = self.common.rest
         self.utils = self.common.utils
 
-    def test_rest_request_exception(self):
-        sc, msg = self.rest.request('/fake_url', 'TIMEOUT')
-        self.assertIsNone(sc)
-        self.assertIsNone(msg)
+    def test_rest_request_no_response(self):
+        with mock.patch.object(self.rest.session, 'request',
+                               return_value=FakeResponse(None, None)):
+            sc, msg = self.rest.request('TIMEOUT', '/fake_url')
+            self.assertIsNone(sc)
+            self.assertIsNone(msg)
+
+    def test_rest_request_timeout_exception(self):
+        self.assertRaises(requests.exceptions.Timeout,
+                          self.rest.request, '', 'TIMEOUT')
+
+    def test_rest_request_connection_exception(self):
+        self.assertRaises(requests.exceptions.ConnectionError,
+                          self.rest.request, '', 'CONNECTION')
+
+    def test_rest_request_http_exception(self):
+        self.assertRaises(requests.exceptions.HTTPError,
+                          self.rest.request, '', 'HTTP')
+
+    def test_rest_request_ssl_exception(self):
+        self.assertRaises(requests.exceptions.SSLError,
+                          self.rest.request, '', 'SSL')
+
+    def test_rest_request_undefined_exception(self):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.rest.request, '', 'EXCEPTION')
+
+    def test_rest_request_handle_failover(self):
+        response = FakeResponse(200, 'Success')
+        with mock.patch.object(self.rest, '_handle_u4p_failover'):
+            with mock.patch.object(self.rest.session, 'request',
+                                   side_effect=[requests.ConnectionError,
+                                                response]):
+                self.rest.u4p_failover_enabled = True
+                self.rest.request('/fake_uri', 'GET')
+                self.rest._handle_u4p_failover.assert_called_once()
 
     def test_wait_for_job_complete(self):
         rc, job, status, task = self.rest.wait_for_job_complete(
@@ -3291,6 +3391,35 @@ class VMAXRestTest(test.TestCase):
                                return_value=self.data.powermax_model_details):
             self.assertEqual(self.rest.get_vmax_model(self.data.array),
                              reference)
+
+    def test_set_u4p_failover_config(self):
+        self.rest.set_u4p_failover_config(self.data.u4p_failover_config)
+
+        self.assertTrue(self.rest.u4p_failover_enabled)
+        self.assertEqual('3', self.rest.u4p_failover_retries)
+        self.assertEqual('10', self.rest.u4p_failover_timeout)
+        self.assertEqual('2', self.rest.u4p_failover_backoff_factor)
+        self.assertEqual('10.10.10.10', self.rest.primary_u4p)
+        self.assertEqual('10.10.10.11',
+                         self.rest.u4p_failover_targets[0]['san_ip'])
+        self.assertEqual('10.10.10.12',
+                         self.rest.u4p_failover_targets[1]['san_ip'])
+
+    def test_handle_u4p_failover_with_targets(self):
+        self.rest.u4p_failover_targets = self.data.u4p_failover_target
+        self.rest._handle_u4p_failover()
+
+        self.assertTrue(self.rest.u4p_in_failover)
+        self.assertEqual('test', self.rest.user)
+        self.assertEqual('test', self.rest.passwd)
+        self.assertEqual('/path/to/cert', self.rest.verify)
+        self.assertEqual('https://10.10.10.11:8443/univmax/restapi',
+                         self.rest.base_uri)
+
+    def test_handle_u4p_failover_no_targets_exception(self):
+        self.rest.u4p_failover_targets = []
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.rest._handle_u4p_failover)
 
 
 class VMAXProvisionTest(test.TestCase):
@@ -6019,6 +6148,48 @@ class VMAXCommonTest(test.TestCase):
         response4 = self.common.get_attributes_from_cinder_config()
         self.assertEqual(expected_response, response4)
 
+    def test_get_u4p_failover_info(self):
+        configuration = FakeConfiguration(
+            None, 'CommonTests', 1, 1,
+            san_ip='1.1.1.1',
+            san_login='test',
+            san_password='test',
+            san_api_port=8443,
+            driver_ssl_cert_verify='/path/to/cert',
+            u4p_failover_target=(self.data.u4p_failover_config[
+                'u4p_failover_targets']),
+            u4p_failover_backoff_factor='2',
+            u4p_failover_retries='3',
+            u4p_failover_timeout='10',
+            u4p_primary='10.10.10.10'
+        )
+        self.common.configuration = configuration
+        self.common._get_u4p_failover_info()
+        self.assertTrue(self.rest.u4p_failover_enabled)
+        self.assertIsNotNone(self.rest.u4p_failover_targets)
+
+    def test_update_vol_stats_retest_u4p(self):
+        self.rest.u4p_in_failover = True
+        self.rest.u4p_failover_autofailback = True
+        with mock.patch.object(self.common, 'retest_primary_u4p'):
+            self.common.update_volume_stats()
+            self.common.retest_primary_u4p.assert_called_once()
+
+        self.rest.u4p_in_failover = True
+        self.rest.u4p_failover_autofailback = False
+        with mock.patch.object(self.common, 'retest_primary_u4p'):
+            self.common.update_volume_stats()
+            self.common.retest_primary_u4p.assert_not_called()
+
+    @mock.patch.object(rest.VMAXRest, 'request',
+                       return_value=[200, None])
+    @mock.patch.object(common.VMAXCommon,
+                       'get_attributes_from_cinder_config',
+                       return_value=VMAXCommonData.u4p_failover_target[0])
+    def test_retest_primary_u4p(self, mock_primary_u4p, mock_request):
+        self.common.retest_primary_u4p()
+        self.assertFalse(self.rest.u4p_in_failover)
+
 
 class VMAXFCTest(test.TestCase):
     def setUp(self):
@@ -6596,6 +6767,7 @@ class VMAXMaskingTest(test.TestCase):
         configuration.safe_get.return_value = 'MaskingTests'
         configuration.config_group = 'MaskingTests'
         self._gather_info = common.VMAXCommon._gather_info
+        common.VMAXCommon._get_u4p_failover_info = mock.Mock()
         common.VMAXCommon._gather_info = mock.Mock()
         rest.VMAXRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
