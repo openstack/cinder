@@ -431,6 +431,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'netapp_raid_type': 'raid_dp',
             'netapp_disk_type': 'SSD',
             'replication_enabled': False,
+            'online_extend_support': False,
         }]
 
         expected[0].update({'QoS_support': cluster_credentials})
