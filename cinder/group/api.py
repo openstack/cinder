@@ -455,6 +455,7 @@ class API(base.Base):
                     'display_name': request_spec.get('name'),
                     'volume_type_id': volume_type_id,
                     'group_type_id': group.group_type_id,
+                    'availability_zone': group.availability_zone
                 }
 
                 request_spec['volume_properties'] = volume_properties
