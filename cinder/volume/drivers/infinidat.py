@@ -536,8 +536,9 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     @infinisdk_to_cinder_exceptions
     def extend_volume(self, volume, new_size):
         """Extend the size of a volume."""
-        volume = self._get_infinidat_volume(volume)
-        volume.resize(new_size * capacity.GiB)
+        infinidat_volume = self._get_infinidat_volume(volume)
+        size_delta = new_size * capacity.GiB - infinidat_volume.get_size()
+        infinidat_volume.resize(size_delta)
 
     @infinisdk_to_cinder_exceptions
     def create_snapshot(self, snapshot):
