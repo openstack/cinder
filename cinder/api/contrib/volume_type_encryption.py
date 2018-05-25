@@ -25,7 +25,9 @@ from cinder.api import validation
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
+from cinder.policies import base
 from cinder.policies import volume_type as policy
+from cinder import policy as cinder_policy
 from cinder import rpc
 from cinder.volume import volume_types
 
@@ -56,10 +58,26 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         else:
             return False
 
+    def _authorize_policy(self, context, new_policy):
+        # TODO(cl566n): In future release, this _authorize_policy function
+        # can be removed. The call to it can be replaced by
+        # context.authorize(new_policy) once the old
+        # policy.ENCRYPTION_POLICY is deprecated.
+
+        using_old_action = cinder_policy.verify_deprecated_policy(
+            policy.ENCRYPTION_POLICY,
+            new_policy,
+            base.RULE_ADMIN_API,
+            context)
+
+        if not using_old_action:
+            context.authorize(new_policy)
+
     def index(self, req, type_id):
         """Returns the encryption specs for a given volume type."""
         context = req.environ['cinder.context']
-        context.authorize(policy.ENCRYPTION_POLICY)
+        self._authorize_policy(context, policy.GET_ENCRYPTION_POLICY)
+
         self._check_type(context, type_id)
         return self._get_volume_type_encryption(context, type_id)
 
@@ -67,7 +85,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
     def create(self, req, type_id, body):
         """Create encryption specs for an existing volume type."""
         context = req.environ['cinder.context']
-        context.authorize(policy.ENCRYPTION_POLICY)
+        self._authorize_policy(context, policy.CREATE_ENCRYPTION_POLICY)
 
         key_size = body['encryption'].get('key_size')
         if key_size is not None:
@@ -95,7 +113,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
     def update(self, req, type_id, id, body):
         """Update encryption specs for a given volume type."""
         context = req.environ['cinder.context']
-        context.authorize(policy.ENCRYPTION_POLICY)
+        self._authorize_policy(context, policy.UPDATE_ENCRYPTION_POLICY)
 
         key_size = body['encryption'].get('key_size')
         if key_size is not None:
@@ -119,7 +137,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
     def show(self, req, type_id, id):
         """Return a single encryption item."""
         context = req.environ['cinder.context']
-        context.authorize(policy.ENCRYPTION_POLICY)
+        self._authorize_policy(context, policy.GET_ENCRYPTION_POLICY)
 
         self._check_type(context, type_id)
 
@@ -133,7 +151,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
     def delete(self, req, type_id, id):
         """Delete encryption specs for a given volume type."""
         context = req.environ['cinder.context']
-        context.authorize(policy.ENCRYPTION_POLICY)
+        self._authorize_policy(context, policy.DELETE_ENCRYPTION_POLICY)
 
         if self._encrypted_type_in_use(context, type_id):
             expl = _('Cannot delete encryption specs. Volume type in use.')

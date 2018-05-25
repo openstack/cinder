@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    Add granularity to the ``volume_extension:volume_type_encryption``
+    policy with the addition of distinct actions for create, get, update,
+    and delete:
+
+    - ``volume_extension:volume_type_encryption:create``
+    - ``volume_extension:volume_type_encryption:get``
+    - ``volume_extension:volume_type_encryption:update``
+    - ``volume_extension:volume_type_encryption:delete``
+
+    To address backwards compatibility, the new rules added to the
+    volume_type.py policy file, default to the existing rule,
+    ``volume_extension:volume_type_encryption``, if it is set to a
+    non-default value.
