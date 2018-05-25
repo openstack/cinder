@@ -67,9 +67,11 @@ class UnityDriver(driver.ManageableVD,
         3.1.4 - Fixes bug 1775518 to make sure driver succeed to initialize
                 even though the value of unity_io_ports and
                 unity_storage_pool_names are empty
+        3.1.5 - Cherry-pick the fix for 1773305 to return the targets which
+                connect to the logged-out initiators
     """
 
-    VERSION = '03.01.04'
+    VERSION = '03.01.05'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
