@@ -31,7 +31,13 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - location: location
+   - status: version_status
+   - updated: version_updated
+   - links: links_6
+   - min_version: version_min
+   - version: version_max
+   - media-types: media_types
+   - id: version_id
 
 Response Example
 ----------------

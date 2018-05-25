@@ -1505,6 +1505,12 @@ links_5:
   in: body
   required: false
   type: array
+links_6:
+  description: |
+    Links to the resources in question.
+  in: body
+  required: true
+  type: array
 location:
   description: |
     Full URL to a service or server.
@@ -1586,6 +1592,18 @@ maxTotalVolumesOptional:
   in: body
   required: false
   type: integer
+media_types:
+  description: |
+    The `media types
+    <https://www.iana.org/assignments/media-types/media-types.xhtml>`_.
+    It is an array of a fixed dict.
+
+    .. note::
+      It is vestigial and provide no useful information.
+      It will be deprecated and removed in the future.
+  in: body
+  required: true
+  type: array
 message_level:
   description: |
     The level of the message, possible value is
@@ -2691,6 +2709,44 @@ user_messages:
 vendor_name:
   description: |
     The name of the vendor.
+  in: body
+  required: true
+  type: string
+version_id:
+  in: body
+  required: true
+  description: |
+    A common name for the version in question. Informative only, it
+    has no real semantic meaning.
+  type: string
+version_max:
+  in: body
+  required: true
+  description: |
+    If this version of the API supports microversions, the maximum
+    microversion that is supported. This will be the empty string if
+    microversions are not supported.
+  type: string
+version_min:
+  in: body
+  required: true
+  description: |
+    If this version of the API supports microversions, the minimum
+    microversion that is supported. This will be the empty string if
+    microversions are not supported.
+  type: string
+version_status:
+  in: body
+  required: true
+  description: |
+    The status of this API version. This can be one of:
+
+    - ``CURRENT``: this is the preferred version of the API to use
+    - ``DEPRECATED``: a deprecated version of the API that is slated for removal
+  type: string
+version_updated:
+  description: |
+    This is a fixed string that API version updates.
   in: body
   required: true
   type: string
