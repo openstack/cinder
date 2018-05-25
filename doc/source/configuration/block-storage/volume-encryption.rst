@@ -39,10 +39,10 @@ Update ``nova-compute`` servers:
       [key_manager]
       backend = barbican
 
-     .. note::
+   .. note::
 
-        Use a '#' prefix to comment out the line in this section that
-        begins with 'fixed_key'.
+      Use a '#' prefix to comment out the line in this section that
+      begins with 'fixed_key'.
 
 #. Restart ``nova-compute``.
 
@@ -188,6 +188,12 @@ sections.
       $ openstack volume list
       $ openstack server add volume --device /dev/vdb TESTVM 'unencrypted volume'
       $ openstack server add volume --device /dev/vdc TESTVM 'encrypted volume'
+
+   .. note::
+
+      The ``--device`` option to specify the mountpoint for the attached volume
+      may not be where the block device is actually attached in the guest VM,
+      it is used here for illustration purposes.
 
 #. On the VM, send some text to the newly attached volumes and synchronize
    them:
