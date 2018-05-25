@@ -61,9 +61,11 @@ class UnityDriver(driver.ManageableVD,
         2.0.1 - Fixes bug 1759175 to detach the lun correctly when auto zone
                 was enabled and the lun was the last one attached to the host.
         2.0.2 - Support remove empty host
+        2.0.3 - Cherry-pick the fix for 1773305 to return the targets which
+                connect to the logged-out initiators
     """
 
-    VERSION = '02.00.02'
+    VERSION = '02.00.03'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"

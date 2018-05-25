@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Dell EMC Unity Driver: Fixes `bug 1773305
+    <https://bugs.launchpad.net/cinder/+bug/1773305>`__
+    to return the targets which connect to the logged-out initiators. Then the
+    zone manager could clean up the FC zone based on the correct target wwns.

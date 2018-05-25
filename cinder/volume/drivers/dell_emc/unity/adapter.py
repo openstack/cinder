@@ -788,7 +788,7 @@ class FCAdapter(CommonAdapter):
     def filter_targets_by_host(self, host):
         if self.auto_zone_enabled and not host.host_luns:
             return self.client.get_fc_target_info(
-                host=host, logged_in_only=True,
+                host=host, logged_in_only=False,
                 allowed_ports=self.allowed_ports)
         return []
 
