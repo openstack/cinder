@@ -310,7 +310,7 @@ class ClustersTestCase(test.TestCase):
     @ddt.data('a' * 256, '   ')
     def test_update_wrong_disabled_reason(self, disabled_reason):
         req = FakeRequest()
-        self.assertRaises(exception.InvalidInput, self.controller.update,
+        self.assertRaises(exception.ValidationError, self.controller.update,
                           req, 'disable',
                           body={'name': 'cluster_name',
                                 'disabled_reason': disabled_reason})

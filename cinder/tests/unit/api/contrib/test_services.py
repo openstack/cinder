@@ -21,11 +21,11 @@ import iso8601
 import mock
 from oslo_config import cfg
 from six.moves import http_client
-import webob.exc
 
 from cinder.api.contrib import services
 from cinder.api import extensions
 from cinder.api import microversions as mv
+from cinder.api.openstack import api_version_request as api_version
 from cinder.common import constants
 from cinder import context
 from cinder import exception
@@ -267,7 +267,8 @@ class ServicesTest(test.TestCase):
 
     def test_failover_no_values(self):
         req = FakeRequest(version=mv.REPLICATION_CLUSTER)
-        self.assertRaises(exception.InvalidInput, self.controller.update, req,
+        self.assertRaises(exception.InvalidInput,
+                          self.controller.update, req,
                           'failover', {'backend_id': 'replica1'})
 
     @ddt.data({'host': 'hostname'}, {'cluster': 'mycluster'})
@@ -703,42 +704,43 @@ class ServicesTest(test.TestCase):
                 'binary': 'cinder-scheduler',
                 'disabled_reason': None,
                 }
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update,
                           req, "disable-log-reason", body)
 
-    def test_invalid_reason_field(self):
-        # Check that empty strings are not allowed
-        reason = ' ' * 10
-        self.assertFalse(self.controller._is_valid_as_reason(reason))
-        reason = 'a' * 256
-        self.assertFalse(self.controller._is_valid_as_reason(reason))
-        # Check that spaces at the end are also counted
-        reason = 'a' * 255 + ' '
-        self.assertFalse(self.controller._is_valid_as_reason(reason))
-        reason = 'it\'s a valid reason.'
-        self.assertTrue(self.controller._is_valid_as_reason(reason))
-        reason = None
-        self.assertFalse(self.controller._is_valid_as_reason(reason))
+    @ddt.data(' ' * 10, 'a' * 256, None)
+    def test_invalid_reason_field(self, reason):
+        # # Check that empty strings are not allowed
+        self.ext_mgr.extensions['os-extended-services'] = True
+        self.controller = services.ServiceController(self.ext_mgr)
+        req = (
+            fakes.HTTPRequest.blank('v3/fake/os-services/disable-log-reason'))
+        body = {'host': 'host1',
+                'binary': 'cinder-volume',
+                'disabled_reason': reason,
+                }
+        self.assertRaises(exception.ValidationError,
+                          self.controller.update,
+                          req, "disable-log-reason", body)
 
     def test_services_failover_host(self):
         url = '/v2/%s/os-services/failover_host' % fake.PROJECT_ID
         req = fakes.HTTPRequest.blank(url)
-        body = {'host': mock.sentinel.host,
-                'backend_id': mock.sentinel.backend_id}
+        body = {'host': 'fake_host',
+                'backend_id': 'fake_backend'}
         with mock.patch.object(self.controller.volume_api, 'failover') \
                 as failover_mock:
             res = self.controller.update(req, 'failover_host', body)
         failover_mock.assert_called_once_with(req.environ['cinder.context'],
-                                              mock.sentinel.host,
+                                              'fake_host',
                                               None,
-                                              mock.sentinel.backend_id)
+                                              'fake_backend')
         self.assertEqual(http_client.ACCEPTED, res.status_code)
 
-    @ddt.data(('failover_host', {'host': mock.sentinel.host,
-                                 'backend_id': mock.sentinel.backend_id}),
-              ('freeze', {'host': mock.sentinel.host}),
-              ('thaw', {'host': mock.sentinel.host}))
+    @ddt.data(('failover_host', {'host': 'fake_host',
+                                 'backend_id': 'fake_backend'}),
+              ('freeze', {'host': 'fake_host'}),
+              ('thaw', {'host': 'fake_host'}))
     @ddt.unpack
     @mock.patch('cinder.objects.ServiceList.get_all')
     def test_services_action_host_not_found(self, method, body,
@@ -746,16 +748,16 @@ class ServicesTest(test.TestCase):
         url = '/v2/%s/os-services/%s' % (fake.PROJECT_ID, method)
         req = fakes.HTTPRequest.blank(url)
         mock_get_all_services.return_value = []
-        msg = 'No service found with host=%s' % mock.sentinel.host
+        msg = 'No service found with host=%s' % 'fake_host'
         result = self.assertRaises(exception.InvalidInput,
                                    self.controller.update,
                                    req, method, body)
         self.assertEqual(msg, result.msg)
 
-    @ddt.data(('failover', {'cluster': mock.sentinel.cluster,
-                            'backend_id': mock.sentinel.backend_id}),
-              ('freeze', {'cluster': mock.sentinel.cluster}),
-              ('thaw', {'cluster': mock.sentinel.cluster}))
+    @ddt.data(('failover', {'cluster': 'fake_cluster',
+                            'backend_id': 'fake_backend'}),
+              ('freeze', {'cluster': 'fake_cluster'}),
+              ('thaw', {'cluster': 'fake_cluster'}))
     @ddt.unpack
     @mock.patch('cinder.objects.ServiceList.get_all')
     def test_services_action_cluster_not_found(self, method, body,
@@ -763,7 +765,7 @@ class ServicesTest(test.TestCase):
         url = '/v3/%s/os-services/%s' % (fake.PROJECT_ID, method)
         req = fakes.HTTPRequest.blank(url, version=mv.REPLICATION_CLUSTER)
         mock_get_all_services.return_value = []
-        msg = 'No service found with cluster=%s' % mock.sentinel.cluster
+        msg = "No service found with cluster=fake_cluster"
         result = self.assertRaises(exception.InvalidInput,
                                    self.controller.update, req,
                                    method, body)
@@ -772,23 +774,23 @@ class ServicesTest(test.TestCase):
     def test_services_freeze(self):
         url = '/v2/%s/os-services/freeze' % fake.PROJECT_ID
         req = fakes.HTTPRequest.blank(url)
-        body = {'host': mock.sentinel.host}
+        body = {'host': 'fake_host'}
         with mock.patch.object(self.controller.volume_api, 'freeze_host') \
                 as freeze_mock:
             res = self.controller.update(req, 'freeze', body)
         freeze_mock.assert_called_once_with(req.environ['cinder.context'],
-                                            mock.sentinel.host, None)
+                                            'fake_host', None)
         self.assertEqual(freeze_mock.return_value, res)
 
     def test_services_thaw(self):
         url = '/v2/%s/os-services/thaw' % fake.PROJECT_ID
         req = fakes.HTTPRequest.blank(url)
-        body = {'host': mock.sentinel.host}
+        body = {'host': 'fake_host'}
         with mock.patch.object(self.controller.volume_api, 'thaw_host') \
                 as thaw_mock:
             res = self.controller.update(req, 'thaw', body)
         thaw_mock.assert_called_once_with(req.environ['cinder.context'],
-                                          mock.sentinel.host, None)
+                                          'fake_host', None)
         self.assertEqual(thaw_mock.return_value, res)
 
     @ddt.data('freeze', 'thaw', 'failover_host')
@@ -805,7 +807,7 @@ class ServicesTest(test.TestCase):
         body = mock.sentinel.body
         res = self.controller.update(req, 'set-log', body)
         self.assertEqual(set_log_mock.return_value, res)
-        set_log_mock.assert_called_once_with(mock.ANY, body)
+        set_log_mock.assert_called_once_with(req, mock.ANY, body=body)
 
     @mock.patch('cinder.api.contrib.services.ServiceController._get_log')
     def test_get_log(self, get_log_mock):
@@ -814,13 +816,14 @@ class ServicesTest(test.TestCase):
         body = mock.sentinel.body
         res = self.controller.update(req, 'get-log', body)
         self.assertEqual(get_log_mock.return_value, res)
-        get_log_mock.assert_called_once_with(mock.ANY, body)
+        get_log_mock.assert_called_once_with(req, mock.ANY, body=body)
 
-    def test__log_params_binaries_services_wrong_binary(self):
+    def test_get_log_wrong_binary(self):
+        req = FakeRequest(version=mv.LOG_LEVEL)
         body = {'binary': 'wrong-binary'}
-        self.assertRaises(exception.InvalidInput,
-                          self.controller._log_params_binaries_services,
-                          'get-log', body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller._get_log, req, self.context,
+                          body=body)
 
     @ddt.data(None, '', '*')
     @mock.patch('cinder.objects.ServiceList.get_all')
@@ -828,7 +831,7 @@ class ServicesTest(test.TestCase):
         body = {'binary': binary, 'server': 'host1'}
         binaries, services = self.controller._log_params_binaries_services(
             mock.sentinel.context, body)
-        self.assertEqual(self.controller.LOG_BINARIES, binaries)
+        self.assertEqual(constants.LOG_BINARIES, binaries)
         self.assertEqual(service_list_mock.return_value, services)
         service_list_mock.assert_called_once_with(
             mock.sentinel.context, filters={'host_or_cluster': body['server'],
@@ -853,11 +856,18 @@ class ServicesTest(test.TestCase):
                 filters={'host_or_cluster': body['server'], 'binary': binary,
                          'is_up': True})
 
-    @ddt.data(None, '', 'wronglevel')
-    def test__set_log_invalid_level(self, level):
+    @ddt.data((None, exception.InvalidInput),
+              ('', exception.InvalidInput),
+              ('wronglevel', exception.InvalidInput))
+    @ddt.unpack
+    def test__set_log_invalid_level(self, level, exceptions):
         body = {'level': level}
-        self.assertRaises(exception.InvalidInput,
-                          self.controller._set_log, self.context, body)
+        url = '/v3/%s/os-services/set-log' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url)
+        req.api_version_request = api_version.APIVersionRequest("3.32")
+        self.assertRaises(exceptions,
+                          self.controller._set_log, req, self.context,
+                          body=body)
 
     @mock.patch('cinder.utils.get_log_method')
     @mock.patch('cinder.objects.ServiceList.get_all')
@@ -873,12 +883,15 @@ class ServicesTest(test.TestCase):
             objects.Service(self.context, binary=constants.BACKUP_BINARY),
         ]
         get_all_mock.return_value = services
+        url = '/v3/%s/os-services/set-log' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url)
         body = {'binary': '*', 'prefix': 'eventlet.', 'level': 'debug'}
         log_level = objects.LogLevel(prefix=body['prefix'],
                                      level=body['level'])
         with mock.patch('cinder.objects.LogLevel') as log_level_mock:
             log_level_mock.return_value = log_level
-            res = self.controller._set_log(mock.sentinel.context, body)
+            res = self.controller._set_log(req, mock.sentinel.context,
+                                           body=body)
             log_level_mock.assert_called_once_with(mock.sentinel.context,
                                                    prefix=body['prefix'],
                                                    level=body['level'])
@@ -924,12 +937,15 @@ class ServicesTest(test.TestCase):
                             host='host'),
         ]
         get_all_mock.return_value = services
+        url = '/v3/%s/os-services/get-log' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url)
         body = {'binary': '*', 'prefix': 'eventlet.'}
 
         log_level = objects.LogLevel(prefix=body['prefix'])
         with mock.patch('cinder.objects.LogLevel') as log_level_mock:
             log_level_mock.return_value = log_level
-            res = self.controller._get_log(mock.sentinel.context, body)
+            res = self.controller._get_log(req, mock.sentinel.context,
+                                           body=body)
             log_level_mock.assert_called_once_with(mock.sentinel.context,
                                                    prefix=body['prefix'])
 
