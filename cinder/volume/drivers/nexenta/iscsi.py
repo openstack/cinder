@@ -1,4 +1,4 @@
-# Copyright 2016 Nexenta Systems, Inc. All Rights Reserved.
+# Copyright 2018 Nexenta Systems, Inc. All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,11 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import hashlib
+import json
 import six
 
 from oslo_log import log as logging
 from oslo_utils import excutils
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.volume import driver
@@ -24,7 +27,7 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.2'
+VERSION = '1.3.3'
 LOG = logging.getLogger(__name__)
 
 
@@ -51,6 +54,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         1.3.0.1 - Target creation refactor.
         1.3.1 - Added ZFS cleanup.
         1.3.2 - Added support for target_portal_group and zvol folder.
+        1.3.3 - Added synchronization for Comstar API calls.
     """
 
     VERSION = VERSION
@@ -105,9 +109,53 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             protocol, auto = 'http', True
         else:
             protocol, auto = self.nms_protocol, False
+
         self.nms = jsonrpc.NexentaJSONProxy(
             protocol, self.nms_host, self.nms_port, '/rest/nms', self.nms_user,
             self.nms_password, self.verify_ssl, auto=auto)
+
+        license = self.nms.appliance.get_license_info()
+        signature = license.get('machine_sig')
+        LOG.debug('NexentaStor Host Signature: %(signature)s',
+                  {'signature': signature})
+
+        plugin = 'nms-rsf-cluster'
+        plugins = self.nms.plugin.get_names('')
+        if isinstance(plugins, list) and plugin in plugins:
+            names = self.nms.rsf_plugin.get_names('')
+            if isinstance(names, list) and len(names) == 1:
+                name = names[0]
+                prop = 'machinesigs'
+                props = self.nms.rsf_plugin.get_child_props(name, '')
+                if isinstance(props, dict) and prop in props:
+                    signatures = json.loads(props.get(prop))
+                    if isinstance(signatures, dict) and \
+                       signature in signatures.values():
+                        signature = ':'.join(sorted(signatures.values()))
+                        LOG.debug('NexentaStor HA Cluster Signature: '
+                                  '%(signature)s',
+                                  {'signature': signature})
+                    else:
+                        LOG.debug('HA Cluster plugin %(plugin)s is not '
+                                  'configured for NexentaStor Host '
+                                  '%(signature)s: %(signatures)s',
+                                  {'plugin': plugin,
+                                   'signature': signature,
+                                   'signatures': signatures})
+                else:
+                    LOG.debug('HA Cluster plugin %(plugin)s is misconfigured',
+                              {'plugin': plugin})
+            else:
+                LOG.debug('HA Cluster plugin %(plugin)s is not configured '
+                          'or is misconfigured',
+                          {'plugin': plugin})
+        else:
+            LOG.debug('HA Cluster plugin %(plugin)s is not installed',
+                      {'plugin': plugin})
+
+        self.lock = hashlib.md5(signature).hexdigest()
+        LOG.debug('NMS coordination lock: %(lock)s',
+                  {'lock': self.lock})
 
     def check_for_setup_error(self):
         """Verify that the volume for our zvols exists.
@@ -608,6 +656,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
     def ensure_export(self, _ctx, volume):
         self._do_export(_ctx, volume)
 
+    @coordination.synchronized('{self.lock}')
     def _do_export(self, _ctx, volume):
         """Recreate parts of export if necessary.
 
@@ -646,6 +695,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             model_update = {'provider_location': provider_location}
         return model_update
 
+    @coordination.synchronized('{self.lock}')
     def remove_export(self, _ctx, volume):
         """Destroy all resources created to export zvol.
 

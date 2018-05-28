@@ -1,4 +1,4 @@
-# Copyright 2016 Nexenta Systems, Inc.
+# Copyright 2018 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -23,11 +23,14 @@ from cinder.utils import retry
 
 LOG = logging.getLogger(__name__)
 TIMEOUT = 60
+NMS_PLUGINS = {
+    'rrdaemon_plugin': 'nms-rrdaemon',
+    'rsf_plugin': 'nms-rsf-cluster'
+}
 
 requests.packages.urllib3.disable_warnings(exceptions.InsecureRequestWarning)
 requests.packages.urllib3.disable_warnings(
     exceptions.InsecurePlatformWarning)
-
 
 class NexentaJSONProxy(object):
 
@@ -75,8 +78,13 @@ class NexentaJSONProxy(object):
 
     @retry(retry_exc_tuple, retries=6)
     def __call__(self, *args):
+        if self.obj in NMS_PLUGINS:
+            kind, name = 'plugin', NMS_PLUGINS[self.obj]
+        else:
+            kind, name = 'object', self.obj
+
         data = jsonutils.dumps({
-            'object': self.obj,
+            kind: name,
             'method': self.method,
             'params': args
         })
