@@ -607,8 +607,7 @@ class XtremIOVolumeDriver(san.SanDriver):
                        'driver_version': self.VERSION,
                        'storage_protocol': self.protocol,
                        'total_capacity_gb': physical_space,
-                       'free_capacity_gb': (free_physical *
-                                            self.provisioning_factor),
+                       'free_capacity_gb': free_physical,
                        'provisioned_capacity_gb': actual_prov,
                        'max_over_subscription_ratio': self.provisioning_factor,
                        'thin_provisioning_support': True,

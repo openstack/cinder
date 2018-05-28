@@ -1,0 +1,4 @@
+---
+fixes:
+    The XtremIO driver has been fixed to correctly report the
+    "free_capacity_gb" size.
