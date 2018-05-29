@@ -293,6 +293,12 @@ backup:
   in: body
   required: true
   type: object
+backup_gigabytes:
+  description: |
+    The size (GB) of backups that are allowed for each project.
+  in: body
+  required: true
+  type: integer
 backup_service:
   description: |
     The service used to perform the backup.
@@ -1265,6 +1271,13 @@ os-vol-tenant-attr:tenant_id:
   in: body
   required: true
   type: string
+per_volume_gigabytes:
+  description: |
+    The size (GB) of volumes in request that are allowed for each
+    volume.
+  in: body
+  required: true
+  type: integer
 perVolumeGigabytes:
   description: |
     The maximum amount of storage per volume, in gibibytes (GiB).
