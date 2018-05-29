@@ -449,6 +449,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - backup-record: backup_record
    - backup_service: backup_service
    - backup_url: backup_url
 
@@ -487,6 +488,9 @@ Request
 
    - project_id: project_id_path
    - backup_id: backup_id
+   - backup-record: backup_record
+   - backup_service: backup_service
+   - backup_url: backup_url
 
 
 Request Example
