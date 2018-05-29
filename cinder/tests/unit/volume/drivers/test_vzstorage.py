@@ -426,6 +426,7 @@ class VZStorageTestCase(test.TestCase):
             id=src_vref_id,
             name='volume-%s' % src_vref_id,
             provider_location=self._FAKE_SHARE)
+        src_vref.context = self.context
 
         mock_remotefs_create_cloned_volume.return_value = {
             'provider_location': self._FAKE_SHARE}
@@ -457,6 +458,7 @@ class VZStorageTestCase(test.TestCase):
             id=src_vref_id,
             name='volume-%s' % src_vref_id,
             provider_location=self._FAKE_SHARE)
+        src_vref.context = self.context
 
         snap_attrs = ['volume_name', 'size', 'volume_size', 'name',
                       'volume_id', 'id', 'volume']
