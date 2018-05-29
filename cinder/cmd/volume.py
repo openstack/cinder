@@ -17,22 +17,26 @@
 
 """Starter script for Cinder Volume."""
 
-import logging as python_logging
-import os
-import re
-
 import eventlet
 import eventlet.tpool
+import os
 
-from cinder import exception
-from cinder import objects
-
+# Monkey patching must go before the oslo.log import, otherwise
+# oslo.context will not use greenthread thread local and all greenthreads
+# will share the same context.
 if os.name == 'nt':
     # eventlet monkey patching the os module causes subprocess.Popen to fail
     # on Windows when using pipes due to missing non-blocking IO support.
     eventlet.monkey_patch(os=False)
 else:
     eventlet.monkey_patch()
+
+import logging as python_logging
+import re
+
+from cinder import exception
+from cinder import objects
+
 
 import shlex
 import sys
