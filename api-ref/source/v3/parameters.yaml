@@ -2317,7 +2317,7 @@ service_id:
     UUID for the cleanup service.
   in: body
   required: false
-  type: string
+  type: integer
 service_key:
   description: |
     The service name. Deprecated. Keeping service key
