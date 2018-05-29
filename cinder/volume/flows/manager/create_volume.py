@@ -510,9 +510,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                   {'image_id': image_id, 'volume_id': volume.id,
                    'image_location': image_location})
         try:
-            image_properties = image_meta.get('properties', {})
-            image_encryption_key = image_properties.get(
-                'cinder_encryption_key_id')
+            image_encryption_key = image_meta.get('cinder_encryption_key_id')
 
             if volume.encryption_key_id and image_encryption_key:
                 # If the image provided an encryption key, we have
