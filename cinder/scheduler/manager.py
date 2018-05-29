@@ -40,6 +40,7 @@ from cinder import flow_utils
 from cinder.i18n import _
 from cinder import manager
 from cinder.message import api as mess_api
+from cinder.message import message_field
 from cinder import objects
 from cinder.objects import fields
 from cinder import quota
@@ -401,6 +402,11 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
             QUOTAS.rollback(context, reservations,
                             project_id=volume.project_id)
             _extend_volume_set_error(self, context, ex, request_spec)
+            self.message_api.create(
+                context,
+                message_field.Action.EXTEND_VOLUME,
+                resource_uuid=volume.id,
+                exception=ex)
 
     def _set_volume_state_and_notify(self, method, updates, context, ex,
                                      request_spec, msg=None):

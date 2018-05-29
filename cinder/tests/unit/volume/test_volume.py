@@ -36,6 +36,7 @@ from cinder import context
 from cinder import coordination
 from cinder import db
 from cinder import exception
+from cinder.message import message_field
 from cinder import objects
 from cinder.objects import fields
 from cinder.policies import volumes as vol_policy
@@ -2459,16 +2460,22 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         fake_reservations = ['RESERVATION']
 
         # Test driver exception
-        with mock.patch.object(self.volume.driver,
-                               'extend_volume') as extend_volume:
-            extend_volume.side_effect =\
-                exception.CinderException('fake exception')
-            volume['status'] = 'extending'
-            self.volume.extend_volume(self.context, volume, '4',
-                                      fake_reservations)
-            volume.refresh()
-            self.assertEqual(2, volume.size)
-            self.assertEqual('error_extending', volume.status)
+        with mock.patch.object(
+                self.volume.driver, 'extend_volume',
+                side_effect=exception.CinderException('fake exception')):
+            with mock.patch.object(
+                    self.volume.message_api, 'create') as mock_create:
+                volume['status'] = 'extending'
+                self.volume.extend_volume(self.context, volume, '4',
+                                          fake_reservations)
+                volume.refresh()
+                self.assertEqual(2, volume.size)
+                self.assertEqual('error_extending', volume.status)
+                mock_create.assert_called_once_with(
+                    self.context,
+                    message_field.Action.EXTEND_VOLUME,
+                    resource_uuid=volume.id,
+                    detail=message_field.Detail.DRIVER_FAILED_EXTEND)
 
     @mock.patch('cinder.compute.API')
     def _test_extend_volume_manager_successful(self, volume, nova_api):
