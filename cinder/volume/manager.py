@@ -2605,6 +2605,11 @@ class VolumeManager(manager.CleanableManager,
         except Exception:
             LOG.exception("Extend volume failed.",
                           resource=volume)
+            self.message_api.create(
+                context,
+                message_field.Action.EXTEND_VOLUME,
+                resource_uuid=volume.id,
+                detail=message_field.Detail.DRIVER_FAILED_EXTEND)
             try:
                 self.db.volume_update(context, volume.id,
                                       {'status': 'error_extending'})
