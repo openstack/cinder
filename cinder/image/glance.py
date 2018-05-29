@@ -410,6 +410,11 @@ class GlanceImageService(object):
                       if self._image_schema.is_base_property(key) is True
                       and key != 'schema'}
 
+        # Process 'cinder_encryption_key_id' as a metadata key
+        if 'cinder_encryption_key_id' in image.keys():
+            image_meta['cinder_encryption_key_id'] = \
+                image['cinder_encryption_key_id']
+
         # NOTE(aarefiev): nova is expected that all image properties
         # (custom or defined in schema-image.json) stores in
         # 'properties' key.
@@ -520,7 +525,8 @@ def _extract_attributes(image):
                         'name', 'created_at', 'updated_at',
                         'deleted', 'deleted_at', 'checksum',
                         'min_disk', 'min_ram', 'protected',
-                        'visibility']
+                        'visibility',
+                        'cinder_encryption_key_id']
 
     output = {}
 

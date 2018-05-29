@@ -982,7 +982,8 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                                         image_meta, fake_image_service)
 
         fake_driver.create_volume.assert_called_once_with(volume)
-        fake_driver.copy_image_to_encrypted_volume.assert_called_once_with(
+        fake_driver.copy_image_to_encrypted_volume.assert_not_called()
+        fake_driver.copy_image_to_volume.assert_called_once_with(
             self.ctxt, volume, fake_image_service, image_id)
         mock_handle_bootable.assert_called_once_with(self.ctxt, volume,
                                                      image_id=image_id,

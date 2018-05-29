@@ -673,6 +673,7 @@ class TestGlanceImageService(test.TestCase):
             'properties': {},
             'owner': None,
             'visibility': None,
+            'cinder_encryption_key_id': None
         }
         self.assertEqual(expected, actual)
 
