@@ -325,7 +325,8 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
     @utils.synchronized('quobyte', external=False)
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        return self._create_cloned_volume(volume, src_vref)
+        return self._create_cloned_volume(volume, src_vref,
+                                          src_vref.obj_context)
 
     @coordination.synchronized(
         '{self.driver_prefix}-{snapshot.id}-{volume.id}')
