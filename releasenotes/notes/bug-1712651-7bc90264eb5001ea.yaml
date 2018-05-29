@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+      NetApp ONTAP iSCSI (bug 1712651): Fix ONTAP NetApp iSCSI driver not
+      raising a proper exception when trying to extend an attached volume
+      beyond its max geometry.
