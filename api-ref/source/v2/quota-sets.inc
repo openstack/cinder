@@ -98,6 +98,8 @@ Request
    - security_groups: security_groups
    - project_id: quotas_project_id
    - admin_project_id: admin_project_id
+   - backup_gigabytes: backup_gigabytes
+   - per_volume_gigabytes: per_volume_gigabytes
 
 Request Example
 ---------------
