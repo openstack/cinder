@@ -58,7 +58,7 @@ class UnityClient(object):
 
     def create_lun(self, name, size, pool, description=None,
                    io_limit_policy=None, is_thin=None,
-                   is_compressed=None):
+                   is_compressed=None, cg_name=None):
         """Creates LUN on the Unity system.
 
         :param name: lun name
@@ -68,6 +68,7 @@ class UnityClient(object):
         :param io_limit_policy: io limit on the LUN
         :param is_thin: if False, a thick LUN will be created
         :param is_compressed: is compressed LUN enabled
+        :param cg_name: the name of cg to join if any
         :return: UnityLun object
         """
         try:
@@ -312,9 +313,9 @@ class UnityClient(object):
                 # so use filter instead of shadow_copy here.
                 wwns.update(p.wwn.upper()
                             for p in filter(
-                                lambda fcp: (allowed_ports is None or
-                                             fcp.get_id() in allowed_ports),
-                                paths.fc_port))
+                    lambda fcp: (allowed_ports is None or
+                                 fcp.get_id() in allowed_ports),
+                    paths.fc_port))
         else:
             ports = self.get_fc_ports()
             ports = ports.shadow_copy(port_ids=allowed_ports)
@@ -349,3 +350,41 @@ class UnityClient(object):
     def restore_snapshot(self, snap_name):
         snap = self.get_snap(snap_name)
         return snap.restore(delete_backup=True)
+
+    def create_cg(self, name, description=None, lun_add=None):
+        try:
+            cg = self.system.create_cg(name, description=description,
+                                       lun_add=lun_add)
+        except storops_ex.UnityConsistencyGroupNameInUseError:
+            LOG.debug('CG %s already exists. Return the existing one.', name)
+            cg = self.system.get_cg(name=name)
+        return cg
+
+    def get_cg(self, name):
+        try:
+            cg = self.system.get_cg(name=name)
+        except storops_ex.UnityResourceNotFoundError:
+            LOG.info('CG %s not found.', name)
+            return None
+        else:
+            return cg
+
+    def delete_cg(self, name):
+        cg = self.get_cg(name)
+        if cg:
+            cg.delete()  # Deleting cg will also delete the luns in it
+
+    def update_cg(self, name, add_lun_ids, remove_lun_ids):
+        cg = self.get_cg(name)
+        cg.update_lun(add_luns=[self.get_lun(lun_id=lun_id)
+                                for lun_id in add_lun_ids],
+                      remove_luns=[self.get_lun(lun_id=lun_id)
+                                   for lun_id in remove_lun_ids])
+
+    def create_cg_snap(self, cg_name, snap_name=None):
+        cg = self.get_cg(cg_name)
+        # Creating snap of cg will create corresponding snaps of luns in it
+        return cg.create_snap(name=snap_name, is_auto_delete=False)
+
+    def filter_snaps_in_cg_snap(self, cg_snap_id):
+        return self.system.get_snap(snap_group=cg_snap_id).list

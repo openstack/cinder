@@ -18,11 +18,14 @@
 from oslo_config import cfg
 from oslo_log import log as logging
 
+import six
+
 from cinder import interface
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.unity import adapter
 from cinder.volume.drivers.san.san import san_opts
+from cinder.volume import utils
 from cinder.zonemanager import utils as zm_utils
 
 LOG = logging.getLogger(__name__)
@@ -33,7 +36,7 @@ UNITY_OPTS = [
     cfg.ListOpt('unity_storage_pool_names',
                 default=[],
                 help='A comma-separated list of storage pool names to be '
-                'used.'),
+                     'used.'),
     cfg.ListOpt('unity_io_ports',
                 default=[],
                 help='A comma-separated list of iSCSI or FC ports to be used. '
@@ -44,6 +47,20 @@ UNITY_OPTS = [
                      'detached from it. By default, it is False.')]
 
 CONF.register_opts(UNITY_OPTS, group=configuration.SHARED_CONF_GROUP)
+
+
+def skip_if_not_cg(func):
+    @six.wraps(func)
+    def inner(self, *args, **kwargs):
+        # Only used to decorating the second argument is `group`
+        if utils.is_group_a_cg_snapshot_type(args[1]):
+            return func(self, *args, **kwargs)
+
+        LOG.debug('Group is not a consistency group. Unity driver does '
+                  'nothing.')
+        # This exception will let cinder handle it as a generic group
+        raise NotImplementedError()
+    return inner
 
 
 @interface.volumedriver
@@ -60,9 +77,10 @@ class UnityDriver(driver.ManageableVD,
         4.0.0 - Support remove empty host
         4.2.0 - Support compressed volume
         5.0.0 - Support storage assisted volume migration
+        6.0.0 - Support generic group and consistent group
     """
 
-    VERSION = '05.00.00'
+    VERSION = '06.00.00'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
@@ -252,3 +270,43 @@ class UnityDriver(driver.ManageableVD,
     def revert_to_snapshot(self, context, volume, snapshot):
         """Reverts a volume to a snapshot."""
         return self.adapter.restore_snapshot(volume, snapshot)
+
+    @skip_if_not_cg
+    def create_group(self, context, group):
+        """Creates a consistency group."""
+        return self.adapter.create_group(group)
+
+    @skip_if_not_cg
+    def delete_group(self, context, group, volumes):
+        """Deletes a consistency group."""
+        return self.adapter.delete_group(group)
+
+    @skip_if_not_cg
+    def update_group(self, context, group, add_volumes=None,
+                     remove_volumes=None):
+        """Updates a consistency group, i.e. add/remove luns to/from it."""
+        # TODO(Ryan L) update other information (like description) of group
+        return self.adapter.update_group(group, add_volumes, remove_volumes)
+
+    @skip_if_not_cg
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        """Creates a consistency group from another group or group snapshot."""
+        if group_snapshot:
+            return self.adapter.create_group_from_snap(group, volumes,
+                                                       group_snapshot,
+                                                       snapshots)
+        elif source_group:
+            return self.adapter.create_cloned_group(group, volumes,
+                                                    source_group, source_vols)
+
+    @skip_if_not_cg
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Creates a snapshot of consistency group."""
+        return self.adapter.create_group_snapshot(group_snapshot, snapshots)
+
+    @skip_if_not_cg
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Deletes a snapshot of consistency group."""
+        return self.adapter.delete_group_snapshot(group_snapshot)

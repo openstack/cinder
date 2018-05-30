@@ -13,7 +13,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import functools
 import unittest
+
+import mock
 
 from cinder.tests.unit.volume.drivers.dell_emc.unity \
     import fake_exception as ex
@@ -104,6 +107,34 @@ class MockAdapter(object):
     def migrate_volume(volume, host):
         return True, {}
 
+    @staticmethod
+    def create_group(group):
+        return group
+
+    @staticmethod
+    def delete_group(group):
+        return group
+
+    @staticmethod
+    def update_group(group, add_volumes, remove_volumes):
+        return group, add_volumes, remove_volumes
+
+    @staticmethod
+    def create_group_from_snap(group, volumes, group_snapshot, snapshots):
+        return group, volumes, group_snapshot, snapshots
+
+    @staticmethod
+    def create_cloned_group(group, volumes, source_group, source_vols):
+        return group, volumes, source_group, source_vols
+
+    @staticmethod
+    def create_group_snapshot(group_snapshot, snapshots):
+        return group_snapshot, snapshots
+
+    @staticmethod
+    def delete_group_snapshot(group_snapshot):
+        return group_snapshot
+
 
 ########################
 #
@@ -112,15 +143,40 @@ class MockAdapter(object):
 ########################
 
 
+patch_check_cg = mock.patch(
+    'cinder.volume.utils.is_group_a_cg_snapshot_type',
+    side_effect=lambda g: not g.id.endswith('_generic'))
+
+
 class UnityDriverTest(unittest.TestCase):
     @staticmethod
     def get_volume():
         return test_adapter.MockOSResource(provider_location='id^lun_43',
                                            id='id_43')
 
+    @staticmethod
+    def get_generic_group():
+        return test_adapter.MockOSResource(name='group_name_generic',
+                                           id='group_id_generic')
+
+    @staticmethod
+    def get_cg():
+        return test_adapter.MockOSResource(name='group_name_cg',
+                                           id='group_id_cg')
+
     @classmethod
     def get_snapshot(cls):
         return test_adapter.MockOSResource(volume=cls.get_volume())
+
+    @classmethod
+    def get_generic_group_snapshot(cls):
+        return test_adapter.MockOSResource(group=cls.get_generic_group(),
+                                           id='group_snapshot_id_generic')
+
+    @classmethod
+    def get_cg_group_snapshot(cls):
+        return test_adapter.MockOSResource(group=cls.get_cg(),
+                                           id='group_snapshot_id_cg')
 
     @staticmethod
     def get_context():
@@ -279,3 +335,90 @@ class UnityDriverTest(unittest.TestCase):
         volume = self.get_volume()
         r = self.driver.revert_to_snapshot(None, volume, snapshot)
         self.assertTrue(r)
+
+    @patch_check_cg
+    def test_operate_generic_group_not_implemented(self, _):
+        group = self.get_generic_group()
+        context = self.get_context()
+
+        for func in (self.driver.create_group, self.driver.update_group):
+            self.assertRaises(NotImplementedError,
+                              functools.partial(func, context, group))
+
+        volumes = [self.get_volume()]
+        for func in (self.driver.delete_group,
+                     self.driver.create_group_from_src):
+            self.assertRaises(NotImplementedError,
+                              functools.partial(func, context, group, volumes))
+
+        group_snap = self.get_generic_group_snapshot()
+        volume_snaps = [self.get_snapshot()]
+        for func in (self.driver.create_group_snapshot,
+                     self.driver.delete_group_snapshot):
+            self.assertRaises(NotImplementedError,
+                              functools.partial(func, context, group_snap,
+                                                volume_snaps))
+
+    @patch_check_cg
+    def test_create_group_cg(self, _):
+        cg = self.get_cg()
+        ret = self.driver.create_group(self.get_context(), cg)
+        self.assertEqual(ret, cg)
+
+    @patch_check_cg
+    def test_delete_group_cg(self, _):
+        cg = self.get_cg()
+        volumes = [self.get_volume()]
+        ret = self.driver.delete_group(self.get_context(), cg, volumes)
+        self.assertEqual(ret, cg)
+
+    @patch_check_cg
+    def test_update_group_cg(self, _):
+        cg = self.get_cg()
+        volumes = [self.get_volume()]
+        ret = self.driver.update_group(self.get_context(), cg,
+                                       add_volumes=volumes)
+        self.assertEqual(ret[0], cg)
+        self.assertListEqual(ret[1], volumes)
+        self.assertIsNone(ret[2])
+
+    @patch_check_cg
+    def test_create_group_from_src_group(self, _):
+        cg = self.get_cg()
+        volumes = [self.get_volume()]
+        source_group = cg
+        ret = self.driver.create_group_from_src(self.get_context(), cg,
+                                                volumes,
+                                                source_group=source_group)
+        self.assertEqual(ret[0], cg)
+        self.assertListEqual(ret[1], volumes)
+        self.assertEqual(ret[2], source_group)
+        self.assertIsNone(ret[3])
+
+    @patch_check_cg
+    def test_create_group_from_src_group_snapshot(self, _):
+        cg = self.get_cg()
+        volumes = [self.get_volume()]
+        cg_snap = self.get_cg_group_snapshot()
+        ret = self.driver.create_group_from_src(self.get_context(), cg,
+                                                volumes,
+                                                group_snapshot=cg_snap)
+        self.assertEqual(ret[0], cg)
+        self.assertListEqual(ret[1], volumes)
+        self.assertEqual(ret[2], cg_snap)
+        self.assertIsNone(ret[3])
+
+    @patch_check_cg
+    def test_create_group_snapshot_cg(self, _):
+        cg_snap = self.get_cg_group_snapshot()
+        ret = self.driver.create_group_snapshot(self.get_context(), cg_snap,
+                                                None)
+        self.assertEqual(ret[0], cg_snap)
+        self.assertIsNone(ret[1])
+
+    @patch_check_cg
+    def test_delete_group_snapshot_cg(self, _):
+        cg_snap = self.get_cg_group_snapshot()
+        ret = self.driver.delete_group_snapshot(self.get_context(), cg_snap,
+                                                None)
+        self.assertEqual(ret, cg_snap)

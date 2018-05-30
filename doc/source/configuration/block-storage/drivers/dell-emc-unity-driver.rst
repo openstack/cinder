@@ -35,6 +35,11 @@ Supported operations
 - Efficient non-disruptive volume backup.
 - Revert a volume to a snapshot.
 - Create thick volumes.
+- Create and delete consistent groups.
+- Add/remove volumes to/from a consistent group.
+- Create and delete consistent group snapshots.
+- Clone a consistent group.
+- Create a consistent group from a snapshot.
 - Attach a volume to multiple servers simultaneously (multiattach).
 
 Driver configuration
@@ -381,6 +386,26 @@ The user could use `os-force_detach` action to detach a volume from all its
 attached hosts.
 For more detail, please refer to
 https://developer.openstack.org/api-ref/block-storage/v2/?expanded=force-detach-volume-detail#force-detach-volume
+
+Consistent group support
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+For a group to support consistent group snapshot, the group specs in the
+corresponding group type should have the following entry:
+
+.. code-block:: ini
+
+    {'consistent_group_snapshot_enabled': <is> True}
+
+Similarly, for a volume to be in a group that supports consistent group
+snapshots, the volume type extra specs would also have the following entry:
+
+.. code-block:: ini
+
+    {'consistent_group_snapshot_enabled': <is> True}
+
+Refer to https://docs.openstack.org/cinder/latest/admin/blockstorage-groups.html
+for command lines detail.
 
 Troubleshooting
 ~~~~~~~~~~~~~~~
