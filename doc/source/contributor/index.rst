@@ -34,6 +34,7 @@ Programming HowTos and Tutorials
     api_conditional_updates
     addmethod.openstackapi
     drivers
+    high_availability
     gmr
     replication
     user_messages
