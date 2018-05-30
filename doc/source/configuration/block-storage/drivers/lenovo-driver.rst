@@ -3,7 +3,7 @@ Lenovo Fibre Channel and iSCSI drivers
 ======================================
 
 The ``LenovoFCDriver`` and ``LenovoISCSIDriver`` Cinder drivers allow
-Lenovo S3200 or S2200 arrays to be used for block storage in OpenStack
+Lenovo S-Series arrays to be used for block storage in OpenStack
 deployments.
 
 System requirements
@@ -11,7 +11,7 @@ System requirements
 
 To use the Lenovo drivers, the following are required:
 
-- Lenovo S3200 or S2200 array with:
+- Lenovo S2200, S3200, S4200 or S6200 array with:
 
   - iSCSI or FC host interfaces
   - G22x firmware or later
@@ -34,6 +34,12 @@ Supported operations
 - Migrate a volume with back-end assistance.
 - Retype a volume.
 - Manage and unmanage a volume.
+
+.. note::
+
+  The generic grouping functionality supported in the G265 and later
+  firmware is not supported by OpenStack Cinder due to differences in
+  the grouping models used in Cinder and the S-Series firmware.
 
 Configuring the array
 ~~~~~~~~~~~~~~~~~~~~~
