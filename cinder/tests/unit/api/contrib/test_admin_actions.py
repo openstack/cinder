@@ -20,7 +20,6 @@ from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 from six.moves import http_client
 import webob
-from webob import exc
 
 from cinder.api.contrib import admin_actions
 from cinder.api import microversions as mv
@@ -150,25 +149,45 @@ class AdminActionsTest(BaseAdminTest):
                                           backup['id'],
                                           updated_status)
 
-    def test_valid_updates(self):
+    @ddt.data({'os-reset_status': {'status': 'creating'}},
+              {'os-reset_status': {'status': 'available'}},
+              {'os-reset_status': {'status': 'deleting'}},
+              {'os-reset_status': {'status': 'error'}},
+              {'os-reset_status': {'status': 'error_deleting'}},
+              {'os-reset_status': {'attach_status':
+                                   fields.VolumeAttachStatus.DETACHED}},
+              {'os-reset_status': {'attach_status':
+                                   fields.VolumeAttachStatus.ATTACHED}},
+              {'os-reset_status': {'migration_status': 'migrating'}},
+              {'os-reset_status': {'migration_status': 'completing'}},
+              {'os-reset_status': {'migration_status': 'error'}},
+              {'os-reset_status': {'migration_status': 'none'}},
+              {'os-reset_status': {'migration_status': 'starting'}})
+    def test_valid_updates(self, body):
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, id))
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.environ['cinder.context'] = self.ctx
+        req.api_version_request = mv.get_api_version(mv.BASE_VERSION)
         vac = self.controller
+        vac.validate_update(req, body=body)
 
-        vac.validate_update({'status': 'creating'})
-        vac.validate_update({'status': 'available'})
-        vac.validate_update({'status': 'deleting'})
-        vac.validate_update({'status': 'error'})
-        vac.validate_update({'status': 'error_deleting'})
-
-        vac.validate_update({'attach_status':
-                             fields.VolumeAttachStatus.DETACHED})
-        vac.validate_update({'attach_status':
-                             fields.VolumeAttachStatus.ATTACHED})
-
-        vac.validate_update({'migration_status': 'migrating'})
-        vac.validate_update({'migration_status': 'error'})
-        vac.validate_update({'migration_status': 'completing'})
-        vac.validate_update({'migration_status': 'none'})
-        vac.validate_update({'migration_status': 'starting'})
+    @ddt.data({'os-reset_status': {'status': None}},
+              {'os-reset_status': {'attach_status': None}},
+              {'os-reset_status': {'migration_status': None}},
+              {'os-reset_status': {'status': "", 'attach_status': "",
+                                   "migration_status": ""}})
+    def test_invalid_updates(self, body):
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, id))
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.environ['cinder.context'] = self.ctx
+        req.api_version_request = mv.get_api_version(mv.BASE_VERSION)
+        vac = self.controller
+        self.assertRaises(exception.InvalidParameterValue, vac.validate_update,
+                          req, body=body)
 
     def test_reset_attach_status(self):
         volume = db.volume_create(self.ctx,
@@ -292,15 +311,15 @@ class AdminActionsTest(BaseAdminTest):
 
         self.assertEqual(http_client.ACCEPTED, resp.status_int)
 
-    def test_invalid_status_for_backup(self):
+    @ddt.data({'status': None}, {'status': 'restoring'})
+    def test_invalid_status_for_backup(self, status):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
                                    'provider_location': '', 'size': 1})
         backup = db.backup_create(self.ctx, {'status': 'available',
                                              'volume_id': volume['id']})
         resp = self._issue_backup_reset(self.ctx,
-                                        backup,
-                                        {'status': 'restoring'})
+                                        backup, status)
         self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
 
     def test_backup_reset_status_with_invalid_backup(self):
@@ -320,6 +339,26 @@ class AdminActionsTest(BaseAdminTest):
 
         # Should raise 404 if backup doesn't exist.
         self.assertEqual(http_client.NOT_FOUND, resp.status_int)
+
+    @ddt.data({'os-reset_status': {}})
+    def test_backup_reset_status_with_invalid_body(self, body):
+        volume = db.volume_create(self.ctx,
+                                  {'status': 'available', 'host': 'test',
+                                   'provider_location': '', 'size': 1})
+        backup = db.backup_create(self.ctx,
+                                  {'status': fields.BackupStatus.AVAILABLE,
+                                   'volume_id': volume['id'],
+                                   'user_id': fake.USER_ID,
+                                   'project_id': fake.PROJECT_ID})
+
+        req = webob.Request.blank('/v2/%s/%s/%s/action' % (
+            fake.PROJECT_ID, 'backups', backup['id']))
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        req.environ['cinder.context'] = self.ctx
+        resp = req.get_response(app())
+        self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
 
     def test_malformed_reset_status_body(self):
         volume = db.volume_create(self.ctx, {'status': 'available', 'size': 1})
@@ -447,7 +486,8 @@ class AdminActionsTest(BaseAdminTest):
         snapshot = objects.Snapshot.get_by_id(self.ctx, snapshot['id'])
         self.assertEqual(fields.SnapshotStatus.ERROR, snapshot.status)
 
-    def test_invalid_status_for_snapshot(self):
+    @ddt.data({'status': None}, {'status': 'attaching'})
+    def test_invalid_status_for_snapshot(self, updated_status):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
                                    'provider_location': '', 'size': 1})
@@ -457,11 +497,30 @@ class AdminActionsTest(BaseAdminTest):
         snapshot.create()
         self.addCleanup(snapshot.destroy)
 
-        resp = self._issue_snapshot_reset(self.ctx, snapshot,
-                                          {'status': 'attaching'})
+        resp = self._issue_snapshot_reset(self.ctx, snapshot, updated_status)
 
         self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
         self.assertEqual(fields.SnapshotStatus.AVAILABLE, snapshot.status)
+
+    @ddt.data({'os-reset_status': {}})
+    def test_snapshot_reset_status_with_invalid_body(self, body):
+        volume = db.volume_create(self.ctx,
+                                  {'status': 'available', 'host': 'test',
+                                   'provider_location': '', 'size': 1})
+        snapshot = objects.Snapshot(self.ctx,
+                                    status=fields.SnapshotStatus.AVAILABLE,
+                                    volume_id=volume['id'])
+        snapshot.create()
+        self.addCleanup(snapshot.destroy)
+
+        req = webob.Request.blank('/v2/%s/%s/%s/action' % (
+            fake.PROJECT_ID, 'snapshots', snapshot['id']))
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        req.environ['cinder.context'] = self.ctx
+        resp = req.get_response(app())
+        self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
 
     def test_force_delete(self):
         # current status is creating
@@ -587,14 +646,15 @@ class AdminActionsTest(BaseAdminTest):
                                     cluster=cluster)
 
     def _migrate_volume_exec(self, ctx, volume, host, expected_status,
-                             force_host_copy=False):
+                             force_host_copy=False, lock_volume=False):
         # build request to migrate to host
         req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
             fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         body = {'os-migrate_volume': {'host': host,
-                                      'force_host_copy': force_host_copy}}
+                                      'force_host_copy': force_host_copy,
+                                      'lock_volume': lock_volume}}
         req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
@@ -690,12 +750,29 @@ class AdminActionsTest(BaseAdminTest):
         self.addCleanup(snap.destroy)
         self._migrate_volume_exec(self.ctx, volume, host, expected_status)
 
-    def test_migrate_volume_bad_force_host_copy(self):
+    @ddt.data('force_host_copy', None, '  true  ', 0)
+    def test_migrate_volume_bad_force_host_copy(self, force_host_copy):
         expected_status = http_client.BAD_REQUEST
         host = 'test2'
         volume = self._migrate_volume_prep()
         self._migrate_volume_exec(self.ctx, volume, host, expected_status,
-                                  force_host_copy='foo')
+                                  force_host_copy=force_host_copy)
+
+    @ddt.data('lock_volume', None, '  true  ', 0)
+    def test_migrate_volume_bad_lock_volume(self, lock_volume):
+        expected_status = http_client.BAD_REQUEST
+        host = 'test2'
+        volume = self._migrate_volume_prep()
+        self._migrate_volume_exec(self.ctx, volume, host, expected_status,
+                                  lock_volume=lock_volume)
+
+    @ddt.data('true', False, '1', '0')
+    def test_migrate_volume_valid_lock_volume(self, lock_volume):
+        expected_status = http_client.ACCEPTED
+        host = 'test2'
+        volume = self._migrate_volume_prep()
+        self._migrate_volume_exec(self.ctx, volume, host, expected_status,
+                                  lock_volume=lock_volume)
 
     def _migrate_volume_comp_exec(self, ctx, volume, new_volume, error,
                                   expected_status, expected_id, no_body=False):
@@ -776,16 +853,19 @@ class AdminActionsTest(BaseAdminTest):
         self._migrate_volume_comp_exec(self.ctx, volume, new_volume, False,
                                        expected_status, expected_id)
 
-    def test_backup_reset_valid_updates(self):
-        vac = admin_actions.BackupAdminController()
-        vac.validate_update({'status': 'available'})
-        vac.validate_update({'status': 'error'})
-        self.assertRaises(exc.HTTPBadRequest,
-                          vac.validate_update,
-                          {'status': 'restoring'})
-        self.assertRaises(exc.HTTPBadRequest,
-                          vac.validate_update,
-                          {'status': 'creating'})
+    def test_migrate_volume_comp_no_new_volume(self):
+        volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID})
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, volume['id']))
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        body = {'os-migrate_volume_completion': {'error': False}}
+        req.body = jsonutils.dump_as_bytes(body)
+        req.environ['cinder.context'] = self.ctx
+        resp = req.get_response(app())
+        res_dict = jsonutils.loads(resp.body)
+        self.assertEqual(http_client.BAD_REQUEST,
+                         res_dict['badRequest']['code'])
 
     @mock.patch('cinder.backup.rpcapi.BackupAPI.delete_backup', mock.Mock())
     @mock.patch('cinder.db.service_get_all')

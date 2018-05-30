@@ -296,6 +296,82 @@ def _validate_log_level(level):
     return True
 
 
+@jsonschema.FormatChecker.cls_checks('validate_volume_reset_body')
+def _validate_volume_reset_body(instance):
+    status = instance.get('status')
+    attach_status = instance.get('attach_status')
+    migration_status = instance.get('migration_status')
+
+    if not status and not attach_status and not migration_status:
+        msg = _("Must specify 'status', 'attach_status' or 'migration_status'"
+                " for update.")
+        raise exception.InvalidParameterValue(err=msg)
+
+    return True
+
+
+@jsonschema.FormatChecker.cls_checks('volume_status')
+def _validate_volume_status(param_value):
+    if param_value and param_value.lower() not in c_fields.VolumeStatus.ALL:
+        msg = _("Volume status: %(status)s is invalid, "
+                "valid statuses are: "
+                "%(valid)s.") % {'status': param_value,
+                                 'valid': c_fields.VolumeStatus.ALL}
+        raise exception.InvalidParameterValue(err=msg)
+    return True
+
+
+@jsonschema.FormatChecker.cls_checks('volume_attach_status')
+def _validate_volume_attach_status(param_value):
+    valid_attach_status = [c_fields.VolumeAttachStatus.ATTACHED,
+                           c_fields.VolumeAttachStatus.DETACHED]
+    if param_value and param_value.lower() not in valid_attach_status:
+        msg = _("Volume attach status: %(status)s is invalid, "
+                "valid statuses are: "
+                "%(valid)s.") % {'status': param_value,
+                                 'valid': valid_attach_status}
+        raise exception.InvalidParameterValue(err=msg)
+    return True
+
+
+@jsonschema.FormatChecker.cls_checks('volume_migration_status')
+def _validate_volume_migration_status(param_value):
+    if param_value and (
+            param_value.lower() not in c_fields.VolumeMigrationStatus.ALL):
+        msg = _("Volume migration status: %(status)s is invalid, "
+                "valid statuses are: "
+                "%(valid)s.") % {'status': param_value,
+                                 'valid': c_fields.VolumeMigrationStatus.ALL}
+        raise exception.InvalidParameterValue(err=msg)
+    return True
+
+
+@jsonschema.FormatChecker.cls_checks('snapshot_status')
+def _validate_snapshot_status(param_value):
+    if not param_value or (
+            param_value.lower() not in c_fields.SnapshotStatus.ALL):
+        msg = _("Snapshot status: %(status)s is invalid, "
+                "valid statuses are: "
+                "%(valid)s.") % {'status': param_value,
+                                 'valid': c_fields.SnapshotStatus.ALL}
+        raise exception.InvalidParameterValue(err=msg)
+    return True
+
+
+@jsonschema.FormatChecker.cls_checks('backup_status')
+def _validate_backup_status(param_value):
+    valid_status = [c_fields.BackupStatus.AVAILABLE,
+                    c_fields.BackupStatus.ERROR]
+    if not param_value or (
+            param_value.lower() not in valid_status):
+        msg = _("Backup status: %(status)s is invalid, "
+                "valid statuses are: "
+                "%(valid)s.") % {'status': param_value,
+                                 'valid': valid_status}
+        raise exception.InvalidParameterValue(err=msg)
+    return True
+
+
 class FormatChecker(jsonschema.FormatChecker):
     """A FormatChecker can output the message from cause exception
 
