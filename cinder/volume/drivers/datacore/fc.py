@@ -43,6 +43,9 @@ class FibreChannelVolumeDriver(driver.DataCoreVolumeDriver):
     STORAGE_PROTOCOL = 'FC'
     CI_WIKI_NAME = 'DataCore_CI'
 
+    # TODO(jsbryant) Remove driver in Stein if CI is not fixed
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(FibreChannelVolumeDriver, self).__init__(*args, **kwargs)
 

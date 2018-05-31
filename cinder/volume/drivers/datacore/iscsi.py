@@ -69,6 +69,9 @@ class ISCSIVolumeDriver(driver.DataCoreVolumeDriver):
     STORAGE_PROTOCOL = 'iSCSI'
     CI_WIKI_NAME = 'DataCore_CI'
 
+    # TODO(jsbryant) Remove driver in Stein if CI is not fixed
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(ISCSIVolumeDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(datacore_iscsi_opts)
