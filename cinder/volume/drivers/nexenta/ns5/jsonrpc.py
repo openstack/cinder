@@ -87,7 +87,7 @@ class RESTCaller(object):
         except requests.exceptions.ConnectionError:
             LOG.warning(_LW("ConnectionError on call to NS: %(url)s"
                             " %(method)s, data: %(data)s"), {
-                        'method': self.__proxy.url,
+                        'url': self.__proxy.url,
                         'method': self.__method,
                         'data': data})
             self.handle_failover()
