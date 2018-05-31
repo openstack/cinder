@@ -437,7 +437,10 @@ class TestZFSSAISCSIDriver(test.TestCase):
             }
         }
         cache = lun2del['origin']
-        self.drv.zfssa.num_clones.return_value = 0
+        self.drv.zfssa.get_lun_snapshot.return_value = {
+            'name': self.test_snap['name'],
+            'numclones': 0
+        }
         self.drv._check_origin(lun2del, 'volname')
         self.drv.zfssa.delete_lun.assert_called_once_with(
             lcfg.zfssa_pool,
@@ -445,7 +448,10 @@ class TestZFSSAISCSIDriver(test.TestCase):
             cache['share'])
 
     def test_create_delete_snapshot(self):
-        self.drv.zfssa.num_clones.return_value = 0
+        self.drv.zfssa.get_lun_snapshot.return_value = {
+            'name': self.test_snap['name'],
+            'numclones': 0
+        }
         lcfg = self.configuration
         self.drv.create_snapshot(self.test_snap)
         self.drv.zfssa.create_snapshot.assert_called_once_with(
@@ -459,6 +465,19 @@ class TestZFSSAISCSIDriver(test.TestCase):
             lcfg.zfssa_project,
             self.test_snap['volume_name'],
             self.test_snap['name'])
+
+    def test_delete_nonexistent_snapshot(self):
+        self.drv.zfssa.get_lun_snapshot.side_effect = \
+            exception.SnapshotNotFound(snapshot_id=self.test_snap['name'])
+        self.drv.delete_snapshot(self.test_snap)
+        self.drv.zfssa.delete_snapshot.assert_not_called()
+
+    def test_delete_snapshot_backend_fail(self):
+        self.drv.zfssa.get_lun_snapshot.side_effect = \
+            exception.VolumeBackendAPIException(data='fakemsg')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.delete_snapshot,
+                          self.test_snap)
 
     def test_create_volume_from_snapshot(self):
         lcfg = self.configuration
