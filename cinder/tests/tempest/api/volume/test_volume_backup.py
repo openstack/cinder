@@ -54,35 +54,16 @@ class VolumesBackupsTest(base.BaseVolumeTest):
         backup = self.create_backup(
             volume_id=volume['id'],
             snapshot_id=snapshot['id'])
-        # Get a given backup
-        backup = self.backups_client.show_backup(
-            backup['id'])['backup']
-        waiters.wait_for_volume_resource_status(
-            self.backups_client,
-            backup['id'], 'available')
         self.assertEqual(volume['id'], backup['volume_id'])
         self.assertEqual(snapshot['id'], backup['snapshot_id'])
-
-        self.snapshots_client.delete_snapshot(snapshot['id'])
-        self.snapshots_client.wait_for_resource_deletion(snapshot['id'])
-
-        self.volumes_client.delete_volume(volume['id'])
-        self.volumes_client.wait_for_resource_deletion(volume['id'])
 
     @test.idempotent_id('b5d837b0-7066-455d-88fc-4a721a899306')
     def test_backup_create_and_restore_to_an_existing_volume(self):
         """Test backup create and restore to an existing volume."""
         # Create volume
         src_vol = self.create_volume()
-        self.addCleanup(self.volumes_client.delete_volume,
-                        src_vol['id'])
         # Create backup
-        backup = self.backups_client.create_backup(
-            volume_id=src_vol['id'])['backup']
-        self.addCleanup(self.backups_client.delete_backup, backup['id'])
-        waiters.wait_for_volume_resource_status(
-            self.backups_client,
-            backup['id'], 'available')
+        backup = self.create_backup(volume_id=src_vol['id'])
         # Restore to existing volume
         restore = self.backups_client.restore_backup(
             backup_id=backup['id'],
@@ -102,14 +83,9 @@ class VolumesBackupsTest(base.BaseVolumeTest):
         # Create volume from image
         volume = self.create_volume(size=CONF.volume.volume_size,
                                     imageRef=CONF.compute.image_ref)
-        self.addCleanup(self.volumes_client.delete_volume,
-                        volume['id'])
 
         # Create backup
-        backup = self.backups_client.create_backup(
-            volume_id=volume['id'])['backup']
-        waiters.wait_for_volume_resource_status(self.backups_client,
-                                                backup['id'], 'available')
+        self.create_backup(volume_id=volume['id'])
         # Create a server
         bd_map = [{'volume_id': volume['id'],
                    'delete_on_termination': '0'}]
@@ -125,19 +101,10 @@ class VolumesBackupsTest(base.BaseVolumeTest):
         # Create incremental backup
         waiters.wait_for_volume_resource_status(self.volumes_client,
                                                 volume['id'], 'available')
-        backup_incr = self.backups_client.create_backup(
+        backup_incr = self.create_backup(
             volume_id=volume['id'],
-            incremental=True)['backup']
-
-        waiters.wait_for_volume_resource_status(self.backups_client,
-                                                backup_incr['id'],
-                                                'available')
+            incremental=True)
 
         is_incremental = self.backups_client.show_backup(
             backup_incr['id'])['backup']['is_incremental']
         self.assertTrue(is_incremental)
-
-        self.backups_client.delete_backup(backup_incr['id'])
-        self.backups_client.wait_for_resource_deletion(backup_incr['id'])
-        self.backups_client.delete_backup(backup['id'])
-        self.backups_client.wait_for_resource_deletion(backup['id'])

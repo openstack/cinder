@@ -143,7 +143,9 @@ class BaseVolumeTest(api_version_utils.BaseMicroversionTest,
 
         backup = backup_client.create_backup(
             volume_id=volume_id, **kwargs)['backup']
-        self.addCleanup(backup_client.delete_backup, backup['id'])
+        self.addCleanup(backup_client.wait_for_resource_deletion, backup['id'])
+        self.addCleanup(test_utils.call_and_ignore_notfound_exc,
+                        backup_client.delete_backup, backup['id'])
         waiters.wait_for_volume_resource_status(backup_client, backup['id'],
                                                 'available')
         return backup
