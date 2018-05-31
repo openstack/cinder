@@ -437,8 +437,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
                            (BLOCK_SIZE_MB * units.Mi))
             self._execute(
                 'dd', 'if=/dev/zero',
-                'seek=%d' % volume['size'] * units.Gi / (
-                    BLOCK_SIZE_MB * units.Mi),
+                'seek=%d' % (volume['size'] * units.Gi //
+                    (BLOCK_SIZE_MB * units.Mi)),
                 'of=%s' % self.local_path(volume),
                 'bs=%dM' % BLOCK_SIZE_MB,
                 'count=%d' % block_count,
