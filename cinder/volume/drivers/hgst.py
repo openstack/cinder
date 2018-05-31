@@ -92,6 +92,9 @@ class HGSTDriver(driver.VolumeDriver):
     SPACEGB = units.G - 16 * units.M  # Workaround for shrinkage Bug 28320
     BLOCKED = "BLOCKED"  # Exit code when a command is blocked
 
+    # TODO(jsbryant) Remove driver in Stein if CI is not fixed
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         """Initialize our protocol descriptor/etc."""
         super(HGSTDriver, self).__init__(*args, **kwargs)
