@@ -36,6 +36,9 @@ class EMCCoprHDISCSIDriver(driver.ISCSIDriver):
     # ThirdPartySystems wiki page name
     CI_WIKI_NAME = "EMC_CoprHD_CI"
 
+    # TODO(jsbryant) Remove driver in Stein if CI is not fixed
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(EMCCoprHDISCSIDriver, self).__init__(*args, **kwargs)
         self.common = self._get_common_driver()
