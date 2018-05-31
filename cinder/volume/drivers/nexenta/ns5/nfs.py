@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import errno
 import hashlib
 import os
 import six
@@ -231,7 +232,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
                           'from %(path)s.', {
                               'share': nfs_share,
                               'path': mount_path})
-                return
+                break
             except Exception as e:
                 msg = six.text_type(e)
                 if attempt == (num_attempts - 1):
@@ -247,6 +248,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
                                 'share': nfs_share,
                                 'path': mount_path})
                 greenthread.sleep(1)
+
+        self._delete(mount_path)
 
     def _create_sparsed_file(self, path, size):
         """Creates file with 0 disk usage."""
@@ -369,15 +372,13 @@ class NexentaNfsDriver(nfs.NfsDriver):
 
         :param volume: volume reference
         """
+        self._ensure_share_unmounted('%s:/%s/%s' % (
+            self.nas_host, self.share, volume['name']))
         pool, fs = self._get_share_datasets(self.share)
         url = 'storage/filesystems?path=%s' % '%2F'.join(
             [pool, fs, volume['name']])
         if not self.nef.get(url).get('data'):
             return
-        local_path = self.local_path(volume)
-        url = 'storage/filesystems/%s' % '%2F'.join(
-            [pool, fs, volume['name']])
-
         field = 'originalSnapshot'
         origin = self.nef.get(url).get(field)
         url = 'storage/filesystems/%s?force=true&snapshots=true' % '%2F'.join(
@@ -409,14 +410,18 @@ class NexentaNfsDriver(nfs.NfsDriver):
                     self.nef.delete(url)
             else:
                 raise
-        finally:
-            self._delete(local_path.rstrip('/volume'))
         if origin and 'clone' in origin:
             url = 'storage/snapshots/%s' % urllib.parse.quote_plus(origin)
             self.nef.delete(url)
 
     def _delete(self, path):
-        self._execute('rm', '-rf', path)
+        try:
+            os.rmdir(path)
+            LOG.debug('The mount point %(path)s has been successfully removed',
+                      {'path': path})
+        except OSError as e:
+            LOG.debug('Unable to remove mount point %(path)s: %(error)s',
+                      {'path': path, 'error': os.strerror(e.errno)})
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
