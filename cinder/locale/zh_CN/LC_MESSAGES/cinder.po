@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-05-15 01:12+0000\n"
+"POT-Creation-Date: 2018-05-31 14:50+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1545,9 +1545,6 @@ msgstr "%(fun)s 中找不到需要的列：%(hdr)s。"
 #, python-format
 msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
 msgstr "在 %(fun)s 中找不到期望的键 %(key)s：%(raw)s。"
-
-msgid "Disabled reason contains invalid characters or is too long"
-msgstr "禁用的原因包含无效字符或太长"
 
 #, python-format
 msgid "Domain with name %s wasn't found."
@@ -3436,9 +3433,6 @@ msgstr ""
 "不正确的端口号. 负载均衡端口号为: %(lb_api_port)s, api服务端口号为: "
 "%(apisvc_port)s"
 
-msgid "Incorrect request body format"
-msgstr "不正确的请求主体格式"
-
 msgid "Incremental backups exist for this backup."
 msgstr "对于此备份，存在增量备份。"
 
@@ -3875,9 +3869,6 @@ msgstr "错误格式的请求url"
 msgid "Malformed response to command %(cmd)s: %(reason)s"
 msgstr "对命令 %(cmd)s 的响应的格式不正确：%(reason)s"
 
-msgid "Malformed scheduler_hints attribute"
-msgstr "错误格式的 scheduler_hints 属性"
-
 #, python-format
 msgid "Malformed show fcns database string: %s"
 msgstr "以下显示 fcns 数据库字符串的格式不正确：%s"
@@ -4047,21 +4038,9 @@ msgstr ""
 "必须以云管理员身份使用 Keystone policy.json（它允许云管理员列示和获取任何项"
 "目）运行此命令。"
 
-msgid "Must specify 'new_volume'"
-msgstr "必须指定“new_volume”"
-
-msgid "Must specify 'status'"
-msgstr "必须指定“status”"
-
 msgid ""
 "Must specify 'status', 'attach_status' or 'migration_status' for update."
 msgstr "必须指定“status”、“attach_status”或“migration_status”以进行更新。"
-
-msgid "Must specify a valid attach status"
-msgstr "必须指定有效连接状态"
-
-msgid "Must specify a valid migration status"
-msgstr "必须指定有效迁移状态"
 
 #, python-format
 msgid "Must specify a valid persona %(valid)s,value '%(persona)s' is invalid."
@@ -4072,9 +4051,6 @@ msgid ""
 "Must specify a valid provisioning type %(valid)s, value '%(prov)s' is "
 "invalid."
 msgstr "指定有效供应类型 %(valid)s，值“%(prov)s”无效。"
-
-msgid "Must specify a valid status"
-msgstr "必须指定有效状态"
 
 msgid "Must specify an ExtensionManager class"
 msgstr "必须明确一个ExtensionManager类"

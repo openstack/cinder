@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-05-15 01:12+0000\n"
+"POT-Creation-Date: 2018-05-31 14:50+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1404,11 +1404,6 @@ msgstr "Colonne attendue introuvable dans %(fun)s : %(hdr)s."
 #, python-format
 msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
 msgstr "La clé attendue, %(key)s, est introuvable dans %(fun)s : %(raw)s."
-
-msgid "Disabled reason contains invalid characters or is too long"
-msgstr ""
-"La raison de désactivation contient des caractères invalides ou est trop "
-"longue"
 
 #, python-format
 msgid "Domain with name %s wasn't found."
@@ -3362,9 +3357,6 @@ msgstr ""
 "suffit parfois d'effectuer une nouvelle tentative de suppression après un "
 "délai de 30 secondes."
 
-msgid "Incorrect request body format"
-msgstr "Format de corps de demande incorrect"
-
 msgid "Incremental backups exist for this backup."
 msgstr "Les sauvegardes incrémentielles existent pour cette sauvegarde."
 
@@ -3779,9 +3771,6 @@ msgstr "Format d'URL de demande incorrect"
 msgid "Malformed response to command %(cmd)s: %(reason)s"
 msgstr "Format incorrect de la réponse à la commande %(cmd)s : %(reason)s"
 
-msgid "Malformed scheduler_hints attribute"
-msgstr "Format incorrect de l'attribut scheduler_hints"
-
 #, python-format
 msgid "Malformed show fcns database string: %s"
 msgstr "Format de chaîne show fcns database incorrect : %s"
@@ -3937,22 +3926,10 @@ msgstr ""
 "admin) à l'aide d'un fichier Keystone policy.json qui permet à "
 "l'administrateur de cloud de répertorier et d'obtenir n'importe quel projet."
 
-msgid "Must specify 'new_volume'"
-msgstr "Vous devez spécifier 'new_volume'"
-
-msgid "Must specify 'status'"
-msgstr "Vous devez spécifier 'status'"
-
 msgid ""
 "Must specify 'status', 'attach_status' or 'migration_status' for update."
 msgstr ""
 "Indiquer 'status', 'attach_status' ou 'migration_status' pour la mise à jour."
-
-msgid "Must specify a valid attach status"
-msgstr "Indiquer un état de connexion valide"
-
-msgid "Must specify a valid migration status"
-msgstr "Indiquer un état de migration valide"
 
 #, python-format
 msgid "Must specify a valid persona %(valid)s,value '%(persona)s' is invalid."
@@ -3967,9 +3944,6 @@ msgid ""
 msgstr ""
 "Spécifiez un type de mise à disposition valide %(valid)s, la valeur "
 "'%(prov)s' n'est pas valide."
-
-msgid "Must specify a valid status"
-msgstr "Indiquer un état valide"
 
 msgid "Must specify an ExtensionManager class"
 msgstr "Vous devez définir une classe ExtensionManager"

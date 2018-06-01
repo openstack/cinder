@@ -14,7 +14,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-05-15 01:12+0000\n"
+"POT-Creation-Date: 2018-05-31 14:50+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1318,9 +1318,6 @@ msgstr "%(fun)s에서 예상 열을 찾을 수 없음: %(hdr)s."
 #, python-format
 msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
 msgstr "%(fun)s에서 예상 키 %(key)s을(를) 찾을 수 없음: %(raw)s."
-
-msgid "Disabled reason contains invalid characters or is too long"
-msgstr "문자가 올바르지 않거나 너무 긴 이유로 사용되지 않습니다. "
 
 #, python-format
 msgid "Domain with name %s wasn't found."
@@ -3127,9 +3124,6 @@ msgstr ""
 "의 연결로 인해 발생했을 수 있습니다. 이러한 경우 30초 후 삭제를 재시도하여 문"
 "제를 해결할 수도 있습니다."
 
-msgid "Incorrect request body format"
-msgstr "올바르지 않은 요청 본문 형식"
-
 msgid "Incremental backups exist for this backup."
 msgstr "이 백업에 대한 증분 백업이 있습니다. "
 
@@ -3528,9 +3522,6 @@ msgstr "형식이 틀린 요청 URL"
 msgid "Malformed response to command %(cmd)s: %(reason)s"
 msgstr "%(cmd)s 명령에 대해 양식이 잘못된 응답: %(reason)s"
 
-msgid "Malformed scheduler_hints attribute"
-msgstr "형식이 틀린 scheduler_hints 속성"
-
 #, python-format
 msgid "Malformed show fcns database string: %s"
 msgstr "올바르지 않은 형식의 표시 fcns 데이터베이스 문자열: %s"
@@ -3675,23 +3666,11 @@ msgstr ""
 "클라우드 관리자가 프로젝트를 나열하고 가져올 수 있는 Keystone policy.json을 "
 "사용하여 클라우드 관리자로 이 명령을 실행해야 합니다."
 
-msgid "Must specify 'new_volume'"
-msgstr "'new_volume'을 지정해야 함"
-
-msgid "Must specify 'status'"
-msgstr "'상태'를 지정해야 함"
-
 msgid ""
 "Must specify 'status', 'attach_status' or 'migration_status' for update."
 msgstr ""
 "업데이트하려면 'status', 'attach_status' 또는 'migration_status'를 지정해야 "
 "합니다."
-
-msgid "Must specify a valid attach status"
-msgstr "올바른 접속 상태를 지정해야 함"
-
-msgid "Must specify a valid migration status"
-msgstr "올바른 마이그레이션 상태를 지정해야 함"
 
 #, python-format
 msgid "Must specify a valid persona %(valid)s,value '%(persona)s' is invalid."
@@ -3706,9 +3685,6 @@ msgid ""
 msgstr ""
 "올바른 프로비저닝 유형 %(valid)s을(를) 지정해야 합니다. '%(prov)s' 값이 올바"
 "르지 않습니다. "
-
-msgid "Must specify a valid status"
-msgstr "올바른 상태를 지정해야 함"
 
 msgid "Must specify an ExtensionManager class"
 msgstr "ExtensionManager 클래스를 지정해야 함"

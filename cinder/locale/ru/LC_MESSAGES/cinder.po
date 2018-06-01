@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-05-15 01:12+0000\n"
+"POT-Creation-Date: 2018-05-31 14:50+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1337,9 +1337,6 @@ msgstr "Не найден ожидаемый столбец в %(fun)s: %(hdr)s.
 #, python-format
 msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
 msgstr "Не найден ожидаемый ключ %(key)s в %(fun)s: %(raw)s."
-
-msgid "Disabled reason contains invalid characters or is too long"
-msgstr "Причина выключения содержит неверные символы или слишком длинна"
 
 #, python-format
 msgid "Domain with name %s wasn't found."
@@ -3191,9 +3188,6 @@ msgstr ""
 "Возникла ошибка ImageBusy при удалении тома rbd. Причиной может быть сбой "
 "клиентского соединения. В этом случае повторите удаление через 30 с."
 
-msgid "Incorrect request body format"
-msgstr "Неправильный формат тела запроса"
-
 msgid "Incremental backups exist for this backup."
 msgstr "Для этой резервной копии существует дополняющие резервные копии."
 
@@ -3594,9 +3588,6 @@ msgstr "Неправильный запрос url"
 msgid "Malformed response to command %(cmd)s: %(reason)s"
 msgstr "Неправильный ответ на команду %(cmd)s: %(reason)s"
 
-msgid "Malformed scheduler_hints attribute"
-msgstr "Неверный формат атрибута scheduler_hints"
-
 #, python-format
 msgid "Malformed show fcns database string: %s"
 msgstr "Неправильный формат строки базы данных команды show fcns: %s"
@@ -3747,23 +3738,11 @@ msgstr ""
 "Keystone policy.json, где администратору облака предоставлены права на вывод "
 "списка проектов и получение любого проекта."
 
-msgid "Must specify 'new_volume'"
-msgstr "Необходимо указать 'new_volume'"
-
-msgid "Must specify 'status'"
-msgstr "Необходимо указать 'status'"
-
 msgid ""
 "Must specify 'status', 'attach_status' or 'migration_status' for update."
 msgstr ""
 "Необходимо указать 'status', 'attach_status' или 'migration_status' для "
 "обновления."
-
-msgid "Must specify a valid attach status"
-msgstr "Необходимо указать допустимое состояние вложения"
-
-msgid "Must specify a valid migration status"
-msgstr "Необходимо указать допустимое состояние переноса"
 
 #, python-format
 msgid "Must specify a valid persona %(valid)s,value '%(persona)s' is invalid."
@@ -3778,9 +3757,6 @@ msgid ""
 msgstr ""
 "Необходимо указать допустимый тип предоставления ресурсов %(valid)s, "
 "значение '%(prov)s' недопустимо."
-
-msgid "Must specify a valid status"
-msgstr "Необходимо указать допустимое состояние"
 
 msgid "Must specify an ExtensionManager class"
 msgstr "Необходимо указать класс ExtensionManager"
