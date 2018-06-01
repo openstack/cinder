@@ -256,3 +256,9 @@ binary = {
     'type': 'string',
     'enum': [binary for binary in constants.LOG_BINARIES + ('', '*')]
 }
+
+
+key_size = {'type': ['string', 'integer', 'null'],
+            'minimum': 0,
+            'maximum': constants.DB_MAX_INT,
+            'format': 'key_size'}
