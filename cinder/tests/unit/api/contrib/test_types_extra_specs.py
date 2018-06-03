@@ -294,12 +294,6 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                               req,
                               fake.VOLUME_ID, body=body)
 
-            # Again but with conf set to allow modification
-            CONF.set_default('allow_inuse_volume_type_modification', True)
-            res_dict = self.controller.create(req, fake.VOLUME_ID, body=body)
-            self.assertEqual({'extra_specs': {'key1': 'value1'}},
-                             res_dict)
-
     @ddt.data({'extra_specs': {'a' * 256: 'a'}},
               {'extra_specs': {'a': 'a' * 256}},
               {'extra_specs': {'': 'a'}},

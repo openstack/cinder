@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    Removed the option ``allow_inuse_volume_type_modification`` which had
+    been deprecated in Ocata release.

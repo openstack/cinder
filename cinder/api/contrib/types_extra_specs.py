@@ -15,9 +15,6 @@
 
 """The volume types extra specs extension"""
 
-from oslo_config import cfg
-from oslo_log import log as logging
-from oslo_log import versionutils
 from six.moves import http_client
 import webob
 
@@ -32,20 +29,6 @@ from cinder.i18n import _
 from cinder.policies import type_extra_specs as policy
 from cinder import rpc
 from cinder.volume import volume_types
-
-LOG = logging.getLogger(__name__)
-
-extraspec_opts = [
-    cfg.BoolOpt('allow_inuse_volume_type_modification',
-                default=False,
-                deprecated_for_removal=True,
-                help="DEPRECATED: Allow the ability to modify the "
-                     "extra-spec settings of an in-use volume-type."),
-
-]
-
-CONF = cfg.CONF
-CONF.register_opts(extraspec_opts)
 
 
 class VolumeTypeExtraSpecsController(wsgi.Controller):
@@ -70,20 +53,13 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         return self._get_extra_specs(context, type_id)
 
     def _allow_update(self, context, type_id):
-        if (not CONF.allow_inuse_volume_type_modification):
-            vols = db.volume_get_all(
-                ctxt.get_admin_context(),
-                limit=1,
-                filters={'volume_type_id': type_id})
-            if len(vols):
-                expl = _('Volume Type is currently in use.')
-                raise webob.exc.HTTPBadRequest(explanation=expl)
-        else:
-            msg = ("The option 'allow_inuse_volume_type_modification' "
-                   "is deprecated and will be removed in a future "
-                   "release.  The default behavior going forward will "
-                   "be to disallow modificaton of in-use types.")
-            versionutils.report_deprecated_feature(LOG, msg)
+        vols = db.volume_get_all(
+            ctxt.get_admin_context(),
+            limit=1,
+            filters={'volume_type_id': type_id})
+        if len(vols):
+            expl = _('Volume Type is currently in use.')
+            raise webob.exc.HTTPBadRequest(explanation=expl)
         return
 
     @validation.schema(types_extra_specs.create)
