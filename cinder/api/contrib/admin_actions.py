@@ -185,9 +185,9 @@ class VolumeAdminController(AdminController):
         except messaging.RemoteError as error:
             if error.exc_type in ['VolumeAttachmentNotFound',
                                   'InvalidVolume']:
-                msg = "Error force detaching volume - %(err_type)s: " \
-                      "%(err_msg)s" % {'err_type': error.exc_type,
-                                       'err_msg': error.value}
+                msg = _("Error force detaching volume - %(err_type)s: "
+                        "%(err_msg)s") % {'err_type': error.exc_type,
+                                          'err_msg': error.value}
                 raise webob.exc.HTTPBadRequest(explanation=msg)
             else:
                 # There are also few cases where force-detach call could fail
