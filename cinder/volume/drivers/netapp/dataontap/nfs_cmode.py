@@ -273,7 +273,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             pool['QoS_support'] = self.using_cluster_credentials
             pool['consistencygroup_support'] = True
             pool['consistent_group_snapshot_enabled'] = True
-            pool['multiattach'] = False
+            pool['multiattach'] = True
 
             # Add up-to-date capacity info
             nfs_share = ssc_vol_info['pool_name']
