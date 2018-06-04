@@ -477,7 +477,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
             "consistent_group_snapshot_enabled": True,
             "group_replication_enabled": True,
             "consistent_group_replication_enabled": True,
-            "multiattach": False,
+            "multiattach": True,
             "vendor_name": 'IBM',
             "driver_version": self.full_version,
             "storage_protocol": self._helper.get_connection_type(),

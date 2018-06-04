@@ -1259,7 +1259,7 @@ class DS8KProxyTest(test.TestCase):
             "consistent_group_snapshot_enabled": True,
             "group_replication_enabled": True,
             "consistent_group_replication_enabled": True,
-            "multiattach": False,
+            "multiattach": True,
             "backend_state": 'up'
         }
 
@@ -1328,7 +1328,7 @@ class DS8KProxyTest(test.TestCase):
             "consistent_group_snapshot_enabled": True,
             "group_replication_enabled": True,
             "consistent_group_replication_enabled": True,
-            "multiattach": False,
+            "multiattach": True,
             "backend_state": 'up'
         }
 
