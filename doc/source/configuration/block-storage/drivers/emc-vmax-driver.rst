@@ -118,6 +118,14 @@ VMAX drivers also support the following features:
    This means volumes added to any newly created storage groups will be
    compressed.
 
+.. note::
+
+   Since the release of the PowerMax in May 2018, ``Unisphere for PowerMax
+   9.0.0.6`` can support new PowerMax features such as ``Deduplication``
+   and ``Online Device Expansion of Replicated volumes``. ``Restore Volume
+   From Snapshot`` is also supported on all VMAX All Flash and PowerMax
+   arrays.
+
 
 VMAX Driver Integration
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -1136,6 +1144,15 @@ uncompressed.
 
    This feature is only applicable for All Flash arrays, 250F, 450F or 850F.
 
+.. note::
+
+   Since the release of the PowerMax in May 2018, ``Unisphere for PowerMax
+   9.0.0.6`` can support ``Deduplication``. ``Compression`` and
+   ``Deduplication`` go hand in hand so if ``Compression`` is enabled, so too
+   is ``Deduplication``. Disabling ``Compression`` also disables
+   ``Deduplication``. ``Deduplication`` is only available on the PowerMax
+   array.
+
 Use case 1 - Compression disabled create, attach, detach, and delete volume
 ---------------------------------------------------------------------------
 
@@ -2085,3 +2102,29 @@ After the process of unmanaging the SnapVX snapshot in Cinder, the snapshot on
 the VMAX backend will have the ``OS-`` prefix removed to indicate it is no
 longer OpenStack managed. In the example above, the snapshot after unmanaging
 from OpenStack will be named ``VMAXSnapshot`` on the storage backend.
+
+
+Restore From Snapshot
+---------------------
+
+.. note::
+
+   This feature is only available from ``Unisphere REST 9.0.0.6`` onward
+
+Restore from snapshot or revert a volume to a snapshot, restores the data from
+snapshot to the volume i.e. the volume will be overwritten with the point in
+time data from the snapshot. The revert is not permitted when the volume and
+snapshot are not the same size, only works with the most recent snapshot and
+when the volume is not attached.
+
+
+Online Device Expansion for Replicated Volumes
+----------------------------------------------
+
+.. note::
+
+   This feature is only available from ``Unisphere REST 9.0.0.6`` onward and
+   the array must be running HyperMaxOS 5978 or later.
+
+Device expansion has been enhanced to support RDF devices and devices with
+snapVX sessions.
