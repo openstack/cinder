@@ -125,20 +125,6 @@ in order to be an official Cinder volume driver.
   :members:
   :noindex:
 
-Snapshot Interface
-``````````````````
-Another required interface for a volume driver to be fully compatible is the
-ability to create and manage snapshots. Due to legacy constraints, this
-interface is not included in the base driver interface above.
-
-Work is being done to address those legacy issues. Once that is complete, this
-interface will be merged with the base driver interface.
-
-.. automodule:: cinder.interface.volume_snapshot_driver
-  :members:
-  :noindex:
-
-
 Manage/Unmanage Support
 ```````````````````````
 An optional feature a volume backend can support is the ability to manage
@@ -183,6 +169,16 @@ consistent group snapshot capability to generic volume groups, we no longer
 need the volume consistency groups interface listed above.
 
 .. automodule:: cinder.interface.volume_group_driver
+  :members:
+  :noindex:
+
+Revert To Snapshot
+``````````````````
+Some storage backends support the ability to revert a volume to the last
+snapshot. To support snapshot revert, the following interface must be
+implemented by the driver.
+
+.. automodule:: cinder.interface.volume_snapshot_revert
   :members:
   :noindex:
 
