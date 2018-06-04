@@ -139,6 +139,7 @@ Known issues and limitations
   non-multiattach-capable type, or vice-versa, is not supported.
 - It is not recommended to retype an in-use multiattach volume if that volume
   has more than one active read/write attachment.
+- Encryption is not supported with multiattach-capable volumes.
 
 .. _`Cinder`: https://specs.openstack.org/openstack/cinder-specs/specs/queens/enable-multiattach.html
 .. _`Nova`: https://specs.openstack.org/openstack/nova-specs/specs/queens/approved/cinder-volume-multi-attach.html
