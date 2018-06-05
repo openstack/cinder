@@ -299,6 +299,13 @@ backup_gigabytes:
   in: body
   required: true
   type: integer
+backup_record:
+  description: |
+    An object recording volume backup metadata, including ``backup_service``
+    and ``backup_url``.
+  in: body
+  required: true
+  type: object
 backup_service:
   description: |
     The service used to perform the backup.
@@ -307,7 +314,7 @@ backup_service:
   type: string
 backup_url:
   description: |
-    The backup encoded metadata.
+    An identifier string to locate the backup.
   in: body
   required: true
   type: string
