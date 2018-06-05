@@ -16,8 +16,6 @@
 
 """pylint error checking."""
 
-from __future__ import print_function
-
 import json
 import re
 import sys
@@ -112,6 +110,8 @@ class LintOutput(object):
     @classmethod
     def from_line(cls, line):
         m = re.search(r"(\S+):(\d+): \[(\S+)(, \S+)?] (.*)", line)
+        if m is None:
+            return None
         matched = m.groups()
         filename, lineno, code, message = (matched[0], int(matched[1]),
                                            matched[2], matched[-1])
@@ -125,13 +125,15 @@ class LintOutput(object):
 
     @classmethod
     def from_msg_to_dict(cls, msg):
-        """From the output of pylint msg, to a dict, where each key
+        """Convert pylint output to a dict
+
+        From the output of pylint msg, to a dict, where each key
         is a unique error identifier, value is a list of LintOutput
         """
         result = {}
         for line in msg.splitlines():
             obj = cls.from_line(line)
-            if obj.is_ignored():
+            if obj is None or obj.is_ignored():
                 continue
             key = obj.key()
             if key not in result:
@@ -199,8 +201,10 @@ class ErrorKeys(object):
 
 def run_pylint():
     buff = StringIO()
-    reporter = text.ParseableTextReporter(output=buff)
-    args = ["--include-ids=y", "-E", "cinder"]
+    reporter = text.TextReporter(output=buff)
+    args = [
+        "--msg-template='{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}'",
+        "-E", "cinder"]
     lint.Run(args, reporter=reporter, exit=False)
     val = buff.getvalue()
     buff.close()
