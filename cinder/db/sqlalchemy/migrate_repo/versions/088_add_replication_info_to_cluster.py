@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from sqlalchemy import Boolean, Column, MetaData, String, Table, text
+from sqlalchemy import Boolean, Column, MetaData, String, Table
+from sqlalchemy.sql import expression
 
 
 def upgrade(migrate_engine):
@@ -26,7 +27,7 @@ def upgrade(migrate_engine):
                                 default="not-capable")
     active_backend_id = Column('active_backend_id', String(length=255))
     frozen = Column('frozen', Boolean, nullable=False, default=False,
-                    server_default=text('false'))
+                    server_default=expression.false())
 
     clusters.create_column(replication_status)
     clusters.create_column(frozen)
