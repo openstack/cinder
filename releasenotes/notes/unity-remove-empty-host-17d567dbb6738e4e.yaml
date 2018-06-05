@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Dell EMC Unity Driver: Adds support for removing empty host. The new option
+    named `remove_empty_host` could be configured as `True` to notify Unity
+    driver to remove the host after the last LUN is detached from it.
