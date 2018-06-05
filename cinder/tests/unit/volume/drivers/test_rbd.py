@@ -1201,7 +1201,8 @@ class RBDTestCase(test.TestCase):
             provisioned_capacity_gb=mock.sentinel.provisioned_capacity_gb,
             max_over_subscription_ratio=1.0,
             multiattach=False,
-            location_info=expected_location_info)
+            location_info=expected_location_info,
+            backend_state='up')
 
         if replication_enabled:
             targets = [{'backend_id': 'secondary-backend'},
@@ -1244,7 +1245,8 @@ class RBDTestCase(test.TestCase):
             thin_provisioning_support=True,
             max_over_subscription_ratio=1.0,
             multiattach=False,
-            location_info=expected_location_info)
+            location_info=expected_location_info,
+            backend_state='up')
 
         my_safe_get = MockDriverConfig(rbd_exclusive_cinder_pool=True)
         self.mock_object(self.driver.configuration, 'safe_get',
@@ -1280,7 +1282,8 @@ class RBDTestCase(test.TestCase):
                         multiattach=False,
                         max_over_subscription_ratio=1.0,
                         thin_provisioning_support=True,
-                        location_info=expected_location_info)
+                        location_info=expected_location_info,
+                        backend_state='down')
 
         with mock.patch.object(self.driver, '_get_fsid') as mock_get_fsid:
             mock_get_fsid.return_value = expected_fsid
