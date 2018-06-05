@@ -11,5 +11,5 @@ All the files in this section can be found in ``/etc/cinder``.
 
    cinder.conf.rst
    api-paste.ini.rst
-   policy.json.rst
+   policy.yaml.rst
    rootwrap.conf.rst
