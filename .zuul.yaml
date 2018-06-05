@@ -5,11 +5,24 @@
       - publish-openstack-sphinx-docs
       - periodic-stable-jobs
       - check-requirements
-      - integrated-gate
-      - integrated-gate-py35
       - release-notes-jobs
     check:
       jobs:
+        - tempest-full:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
         - cinder-tempest-dsvm-lvm-lio:
             voting: false
             branches: ^(?!driverfixes/).*$
@@ -65,21 +78,6 @@
               - ^contrib/block-box.*$
               - ^doc/.*$
               - ^releasenotes/.*$
-        - legacy-grenade-dsvm-cinder-mn-sub-volbak:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
         - legacy-tempest-dsvm-lvm-multibackend:
             voting: false
             irrelevant-files:
@@ -128,39 +126,9 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
-        - neutron-grenade:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
     gate:
       jobs:
-        - legacy-grenade-dsvm-cinder-mn-sub-volbak:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - neutron-grenade:
+        - tempest-full:
             irrelevant-files:
               - ^(test-|)requirements.txt$
               - ^.*\.rst$

@@ -19,6 +19,7 @@ import textwrap
 
 from cinder.compute import nova
 from cinder.volume import configuration
+from cinder.compute import nova
 
 OrderedDict = collections.OrderedDict
 
@@ -104,7 +105,7 @@ if __name__ == "__main__":
 
     for atree in dir_trees_list:
 
-        if atree in ["cinder/config/generate_cinder_opts.py",
+        if atree in ["tools/config/generate_cinder_opts.py",
                      "cinder/hacking/checks.py",
                      "cinder/volume/configuration.py",
                      "cinder/test.py"]:
@@ -238,8 +239,14 @@ if __name__ == "__main__":
                                               key = lambda x: x[0]))
 
     for key in registered_opts_dict:
-        section_start_str = ("        ('" + key + "',\n"
-                             "            itertools.chain(\n")
+        # NOTE(jsbryant): We need to have 'DEFAULT' in uppercase but any
+        # other section using uppercase causes a Sphinx warning.
+        if (key == 'DEFAULT'):
+            section_start_str = ("        ('" + key + "',\n"
+                                 "            itertools.chain(\n")
+        else:
+           section_start_str = ("        ('" + key.lower() + "',\n"
+                                "            itertools.chain(\n")
         opt_file.write(section_start_str)
         for item in registered_opts_dict[key]:
             _write_item(item)
