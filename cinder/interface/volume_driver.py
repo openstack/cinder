@@ -277,7 +277,7 @@ class VolumeDriverCore(base.CinderInterface):
         and setup replication between the newly created volume and
         the secondary volume.
 
-        An optional larger size for the new snapshot can be specified. Drivers
+        An optional larger size for the new volume can be specified. Drivers
         should check this value and create or expand the new volume to match.
 
         :param volume: The volume to be created.
