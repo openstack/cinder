@@ -176,12 +176,6 @@ volume_id_path:
   in: path
   required: true
   type: string
-volume_type_access:
-  description: |
-    The ID of Volume Type to be accessed by project.
-  in: path
-  required: true
-  type: string
 volume_type_id:
   description: |
     The UUID for an existing volume type.
@@ -415,6 +409,12 @@ active_backend_id:
   in: body
   required: false
   type: string
+add_project_access:
+  description: |
+    Adds volume type access to a project.
+  in: body
+  required: true
+  type: object
 add_volumes:
   description: |
     One or more volume UUIDs, separated by commas, to
@@ -2157,6 +2157,12 @@ qos_specs:
   in: body
   required: true
   type: object
+qos_specs_id:
+  description: |
+    The QoS specifications ID.
+  in: body
+  required: true
+  type: string
 QoS_support:
   description: |
     The quality of service (QoS) support.
@@ -2215,6 +2221,12 @@ ref_1:
 reference:
   description: |
     Some information for the resource.
+  in: body
+  required: true
+  type: object
+remove_project_access:
+  description: |
+    Removes volume type access from a project.
   in: body
   required: true
   type: object
@@ -2923,6 +2935,12 @@ volume_type_6:
   in: body
   required: true
   type: string
+volume_type_access:
+  description: |
+    The object contains volume type to be accessed by project.
+  in: body
+  required: true
+  type: object
 volume_type_id_body:
   description: |
     The UUID of the volume type.
