@@ -58,6 +58,8 @@
           # run.
           DEVSTACK_GATE_TEMPEST_REGEX='(^tempest\.(api|scenario)|(^cinder\.tests.tempest))'
           DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesSnapshotTestJSON.test_snapshot_backup)'
+          DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsAdminTest.test_volume_backup_export_import)'
+          DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsAdminTest.test_volume_backup_reset_status)'
           DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsTest.test_backup_create_attached_volume)'
           DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsTest.test_backup_create_and_restore_to_an_existing_volume)'
           DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsTest.test_bootable_volume_backup_and_restore)'
