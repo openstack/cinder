@@ -421,8 +421,11 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                                   '%s was unsuccessful.'), volume['id'])
 
     def _delete_file(self, file_id, file_name):
-        (_vserver, flexvol) = self._get_export_ip_path(volume_id=file_id)
-        path_on_backend = '/vol' + flexvol + '/' + file_name
+        (host_ip, junction_path) = self._get_export_ip_path(volume_id=file_id)
+        vserver = self._get_vserver_for_ip(host_ip)
+        flexvol = self.zapi_client.get_vol_by_junc_vserver(
+            vserver, junction_path)
+        path_on_backend = '/vol/' + flexvol + '/' + file_name
         LOG.debug('Attempting to delete file %(path)s for ID %(file_id)s on '
                   'backend.', {'path': path_on_backend, 'file_id': file_id})
         self.zapi_client.delete_file(path_on_backend)

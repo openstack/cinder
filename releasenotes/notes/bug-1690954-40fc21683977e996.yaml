@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    NetApp ONTAP NFS (bug 1690954): Fix wrong usage of export path
+    as volume name when deleting volumes and snapshots.
