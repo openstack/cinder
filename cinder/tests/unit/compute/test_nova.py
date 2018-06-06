@@ -12,10 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 
 from cinder.compute import nova
 from cinder import context
+from cinder.message import message_field
 from cinder import test
 from keystoneauth1 import loading as ks_loading
 from novaclient import exceptions as nova_exceptions
@@ -196,6 +198,7 @@ class FakeNovaClient(object):
         pass
 
 
+@ddt.ddt
 class NovaApiTestCase(test.TestCase):
     def setUp(self):
         super(NovaApiTestCase, self).setUp()
@@ -228,12 +231,47 @@ class NovaApiTestCase(test.TestCase):
                 mock.patch.object(self.novaclient.server_external_events,
                                   'create') as mock_create_event:
             mock_novaclient.return_value = self.novaclient
+            mock_create_event.return_value = []
 
-            self.api.extend_volume(self.ctx, server_ids, 'volume_id')
+            result = self.api.extend_volume(self.ctx, server_ids, 'volume_id')
+            self.assertTrue(result)
 
         mock_novaclient.assert_called_once_with(self.ctx,
                                                 privileged_user=True,
                                                 api_version='2.51')
+        mock_create_event.assert_called_once_with([
+            {'name': 'volume-extended',
+             'server_uuid': 'server-id-1',
+             'tag': 'volume_id'},
+            {'name': 'volume-extended',
+             'server_uuid': 'server-id-2',
+             'tag': 'volume_id'},
+        ])
+
+    @ddt.data(nova_exceptions.NotFound,
+              Exception,
+              'illegal_list',
+              [{'code': None}])
+    @mock.patch('cinder.message.api.API.create')
+    def test_extend_volume_failed(self, nova_result, mock_create):
+        server_ids = ['server-id-1', 'server-id-2']
+        with mock.patch.object(nova, 'novaclient') as mock_novaclient, \
+                mock.patch.object(self.novaclient.server_external_events,
+                                  'create') as mock_create_event:
+            mock_novaclient.return_value = self.novaclient
+            mock_create_event.side_effect = [nova_result]
+
+            result = self.api.extend_volume(self.ctx, server_ids, 'volume_id')
+            self.assertFalse(result)
+
+        mock_novaclient.assert_called_once_with(self.ctx,
+                                                privileged_user=True,
+                                                api_version='2.51')
+        mock_create.assert_called_once_with(
+            self.ctx,
+            message_field.Action.EXTEND_VOLUME,
+            resource_uuid='volume_id',
+            detail=message_field.Detail.NOTIFY_COMPUTE_SERVICE_FAILED)
         mock_create_event.assert_called_once_with([
             {'name': 'volume-extended',
              'server_uuid': 'server-id-1',
