@@ -2572,6 +2572,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.get_entity_name.assert_called_once_with(dc_ref)
         cookies = session.vim.client.options.transport.cookiejar
         if use_temp_image:
+            mock_open.assert_called_once_with('/tmp/foo', 'rb')
             download_file.assert_called_once_with(
                 mock.sentinel.read_handle,
                 self._config.vmware_host_ip,
