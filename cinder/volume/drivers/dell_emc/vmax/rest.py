@@ -511,6 +511,16 @@ class VMAXRest(object):
             array, SLOPROVISIONING, 'storagegroup',
             resource_name=storage_group_name)
 
+    def get_storage_group_list(self, array, params=None):
+        """Given a name, return storage group details.
+
+        :param array: the array serial number
+        :param params: dict of optional filters
+        :returns: storage group dict or None
+        """
+        return self.get_resource(
+            array, SLOPROVISIONING, 'storagegroup', params=params)
+
     def get_num_vols_in_sg(self, array, storage_group_name):
         """Get the number of volumes in a storage group.
 
@@ -544,24 +554,6 @@ class VMAXRest(object):
     def add_child_sg_to_parent_sg(
             self, array, child_sg, parent_sg, extra_specs):
         """Add a storage group to a parent storage group.
-
-        This method adds an existing storage group to another storage
-        group, i.e. cascaded storage groups.
-        :param array: the array serial number
-        :param child_sg: the name of the child sg
-        :param parent_sg: the name of the parent sg
-        :param extra_specs: the extra specifications
-        """
-        payload = {"editStorageGroupActionParam": {
-            "expandStorageGroupParam": {
-                "addExistingStorageGroupParam": {
-                    "storageGroupId": [child_sg]}}}}
-        sc, job = self.modify_storage_group(array, parent_sg, payload)
-        self.wait_for_job('Add child sg to parent sg', sc, job, extra_specs)
-
-    def add_empty_child_sg_to_parent_sg(
-            self, array, child_sg, parent_sg, extra_specs):
-        """Add an empty storage group to a parent storage group.
 
         This method adds an existing storage group to another storage
         group, i.e. cascaded storage groups.

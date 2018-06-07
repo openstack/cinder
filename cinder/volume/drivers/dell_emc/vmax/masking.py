@@ -14,6 +14,8 @@
 #    under the License.
 
 import ast
+from copy import deepcopy
+import sys
 import time
 
 from oslo_log import log as logging
@@ -102,8 +104,6 @@ class VMAXMasking(object):
                 {'maskingview_name': masking_view_dict[utils.MV_NAME]})
             error_message = six.text_type(e)
 
-        if 'source_nf_sg' in masking_view_dict:
-            default_sg_name = masking_view_dict['source_nf_sg']
         rollback_dict['default_sg_name'] = default_sg_name
 
         if error_message:
@@ -111,15 +111,8 @@ class VMAXMasking(object):
             # successfully then we must roll back by adding the volume back to
             # the default storage group for that slo/workload combination.
 
-            if rollback_dict['slo'] is not None:
-                self.check_if_rollback_action_for_masking_required(
-                    serial_number, volume, device_id, masking_view_dict)
-
-            else:
-                self._check_adding_volume_to_storage_group(
-                    serial_number, device_id, rollback_dict['default_sg_name'],
-                    masking_view_dict[utils.VOL_NAME],
-                    masking_view_dict[utils.EXTRA_SPECS])
+            self.check_if_rollback_action_for_masking_required(
+                serial_number, volume, device_id, rollback_dict)
 
             exception_message = (_(
                 "Failed to get, create or add volume %(volumeName)s "
@@ -150,24 +143,10 @@ class VMAXMasking(object):
         check_vol = self.rest.is_volume_in_storagegroup(
             serial_number, device_id, default_sg_name)
         if check_vol:
-            @coordination.synchronized("emc-sg-{sg_name}")
-            def do_move_vol_from_def_sg(sg_name):
-                num_vol_in_sg = self.rest.get_num_vols_in_sg(
-                    serial_number, default_sg_name)
-                LOG.debug("There are %(num_vol)d volumes in the "
-                          "storage group %(sg_name)s.",
-                          {'num_vol': num_vol_in_sg,
-                           'sg_name': default_sg_name})
-                self.rest.move_volume_between_storage_groups(
+            try:
+                self.move_volume_between_storage_groups(
                     serial_number, device_id, default_sg_name,
                     dest_storagegroup, extra_specs)
-                if num_vol_in_sg == 1:
-                    # Last volume in the storage group - delete sg.
-                    self.rest.delete_storage_group(
-                        serial_number, default_sg_name)
-
-            try:
-                do_move_vol_from_def_sg(default_sg_name)
             except Exception as e:
                 msg = ("Exception while moving volume from the default "
                        "storage group to %(sg)s. Exception received was "
@@ -336,12 +315,9 @@ class VMAXMasking(object):
         return msg
 
     def add_child_sg_to_parent_sg(
-            self, serial_number, child_sg_name, parent_sg_name, extra_specs,
-            default_version=True
-    ):
+            self, serial_number, child_sg_name, parent_sg_name, extra_specs):
         """Add a child storage group to a parent storage group.
 
-        :param default_version: the default uv4 version
         :param serial_number: the array serial number
         :param child_sg_name: the name of the child storage group
         :param parent_sg_name: the name of the aprent storage group
@@ -358,12 +334,8 @@ class VMAXMasking(object):
                     serial_number, child_sg_name, parent_sg_name):
                 pass
             else:
-                if default_version:
-                    self.rest.add_child_sg_to_parent_sg(
-                        serial_number, child_sg, parent_sg, extra_specs)
-                else:
-                    self.rest.add_empty_child_sg_to_parent_sg(
-                        serial_number, child_sg, parent_sg, extra_specs)
+                self.rest.add_child_sg_to_parent_sg(
+                    serial_number, child_sg, parent_sg, extra_specs)
 
         do_add_sg_to_sg(child_sg_name, parent_sg_name)
 
@@ -488,9 +460,26 @@ class VMAXMasking(object):
         :param target_storagegroup_name: the target sg
         :param extra_specs: the extra specifications
         """
+        num_vol_in_sg = self.rest.get_num_vols_in_sg(
+            serial_number, source_storagegroup_name)
+        LOG.debug("There are %(num_vol)d volumes in the "
+                  "storage group %(sg_name)s.",
+                  {'num_vol': num_vol_in_sg,
+                   'sg_name': source_storagegroup_name})
         self.rest.move_volume_between_storage_groups(
             serial_number, device_id, source_storagegroup_name,
             target_storagegroup_name, extra_specs)
+        if num_vol_in_sg == 1:
+            # Check if storage group is a child sg
+            parent_sg_name = self.get_parent_sg_from_child(
+                serial_number, source_storagegroup_name)
+            if parent_sg_name:
+                self.rest.remove_child_sg_from_parent_sg(
+                    serial_number, source_storagegroup_name, parent_sg_name,
+                    extra_specs)
+            # Last volume in the storage group - delete sg.
+            self.rest.delete_storage_group(
+                serial_number, source_storagegroup_name)
 
     def _check_port_group(self, serial_number, portgroup_name):
         """Check that you can get a port group.
@@ -836,68 +825,38 @@ class VMAXMasking(object):
             self, serial_number, volume, device_id, rollback_dict):
         """Rollback action for volumes with an associated service level.
 
-        We need to be able to return the volume to the default storage group
-        if anything has gone wrong. The volume can also potentially belong to
-        a storage group that is not the default depending on where
-        the exception occurred. We also may need to clean up any unused
+        We need to be able to return the volume to its previous storage group
+        if anything has gone wrong. We also may need to clean up any unused
         initiator groups.
         :param serial_number: the array serial number
         :param volume: the volume object
         :param device_id: the device id
         :param rollback_dict: the rollback dict
-        :returns: error message -- string, or None
         :raises: VolumeBackendAPIException
         """
-        message = None
+        reset = False if rollback_dict[utils.IS_MULTIATTACH] else True
         # Check if ig has been created. If so, check for other
         # masking views associated with the ig. If none, delete the ig.
         self._check_ig_rollback(
-            serial_number, rollback_dict['init_group_name'],
-            rollback_dict['connector'])
+            serial_number, rollback_dict[utils.IG_NAME],
+            rollback_dict[utils.CONNECTOR])
         try:
-            found_sg_name_list = (
-                self.rest.get_storage_groups_from_volume(
-                    serial_number, rollback_dict['device_id']))
-            # Volume is not associated with any storage group so add
-            # it back to the default.
-            if not found_sg_name_list:
-                error_message = self._check_adding_volume_to_storage_group(
-                    serial_number, device_id,
-                    rollback_dict['default_sg_name'],
-                    rollback_dict[utils.VOL_NAME],
-                    rollback_dict[utils.EXTRA_SPECS])
-                if error_message:
-                    LOG.error(error_message)
-                message = (_("Rollback"))
-            elif 'isLiveMigration' in rollback_dict and (
-                    rollback_dict['isLiveMigration'] is True):
-                # Live migration case.
-                # Remove from nonfast storage group to fast sg
-                self.failed_live_migration(rollback_dict, found_sg_name_list,
-                                           rollback_dict[utils.EXTRA_SPECS])
-            else:
-                LOG.info("Volume %(vol_id)s is in %(list_size)d storage"
-                         "groups. The storage groups are %(found_sg_list)s.",
-                         {'vol_id': volume.id,
-                          'list_size': len(found_sg_name_list),
-                          'found_sg_list': found_sg_name_list})
-
-                # Check the name, see if it is the default storage group
-                # or another.
-                sg_found = False
-                for found_sg_name in found_sg_name_list:
-                    if found_sg_name == rollback_dict['default_sg_name']:
-                        sg_found = True
-                if not sg_found:
-                    # Remove it from its current storage group and return it
-                    # to its default storage group if slo is defined.
-                    self.remove_and_reset_members(
-                        serial_number, volume, device_id,
-                        rollback_dict['volume_name'],
-                        rollback_dict['extra_specs'], True,
-                        rollback_dict['connector'])
-                    message = (_("Rollback - Volume in another storage "
-                                 "group besides default storage group."))
+            # Remove it from the storage group associated with the connector,
+            # if any. If not multiattach case, return to the default sg.
+            self.remove_and_reset_members(
+                serial_number, volume, device_id,
+                rollback_dict[utils.VOL_NAME],
+                rollback_dict[utils.EXTRA_SPECS], reset,
+                rollback_dict[utils.CONNECTOR])
+            if rollback_dict[utils.IS_MULTIATTACH]:
+                # Move from the nonfast storage group to the fast sg
+                if rollback_dict[utils.SLO] is not None:
+                    self._return_volume_to_fast_managed_group(
+                        serial_number, device_id,
+                        rollback_dict[utils.OTHER_PARENT_SG],
+                        rollback_dict[utils.FAST_SG],
+                        rollback_dict[utils.NO_SLO_SG],
+                        rollback_dict[utils.EXTRA_SPECS])
         except Exception as e:
             error_message = (_(
                 "Rollback for Volume: %(volume_name)s has failed. "
@@ -908,7 +867,6 @@ class VMAXMasking(object):
                    'e': six.text_type(e)})
             LOG.exception(error_message)
             raise exception.VolumeBackendAPIException(data=error_message)
-        return message
 
     def _verify_initiator_group_from_masking_view(
             self, serial_number, maskingview_name, maskingview_dict,
@@ -1061,6 +1019,7 @@ class VMAXMasking(object):
         :param volume_name: the volume name
         :param extra_specs: the extra specifications
         :param connector: the connector object
+        :param reset: flag to indicate if reset is required -- bool
         :param async_grp: the async rep group
         """
         move = False
@@ -1074,10 +1033,10 @@ class VMAXMasking(object):
                         storagegroup_names.pop(index)
             if len(storagegroup_names) == 1 and reset is True:
                 move = True
-            elif connector is not None and reset is True:
+            elif connector is not None:
                 short_host_name = self.utils.get_host_short_name(
                     connector['host'])
-                move = True
+                move = reset
             if short_host_name:
                 for sg_name in storagegroup_names:
                     if short_host_name in sg_name:
@@ -1638,78 +1597,171 @@ class VMAXMasking(object):
                         "initiator group %(ig_name)s will not be deleted.",
                         {'ig_name': initiatorgroup_name})
 
-    def pre_live_migration(self, source_nf_sg, source_sg, source_parent_sg,
-                           is_source_nf_sg, device_info_dict, extra_specs):
-        """Run before any live migration operation.
+    def pre_multiattach(self, serial_number, device_id, mv_dict, extra_specs):
+        """Run before attaching a device to multiple hosts.
 
-        :param source_nf_sg: The non fast storage group
-        :param source_sg: The source storage group
-        :param source_parent_sg: The parent storage group
-        :param is_source_nf_sg: if the non fast storage group already exists
-        :param device_info_dict: the data dict
+        :param serial_number: the array serial number
+        :param device_id: the device id
+        :param mv_dict: the masking view dict
         :param extra_specs: extra specifications
+        :returns: masking view dict
         """
-        if is_source_nf_sg is False:
-            storage_group = self.rest.get_storage_group(
-                device_info_dict['array'], source_nf_sg)
-            if storage_group is None:
+        no_slo_sg_name, fast_source_sg_name, parent_sg_name = None, None, None
+        sg_list = self.rest.get_storage_group_list(
+            serial_number, params={
+                'child': 'true', 'volumeId': device_id})
+        slo_wl_combo = self.utils.truncate_string(
+            extra_specs[utils.SLO] + extra_specs[utils.WORKLOAD], 10)
+        for sg in sg_list.get('storageGroupId', []):
+            if slo_wl_combo in sg:
+                fast_source_sg_name = sg
+                masking_view_name = (
+                    self.rest.get_masking_views_from_storage_group(
+                        serial_number, fast_source_sg_name))[0]
+                port_group_name = self.rest.get_element_from_masking_view(
+                    serial_number, masking_view_name, portgroup=True)
+                short_pg_name = self.utils.get_pg_short_name(port_group_name)
+                short_host_name = masking_view_name.lstrip('OS-').rstrip(
+                    '-%s-MV' % short_pg_name)[:-2]
+                extra_specs[utils.PORTGROUPNAME] = short_pg_name
+                no_slo_extra_specs = deepcopy(extra_specs)
+                no_slo_extra_specs[utils.SLO] = None
+                no_slo_sg_name, __, __, __ = self.utils.get_child_sg_name(
+                    short_host_name, no_slo_extra_specs)
+                source_sg_details = self.rest.get_storage_group(
+                    serial_number, fast_source_sg_name)
+                parent_sg_name = source_sg_details[
+                    'parent_storage_group'][0]
+                mv_dict[utils.OTHER_PARENT_SG] = parent_sg_name
+                mv_dict[utils.FAST_SG] = fast_source_sg_name
+                mv_dict[utils.NO_SLO_SG] = no_slo_sg_name
+        try:
+            no_slo_sg = self.rest.get_storage_group(
+                serial_number, no_slo_sg_name)
+            if no_slo_sg is None:
                 self.provision.create_storage_group(
-                    device_info_dict['array'], source_nf_sg, None, None, None,
-                    extra_specs)
-            self.add_child_sg_to_parent_sg(
-                device_info_dict['array'], source_nf_sg, source_parent_sg,
-                extra_specs, default_version=False)
-        self.move_volume_between_storage_groups(
-            device_info_dict['array'], device_info_dict['device_id'],
-            source_sg, source_nf_sg, extra_specs)
-
-    def post_live_migration(self, device_info_dict, extra_specs):
-        """Run after every live migration operation.
-
-        :param device_info_dict: : the data dict
-        :param extra_specs: extra specifications
-        """
-        array = device_info_dict['array']
-        source_sg = device_info_dict['source_sg']
-        # Delete fast storage group
-        num_vol_in_sg = self.rest.get_num_vols_in_sg(
-            array, source_sg)
-        if num_vol_in_sg == 0:
-            self.rest.remove_child_sg_from_parent_sg(
-                array, source_sg, device_info_dict['source_parent_sg'],
-                extra_specs)
-            self.rest.delete_storage_group(array, source_sg)
-
-    def failed_live_migration(self, device_info_dict,
-                              source_storage_group_list, extra_specs):
-        """This is run in the event of a failed live migration operation.
-
-        :param device_info_dict: the data dict
-        :param source_storage_group_list: list of storage groups associated
-                                          with the device
-        :param extra_specs: extra specifications
-        """
-        array = device_info_dict['array']
-        source_nf_sg = device_info_dict['source_nf_sg']
-        source_sg = device_info_dict['source_sg']
-        source_parent_sg = device_info_dict['source_parent_sg']
-        device_id = device_info_dict['device_id']
-        for sg in source_storage_group_list:
-            if sg not in [source_sg, source_nf_sg]:
-                self.remove_volume_from_sg(
-                    array, device_id, device_info_dict['volume_name'], sg,
-                    extra_specs)
-        if source_nf_sg in source_storage_group_list:
+                    serial_number, no_slo_sg_name,
+                    None, None, None, extra_specs)
+            self._check_add_child_sg_to_parent_sg(
+                serial_number, no_slo_sg_name, parent_sg_name, extra_specs)
             self.move_volume_between_storage_groups(
-                array, device_id, source_nf_sg,
-                source_sg, extra_specs)
-            is_descendant = self.rest.is_child_sg_in_parent_sg(
-                array, source_nf_sg, source_parent_sg)
-            if is_descendant:
-                self.rest.remove_child_sg_from_parent_sg(
-                    array, source_nf_sg, source_parent_sg, extra_specs)
-            # Delete non fast storage group
-            self.rest.delete_storage_group(array, source_nf_sg)
+                serial_number, device_id, fast_source_sg_name,
+                no_slo_sg_name, extra_specs)
+            # Clean up the fast managed group, if required
+            self._clean_up_child_storage_group(
+                serial_number, fast_source_sg_name,
+                parent_sg_name, extra_specs)
+        except Exception:
+            # Move it back to original storage group, if required
+            self._return_volume_to_fast_managed_group(
+                serial_number, device_id, parent_sg_name,
+                fast_source_sg_name, no_slo_sg_name, extra_specs)
+            exception_message = (_("Unable to setup for multiattach because "
+                                   "of the following error: %(error_msg)s.")
+                                 % {'error_msg': sys.exc_info()[1]})
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+        return mv_dict
+
+    def return_volume_to_fast_managed_group(
+            self, serial_number, device_id, extra_specs):
+        """Return a volume to a fast managed group if slo is set.
+
+        On a detach on a multiattach volume, return the volume to its fast
+        managed group, if slo is set.
+        :param serial_number: the array serial number
+        :param device_id: the device id
+        :param extra_specs: the extra specifications
+        """
+        if extra_specs[utils.SLO]:
+            # Get a parent storage group of the volume
+            sg_list = self.rest.get_storage_group_list(
+                serial_number, params={
+                    'child': 'true', 'volumeId': device_id})
+            slo_wl_combo = '-No_SLO-'
+            for sg in sg_list.get('storageGroupId', []):
+                if slo_wl_combo in sg:
+                    no_slo_sg_name = sg
+                    masking_view_name = (
+                        self.rest.get_masking_views_from_storage_group(
+                            serial_number, no_slo_sg_name))[0]
+                    port_group_name = self.rest.get_element_from_masking_view(
+                        serial_number, masking_view_name, portgroup=True)
+                    short_pg_name = self.utils.get_pg_short_name(
+                        port_group_name)
+                    short_host_name = masking_view_name.lstrip('OS-').rstrip(
+                        '-%s-MV' % short_pg_name)[:-2]
+                    extra_specs[utils.PORTGROUPNAME] = short_pg_name
+                    fast_sg_name, _, _, _ = self.utils.get_child_sg_name(
+                        short_host_name, extra_specs)
+                    source_sg_details = self.rest.get_storage_group(
+                        serial_number, no_slo_sg_name)
+                    parent_sg_name = source_sg_details[
+                        'parent_storage_group'][0]
+                    self._return_volume_to_fast_managed_group(
+                        serial_number, device_id, parent_sg_name,
+                        fast_sg_name, no_slo_sg_name, extra_specs)
+                    break
+
+    def _return_volume_to_fast_managed_group(
+            self, serial_number, device_id, parent_sg_name,
+            fast_sg_name, no_slo_sg_name, extra_specs):
+        """Return a volume to its fast managed group.
+
+        On a detach, or failed attach, on a multiattach volume, return the
+        volume to its fast managed group, if required.
+        :param serial_number: the array serial number
+        :param device_id: the device id
+        :param parent_sg_name: the parent sg name
+        :param fast_sg_name: the fast managed sg name
+        :param no_slo_sg_name: the no slo sg name
+        :param extra_specs: the extra specifications
+        """
+        sg_list = self.rest.get_storage_groups_from_volume(
+            serial_number, device_id)
+        in_fast_sg = True if fast_sg_name in sg_list else False
+        if in_fast_sg is False:
+            disable_compr = self.utils.is_compression_disabled(extra_specs)
+            mv_dict = {utils.DISABLECOMPRESSION: disable_compr,
+                       utils.VOL_NAME: device_id}
+            # Get or create the fast child sg
+            self._get_or_create_storage_group(
+                serial_number, mv_dict, fast_sg_name, extra_specs)
+            # Add child sg to parent sg if required
+            self.add_child_sg_to_parent_sg(
+                serial_number, fast_sg_name, parent_sg_name, extra_specs)
+            # Add or move volume to fast sg
+            self._move_vol_from_default_sg(
+                serial_number, device_id, device_id,
+                no_slo_sg_name, fast_sg_name, extra_specs)
+        else:
+            LOG.debug("Volume already a member of the FAST managed storage "
+                      "group.")
+            # Check if non-fast storage group needs to be cleaned up
+            self._clean_up_child_storage_group(
+                serial_number, no_slo_sg_name, parent_sg_name, extra_specs)
+
+    def _clean_up_child_storage_group(self, serial_number, child_sg_name,
+                                      parent_sg_name, extra_specs):
+        """Clean up an empty child storage group, if required.
+
+        :param serial_number: the array serial number
+        :param child_sg_name: the child storage group
+        :param parent_sg_name: the parent storage group
+        :param extra_specs: extra specifications
+        """
+        child_sg = self.rest.get_storage_group(serial_number, child_sg_name)
+        if child_sg:
+            num_vol_in_sg = self.rest.get_num_vols_in_sg(
+                serial_number, child_sg_name)
+            if num_vol_in_sg == 0:
+                if self.rest.is_child_sg_in_parent_sg(
+                        serial_number, child_sg_name, parent_sg_name):
+                    self.rest.remove_child_sg_from_parent_sg(
+                        serial_number, child_sg_name,
+                        parent_sg_name, extra_specs)
+                self.rest.delete_storage_group(
+                    serial_number, child_sg_name)
 
     def attempt_ig_cleanup(self, connector, protocol, serial_number, force):
         """Attempt to cleanup an orphan initiator group
@@ -1717,6 +1769,7 @@ class VMAXMasking(object):
         :param connector: connector object
         :param protocol: iscsi or fc
         :param serial_number: extra the array serial number
+        :param force: flag to indicate if operation should be forced
         """
         protocol = self.utils.get_short_protocol_type(protocol)
         host_name = connector['host']

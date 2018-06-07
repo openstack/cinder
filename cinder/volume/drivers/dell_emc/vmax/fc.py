@@ -92,6 +92,7 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Support for revert to volume snapshot
         3.2.0 - Support for retyping replicated volumes (bp
                 vmax-retype-replicated-volumes)
+              - Support for multiattach volumes (bp vmax-allow-multi-attach)
     """
 
     VERSION = "3.2.0"
