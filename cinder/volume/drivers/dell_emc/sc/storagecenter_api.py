@@ -1710,7 +1710,14 @@ class SCApi(object):
                  {'lun': lun,
                   'wwn': wwns,
                   'map': itmap})
-        return lun, wwns, itmap
+
+        # Return the response in lowercase
+        wwns_lower = [w.lower() for w in wwns]
+        itmap_lower = dict()
+        for key in itmap.keys():
+            itmap_lower[key.lower()] = [v.lower() for v in itmap[key]]
+
+        return lun, wwns_lower, itmap_lower
 
     def _find_active_controller(self, scvolume):
         """Finds the controller on which the Dell volume is active.

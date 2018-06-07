@@ -683,15 +683,15 @@ class DellSCSanAPITestCase(test.TestCase):
                     u'readOnly': False,
                     u'lun': 1,
                     u'serverHba': {u'instanceId': u'64702.3282218607',
-                                   u'instanceName': u'21000024FF30441C',
+                                   u'instanceName': u'21000024ff30441c',
                                    u'objectType': u'ScServerHba'},
                     u'path': {u'instanceId': u'64702.64702.64703.27.73',
                               u'instanceName':
-                                  u'21000024FF30441C-5000D31000FCBE36',
+                                  u'21000024ff30441c-5000d31000fcbe36',
                               u'objectType': u'ScServerHbaPath'},
                     u'controllerPort':
                         {u'instanceId': u'64702.5764839588723736118.50',
-                         u'instanceName': u'5000D31000FCBE36',
+                         u'instanceName': u'5000d31000fcbe36',
                          u'objectType': u'ScControllerPort'},
                     u'instanceName': u'64702-7639',
                     u'transport': u'FibreChannel',
@@ -717,15 +717,15 @@ class DellSCSanAPITestCase(test.TestCase):
                     u'readOnly': False,
                     u'lun': 1,
                     u'serverHba': {u'instanceId': u'64702.3282218606',
-                                   u'instanceName': u'21000024FF30441D',
+                                   u'instanceName': u'21000024ff30441d',
                                    u'objectType': u'ScServerHba'},
                     u'path':
                     {u'instanceId': u'64702.64702.64703.27.78',
-                       u'instanceName': u'21000024FF30441D-5000D31000FCBE36',
+                       u'instanceName': u'21000024ff30441d-5000d31000fcbe36',
                        u'objectType': u'ScServerHbaPath'},
                     u'controllerPort':
                         {u'instanceId': u'64702.5764839588723736118.50',
-                         u'instanceName': u'5000D31000FCBE36',
+                         u'instanceName': u'5000d31000fcbe36',
                          u'objectType': u'ScControllerPort'},
                     u'instanceName': u'64702-7640',
                     u'transport': u'FibreChannel',
@@ -751,11 +751,11 @@ class DellSCSanAPITestCase(test.TestCase):
                     u'readOnly': False,
                     u'lun': 1,
                     u'serverHba': {u'instanceId': u'64702.3282218606',
-                                   u'instanceName': u'21000024FF30441D',
+                                   u'instanceName': u'21000024ff30441d',
                                    u'objectType': u'ScServerHba'},
                     u'path':
                         {u'instanceId': u'64702.64702.64703.28.76',
-                         u'instanceName': u'21000024FF30441D-5000D31000FCBE3E',
+                         u'instanceName': u'21000024ff30441d-5000D31000FCBE3E',
                          u'objectType': u'ScServerHbaPath'},
                     u'controllerPort': {u'instanceId':
                                         u'64702.5764839588723736126.60',
@@ -787,15 +787,15 @@ class DellSCSanAPITestCase(test.TestCase):
           u'readOnly': False,
           u'lun': 1,
           u'serverHba': {u'instanceId': u'64702.3282218607',
-                         u'instanceName': u'21000024FF30441C',
+                         u'instanceName': u'21000024ff30441c',
                          u'objectType': u'ScServerHba'},
           u'path': {u'instanceId': u'64702.64702.64703.27.73',
                     u'instanceName':
-                    u'21000024FF30441C-5000D31000FCBE36',
+                    u'21000024ff30441c-5000d31000fcbe36',
                     u'objectType': u'ScServerHbaPath'},
           u'controllerPort':
           {u'instanceId': u'64702.5764839588723736118.50',
-           u'instanceName': u'5000D31000FCBE36',
+           u'instanceName': u'5000d31000fcbe36',
            u'objectType': u'ScControllerPort'},
           u'instanceName': u'64702-7639',
           u'transport': u'FibreChannel',
@@ -821,15 +821,15 @@ class DellSCSanAPITestCase(test.TestCase):
           u'readOnly': False,
           u'lun': 1,
           u'serverHba': {u'instanceId': u'64702.3282218606',
-                         u'instanceName': u'21000024FF30441D',
+                         u'instanceName': u'21000024ff30441d',
                          u'objectType': u'ScServerHba'},
           u'path':
           {u'instanceId': u'64702.64702.64703.27.78',
-           u'instanceName': u'21000024FF30441D-5000D31000FCBE36',
+           u'instanceName': u'21000024ff30441d-5000d31000fcbe36',
            u'objectType': u'ScServerHbaPath'},
           u'controllerPort':
           {u'instanceId': u'64702.5764839588723736118.50',
-           u'instanceName': u'5000D31000FCBE36',
+           u'instanceName': u'5000d31000fcbe36',
            u'objectType': u'ScControllerPort'},
           u'instanceName': u'64702-7640',
           u'transport': u'FibreChannel',
@@ -855,11 +855,11 @@ class DellSCSanAPITestCase(test.TestCase):
              u'readOnly': False,
              u'lun': 2,
              u'serverHba': {u'instanceId': u'64702.3282218606',
-                            u'instanceName': u'21000024FF30441D',
+                            u'instanceName': u'21000024ff30441d',
                             u'objectType': u'ScServerHba'},
              u'path':
                         {u'instanceId': u'64702.64702.64703.28.76',
-                         u'instanceName': u'21000024FF30441D-5000D31000FCBE3E',
+                         u'instanceName': u'21000024ff30441d-5000D31000FCBE3E',
                          u'objectType': u'ScServerHbaPath'},
              u'controllerPort': {u'instanceId':
                                  u'64702.5764839588723736126.60',
@@ -1027,7 +1027,7 @@ class DellSCSanAPITestCase(test.TestCase):
     FC_HBAS = [{u'portWwnList': [],
                 u'iscsiIpAddress': u'0.0.0.0',
                 u'pathCount': 2,
-                u'name': u'21000024FF30441C',
+                u'name': u'21000024ff30441c',
                 u'connectivity': u'Up',
                 u'instanceId': u'64702.3282218607',
                 u'scName': u'Storage Center 64702',
@@ -1039,12 +1039,12 @@ class DellSCSanAPITestCase(test.TestCase):
                 u'remoteStorageCenter': False,
                 u'iscsiName': u'',
                 u'portType': u'FibreChannel',
-                u'instanceName': u'21000024FF30441C',
+                u'instanceName': u'21000024ff30441c',
                 u'objectType': u'ScServerHba'},
                {u'portWwnList': [],
                 u'iscsiIpAddress': u'0.0.0.0',
                 u'pathCount': 3,
-                u'name': u'21000024FF30441D',
+                u'name': u'21000024ff30441d',
                 u'connectivity': u'Partial',
                 u'instanceId': u'64702.3282218606',
                 u'scName': u'Storage Center 64702',
@@ -1056,13 +1056,13 @@ class DellSCSanAPITestCase(test.TestCase):
                 u'remoteStorageCenter': False,
                 u'iscsiName': u'',
                 u'portType': u'FibreChannel',
-                u'instanceName': u'21000024FF30441D',
+                u'instanceName': u'21000024ff30441d',
                 u'objectType': u'ScServerHba'}]
 
     FC_HBA = {u'portWwnList': [],
               u'iscsiIpAddress': u'0.0.0.0',
               u'pathCount': 3,
-              u'name': u'21000024FF30441D',
+              u'name': u'21000024ff30441d',
               u'connectivity': u'Partial',
               u'instanceId': u'64702.3282218606',
               u'scName': u'Storage Center 64702',
@@ -1074,7 +1074,7 @@ class DellSCSanAPITestCase(test.TestCase):
               u'remoteStorageCenter': False,
               u'iscsiName': u'',
               u'portType': u'FibreChannel',
-              u'instanceName': u'21000024FF30441D',
+              u'instanceName': u'21000024ff30441d',
               u'objectType': u'ScServerHba'}
 
     SVR_OS_S = [{u'allowsLunGaps': True,
@@ -1289,8 +1289,8 @@ class DellSCSanAPITestCase(test.TestCase):
                                           u'objectType': u'ScControllerPort'},
                      u'status': u'Up',
                      u'iscsiIpAddress': u'0.0.0.0',
-                     u'WWN': u'5000D31000FCBE36',
-                     u'name': u'5000D31000FCBE36',
+                     u'WWN': u'5000d31000fcbe36',
+                     u'name': u'5000d31000fcbe36',
                      u'parent':
                          {u'instanceId': u'64702.5764839588723736093.57',
                              u'instanceName': u'5000D31000FCBE1D',
@@ -1311,7 +1311,7 @@ class DellSCSanAPITestCase(test.TestCase):
                          {u'instanceId': u'64702.1.0',
                           u'instanceName': u'Domain 0',
                           u'objectType': u'ScControllerPortFaultDomain'},
-                     u'instanceName': u'5000D31000FCBE36',
+                     u'instanceName': u'5000d31000fcbe36',
                      u'childStatus': u'Up',
                      u'statusMessage': u'',
                      u'objectType': u'ScControllerPort'}
@@ -1323,8 +1323,8 @@ class DellSCSanAPITestCase(test.TestCase):
           u'objectType': u'ScControllerPort'},
          u'status': u'Up',
          u'iscsiIpAddress': u'0.0.0.0',
-         u'wWN': u'5000D31000FCBE36',
-         u'name': u'5000D31000FCBE36',
+         u'wWN': u'5000d31000fcbe36',
+         u'name': u'5000d31000fcbe36',
          u'parent':
          {u'instanceId': u'64702.5764839588723736093.57',
           u'instanceName': u'5000D31000FCBE1D',
@@ -1345,7 +1345,7 @@ class DellSCSanAPITestCase(test.TestCase):
          {u'instanceId': u'64702.1.0',
           u'instanceName': u'Domain 0',
           u'objectType': u'ScControllerPortFaultDomain'},
-         u'instanceName': u'5000D31000FCBE36',
+         u'instanceName': u'5000d31000fcbe36',
          u'childStatus': u'Up',
          u'statusMessage': u'',
          u'objectType': u'ScControllerPort'}
@@ -1603,10 +1603,10 @@ class DellSCSanAPITestCase(test.TestCase):
                                              u'objectType': u'StorageCenter'}}]
 
     IQN = 'iqn.2002-03.com.compellent:5000D31000000001'
-    WWN = u'21000024FF30441C'
+    WWN = u'21000024ff30441c'
 
-    WWNS = [u'21000024FF30441C',
-            u'21000024FF30441D']
+    WWNS = [u'21000024ff30441c',
+            u'21000024ff30441d']
 
     # Used to test finding no match in find_wwns
     WWNS_NO_MATCH = [u'21000024FF30451C',
@@ -3442,9 +3442,9 @@ class DellSCSanAPITestCase(test.TestCase):
 
         # The _find_controller_port is Mocked, so all mapping pairs
         # will have the same WWN for the ScControllerPort
-        itmapCompare = {u'21000024FF30441C': [u'5000D31000FCBE36'],
-                        u'21000024FF30441D':
-                        [u'5000D31000FCBE36', u'5000D31000FCBE36']}
+        itmapCompare = {u'21000024ff30441c': [u'5000d31000fcbe36'],
+                        u'21000024ff30441d':
+                        [u'5000d31000fcbe36', u'5000d31000fcbe36']}
         self.assertEqual(1, lun, 'Incorrect LUN')
         self.assertIsNotNone(wwns, 'WWNs is None')
         self.assertEqual(itmapCompare, itmap, 'WWN mapping incorrect')
@@ -3521,12 +3521,12 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_controller_port.called)
 
         self.assertEqual(1, lun, 'Incorrect LUN')
-        expected_wwn = ['5000D31000FCBE36', '5000D31000FCBE36',
-                        '5000D31000FCBE36']
+        expected_wwn = ['5000d31000fcbe36', '5000d31000fcbe36',
+                        '5000d31000fcbe36']
         self.assertEqual(expected_wwn, wwns, 'WWNs incorrect')
-        expected_itmap = {'21000024FF30441C': ['5000D31000FCBE36'],
-                          '21000024FF30441D': ['5000D31000FCBE36',
-                                               '5000D31000FCBE36']}
+        expected_itmap = {'21000024ff30441c': ['5000d31000fcbe36'],
+                          '21000024ff30441d': ['5000d31000fcbe36',
+                                               '5000d31000fcbe36']}
         self.assertEqual(expected_itmap, itmap, 'WWN mapping incorrect')
 
     @mock.patch.object(storagecenter_api.SCApi,
@@ -3580,9 +3580,9 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_controller_port.called)
         # The _find_controller_port is Mocked, so all mapping pairs
         # will have the same WWN for the ScControllerPort
-        itmapCompare = {u'21000024FF30441C': [u'5000D31000FCBE36'],
-                        u'21000024FF30441D':
-                        [u'5000D31000FCBE36', u'5000D31000FCBE36']}
+        itmapCompare = {u'21000024ff30441c': [u'5000d31000fcbe36'],
+                        u'21000024ff30441d':
+                        [u'5000d31000fcbe36', u'5000d31000fcbe36']}
         self.assertEqual(1, lun, 'Incorrect LUN')
         self.assertIsNotNone(wwns, 'WWNs is None')
         self.assertEqual(itmapCompare, itmap, 'WWN mapping incorrect')
