@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Dell EMC Unity: Fixes bug 1775518 to make sure driver succeed
+    to initialize even though the value of unity_io_ports and
+    unity_storage_pool_names are empty

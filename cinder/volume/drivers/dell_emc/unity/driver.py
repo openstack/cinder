@@ -31,11 +31,11 @@ CONF = cfg.CONF
 
 UNITY_OPTS = [
     cfg.ListOpt('unity_storage_pool_names',
-                default=None,
+                default=[],
                 help='A comma-separated list of storage pool names to be '
                 'used.'),
     cfg.ListOpt('unity_io_ports',
-                default=None,
+                default=[],
                 help='A comma-separated list of iSCSI or FC ports to be used. '
                      'Each port can be Unix-style glob expressions.'),
     cfg.BoolOpt('remove_empty_host',
@@ -63,9 +63,12 @@ class UnityDriver(driver.ManageableVD,
         2.0.2 - Support remove empty host
         2.0.3 - Cherry-pick the fix for 1773305 to return the targets which
                 connect to the logged-out initiators
+        2.0.4 - Fixes bug 1775518 to make sure driver succeed to initialize
+                even though the value of unity_io_ports and
+                unity_storage_pool_names are empty
     """
 
-    VERSION = '02.00.03'
+    VERSION = '02.00.04'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
