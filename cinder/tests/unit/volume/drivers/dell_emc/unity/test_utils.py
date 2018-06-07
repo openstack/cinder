@@ -258,3 +258,24 @@ class UnityUtilsTest(unittest.TestCase):
         ret = utils.get_backend_qos_specs(volume)
         expected = {'maxBWS': 2, 'id': 'max_2_mbps', 'maxIOPS': None}
         self.assertEqual(expected, ret)
+
+    def test_remove_empty(self):
+        option = mock.Mock()
+        value_list = [' pool1', 'pool2 ', '     pool3  ']
+        ret = utils.remove_empty(option, value_list)
+        expected = ['pool1', 'pool2', 'pool3']
+        self.assertListEqual(expected, ret)
+
+    def test_remove_empty_none(self):
+        option = mock.Mock()
+        value_list = None
+        ret = utils.remove_empty(option, value_list)
+        expected = None
+        self.assertEqual(expected, ret)
+
+    def test_remove_empty_empty_list(self):
+        option = mock.Mock()
+        value_list = []
+        ret = utils.remove_empty(option, value_list)
+        expected = None
+        self.assertEqual(expected, ret)
