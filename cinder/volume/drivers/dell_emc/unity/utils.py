@@ -265,12 +265,13 @@ def get_backend_qos_specs(volume):
 
 
 def remove_empty(option, value_list):
-    if value_list is not None:
+    if value_list:
         value_list = list(filter(None, map(str.strip, value_list)))
         if not value_list:
             raise exception.InvalidConfigurationValue(option=option,
                                                       value=value_list)
-    return value_list
+        return value_list
+    return None
 
 
 def match_any(full, patterns):

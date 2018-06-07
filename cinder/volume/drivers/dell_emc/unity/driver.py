@@ -30,11 +30,11 @@ CONF = cfg.CONF
 
 UNITY_OPTS = [
     cfg.ListOpt('unity_storage_pool_names',
-                default=None,
+                default=[],
                 help='A comma-separated list of storage pool names to be '
                 'used.'),
     cfg.ListOpt('unity_io_ports',
-                default=None,
+                default=[],
                 help='A comma-separated list of iSCSI or FC ports to be used. '
                      'Each port can be Unix-style glob expressions.')]
 
@@ -50,9 +50,12 @@ class UnityDriver(driver.ManageableVD,
     Version history:
         1.0.0 - Initial version (Ocata)
         1.0.1 - Fixed bug 170311: temp snapshot for backup was deleted twice
+        1.0.2 - Fixes bug 1775518 to make sure driver succeed to initialize
+                even though the value of unity_io_ports and
+                unity_storage_pool_names are empty
     """
 
-    VERSION = '01.00.01'
+    VERSION = '01.00.02'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
