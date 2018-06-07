@@ -163,8 +163,8 @@ class SchedulerManagerTestCase(test.TestCase):
         self.assertEqual(rs, result3)
 
     @ddt.data([{'key1': 'value1'}, {'key1': 'value2'}],
-              [objects.RequestSpec(volume_id='fake_volume1'),
-               objects.RequestSpec(volume_id='fake_volume2')])
+              [objects.RequestSpec(volume_id=fake.VOLUME_ID),
+               objects.RequestSpec(volume_id=fake.VOLUME2_ID)])
     def test_append_operation_decorator_with_list(self, rs_list):
 
         @manager.append_operation_type()
