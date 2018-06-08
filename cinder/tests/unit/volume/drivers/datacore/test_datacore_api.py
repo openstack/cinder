@@ -54,6 +54,9 @@ class DataCoreClientTestCase(test.TestCase):
         self.client = api.DataCoreClient('hostname', 'username', 'password', 1)
         self.client.API_RETRY_INTERVAL = 0
 
+        # Make sure failure logging does not get emitted during testing
+        self.mock_object(api, 'LOG')
+
     def _get_service_side_effect(self, service_name):
         self.assertIn(service_name,
                       [
