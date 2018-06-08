@@ -32,7 +32,7 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.4.2'
+VERSION = '1.6.1'
 LOG = logging.getLogger(__name__)
 BLOCK_SIZE_MB = 1
 
@@ -48,10 +48,11 @@ class NexentaNfsDriver(nfs.NfsDriver):
                 Added abandoned volumes and snapshots cleanup.
         1.3.0 - Failover support.
         1.4.0 - Migrate volume support and new NEF API calls.
-        1.4.1 - Revert to snapshot support.
-        1.4.2 - Get mountPoint from API to support old style mount points.
+        1.5.0 - Revert to snapshot support.
+        1.6.0 - Get mountPoint from API to support old style mount points.
                 Mount and umount shares on each operation to avoid mass
                 mounts on controller. Clean up mount folders on delete.
+        1.6.1 - Fixed volume from image creation.
     """
 
     driver_prefix = 'nexenta'
@@ -265,8 +266,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
         :param volume: a dictionary describing the volume to migrate
         :param host: a dictionary describing the host to migrate to
         """
-        LOG.debug('Enter: migrate_volume: id=%(id)s, host=%(host)s',
-                  {'id': volume['id'], 'host': host})
+        LOG.debug('Enter: migrate_volume: name=%(name)s, host=%(host)s',
+                  {'name': volume['name'], 'host': host})
 
         false_ret = (False, None)
 
@@ -317,7 +318,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         url = 'hpr/services/%s/start' % svc_name
         self.nef.post(url)
         provider_location = '/'.join([
-            capabilities['location_info'].strip(dst_driver_name).strip(':'),
+            capabilities['location_info'].lstrip('%s:' % dst_driver_name),
             volume['name']])
 
         params = (
@@ -355,11 +356,11 @@ class NexentaNfsDriver(nfs.NfsDriver):
 
     def initialize_connection(self, volume, connector):
         LOG.debug('Initialize volume connection for %s', volume['name'])
+        url = 'hpr/activate'
+        data = {'datasetName': '/'.join([self.share, volume['name']])}
+        self.nef.post(url, data)
         self._ensure_share_mounted('%s:/%s/%s' % (
             self.nas_host, self.share, volume['name']))
-        url = 'hpr/activate'
-        data = {'datasetName': volume['provider_location'].split(':/')[1]}
-        self.nef.post(url, data)
         data = {'export': volume['provider_location'], 'name': 'volume'}
         return {
             'driver_volume_type': self.driver_volume_type,
