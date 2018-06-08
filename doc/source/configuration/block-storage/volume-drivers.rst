@@ -58,6 +58,7 @@ Driver Configuration Reference
    drivers/nec-storage-m-series-driver
    drivers/netapp-volume-driver
    drivers/nimble-volume-driver
+   drivers/nexentaedge-driver
    drivers/nexentastor4-driver
    drivers/nexentastor5-driver
    drivers/prophetstor-dpl-driver
