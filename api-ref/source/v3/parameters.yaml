@@ -2133,6 +2133,7 @@ protected:
   in: body
   required: false
   type: boolean
+  min_version: 3.1
 provider:
   description: |
     The class that provides encryption support.
@@ -2767,6 +2768,7 @@ visibility_1:
   in: body
   required: false
   type: string
+  min_version: 3.1
 volume:
   description: |
     A ``volume`` object.
