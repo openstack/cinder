@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-05-31 14:50+0000\n"
+"POT-Creation-Date: 2018-06-09 01:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1436,10 +1436,6 @@ msgstr ""
 "возврата: %(ret.status)d, сообщение: %(ret.data)s."
 
 #, python-format
-msgid "Error Attaching volume %(vol)s."
-msgstr "Ошибка подключения тома %(vol)s."
-
-#, python-format
 msgid ""
 "Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
 "Project: %(project)s  Clone project: %(clone_proj)s Return code: "
@@ -1845,6 +1841,10 @@ msgstr "Тип ошибки отличается от TypeError."
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "Ошибка переименования тома %(vol)s: %(err)s."
+
+#, python-format
+msgid "Error response: %s"
+msgstr "Сообщение об ошибке: %s"
 
 msgid "Error retrieving volume size"
 msgstr "Ошибка получения размера тома"
@@ -4313,9 +4313,6 @@ msgstr "Тело запроса и URI не совпадают"
 msgid "Request body contains too many items"
 msgstr "Тело запроса содержит избыточное количество объектов"
 
-msgid "Request body contains too many items."
-msgstr "Тело запроса содержит слишком много элементов."
-
 #, python-format
 msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
 msgstr ""
@@ -5553,10 +5550,6 @@ msgid "Valid consumer of QoS specs are: %s"
 msgstr "Допустимый приемник спецификаций QoS: %s"
 
 #, python-format
-msgid "Valid control location are: %s"
-msgstr "Допустимое расположение управления: %s"
-
-#, python-format
 msgid "Validate volume connection failed (error: %(err)s)."
 msgstr "Сбой проверки соединения с томом (ошибка: %(err)s)."
 
@@ -6491,9 +6484,6 @@ msgstr "consistencygroup присвоена"
 msgid "consistencygroup changed"
 msgstr "consistencygroup изменена"
 
-msgid "control_location must be defined"
-msgstr "Должен быть определен параметр control_location"
-
 msgid "create_cloned_volume, Source Volume does not exist in ETERNUS."
 msgstr "create_cloned_volume, том источника не существует в ETERNUS."
 
@@ -6892,9 +6882,6 @@ msgstr "Параметр open_access_enabled не отключен."
 
 msgid "progress must be an integer percentage"
 msgstr "ход выполнения должен быть целым значением в процентах"
-
-msgid "provider must be defined"
-msgstr "должен быть определен провайдер"
 
 #, python-format
 msgid ""

@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-05-31 14:50+0000\n"
+"POT-Creation-Date: 2018-06-09 01:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1950,10 +1950,6 @@ msgstr ""
 "した。戻りコード: %(ret.status)d、メッセージ: %(ret.data)s。"
 
 #, python-format
-msgid "Error Attaching volume %(vol)s."
-msgstr " ボリューム %(vol)s の追加に失敗しました。"
-
-#, python-format
 msgid ""
 "Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
 "Project: %(project)s  Clone project: %(clone_proj)s Return code: "
@@ -2385,6 +2381,10 @@ msgstr "グループ %s を更新中にエラーが発生しました。"
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "ボリューム %(vol)s の名前を変更中にエラーが発生しました: %(err)s。"
+
+#, python-format
+msgid "Error response: %s"
+msgstr "エラー応答: %s"
 
 msgid "Error retrieving volume size"
 msgstr "ボリュームサイズの抽出でエラーが発生しました"
@@ -5398,9 +5398,6 @@ msgstr "要求本体と URI の不一致"
 msgid "Request body contains too many items"
 msgstr "要求本体に含まれる項目が多すぎます"
 
-msgid "Request body contains too many items."
-msgstr "要求本体に含まれる項目が多すぎます。"
-
 #, python-format
 msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
 msgstr ""
@@ -5535,12 +5532,6 @@ msgstr ""
 
 msgid "Retype requires migration but is not allowed."
 msgstr "タイプ変更するにはマイグレーションが必要ですが、許可されていません。"
-
-msgid ""
-"Rollback - Volume in another storage group besides default storage group."
-msgstr ""
-"ロールバック - デフォルトのストレージグループとは別のストレージグループのボ"
-"リューム。"
 
 #, python-format
 msgid ""
@@ -6933,6 +6924,10 @@ msgstr ""
 "v6.4 以上が実行されていることを確認してください"
 
 #, python-format
+msgid "Unsupported method: %s"
+msgstr "サポートされないメソッド: %s"
+
+#, python-format
 msgid "Unsupported volume format %s"
 msgstr "ボリューム形式はサポートされていません: %s "
 
@@ -7017,10 +7012,6 @@ msgstr "VV セット %s は存在しません。"
 #, python-format
 msgid "Valid consumer of QoS specs are: %s"
 msgstr "QoS 仕様の有効なコンシューマー: %s"
-
-#, python-format
-msgid "Valid control location are: %s"
-msgstr "有効な制御ロケーション: %s"
 
 #, python-format
 msgid "Validate volume connection failed (error: %(err)s)."
@@ -8136,9 +8127,6 @@ msgstr "割り当てられた整合性グループ"
 msgid "consistencygroup changed"
 msgstr "変更された整合性グループ"
 
-msgid "control_location must be defined"
-msgstr "control_location を定義する必要があります"
-
 msgid "coprhd_hostname is not set in cinder configuration"
 msgstr "cinder 設定で coprhd_hostname が設定されていません。"
 
@@ -8681,9 +8669,6 @@ msgstr "プール [%s] は書き込み不可です。"
 
 msgid "progress must be an integer percentage"
 msgstr "進行状況は整数のパーセンテージでなければなりません。"
-
-msgid "provider must be defined"
-msgstr "プロバイダーを定義する必要があります"
 
 #, python-format
 msgid ""

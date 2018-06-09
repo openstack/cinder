@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-05-31 14:50+0000\n"
+"POT-Creation-Date: 2018-06-09 01:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1341,10 +1341,6 @@ msgstr ""
 "%(ret.status)d。訊息：%(ret.data)s。"
 
 #, python-format
-msgid "Error Attaching volume %(vol)s."
-msgstr "連接磁區 %(vol)s 時發生錯誤。"
-
-#, python-format
 msgid ""
 "Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
 "Project: %(project)s  Clone project: %(clone_proj)s Return code: "
@@ -1730,6 +1726,10 @@ msgstr "此錯誤不是 TypeError。"
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "重命名磁區 %(vol)s 時發生錯誤：%(err)s。"
+
+#, python-format
+msgid "Error response: %s"
+msgstr "錯誤的回應：%s"
 
 msgid "Error retrieving volume size"
 msgstr "擷取磁區大小時發生錯誤"
@@ -4031,9 +4031,6 @@ msgstr "要求內文與 URI 不符"
 msgid "Request body contains too many items"
 msgstr "要求內文包含太多項目"
 
-msgid "Request body contains too many items."
-msgstr "要求內文包含太多項目。"
-
 #, python-format
 msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
 msgstr "傳送至 Datera 叢集的要求，傳回了不正確的狀態：%(status)s | %(reason)s"
@@ -5159,10 +5156,6 @@ msgid "Valid consumer of QoS specs are: %s"
 msgstr "服務品質規格的有效消費者為：%s"
 
 #, python-format
-msgid "Valid control location are: %s"
-msgstr "有效的控制項位置為：%s"
-
-#, python-format
 msgid "Validate volume connection failed (error: %(err)s)."
 msgstr "驗證磁區連線失敗（錯誤：%(err)s）。"
 
@@ -6045,9 +6038,6 @@ msgstr "已指派 consistencygroup"
 msgid "consistencygroup changed"
 msgstr "已變更 consistencygroup"
 
-msgid "control_location must be defined"
-msgstr "必須定義 control_location"
-
 msgid "create_cloned_volume, Source Volume does not exist in ETERNUS."
 msgstr "create_cloned_volume，ETERNUS 中不存在「來源磁區」。"
 
@@ -6425,9 +6415,6 @@ msgstr "未關閉 open_access_enabled。"
 
 msgid "progress must be an integer percentage"
 msgstr "進度必須是整數百分比"
-
-msgid "provider must be defined"
-msgstr "必須定義提供者"
 
 #, python-format
 msgid ""

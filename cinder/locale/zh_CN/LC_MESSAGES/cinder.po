@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-05-31 14:50+0000\n"
+"POT-Creation-Date: 2018-06-09 01:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1641,10 +1641,6 @@ msgstr ""
 "%(ret.status)d，消息：%(ret.data)s。"
 
 #, python-format
-msgid "Error Attaching volume %(vol)s."
-msgstr "连接卷 %(vol)s 时出错。"
-
-#, python-format
 msgid ""
 "Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
 "Project: %(project)s  Clone project: %(clone_proj)s Return code: "
@@ -2040,6 +2036,10 @@ msgstr "更新组 %s 时发生了错误。"
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "重命名卷 %(vol)s 时出错：%(err)s。"
+
+#, python-format
+msgid "Error response: %s"
+msgstr "错误响应：%s"
 
 msgid "Error retrieving volume size"
 msgstr "检索卷大小时出错"
@@ -4610,9 +4610,6 @@ msgstr "请求主体和URI不匹配"
 msgid "Request body contains too many items"
 msgstr "请求主体包含太多items"
 
-msgid "Request body contains too many items."
-msgstr "请求主体包含太多项。"
-
 #, python-format
 msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
 msgstr "针对 Datera 集群的请求返回了不正确的状态：%(status)s | %(reason)s"
@@ -4730,10 +4727,6 @@ msgstr "遇到可重试的 SolidFire 异常"
 
 msgid "Retype requires migration but is not allowed."
 msgstr "转型需要迁移，但是不允许。"
-
-msgid ""
-"Rollback - Volume in another storage group besides default storage group."
-msgstr "回滚 - 卷在缺省存储器组之外的另一个存储器组中。"
 
 #, python-format
 msgid ""
@@ -5942,10 +5935,6 @@ msgid "Valid consumer of QoS specs are: %s"
 msgstr "以下是 QoS 规范的有效使用者：%s"
 
 #, python-format
-msgid "Valid control location are: %s"
-msgstr "以下是有效控制位置：%s"
-
-#, python-format
 msgid "Validate volume connection failed (error: %(err)s)."
 msgstr "验证卷连接失败（错误：%(err)s）。"
 
@@ -6953,9 +6942,6 @@ msgstr "已分配 consistencygroup"
 msgid "consistencygroup changed"
 msgstr "已更改 consistencygroup"
 
-msgid "control_location must be defined"
-msgstr "必须定义 control_location"
-
 msgid "coprhd_hostname is not set in cinder configuration"
 msgstr "在cinder配置中coprhd_hostname未被设置"
 
@@ -7406,9 +7392,6 @@ msgstr "open_access_enabled 未关闭。"
 
 msgid "progress must be an integer percentage"
 msgstr "进度必须为整数百分比"
-
-msgid "provider must be defined"
-msgstr "必须定义提供程序"
 
 #, python-format
 msgid ""

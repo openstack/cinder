@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-05-31 14:50+0000\n"
+"POT-Creation-Date: 2018-06-09 01:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1146,10 +1146,6 @@ msgstr ""
 "Návratový kód: %(ret.status)d, zpráva: %(ret.data)s."
 
 #, python-format
-msgid "Error Attaching volume %(vol)s."
-msgstr "Chyba při připojování svazku %(vol)s."
-
-#, python-format
 msgid ""
 "Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
 "Project: %(project)s  Clone project: %(clone_proj)s Return code: "
@@ -1533,6 +1529,10 @@ msgstr "Chyba není chyba typu."
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "Chyba při přejmenování svazku %(vol)s: %(err)s."
+
+#, python-format
+msgid "Error response: %s"
+msgstr "Chybová odpověď: %s"
 
 msgid "Error retrieving volume size"
 msgstr "Chyba při získávání velikosti svazku"
@@ -3509,9 +3509,6 @@ msgstr "Neshoda s tělem požadavku a URI"
 msgid "Request body contains too many items"
 msgstr "Tělo požadavku obsahuje příliš mnoho položek"
 
-msgid "Request body contains too many items."
-msgstr "Tělo požadavku obsahuje příliš mnoho položek."
-
 #, python-format
 msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
 msgstr ""
@@ -4420,10 +4417,6 @@ msgid "Valid consumer of QoS specs are: %s"
 msgstr "Platní spotřebitelé specifikace QoS jsou: %s"
 
 #, python-format
-msgid "Valid control location are: %s"
-msgstr "Platná ovládací umístění jsou: %s"
-
-#, python-format
 msgid "Validate volume connection failed (error: %(err)s)."
 msgstr "Ověření připojení svazku selhalo (chyba: %(err)s)."
 
@@ -5022,9 +5015,6 @@ msgstr "skupina jednotnosti přidělena"
 msgid "consistencygroup changed"
 msgstr "skupina jednotnosti změněna"
 
-msgid "control_location must be defined"
-msgstr "ovládací umístění musí být zadáno"
-
 #, python-format
 msgid "create_copy: Source vdisk %(src)s (%(src_id)s) does not exist."
 msgstr ""
@@ -5288,9 +5278,6 @@ msgstr "open_access_enabled není vypnuto."
 
 msgid "progress must be an integer percentage"
 msgstr "postup musí být procento vyjádřené celým číslem"
-
-msgid "provider must be defined"
-msgstr "poskytovatel musí být zadán"
 
 #, python-format
 msgid ""

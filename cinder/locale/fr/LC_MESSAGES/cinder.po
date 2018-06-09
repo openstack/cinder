@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-05-31 14:50+0000\n"
+"POT-Creation-Date: 2018-06-09 01:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1504,10 +1504,6 @@ msgstr ""
 "retour : %(ret.status)d Message : %(ret.data)s ."
 
 #, python-format
-msgid "Error Attaching volume %(vol)s."
-msgstr "Erreur lors du rattachement du volume %(vol)s."
-
-#, python-format
 msgid ""
 "Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
 "Project: %(project)s  Clone project: %(clone_proj)s Return code: "
@@ -1925,6 +1921,10 @@ msgstr "Erreur autre qu'une erreur TypeError."
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr ""
 "Erreur lors de l'attribution d'un nouveau nom au volume %(vol)s : %(err)s."
+
+#, python-format
+msgid "Error response: %s"
+msgstr "Réponse d'erreur : %s"
 
 msgid "Error retrieving volume size"
 msgstr "Erreur lors de l'obtention de la taille du volume"
@@ -4512,9 +4512,6 @@ msgstr "Corps et URI de demande discordants"
 msgid "Request body contains too many items"
 msgstr "Le corps de la demande contient un trop grand nombre d'éléments"
 
-msgid "Request body contains too many items."
-msgstr "Le corps de demande contient trop d'éléments."
-
 #, python-format
 msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
 msgstr ""
@@ -5804,10 +5801,6 @@ msgid "Valid consumer of QoS specs are: %s"
 msgstr "Client valide de spécifications QoS : %s"
 
 #, python-format
-msgid "Valid control location are: %s"
-msgstr "Emplacement de contrôle valide : %s"
-
-#, python-format
 msgid "Validate volume connection failed (error: %(err)s)."
 msgstr "La validation de la connexion de volume a échoué (erreur : %(err)s)."
 
@@ -6773,9 +6766,6 @@ msgstr "groupe de cohérence (consistencygroup) affecté"
 msgid "consistencygroup changed"
 msgstr "groupe de cohérence (consistencygroup) modifié"
 
-msgid "control_location must be defined"
-msgstr "control_location doit être défini"
-
 msgid "create_cloned_volume, Source Volume does not exist in ETERNUS."
 msgstr "create_cloned_volume,  le volume source n'existe pas dans ETERNUS."
 
@@ -7180,9 +7170,6 @@ msgstr "open_access_enabled n'est pas désactivé."
 
 msgid "progress must be an integer percentage"
 msgstr "la progression doit être un pourcentage d'entier"
-
-msgid "provider must be defined"
-msgstr "fournisseur doit être défini"
 
 #, python-format
 msgid ""
