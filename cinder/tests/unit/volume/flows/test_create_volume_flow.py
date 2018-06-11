@@ -1030,7 +1030,9 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                                    image_meta,
                                    self.mock_image_service)
 
-        self.assertTrue(mock_check_space.called)
+        # Make sure check_available_space is not called because the driver
+        # will clone things for us.
+        self.assertFalse(mock_check_space.called)
 
         # Make sure clone_image is always called even if the cache is enabled
         self.assertTrue(self.mock_driver.clone_image.called)
