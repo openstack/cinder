@@ -826,7 +826,15 @@ class ZFSSAApi(object):
                project + '/luns/' + lun + '/snapshots/' + snapshot)
 
         ret = self.rclient.get(svc)
-        if ret.status != restclient.Status.OK:
+        if ret.status == restclient.Status.NOT_FOUND:
+            LOG.warning('Snapshot %(snapshot)s of volume %(volume)s not '
+                        'found in project %(project)s, pool %(pool)s.',
+                        {'snapshot': snapshot,
+                         'project': project,
+                         'pool': pool,
+                         'volume': lun})
+            raise exception.SnapshotNotFound(snapshot_id=snapshot)
+        elif ret.status != restclient.Status.OK:
             exception_msg = ('Error Getting '
                              'Snapshot: %(snapshot)s of '
                              'Volume: %(lun)s in '
@@ -841,7 +849,7 @@ class ZFSSAApi(object):
                               'ret.status': ret.status,
                               'ret.data': ret.data})
             LOG.error(exception_msg)
-            raise exception.SnapshotNotFound(snapshot_id=snapshot)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
 
         val = json.loads(ret.data)['snapshot']
         ret = {
@@ -1021,32 +1029,6 @@ class ZFSSAApi(object):
                                 'ret.data': ret.data})
             LOG.error(exception_msg)
             raise exception.VolumeBackendAPIException(data=exception_msg)
-
-    def num_clones(self, pool, project, lun, snapshot):
-        """Checks whether snapshot has clones or not."""
-        svc = '/api/storage/v1/pools/' + pool + '/projects/' + \
-            project + '/luns/' + lun + '/snapshots/' + snapshot
-
-        ret = self.rclient.get(svc)
-        if ret.status != restclient.Status.OK:
-            exception_msg = (_('Error Getting '
-                               'Snapshot: %(snapshot)s on '
-                               'Volume: %(lun)s to '
-                               'Pool: %(pool)s '
-                               'Project: %(project)s  '
-                               'Return code: %(ret.status)d '
-                               'Message: %(ret.data)s.')
-                             % {'snapshot': snapshot,
-                                'lun': lun,
-                                'pool': pool,
-                                'project': project,
-                                'ret.status': ret.status,
-                                'ret.data': ret.data})
-            LOG.error(exception_msg)
-            raise exception.VolumeBackendAPIException(data=exception_msg)
-
-        val = json.loads(ret.data)
-        return val['snapshot']['numclones']
 
     def get_initiator_initiatorgroup(self, initiator):
         """Returns the initiator group of the initiator."""

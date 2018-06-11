@@ -375,11 +375,17 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         """Deletes a snapshot."""
         LOG.debug('zfssa.delete_snapshot: snapshot=%s', snapshot['name'])
         lcfg = self.configuration
-        numclones = self.zfssa.num_clones(lcfg.zfssa_pool,
-                                          lcfg.zfssa_project,
-                                          snapshot['volume_name'],
-                                          snapshot['name'])
-        if numclones > 0:
+        try:
+            snap2del = self.zfssa.get_lun_snapshot(lcfg.zfssa_pool,
+                                                   lcfg.zfssa_project,
+                                                   snapshot['volume_name'],
+                                                   snapshot['name'])
+        except exception.SnapshotNotFound:
+            # If snapshot creation failed, it may exist in the database
+            # but not on the ZFSSA. Exit silently in this case.
+            return
+
+        if snap2del['numclones'] > 0:
             LOG.error('Snapshot %s: has clones', snapshot['name'])
             raise exception.SnapshotIsBusy(snapshot_name=snapshot['name'])
 
@@ -1048,10 +1054,11 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         if (cache['snapshot'].startswith('image-') and
                 cache['share'].startswith('os-cache-vol')):
             try:
-                numclones = self.zfssa.num_clones(lcfg.zfssa_pool,
-                                                  lcfg.zfssa_cache_project,
-                                                  cache['share'],
-                                                  cache['snapshot'])
+                snap = self.zfssa.get_lun_snapshot(lcfg.zfssa_pool,
+                                                   lcfg.zfssa_cache_project,
+                                                   cache['share'],
+                                                   cache['snapshot'])
+                numclones = snap['numclones']
             except Exception:
                 LOG.debug('Cache volume is already deleted.')
                 return
