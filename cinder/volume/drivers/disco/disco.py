@@ -125,6 +125,9 @@ class DiscoDriver(driver.VolumeDriver):
     VERSION = "1.1"
     CI_WIKI_NAME = "ITRI_DISCO_CI"
 
+    # TODO(jsbryant) Remove driver in Stein if CI is not fixed
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         """Init Disco driver : get configuration, create client."""
         super(DiscoDriver, self).__init__(*args, **kwargs)
