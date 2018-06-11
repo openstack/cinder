@@ -142,9 +142,10 @@ class Lun(object):
         2.1.0 - Added support for specify pool and lss, also improve the code.
         2.1.1 - Added support for replication consistency group.
         2.1.2 - Added support for cloning volume asynchronously.
+        2.3.0 - Added support for reporting backend state.
     """
 
-    VERSION = "2.1.2"
+    VERSION = "2.3.0"
 
     class FakeLun(object):
 
@@ -462,36 +463,50 @@ class DS8KProxy(proxy.IBMStorageProxy):
     def _update_stats(self):
         if self._helper:
             storage_pools = self._helper.get_pools()
-            if not len(storage_pools):
-                msg = _('No pools found - make sure san_clustername '
-                        'is defined in the config file and that the '
-                        'pools exist on the storage.')
-                LOG.error(msg)
-                raise exception.CinderException(message=msg)
-            self._helper.update_storage_pools(storage_pools)
         else:
             raise exception.VolumeDriverException(
                 message=(_('Backend %s is not initialized.')
                          % self.configuration.volume_backend_name))
 
         stats = {
-            "volume_backend_name": self.configuration.volume_backend_name,
+            "volume_backend_name":
+                self.configuration.volume_backend_name,
             "serial_number": self._helper.backend['storage_unit'],
-            "extent_pools": self._helper.backend['pools_str'],
-            "vendor_name": 'IBM',
-            "driver_version": self.full_version,
-            "storage_protocol": self._helper.get_connection_type(),
-            "total_capacity_gb": self._b2gb(
-                sum(p['cap'] for p in storage_pools.values())),
-            "free_capacity_gb": self._b2gb(
-                sum(p['capavail'] for p in storage_pools.values())),
-            "reserved_percentage": self.configuration.reserved_percentage,
+            "reserved_percentage":
+                self.configuration.reserved_percentage,
             "consistent_group_snapshot_enabled": True,
             "group_replication_enabled": True,
             "consistent_group_replication_enabled": True,
-            "multiattach": False
+            "multiattach": False,
+            "vendor_name": 'IBM',
+            "driver_version": self.full_version,
+            "storage_protocol": self._helper.get_connection_type(),
+            "extent_pools": 'None',
+            "total_capacity_gb": 0,
+            "free_capacity_gb": 0,
+            "backend_state": 'up'
         }
-
+        if not len(storage_pools):
+            msg = _('No pools found - make sure san_clustername '
+                    'is defined in the config file and that the '
+                    'pools exist on the storage.')
+            LOG.error(msg)
+            stats.update({
+                "extent_pools": 'None',
+                "total_capacity_gb": 0,
+                "free_capacity_gb": 0,
+                "backend_state": 'down'
+            })
+        else:
+            self._helper.update_storage_pools(storage_pools)
+            stats.update({
+                "extent_pools": ','.join(p for p in storage_pools.keys()),
+                "total_capacity_gb": self._b2gb(
+                    sum(p['cap'] for p in storage_pools.values())),
+                "free_capacity_gb": self._b2gb(
+                    sum(p['capavail'] for p in storage_pools.values())),
+                "backend_state": 'up'
+            })
         if self._replication_enabled:
             stats['replication_enabled'] = self._replication_enabled
 
