@@ -662,7 +662,7 @@ class DS8KCommonHelper(object):
                 'target_lun': int(lun_id, 16),
                 'target_wwn': target_ports,
                 'initiator_target_map': {initiator: target_ports for
-                                         initiator in host_wwpn_set}
+                                         initiator in connector['wwpns']}
             }
         }
 
