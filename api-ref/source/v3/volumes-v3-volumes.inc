@@ -115,7 +115,7 @@ Response Parameters
    - user_id: user_id
    - os-vol-tenant-attr:tenant_id: os-vol-tenant-attr:tenant_id
    - os-vol-mig-status-attr:migstat: os-vol-mig-status-attr:migstat
-   - metadata: metadata
+   - metadata: metadata_1
    - status: status_3
    - volume_image_metadata: volume_image_metadata
    - description: description_9
@@ -202,7 +202,7 @@ Request
    - name: name_13
    - imageRef: imageRef
    - volume_type: volume_type_2
-   - metadata: metadata
+   - metadata: metadata_10
    - consistencygroup_id: consistencygroup_id
    - OS-SCH-HNT:scheduler_hints: OS-SCH-HNT:scheduler_hints
 
@@ -230,7 +230,7 @@ Response Parameters
    - id: id_5
    - size: size
    - user_id: user_id
-   - metadata: metadata
+   - metadata: metadata_1
    - status: status_3
    - description: description_9
    - multiattach: multiattach_resp
@@ -354,7 +354,7 @@ Response Parameters
    - user_id: user_id
    - os-vol-tenant-attr:tenant_id: os-vol-tenant-attr:tenant_id
    - os-vol-mig-status-attr:migstat: os-vol-mig-status-attr:migstat
-   - metadata: metadata
+   - metadata: metadata_1
    - status: status_3
    - volume_image_metadata: volume_image_metadata
    - description: description_9
@@ -405,7 +405,7 @@ Request
    - volume: volume
    - description: description_5
    - name: name_8
-   - metadata: metadata
+   - metadata: metadata_2
 
 Request Example
 ---------------
@@ -431,7 +431,7 @@ Response Parameters
    - id: id_5
    - size: size
    - user_id: user_id
-   - metadata: metadata
+   - metadata: metadata_1
    - status: status_3
    - description: description_9
    - multiattach: multiattach_resp
