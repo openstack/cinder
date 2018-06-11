@@ -1142,7 +1142,8 @@ uncompressed.
 
 .. note::
 
-   This feature is only applicable for All Flash arrays, 250F, 450F or 850F.
+   This feature is applicable for All Flash 250F, 450F, 850F and
+   Powermax 2000, 8000 arrays.
 
 .. note::
 
