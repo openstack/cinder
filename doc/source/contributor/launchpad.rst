@@ -2,7 +2,7 @@ Project hosting with Launchpad
 ==============================
 
 `Launchpad`_ hosts the Cinder project. The Cinder project homepage on Launchpad is
-http://launchpad.net/cinder.
+https://launchpad.net/cinder.
 
 Launchpad credentials
 ---------------------

@@ -3,7 +3,7 @@ Threading model
 
 All OpenStack services use *green thread* model of threading, implemented
 through using the Python `eventlet <http://eventlet.net/>`_ and
-`greenlet <http://packages.python.org/greenlet/>`_ libraries.
+`greenlet <http://greenlet.readthedocs.io/en/latest/>`_ libraries.
 
 Green threads use a cooperative model of threading: thread context
 switches can only occur when specific eventlet or greenlet library calls are

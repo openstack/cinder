@@ -161,7 +161,7 @@ layer to compensate for different versions of objects passed over RPC. This is
 explained more in `RPC payload changes (oslo.versionedobjects)`_ section.
 
 More details about that can be found in the `online-schema-upgrades spec
-<http://specs.openstack.org/openstack/cinder-specs/specs/mitaka/online-schema-upgrades.html>`_.
+<https://specs.openstack.org/openstack/cinder-specs/specs/mitaka/online-schema-upgrades.html>`_.
 
 
 RPC API changes

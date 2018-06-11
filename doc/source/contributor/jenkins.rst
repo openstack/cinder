@@ -33,7 +33,7 @@ Jenkins performs tasks such as:
     it to http://tarballs.openstack.org/cinder
 
 .. _Jenkins: http://jenkins-ci.org
-.. _Launchpad: http://launchpad.net
+.. _Launchpad: https://launchpad.net
 .. _gate-cinder-pep8: https://jenkins.openstack.org/job/gate-cinder-pep8
 .. _gate-cinder-pylint: https://jenkins.openstack.org/job/gate-cinder-pylint
 .. _gate-cinder-python27: https://jenkins.openstack.org/job/gate-cinder-python27
