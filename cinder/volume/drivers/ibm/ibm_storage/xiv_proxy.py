@@ -57,7 +57,7 @@ SYNC = 'sync'
 ASYNC = 'async'
 SYNC_TIMEOUT = 300
 SYNCHED_STATES = ['synchronized', 'rpo ok']
-PYXCLI_VERSION = '1.1.5'
+PYXCLI_VERSION = '1.1.6'
 
 LOG = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ DELETE_VOLUME_BASE_ERROR = ("Unable to delete volume '%(volume)s': "
 MANAGE_VOLUME_BASE_ERROR = _("Unable to manage the volume '%(volume)s': "
                              "%(error)s.")
 
-INCOMPATIBLE_PYXCLI = _('Incompatible pyxcli found. Required: %(required)s '
+INCOMPATIBLE_PYXCLI = _('Incompatible pyxcli found. Mininum: %(required)s '
                         'Found: %(found)s')
 
 
@@ -104,8 +104,8 @@ class XIVProxy(proxy.IBMStorageProxy):
     """Proxy between the Cinder Volume and Spectrum Accelerate Storage.
 
     Supports IBM XIV, Spectrum Accelerate, A9000, A9000R
-    Version: 2.1.0
-    Required pyxcli version: 1.1.5
+    Version: 2.3.0
+    Required pyxcli version: 1.1.6
 
     .. code:: text
 
@@ -113,6 +113,7 @@ class XIVProxy(proxy.IBMStorageProxy):
       2.1.0 - Support Consistency groups through Generic volume groups
             - Support XIV/A9000 Volume independent QoS
             - Support groups replication
+      2.3.0 - Support Report backend state
 
     """
 
@@ -140,7 +141,7 @@ class XIVProxy(proxy.IBMStorageProxy):
     def setup(self, context):
         msg = ''
         if pyxcli:
-            if pyxcli.version != PYXCLI_VERSION:
+            if pyxcli.version < PYXCLI_VERSION:
                 msg = (INCOMPATIBLE_PYXCLI %
                        {'required': PYXCLI_VERSION,
                         'found': pyxcli.version
@@ -184,7 +185,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         if remote_id:
             self.ibm_storage_remote_cli = self._init_xcli(remote_id)
         self._event_service_start()
-        self._update_stats()
+        self._get_pool()
         LOG.info("IBM Storage %(common_ver)s "
                  "xiv_proxy %(proxy_ver)s. ",
                  {'common_ver': self.full_version,
@@ -1569,6 +1570,8 @@ class XIVProxy(proxy.IBMStorageProxy):
         if self.driver:
             backend_name = self.driver.configuration.safe_get(
                 'volume_backend_name')
+            self.meta['stat']['reserved_percentage'] = (
+                self.driver.configuration.safe_get('reserved_percentage'))
         self.meta['stat']["volume_backend_name"] = (
             backend_name or '%s_%s_%s_%s' % (
                 strings.XIV_BACKEND_PREFIX,
@@ -1591,33 +1594,7 @@ class XIVProxy(proxy.IBMStorageProxy):
               'pool': self.storage_info[storage.FLAG_KEYS['storage_pool']]
               }))
 
-        pools = self._call_xiv_xcli(
-            "pool_list",
-            pool=self.storage_info[storage.FLAG_KEYS['storage_pool']]).as_list
-        if len(pools) != 1:
-            LOG.error(
-                "_update_stats: Pool %(pool)s not available on storage",
-                {'pool': self.storage_info[storage.FLAG_KEYS['storage_pool']]})
-            return
-        pool = pools[0]
-
-        # handle different fields in pool_list between Gen3 and BR
-        soft_size = pool.get('soft_size')
-        if soft_size is None:
-            soft_size = pool.get('size')
-            hard_size = 0
-        else:
-            hard_size = pool.hard_size
-        self.meta['stat']['total_capacity_gb'] = int(soft_size)
-        self.meta['stat']['free_capacity_gb'] = int(
-            pool.get('empty_space_soft', pool.get('empty_space')))
-        self.meta['stat']['reserved_percentage'] = (
-            self.driver.configuration.safe_get('reserved_percentage'))
-        self.meta['stat']['consistent_group_snapshot_enabled'] = True
-
-        # thin/thick provision
-        self.meta['stat']['thin_provision'] = ('True' if soft_size > hard_size
-                                               else 'False')
+        self._retrieve_pool_stats(self.meta)
 
         if self.targets:
             self.meta['stat']['replication_enabled'] = True
@@ -1631,6 +1608,46 @@ class XIVProxy(proxy.IBMStorageProxy):
 
         LOG.debug("Exiting XIVProxy::_update_stats: %(stat)s",
                   {'stat': self.meta['stat']})
+
+    @proxy._trace_time
+    def _get_pool(self):
+        pools = self._call_xiv_xcli(
+            "pool_list", pool=self.storage_info[
+                storage.FLAG_KEYS['storage_pool']]).as_list
+        if not pools:
+            msg = (_(
+                "Pool %(pool)s not available on storage") %
+                {'pool': self.storage_info[storage.FLAG_KEYS['storage_pool']]})
+            LOG.error(msg)
+            raise self.meta['exception'].VolumeBackendAPIException(data=msg)
+        return pools
+
+    def _retrieve_pool_stats(self, data):
+        try:
+            pools = self._get_pool()
+            pool = pools[0]
+            data['stat']['pool_name'] = pool.get('name')
+            # handle different fields in pool_list between Gen3 and BR
+            soft_size = pool.get('soft_size')
+            if soft_size is None:
+                soft_size = pool.get('size')
+                hard_size = 0
+            else:
+                hard_size = pool.hard_size
+            data['stat']['total_capacity_gb'] = int(soft_size)
+            data['stat']['free_capacity_gb'] = int(
+                pool.get('empty_space_soft', pool.get('empty_space')))
+            # thin/thick provision
+            data['stat']['thin_provisioning_support'] = (
+                'True' if soft_size > hard_size else 'False')
+            data['stat']['backend_state'] = 'up'
+        except Exception as e:
+            data['stat']['total_capacity_gb'] = 0
+            data['stat']['free_capacity_gb'] = 0
+            data['stat']['thin_provision'] = False
+            data['stat']['backend_state'] = 'down'
+            error = self._get_code_and_status_or_message(e)
+            LOG.error(error)
 
     @proxy._trace_time
     def create_cloned_volume(self, volume, src_vref):
