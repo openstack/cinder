@@ -868,7 +868,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         tmp_image = tmp_images.get(context, image_id)
         if tmp_image:
             LOG.debug("Using temporary image.")
-            with open(tmp_image) as read_handle:
+            with open(tmp_image, 'rb') as read_handle:
                 image_transfer.download_file(read_handle,
                                              host_ip,
                                              port,
