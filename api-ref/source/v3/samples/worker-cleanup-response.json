@@ -1,7 +1,7 @@
 {
     "cleaning": [
         {
-            "id" "1",
+            "id": 1,
             "host": "host1@lvmdriver",
             "binary": "cinder-volume",
             "cluster_name": "test"
