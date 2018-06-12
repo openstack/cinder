@@ -1937,6 +1937,12 @@ os-backup-project-attr:project_id:
   required: true
   type: string
   min_version: 3.18
+os-begin_detaching:
+  description: |
+    The ``os-begin_detaching`` action.
+  in: body
+  required: true
+  type: object
 os-detach:
   description: |
     The ``os-detach`` action.
@@ -1973,6 +1979,18 @@ os-force_detach:
   in: body
   required: true
   type: object
+os-initialize_connection:
+  description: |
+    The ``os-initialize_connection`` action.
+  in: body
+  required: true
+  type: object
+os-reserve:
+  description: |
+    The ``os-reserve`` action.
+  in: body
+  required: true
+  type: object
 os-reset_status:
   description: |
     The ``os-reset_status`` action.
@@ -1982,6 +2000,12 @@ os-reset_status:
 os-retype:
   description: |
     The ``os-retype`` action.
+  in: body
+  required: true
+  type: object
+os-roll_detaching:
+  description: |
+    The ``os-roll_detaching`` action.
   in: body
   required: true
   type: object
@@ -2009,10 +2033,22 @@ os-show_image_metadata:
   in: body
   require: true
   type: object
+os-terminate_connection:
+  description: |
+    The ``os-terminate_connection`` action.
+  in: body
+  require: true
+  type: object
 os-unmanage:
   description: |
     The ``os-unmanage`` action. This action removes
     the specified volume from Cinder management.
+  in: body
+  required: true
+  type: object
+os-unreserve:
+  description: |
+    The ``os-unreserve`` action.
   in: body
   required: true
   type: object
