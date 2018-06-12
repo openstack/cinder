@@ -176,7 +176,7 @@ Request
    - project_id: project_id_path
    - volume_id: volume_id_path
    - os-set_image_metadata: os-set_image_metadata
-   - metadata: metadata
+   - metadata: metadata_5
 
 Request Example
 ---------------
@@ -254,7 +254,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_8
+   - metadata: metadata_5
 
 Response Example
 ----------------
