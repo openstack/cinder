@@ -514,3 +514,11 @@ of the Huawei volume driver.
    The ``Initiator Name``, ``Initiator TargetIP``, and
    ``Initiator TargetPortGroup`` are ``ISCSI`` parameters and therefore not
    applicable to ``FC``.
+
+The following are the Huawei driver specific options that may be set in
+`cinder.conf`:
+
+.. config-table::
+   :config-target: Huawei
+
+   cinder.volume.drivers.huawei.huawei_driver

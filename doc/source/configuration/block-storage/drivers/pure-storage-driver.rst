@@ -317,3 +317,14 @@ Metrics reported include, but are not limited to:
 In conjunction with QOS extra-specs, you can create very complex algorithms to
 manage volume placement. More detailed documentation on this is available in
 other external documentation.
+
+Configuration Options
+~~~~~~~~~~~~~~~~~~~~~
+
+The following list all Pure driver specific configuration options that can be
+set in `cinder.conf`:
+
+.. config-table::
+   :config-target: Pure
+
+   cinder.volume.drivers.pure
