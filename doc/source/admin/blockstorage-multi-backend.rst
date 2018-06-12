@@ -96,6 +96,46 @@ provides more information. In addition, this example presents a
    volume_driver = cinder.volume.drivers.emc.emc_smis_fc.EMCSMISFCDriver
    volume_backend_name = emcfc
 
+Configure shared volume driver backends
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When configuring multiple volume backends, common configuration
+parameters can be shared using the `[backend_default]` section. As
+an example:
+
+.. code-block:: ini
+
+   [DEFAULT]
+   enabled_backends=backend1,backend2,backend3
+
+   [backend_default]
+   image_volume_cache_enabled = True
+   volume_clear = none
+   iscsi_helper = tgtadm
+   volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
+
+   [backend1]
+   volume_group = cinder-volume-1
+   image_volume_cache_enabled = False
+
+   [backend2]
+   volume_group = cinder-volume-2
+
+   [backend3]
+   volume_group = cinder-volume-3
+
+In this configuration, ``backend2`` and ``backend3`` have the same
+``image_volume_cache_enabled`` as it is defined in the ``backend_default``
+section. In other words, ``backend2`` and ``backend3`` have enabled
+the image cache features. ``image_volume_cache_enabled`` in ``backend1``
+is False, that means any overwritten configuration in a volume backend
+will ignore the original value in ``backend_default``.
+
+.. note::
+
+   The ``backend_default`` section should be configured according to
+   your cloud environment or your backend driver information.
+
 Configure Block Storage scheduler multi back end
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
