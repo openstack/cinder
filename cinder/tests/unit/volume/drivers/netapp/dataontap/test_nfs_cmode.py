@@ -38,6 +38,7 @@ from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap import nfs_cmode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
+from cinder.volume.drivers.netapp.dataontap.utils import capabilities
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
@@ -68,6 +69,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                 self.driver.perf_library = mock.Mock()
                 self.driver.ssc_library = mock.Mock()
                 self.driver.zapi_client = mock.Mock()
+                self.driver.using_cluster_credentials = True
 
     def get_config_cmode(self):
         config = na_fakes.create_configuration_cmode()
@@ -111,16 +113,24 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
     @mock.patch.object(perf_cmode, 'PerformanceCmodeLibrary', mock.Mock())
     @mock.patch.object(client_cmode, 'Client', mock.Mock())
+    @mock.patch.object(capabilities.CapabilitiesLibrary,
+                       'cluster_user_supported')
+    @mock.patch.object(capabilities.CapabilitiesLibrary,
+                       'check_api_permissions')
     @mock.patch.object(nfs.NfsDriver, 'do_setup')
     @mock.patch.object(na_utils, 'check_flags')
-    def test_do_setup(self, mock_check_flags, mock_super_do_setup):
+    def test_do_setup(self, mock_check_flags, mock_super_do_setup,
+                      mock_check_api_permissions, mock_cluster_user_supported):
         self.mock_object(
             dot_utils, 'get_backend_configuration',
             return_value=self.get_config_cmode())
+
         self.driver.do_setup(mock.Mock())
 
         self.assertTrue(mock_check_flags.called)
         self.assertTrue(mock_super_do_setup.called)
+        mock_check_api_permissions.assert_called_once_with()
+        mock_cluster_user_supported.assert_called_once_with()
 
     def test__update_volume_stats(self):
         mock_debug_log = self.mock_object(nfs_cmode.LOG, 'debug')
@@ -146,9 +156,12 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.assertEqual(1, mock_debug_log.call_count)
         self.assertEqual(expected_stats, self.driver._stats)
 
-    @ddt.data([], ['target_1', 'target_2'])
-    def test_get_pool_stats(self, replication_backends):
-
+    @ddt.data({'replication_backends': [], 'cluster_credentials': False},
+              {'replication_backends': ['target_1', 'target_2'],
+               'cluster_credentials': True})
+    @ddt.unpack
+    def test_get_pool_stats(self, replication_backends, cluster_credentials):
+        self.driver.using_cluster_credentials = cluster_credentials
         self.driver.zapi_client = mock.Mock()
         ssc = {
             'vola': {
@@ -211,7 +224,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         expected = [{
             'pool_name': '10.10.10.10:/vola',
-            'QoS_support': True,
             'reserved_percentage': fake.RESERVED_PERCENTAGE,
             'max_over_subscription_ratio': fake.MAX_OVER_SUBSCRIPTION_RATIO,
             'multiattach': False,
@@ -235,6 +247,14 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'consistent_group_snapshot_enabled': True,
             'replication_enabled': False,
         }]
+
+        expected[0].update({'QoS_support': cluster_credentials})
+        if not cluster_credentials:
+            expected[0].update({
+                'netapp_aggregate_used_percent': 0,
+                'netapp_dedupe_used_percent': 0
+            })
+
         if replication_backends:
             expected[0].update({
                 'replication_enabled': True,
@@ -245,8 +265,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
         mock_get_ssc.assert_called_once_with()
-        mock_get_aggrs.assert_called_once_with()
-        mock_get_aggr_capacities.assert_called_once_with(['aggr1'])
+        if cluster_credentials:
+            mock_get_aggrs.assert_called_once_with()
+            mock_get_aggr_capacities.assert_called_once_with(['aggr1'])
 
     @ddt.data({}, None)
     def test_get_pool_stats_no_ssc_vols(self, ssc):
@@ -398,34 +419,41 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     def test_check_for_setup_error(self):
         super_check_for_setup_error = self.mock_object(
             nfs_base.NetAppNfsDriver, 'check_for_setup_error')
-        mock_check_api_permissions = self.mock_object(
-            self.driver.ssc_library, 'check_api_permissions')
         mock_add_looping_tasks = self.mock_object(
             self.driver, '_add_looping_tasks')
 
         self.driver.check_for_setup_error()
 
         self.assertEqual(1, super_check_for_setup_error.call_count)
-        mock_check_api_permissions.assert_called_once_with()
         self.assertEqual(1, mock_add_looping_tasks.call_count)
         mock_add_looping_tasks.assert_called_once_with()
 
-    @ddt.data({'replication_enabled': True, 'failed_over': False},
-              {'replication_enabled': True, 'failed_over': True},
-              {'replication_enabled': False, 'failed_over': False})
+    @ddt.data({'replication_enabled': True, 'failed_over': False,
+               'cluster_credentials': True},
+              {'replication_enabled': True, 'failed_over': True,
+               'cluster_credentials': True},
+              {'replication_enabled': False, 'failed_over': False,
+               'cluster_credentials': False})
     @ddt.unpack
-    def test_handle_housekeeping_tasks(self, replication_enabled, failed_over):
+    def test_handle_housekeeping_tasks(
+            self, replication_enabled, failed_over, cluster_credentials):
+        self.driver.using_cluster_credentials = cluster_credentials
         ensure_mirrors = self.mock_object(data_motion.DataMotionMixin,
                                           'ensure_snapmirrors')
         self.mock_object(self.driver.ssc_library, 'get_ssc_flexvol_names',
                          return_value=fake_ssc.SSC.keys())
+        mock_remove_unused_qos_policy_groups = self.mock_object(
+            self.driver.zapi_client, 'remove_unused_qos_policy_groups')
         self.driver.replication_enabled = replication_enabled
         self.driver.failed_over = failed_over
 
         self.driver._handle_housekeeping_tasks()
 
-        (self.driver.zapi_client.remove_unused_qos_policy_groups.
-         assert_called_once_with())
+        if self.driver.using_cluster_credentials:
+            mock_remove_unused_qos_policy_groups.assert_called_once_with()
+        else:
+            mock_remove_unused_qos_policy_groups.assert_not_called()
+
         if replication_enabled and not failed_over:
             ensure_mirrors.assert_called_once_with(
                 self.driver.configuration, self.driver.backend_name,
