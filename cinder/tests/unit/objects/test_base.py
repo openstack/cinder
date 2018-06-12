@@ -15,6 +15,7 @@
 import datetime
 import uuid
 
+import ddt
 from iso8601 import iso8601
 import mock
 from oslo_versionedobjects import fields
@@ -58,6 +59,7 @@ class TestCinderObjectVersionHistory(test_objects.BaseObjectsTestCase):
                           history.add, '1.0', {'Backup': '1.0'})
 
 
+@ddt.ddt
 class TestCinderObject(test_objects.BaseObjectsTestCase):
     """Tests methods from CinderObject."""
 
@@ -158,6 +160,21 @@ class TestCinderObject(test_objects.BaseObjectsTestCase):
             cinder_ovo_cls_init = mock.Mock()
 
         MyTestObject.cinder_ovo_cls_init.assert_called_once_with()
+
+    def test_as_read_deleted_default(self):
+        volume = objects.Volume(context=self.context)
+        self.assertEqual('no', volume._context.read_deleted)
+        with volume.as_read_deleted():
+            self.assertEqual('yes', volume._context.read_deleted)
+        self.assertEqual('no', volume._context.read_deleted)
+
+    @ddt.data('yes', 'no', 'only')
+    def test_as_read_deleted_modes(self, mode):
+        volume = objects.Volume(context=self.context)
+        self.assertEqual('no', volume._context.read_deleted)
+        with volume.as_read_deleted(mode=mode):
+            self.assertEqual(mode, volume._context.read_deleted)
+        self.assertEqual('no', volume._context.read_deleted)
 
 
 class TestCinderComparableObject(test_objects.BaseObjectsTestCase):
