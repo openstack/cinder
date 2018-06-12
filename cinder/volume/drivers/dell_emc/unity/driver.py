@@ -31,11 +31,11 @@ CONF = cfg.CONF
 
 UNITY_OPTS = [
     cfg.ListOpt('unity_storage_pool_names',
-                default=None,
+                default=[],
                 help='A comma-separated list of storage pool names to be '
                 'used.'),
     cfg.ListOpt('unity_io_ports',
-                default=None,
+                default=[],
                 help='A comma-separated list of iSCSI or FC ports to be used. '
                      'Each port can be Unix-style glob expressions.'),
     cfg.BoolOpt('remove_empty_host',
@@ -64,9 +64,12 @@ class UnityDriver(driver.ManageableVD,
         3.1.2 - Fixes bug 1759175 to detach the lun correctly when auto zone
                 was enabled and the lun was the last one attached to the host.
         3.1.3 - Support remove empty host
+        3.1.4 - Fixes bug 1775518 to make sure driver succeed to initialize
+                even though the value of unity_io_ports and
+                unity_storage_pool_names are empty
     """
 
-    VERSION = '03.01.03'
+    VERSION = '03.01.04'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"

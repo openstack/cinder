@@ -133,7 +133,8 @@ class UnityDriverTest(unittest.TestCase):
     def test_default_initialize(self):
         config = conf.Configuration(None)
         iscsi_driver = driver.UnityDriver(configuration=config)
-        self.assertIsNone(config.unity_storage_pool_names)
+        self.assertListEqual([], config.unity_storage_pool_names)
+        self.assertListEqual([], config.unity_io_ports)
         self.assertTrue(config.san_thin_provision)
         self.assertEqual('', config.san_ip)
         self.assertEqual('admin', config.san_login)
