@@ -169,6 +169,24 @@ class Cluster(base.CinderPersistentObject, base.CinderObject,
         return (self.last_heartbeat and
                 self.last_heartbeat >= utils.service_expired_time(True))
 
+    def reset_service_replication(self):
+        """Reset service replication flags on promotion.
+
+        When an admin promotes a cluster, each service member requires an
+        update to maintain database consistency.
+        """
+        actions = {
+            'replication_status': 'enabled',
+            'active_backend_id': None,
+        }
+
+        expectations = {
+            'cluster_name': self.name,
+        }
+
+        db.conditional_update(self._context, objects.Service.model,
+                              actions, expectations)
+
 
 @base.CinderObjectRegistry.register
 class ClusterList(base.ObjectListBase, base.CinderObject):

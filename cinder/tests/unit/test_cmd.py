@@ -477,6 +477,16 @@ class TestCinderManageCmd(test.TestCase):
         self.assertEqual(127, exit.code)
         cinder_manage.DbCommands.online_migrations[0].assert_not_called()
 
+    @mock.patch('cinder.db.reset_active_backend')
+    @mock.patch('cinder.context.get_admin_context')
+    def test_db_commands_reset_active_backend(self, admin_ctxt_mock,
+                                              reset_backend_mock):
+        db_cmds = cinder_manage.DbCommands()
+        db_cmds.reset_active_backend(True, 'fake-backend-id', 'fake-host')
+        reset_backend_mock.assert_called_with(admin_ctxt_mock.return_value,
+                                              True, 'fake-backend-id',
+                                              'fake-host')
+
     @mock.patch('cinder.version.version_string')
     def test_versions_commands_list(self, version_string):
         version_cmds = cinder_manage.VersionCommands()

@@ -58,6 +58,7 @@ from cinder import db
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _
+from cinder import objects
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume import utils as vol_utils
@@ -6493,6 +6494,41 @@ def purge_deleted_rows(context, age_in_days):
         if rows_purged != 0:
             LOG.info("Deleted %(row)d rows from table=%(table)s",
                      {'row': rows_purged, 'table': table})
+
+
+###############################
+
+
+@require_admin_context
+def reset_active_backend(context, enable_replication, active_backend_id,
+                         backend_host):
+
+    service = objects.Service.get_by_host_and_topic(context,
+                                                    backend_host,
+                                                    'cinder-volume',
+                                                    disabled=True)
+    if not service.frozen:
+        raise exception.ServiceUnavailable(
+            'Service for host %(host)s must first be frozen.' %
+            {'host': backend_host})
+
+    actions = {
+        'disabled': False,
+        'disabled_reason': '',
+        'active_backend_id': None,
+        'replication_status': 'enabled',
+    }
+
+    expectations = {
+        'frozen': True,
+        'disabled': True,
+    }
+
+    if service.is_clustered:
+        service.cluster.conditional_update(actions, expectations)
+        service.cluster.reset_service_replication()
+    else:
+        service.conditional_update(actions, expectations)
 
 
 ###############################

@@ -410,6 +410,27 @@ class DbCommands(object):
 
         sys.exit(1 if ran else 0)
 
+    @args('--enable-replication', action='store_true', default=False,
+          help='Set replication status to enabled (default: %(default)s).')
+    @args('--active-backend-id', default=None,
+          help='Change the active backend ID (default: %(default)s).')
+    @args('--backend-host', required=True,
+          help='The backend host name.')
+    def reset_active_backend(self, enable_replication, active_backend_id,
+                             backend_host):
+        """Reset the active backend for a host."""
+
+        ctxt = context.get_admin_context()
+
+        try:
+            db.reset_active_backend(ctxt, enable_replication,
+                                    active_backend_id, backend_host)
+        except db_exc.DBReferenceError:
+            print(_("Failed to reset active backend for host %s, "
+                    "check cinder-manage logs for more details.") %
+                  backend_host)
+            sys.exit(1)
+
 
 class VersionCommands(object):
     """Class for exposing the codebase version."""
