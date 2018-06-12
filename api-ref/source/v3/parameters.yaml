@@ -441,7 +441,7 @@ attach_mode:
     The attach mode of attachment, read-only ('ro') or
     read-and-write ('rw'), default is 'rw'.
   in: body
-  required: false
+  required: true
   type: string
 attach_status:
   description: |
@@ -453,7 +453,7 @@ attached_at:
   description: |
     The time when attachment is attached.
   in: body
-  required: false
+  required: true
   type: string
 attachment:
   description: |
@@ -970,7 +970,7 @@ detached_at:
   description: |
     The time when attachment is detached.
   in: body
-  required: false
+  required: true
   type: string
 disabled:
   description: |
