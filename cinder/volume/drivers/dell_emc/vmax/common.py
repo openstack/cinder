@@ -2153,7 +2153,7 @@ class VMAXCommon(object):
         :param offset: Number of volumes to skip after marker. Default=None.
         :param sort_keys: Key to sort by, sort by size or reference. Valid
                           keys: size, reference. Default=None.
-        :param sort_dirs: Direction to sort by. Valid dirs: asd, desc.
+        :param sort_dirs: Direction to sort by. Valid dirs: asc, desc.
                           Default=None.
         :return: List of dicts containing all volumes valid for management
         """
@@ -2166,9 +2166,9 @@ class VMAXCommon(object):
 
         # No volumes returned from VMAX
         if not volumes:
-            LOG.warning("There were no volumes found on the backend VMAX. "
-                        "You need to create some volumes before they can be "
-                        "managed into Cinder.")
+            LOG.info("There were no volumes found on the backend VMAX. "
+                     "You need to create some volumes before they can be "
+                     "managed into Cinder.")
             return manageable_vols
 
         for device in volumes:
@@ -2188,7 +2188,7 @@ class VMAXCommon(object):
             manageable_vols.append(volume_dict)
 
         # If volume list is populated, perform filtering on user params
-        if len(manageable_vols) > 0:
+        if manageable_vols:
             # If sort keys selected, determine if by size or reference, and
             # direction of sort
             if sort_keys:
@@ -2238,7 +2238,7 @@ class VMAXCommon(object):
         :param offset: Number of volumes to skip after marker. Default=None.
         :param sort_keys: Key to sort by, sort by size or reference.
                           Valid keys: size, reference. Default=None.
-        :param sort_dirs: Direction to sort by. Valid dirs: asd, desc.
+        :param sort_dirs: Direction to sort by. Valid dirs: asc, desc.
                           Default=None.
         :return: List of dicts containing all volumes valid for management
         """
@@ -2250,9 +2250,9 @@ class VMAXCommon(object):
 
         # No volumes returned from VMAX
         if not volumes:
-            LOG.warning("There were no volumes found on the backend VMAX. "
-                        "You need to create some volumes before snapshots can "
-                        "be created and managed into Cinder.")
+            LOG.info("There were no volumes found on the backend VMAX. "
+                     "You need to create some volumes before snapshots can "
+                     "be created and managed into Cinder.")
             return manageable_snaps
 
         for device in volumes:
