@@ -1408,12 +1408,15 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
 
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.check_available_space')
+    @mock.patch('cinder.image.image_utils.verify_glance_image_signature')
     def test_create_from_image_cannot_use_cache(
-            self, mock_qemu_info, mock_check_space, mock_get_internal_context,
+            self, mock_verify, mock_qemu_info, mock_check_space,
+            mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
         mock_get_internal_context.return_value = None
         self.mock_driver.clone_image.return_value = (None, False)
+        self.flags(verify_glance_signatures='disabled')
         volume = fake_volume.fake_volume_obj(self.ctxt,
                                              host='host@backend#pool')
         image_info = imageutils.QemuImgInfo()
@@ -1509,8 +1512,10 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.image.image_utils.verify_glance_image_signature')
     def test_create_from_image_extend_failure(
-            self, mock_volume_update, mock_qemu_info, mock_check_size,
+            self, mock_verify, mock_volume_update, mock_qemu_info,
+            mock_check_size,
             mock_get_internal_context, mock_create_from_img_dl,
             mock_create_from_src, mock_handle_bootable, mock_fetch_img,
             mock_cleanup_cg):
@@ -1518,6 +1523,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         self.mock_cache.get_entry.return_value = None
         self.mock_driver.extend_volume.side_effect = (
             exception.CinderException('Error during extending'))
+        self.flags(verify_glance_signatures='disabled')
 
         volume_size = 2
         volume = fake_volume.fake_volume_obj(self.ctxt,
@@ -1632,14 +1638,16 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.check_available_space')
+    @mock.patch('cinder.image.image_utils.verify_glance_image_signature')
     def test_create_from_image_cache_miss(
-            self, mock_check_size, mock_qemu_info, mock_volume_get,
-            mock_volume_update, mock_get_internal_context,
+            self, mocl_verify, mock_check_size, mock_qemu_info,
+            mock_volume_get, mock_volume_update, mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
         mock_get_internal_context.return_value = self.ctxt
         mock_fetch_img.return_value = mock.MagicMock(
             spec=utils.get_file_spec())
+        self.flags(verify_glance_signatures='disabled')
         image_info = imageutils.QemuImgInfo()
         image_info.virtual_size = '2147483648'
         mock_qemu_info.return_value = image_info
@@ -1703,9 +1711,10 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.check_available_space')
+    @mock.patch('cinder.image.image_utils.verify_glance_image_signature')
     def test_create_from_image_cache_miss_error_downloading(
-            self, mock_check_size, mock_qemu_info, mock_volume_get,
-            mock_volume_update, mock_get_internal_context,
+            self, mock_verify, mock_check_size, mock_qemu_info,
+            mock_volume_get, mock_volume_update, mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
         mock_fetch_img.return_value = mock.MagicMock()
@@ -1714,6 +1723,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         mock_qemu_info.return_value = image_info
         self.mock_driver.clone_image.return_value = (None, False)
         self.mock_cache.get_entry.return_value = None
+        self.flags(verify_glance_signatures='disabled')
 
         volume = fake_volume.fake_volume_obj(self.ctxt, size=10,
                                              host='foo@bar#pool')
@@ -1769,12 +1779,15 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
 
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.check_available_space')
+    @mock.patch('cinder.image.image_utils.verify_glance_image_signature')
     def test_create_from_image_no_internal_context(
-            self, mock_chk_space, mock_qemu_info, mock_get_internal_context,
+            self, mock_verify, mock_chk_space, mock_qemu_info,
+            mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
         self.mock_driver.clone_image.return_value = (None, False)
         mock_get_internal_context.return_value = None
+        self.flags(verify_glance_signatures='disabled')
         volume = fake_volume.fake_volume_obj(self.ctxt,
                                              host='host@backend#pool')
         image_info = imageutils.QemuImgInfo()
@@ -1837,8 +1850,10 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                 '_cleanup_cg_in_volume')
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.verify_glance_image_signature')
     def test_create_from_image_cache_miss_error_size_invalid(
-            self, mock_qemu_info, mock_check_space, mock_get_internal_context,
+            self, mock_verify, mock_qemu_info, mock_check_space,
+            mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img, mock_cleanup_cg):
         mock_fetch_img.return_value = mock.MagicMock()
@@ -1847,6 +1862,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         mock_qemu_info.return_value = image_info
         self.mock_driver.clone_image.return_value = (None, False)
         self.mock_cache.get_entry.return_value = None
+        self.flags(verify_glance_signatures='disabled')
 
         volume = fake_volume.fake_volume_obj(self.ctxt, size=1,
                                              host='foo@bar#pool')
@@ -1943,8 +1959,10 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.message.api.API.create')
+    @mock.patch('cinder.image.image_utils.verify_glance_image_signature')
     def test_create_from_image_cache_insufficient_size(
-            self, mock_message_create, mock_qemu_info, mock_check_space,
+            self, mock_verify, mock_message_create, mock_qemu_info,
+            mock_check_space,
             mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
@@ -1960,6 +1978,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         image_id = fakes.IMAGE_ID
         mock_create_from_img_dl.side_effect = exception.ImageTooBig(
             image_id=image_id, reason="fake")
+        self.flags(verify_glance_signatures='disabled')
 
         image_location = 'someImageLocationStr'
         image_meta = mock.MagicMock()

@@ -76,6 +76,9 @@ class Detail(object):
     DRIVER_FAILED_EXTEND = (
         '010',
         _("Volume Driver failed to extend volume."))
+    SIGNATURE_VERIFICATION_FAILED = (
+        '011',
+        _("Image signature verification failed."))
 
     ALL = (UNKNOWN_ERROR,
            DRIVER_NOT_INITIALIZED,
@@ -86,8 +89,8 @@ class Detail(object):
            NOT_ENOUGH_SPACE_FOR_IMAGE,
            UNMANAGE_ENC_NOT_SUPPORTED,
            NOTIFY_COMPUTE_SERVICE_FAILED,
-           DRIVER_FAILED_EXTEND
-           )
+           DRIVER_FAILED_EXTEND,
+           SIGNATURE_VERIFICATION_FAILED)
 
     # Exception and detail mappings
     EXCEPTION_DETAIL_MAPPINGS = {

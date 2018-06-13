@@ -444,6 +444,15 @@ class InvalidImageRef(Invalid):
     message = _("Invalid image href %(image_href)s.")
 
 
+class InvalidSignatureImage(Invalid):
+    message = _("Signature metadata is incomplete for image: "
+                "%(image_id)s.")
+
+
+class ImageSignatureVerificationException(CinderException):
+    message = _("Failed to verify image signature, reason: %(reason)s.")
+
+
 class ImageNotFound(NotFound):
     message = _("Image %(image_id)s could not be found.")
 

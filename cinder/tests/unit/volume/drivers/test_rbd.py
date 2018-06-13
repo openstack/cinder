@@ -2227,8 +2227,10 @@ class ManagedRBDTestCase(test_driver.BaseDriverTestCase):
     @mock.patch.object(cinder.image.glance, 'get_default_image_service')
     @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.verify_glance_image_signature')
     def test_create_vol_from_non_raw_image_status_available(
-            self, mock_qemu_info, mock_fetch, mock_gdis, mock_check_space):
+            self, mock_verify, mock_qemu_info, mock_fetch, mock_gdis,
+            mock_check_space):
         """Clone non-raw image then verify volume is in available state."""
 
         def _mock_clone_image(context, volume, image_location,
@@ -2238,6 +2240,7 @@ class ManagedRBDTestCase(test_driver.BaseDriverTestCase):
         image_info = imageutils.QemuImgInfo()
         image_info.virtual_size = '1073741824'
         mock_qemu_info.return_value = image_info
+        self.flags(verify_glance_signatures='disabled')
 
         mock_fetch.return_value = mock.MagicMock(spec=utils.get_file_spec())
         with mock.patch.object(self.volume.driver, 'clone_image') as \
