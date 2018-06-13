@@ -33,9 +33,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - project: project
    - project_id: project_id_path
-   - volume_type: volume_type_access
+   - volume_type: volume_type_id
+   - addProjectAccess: add_project_access
+   - project: project
 
 Request Example
 ---------------
@@ -64,9 +65,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - project: project
    - project_id: project_id_path
-   - volume_type: volume_type_access
+   - volume_type: volume_type_id
+   - removeProjectAccess: remove_project_access
+   - project: project
 
 Request Example
 ---------------
@@ -96,7 +98,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - volume_type: volume_type_access
+   - volume_type: volume_type_id
 
 
 Response Parameters
@@ -104,7 +106,9 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - volume_type_access: volume_type_access
    - project_id: project_id
+   - volume_type_id: volume_type_id_body
 
 
 

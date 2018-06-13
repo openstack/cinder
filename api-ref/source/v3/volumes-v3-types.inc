@@ -267,8 +267,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type_id: volume_type_id
    - project_id: project_id_path
+   - volume_type_id: volume_type_id
 
 
 Response Parameters
@@ -281,6 +281,7 @@ Response Parameters
    - extra_specs: extra_specs_volume_type_required
    - description: description_volume_type_required
    - name: name_volume_type_required
+   - id: volume_type_id_body
 
 
 Response Example
@@ -351,8 +352,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type_id: volume_type_id
    - project_id: project_id_path
+   - volume_type_id: volume_type_id
 
 
 List all volume types
@@ -390,6 +391,11 @@ Response Parameters
    - volume_types: volume_types
    - extra_specs: extra_specs_volume_type_required
    - name: name_volume_type_required
+   - is_public: is_public_volume_type_required
+   - description: description_volume_type_required
+   - id: volume_type_id_body
+   - os-volume-type-access:is_public: is_public_volume_type_required
+   - qos_specs_id: qos_specs_id
 
 Response Example
 ----------------
@@ -418,8 +424,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type: volume_type_1
    - project_id: project_id_path
+   - volume_type: volume_type_1
    - name: name_volume_type_required
    - os-volume-type-access:is_public: is_public_volume_type_optional
    - description: description_volume_type_optional
@@ -472,8 +478,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type_id: volume_type_id
    - project_id: project_id_path
+   - volume_type_id: volume_type_id
 
 
 Response Parameters
@@ -551,8 +557,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type_id: volume_type_id
    - project_id: project_id_path
+   - volume_type_id: volume_type_id
    - encryption_id: encryption_id
 
 
@@ -576,8 +582,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type_id: volume_type_id
    - project_id: project_id_path
+   - volume_type_id: volume_type_id
    - encryption: encryption
    - key_size: key_size
    - provider: provider
@@ -631,8 +637,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type_id: volume_type_id
    - project_id: project_id_path
+   - volume_type_id: volume_type_id
    - encryption_id: encryption_id
    - encryption: encryption
    - key_size: key_size
