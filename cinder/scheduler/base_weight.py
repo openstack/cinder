@@ -19,9 +19,13 @@ Pluggable Weighing support
 
 import abc
 
+from oslo_log import log as logging
 import six
 
 from cinder.scheduler import base_handler
+
+
+LOG = logging.getLogger(__name__)
 
 
 def normalize(weight_list, minval=None, maxval=None):
@@ -141,5 +145,11 @@ class BaseWeightHandler(base_handler.BaseHandler):
             for i, weight in enumerate(weights):
                 obj = weighed_objs[i]
                 obj.weight += weigher.weight_multiplier() * weight
+
+            LOG.debug("Weigher %(cls_name)s returned, "
+                      "weigher value is {max: %(maxval)s, min: %(minval)s}",
+                      {'cls_name': weigher_cls.__name__,
+                       'maxval': weigher.maxval,
+                       'minval': weigher.minval})
 
         return sorted(weighed_objs, key=lambda x: x.weight, reverse=True)
