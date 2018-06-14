@@ -48,7 +48,16 @@ Linux Systems
 
 .. note::
 
-  Feel free to add notes and change according to your experiences or operating system.
+   If you have Ansible and git installed on your system, you may be able to
+   get a working development environment quickly set up by running the
+   following:
+
+   .. code::
+
+      sudo ansible-pull -U https://github.com/stmcginnis/cinder-dev-setup
+
+   If that does not work for your system, continue on with the manual steps
+   below.
 
 Install the prerequisite packages.
 
