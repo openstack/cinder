@@ -73,7 +73,7 @@ def get_hyperscale_version():
             exception.UnableToProcessHyperScaleCmdOutput):
         LOG.error("Exception in running the command for version",
                   exc_info=True)
-        raise exception.UnableToExecuteHyperScaleCmd(message="version")
+        raise exception.UnableToExecuteHyperScaleCmd(command="version")
 
     return version
 
@@ -99,7 +99,7 @@ def get_datanode_id():
             LOG.error("Error %s in getting datanode hypervisor id",
                       cmd_err)
             raise exception.UnableToExecuteHyperScaleCmd(
-                message=cmdarg_json)
+                command=cmdarg_json)
     except exception.UnableToExecuteHyperScaleCmd:
         with excutils.save_and_reraise_exception():
             LOG.debug("Unable to execute get_datanode_id", exc_info=True)
@@ -134,7 +134,7 @@ def episodic_snap(meta):
             LOG.error("Error %s in processing episodic_snap",
                       cmd_err)
             raise exception.UnableToExecuteHyperScaleCmd(
-                message=cmdarg_json)
+                command=cmdarg_json)
     except exception.UnableToExecuteHyperScaleCmd:
         with excutils.save_and_reraise_exception():
             LOG.debug("Unable to execute episodic_snap", exc_info=True)
@@ -172,7 +172,7 @@ def get_image_path(image_id, op_type='image'):
             LOG.error("Error %s in processing get_image_path",
                       cmd_err)
             raise exception.UnableToExecuteHyperScaleCmd(
-                message=cmdarg_json)
+                command=cmdarg_json)
     except exception.UnableToExecuteHyperScaleCmd:
         with excutils.save_and_reraise_exception():
             LOG.debug("Unable to execute get_image_path", exc_info=True)
@@ -206,7 +206,7 @@ def update_image(image_path, volume_id, hs_img_id):
             LOG.error("Error %s in execution of update_image",
                       cmd_err)
             raise exception.UnableToExecuteHyperScaleCmd(
-                message=cmdarg_json)
+                command=cmdarg_json)
     except exception.UnableToExecuteHyperScaleCmd:
         with excutils.save_and_reraise_exception():
             LOG.debug("Unable to execute update_image", exc_info=True)
@@ -232,12 +232,12 @@ def hsexecute(cmdarg_json):
         LOG.error("Exception in running the command for %s",
                   cmdarg_json,
                   exc_info=True)
-        raise exception.UnableToExecuteHyperScaleCmd(message=cmdarg_json)
+        raise exception.UnableToExecuteHyperScaleCmd(command=cmdarg_json)
 
     except Exception:
         LOG.error("Internal exception in cmd for %s", cmdarg_json,
                   exc_info=True)
-        raise exception.UnableToExecuteHyperScaleCmd(message=cmdarg_json)
+        raise exception.UnableToExecuteHyperScaleCmd(command=cmdarg_json)
 
     return (cmd_out, cmd_err)
 
