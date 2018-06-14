@@ -43,6 +43,10 @@ lvdisplay4: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WAR
 # This line ties the superuser privs with the config files, context name,
 # and (implicitly) the actual python code invoked.
 privsep-rootwrap: RegExpFilter, privsep-helper, root, privsep-helper, --config-file, /etc/(?!\.\.).*, --privsep_context, os_brick.privileged.default, --privsep_sock_path, /tmp/.*
+
+# Privsep calls within cinder iteself
+privsep-rootwrap-sys_admin: RegExpFilter, privsep-helper, root, privsep-helper, --config-file, /etc/(?!\.\.).*, --privsep_context, cinder.privsep.sys_admin_pctxt, --privsep_sock_path, /tmp/.*
+
 # The following and any cinder/brick/* entries should all be obsoleted
 # by privsep, and may be removed once the os-brick version requirement
 # is updated appropriately.
@@ -93,8 +97,6 @@ ionice_1: ChainingRegExpFilter, ionice, root, ionice, -c[0-3], -n[0-7]
 ionice_2: ChainingRegExpFilter, ionice, root, ionice, -c[0-3]
 
 # cinder/volume/utils.py: setup_blkio_cgroup()
-cgcreate: CommandFilter, cgcreate, root
-cgset: CommandFilter, cgset, root
 cgexec: ChainingRegExpFilter, cgexec, root, cgexec, -g, blkio:\S+
 
 # cinder/volume/driver.py

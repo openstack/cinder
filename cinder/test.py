@@ -302,6 +302,9 @@ class TestCase(testtools.TestCase):
         tpool.killall()
         tpool._nthreads = 20
 
+        # NOTE(mikal): make sure we don't load a privsep helper accidentally
+        self.useFixture(cinder_fixtures.PrivsepNoHelperFixture())
+
     def _restore_obj_registry(self):
         objects_base.CinderObjectRegistry._registry._obj_classes = \
             self._base_test_obj_backup
