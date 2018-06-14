@@ -879,3 +879,81 @@ class VMAXUtils(object):
         is_tgt_multiattach = vol_utils.is_replicated_str(
             new_type_extra_specs.get('multiattach'))
         return is_src_multiattach != is_tgt_multiattach
+
+    @staticmethod
+    def is_volume_manageable(source_vol):
+        """Check if a volume with verbose description is valid for management.
+
+        :param source_vol: the verbose volume dict
+        :return: bool True/False
+        """
+        vol_head = source_vol['volumeHeader']
+
+        # VMAX disk geometry uses cylinders, so volume sizes are matched to
+        # the nearest full cylinder size: 1GB = 547cyl = 1026MB
+        if vol_head['capMB'] < 1026 or not vol_head['capGB'].is_integer():
+            return False
+
+        if (vol_head['numSymDevMaskingViews'] > 0 or
+                vol_head['mapped'] is True or
+                source_vol['maskingInfo']['masked'] is True):
+            return False
+
+        if (vol_head['status'] != 'Ready' or
+                vol_head['serviceState'] != 'Normal' or
+                vol_head['emulationType'] != 'FBA' or
+                vol_head['configuration'] != 'TDEV' or
+                vol_head['system_resource'] is True or
+                vol_head['private'] is True or
+                vol_head['encapsulated'] is True or
+                vol_head['reservationInfo']['reserved'] is True):
+            return False
+
+        for key, value in source_vol['rdfInfo'].items():
+            if value is True:
+                return False
+
+        if source_vol['timeFinderInfo']['snapVXTgt'] is True:
+            return False
+
+        if vol_head['nameModifier'][0:3] == 'OS-':
+            return False
+
+        return True
+
+    @staticmethod
+    def is_snapshot_manageable(source_vol):
+        """Check if a volume with snapshot description is valid for management.
+
+        :param source_vol: the verbose volume dict
+        :return: bool True/False
+        """
+        vol_head = source_vol['volumeHeader']
+
+        if not source_vol['timeFinderInfo']['snapVXSrc']:
+            return False
+
+        # VMAX disk geometry uses cylinders, so volume sizes are matched to
+        # the nearest full cylinder size: 1GB = 547cyl = 1026MB
+        if (vol_head['capMB'] < 1026 or
+                not vol_head['capGB'].is_integer()):
+            return False
+
+        if (vol_head['emulationType'] != 'FBA' or
+                vol_head['configuration'] != 'TDEV' or
+                vol_head['private'] is True or
+                vol_head['system_resource'] is True):
+            return False
+
+        snap_gen_info = (source_vol['timeFinderInfo']['snapVXSession'][0][
+            'srcSnapshotGenInfo'][0]['snapshotHeader'])
+
+        if (snap_gen_info['snapshotName'][0:3] == 'OS-' or
+                snap_gen_info['snapshotName'][0:5] == 'temp-'):
+            return False
+
+        if (snap_gen_info['expired'] is True
+                or snap_gen_info['generation'] > 0):
+            return False
+
+        return True
