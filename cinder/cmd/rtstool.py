@@ -18,13 +18,7 @@
 import os
 import sys
 
-# We always use rtslib-fb, but until version 2.1.52 it didn't have its own
-# namespace, so we must be backwards compatible.
-try:
-    import rtslib_fb
-except ImportError:
-    import rtslib as rtslib_fb
-
+import rtslib_fb
 
 from cinder import i18n
 from cinder.i18n import _
