@@ -480,7 +480,8 @@ class TestNexentaNfsDriver(test.TestCase):
         mock_chmod.assert_called_with(
             'chmod ugo+rw /volumes/stack/share/volume-1/volume')
         mock_truncate = self.nms_mock.appliance.execute
-        mock_truncate.side_effect = exception.NexentaException()
+        mock_truncate.side_effect = exception.NexentaException(
+            'fake_exception')
         self.nms_mock.server.get_prop.return_value = '/volumes'
         self.nms_mock.folder.get_child_props.return_value = {
             'available': 1, 'used': 1}

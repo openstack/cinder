@@ -1178,7 +1178,7 @@ class BadHTTPResponseStatus(VolumeDriverException):
 
 
 class BadResetResourceStatus(CinderException):
-    message = _("Bad reset resource status : %(message)s")
+    message = _("Bad reset resource status : %(reason)s")
 
 
 # ZADARA STORAGE VPSA driver exception
@@ -1285,7 +1285,7 @@ class NotSupportedOperation(Invalid):
 
 # NexentaStor driver exception
 class NexentaException(VolumeDriverException):
-    message = "%(message)s"
+    message = "%(reason)s"
 
 
 # Google Cloud Storage(GCS) backup driver
