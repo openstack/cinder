@@ -99,7 +99,7 @@ def gcs_client2(func):
 
 
 def fake_backup_metadata(self, backup, object_meta):
-    raise exception.BackupDriverException(message=_('fake'))
+    raise exception.BackupDriverException(reason=_('fake'))
 
 
 def fake_delete(self, backup):

@@ -271,7 +271,7 @@ class CephBackupDriver(driver.BackupDriver):
         """Returns an error if prerequisites aren't met."""
         if rados is None or rbd is None:
             msg = _('rados and rbd python libraries not found')
-            raise exception.BackupDriverException(message=msg)
+            raise exception.BackupDriverException(reason=msg)
 
         for attr in ['backup_ceph_user', 'backup_ceph_pool',
                      'backup_ceph_conf']:
