@@ -18,25 +18,26 @@
 Setting Up a Development Environment
 ====================================
 
-This page describes how to setup a working Python development
-environment that can be used in developing cinder on Ubuntu, Fedora or
-Mac OS X. These instructions assume you're already familiar with
-git. Refer to GettingTheCode_ for additional information.
+This page describes how to setup a working Python development environment that
+can be used in developing cinder on Ubuntu, Fedora or macOS. These instructions
+assume you're already familiar with git. Refer to GettingTheCode_ for
+additional information.
 
 .. _GettingTheCode: https://wiki.openstack.org/wiki/Getting_The_Code
 
 Following these instructions will allow you to run the cinder unit tests.
-Running cinder is currently only supported on Linux, although you can run the
-unit tests on Mac OS X.
+Running cinder is currently only supported on Linux. Some jobs can be run on
+macOS, but unfortunately due to some differences in system packages there are
+known issues with running unit tests.
 
 Virtual environments
 --------------------
 
-Cinder development uses `virtualenv <https://pypi.org/project/virtualenv>`__ to track and manage Python
-dependencies while in development and testing. This allows you to
-install all of the Python package dependencies in a virtual
-environment or "virtualenv" (a special subdirectory of your cinder
-directory), instead of installing the packages at the system level.
+Cinder development uses `virtualenv <https://pypi.org/project/virtualenv>`__
+to track and manage Python dependencies while in development and testing. This
+allows you to install all of the Python package dependencies in a virtual
+environment or "virtualenv" (a special subdirectory of your cinder directory),
+instead of installing the packages at the system level.
 
 .. note::
 
@@ -56,25 +57,28 @@ On Ubuntu16.04-64::
 
   sudo apt-get install python-dev libssl-dev python-pip git-core libmysqlclient-dev libpq-dev libffi-dev libxslt-dev
 
-To get a full python3 development environment, the two python3 packages need to be added to the list above::
+To get a full python3 development environment, the two python3 packages need to
+be added to the list above::
 
   python3-dev python3-pip
 
-On Fedora-based distributions e.g., Fedora/RHEL/CentOS/Scientific Linux (tested on CentOS 6.5 and CentOS 7.3)::
+On Red Hat-based distributions e.g., Fedora/RHEL/CentOS/Scientific Linux
+(tested on CentOS 6.5 and CentOS 7.3)::
 
   sudo yum install python-virtualenv openssl-devel python-pip git gcc libffi-devel libxslt-devel mysql-devel postgresql-devel
 
-On openSUSE-based distributions (SLES 12, openSUSE 13.1, Factory or Tumbleweed)::
+On openSUSE-based distributions (SLES 12, openSUSE 13.1, Factory or
+Tumbleweed)::
 
   sudo zypper install gcc git libmysqlclient-devel libopenssl-devel postgresql-devel python-devel python-pip
 
 
-Mac OS X Systems
-----------------
+macOS Systems
+-------------
 
 Install virtualenv::
 
-    sudo easy_install virtualenv
+    sudo pip install virtualenv
 
 Check the version of OpenSSL you have installed::
 
@@ -85,7 +89,7 @@ MacPorts package for OpenSSL, you will see an error when running
 ``cinder.tests.auth_unittest.AuthTestCase.test_209_can_generate_x509``.
 
 The stock version of OpenSSL that ships with Mac OS X 10.6 (OpenSSL 0.9.8l)
-or Mac OS X 10.7 (OpenSSL 0.9.8r) works fine with cinder.
+or later should work fine with cinder.
 
 
 Getting the code
