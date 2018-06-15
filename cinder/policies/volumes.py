@@ -65,7 +65,7 @@ volumes_policies = [
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
         check_str=base.RULE_ADMIN_OR_OWNER,
-        description="List volumes.",
+        description="List volumes or get summary of volumes.",
         operations=[
             {
                 'method': 'GET',
@@ -74,6 +74,10 @@ volumes_policies = [
             {
                 'method': 'GET',
                 'path': '/volumes/detail'
+            },
+            {
+                'method': 'GET',
+                'path': '/volumes/summary'
             }
         ]),
     policy.DocumentedRuleDefault(
