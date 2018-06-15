@@ -450,6 +450,7 @@ class GetBlkdevMajorMinorTestCase(test.TestCase):
         self.assertEqual(size, stat_result.st_size)
         mock_stat.assert_called_once_with(test_file)
 
+    @test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
     @mock.patch('os.stat')
     def test_get_blkdev_major_minor(self, mock_stat):
 

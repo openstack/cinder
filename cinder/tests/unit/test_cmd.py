@@ -24,16 +24,22 @@ from oslo_utils import timeutils
 import six
 from six.moves import StringIO
 
-try:
-    import rtslib_fb
-except ImportError:
-    import rtslib as rtslib_fb
+# Prevent load failures on macOS
+if sys.platform == 'darwin':
+    rtslib_fb = mock.MagicMock()
+    cinder_rtstool = mock.MagicMock()
+else:
+    try:
+        import rtslib_fb
+    except ImportError:
+        import rtslib as rtslib_fb
 
 
 from cinder.cmd import api as cinder_api
 from cinder.cmd import backup as cinder_backup
 from cinder.cmd import manage as cinder_manage
-from cinder.cmd import rtstool as cinder_rtstool
+if sys.platform != 'darwin':
+    from cinder.cmd import rtstool as cinder_rtstool
 from cinder.cmd import scheduler as cinder_scheduler
 from cinder.cmd import volume as cinder_volume
 from cinder.cmd import volume_usage_audit
@@ -54,6 +60,7 @@ from cinder.volume import rpcapi
 CONF = cfg.CONF
 
 
+@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderApiCmd(test.TestCase):
     """Unit test cases for python modules under cinder/cmd."""
 
@@ -87,6 +94,7 @@ class TestCinderApiCmd(test.TestCase):
         launcher.wait.assert_called_once_with()
 
 
+@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderBackupCmd(test.TestCase):
 
     def setUp(self):
@@ -141,6 +149,7 @@ class TestCinderBackupCmd(test.TestCase):
         launcher.wait.assert_called_once_with()
 
 
+@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderSchedulerCmd(test.TestCase):
 
     def setUp(self):
@@ -167,6 +176,7 @@ class TestCinderSchedulerCmd(test.TestCase):
         service_wait.assert_called_once_with()
 
 
+@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderVolumeCmdPosix(test.TestCase):
 
     def setUp(self):
@@ -216,6 +226,7 @@ class TestCinderVolumeCmdPosix(test.TestCase):
 
 
 @ddt.ddt
+@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderVolumeCmdWin32(test.TestCase):
 
     def setUp(self):
@@ -345,6 +356,7 @@ class TestCinderVolumeCmdWin32(test.TestCase):
 
 
 @ddt.ddt
+@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderManageCmd(test.TestCase):
 
     def setUp(self):
@@ -1122,6 +1134,7 @@ class TestCinderManageCmd(test.TestCase):
         self.assertIsNone(service_commands.remove('abinary', 'ahost'))
 
 
+@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderRtstoolCmd(test.TestCase):
 
     def setUp(self):
@@ -1716,6 +1729,7 @@ class TestCinderRtstoolCmd(test.TestCase):
         self.assertEqual(0, rc)
 
 
+@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderVolumeUsageAuditCmd(test.TestCase):
 
     def setUp(self):
@@ -2164,6 +2178,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         ])
 
 
+@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestVolumeSharedTargetsOnlineMigration(test.TestCase):
     """Unit tests for cinder.db.api.service_*."""
 
