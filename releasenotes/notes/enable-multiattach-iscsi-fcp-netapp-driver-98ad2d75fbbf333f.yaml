@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    NetApp ONTAP iSCSI and FCP drivers multiattach capability enabled.
