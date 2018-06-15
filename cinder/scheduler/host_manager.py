@@ -493,9 +493,12 @@ class HostManager(object):
                              weigher_class_names=None):
         """Weigh the backends."""
         weigher_classes = self._choose_backend_weighers(weigher_class_names)
-        return self.weight_handler.get_weighed_objects(weigher_classes,
-                                                       backends,
-                                                       weight_properties)
+
+        weighed_backends = self.weight_handler.get_weighed_objects(
+            weigher_classes, backends, weight_properties)
+
+        LOG.debug("Weighed %s", weighed_backends)
+        return weighed_backends
 
     def update_service_capabilities(self, service_name, host, capabilities,
                                     cluster_name, timestamp):
