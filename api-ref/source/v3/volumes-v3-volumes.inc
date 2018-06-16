@@ -460,8 +460,9 @@ Deletes a volume.
 
 Preconditions
 
-- Volume status must be ``available``, ``in-use``, ``error``, or
-  ``error_restoring``.
+- Volume status must be ``available``, ``in-use``, ``error``,
+  ``error_restoring``, ``error_extending``, ``error_managing``,
+  and must not be migrating, attached, belong to a group or have snapshots.
 
 - You cannot already have a snapshot of the volume.
 
