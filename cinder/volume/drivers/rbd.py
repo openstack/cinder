@@ -495,6 +495,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             'max_over_subscription_ratio': (
                 self.configuration.safe_get('max_over_subscription_ratio')),
             'location_info': location_info,
+            'backend_state': 'down'
         }
 
         backend_name = self.configuration.safe_get('volume_backend_name')
@@ -514,6 +515,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             if not self.configuration.safe_get('rbd_exclusive_cinder_pool'):
                 total_gbi = self._get_usage_info()
                 stats['provisioned_capacity_gb'] = total_gbi
+
+            stats['backend_state'] = 'up'
         except self.rados.Error:
             # just log and return unknown capacities and let scheduler set
             # provisioned_capacity_gb = allocated_capacity_gb
