@@ -2059,6 +2059,13 @@ os-unset_image_metadata:
   in: body
   required: true
   type: object
+os-update_readonly_flag:
+  description: |
+    The ``os-update_readonly_flag`` action. This action
+    enables or disables update of volume to read-only access mode.
+  in: body
+  required: true
+  type: object
 os-update_snapshot_status:
   description: |
     The ``os-update_snapshot_status`` action.
@@ -2237,6 +2244,13 @@ rate:
   in: body
   required: true
   type: array
+readonly:
+  description: |
+    Enables or disables read-only access mode.
+    This value can be True, true, False, false.
+  in: body
+  required: true
+  type: boolean
 reason_not_safe:
   description: |
     The reason why the resource can't be managed.
