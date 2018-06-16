@@ -23,6 +23,7 @@ from oslo_utils import fnmatch
 from oslo_utils import units
 import six
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.volume import utils as vol_utils
@@ -292,3 +293,10 @@ def match_any(full, patterns):
 
 def is_before_4_1(ver):
     return version.LooseVersion(ver) < version.LooseVersion('4.1')
+
+
+def lock_if(condition, lock_name):
+    if condition:
+        return coordination.synchronized(lock_name)
+    else:
+        return functools.partial
