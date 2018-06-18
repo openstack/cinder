@@ -37,7 +37,6 @@ from cinder.tests.unit import volume as base
 import cinder.volume
 from cinder.volume import manager as vol_manager
 
-
 QUOTAS = quota.QUOTAS
 NON_EXISTENT_IMAGE_ID = '003f540f-ec6b-4293-a3f9-7c68646b0f5c'
 
@@ -61,10 +60,10 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
         super(CopyVolumeToImageTestCase, self).setUp()
         self.dst_fd, self.dst_path = tempfile.mkstemp()
         self.addCleanup(os.unlink, self.dst_path)
-
         os.close(self.dst_fd)
         self.mock_object(self.volume.driver, 'local_path',
                          self.fake_local_path)
+        self.mock_cache = mock.MagicMock()
         self.image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
         self.image_meta = {
             'id': self.image_id,
@@ -329,6 +328,31 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
         image = self._test_copy_volume_to_image_with_image_volume()
         self.assertNotIn('locations', image)
         self.assertTrue(mock_delete.called)
+
+    @mock.patch('cinder.volume.manager.'
+                'VolumeManager._clone_image_volume')
+    @mock.patch('cinder.volume.manager.'
+                'VolumeManager._create_image_cache_volume_entry')
+    def test_create_image_cache_volume_entry(self,
+                                             mock_cache_entry,
+                                             mock_clone_image_volume):
+        image_id = self.image_id
+        image_meta = self.image_meta
+
+        self.mock_cache.get_entry.return_value = mock_cache_entry
+
+        if mock_cache_entry:
+            # Entry is in cache, so basically don't do anything.
+            # Make sure we didn't try and create a cache entry
+            self.assertFalse(self.mock_cache.ensure_space.called)
+            self.assertFalse(self.mock_cache.create_cache_entry.called)
+        else:
+            result = self.volume._create_image_cache_volume_entry(
+                self.context, mock_clone_image_volume, image_id, image_meta)
+            self.assertNotEqual(False, result)
+            cache_entry = self.image_volume_cache.get_entry(
+                self.context, mock_clone_image_volume, image_id, image_meta)
+            self.assertIsNotNone(cache_entry)
 
 
 class ImageVolumeCacheTestCase(base.BaseVolumeTestCase):
