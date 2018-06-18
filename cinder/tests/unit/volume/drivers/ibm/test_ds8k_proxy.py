@@ -60,7 +60,7 @@ TEST_SOURCE_DS8K_IP = '1.1.1.1'
 TEST_TARGET_DS8K_IP = '2.2.2.2'
 TEST_SOURCE_WWNN = '5000000000FFC111'
 TEST_TARGET_WWNN = '5000000000FFD222'
-TEST_SOURCE_WWPN_1 = '10000090FA3418BC'
+TEST_SOURCE_WWPN_1 = '10000090fa3418bc'
 TEST_SOURCE_WWPN_2 = '10000090FA3418BD'
 TEST_SOURCE_IOPORT = 'I0001'
 TEST_TARGET_IOPORT = 'I0002'
@@ -2707,6 +2707,12 @@ class DS8KProxyTest(test.TestCase):
 
         map_data = self.driver.initialize_connection(volume, TEST_CONNECTOR)
         self.assertEqual(int(TEST_LUN_ID), map_data['data']['target_lun'])
+        self.assertTrue(
+            list(map_data['data']['initiator_target_map'].keys())[0] in
+            [TEST_SOURCE_WWPN_1, TEST_SOURCE_WWPN_2])
+        self.assertTrue(
+            list(map_data['data']['initiator_target_map'].keys())[1] in
+            [TEST_SOURCE_WWPN_1, TEST_SOURCE_WWPN_2])
 
     def test_initialize_connection_of_eckd_volume(self):
         """attach a ECKD volume to host."""
