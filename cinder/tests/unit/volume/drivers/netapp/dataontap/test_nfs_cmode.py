@@ -246,6 +246,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'consistencygroup_support': True,
             'consistent_group_snapshot_enabled': True,
             'replication_enabled': False,
+            'online_extend_support': False,
         }]
 
         expected[0].update({'QoS_support': cluster_credentials})
