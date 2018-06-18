@@ -11,7 +11,7 @@ System requirements
 
 To use the Lenovo drivers, the following are required:
 
-- Lenovo S2200, S3200, S4200 or S6200 array with:
+- Lenovo S2200, S3200, DS2200, DS4200 or DS6200 array with:
 
   - iSCSI or FC host interfaces
   - G22x firmware or later
