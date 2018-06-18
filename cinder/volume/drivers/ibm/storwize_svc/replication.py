@@ -195,7 +195,7 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
                 self.driver._helpers.create_vdisk(source_change_vol_name,
                                                   six.text_type(vref['size']),
                                                   'gb',
-                                                  src_attr['mdisk_grp_id'],
+                                                  src_attr['mdisk_grp_name'],
                                                   src_change_opts)
             # Create target volume if it doesn't exist
             target_attr = self.target_helpers.get_vdisk_attributes(

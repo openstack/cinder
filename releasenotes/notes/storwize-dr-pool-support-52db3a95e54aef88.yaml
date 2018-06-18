@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added data reduction pool support for thin-provisoned and compressed
+    volume in Storwize cinder driver.
