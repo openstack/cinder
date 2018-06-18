@@ -444,7 +444,16 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
          self.used_ldns,
          self.hostports,
          self.max_ld_count) = self.configs(self.xml)
-        self._numofld_per_pool = 1024
+
+        pool_data = {'pool_num': 1,
+                     'total': 1,
+                     'free': 1,
+                     'ld_list': []}
+        volume = {'id': 'X'}
+        self.test_pools = []
+        for var in range(0, 1025):
+            pool_data['ld_list'].append(volume)
+        self.test_pools = [pool_data]
 
     def test_getxml(self):
         self.assertIsNotNone(self.xml, "iSMview xml should not be None")
@@ -466,6 +475,9 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
             pool = self._select_leastused_poolnumber(self.vol,
                                                      self.pools,
                                                      self.xml)
+
+    def test_return_poolnumber(self):
+        self.assertEqual(1, self._return_poolnumber(self.test_pools))
 
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
                 patch_execute)

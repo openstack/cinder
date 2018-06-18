@@ -15,7 +15,8 @@ Supported models:
 
 Requirements:
 
-- Storage control software (firmware) revision 0950 or later
+- Storage control software (firmware) revision 0950 or later (1015
+  or later is required to create more than 1024 volumes in a pool)
 - NEC Storage DynamicDataReplication license
 - (Optional) NEC Storage IO Load Manager license for QoS
 

@@ -1,0 +1,5 @@
+---
+upgrade:
+  - In NEC driver, the number of volumes in a storage pool is
+    no longer limited to 1024. More volumes can be created with
+    storage firmware revision 1015 or later.
