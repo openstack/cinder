@@ -198,7 +198,7 @@ class Group(BASE, CinderBase):
     replication_status = Column(String(255))
 
 
-class Cgsnapshot(BASE, CinderBase):
+class CGSnapshot(BASE, CinderBase):
     """Represents a cgsnapshot."""
     __tablename__ = 'cgsnapshots'
     id = Column(String(36), primary_key=True)
@@ -215,7 +215,7 @@ class Cgsnapshot(BASE, CinderBase):
         ConsistencyGroup,
         backref="cgsnapshots",
         foreign_keys=consistencygroup_id,
-        primaryjoin='Cgsnapshot.consistencygroup_id == ConsistencyGroup.id')
+        primaryjoin='CGSnapshot.consistencygroup_id == ConsistencyGroup.id')
 
 
 class GroupSnapshot(BASE, CinderBase):
@@ -377,7 +377,7 @@ class VolumeAttachment(BASE, CinderBase):
     connector = Column(Text)
 
 
-class VolumeTypes(BASE, CinderBase):
+class VolumeType(BASE, CinderBase):
     """Represent possible volume_types of volumes offered."""
     __tablename__ = "volume_types"
     id = Column(String(36), primary_key=True)
@@ -392,11 +392,11 @@ class VolumeTypes(BASE, CinderBase):
                            backref=backref('volume_type', uselist=False),
                            foreign_keys=id,
                            primaryjoin='and_('
-                           'Volume.volume_type_id == VolumeTypes.id, '
-                           'VolumeTypes.deleted == False)')
+                           'Volume.volume_type_id == VolumeType.id, '
+                           'VolumeType.deleted == False)')
 
 
-class GroupTypes(BASE, CinderBase):
+class GroupType(BASE, CinderBase):
     """Represent possible group_types of groups offered."""
     __tablename__ = "group_types"
     id = Column(String(36), primary_key=True)
@@ -407,8 +407,8 @@ class GroupTypes(BASE, CinderBase):
                           backref=backref('group_type', uselist=False),
                           foreign_keys=id,
                           primaryjoin='and_('
-                          'Group.group_type_id == GroupTypes.id, '
-                          'GroupTypes.deleted == False)')
+                          'Group.group_type_id == GroupType.id, '
+                          'GroupType.deleted == False)')
 
 
 class GroupVolumeTypeMapping(BASE, CinderBase):
@@ -446,11 +446,11 @@ class VolumeTypeProjects(BASE, CinderBase):
     deleted = Column(Integer, default=0)
 
     volume_type = relationship(
-        VolumeTypes,
+        VolumeType,
         backref="projects",
         foreign_keys=volume_type_id,
         primaryjoin='and_('
-        'VolumeTypeProjects.volume_type_id == VolumeTypes.id,'
+        'VolumeTypeProjects.volume_type_id == VolumeType.id,'
         'VolumeTypeProjects.deleted == 0)')
 
 
@@ -467,11 +467,11 @@ class GroupTypeProjects(BASE, CinderBase):
     project_id = Column(String(255))
 
     group_type = relationship(
-        GroupTypes,
+        GroupType,
         backref="projects",
         foreign_keys=group_type_id,
         primaryjoin='and_('
-        'GroupTypeProjects.group_type_id == GroupTypes.id,'
+        'GroupTypeProjects.group_type_id == GroupType.id,'
         'GroupTypeProjects.deleted == False)')
 
 
@@ -485,11 +485,11 @@ class VolumeTypeExtraSpecs(BASE, CinderBase):
                             ForeignKey('volume_types.id'),
                             nullable=False, index=True)
     volume_type = relationship(
-        VolumeTypes,
+        VolumeType,
         backref="extra_specs",
         foreign_keys=volume_type_id,
         primaryjoin='and_('
-        'VolumeTypeExtraSpecs.volume_type_id == VolumeTypes.id,'
+        'VolumeTypeExtraSpecs.volume_type_id == VolumeType.id,'
         'VolumeTypeExtraSpecs.deleted == False)'
     )
 
@@ -504,11 +504,11 @@ class GroupTypeSpecs(BASE, CinderBase):
                            ForeignKey('group_types.id'),
                            nullable=False, index=True)
     group_type = relationship(
-        GroupTypes,
+        GroupType,
         backref="group_specs",
         foreign_keys=group_type_id,
         primaryjoin='and_('
-        'GroupTypeSpecs.group_type_id == GroupTypes.id,'
+        'GroupTypeSpecs.group_type_id == GroupType.id,'
         'GroupTypeSpecs.deleted == False)'
     )
 
@@ -561,13 +561,13 @@ class QualityOfServiceSpecs(BASE, CinderBase):
     )
 
     vol_types = relationship(
-        VolumeTypes,
+        VolumeType,
         backref=backref('qos_specs'),
         foreign_keys=id,
         primaryjoin='and_('
-                    'or_(VolumeTypes.qos_specs_id == '
+                    'or_(VolumeType.qos_specs_id == '
                     'QualityOfServiceSpecs.id,'
-                    'VolumeTypes.qos_specs_id == '
+                    'VolumeType.qos_specs_id == '
                     'QualityOfServiceSpecs.specs_id),'
                     'QualityOfServiceSpecs.deleted == False)')
 
@@ -716,10 +716,10 @@ class Snapshot(BASE, CinderBase):
                           primaryjoin='Snapshot.volume_id == Volume.id')
 
     cgsnapshot = relationship(
-        Cgsnapshot,
+        CGSnapshot,
         backref="snapshots",
         foreign_keys=cgsnapshot_id,
-        primaryjoin='Snapshot.cgsnapshot_id == Cgsnapshot.id')
+        primaryjoin='Snapshot.cgsnapshot_id == CGSnapshot.id')
 
     group_snapshot = relationship(
         GroupSnapshot,
@@ -812,11 +812,11 @@ class Encryption(BASE, CinderBase):
     control_location = Column(String(255))
     volume_type_id = Column(String(36), ForeignKey('volume_types.id'))
     volume_type = relationship(
-        VolumeTypes,
+        VolumeType,
         backref="encryption",
         foreign_keys=volume_type_id,
         primaryjoin='and_('
-        'Encryption.volume_type_id == VolumeTypes.id,'
+        'Encryption.volume_type_id == VolumeType.id,'
         'Encryption.deleted == False)'
     )
 

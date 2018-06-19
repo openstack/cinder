@@ -2740,18 +2740,18 @@ def volume_qos_allows_retype(new_vol_type):
     specifies anything other than the back-end in any of the 2 volume_types.
     """
     # Query to get the qos of the volume type new_vol_type
-    q = sql.select([models.VolumeTypes.qos_specs_id]).where(and_(
-        ~models.VolumeTypes.deleted,
-        models.VolumeTypes.id == new_vol_type))
+    q = sql.select([models.VolumeType.qos_specs_id]).where(and_(
+        ~models.VolumeType.deleted,
+        models.VolumeType.id == new_vol_type))
     # Construct the filter to check qos when volume is 'in-use'
     return or_(
         # If volume is available
         models.Volume.status == 'available',
         # Or both volume types have the same qos specs
         sql.exists().where(and_(
-            ~models.VolumeTypes.deleted,
-            models.VolumeTypes.id == models.Volume.volume_type_id,
-            models.VolumeTypes.qos_specs_id == q.as_scalar())),
+            ~models.VolumeType.deleted,
+            models.VolumeType.id == models.Volume.volume_type_id,
+            models.VolumeType.qos_specs_id == q.as_scalar())),
         # Or they are different specs but they are handled by the backend or
         # it is not specified.  The way SQL evaluatels value != 'back-end'
         # makes it result in False not only for 'back-end' values but for
@@ -2759,16 +2759,16 @@ def volume_qos_allows_retype(new_vol_type):
         # allow QoS with 'consumer' values of 'back-end' and NULL.
         and_(
             ~sql.exists().where(and_(
-                ~models.VolumeTypes.deleted,
-                models.VolumeTypes.id == models.Volume.volume_type_id,
-                (models.VolumeTypes.qos_specs_id ==
+                ~models.VolumeType.deleted,
+                models.VolumeType.id == models.Volume.volume_type_id,
+                (models.VolumeType.qos_specs_id ==
                  models.QualityOfServiceSpecs.specs_id),
                 models.QualityOfServiceSpecs.key == 'consumer',
                 models.QualityOfServiceSpecs.value != 'back-end')),
             ~sql.exists().where(and_(
-                ~models.VolumeTypes.deleted,
-                models.VolumeTypes.id == new_vol_type,
-                (models.VolumeTypes.qos_specs_id ==
+                ~models.VolumeType.deleted,
+                models.VolumeType.id == new_vol_type,
+                (models.VolumeType.qos_specs_id ==
                  models.QualityOfServiceSpecs.specs_id),
                 models.QualityOfServiceSpecs.key == 'consumer',
                 models.QualityOfServiceSpecs.value != 'back-end'))))
@@ -3480,7 +3480,7 @@ def volume_type_create(context, values, projects=None):
         try:
             values['extra_specs'] = _metadata_refs(values.get('extra_specs'),
                                                    models.VolumeTypeExtraSpecs)
-            volume_type_ref = models.VolumeTypes()
+            volume_type_ref = models.VolumeType()
             volume_type_ref.update(values)
             session.add(volume_type_ref)
         except Exception as e:
@@ -3524,7 +3524,7 @@ def group_type_create(context, values, projects=None):
         try:
             values['group_specs'] = _metadata_refs(values.get('group_specs'),
                                                    models.GroupTypeSpecs)
-            group_type_ref = models.GroupTypes()
+            group_type_ref = models.GroupType()
             group_type_ref.update(values)
             session.add(group_type_ref)
         except Exception as e:
@@ -3541,7 +3541,7 @@ def _volume_type_get_query(context, session=None, read_deleted='no',
                            expected_fields=None):
     expected_fields = expected_fields or []
     query = model_query(context,
-                        models.VolumeTypes,
+                        models.VolumeType,
                         session=session,
                         read_deleted=read_deleted).\
         options(joinedload('extra_specs'))
@@ -3550,8 +3550,8 @@ def _volume_type_get_query(context, session=None, read_deleted='no',
         query = query.options(joinedload(expected))
 
     if not context.is_admin:
-        the_filter = [models.VolumeTypes.is_public == true()]
-        projects_attr = getattr(models.VolumeTypes, 'projects')
+        the_filter = [models.VolumeType.is_public == true()]
+        projects_attr = getattr(models.VolumeType, 'projects')
         the_filter.extend([
             projects_attr.any(project_id=context.project_id)
         ])
@@ -3564,7 +3564,7 @@ def _group_type_get_query(context, session=None, read_deleted='no',
                           expected_fields=None):
     expected_fields = expected_fields or []
     query = model_query(context,
-                        models.GroupTypes,
+                        models.GroupType,
                         session=session,
                         read_deleted=read_deleted).\
         options(joinedload('group_specs'))
@@ -3573,8 +3573,8 @@ def _group_type_get_query(context, session=None, read_deleted='no',
         query = query.options(joinedload('projects'))
 
     if not context.is_admin:
-        the_filter = [models.GroupTypes.is_public == true()]
-        projects_attr = models.GroupTypes.projects
+        the_filter = [models.GroupType.is_public == true()]
+        projects_attr = models.GroupType.projects
         the_filter.extend([
             projects_attr.any(project_id=context.project_id)
         ])
@@ -3586,9 +3586,9 @@ def _group_type_get_query(context, session=None, read_deleted='no',
 def _process_volume_types_filters(query, filters):
     context = filters.pop('context', None)
     if 'is_public' in filters and filters['is_public'] is not None:
-        the_filter = [models.VolumeTypes.is_public == filters['is_public']]
+        the_filter = [models.VolumeType.is_public == filters['is_public']]
         if filters['is_public'] and context.project_id is not None:
-            projects_attr = getattr(models.VolumeTypes, 'projects')
+            projects_attr = getattr(models.VolumeType, 'projects')
             the_filter.extend([
                 projects_attr.any(project_id=context.project_id, deleted=0)
             ])
@@ -3600,12 +3600,12 @@ def _process_volume_types_filters(query, filters):
         del filters['is_public']
     if filters:
         # Ensure that filters' keys exist on the model
-        if not is_valid_model_filters(models.VolumeTypes, filters):
+        if not is_valid_model_filters(models.VolumeType, filters):
             return
         if filters.get('extra_specs') is not None:
             the_filter = []
             searchdict = filters.pop('extra_specs')
-            extra_specs = getattr(models.VolumeTypes, 'extra_specs')
+            extra_specs = getattr(models.VolumeType, 'extra_specs')
             for k, v in searchdict.items():
                 # NOTE(tommylikehu): We will use 'LIKE' operator for
                 # 'availability_zones' extra spec as it always store the
@@ -3628,9 +3628,9 @@ def _process_volume_types_filters(query, filters):
 def _process_group_types_filters(query, filters):
     context = filters.pop('context', None)
     if 'is_public' in filters and filters['is_public'] is not None:
-        the_filter = [models.GroupTypes.is_public == filters['is_public']]
+        the_filter = [models.GroupType.is_public == filters['is_public']]
         if filters['is_public'] and context.project_id is not None:
-            projects_attr = getattr(models.GroupTypes, 'projects')
+            projects_attr = getattr(models.GroupType, 'projects')
             the_filter.extend([
                 projects_attr.any(project_id=context.project_id, deleted=False)
             ])
@@ -3642,12 +3642,12 @@ def _process_group_types_filters(query, filters):
         del filters['is_public']
     if filters:
         # Ensure that filters' keys exist on the model
-        if not is_valid_model_filters(models.GroupTypes, filters):
+        if not is_valid_model_filters(models.GroupType, filters):
             return
         if filters.get('group_specs') is not None:
             the_filter = []
             searchdict = filters.pop('group_specs')
-            group_specs = getattr(models.GroupTypes, 'group_specs')
+            group_specs = getattr(models.GroupType, 'group_specs')
             for k, v in searchdict.items():
                 the_filter.extend([group_specs.any(key=k, value=v,
                                                    deleted=False)])
@@ -3663,10 +3663,10 @@ def _process_group_types_filters(query, filters):
 @require_admin_context
 def _type_update(context, type_id, values, is_group):
     if is_group:
-        model = models.GroupTypes
+        model = models.GroupType
         exists_exc = exception.GroupTypeExists
     else:
-        model = models.VolumeTypes
+        model = models.VolumeType
         exists_exc = exception.VolumeTypeExists
 
     session = get_session()
@@ -3742,7 +3742,7 @@ def volume_type_get_all(context, inactive=False, filters=None, marker=None,
         # Generate the query
         query = _generate_paginate_query(context, session, marker, limit,
                                          sort_keys, sort_dirs, filters, offset,
-                                         models.VolumeTypes)
+                                         models.VolumeType)
         # No volume types would match, return empty dict or list
         if query is None:
             if list_result:
@@ -3794,7 +3794,7 @@ def group_type_get_all(context, inactive=False, filters=None, marker=None,
         # Generate the query
         query = _generate_paginate_query(context, session, marker, limit,
                                          sort_keys, sort_dirs, filters, offset,
-                                         models.GroupTypes)
+                                         models.GroupType)
         # No group types would match, return empty dict or list
         if query is None:
             if list_result:
@@ -3814,15 +3814,15 @@ def group_type_get_all(context, inactive=False, filters=None, marker=None,
 
 def _volume_type_get_id_from_volume_type_query(context, id, session=None):
     return model_query(
-        context, models.VolumeTypes.id, read_deleted="no",
-        session=session, base_model=models.VolumeTypes).\
+        context, models.VolumeType.id, read_deleted="no",
+        session=session, base_model=models.VolumeType).\
         filter_by(id=id)
 
 
 def _group_type_get_id_from_group_type_query(context, id, session=None):
     return model_query(
-        context, models.GroupTypes.id, read_deleted="no",
-        session=session, base_model=models.GroupTypes).\
+        context, models.GroupType.id, read_deleted="no",
+        session=session, base_model=models.GroupType).\
         filter_by(id=id)
 
 
@@ -3935,7 +3935,7 @@ def _group_type_get_full(context, id):
 def _volume_type_ref_get(context, id, session=None, inactive=False):
     read_deleted = "yes" if inactive else "no"
     result = model_query(context,
-                         models.VolumeTypes,
+                         models.VolumeType,
                          session=session,
                          read_deleted=read_deleted).\
         options(joinedload('extra_specs')).\
@@ -3952,7 +3952,7 @@ def _volume_type_ref_get(context, id, session=None, inactive=False):
 def _group_type_ref_get(context, id, session=None, inactive=False):
     read_deleted = "yes" if inactive else "no"
     result = model_query(context,
-                         models.GroupTypes,
+                         models.GroupType,
                          session=session,
                          read_deleted=read_deleted).\
         options(joinedload('group_specs')).\
@@ -3967,7 +3967,7 @@ def _group_type_ref_get(context, id, session=None, inactive=False):
 
 @require_context
 def _volume_type_get_by_name(context, name, session=None):
-    result = model_query(context, models.VolumeTypes, session=session).\
+    result = model_query(context, models.VolumeType, session=session).\
         options(joinedload('extra_specs')).\
         filter_by(name=name).\
         first()
@@ -3980,7 +3980,7 @@ def _volume_type_get_by_name(context, name, session=None):
 
 @require_context
 def _group_type_get_by_name(context, name, session=None):
-    result = model_query(context, models.GroupTypes, session=session).\
+    result = model_query(context, models.GroupType, session=session).\
         options(joinedload('group_specs')).\
         filter_by(name=name).\
         first()
@@ -4039,7 +4039,7 @@ def volume_type_qos_associations_get(context, qos_specs_id, inactive=False):
                            models.QualityOfServiceSpecs,
                            qos_specs_id):
         raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
-    vts = (model_query(context, models.VolumeTypes, read_deleted=read_deleted).
+    vts = (model_query(context, models.VolumeType, read_deleted=read_deleted).
            options(joinedload('extra_specs')).
            options(joinedload('projects')).
            filter_by(qos_specs_id=qos_specs_id).all())
@@ -4052,7 +4052,7 @@ def volume_type_qos_associate(context, type_id, qos_specs_id):
     with session.begin():
         _volume_type_get(context, type_id, session)
 
-        session.query(models.VolumeTypes). \
+        session.query(models.VolumeType). \
             filter_by(id=type_id). \
             update({'qos_specs_id': qos_specs_id,
                     'updated_at': timeutils.utcnow()})
@@ -4065,7 +4065,7 @@ def volume_type_qos_disassociate(context, qos_specs_id, type_id):
     with session.begin():
         _volume_type_get(context, type_id, session)
 
-        session.query(models.VolumeTypes). \
+        session.query(models.VolumeType). \
             filter_by(id=type_id). \
             filter_by(qos_specs_id=qos_specs_id). \
             update({'qos_specs_id': None,
@@ -4077,7 +4077,7 @@ def volume_type_qos_disassociate_all(context, qos_specs_id):
     """Disassociate all volume types associated with specified qos specs."""
     session = get_session()
     with session.begin():
-        session.query(models.VolumeTypes). \
+        session.query(models.VolumeType). \
             filter_by(qos_specs_id=qos_specs_id). \
             update({'qos_specs_id': None,
                     'updated_at': timeutils.utcnow()})
@@ -4107,7 +4107,7 @@ def volume_type_qos_specs_get(context, type_id):
     with session.begin():
         _volume_type_get(context, type_id, session)
 
-        row = session.query(models.VolumeTypes). \
+        row = session.query(models.VolumeType). \
             options(joinedload('qos_specs')). \
             filter_by(id=type_id). \
             first()
@@ -4147,7 +4147,7 @@ def volume_type_destroy(context, id):
         updated_values = {'deleted': True,
                           'deleted_at': utcnow,
                           'updated_at': literal_column('updated_at')}
-        model_query(context, models.VolumeTypes, session=session).\
+        model_query(context, models.VolumeType, session=session).\
             filter_by(id=id).\
             update(updated_values)
         model_query(context, models.VolumeTypeExtraSpecs, session=session).\
@@ -4174,7 +4174,7 @@ def group_type_destroy(context, id):
             LOG.error('GroupType %s deletion failed, '
                       'GroupType in use.', id)
             raise exception.GroupTypeInUse(group_type_id=id)
-        model_query(context, models.GroupTypes, session=session).\
+        model_query(context, models.GroupType, session=session).\
             filter_by(id=id).\
             update({'deleted': True,
                     'deleted_at': timeutils.utcnow(),
@@ -4250,10 +4250,10 @@ def volume_type_get_all_by_group(context, group_id):
     with session.begin():
         volume_type_ids = [mapping.volume_type_id for mapping in mappings]
         query = (model_query(context,
-                             models.VolumeTypes,
+                             models.VolumeType,
                              session=session,
                              read_deleted='no').
-                 filter(models.VolumeTypes.id.in_(volume_type_ids)).
+                 filter(models.VolumeType.id.in_(volume_type_ids)).
                  options(joinedload('extra_specs')).
                  options(joinedload('projects')).
                  all())
@@ -5650,8 +5650,8 @@ def consistencygroup_create(context, values, cg_snap_id=None, cg_id=None):
     session = get_session()
     with session.begin():
         if cg_snap_id:
-            conditions = [cg_model.id == models.Cgsnapshot.consistencygroup_id,
-                          models.Cgsnapshot.id == cg_snap_id]
+            conditions = [cg_model.id == models.CGSnapshot.consistencygroup_id,
+                          models.CGSnapshot.id == cg_snap_id]
         elif cg_id:
             conditions = [cg_model.id == cg_id]
         else:
@@ -5729,9 +5729,9 @@ def cg_cgsnapshot_destroy_all_by_ids(context, cg_ids, cgsnapshot_ids,
                          'updated_at': utcnow})
 
     if cgsnapshot_ids:
-        cg_snaps = (model_query(context, models.Cgsnapshot,
+        cg_snaps = (model_query(context, models.CGSnapshot,
                                 session=session, read_deleted="no").
-                    filter(models.Cgsnapshot.id.in_(cgsnapshot_ids)).
+                    filter(models.CGSnapshot.id.in_(cgsnapshot_ids)).
                     all())
 
         for cg_snap in cg_snaps:
@@ -5759,8 +5759,8 @@ def cg_cgsnapshot_destroy_all_by_ids(context, cg_ids, cgsnapshot_ids,
 def cg_has_cgsnapshot_filter():
     """Return a filter that checks if a CG has CG Snapshots."""
     return sql.exists().where(and_(
-        models.Cgsnapshot.consistencygroup_id == models.ConsistencyGroup.id,
-        ~models.Cgsnapshot.deleted))
+        models.CGSnapshot.consistencygroup_id == models.ConsistencyGroup.id,
+        ~models.CGSnapshot.deleted))
 
 
 def cg_has_volumes_filter(attached_or_with_snapshots=False):
@@ -6143,7 +6143,7 @@ def group_creating_from_src(group_id=None, group_snapshot_id=None):
 
 @require_context
 def _cgsnapshot_get(context, cgsnapshot_id, session=None):
-    result = model_query(context, models.Cgsnapshot, session=session,
+    result = model_query(context, models.CGSnapshot, session=session,
                          project_only=True).\
         filter_by(id=cgsnapshot_id).\
         first()
@@ -6183,10 +6183,10 @@ def is_valid_model_filters(model, filters, exclude_list=None):
 
 
 def _cgsnapshot_get_all(context, project_id=None, group_id=None, filters=None):
-    query = model_query(context, models.Cgsnapshot)
+    query = model_query(context, models.CGSnapshot)
 
     if filters:
-        if not is_valid_model_filters(models.Cgsnapshot, filters):
+        if not is_valid_model_filters(models.CGSnapshot, filters):
             return []
         query = query.filter_by(**filters)
 
@@ -6223,7 +6223,7 @@ def cgsnapshot_create(context, values):
 
     cg_id = values.get('consistencygroup_id')
     session = get_session()
-    model = models.Cgsnapshot
+    model = models.CGSnapshot
     with session.begin():
         if cg_id:
             # There has to exist at least 1 volume in the CG and the CG cannot
@@ -6261,7 +6261,7 @@ def cgsnapshot_create(context, values):
 @require_context
 @handle_db_data_error
 def cgsnapshot_update(context, cgsnapshot_id, values):
-    query = model_query(context, models.Cgsnapshot, project_only=True)
+    query = model_query(context, models.CGSnapshot, project_only=True)
     result = query.filter_by(id=cgsnapshot_id).update(values)
     if not result:
         raise exception.CgSnapshotNotFound(cgsnapshot_id=cgsnapshot_id)
@@ -6275,7 +6275,7 @@ def cgsnapshot_destroy(context, cgsnapshot_id):
                           'deleted': True,
                           'deleted_at': timeutils.utcnow(),
                           'updated_at': literal_column('updated_at')}
-        model_query(context, models.Cgsnapshot, session=session).\
+        model_query(context, models.CGSnapshot, session=session).\
             filter_by(id=cgsnapshot_id).\
             update(updated_values)
     del updated_values['updated_at']
@@ -6285,9 +6285,9 @@ def cgsnapshot_destroy(context, cgsnapshot_id):
 def cgsnapshot_creating_from_src():
     """Get a filter that checks if a CGSnapshot is being created from a CG."""
     return sql.exists().where(and_(
-        models.Cgsnapshot.consistencygroup_id == models.ConsistencyGroup.id,
-        ~models.Cgsnapshot.deleted,
-        models.Cgsnapshot.status == 'creating'))
+        models.CGSnapshot.consistencygroup_id == models.ConsistencyGroup.id,
+        ~models.CGSnapshot.deleted,
+        models.CGSnapshot.status == 'creating'))
 
 
 ###############################
@@ -6703,15 +6703,15 @@ PAGINATION_HELPERS = {
     models.Backup: (_backups_get_query, _process_backups_filters, _backup_get),
     models.QualityOfServiceSpecs: (_qos_specs_get_query,
                                    _process_qos_specs_filters, _qos_specs_get),
-    models.VolumeTypes: (_volume_type_get_query, _process_volume_types_filters,
-                         _volume_type_get_db_object),
+    models.VolumeType: (_volume_type_get_query, _process_volume_types_filters,
+                        _volume_type_get_db_object),
     models.ConsistencyGroup: (_consistencygroups_get_query,
                               _process_consistencygroups_filters,
                               _consistencygroup_get),
     models.Message: (_messages_get_query, _process_messages_filters,
                      _message_get),
-    models.GroupTypes: (_group_type_get_query, _process_group_types_filters,
-                        _group_type_get_db_object),
+    models.GroupType: (_group_type_get_query, _process_group_types_filters,
+                       _group_type_get_db_object),
     models.Group: (_groups_get_query,
                    _process_groups_filters,
                    _group_get),
@@ -6972,22 +6972,13 @@ def resource_exists(context, model, resource_id, session=None):
 
 
 def get_model_for_versioned_object(versioned_object):
-    # Exceptions to model mapping, in general Versioned Objects have the same
-    # name as their ORM models counterparts, but there are some that diverge
-    VO_TO_MODEL_EXCEPTIONS = {
-        'BackupImport': models.Backup,
-        'VolumeType': models.VolumeTypes,
-        'CGSnapshot': models.Cgsnapshot,
-        'GroupType': models.GroupTypes,
-        'GroupSnapshot': models.GroupSnapshot,
-    }
-
     if isinstance(versioned_object, six.string_types):
         model_name = versioned_object
     else:
         model_name = versioned_object.obj_name()
-    return (VO_TO_MODEL_EXCEPTIONS.get(model_name) or
-            getattr(models, model_name))
+    if model_name == 'BackupImport':
+        return models.Backup
+    return getattr(models, model_name)
 
 
 def _get_get_method(model):
@@ -6996,9 +6987,10 @@ def _get_get_method(model):
     # _get to the string
     GET_EXCEPTIONS = {
         models.ConsistencyGroup: consistencygroup_get,
-        models.VolumeTypes: _volume_type_get_full,
+        models.VolumeType: _volume_type_get_full,
         models.QualityOfServiceSpecs: qos_specs_get,
-        models.GroupTypes: _group_type_get_full,
+        models.GroupType: _group_type_get_full,
+        models.CGSnapshot: cgsnapshot_get,
     }
 
     if model in GET_EXCEPTIONS:

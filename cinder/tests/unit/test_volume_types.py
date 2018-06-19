@@ -163,7 +163,7 @@ class VolumeTypeTestCase(test.TestCase):
     def test_get_all_volume_types(self):
         """Ensures that all volume types can be retrieved."""
         session = db_api.get_session()
-        total_volume_types = session.query(models.VolumeTypes).count()
+        total_volume_types = session.query(models.VolumeType).count()
         vol_types = volume_types.get_all_types(self.ctxt)
         self.assertEqual(total_volume_types, len(vol_types))
 

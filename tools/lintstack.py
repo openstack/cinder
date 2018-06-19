@@ -56,7 +56,7 @@ ignore_messages = [
     # be ignored because a SQLAlchemy ORM class will have __table__ member
     # during runtime.
     "Class 'ConsistencyGroup' has no '__table__' member",
-    "Class 'Cgsnapshot' has no '__table__' member",
+    "Class 'CGSnapshot' has no '__table__' member",
     "Class 'Group' has no '__table__' member",
     "Class 'GroupSnapshot' has no '__table__' member",
 
