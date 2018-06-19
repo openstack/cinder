@@ -1023,16 +1023,8 @@ class CephBackupDriver(driver.BackupDriver):
                 base_image.close()
 
         if adjust_size:
-            with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
-                                      src_pool)) as client:
-                restore_vol_encode = utils.convert_str(restore_vol)
-                dest_image = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
-                                                  restore_vol_encode))
-                try:
-                    LOG.debug("Adjusting restore vol size")
-                    dest_image.resize(adjust_size)
-                finally:
-                    dest_image.close()
+            LOG.debug("Adjusting restore vol size")
+            restore_vol.rbd_image.resize(adjust_size)
 
     def _diff_restore_rbd(self, backup, restore_file, restore_name,
                           restore_point, restore_length):
@@ -1062,7 +1054,7 @@ class CephBackupDriver(driver.BackupDriver):
         # we will need to resize it after the diff import since import-diff
         # appears to shrink the target rbd volume to the size of the original
         # backup volume.
-        self._check_restore_vol_size(backup, restore_name, restore_length,
+        self._check_restore_vol_size(backup, restore_file, restore_length,
                                      rbd_pool)
 
         LOG.debug("Restore transfer completed in %.4fs",
