@@ -1979,6 +1979,63 @@ class RBDTestCase(test.TestCase):
         self.assertEqual([self.mock_rbd.ImageExists], RAISED_EXCEPTIONS)
 
     @common_mocks
+    def test_get_manageable_snapshots(self):
+        cinder_snaps = [{'id': '00000000-0000-0000-0000-000000000000',
+                         'volume_id': '11111111-1111-1111-1111-111111111111'}]
+        vols = ['volume-11111111-1111-1111-1111-111111111111', 'vol1']
+        self.mock_rbd.RBD.return_value.list.return_value = vols
+        image = self.mock_proxy.return_value.__enter__.return_value
+        image.list_snaps.side_effect = [
+            [{'id': 1, 'name': 'snapshot-00000000-0000-0000-0000-000000000000',
+              'size': 2 * units.Gi},
+             {'id': 2, 'name': 'snap1', 'size': 6 * units.Gi},
+             {'id': 3, 'size': 8 * units.Gi,
+              'name': 'volume-22222222-2222-2222-2222-222222222222.clone_snap'
+              },
+             {'id': 4, 'size': 5 * units.Gi,
+              'name': 'backup.33333333-3333-3333-3333-333333333333.snap.123'}],
+            [{'id': 1, 'name': 'snap2', 'size': 4 * units.Gi}]]
+        res = self.driver.get_manageable_snapshots(
+            cinder_snaps, None, 1000, 0, ['size'], ['desc'])
+        exp = [
+            {'size': 8, 'safe_to_manage': False, 'extra_info': None,
+             'reason_not_safe': 'used for clone snap', 'cinder_id': None,
+             'reference': {
+                 'source-name':
+                     'volume-22222222-2222-2222-2222-222222222222.clone_snap'},
+             'source_reference': {
+                 'source-name': 'volume-11111111-1111-1111-1111-111111111111'}
+             },
+            {'size': 6, 'safe_to_manage': True, 'extra_info': None,
+             'reason_not_safe': None, 'cinder_id': None,
+             'reference': {'source-name': 'snap1'},
+             'source_reference': {
+                 'source-name': 'volume-11111111-1111-1111-1111-111111111111'}
+             },
+            {'size': 5, 'safe_to_manage': False, 'extra_info': None,
+             'reason_not_safe': 'used for volume backup', 'cinder_id': None,
+             'reference': {
+                 'source-name':
+                     'backup.33333333-3333-3333-3333-333333333333.snap.123'},
+             'source_reference': {
+                 'source-name': 'volume-11111111-1111-1111-1111-111111111111'}
+             },
+            {'size': 4, 'safe_to_manage': True, 'extra_info': None,
+             'reason_not_safe': None, 'cinder_id': None,
+             'reference': {'source-name': 'snap2'},
+             'source_reference': {'source-name': 'vol1'}
+             },
+            {'size': 2, 'safe_to_manage': False, 'extra_info': None,
+             'reason_not_safe': 'already managed',
+             'cinder_id': '00000000-0000-0000-0000-000000000000',
+             'reference': {'source-name':
+                           'snapshot-00000000-0000-0000-0000-000000000000'},
+             'source_reference': {
+                 'source-name': 'volume-11111111-1111-1111-1111-111111111111'}
+             }]
+        self.assertEqual(exp, res)
+
+    @common_mocks
     def test_unmanage_snapshot(self):
         proxy = self.mock_proxy.return_value
         proxy.__enter__.return_value = proxy
