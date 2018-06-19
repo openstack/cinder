@@ -1555,7 +1555,9 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         with RADOSClient(self) as client:
             for image_name in self.RBDProxy().list(client.ioctx):
                 image_id = volume_utils.extract_id_from_volume_name(image_name)
-                with RBDVolumeProxy(self, image_name, read_only=True) as image:
+                with RBDVolumeProxy(self, image_name, read_only=True,
+                                    client=client.cluster,
+                                    ioctx=client.ioctx) as image:
                     try:
                         image_info = {
                             'reference': {'source-name': image_name},
