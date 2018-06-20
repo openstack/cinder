@@ -2059,6 +2059,12 @@ os-unset_image_metadata:
   in: body
   required: true
   type: object
+os-update_snapshot_status:
+  description: |
+    The ``os-update_snapshot_status`` action.
+  in: body
+  required: true
+  type: object
 os-vol-host-attr:host:
   description: |
     Current back-end of the volume.
@@ -2482,6 +2488,12 @@ snapshot_id_4:
     reverts the volume with this snapshot.
   in: body
   required: true
+  type: string
+snapshot_progress:
+  description: |
+    A percentage value for snapshot build progress.
+  in: body
+  required: false
   type: string
 snapshots_number:
   description: |
