@@ -27,6 +27,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.v2.views import types as views_types
 from cinder import exception
 from cinder.i18n import _
+from cinder.policies import volume_type as type_policy
 from cinder import utils
 from cinder.volume import volume_types
 
@@ -40,7 +41,10 @@ class VolumeTypesController(wsgi.Controller):
 
     def index(self, req):
         """Returns the list of volume types."""
+        context = req.environ['cinder.context']
+        context.authorize(type_policy.GET_ALL_POLICY)
         limited_types = self._get_volume_types(req)
+
         req.cache_resource(limited_types, name='types')
         return self._view_builder.index(req, limited_types)
 
@@ -59,7 +63,7 @@ class VolumeTypesController(wsgi.Controller):
             # Not found  exception will be handled at wsgi level
             vol_type = volume_types.get_volume_type(context, id)
             req.cache_resource(vol_type, name='types')
-
+        context.authorize(type_policy.GET_POLICY, target_obj=vol_type)
         return self._view_builder.show(req, vol_type)
 
     def _parse_is_public(self, is_public):

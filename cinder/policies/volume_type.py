@@ -22,6 +22,8 @@ MANAGE_POLICY = "volume_extension:types_manage"
 ENCRYPTION_POLICY = "volume_extension:volume_type_encryption"
 QOS_POLICY = "volume_extension:access_types_qos_specs_id"
 EXTRA_SPEC_POLICY = "volume_extension:access_types_extra_specs"
+GET_POLICY = "volume_extension:type_get"
+GET_ALL_POLICY = "volume_extension:type_get_all"
 
 volume_type_policies = [
     policy.DocumentedRuleDefault(
@@ -40,6 +42,26 @@ volume_type_policies = [
             {
                 'method': 'DELETE',
                 'path': '/types'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=GET_POLICY,
+        check_str="",
+        description="Get one specific volume type.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/types/{type_id}'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=GET_ALL_POLICY,
+        check_str="",
+        description="List volume types.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/types/'
             }
         ]),
     policy.DocumentedRuleDefault(
