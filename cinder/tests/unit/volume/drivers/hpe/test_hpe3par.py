@@ -3526,7 +3526,39 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             # host. We can assert these methods were not called to make sure
             # the proper exceptions are being raised.
             self.assertEqual(0, mock_client.deleteVLUN.call_count)
-            self.assertEqual(0, mock_client.deleteHost.call_count)
+
+    def test_terminate_connection_from_primary_when_group_failed_over(self):
+        mock_conf = {
+            'getStorageSystemInfo.return_value': {
+                'id': self.REPLICATION_CLIENT_ID,
+                'name': 'CSIM-EOS12_1611702'}}
+
+        conf = self.setup_configuration()
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf, mock_conf=mock_conf)
+
+        mock_client.getHostVLUNs.side_effect = hpeexceptions.HTTPNotFound(
+            error={'desc': 'The host does not exist.'})
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            volume = self.volume_tiramisu.copy()
+            volume['replication_status'] = 'failed-over'
+            volume['replication_driver_data'] = self.REPLICATION_CLIENT_ID
+
+            self.driver._active_backend_id = "CSIM-EOS12_1611702"
+            self.driver.terminate_connection(
+                self.volume,
+                self.connector,
+                force=True)
+
+            # When the volume is still attached to the primary array after a
+            # fail-over, there should be no call to delete the VLUN(s) or the
+            # host. We can assert these methods were not called to make sure
+            # the proper exceptions are being raised.
+            self.assertEqual(0, mock_client.deleteVLUN.call_count)
 
     def test_extend_volume(self):
         # setup_mock_client drive with default configuration

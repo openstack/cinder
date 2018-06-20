@@ -267,11 +267,13 @@ class HPE3PARCommon(object):
         4.0.6 - Monitor task of promoting a virtual copy. bug #1749642
         4.0.7 - Handle force detach case. bug #1686745
         4.0.8 - Added support for report backend state in service list.
+        4.0.9 - Set proper backend on subsequent operation, after group
+                failover. bug #1773069
 
 
     """
 
-    VERSION = "4.0.8"
+    VERSION = "4.0.9"
 
     stats = {}
 
@@ -430,7 +432,7 @@ class HPE3PARCommon(object):
         if client is not None:
             client.logout()
 
-    def do_setup(self, context, timeout=None, stats=None):
+    def do_setup(self, context, timeout=None, stats=None, array_id=None):
         if hpe3parclient is None:
             msg = _('You must install hpe3parclient before using 3PAR'
                     ' drivers. Run "pip install python-3parclient" to'
@@ -442,7 +444,7 @@ class HPE3PARCommon(object):
             # to communicate with the 3PAR array. It will contain either
             # the values for the primary array or secondary array in the
             # case of a fail-over.
-            self._get_3par_config()
+            self._get_3par_config(array_id=array_id)
             self.client = self._create_client(timeout=timeout)
             wsapi_version = self.client.getWsApiVersion()
             self.API_VERSION = wsapi_version['build']
@@ -461,7 +463,7 @@ class HPE3PARCommon(object):
         except hpeexceptions.UnsupportedVersion as ex:
             # In the event we cannot contact the configured primary array,
             # we want to allow a failover if replication is enabled.
-            self._do_replication_setup()
+            self._do_replication_setup(array_id=array_id)
             if self._replication_enabled:
                 self.client = None
             raise exception.InvalidInput(ex)
@@ -3591,7 +3593,7 @@ class HPE3PARCommon(object):
 
         return True
 
-    def _do_replication_setup(self):
+    def _do_replication_setup(self, array_id=None):
         replication_targets = []
         replication_devices = self.config.replication_device
         if replication_devices:
@@ -3624,8 +3626,11 @@ class HPE3PARCommon(object):
                 cl = None
                 try:
                     cl = self._create_replication_client(remote_array)
-                    array_id = six.text_type(cl.getStorageSystemInfo()['id'])
-                    remote_array['id'] = array_id
+                    info = cl.getStorageSystemInfo()
+                    remote_array['id'] = six.text_type(info['id'])
+                    if array_id and array_id == info['id']:
+                        self._active_backend_id = six.text_type(info['name'])
+
                     wsapi_version = cl.getWsApiVersion()['build']
 
                     if wsapi_version < REMOTE_COPY_API_VERSION:
@@ -3779,8 +3784,8 @@ class HPE3PARCommon(object):
             ret_mode = self.PERIODIC
         return ret_mode
 
-    def _get_3par_config(self):
-        self._do_replication_setup()
+    def _get_3par_config(self, array_id=None):
+        self._do_replication_setup(array_id=array_id)
         conf = None
         if self._replication_enabled:
             for target in self._replication_targets:
