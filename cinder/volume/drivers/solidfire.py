@@ -134,6 +134,44 @@ def retry(exc_tuple, tries=5, delay=1, backoff=2):
     return retry_dec
 
 
+def locked_image_id_operation(f, external=False):
+    def lvo_inner1(inst, *args, **kwargs):
+        lock_tag = inst.driver_prefix
+        call_args = inspect.getcallargs(f, inst, *args, **kwargs)
+
+        if call_args.get('image_meta'):
+            image_id = call_args['image_meta']['id']
+        else:
+            err_msg = _('The decorated method must accept image_meta.')
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+        @utils.synchronized('%s-%s' % (lock_tag, image_id),
+                            external=external)
+        def lvo_inner2():
+            return f(inst, *args, **kwargs)
+        return lvo_inner2()
+    return lvo_inner1
+
+
+def locked_source_id_operation(f, external=False):
+    def lvo_inner1(inst, *args, **kwargs):
+        lock_tag = inst.driver_prefix
+        call_args = inspect.getcallargs(f, inst, *args, **kwargs)
+        src_arg = call_args.get('source', None)
+        if src_arg and src_arg.get('id', None):
+            source_id = call_args['source']['id']
+        else:
+            err_msg = _('The decorated method must accept src_uuid.')
+            raise exception.VolumeBackendAPIException(message=err_msg)
+
+        @utils.synchronized('%s-%s' % (lock_tag, source_id),
+                            external=external)
+        def lvo_inner2():
+            return f(inst, *args, **kwargs)
+        return lvo_inner2()
+    return lvo_inner1
+
+
 @interface.volumedriver
 class SolidFireDriver(san.SanISCSIDriver):
     """OpenStack driver to enable SolidFire cluster.
@@ -244,42 +282,6 @@ class SolidFireDriver(san.SanISCSIDriver):
             self.template_account_id = self._create_template_account(account)
 
         self._set_cluster_pairs()
-
-    def locked_image_id_operation(f, external=False):
-        def lvo_inner1(inst, *args, **kwargs):
-            lock_tag = inst.driver_prefix
-            call_args = inspect.getcallargs(f, inst, *args, **kwargs)
-
-            if call_args.get('image_meta'):
-                image_id = call_args['image_meta']['id']
-            else:
-                err_msg = _('The decorated method must accept image_meta.')
-                raise exception.VolumeBackendAPIException(data=err_msg)
-
-            @utils.synchronized('%s-%s' % (lock_tag, image_id),
-                                external=external)
-            def lvo_inner2():
-                return f(inst, *args, **kwargs)
-            return lvo_inner2()
-        return lvo_inner1
-
-    def locked_source_id_operation(f, external=False):
-        def lvo_inner1(inst, *args, **kwargs):
-            lock_tag = inst.driver_prefix
-            call_args = inspect.getcallargs(f, inst, *args, **kwargs)
-            src_arg = call_args.get('source', None)
-            if src_arg and src_arg.get('id', None):
-                source_id = call_args['source']['id']
-            else:
-                err_msg = _('The decorated method must accept src_uuid.')
-                raise exception.VolumeBackendAPIException(message=err_msg)
-
-            @utils.synchronized('%s-%s' % (lock_tag, source_id),
-                                external=external)
-            def lvo_inner2():
-                return f(inst, *args, **kwargs)
-            return lvo_inner2()
-        return lvo_inner1
 
     def __getattr__(self, attr):
         if hasattr(self.target_driver, attr):
