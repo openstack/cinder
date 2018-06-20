@@ -38,7 +38,7 @@ UNDERSCORE_IMPORT_FILES = ['cinder/objects/__init__.py',
 mutable_default_args = re.compile(r"^\s*def .+\((.+=\{\}|.+=\[\])")
 translated_log = re.compile(
     r"(.)*LOG\.(audit|debug|error|info|warn|warning|critical|exception)"
-    "\(\s*_\(\s*('|\")")
+    r"\(\s*_\(\s*('|\")")
 string_translation = re.compile(r"(.)*_\(\s*('|\")")
 vi_header_re = re.compile(r"^#\s+vim?:.+")
 underscore_import_check = re.compile(r"(.)*i18n\s+import(.)* _$")

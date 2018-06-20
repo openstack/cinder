@@ -238,7 +238,7 @@ class StorPoolTestCase(test.TestCase):
         self.assertEqual('storpool', stats['storage_protocol'])
         self.assertListEqual(['default', 'template_hdd', 'template_ssd'],
                              sorted([p['pool_name'] for p in stats['pools']]))
-        r = re.compile('^template_([A-Za-z0-9_]+)$')
+        r = re.compile(r'^template_([A-Za-z0-9_]+)$')
         for pool in stats['pools']:
             self.assertEqual(21, pool['total_capacity_gb'])
             self.assertEqual(5, int(pool['free_capacity_gb']))

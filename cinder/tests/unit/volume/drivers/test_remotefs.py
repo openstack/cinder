@@ -1115,7 +1115,7 @@ class RemoteFSManageableVolumesTestCase(test.TestCase):
             Exception,
             mock.sentinel.managed_volume]
 
-        self._driver._MANAGEABLE_IMAGE_RE = re.compile('.*\.(?:vhdx)$')
+        self._driver._MANAGEABLE_IMAGE_RE = re.compile(r'.*\.(?:vhdx)$')
 
         managed_volumes = {'volume-1': mock.sentinel.vol1}
 

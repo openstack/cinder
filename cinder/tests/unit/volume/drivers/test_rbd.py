@@ -587,7 +587,7 @@ class RBDTestCase(test.TestCase):
                                   8 * units.Gi]
         mock_get_image_status.side_effect = [
             {'watchers': []},
-            {'watchers': [{"address": "192.168.120.61:0\/3012034728",
+            {'watchers': [{"address": "192.168.120.61:0/3012034728",
                            "client": 44431941, "cookie": 94077162321152}]},
             {'watchers': []}]
         res = self.driver.get_manageable_volumes(

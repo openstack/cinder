@@ -188,7 +188,7 @@ class MStorageISMCLI(object):
         else:
             out, err, status = self._execute_nolock(command)
 
-        exstats = re.compile("(.*)ExitStatus(.*)\n")
+        exstats = re.compile(r"(.*)ExitStatus(.*)\n")
         tmpout = exstats.sub('', out)
         out = tmpout
         if conf_ismview_path is not None:

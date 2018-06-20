@@ -790,7 +790,7 @@ def read_proc_mounts():
 
 def extract_id_from_volume_name(vol_name):
     regex = re.compile(
-        CONF.volume_name_template.replace('%s', '(?P<uuid>.+)'))
+        CONF.volume_name_template.replace('%s', r'(?P<uuid>.+)'))
     match = regex.match(vol_name)
     return match.group('uuid') if match else None
 
@@ -813,7 +813,7 @@ def check_already_managed_volume(vol_id):
 def extract_id_from_snapshot_name(snap_name):
     """Return a snapshot's ID from its name on the backend."""
     regex = re.compile(
-        CONF.snapshot_name_template.replace('%s', '(?P<uuid>.+)'))
+        CONF.snapshot_name_template.replace('%s', r'(?P<uuid>.+)'))
     match = regex.match(snap_name)
     return match.group('uuid') if match else None
 
