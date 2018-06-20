@@ -17,6 +17,7 @@
 """pylint error checking."""
 
 import json
+import multiprocessing
 import re
 import sys
 
@@ -204,6 +205,7 @@ def run_pylint():
     reporter = text.TextReporter(output=buff)
     args = [
         "--msg-template='{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}'",
+        "-j", "%s" % multiprocessing.cpu_count(),
         "-E", "cinder"]
     lint.Run(args, reporter=reporter, exit=False)
     val = buff.getvalue()
