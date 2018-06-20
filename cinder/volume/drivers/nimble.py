@@ -347,7 +347,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                                   'ip': self.configuration.san_ip})
             else:
                 raise NimbleAPIException(_("Unable to get current software "
-                                           "version for %s"),
+                                           "version for %s") %
                                          self.configuration.san_ip)
 
     def get_volume_stats(self, refresh=False):
@@ -1047,7 +1047,7 @@ class NimbleRestAPIExecutor(object):
         LOG.debug("Performance policy Name %s", perf_policy_name)
         r = self.get_query(api, filter)
         if not r.json()['data']:
-            raise NimbleAPIException(_("No performance policy found for:"
+            raise NimbleAPIException(_("No performance policy found for: "
                                      "%(perf)s") % {'perf': perf_policy_name})
         LOG.debug("Performance policy ID :%(perf)s",
                   {'perf': r.json()['data'][0]['id']})
