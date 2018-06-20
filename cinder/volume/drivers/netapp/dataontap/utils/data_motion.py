@@ -447,10 +447,10 @@ class DataMotionMixin(object):
         # NOTE(gouthamr): The volume is intentionally created as a Data
         # Protection volume; junction-path will be added on breaking
         # the mirror.
+        provisioning_options['volume_type'] = 'dp'
         dest_client.create_flexvol(dest_flexvol_name,
                                    destination_aggregate,
                                    size,
-                                   volume_type='dp',
                                    **provisioning_options)
 
     def ensure_snapmirrors(self, config, src_backend_name, src_flexvol_names):
