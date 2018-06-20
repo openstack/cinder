@@ -1734,14 +1734,13 @@ class RemoteFSPoolMixin(object):
         for share in self._mounted_shares:
             (share_capacity,
              share_free,
-             share_used) = self._get_capacity_info(share)
+             total_allocated) = self._get_capacity_info(share)
 
             pool = {'pool_name': self._get_pool_name_from_share(share),
                     'total_capacity_gb': share_capacity / float(units.Gi),
                     'free_capacity_gb': share_free / float(units.Gi),
-                    'provisioned_capacity_gb': share_used / float(units.Gi),
-                    'allocated_capacity_gb': (
-                        share_capacity - share_free) / float(units.Gi),
+                    'provisioned_capacity_gb': (
+                        total_allocated / float(units.Gi)),
                     'reserved_percentage': (
                         self.configuration.reserved_percentage),
                     'max_over_subscription_ratio': (
