@@ -100,6 +100,7 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
               - Incorrect condition for an empty list (bug #1787219)
               - Deleting snapshot that is source of multiple volumes fails
                 (bug #1768047)
+              - Block revert to snapshot for replicated volumes (bug #1777871)
     """
 
     VERSION = "3.1.0"

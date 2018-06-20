@@ -4178,6 +4178,12 @@ class VMAXCommon(object):
         :param snapshot: the snapshot object
         """
         extra_specs = self._initial_setup(volume)
+        if self.utils.is_replication_enabled(extra_specs):
+            exception_message = (_(
+                "Volume is replicated - revert to snapshot feature is not "
+                "supported for replicated volumes."))
+            LOG.error(exception_message)
+            raise exception.VolumeDriverException(message=exception_message)
         array = extra_specs[utils.ARRAY]
         sourcedevice_id, snap_name = self._parse_snap_info(
             array, snapshot)
@@ -4214,4 +4220,4 @@ class VMAXCommon(object):
                 "Exception received was %(e)s") % {'e': six.text_type(e)})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
-                data=exception_message)
+                message=exception_message)
