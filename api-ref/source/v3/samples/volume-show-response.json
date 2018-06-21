@@ -21,7 +21,7 @@
         "description": "Super volume.",
         "name": "vol-002",
         "created_at": "2013-02-25T02:40:21.000000",
-        "volume_type": "None",
+        "volume_type": null,
         "os-vol-tenant-attr:tenant_id": "0c2eba2c5af04d3f9e9d0d410b371fde",
         "size": 1,
         "metadata": {

@@ -1,6 +1,6 @@
 {
     "os-initialize_connection": {
-        "connector":{
+        "connector": {
             "platform":"x86_64",
             "host": "node2",
             "do_local_attach": false,
@@ -8,6 +8,6 @@
             "os_type": "linux2",
             "multipath": false,
             "initiator": "iqn.1994-05.com.redhat:d16cbb5d31e5"
-            }
-     }
+        }
+    }
 }

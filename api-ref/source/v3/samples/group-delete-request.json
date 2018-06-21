@@ -1,5 +1,5 @@
 {
     "delete": {
-        "delete-volumes": False
+        "delete-volumes": false
     }
 }

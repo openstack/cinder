@@ -24,7 +24,6 @@
         "data_timestamp": "2013-04-20T05:30:19.000000",
         "snapshot_id": null,
         "status": "available",
-        "updated_at": "2013-04-02T10:35:27.000000",
         "volume_id": "e5185058-943a-4cb4-96d9-72c184c337d6",
         "is_incremental": true,
         "has_dependent_backups": false,

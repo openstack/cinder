@@ -1,9 +1,9 @@
 {
     "cluster": "test",
-    "disabled": "True",
-    "host": "host1@lvmdriver"
+    "disabled": true,
+    "host": "host1@lvmdriver",
     "service_id": 1,
-    "is_up": "True",
+    "is_up": true,
     "binary": "cinder-volume",
     "resource_id": "b122f668-d15a-40f8-af21-38d218796ab8",
     "resource_type": "Volume"

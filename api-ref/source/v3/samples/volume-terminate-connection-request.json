@@ -1,13 +1,13 @@
 {
-  "os-terminate_connection": {
-      "connector": {
-          "platform": "x86_64",
-          "host": "node2",
-          "do_local_attach": false,
-          "ip": "192.168.13.101",
-          "os_type": "linux2",
-          "multipath": false,
-          "initiator": "iqn.1994-05.com.redhat:d16cbb5d31e5"
-          }
-      }
+    "os-terminate_connection": {
+        "connector": {
+            "platform": "x86_64",
+            "host": "node2",
+            "do_local_attach": false,
+            "ip": "192.168.13.101",
+            "os_type": "linux2",
+            "multipath": false,
+            "initiator": "iqn.1994-05.com.redhat:d16cbb5d31e5"
+        }
+    }
 }

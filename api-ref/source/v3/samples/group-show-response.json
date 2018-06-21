@@ -11,7 +11,7 @@
             "c4daaf47-c530-4901-b28e-f5f0a359c4e6"
         ],
         "volumes": ["a2cdf1ad-5497-4e57-bd7d-f573768f3d03"],
-        "group_snapshot_id": None,
-        "source_group_id": None
+        "group_snapshot_id": null,
+        "source_group_id": null
     }
 }
