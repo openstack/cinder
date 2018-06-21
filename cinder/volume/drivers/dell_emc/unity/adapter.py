@@ -58,6 +58,7 @@ class VolumeParams(object):
         self._pool = None
         self._io_limit_policy = None
         self._is_thick = None
+        self._is_compressed = None
 
     @property
     def volume_id(self):
@@ -118,12 +119,27 @@ class VolumeParams(object):
             self._is_thick = (provision == 'thick' and support == '<is> True')
         return self._is_thick
 
+    @property
+    def is_compressed(self):
+        if self._is_compressed is None:
+            provision = utils.get_extra_spec(self._volume, 'provisioning:type')
+            compression = utils.get_extra_spec(self._volume,
+                                               'compression_support')
+            if provision == 'compressed' and compression == '<is> True':
+                self._is_compressed = True
+        return self._is_compressed
+
+    @is_compressed.setter
+    def is_compressed(self, value):
+        self._is_compressed = value
+
     def __eq__(self, other):
         return (self.volume_id == other.volume_id and
                 self.name == other.name and
                 self.size == other.size and
                 self.io_limit_policy == other.io_limit_policy and
-                self.is_thick == other.is_thick)
+                self.is_thick == other.is_thick and
+                self.is_compressed == other.is_compressed)
 
 
 class CommonAdapter(object):
@@ -285,12 +301,14 @@ class CommonAdapter(object):
             'description': params.description,
             'pool': params.pool,
             'io_limit_policy': params.io_limit_policy,
-            'is_thick': params.is_thick
+            'is_thick': params.is_thick,
+            'is_compressed': params.is_compressed
         }
 
         LOG.info('Create Volume: %(name)s, size: %(size)s, description: '
                  '%(description)s, pool: %(pool)s, io limit policy: '
-                 '%(io_limit_policy)s, thick: %(is_thick)s.', log_params)
+                 '%(io_limit_policy)s, thick: %(is_thick)s, '
+                 '%(is_compressed)s.', log_params)
 
         return self.makeup_model(
             self.client.create_lun(name=params.name,
@@ -298,7 +316,8 @@ class CommonAdapter(object):
                                    pool=params.pool,
                                    description=params.description,
                                    io_limit_policy=params.io_limit_policy,
-                                   is_thin=False if params.is_thick else None))
+                                   is_thin=False if params.is_thick else None,
+                                   is_compressed=params.is_compressed))
 
     def delete_volume(self, volume):
         lun_id = self.get_lun_id(volume)
@@ -442,6 +461,7 @@ class CommonAdapter(object):
                                'array_serial': self.serial_number}),
             'thin_provisioning_support': True,
             'thick_provisioning_support': True,
+            'compression_support': pool.is_all_flash,
             'max_over_subscription_ratio': (
                 self.max_over_subscription_ratio)}
 
@@ -597,7 +617,8 @@ class CommonAdapter(object):
             name=vol_params.name, size=vol_params.size, pool=vol_params.pool,
             description=vol_params.description,
             io_limit_policy=vol_params.io_limit_policy,
-            is_thin=False if vol_params.is_thick else None)
+            is_thin=False if vol_params.is_thick else None,
+            is_compressed=vol_params.is_compressed)
         src_id = src_snap.get_id()
         try:
             conn_props = cinder_utils.brick_get_connector_properties()

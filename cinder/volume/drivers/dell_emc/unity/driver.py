@@ -58,9 +58,10 @@ class UnityDriver(driver.ManageableVD,
         3.0.0 - Add IPv6 support
         3.1.0 - Support revert to snapshot API
         4.0.0 - Support remove empty host
+        4.2.0 - Support compressed volume
     """
 
-    VERSION = '04.00.00'
+    VERSION = '04.02.00'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"

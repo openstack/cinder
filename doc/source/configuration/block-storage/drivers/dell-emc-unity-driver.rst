@@ -23,6 +23,7 @@ Supported operations
 ~~~~~~~~~~~~~~~~~~~~
 
 - Create, delete, attach, and detach volumes.
+- Create, delete, attach, and detach compressed volumes.
 - Create, list, and delete volume snapshots.
 - Create a volume from a snapshot.
 - Copy an image to a volume.
@@ -246,6 +247,21 @@ following commands to create a thick volume.
     # openstack volume type create --property provisioning:type=thick \
       --property thick_provisioning_support='<is> True' thick_volume_type
     # openstack volume create --type thick_volume_type thick_volume
+
+
+Compressed volume support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Unity driver supports ``compressed volume`` creation, modification and
+deletion. In order to create a compressed volume, a volume type which
+enables compression support needs to be created first:
+
+.. code-block:: console
+
+   $ openstack volume type create CompressedVolumeType
+   $ openstack volume type set --property provisioning:type=compressed --property compression_support='<is> True' CompressedVolumeType
+
+Then create volume and specify the new created volume type.
 
 
 QoS support
