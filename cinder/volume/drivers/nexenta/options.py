@@ -1,4 +1,4 @@
-# Copyright 2016 Nexenta Systems, Inc.
+# Copyright 2018 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -27,10 +27,10 @@ NEXENTA_EDGE_OPTS = [
                     'links to NBDs'),
     cfg.StrOpt('nexenta_rest_user',
                default='admin',
-               help='User name to connect to NexentaEdge'),
+               help='User name to connect to NexentaEdge.'),
     cfg.StrOpt('nexenta_rest_password',
                default='nexenta',
-               help='Password to connect to NexentaEdge',
+               help='Password to connect to NexentaEdge.',
                secret=True),
     cfg.StrOpt('nexenta_lun_container',
                default='',
@@ -42,9 +42,19 @@ NEXENTA_EDGE_OPTS = [
                default='',
                help='NexentaEdge iSCSI Gateway client '
                'address for non-VIP service'),
+    cfg.IntOpt('nexenta_iops_limit',
+               default=0,
+               help='NexentaEdge iSCSI LUN object IOPS limit'),
     cfg.IntOpt('nexenta_chunksize',
                default=32768,
-               help='NexentaEdge iSCSI LUN object chunk size')
+               help='NexentaEdge iSCSI LUN object chunk size'),
+    cfg.IntOpt('nexenta_replication_count',
+               default=3,
+               help='NexentaEdge iSCSI LUN object replication count.'),
+    cfg.BoolOpt('nexenta_encryption',
+                default=False,
+                help='Defines whether NexentaEdge iSCSI LUN object '
+                     'has encryption enabled.')
 ]
 
 NEXENTA_CONNECTION_OPTS = [
@@ -118,8 +128,9 @@ NEXENTA_NFS_OPTS = [
                default='/etc/cinder/nfs_shares',
                help='File with the list of available nfs shares'),
     cfg.StrOpt('nas_host',
+               deprecated_name='nas_ip',
                default='',
-               help='VIP on NexentaStor'),
+               help='VIP, IP address or Hostname of NexentaStor Appliance.'),
     cfg.StrOpt('nexenta_mount_point_base',
                default='$state_path/mnt',
                help='Base directory that contains NFS share mount points'),
