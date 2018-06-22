@@ -29,11 +29,7 @@ if sys.platform == 'darwin':
     rtslib_fb = mock.MagicMock()
     cinder_rtstool = mock.MagicMock()
 else:
-    try:
-        import rtslib_fb
-    except ImportError:
-        import rtslib as rtslib_fb
-
+    import rtslib_fb
 
 from cinder.cmd import api as cinder_api
 from cinder.cmd import backup as cinder_backup
