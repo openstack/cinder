@@ -170,7 +170,7 @@ class DatastoreTest(test.TestCase):
                       ds1a: ds1a_props,
                       ds1b: ds1b_props}
         profile_id = mock.sentinel.profile_id
-        self._ds_sel._ds_regex = re.compile("ds-[1-9a]{1,2}$")
+        self._ds_sel._ds_regex = re.compile(r"ds-[1-9a]{1,2}$")
         datastores = self._ds_sel._filter_datastores(
             datastores,
             512,

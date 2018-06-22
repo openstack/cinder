@@ -219,7 +219,7 @@ class VMAXUtils(object):
         """
         element_name = volume_id
         uuid_regex = (re.compile(
-            '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',
+            r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',
             re.I))
         match = uuid_regex.search(volume_id)
         if match:

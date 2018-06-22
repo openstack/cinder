@@ -263,7 +263,7 @@ def get_pool_name_filter_regex(configuration):
     # If the configuration parameter is specified as an empty string
     # (interpreted as matching all pools), we replace it here with
     # (.+) to be explicit with CSV compatibility support implemented below.
-    pool_patterns = configuration.netapp_pool_name_search_pattern or '(.+)'
+    pool_patterns = configuration.netapp_pool_name_search_pattern or r'(.+)'
 
     # Strip whitespace from start/end and then 'or' all regex patterns
     pool_patterns = '|'.join(['^' + pool_pattern.strip('^$ \t') + '$' for

@@ -91,7 +91,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
                                 _DISK_FORMAT_VHDX]
     _VALID_IMAGE_EXTENSIONS = [_DISK_FORMAT_VHD, _DISK_FORMAT_VHDX]
     _MANAGEABLE_IMAGE_RE = re.compile(
-        '.*\.(?:%s)$' % '|'.join(_VALID_IMAGE_EXTENSIONS),
+        r'.*\.(?:%s)$' % '|'.join(_VALID_IMAGE_EXTENSIONS),
         re.IGNORECASE)
 
     _always_use_temp_snap_when_cloning = False

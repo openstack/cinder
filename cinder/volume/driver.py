@@ -165,7 +165,7 @@ volume_opts = [
                      'storage if the driver supports it.'),
     cfg.StrOpt('max_over_subscription_ratio',
                default='20.0',
-               regex='^(auto|\d*\.\d+|\d+)$',
+               regex=r'^(auto|\d*\.\d+|\d+)$',
                help='Representation of the over subscription ratio '
                     'when thin provisioning is enabled. Default ratio is '
                     '20.0, meaning provisioned capacity can be 20 times of '
