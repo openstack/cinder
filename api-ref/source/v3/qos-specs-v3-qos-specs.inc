@@ -46,7 +46,7 @@ Response codes
 
 .. rest_status_code:: success ../status.yaml
 
-   - 200
+   - 202
 
 
 Request
