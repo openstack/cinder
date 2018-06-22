@@ -796,3 +796,35 @@ Request Example
 .. literalinclude:: ./samples/volume-initialize-connection-request.json
    :language: javascript
 
+
+Updates volume read-only access-mode flag
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
+
+Enables or disables update of volume to read-only access mode.
+Specify the ``os-update_readonly_flag`` action in the request body.
+
+Response codes
+--------------
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - os-update_readonly_flag: os-update_readonly_flag
+   - readonly: readonly
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-readonly-update-request.json
+   :language: javascript
