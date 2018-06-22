@@ -589,8 +589,10 @@ class VMAXCommonData(object):
                      "remoteSymmetrixID": remote_array}]}}]}}
 
     workloadtype = {"workloadId": ["OLTP", "OLTP_REP", "DSS", "DSS_REP"]}
-    slo_details = {"sloId": ["Bronze", "Diamond", "Gold",
-                             "Optimized", "Platinum", "Silver"]}
+    srp_slo_details = {"serviceLevelDemand": [
+        {"serviceLevelId": "None"}, {"serviceLevelId": "Diamond"},
+        {"serviceLevelId": "Gold"}, {"serviceLevelId": "Optimized"}]}
+    slo_details = ['None', 'Diamond', 'Gold', 'Optimized']
 
     # replication
     volume_snap_vx = {"snapshotLnks": [],
@@ -974,14 +976,14 @@ class FakeRequestsSession(object):
                 return_object = self._sloprovisioning_ig(url)
             elif 'initiator' in url:
                 return_object = self._sloprovisioning_initiator(url)
+            elif 'service_level_demand_report' in url:
+                return_object = self.data.srp_slo_details
             elif 'srp' in url:
                 return_object = self.data.srp_details
             elif 'workloadtype' in url:
                 return_object = self.data.workloadtype
             elif 'compressionCapable' in url:
                 return_object = self.data.compression_info
-            else:
-                return_object = self.data.slo_details
 
         elif 'replication' in url:
             return_object = self._replication(url)
@@ -1972,8 +1974,8 @@ class VMAXRestTest(test.TestCase):
         self.assertEqual(ref_details, srp_details)
 
     def test_get_slo_list(self):
-        ref_settings = self.data.slo_details['sloId']
-        slo_settings = self.rest.get_slo_list(self.data.array)
+        ref_settings = self.data.slo_details
+        slo_settings = self.rest.get_slo_list(self.data.array, self.data.srp)
         self.assertEqual(ref_settings, slo_settings)
 
     def test_get_workload_settings(self):

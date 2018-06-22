@@ -212,22 +212,26 @@ class VMAXCommon(object):
         """
         try:
             array = array_info['SerialNumber']
+            srp = array_info['srpName']
             if self.failover:
                 array = self.active_backend_id
             # Get the srp slo & workload settings
-            slo_settings = self.rest.get_slo_list(array)
+            slo_settings = self.rest.get_slo_list(array, srp)
             # Remove 'None' from the list (so a 'None' slo is not combined
             # with a workload, which is not permitted)
-            slo_settings = [x for x in slo_settings
-                            if x.lower() not in ['none', 'optimized']]
+            slo_list = [x for x in slo_settings
+                        if x.lower() not in ['none', 'optimized']]
             workload_settings = self.rest.get_workload_settings(array)
             workload_settings.append("None")
             slo_workload_set = set(
                 ['%(slo)s:%(workload)s' % {'slo': slo, 'workload': workload}
-                 for slo in slo_settings for workload in workload_settings])
+                 for slo in slo_list for workload in workload_settings])
             # Add back in in the only allowed 'None' slo/ workload combination
             slo_workload_set.add('None:None')
-            slo_workload_set.add('Optimized:None')
+            for x in slo_settings:
+                if 'optimized' == x.lower():
+                    slo_workload_set.add('Optimized:None')
+                    break
 
             finalarrayinfolist = []
             for sloWorkload in slo_workload_set:
@@ -1536,13 +1540,17 @@ class VMAXCommon(object):
         elif pool_record.get('ServiceLevel'):
             slo_from_extra_spec = pool_record['ServiceLevel']
             workload_from_extra_spec = pool_record.get('Workload', 'None')
+            # If workload is None in cinder.conf, convert to string
+            if not workload_from_extra_spec:
+                workload_from_extra_spec = 'NONE'
             LOG.info("Pool_name is not present in the extra_specs "
                      "- using slo/ workload from xml file: %(slo)s/%(wl)s.",
                      {'slo': slo_from_extra_spec,
                       'wl': workload_from_extra_spec})
 
         else:
-            slo_list = self.rest.get_slo_list(pool_record['SerialNumber'])
+            slo_list = self.rest.get_slo_list(
+                pool_record['SerialNumber'], extra_specs[utils.SRP])
             if 'Optimized' in slo_list:
                 slo_from_extra_spec = 'Optimized'
             elif 'Diamond' in slo_list:
