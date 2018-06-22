@@ -19,6 +19,7 @@ import mock
 
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_constants as constants
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nec import cli
 from cinder.volume.drivers.nec import volume_common
@@ -348,48 +349,29 @@ xml_out = '''
 '''
 
 
-def patch_view_all(self, conf_ismview_path=None, delete_ismview=True,
-                   cmd_lock=True):
-    return xml_out
-
-
-def patch_execute(self, command, expected_status=[0], raise_exec=True):
-    return "success", 0, 0
-
-
 class DummyVolume(object):
 
-    def __init__(self):
+    def __init__(self, volid, volsize=1):
         super(DummyVolume, self).__init__()
-        self.id = ''
-        self.size = 0
-        self.status = ''
-        self.migration_status = ''
-        self.volume_id = ''
-        self.volume_type_id = ''
-        self.attach_status = ''
-        self.provider_location = ''
+        self.id = volid
+        self.size = volsize
+        self.status = None
+        self.migration_status = None
+        self.volume_id = None
+        self.volume_type_id = None
+        self.attach_status = None
+        self.provider_location = None
 
 
 @ddt.ddt
 class VolumeIDConvertTest(volume_helper.MStorageDSVDriver, test.TestCase):
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def setUp(self):
         super(VolumeIDConvertTest, self).setUp()
+        self.mock_object(self, '_create_ismview_dir')
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
         self.do_setup(None)
-        self.vol = DummyVolume()
-        self.xml = self._cli.view_all()
-        (self.pools,
-         self.lds,
-         self.ldsets,
-         self.used_ldns,
-         self.hostports,
-         self.max_ld_count) = self.configs(self.xml)
+        self.vol = DummyVolume(constants.VOLUME_ID)
 
     @ddt.data(("AAAAAAAA", "LX:37mA82"), ("BBBBBBBB", "LX:3R9ZwR"))
     @ddt.unpack
@@ -425,16 +407,15 @@ class VolumeIDConvertTest(volume_helper.MStorageDSVDriver, test.TestCase):
 
 class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def setUp(self):
         super(NominatePoolLDTest, self).setUp()
+        self.mock_object(self, '_create_ismview_dir')
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.mock_object(self._cli, '_execute',
+                         return_value=('success', 0, 0))
+        self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
-        self.vol = DummyVolume()
-        self.xml = self._cli.view_all()
+        self.xml = xml_out
         self._properties['cli_fip'] = '10.0.0.1'
         self._properties['pool_pools'] = {0, 1}
         self._properties['pool_backup_pools'] = {2, 3}
@@ -454,6 +435,7 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         for var in range(0, 1025):
             pool_data['ld_list'].append(volume)
         self.test_pools = [pool_data]
+        self.vol = DummyVolume(constants.VOLUME_ID, 10)
 
     def test_getxml(self):
         self.assertIsNotNone(self.xml, "iSMview xml should not be None")
@@ -463,7 +445,6 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual(2, ldn, "selected ldn should be XXX")
 
     def test_selectpool_for_normalvolume(self):
-        self.vol.size = 10
         pool = self._select_leastused_poolnumber(self.vol,
                                                  self.pools,
                                                  self.xml)
@@ -479,13 +460,8 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
     def test_return_poolnumber(self):
         self.assertEqual(1, self._return_poolnumber(self.test_pools))
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_selectpool_for_migratevolume(self):
         self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        self.vol.size = 10
         dummyhost = {}
         dummyhost['capabilities'] = self._update_volume_status()
         pool = self._select_migrate_poolnumber(self.vol,
@@ -494,7 +470,6 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
                                                dummyhost)
         self.assertEqual(1, pool, "selected pool should be 1")
         self.vol.id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
-        self.vol.size = 10
         pool = self._select_migrate_poolnumber(self.vol,
                                                self.pools,
                                                self.xml,
@@ -509,7 +484,6 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
                                                    dummyhost)
 
     def test_selectpool_for_snapvolume(self):
-        self.vol.size = 10
         savePool1 = self.pools[1]['free']
         self.pools[1]['free'] = 0
         pool = self._select_dsv_poolnumber(self.vol, self.pools)
@@ -534,7 +508,6 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         # config:pool_backup_pools=[2]
 
     def test_selectpool_for_ddrvolume(self):
-        self.vol.size = 10
         pool = self._select_ddr_poolnumber(self.vol,
                                            self.pools,
                                            self.xml,
@@ -564,7 +537,6 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
                                                999999999999)
 
     def test_selectpool_for_volddrvolume(self):
-        self.vol.size = 10
         pool = self._select_volddr_poolnumber(self.vol,
                                               self.pools,
                                               self.xml,
@@ -601,12 +573,8 @@ class GetInformationTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
         self.do_setup(None)
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def test_get_ldset(self):
-        self.xml = self._cli.view_all()
+        self.xml = xml_out
         (self.pools,
          self.lds,
          self.ldsets,
@@ -629,31 +597,21 @@ class GetInformationTest(volume_helper.MStorageDSVDriver, test.TestCase):
 
 class VolumeCreateTest(volume_helper.MStorageDSVDriver, test.TestCase):
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def setUp(self):
         super(VolumeCreateTest, self).setUp()
+        self.mock_object(self, '_create_ismview_dir')
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.mock_object(self._cli, '_execute',
+                         return_value=('success', 0, 0))
+        self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
-        self.vol = DummyVolume()
-        self.xml = self._cli.view_all()
-        (self.pools,
-         self.lds,
-         self.ldsets,
-         self.used_ldns,
-         self.hostports,
-         self.max_ld_count) = self.configs(self.xml)
+        self.xml = xml_out
+        self.vol = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b", 1)
 
     def test_validate_migrate_volume(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        self.vol.size = 10
         self.vol.status = 'available'
         self._validate_migrate_volume(self.vol, self.xml)
 
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        self.vol.size = 10
         self.vol.status = 'creating'
         with self.assertRaisesRegexp(exception.VolumeBackendAPIException,
                                      'Specified Logical Disk'
@@ -662,26 +620,17 @@ class VolumeCreateTest(volume_helper.MStorageDSVDriver, test.TestCase):
             self._validate_migrate_volume(self.vol, self.xml)
 
         self.vol.id = "AAAAAAAA"
-        self.vol.size = 10
         self.vol.status = 'available'
         with self.assertRaisesRegexp(exception.NotFound,
                                      'Logical Disk `LX:37mA82`'
                                      ' could not be found.'):
             self._validate_migrate_volume(self.vol, self.xml)
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_extend_volume(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"  # MV
-        self.vol.size = 1
         self.vol.status = 'available'
         self.extend_volume(self.vol, 10)
 
         self.vol.id = "00046058-d38e-7f60-67b7-59ed65e54225"  # RV
-        self.vol.size = 1
-        self.vol.status = 'available'
         with self.assertRaisesRegexp(exception.VolumeBackendAPIException,
                                      'RPL Attribute Error. '
                                      'RPL Attribute = RV.'):
@@ -690,57 +639,33 @@ class VolumeCreateTest(volume_helper.MStorageDSVDriver, test.TestCase):
 
 class BindLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def setUp(self):
         super(BindLDTest, self).setUp()
+        self.mock_object(self, '_create_ismview_dir')
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.mock_object(self._cli, '_execute',
+                         return_value=('success', 0, 0))
+        self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
-        self.vol = DummyVolume()
-        self.src = DummyVolume()
-        self.xml = self._cli.view_all()
-        (self.pools,
-         self.lds,
-         self.ldsets,
-         self.used_ldns,
-         self.hostports,
-         self.max_ld_count) = self.configs(self.xml)
-        mock_bindld = mock.Mock()
-        self._bind_ld = mock_bindld
-        self._bind_ld.return_value = 0, 0, 0
+        self.mock_object(self, '_bind_ld', return_value=(0, 0, 0))
+        self.vol = DummyVolume(constants.VOLUME_ID, 1)
 
     def test_bindld_CreateVolume(self):
-        self.vol.id = "AAAAAAAA"
-        self.vol.size = 1
         self.vol.migration_status = "success"
-        self.vol.volume_type_id = None
         self.create_volume(self.vol)
         self._bind_ld.assert_called_once_with(
             self.vol, self.vol.size, None,
             self._convert_id2name,
             self._select_leastused_poolnumber)
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_bindld_CreateCloneVolume(self):
-        self.vol.id = "AAAAAAAA"
-        self.vol.size = 1
         self.vol.migration_status = "success"
-        self.src.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        self.src.size = 1
-        self.vol.volume_type_id = None
-        mock_query_DSV = mock.Mock()
-        self._cli.query_BV_SV_status = mock_query_DSV
-        self._cli.query_BV_SV_status.return_value = 'snap/active'
-        mock_query_DDR = mock.Mock()
-        self._cli.query_MV_RV_name = mock_query_DDR
-        self._cli.query_MV_RV_name.return_value = 'separated'
-        mock_backup = mock.Mock()
-        self._cli.backup_restore = mock_backup
+        self.src = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b", 1)
+        self.mock_object(self._cli, 'query_BV_SV_status',
+                         return_value='snap/active')
+        self.mock_object(self._cli, 'query_MV_RV_name',
+                         return_value='separated')
+        self.mock_object(self._cli, 'backup_restore')
         self.create_cloned_volume(self.vol, self.src)
         self._bind_ld.assert_called_once_with(
             self.vol, self.vol.size, None,
@@ -752,56 +677,47 @@ class BindLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual(12, cli.get_sleep_time_for_clone(2))
         self.assertEqual(60, cli.get_sleep_time_for_clone(19))
 
+    def test_delete_volume(self):
+        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
+        detached = self._detach_from_all(self.vol)
+        self.assertTrue(detached)
+        self.vol.id = constants.VOLUME_ID
+        detached = self._detach_from_all(self.vol)
+        self.assertFalse(detached)
+        self.vol.id = constants.VOLUME2_ID
+        with mock.patch.object(self, '_detach_from_all') as detach_mock:
+            self.delete_volume(self.vol)
+            detach_mock.assert_called_once_with(self.vol)
+
 
 class BindLDTest_Snap(volume_helper.MStorageDSVDriver, test.TestCase):
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def setUp(self):
         super(BindLDTest_Snap, self).setUp()
+        self.mock_object(self, '_create_ismview_dir')
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.mock_object(self._cli, '_execute',
+                         return_value=('success', 0, 0))
+        self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
-        self.vol = DummyVolume()
-        self.snap = DummyVolume()
-        self.xml = self._cli.view_all()
-        (self.pools,
-         self.lds,
-         self.ldsets,
-         self.used_ldns,
-         self.hostports,
-         self.max_ld_count) = self.configs(self.xml)
-        mock_bindld = mock.Mock()
-        self._bind_ld = mock_bindld
-        self._bind_ld.return_value = 0, 0, 0
-        mock_bindsnap = mock.Mock()
-        self._create_snapshot = mock_bindsnap
+        self.mock_object(self, '_bind_ld', return_value=(0, 0, 0))
+        self.mock_object(self, '_create_snapshot')
+        self.vol = DummyVolume(constants.VOLUME_ID)
+        self.snap = DummyVolume(constants.SNAPSHOT_ID)
 
     def test_bindld_CreateSnapshot(self):
-        self.snap.id = "AAAAAAAA"
-        self.snap.volume_id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
-        self.snap.size = 10
+        self.snap.volume_id = constants.VOLUME_ID
         self.create_snapshot(self.snap)
         self._create_snapshot.assert_called_once_with(
             self.snap, self._properties['diskarray_name'])
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_bindld_CreateFromSnapshot(self):
-        self.vol.id = "AAAAAAAA"
-        self.vol.size = 1
         self.vol.migration_status = "success"
-        self.vol.volume_type_id = None
         self.snap.id = "63410c76-2f12-4473-873d-74a63dfcd3e2"
         self.snap.volume_id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
-        mock_query = mock.Mock()
-        self._cli.query_BV_SV_status = mock_query
-        self._cli.query_BV_SV_status.return_value = 'snap/active'
-        mock_backup = mock.Mock()
-        self._cli.backup_restore = mock_backup
+        self.mock_object(self._cli, 'query_BV_SV_status',
+                         return_value='snap/active')
+        self.mock_object(self._cli, 'backup_restore')
         self.create_volume_from_snapshot(self.vol, self.snap)
         self._bind_ld.assert_called_once_with(
             self.vol, 1, None,
@@ -811,75 +727,25 @@ class BindLDTest_Snap(volume_helper.MStorageDSVDriver, test.TestCase):
 
 class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def setUp(self):
         super(ExportTest, self).setUp()
+        self.mock_object(self, '_create_ismview_dir')
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.mock_object(self._cli, '_execute',
+                         return_value=('success', 0, 0))
+        self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
-        self.vol = DummyVolume()
-        self.xml = self._cli.view_all()
-        (self.pools,
-         self.lds,
-         self.ldsets,
-         self.used_ldns,
-         self.hostports,
-         self.max_ld_count) = self.configs(self.xml)
+        self.vol = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b", 10)
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_iscsi_portal(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        self.vol.size = 10
-        self.vol.status = None
-        self.vol.migration_status = None
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
         self.iscsi_do_export(None, self.vol, connector)
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_fc_do_export(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        self.vol.size = 10
-        self.vol.status = None
-        self.vol.migration_status = None
         connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
         self.fc_do_export(None, self.vol, connector)
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
-    def test_remove_export(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        self.vol.size = 10
-        self.vol.status = 'uploading'
-        self.vol.attach_status = 'attached'
-        self.vol.migration_status = None
-        self.vol.volume_type_id = None
-        context = mock.Mock()
-        ret = self.remove_export(context, self.vol)
-        self.assertIsNone(ret)
-
-        self.vol.attach_status = None
-
-        self.vol.status = 'downloading'
-        with self.assertRaisesRegexp(exception.VolumeBackendAPIException,
-                                     r'Failed to unregister Logical Disk from'
-                                     r' Logical Disk Set \(iSM31064\)'):
-            mock_del = mock.Mock()
-            self._cli.delldsetld = mock_del
-            self._cli.delldsetld.return_value = False, 'iSM31064'
-            self.remove_export(context, self.vol)
-
     def test_iscsi_initialize_connection(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
         loc = "127.0.0.1:3260:1 iqn.2010-10.org.openstack:volume-00000001 88"
         self.vol.provider_location = loc
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255",
@@ -895,40 +761,23 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual('127.0.0.1:3260', info['data']['target_portals'][0])
         self.assertEqual(88, info['data']['target_luns'][0])
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_iscsi_terminate_connection(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255",
                      'multipath': True}
         ret = self._iscsi_terminate_connection(self.vol, connector)
         self.assertIsNone(ret)
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_iscsi_terminate_connection_negative(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255",
                      'multipath': True}
         with self.assertRaisesRegexp(exception.VolumeBackendAPIException,
                                      r'Failed to unregister Logical Disk from'
                                      r' Logical Disk Set \(iSM31064\)'):
-            mock_del = mock.Mock()
-            self._cli.delldsetld = mock_del
-            self._cli.delldsetld.return_value = False, 'iSM31064'
+            self.mock_object(self._cli, 'delldsetld',
+                             return_value=(False, 'iSM31064'))
             self._iscsi_terminate_connection(self.vol, connector)
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_fc_initialize_connection(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        self.vol.migration_status = None
         connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
         info = self._fc_initialize_connection(self.vol, connector)
         self.assertEqual('fibre_channel', info['driver_volume_type'])
@@ -963,17 +812,11 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
         with self.assertRaisesRegexp(exception.VolumeBackendAPIException,
                                      r'Failed to unregister Logical Disk from'
                                      r' Logical Disk Set \(iSM31064\)'):
-            mock_del = mock.Mock()
-            self._cli.delldsetld = mock_del
-            self._cli.delldsetld.return_value = False, 'iSM31064'
+            self.mock_object(self._cli, 'delldsetld',
+                             return_value=(False, 'iSM31064'))
             self._fc_terminate_connection(self.vol, connector)
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_fc_terminate_connection(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
         connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
         info = self._fc_terminate_connection(self.vol, connector)
         self.assertEqual('fibre_channel', info['driver_volume_type'])
@@ -1009,12 +852,7 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual('fibre_channel', info['driver_volume_type'])
         self.assertEqual({}, info['data'])
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_iscsi_portal_with_controller_node_name(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
         self.vol.status = 'downloading'
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
         self._properties['ldset_controller_node_name'] = 'LX:OpenStack1'
@@ -1025,12 +863,7 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
                          ',1 iqn.2001-03.target0000 0',
                          location['provider_location'])
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_fc_do_export_with_controller_node_name(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
         self.vol.status = 'downloading'
         connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
         self._properties['ldset_controller_node_name'] = 'LX:OpenStack0'
@@ -1041,33 +874,20 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
 class DeleteDSVVolume_test(volume_helper.MStorageDSVDriver,
                            test.TestCase):
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def setUp(self):
         super(DeleteDSVVolume_test, self).setUp()
+        self.mock_object(self, '_create_ismview_dir')
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.mock_object(self._cli, '_execute',
+                         return_value=('success', 0, 0))
+        self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
-        self.vol = DummyVolume()
-        self.xml = self._cli.view_all()
-        (self.pools,
-         self.lds,
-         self.ldsets,
-         self.used_ldns,
-         self.hostports,
-         self.max_ld_count) = self.configs(self.xml)
+        self.vol = DummyVolume(constants.SNAPSHOT_ID)
+        self.vol.volume_id = constants.VOLUME_ID
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.view_all',
-                patch_view_all)
     def test_delete_snapshot(self):
-        self.vol.id = "63410c76-2f12-4473-873d-74a63dfcd3e2"
-        self.vol.volume_id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
-        mock_query = mock.Mock()
-        self._cli.query_BV_SV_status = mock_query
-        self._cli.query_BV_SV_status.return_value = 'snap/active'
+        self.mock_object(self._cli, 'query_BV_SV_status',
+                         return_value='snap/active')
         ret = self.delete_snapshot(self.vol)
         self.assertIsNone(ret)
 
@@ -1075,21 +895,16 @@ class DeleteDSVVolume_test(volume_helper.MStorageDSVDriver,
 class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
                                test.TestCase):
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def setUp(self):
         super(NonDisruptiveBackup_test, self).setUp()
+        self.mock_object(self, '_create_ismview_dir')
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.mock_object(self._cli, '_execute',
+                         return_value=('success', 0, 0))
+        self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
-        self.vol = DummyVolume()
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        self.volvolume_id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
-        self.volsize = 10
-        self.volstatus = None
-        self.volmigration_status = None
-        self.xml = self._cli.view_all()
+        self.vol = DummyVolume('46045673-41e7-44a7-9333-02f07feab04b')
+        self.xml = xml_out
         (self.pools,
          self.lds,
          self.ldsets,
@@ -1108,10 +923,6 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
             self._validate_ld_exist(
                 self.lds, self.vol.id, self._properties['ld_name_format'])
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', new=mock.Mock())
     def test_validate_iscsildset_exist(self):
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
         ldset = self._validate_iscsildset_exist(self.ldsets, connector)
@@ -1125,18 +936,14 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
                          ['iqn.1994-05.com.redhat:d1d8e8f232XX']}
         mock_ldset = {}
         mock_ldset['LX:redhatd1d8e8f23'] = mock_data
-        mock_configs = mock.Mock()
-        self.configs = mock_configs
-        self.configs.return_value = None, None, mock_ldset, None, None, None
+        self.mock_object(
+            self, 'configs',
+            return_value=(None, None, mock_ldset, None, None, None))
         ldset = self._validate_iscsildset_exist(self.ldsets, connector)
         self.assertEqual('LX:redhatd1d8e8f23', ldset['ldsetname'])
         self.assertEqual('iqn.1994-05.com.redhat:d1d8e8f232XX',
                          ldset['initiator_list'][0])
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', new=mock.Mock())
     def test_validate_fcldset_exist(self):
         connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
         ldset = self._validate_fcldset_exist(self.ldsets, connector)
@@ -1149,9 +956,9 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
                      'port': []}
         mock_ldset = {}
         mock_ldset['LX:10000090FAA0786X'] = mock_data
-        mock_configs = mock.Mock()
-        self.configs = mock_configs
-        self.configs.return_value = None, None, mock_ldset, None, None, None
+        self.mock_object(
+            self, 'configs',
+            return_value=(None, None, mock_ldset, None, None, None))
         ldset = self._validate_fcldset_exist(self.ldsets, connector)
         self.assertEqual('LX:10000090FAA0786X', ldset['ldsetname'])
         self.assertEqual('1000-0090-FAA0-786X', ldset['wwpn'][0])
@@ -1168,10 +975,6 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
         self.assertEqual('192.168.2.92:3260', portal[2])
         self.assertEqual('192.168.2.93:3260', portal[3])
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
     def test_initialize_connection_snapshot(self):
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
         loc = "127.0.0.1:3260:1 iqn.2010-10.org.openstack:volume-00000001 88"
@@ -1185,10 +988,6 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
         self.assertIsNotNone(ret)
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
     def test_terminate_connection_snapshot(self):
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
         self.iscsi_terminate_connection_snapshot(self.vol, connector)
@@ -1197,10 +996,6 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
         ret = self.fc_terminate_connection_snapshot(self.vol, connector)
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
     def test_remove_export_snapshot(self):
         self.remove_export_snapshot(None, self.vol)
 
@@ -1232,21 +1027,17 @@ class VolumeStats_test(volume_helper.MStorageDSVDriver, test.TestCase):
 
 class Migrate_test(volume_helper.MStorageDSVDriver, test.TestCase):
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
     def setUp(self):
         super(Migrate_test, self).setUp()
+        self.mock_object(self, '_create_ismview_dir')
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.mock_object(self._cli, '_execute',
+                         return_value=('success', 0, 0))
+        self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
-        self.newvol = DummyVolume()
-        self.newvol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        self.sourcevol = DummyVolume()
-        self.sourcevol.id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
+        self.newvol = DummyVolume(constants.VOLUME_ID)
+        self.sourcevol = DummyVolume(constants.VOLUME2_ID)
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
-                patch_execute)
     def test_update_migrate_volume(self):
         update_data = self.update_migrated_volume(None, self.sourcevol,
                                                   self.newvol, 'available')
@@ -1256,14 +1047,15 @@ class Migrate_test(volume_helper.MStorageDSVDriver, test.TestCase):
 
 class ManageUnmanage_test(volume_helper.MStorageDSVDriver, test.TestCase):
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
     def setUp(self):
         super(ManageUnmanage_test, self).setUp()
+        self.mock_object(self, '_create_ismview_dir')
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
         self._properties['pool_pools'] = {0}
         self._properties['pool_backup_pools'] = {1}
+        self.newvol = DummyVolume(constants.VOLUME_ID)
 
     def test_is_manageable_volume(self):
         ld_ok_iv = {'pool_num': 0, 'RPL Attribute': 'IV', 'Purpose': '---'}
@@ -1281,8 +1073,6 @@ class ManageUnmanage_test(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertFalse(self._is_manageable_volume(ld_ng_rpl3))
         self.assertFalse(self._is_manageable_volume(ld_ng_purp))
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def test_get_manageable_volumes(self):
         current_volumes = []
         volumes = self.get_manageable_volumes(current_volumes, None,
@@ -1305,22 +1095,14 @@ class ManageUnmanage_test(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertFalse(volumes[3]['safe_to_manage'])
         self.assertTrue(volumes[4]['safe_to_manage'])
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def test_manage_existing(self):
-        mock_rename = mock.Mock()
-        self._cli.changeldname = mock_rename
-        self.newvol = DummyVolume()
-        self.newvol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-
+        self.mock_object(self._cli, 'changeldname')
         current_volumes = []
         volumes = self.get_manageable_volumes(current_volumes, None,
                                               100, 0, ['reference'], ['dec'])
         self.manage_existing(self.newvol, volumes[4]['reference'])
         self._cli.changeldname.assert_called_once_with(
-            None,
-            'LX:287RbQoP7VdwR1WsPC2fZT',
-            '  :20000009910200140009')
+            None, 'LX:vD03hJCiHvGpvP4iSevKk', '  :20000009910200140009')
         with self.assertRaisesRegex(exception.ManageExistingInvalidReference,
                                     'Specified resource is already in-use.'):
             self.manage_existing(self.newvol, volumes[3]['reference'])
@@ -1329,12 +1111,7 @@ class ManageUnmanage_test(volume_helper.MStorageDSVDriver, test.TestCase):
                                     'Volume type is unmatched.'):
             self.manage_existing(self.newvol, volume)
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def test_manage_existing_get_size(self):
-        self.newvol = DummyVolume()
-        self.newvol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-
         current_volumes = []
         volumes = self.get_manageable_volumes(current_volumes, None,
                                               100, 0, ['reference'], ['dec'])
@@ -1345,14 +1122,16 @@ class ManageUnmanage_test(volume_helper.MStorageDSVDriver, test.TestCase):
 
 class ManageUnmanage_Snap_test(volume_helper.MStorageDSVDriver, test.TestCase):
 
-    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
-                '_create_ismview_dir', new=mock.Mock())
     def setUp(self):
         super(ManageUnmanage_Snap_test, self).setUp()
+        self.mock_object(self, '_create_ismview_dir')
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
         self._properties['pool_pools'] = {0}
         self._properties['pool_backup_pools'] = {1}
+        self.newsnap = DummyVolume('46045673-41e7-44a7-9333-02f07feab04b')
+        self.newsnap.volume_id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
 
     def test_is_manageable_snapshot(self):
         ld_ok_sv1 = {'pool_num': 1, 'RPL Attribute': 'SV', 'Purpose': 'INV'}
@@ -1370,30 +1149,19 @@ class ManageUnmanage_Snap_test(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertFalse(self._is_manageable_snapshot(ld_ng_rpl3))
         self.assertFalse(self._is_manageable_snapshot(ld_ng_rpl4))
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def test_get_manageable_snapshots(self):
-        mock_getbvname = mock.Mock()
-        self._cli.get_bvname = mock_getbvname
-        self._cli.get_bvname.return_value = "yEUHrXa5AHMjOZZLb93eP"
+        self.mock_object(self._cli, 'get_bvname',
+                         return_value='yEUHrXa5AHMjOZZLb93eP')
         current_snapshots = []
         volumes = self.get_manageable_snapshots(current_snapshots, None,
                                                 100, 0, ['reference'], ['asc'])
         self.assertEqual('LX:4T7JpyqI3UuPlKeT9D3VQF',
                          volumes[0]['reference']['source-name'])
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def test_manage_existing_snapshot(self):
-        mock_rename = mock.Mock()
-        self._cli.changeldname = mock_rename
-        self.newsnap = DummyVolume()
-        self.newsnap.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        self.newsnap.volume_id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
-        mock_getbvname = mock.Mock()
-        self._cli.get_bvname = mock_getbvname
-
-        self._cli.get_bvname.return_value = "yEUHrXa5AHMjOZZLb93eP"
+        self.mock_object(self._cli, 'changeldname')
+        self.mock_object(self._cli, 'get_bvname',
+                         return_value='yEUHrXa5AHMjOZZLb93eP')
         current_snapshots = []
         snaps = self.get_manageable_snapshots(current_snapshots, None,
                                               100, 0, ['reference'], ['asc'])
@@ -1415,15 +1183,9 @@ class ManageUnmanage_Snap_test(volume_helper.MStorageDSVDriver, test.TestCase):
                                     'Volume type is unmatched.'):
             self.manage_existing_snapshot(self.newsnap, snap)
 
-    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
-                'view_all', patch_view_all)
     def test_manage_existing_snapshot_get_size(self):
-        self.newsnap = DummyVolume()
-        self.newsnap.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        mock_getbvname = mock.Mock()
-        self._cli.get_bvname = mock_getbvname
-        self._cli.get_bvname.return_value = "yEUHrXa5AHMjOZZLb93eP"
-
+        self.mock_object(self._cli, 'get_bvname',
+                         return_value='yEUHrXa5AHMjOZZLb93eP')
         current_snapshots = []
         snaps = self.get_manageable_snapshots(current_snapshots, None,
                                               100, 0, ['reference'], ['asc'])
