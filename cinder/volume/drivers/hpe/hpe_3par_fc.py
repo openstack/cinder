@@ -109,10 +109,12 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         4.0.2 - Create one vlun in single path configuration. bug #1727176
         4.0.3 - Create FC vlun as host sees. bug #1734505
         4.0.4 - Handle force detach case. bug #1686745
+        4.0.5 - Set proper backend on subsequent operation, after group
+                failover. bug #1773069
 
     """
 
-    VERSION = "4.0.4"
+    VERSION = "4.0.5"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -163,7 +165,8 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
           * Create a VLUN for that HOST with the volume we want to export.
 
         """
-        common = self._login()
+        array_id = self.get_volume_replication_driver_data(volume)
+        common = self._login(array_id=array_id)
         try:
             # we have to make sure we have a host
             host = self._create_host(common, volume, connector)
@@ -208,7 +211,8 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
     @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
-        common = self._login()
+        array_id = self.get_volume_replication_driver_data(volume)
+        common = self._login(array_id=array_id)
         try:
             is_force_detach = connector is None
             if is_force_detach:

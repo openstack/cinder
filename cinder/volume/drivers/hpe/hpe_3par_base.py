@@ -57,10 +57,12 @@ class HPE3PARDriverBase(driver.ManageableVD,
         1.0.2 - Adds capability.
         1.0.3 - Added Tiramisu feature on 3PAR.
         1.0.4 - Fixed Volume migration for "in-use" volume. bug #1744021
+        1.0.5 - Set proper backend on subsequent operation, after group
+                failover. bug #1773069
 
     """
 
-    VERSION = "1.0.4"
+    VERSION = "1.0.5"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARDriverBase, self).__init__(*args, **kwargs)
@@ -73,12 +75,13 @@ class HPE3PARDriverBase(driver.ManageableVD,
         return hpecommon.HPE3PARCommon(self.configuration,
                                        self._active_backend_id)
 
-    def _login(self, timeout=None):
+    def _login(self, timeout=None, array_id=None):
         common = self._init_common()
         # If replication is enabled and we cannot login, we do not want to
         # raise an exception so a failover can still be executed.
         try:
-            common.do_setup(None, timeout=timeout, stats=self._stats)
+            common.do_setup(None, timeout=timeout, stats=self._stats,
+                            array_id=array_id)
             common.client_login()
         except Exception:
             if common._replication_enabled:
@@ -104,6 +107,12 @@ class HPE3PARDriverBase(driver.ManageableVD,
                           'hpe3par_password', 'san_ip', 'san_login',
                           'san_password']
         common.check_flags(self.configuration, required_flags)
+
+    def get_volume_replication_driver_data(self, volume):
+        if (volume.get("group_id") and volume.get("replication_status") and
+           volume.get("replication_status") == "failed-over"):
+            return int(volume.get("replication_driver_data"))
+        return None
 
     @utils.trace
     def get_volume_stats(self, refresh=False):
