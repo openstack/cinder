@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    VMAX driver - Removed deprecated option ``cinder_dell_emc_config_file``

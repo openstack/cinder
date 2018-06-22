@@ -15,9 +15,7 @@
 
 from copy import deepcopy
 import datetime
-from defusedxml import minidom
 import hashlib
-import random
 import re
 
 from cinder.objects.group import Group
@@ -308,136 +306,6 @@ class VMAXUtils(object):
                      "20.0 instead...")
             max_over_sub_ratio = 20.0
         return max_over_sub_ratio
-
-    @staticmethod
-    def _process_tag(element, tag_name):
-        """Process the tag to get the value.
-
-        :param element: the parent element
-        :param tag_name: the tag name
-        :returns: nodeValue(can be None)
-        """
-        node_value = None
-        try:
-            processed_element = element.getElementsByTagName(tag_name)[0]
-            node_value = processed_element.childNodes[0].nodeValue
-            if node_value:
-                node_value = node_value.strip()
-        except IndexError:
-            pass
-        return node_value
-
-    def _get_connection_info(self, rest_element):
-        """Given the filename get the rest server connection details.
-
-        :param rest_element: the rest element
-        :returns: dict -- connargs - the connection info dictionary
-        :raises: VolumeBackendAPIException
-        """
-        connargs = {
-            'RestServerIp': (
-                self._process_tag(rest_element, 'RestServerIp')),
-            'RestServerPort': (
-                self._process_tag(rest_element, 'RestServerPort')),
-            'RestUserName': (
-                self._process_tag(rest_element, 'RestUserName')),
-            'RestPassword': (
-                self._process_tag(rest_element, 'RestPassword'))}
-
-        for k, __ in connargs.items():
-            if connargs[k] is None:
-                exception_message = (_(
-                    "RestServerIp, RestServerPort, RestUserName, "
-                    "RestPassword must have valid values."))
-                LOG.error(exception_message)
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
-
-        # These can be None
-        connargs['SSLCert'] = self._process_tag(rest_element, 'SSLCert')
-        connargs['SSLVerify'] = (
-            self._process_tag(rest_element, 'SSLVerify'))
-
-        return connargs
-
-    def parse_file_to_get_array_map(self, file_name):
-        """Parses a file and gets array map.
-
-        Given a file, parse it to get array and pool(srp).
-
-        .. code:: ini
-
-          <EMC>
-          <RestServerIp>10.108.246.202</RestServerIp>
-          <RestServerPort>8443</RestServerPort>
-          <RestUserName>smc</RestUserName>
-          <RestPassword>smc</RestPassword>
-          <SSLCert>/path/client.cert</SSLCert>
-          <SSLVerify>/path/to/certfile.pem</SSLVerify>
-          <PortGroups>
-              <PortGroup>OS-PORTGROUP1-PG</PortGroup>
-          </PortGroups>
-          <Array>000198700439</Array>
-          <SRP>SRP_1</SRP>
-          </EMC>
-
-        :param file_name: the configuration file
-        :returns: list
-        """
-        LOG.warning("Use of xml file in backend configuration is deprecated "
-                    "in Queens and will not be supported in future releases.")
-        kwargs = {}
-        my_file = open(file_name, 'r')
-        data = my_file.read()
-        my_file.close()
-        dom = minidom.parseString(data)
-        try:
-            connargs = self._get_connection_info(dom)
-            portgroup = self._get_random_portgroup(dom)
-            serialnumber = self._process_tag(dom, 'Array')
-            if serialnumber is None:
-                LOG.error("Array Serial Number must be in the file %(file)s.",
-                          {'file': file_name})
-            srp_name = self._process_tag(dom, 'SRP')
-            if srp_name is None:
-                LOG.error("SRP Name must be in the file %(file)s.",
-                          {'file': file_name})
-            slo = self._process_tag(dom, 'ServiceLevel')
-            workload = self._process_tag(dom, 'Workload')
-            kwargs = (
-                {'RestServerIp': connargs['RestServerIp'],
-                 'RestServerPort': connargs['RestServerPort'],
-                 'RestUserName': connargs['RestUserName'],
-                 'RestPassword': connargs['RestPassword'],
-                 'SSLCert': connargs['SSLCert'],
-                 'SSLVerify': connargs['SSLVerify'],
-                 'SerialNumber': serialnumber,
-                 'srpName': srp_name,
-                 'PortGroup': portgroup})
-            if slo is not None:
-                kwargs.update({'ServiceLevel': slo, 'Workload': workload})
-
-        except IndexError:
-            pass
-        return kwargs
-
-    @staticmethod
-    def _get_random_portgroup(element):
-        """Randomly choose a portgroup from list of portgroups.
-
-        :param element: the parent element
-        :returns: the randomly chosen port group
-        """
-        portgroupelements = element.getElementsByTagName('PortGroup')
-        if portgroupelements and len(portgroupelements) > 0:
-            portgroupnames = [portgroupelement.childNodes[0].nodeValue.strip()
-                              for portgroupelement in portgroupelements
-                              if portgroupelement.childNodes]
-            portgroupnames = list(set(filter(None, portgroupnames)))
-            pg_len = len(portgroupnames)
-            if pg_len > 0:
-                return portgroupnames[random.randint(0, pg_len - 1)]
-        return None
 
     def get_temp_snap_name(self, clone_name, source_device_id):
         """Construct a temporary snapshot name for clone operation.

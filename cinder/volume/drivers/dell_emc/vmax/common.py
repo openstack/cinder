@@ -16,7 +16,6 @@
 import ast
 from copy import deepcopy
 import math
-import os.path
 import random
 import sys
 import time
@@ -41,9 +40,6 @@ LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
 
-CINDER_EMC_CONFIG_FILE = '/etc/cinder/cinder_dell_emc_config.xml'
-CINDER_EMC_CONFIG_FILE_PREFIX = '/etc/cinder/cinder_dell_emc_config_'
-CINDER_EMC_CONFIG_FILE_POSTFIX = '.xml'
 BACKENDNAME = 'volume_backend_name'
 PREFIXBACKENDNAME = 'capabilities:volume_backend_name'
 
@@ -56,11 +52,6 @@ REPLICATION_ERROR = fields.ReplicationStatus.ERROR
 
 
 vmax_opts = [
-    cfg.StrOpt('cinder_dell_emc_config_file',
-               default=CINDER_EMC_CONFIG_FILE,
-               deprecated_for_removal=True,
-               help='Use this file for cinder emc plugin '
-                    'config data.'),
     cfg.IntOpt('interval',
                default=3,
                help='Use this value to specify '
@@ -137,8 +128,10 @@ class VMAXCommon(object):
         self._get_attributes_from_config()
         array_info = self.get_attributes_from_cinder_config()
         if array_info is None:
-            array_info = self.utils.parse_file_to_get_array_map(
-                self.pool_info['config_file'])
+            LOG.error("Unable to get attributes from cinder.conf. Please "
+                      "refer to the current online documentation for correct "
+                      "configuration and note that the xml file is no "
+                      "longer supported.")
         self.rest.set_rest_credentials(array_info)
         finalarrayinfolist = self._get_slo_workload_combinations(
             array_info)
@@ -146,12 +139,6 @@ class VMAXCommon(object):
 
     def _get_attributes_from_config(self):
         """Get relevent details from configuration file."""
-        if hasattr(self.configuration, 'cinder_dell_emc_config_file'):
-            self.pool_info['config_file'] = (
-                self.configuration.cinder_dell_emc_config_file)
-        else:
-            self.pool_info['config_file'] = (
-                self.configuration.safe_get('cinder_dell_emc_config_file'))
         self.interval = self.configuration.safe_get('interval')
         self.retries = self.configuration.safe_get('retries')
         self.pool_info['backend_name'] = (
@@ -563,8 +550,8 @@ class VMAXCommon(object):
          storage_group_name = OS-<shortHostName>-<srpName>-<shortProtocol>-SG
                             e.g OS-myShortHost-SRP_1-I-SG
          port_group_name = OS-<target>-PG  The port_group_name will come from
-                         the EMC configuration xml file.
-                         These are precreated. If the portGroup does not
+                         the cinder.conf or as an extra spec on the volume
+                         type. These are precreated. If the portGroup does not
                          exist then an error will be returned to the user
          maskingview_name  = OS-<shortHostName>-<srpName>-<shortProtocol>-MV
                         e.g OS-myShortHost-SRP_1-I-MV
@@ -939,8 +926,7 @@ class VMAXCommon(object):
                 array_reserve_percent)
 
     def _set_config_file_and_get_extra_specs(self, volume,
-                                             volume_type_id=None,
-                                             register_config_file=True):
+                                             volume_type_id=None):
         """Given the volume object get the associated volumetype.
 
         Given the volume object get the associated volumetype and the
@@ -950,7 +936,7 @@ class VMAXCommon(object):
         :param volume: the volume object including the volume_type_id
         :param volume_type_id: Optional override of volume.volume_type_id
         :returns: dict -- the extra specs dict
-        :returns: string -- configuration file
+        :returns: dict -- QoS specs
         """
         qos_specs = {}
         extra_specs = self.utils.get_volumetype_extra_specs(
@@ -960,11 +946,8 @@ class VMAXCommon(object):
             res = volume_types.get_volume_type_qos_specs(type_id)
             qos_specs = res['qos_specs']
 
-        config_group = None
-        config_file = None
         # If there are no extra specs then the default case is assumed.
         if extra_specs:
-            config_group = self.configuration.config_group
             if extra_specs.get('replication_enabled') == '<is> True':
                 extra_specs[utils.IS_RE] = True
                 if self.rep_config and self.rep_config.get('mode'):
@@ -972,10 +955,7 @@ class VMAXCommon(object):
                 if self.rep_config and self.rep_config.get(utils.METROBIAS):
                     extra_specs[utils.METROBIAS] = self.rep_config[
                         utils.METROBIAS]
-        if register_config_file:
-            config_file = self._register_config_file_from_config_group(
-                config_group)
-        return extra_specs, config_file, qos_specs
+        return extra_specs, qos_specs
 
     def _find_device_on_array(self, volume, extra_specs):
         """Given the volume get the VMAX device Id.
@@ -1126,45 +1106,6 @@ class VMAXCommon(object):
                             all_masking_view_list)
         return maskingview_list, all_masking_view_list
 
-    def _register_config_file_from_config_group(self, config_group_name):
-        """Given the config group name register the file.
-
-        :param config_group_name: the config group name
-        :returns: string -- configurationFile - name of the configuration file
-        :raises: VolumeBackendAPIException:
-        """
-        if config_group_name is None:
-            return CINDER_EMC_CONFIG_FILE
-        if hasattr(self.configuration, 'cinder_dell_emc_config_file'):
-            config_file = self.configuration.cinder_dell_emc_config_file
-        else:
-            config_file = (
-                ("%(prefix)s%(configGroupName)s%(postfix)s"
-                 % {'prefix': CINDER_EMC_CONFIG_FILE_PREFIX,
-                    'configGroupName': config_group_name,
-                    'postfix': CINDER_EMC_CONFIG_FILE_POSTFIX}))
-
-        # The file saved in self.configuration may not be the correct one,
-        # double check.
-        if config_group_name not in config_file:
-            config_file = (
-                ("%(prefix)s%(configGroupName)s%(postfix)s"
-                 % {'prefix': CINDER_EMC_CONFIG_FILE_PREFIX,
-                    'configGroupName': config_group_name,
-                    'postfix': CINDER_EMC_CONFIG_FILE_POSTFIX}))
-
-        if os.path.isfile(config_file):
-            LOG.debug("Configuration file : %(configurationFile)s exists.",
-                      {'configurationFile': config_file})
-        else:
-            exception_message = (_(
-                "Configuration file %(configurationFile)s does not exist.")
-                % {'configurationFile': config_file})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        return config_file
-
     def _initial_setup(self, volume, volume_type_id=None):
         """Necessary setup to accumulate the relevant information.
 
@@ -1180,18 +1121,15 @@ class VMAXCommon(object):
         try:
             array_info = self.get_attributes_from_cinder_config()
             if array_info:
-                extra_specs, config_file, qos_specs = (
-                    self._set_config_file_and_get_extra_specs(
-                        volume, volume_type_id, register_config_file=False))
-            else:
-                extra_specs, config_file, qos_specs = (
+                extra_specs, qos_specs = (
                     self._set_config_file_and_get_extra_specs(
                         volume, volume_type_id))
-                array_info = self.utils.parse_file_to_get_array_map(
-                    self.pool_info['config_file'])
-            if not array_info:
+            else:
                 exception_message = (_(
-                    "Unable to get corresponding record for srp."))
+                    "Unable to get corresponding record for srp. Please "
+                    "refer to the current online documentation for correct "
+                    "configuration and note that the xml file is no longer "
+                    "supported."))
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
 
@@ -1491,11 +1429,7 @@ class VMAXCommon(object):
         The pool_name extra spec must be set, otherwise a default slo/workload
         will be chosen. The portgroup can either be passed as an extra spec
         on the volume type (e.g. 'storagetype:portgroupname = os-pg1-pg'), or
-        can be chosen from a list provided in the xml file, e.g.:
-        <PortGroups>
-            <PortGroup>OS-PORTGROUP1-PG</PortGroup>
-            <PortGroup>OS-PORTGROUP2-PG</PortGroup>
-        </PortGroups>.
+        can be chosen from a list provided in the cinder.conf
 
         :param extra_specs: extra specifications
         :param pool_record: pool record
@@ -1504,19 +1438,16 @@ class VMAXCommon(object):
         # set extra_specs from pool_record
         extra_specs[utils.SRP] = pool_record['srpName']
         extra_specs[utils.ARRAY] = pool_record['SerialNumber']
-        if not extra_specs.get(utils.PORTGROUPNAME):
-            extra_specs[utils.PORTGROUPNAME] = pool_record['PortGroup']
-        if not extra_specs[utils.PORTGROUPNAME]:
+        try:
+            if not extra_specs.get(utils.PORTGROUPNAME):
+                extra_specs[utils.PORTGROUPNAME] = pool_record['PortGroup']
+        except Exception:
             error_message = (_("Port group name has not been provided - "
                                "please configure the "
                                "'storagetype:portgroupname' extra spec on "
                                "the volume type, or enter a list of "
-                               "portgroups to the xml file associated with "
-                               "this backend e.g."
-                               "<PortGroups>"
-                               "    <PortGroup>OS-PORTGROUP1-PG</PortGroup>"
-                               "    <PortGroup>OS-PORTGROUP2-PG</PortGroup>"
-                               "</PortGroups>."))
+                               "portgroups in the cinder.conf associated with "
+                               "this backend."))
             LOG.exception(error_message)
             raise exception.VolumeBackendAPIException(data=error_message)
 
@@ -1544,7 +1475,7 @@ class VMAXCommon(object):
             if not workload_from_extra_spec:
                 workload_from_extra_spec = 'NONE'
             LOG.info("Pool_name is not present in the extra_specs "
-                     "- using slo/ workload from xml file: %(slo)s/%(wl)s.",
+                     "- using slo/ workload from cinder.conf: %(slo)s/%(wl)s.",
                      {'slo': slo_from_extra_spec,
                       'wl': workload_from_extra_spec})
 
@@ -1558,10 +1489,10 @@ class VMAXCommon(object):
             else:
                 slo_from_extra_spec = 'None'
             workload_from_extra_spec = 'NONE'
-            LOG.warning("Pool_name is not present in the extra_specs"
-                        "and no slo/ workload information is present "
-                        "in the xml file - using default slo/ workload "
-                        "combination: %(slo)s/%(wl)s.",
+            LOG.warning("Pool_name is not present in the extra_specs "
+                        "so no slo/ workload information is present "
+                        "using default slo/ workload combination: "
+                        "%(slo)s/%(wl)s.",
                         {'slo': slo_from_extra_spec,
                          'wl': workload_from_extra_spec})
         # Standardize slo and workload 'NONE' naming conventions

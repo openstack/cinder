@@ -154,9 +154,8 @@ VMAX Driver Integration
    .. note::
 
       For security and backend uniformity, the use of the XML file for VMAX
-      backend configuration has been deprecated in Queens. While the xml file
-      usage will still be supported, a warning will be issued on its impending
-      deprecation.
+      backend configuration was deprecated in Queens and removed entirely
+      in Rocky.
 
    +-----------------+------------------------+---------+----------+---------------------------+
    |  VMAX parameter | cinder.conf parameter  | Default | Required | Description               |
@@ -1182,8 +1181,7 @@ Configure the source and target arrays
 
 #. Configure an SRDF group between the chosen source and target
    arrays for the VMAX cinder driver to use. The source array must correspond
-   with the 'vmax_array' entry in the cinder.conf (or the ``<Array>`` entry
-   in the VMAX XML file for legacy setups).
+   with the 'vmax_array' entry in the cinder.conf.
 #. Select both the director and the ports for the SRDF emulation to use on
    both sides. Bear in mind that network topology is important when choosing
    director endpoints. Supported modes are `Synchronous`, `Asynchronous`,
