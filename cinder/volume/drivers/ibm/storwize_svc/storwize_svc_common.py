@@ -31,6 +31,7 @@ from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import units
+from retrying import retry
 import six
 
 from cinder import context
@@ -296,37 +297,12 @@ class StorwizeSSH(object):
 
         If vdisk already mapped and multihostmap is True, use the force flag.
         """
-        ssh_cmd = ['svctask', 'mkvdiskhostmap', '-host', '"%s"' % host, vdisk]
-
-        if lun:
-            ssh_cmd.insert(ssh_cmd.index(vdisk), '-scsi')
-            ssh_cmd.insert(ssh_cmd.index(vdisk), lun)
+        ssh_cmd = ['svctask', 'mkvdiskhostmap', '-host', '"%s"' % host,
+                   '-scsi', lun, '"%s"' % vdisk]
 
         if multihostmap:
             ssh_cmd.insert(ssh_cmd.index('mkvdiskhostmap') + 1, '-force')
-        try:
-            self.run_ssh_check_created(ssh_cmd)
-            result_lun = self.get_vdiskhostmapid(vdisk, host)
-            if result_lun is None or (lun and lun != result_lun):
-                msg = (_('mkvdiskhostmap error:\n command: %(cmd)s\n '
-                       'lun: %(lun)s\n result_lun: %(result_lun)s') %
-                       {'cmd': ssh_cmd,
-                        'lun': lun,
-                        'result_lun': result_lun})
-                LOG.error(msg)
-                raise exception.VolumeDriverException(message=msg)
-            return result_lun
-        except Exception as ex:
-            if (not multihostmap and hasattr(ex, 'message') and
-                    'CMMVC6071E' in ex.message):
-                LOG.error('storwize_svc_multihostmap_enabled is set '
-                          'to False, not allowing multi host mapping.')
-                raise exception.VolumeDriverException(
-                    message=_('CMMVC6071E The VDisk-to-host mapping was not '
-                              'created because the VDisk is already mapped '
-                              'to a host.\n"'))
-            with excutils.save_and_reraise_exception():
-                LOG.error('Error mapping VDisk-to-host')
+        self.run_ssh_check_created(ssh_cmd)
 
     def mkrcrelationship(self, master, aux, system, asyncmirror,
                          cyclingmode=False):
@@ -1167,25 +1143,62 @@ class StorwizeHelpers(object):
     def delete_host(self, host_name):
         self.ssh.rmhost(host_name)
 
+    def _get_unused_lun_id(self, host_name):
+        luns_used = []
+        result_lun = '-1'
+        resp = self.ssh.lshostvdiskmap(host_name)
+        for mapping_info in resp:
+            luns_used.append(int(mapping_info['SCSI_id']))
+
+        luns_used.sort()
+        result_lun = str(len(luns_used))
+        for index, n in enumerate(luns_used):
+            if n > index:
+                result_lun = str(index)
+                break
+
+        return result_lun
+
+    @cinder_utils.trace
     def map_vol_to_host(self, volume_name, host_name, multihostmap):
         """Create a mapping between a volume to a host."""
 
-        LOG.debug('Enter: map_vol_to_host: volume %(volume_name)s to '
-                  'host %(host_name)s.',
-                  {'volume_name': volume_name, 'host_name': host_name})
-
         # Check if this volume is already mapped to this host
         result_lun = self.ssh.get_vdiskhostmapid(volume_name, host_name)
-        if result_lun is None:
-            result_lun = self.ssh.mkvdiskhostmap(host_name, volume_name, None,
-                                                 multihostmap)
+        if result_lun:
+            LOG.debug('volume %(volume_name)s is already mapped to the host '
+                      '%(host_name)s.',
+                      {'volume_name': volume_name, 'host_name': host_name})
+            return int(result_lun)
 
-        LOG.debug('Leave: map_vol_to_host: LUN %(result_lun)s, volume '
-                  '%(volume_name)s, host %(host_name)s.',
-                  {'result_lun': result_lun,
-                   'volume_name': volume_name,
-                   'host_name': host_name})
-        return int(result_lun)
+        def _retry_on_exception(e):
+            if hasattr(e, 'msg') and 'CMMVC5879E' in e.msg:
+                return True
+            return False
+
+        @retry(retry_on_exception=_retry_on_exception,
+               stop_max_attempt_number=3,
+               wait_random_min=1,
+               wait_random_max=10)
+        def make_vdisk_host_map():
+            try:
+                result_lun = self._get_unused_lun_id(host_name)
+                self.ssh.mkvdiskhostmap(host_name, volume_name, result_lun,
+                                        multihostmap)
+                return int(result_lun)
+            except Exception as ex:
+                if (not multihostmap and hasattr(ex, 'msg') and
+                        'CMMVC6071E' in ex.msg):
+                    LOG.warning('storwize_svc_multihostmap_enabled is set '
+                                'to False, not allowing multi host mapping.')
+                    raise exception.VolumeDriverException(
+                        message=_('CMMVC6071E The VDisk-to-host mapping was '
+                                  'not created because the VDisk is already '
+                                  'mapped to a host.'))
+                with excutils.save_and_reraise_exception():
+                    LOG.error('Error mapping VDisk-to-host.')
+
+        return make_vdisk_host_map()
 
     def unmap_vol_from_host(self, volume_name, host_name):
         """Unmap the volume and delete the host if it has no more mappings."""
