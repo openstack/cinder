@@ -72,6 +72,7 @@ RDF_ACTIVEACTIVE = 'activeactive'
 RDF_ACTIVEBIAS = 'activebias'
 METROBIAS = 'metro_bias'
 DEFAULT_PORT = 8443
+CLONE_SNAPSHOT_NAME = "snapshot_for_clone"
 
 # Multiattach constants
 IS_MULTIATTACH = 'multiattach'
@@ -90,6 +91,7 @@ VMAX_WORKLOAD = 'vmax_workload'
 VMAX_SRP = 'vmax_srp'
 VMAX_SERVICE_LEVEL = 'vmax_service_level'
 VMAX_PORT_GROUPS = 'vmax_port_groups'
+VMAX_SNAPVX_UNLINK_LIMIT = 'vmax_snapvx_unlink_limit'
 
 
 class VMAXUtils(object):
@@ -307,16 +309,15 @@ class VMAXUtils(object):
             max_over_sub_ratio = 20.0
         return max_over_sub_ratio
 
-    def get_temp_snap_name(self, clone_name, source_device_id):
-        """Construct a temporary snapshot name for clone operation.
+    def get_temp_snap_name(self, source_device_id):
+        """Construct a temporary snapshot name for clone operation
 
-        :param clone_name: the name of the clone
         :param source_device_id: the source device id
-        :returns: snap_name
+        :return: snap_name
         """
-        trunc_clone = self.truncate_string(clone_name, 10)
-        snap_name = ("temp-%(device)s-%(clone)s"
-                     % {'device': source_device_id, 'clone': trunc_clone})
+        snap_name = ("temp-%(device)s-%(snap_name)s"
+                     % {'device': source_device_id,
+                        'snap_name': CLONE_SNAPSHOT_NAME})
         return snap_name
 
     @staticmethod

@@ -1,0 +1,6 @@
+---
+features:
+  - Support for new configuration option - vmax_snapvx_unlink_limit
+    for specifying the maximum number of unlinks which will be performed
+    before a clone operation. Default value is 3
+

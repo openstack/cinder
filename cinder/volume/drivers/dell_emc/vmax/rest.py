@@ -1612,17 +1612,22 @@ class VMAXRest(object):
                       "for array %(array)s", {'array': array})
         return snap_capability
 
-    def create_volume_snap(self, array, snap_name, device_id, extra_specs):
+    def create_volume_snap(self, array, snap_name, device_id,
+                           extra_specs, ttl=0):
         """Create a snapVx snapshot of a volume.
 
         :param array: the array serial number
         :param snap_name: the name of the snapshot
         :param device_id: the source device id
         :param extra_specs: the extra specifications
+        :param ttl: time to live in hours, defaults to 0
         """
         payload = {"deviceNameListSource": [{"name": device_id}],
                    "bothSides": 'false', "star": 'false',
                    "force": 'false'}
+        if int(ttl) > 0:
+            payload['timeToLive'] = ttl
+            payload['timeInHours'] = 'true'
         resource_type = 'snapshot/%(snap)s' % {'snap': snap_name}
         status_code, job = self.create_resource(
             array, REPLICATION, resource_type,
@@ -1633,7 +1638,7 @@ class VMAXRest(object):
     def modify_volume_snap(self, array, source_id, target_id, snap_name,
                            extra_specs, link=False, unlink=False,
                            rename=False, new_snap_name=None, restore=False,
-                           list_volume_pairs=None):
+                           list_volume_pairs=None, generation=0):
         """Modify a snapvx snapshot
 
         :param array: the array serial number
@@ -1647,6 +1652,7 @@ class VMAXRest(object):
         :param new_snap_name: Optional new snapshot name
         :param restore: Flag to indicate action = Restore
         :param list_volume_pairs: list of volume pairs to link, optional
+        :param generation: the generation number of the snapshot
         """
         action, operation, payload = '', '', {}
         if link:
@@ -1680,7 +1686,8 @@ class VMAXRest(object):
                        "copy": 'true', "action": action,
                        "star": 'false', "force": 'false',
                        "exact": 'false', "remote": 'false',
-                       "symforce": 'false', "nocopy": 'false'}
+                       "symforce": 'false', "nocopy": 'false',
+                       "generation": generation}
 
         elif action == "Rename":
             operation = 'Rename snapVx snapshot'
@@ -1695,20 +1702,22 @@ class VMAXRest(object):
             self.wait_for_job(operation, status_code, job, extra_specs)
 
     def delete_volume_snap(self, array, snap_name,
-                           source_device_ids, restored=False):
+                           source_device_ids, restored=False, generation=0):
         """Delete the snapshot of a volume or volumes.
 
         :param array: the array serial number
         :param snap_name: the name of the snapshot
         :param source_device_ids: the source device ids
         :param restored: Flag to indicate terminate restore session
+        :param generation: the generation number of the snapshot
         """
         device_list = []
         if not isinstance(source_device_ids, list):
             source_device_ids = [source_device_ids]
         for dev in source_device_ids:
             device_list.append({"name": dev})
-        payload = {"deviceNameListSource": device_list}
+        payload = {"deviceNameListSource": device_list,
+                   "generation": int(generation)}
         if restored:
             payload.update({"restore": True})
         return self.delete_resource(
@@ -1727,12 +1736,13 @@ class VMAXRest(object):
         return self.get_resource(array, REPLICATION, 'volume',
                                  resource_name, private='/private')
 
-    def get_volume_snap(self, array, device_id, snap_name):
+    def get_volume_snap(self, array, device_id, snap_name, generation=0):
         """Given a volume snap info, retrieve the snapVx object.
 
         :param array: the array serial number
         :param device_id: the source volume device id
         :param snap_name: the name of the snapshot
+        :param generation: the generation number of the snapshot
         :returns: snapshot dict, or None
         """
         snapshot = None
@@ -1740,9 +1750,11 @@ class VMAXRest(object):
         if snap_info:
             if (snap_info.get('snapshotSrcs') and
                     bool(snap_info['snapshotSrcs'])):
-                        for snap in snap_info['snapshotSrcs']:
-                            if snap['snapshotName'] == snap_name:
-                                snapshot = snap
+                for snap in snap_info['snapshotSrcs']:
+                    if snap['snapshotName'] == snap_name:
+                        if snap['generation'] == generation:
+                            snapshot = snap
+                            break
         return snapshot
 
     def get_volume_snapshot_list(self, array, source_device_id):
@@ -1846,21 +1858,23 @@ class VMAXRest(object):
         return defined
 
     def get_sync_session(self, array, source_device_id, snap_name,
-                         target_device_id):
+                         target_device_id, generation=0):
         """Get a particular sync session.
 
         :param array: the array serial number
         :param source_device_id: source device id
         :param snap_name: the snapshot name
         :param target_device_id: the target device id
+        :param generation: the generation number of the snapshot
         :returns: sync session -- dict, or None
         """
         session = None
         linked_device_list = self.get_snap_linked_device_list(
-            array, source_device_id, snap_name)
+            array, source_device_id, snap_name, generation)
         for target in linked_device_list:
             if target_device_id == target['targetDevice']:
                 session = target
+                break
         return session
 
     def _find_snap_vx_source_sessions(self, array, source_device_id):
@@ -1875,24 +1889,67 @@ class VMAXRest(object):
         for snapshot in snapshots:
             if bool(snapshot['linkedDevices']):
                 link_info = {'linked_vols': snapshot['linkedDevices'],
-                             'snap_name': snapshot['snapshotName']}
+                             'snap_name': snapshot['snapshotName'],
+                             'generation': snapshot['generation']}
                 snap_dict_list.append(link_info)
         return snap_dict_list
 
-    def get_snap_linked_device_list(self, array, source_device_id, snap_name):
+    def get_snap_linked_device_list(self, array, source_device_id,
+                                    snap_name, generation=0, state=None):
         """Get the list of linked devices for a particular snapVx snapshot.
 
         :param array: the array serial number
         :param source_device_id: source device id
         :param snap_name: the snapshot name
-        :returns: linked_device_list
+        :param generation: the generation number of the snapshot
+        :param state: filter for state of the link
+        :returns: linked_device_list or empty list
         """
+        snap_dict_list = None
         linked_device_list = []
-        snap_list = self._find_snap_vx_source_sessions(array, source_device_id)
+        snap_dict_list = self._get_snap_linked_device_dict_list(
+            array, source_device_id, snap_name, state=state)
+        for snap_dict in snap_dict_list:
+            if generation == snap_dict['generation']:
+                linked_device_list = snap_dict['linked_vols']
+                break
+        return linked_device_list
+
+    def _get_snap_linked_device_dict_list(
+            self, array, source_device_id, snap_name, state=None):
+        """Get list of linked devices for all generations for a snapVx snapshot
+
+        :param array: the array serial number
+        :param source_device_id: source device id
+        :param snap_name: the snapshot name
+        :param state: filter for state of the link
+        :return: list of dict of generations with linked devices
+        """
+        snap_dict_list = []
+        snap_list = self._find_snap_vx_source_sessions(
+            array, source_device_id)
+        snap_state = None
         for snap in snap_list:
             if snap['snap_name'] == snap_name:
-                linked_device_list = snap['linked_vols']
-        return linked_device_list
+                for linked_vol in snap['linked_vols']:
+                    snap_state = linked_vol.get('state', None)
+                    # If state is None or
+                    # both snap_state and state are not None and are equal
+                    if not state or (snap_state and state
+                                     and snap_state == state):
+                        generation = snap['generation']
+                        found = False
+                        for snap_dict in snap_dict_list:
+                            if generation == snap_dict['generation']:
+                                snap_dict['linked_vols'].append(
+                                    linked_vol)
+                                found = True
+                                break
+                        if not found:
+                            snap_dict_list.append(
+                                {'generation': generation,
+                                 'linked_vols': [linked_vol]})
+        return snap_dict_list
 
     def find_snap_vx_sessions(self, array, device_id, tgt_only=False):
         """Find all snapVX sessions for a device (source and target).
@@ -1915,25 +1972,31 @@ class VMAXRest(object):
                     src_list = session['srcSnapshotGenInfo']
                     for src in src_list:
                         snap_name = src['snapshotHeader']['snapshotName']
-                        target_list, target_dict = [], {}
+                        generation = src['snapshotHeader']['generation']
+                        target_list, target_dict_list = [], []
                         if src.get('lnkSnapshotGenInfo'):
-                            target_dict = src['lnkSnapshotGenInfo']
-                        for tgt in target_dict:
-                            target_list.append(tgt['targetDevice'])
+                            target_dict_list = src['lnkSnapshotGenInfo']
+                        for tgt in target_dict_list:
+                            target_tup = tgt['targetDevice'], tgt['state']
+                            target_list.append(target_tup)
                         link_info = {'target_vol_list': target_list,
                                      'snap_name': snap_name,
-                                     'source_vol': device_id}
+                                     'source_vol': device_id,
+                                     'generation': generation}
                         snap_dict_list.append(link_info)
         if is_snap_tgt:
             for session in sessions:
                 if session.get('tgtSrcSnapshotGenInfo'):
                     tgt = session['tgtSrcSnapshotGenInfo']
                     snap_name = tgt['snapshotName']
-                    target_list = [tgt['targetDevice']]
+                    target_tup = tgt['targetDevice'], tgt['state']
+                    target_list = [target_tup]
                     source_vol = tgt['sourceDevice']
+                    generation = tgt['generation']
                     link_info = {'target_vol_list': target_list,
                                  'snap_name': snap_name,
-                                 'source_vol': source_vol}
+                                 'source_vol': source_vol,
+                                 'generation': generation}
                     snap_dict_list.append(link_info)
         return snap_dict_list
 
