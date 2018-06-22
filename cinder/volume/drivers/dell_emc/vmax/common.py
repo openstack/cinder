@@ -73,7 +73,12 @@ vmax_opts = [
                 default=False,
                 help='Use this value to enable '
                      'the initiator_check.'),
-    cfg.PortOpt(utils.VMAX_SERVER_PORT,
+    cfg.PortOpt(utils.VMAX_SERVER_PORT_OLD,
+                deprecated_for_removal=True,
+                deprecated_since="13.0.0",
+                deprecated_reason='Unisphere port should now be '
+                                  'set using the common san_api_port '
+                                  'config option instead.',
                 default=8443,
                 help='REST server port number.'),
     cfg.StrOpt(utils.VMAX_ARRAY,
@@ -4275,6 +4280,10 @@ class VMAXCommon(object):
         return model_update, vol_model_updates
 
     def get_attributes_from_cinder_config(self):
+        """Get all attributes from the configuration file
+
+        :returns: kwargs
+        """
         LOG.debug("Using cinder.conf file")
         kwargs = None
         username = self.configuration.safe_get(utils.VMAX_USER_NAME)
@@ -4293,17 +4302,18 @@ class VMAXCommon(object):
             if port_groups:
                 random_portgroup = random.choice(self.configuration.safe_get(
                     utils.VMAX_PORT_GROUPS))
+
             kwargs = (
                 {'RestServerIp': self.configuration.safe_get(
                     utils.VMAX_SERVER_IP),
-                 'RestServerPort': self.configuration.safe_get(
-                    utils.VMAX_SERVER_PORT),
+                 'RestServerPort': self._get_unisphere_port(),
                  'RestUserName': username,
                  'RestPassword': password,
                  'SSLCert': self.configuration.safe_get('driver_client_cert'),
                  'SerialNumber': serial_number,
                  'srpName': srp_name,
                  'PortGroup': random_portgroup})
+
             if self.configuration.safe_get('driver_ssl_cert_verify'):
                 kwargs.update({'SSLVerify': self.configuration.safe_get(
                     'driver_ssl_cert_path')})
@@ -4312,6 +4322,20 @@ class VMAXCommon(object):
             if slo is not None:
                 kwargs.update({'ServiceLevel': slo, 'Workload': workload})
         return kwargs
+
+    def _get_unisphere_port(self):
+        """Get unisphere port from the configuration file
+
+        :returns: unisphere port
+        """
+        if self.configuration.safe_get(utils.VMAX_SERVER_PORT_OLD):
+            return self.configuration.safe_get(utils.VMAX_SERVER_PORT_OLD)
+        elif self.configuration.safe_get(utils.VMAX_SERVER_PORT_NEW):
+            return self.configuration.safe_get(utils.VMAX_SERVER_PORT_NEW)
+        else:
+            LOG.debug("VMAX port is not set, using default port: %s",
+                      utils.DEFAULT_PORT)
+            return utils.DEFAULT_PORT
 
     def revert_to_snapshot(self, volume, snapshot):
         """Revert volume to snapshot.
