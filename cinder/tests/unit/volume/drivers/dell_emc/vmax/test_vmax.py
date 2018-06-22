@@ -3732,6 +3732,26 @@ class VMAXProvisionTest(test.TestCase):
         mock_mod.assert_called_once()
         mock_del.assert_called_once()
 
+    @mock.patch.object(
+        rest.VMAXRest, 'get_snap_linked_device_list',
+        side_effect=[[{'targetDevice': VMAXCommonData.device_id2}],
+                     [{'targetDevice': VMAXCommonData.device_id2},
+                      {'targetDevice': VMAXCommonData.device_id3}]])
+    @mock.patch.object(provision.VMAXProvision, '_unlink_volume')
+    def test_delete_volume_snap_check_for_links(self, mock_unlink, mock_tgts):
+        self.provision.delete_volume_snap_check_for_links(
+            self.data.array, self.data.test_snapshot_snap_name,
+            self.data.device_id, self.data.extra_specs)
+        mock_unlink.assert_called_once_with(
+            self.data.array, "", "", self.data.test_snapshot_snap_name,
+            self.data.extra_specs, list_volume_pairs=[
+                (self.data.device_id, VMAXCommonData.device_id2)])
+        mock_unlink.reset_mock()
+        self.provision.delete_volume_snap_check_for_links(
+            self.data.array, self.data.test_snapshot_snap_name,
+            self.data.device_id, self.data.extra_specs)
+        self.assertEqual(2, mock_unlink.call_count)
+
 
 class VMAXCommonTest(test.TestCase):
     def setUp(self):
