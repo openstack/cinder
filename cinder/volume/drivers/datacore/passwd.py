@@ -14,7 +14,6 @@
 
 """Password storage."""
 
-import contextlib
 import json
 import os
 import stat
@@ -93,6 +92,12 @@ class FileStorage(object):
             self._file.close()
         self._file = None
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
 
 class PasswordFileStorage(object):
     """Password storage implementation.
@@ -116,7 +121,7 @@ class PasswordFileStorage(object):
         @cinder_utils.synchronized(
             'datacore-password_storage-' + self._file_path, external=True)
         def _set_password():
-            with contextlib.closing(self._file_storage.open()) as storage:
+            with self._file_storage.open() as storage:
                 passwords = storage.load()
                 if resource not in passwords:
                     passwords[resource] = {}
@@ -138,7 +143,7 @@ class PasswordFileStorage(object):
         @cinder_utils.synchronized(
             'datacore-password_storage-' + self._file_path, external=True)
         def _get_password():
-            with contextlib.closing(self._file_storage.open()) as storage:
+            with self._file_storage.open() as storage:
                 passwords = storage.load()
             if resource in passwords:
                 return passwords[resource].get(username)
@@ -155,7 +160,7 @@ class PasswordFileStorage(object):
         @cinder_utils.synchronized(
             'datacore-password_storage-' + self._file_path, external=True)
         def _delete_password():
-            with contextlib.closing(self._file_storage.open()) as storage:
+            with self._file_storage.open() as storage:
                 passwords = storage.load()
                 if resource in passwords and username in passwords[resource]:
                     del passwords[resource][username]
