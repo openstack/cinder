@@ -606,9 +606,9 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_clone_lun_multiple_zapi_calls(self):
         """Test for when lun clone requires more than one zapi call."""
 
-        # Max block-ranges per call = 32, max blocks per range = 2^24
+        # Max clone size per call = 2^18 blocks * 512 bytes/block = 128 MB
         # Force 2 calls
-        bc = 2 ** 24 * 32 * 2
+        bc = 2 ** 18 * 2
         self.client.clone_lun('volume', 'fakeLUN', 'newFakeLUN',
                               block_count=bc)
         self.assertEqual(2, self.connection.invoke_successfully.call_count)
