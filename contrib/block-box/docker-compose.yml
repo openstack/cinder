@@ -19,7 +19,7 @@ services:
             cindernet:
                 ipv4_address: 172.49.49.6
         volumes:
-            - ./.db_data:/var/lib/mysql
+            - ~/.blockbox/db_data:/var/lib/mysql
             - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
     cinder-api:
         image: debian-cinder
