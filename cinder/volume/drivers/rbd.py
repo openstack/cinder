@@ -26,6 +26,7 @@ from os_brick import encryptors
 from os_brick.initiator import linuxrbd
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import fileutils
 from oslo_utils import units
@@ -442,10 +443,12 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 LOG.warning('Unable to get rados pool quotas.')
                 return 'unknown', 'unknown'
 
+        df_outbuf = encodeutils.safe_decode(df_outbuf)
         df_data = json.loads(df_outbuf)
         pool_stats = [pool for pool in df_data['pools']
                       if pool['name'] == pool_name][0]['stats']
 
+        quota_outbuf = encodeutils.safe_decode(quota_outbuf)
         bytes_quota = json.loads(quota_outbuf)['quota_max_bytes']
         # With quota the total is the quota limit and free is quota - used
         if bytes_quota:
