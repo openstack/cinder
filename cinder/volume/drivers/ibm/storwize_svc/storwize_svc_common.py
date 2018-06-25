@@ -810,6 +810,11 @@ class StorwizeHelpers(object):
             return True
         return False
 
+    def get_pool_volumes(self, pool):
+        """Return volumes for the specified pool."""
+        vdisks = self.ssh.lsvdisks_from_filter('mdisk_grp_name', pool)
+        return vdisks.result
+
     def get_available_io_groups(self):
         """Return list of available IO groups."""
         iogrps = []
@@ -2682,6 +2687,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                            }
         self._active_backend_id = kwargs.get('active_backend_id')
 
+        # This list is used to ensure volume export
+        self._volumes_list = []
+
         # This dictionary is used to map each replication target to certain
         # replication manager object.
         self.replica_manager = {}
@@ -2713,6 +2721,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         # Validate that the pool exists
         self._validate_pools_exist()
+
+        # Get list of all volumes
+        self._get_all_volumes()
 
         # Build the list of in-progress vdisk copy operations
         if ctxt is None:
@@ -2782,6 +2793,14 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             if not self._helpers.is_pool_defined(pool):
                 reason = (_('Failed getting details for pool %s.') % pool)
                 raise exception.InvalidInput(reason=reason)
+
+    def _get_all_volumes(self):
+        # Get list of all volumes
+        pools = self._get_backend_pools()
+        for pool in pools:
+            pool_vols = self._helpers.get_pool_volumes(pool)
+            for volume in pool_vols:
+                self._volumes_list.append(volume['name'])
 
     def check_for_setup_error(self):
         """Ensure that the flags are set properly."""
@@ -2954,8 +2973,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         The system does not "export" volumes as a Linux iSCSI target does,
         and therefore we just check that the volume exists on the storage.
         """
-        vol_name = self._get_target_vol(volume)
-        volume_defined = self._helpers.is_vdisk_defined(vol_name)
+        volume_defined = volume['name'] in self._volumes_list
 
         if not volume_defined:
             LOG.error('ensure_export: Volume %s not found on storage.',
