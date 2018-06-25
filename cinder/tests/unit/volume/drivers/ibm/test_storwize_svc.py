@@ -3245,28 +3245,21 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         volume_iSCSI_2 = self._create_volume()
         volume_iSCSI_2['volume_type_id'] = vol_type_iSCSI['id']
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
-        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                               'is_volume_hyperswap') as is_volume_hyperswap:
-            is_volume_hyperswap.return_value = True
-            self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
-            host_name = self.iscsi_driver._helpers.get_host_from_connector(
-                connector, iscsi=True)
-            host_info = self.iscsi_driver._helpers.ssh.lshost(host=host_name)
-            self.assertEqual('site1', host_info[0]['site_name'])
-            self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
+        host_name = self.iscsi_driver._helpers.get_host_from_connector(
+            connector, iscsi=True)
+        host_info = self.iscsi_driver._helpers.ssh.lshost(host=host_name)
+        self.assertEqual('site1', host_info[0]['site_name'])
+        self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
         self.iscsi_driver.initialize_connection(volume_iSCSI_1, connector)
-        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                               'is_volume_hyperswap') as is_volume_hyperswap:
-            is_volume_hyperswap.return_value = True
-            self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
+        self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
 
-            host_site = {'site1': 'iqn.1993-08.org.debian:01:eac5ccc1aaa',
-                         'site2': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
-            self._set_flag('storwize_preferred_host_site', host_site)
-            self.assertRaises(exception.InvalidConfigurationValue,
-                              self.iscsi_driver.initialize_connection,
-                              volume_iSCSI_2,
-                              connector)
+        host_site = {'site1': 'iqn.1993-08.org.debian:01:eac5ccc1aaa',
+                     'site2': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+        self._set_flag('storwize_preferred_host_site', host_site)
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.iscsi_driver.initialize_connection,
+                          volume_iSCSI_2,
+                          connector)
 
     @mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                        '_do_terminate_connection')
@@ -3580,13 +3573,10 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
         # Test no preferred node
         if self.USESIM:
-            with mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                                   'is_volume_hyperswap') as hyperswap:
-                hyperswap.return_value = False
-                self.sim.error_injection('lsvdisk', 'no_pref_node')
-                self.assertRaises(exception.VolumeBackendAPIException,
-                                  self.iscsi_driver.initialize_connection,
-                                  volume1, self._connector)
+            self.sim.error_injection('lsvdisk', 'no_pref_node')
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.iscsi_driver.initialize_connection,
+                              volume1, self._connector)
 
         # Initialize connection from the second volume to the host with no
         # preferred node set if in simulation mode, otherwise, just
@@ -4066,50 +4056,48 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         volume_fc['volume_type_id'] = vol_type_fc['id']
         volume_fc_2 = self._create_volume()
         volume_fc_2['volume_type_id'] = vol_type_fc['id']
-        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                               'is_volume_hyperswap') as is_volume_hyperswap:
-            is_volume_hyperswap.return_value = True
-            self.assertRaises(exception.VolumeDriverException,
-                              self.fc_driver.initialize_connection,
-                              volume_fc,
-                              connector)
-            # the wwpns of 1 host config to 2 different sites
-            host_site = {'site1': 'ffff000000000000',
-                         'site2': 'ffff000000000001'}
-            self.fc_driver.configuration.set_override(
-                'storwize_preferred_host_site', host_site)
-            self.assertRaises(exception.InvalidConfigurationValue,
-                              self.fc_driver.initialize_connection,
-                              volume_fc,
-                              connector)
-            # All the wwpns of this host are not configured.
-            host_site_2 = {'site1': 'ff00000000000000',
-                           'site1': 'ff00000000000001'}
-            self.fc_driver.configuration.set_override(
-                'storwize_preferred_host_site', host_site_2)
-            self.assertRaises(exception.VolumeDriverException,
-                              self.fc_driver.initialize_connection,
-                              volume_fc,
-                              connector)
 
-            host_site_3 = {'site1': 'ffff000000000000',
-                           'site1': 'ffff000000000001'}
-            self.fc_driver.configuration.set_override(
-                'storwize_preferred_host_site', host_site_3)
-            self.fc_driver.initialize_connection(volume_fc, connector)
-            host_name = self.fc_driver._helpers.get_host_from_connector(
-                connector, iscsi=True)
-            host_info = self.fc_driver._helpers.ssh.lshost(host=host_name)
-            self.assertEqual('site1', host_info[0]['site_name'])
+        self.assertRaises(exception.VolumeDriverException,
+                          self.fc_driver.initialize_connection,
+                          volume_fc,
+                          connector)
+        # the wwpns of 1 host config to 2 different sites
+        host_site = {'site1': 'ffff000000000000',
+                     'site2': 'ffff000000000001'}
+        self.fc_driver.configuration.set_override(
+            'storwize_preferred_host_site', host_site)
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.fc_driver.initialize_connection,
+                          volume_fc,
+                          connector)
+        # All the wwpns of this host are not configured.
+        host_site_2 = {'site1': 'ff00000000000000',
+                       'site1': 'ff00000000000001'}
+        self.fc_driver.configuration.set_override(
+            'storwize_preferred_host_site', host_site_2)
+        self.assertRaises(exception.VolumeDriverException,
+                          self.fc_driver.initialize_connection,
+                          volume_fc,
+                          connector)
 
-            host_site_4 = {'site2': 'ffff000000000000',
-                           'site2': 'ffff000000000001'}
-            self.fc_driver.configuration.set_override(
-                'storwize_preferred_host_site', host_site_4)
-            self.assertRaises(exception.InvalidConfigurationValue,
-                              self.fc_driver.initialize_connection,
-                              volume_fc_2,
-                              connector)
+        host_site_3 = {'site1': 'ffff000000000000',
+                       'site1': 'ffff000000000001'}
+        self.fc_driver.configuration.set_override(
+            'storwize_preferred_host_site', host_site_3)
+        self.fc_driver.initialize_connection(volume_fc, connector)
+        host_name = self.fc_driver._helpers.get_host_from_connector(
+            connector, iscsi=True)
+        host_info = self.fc_driver._helpers.ssh.lshost(host=host_name)
+        self.assertEqual('site1', host_info[0]['site_name'])
+
+        host_site_4 = {'site2': 'ffff000000000000',
+                       'site2': 'ffff000000000001'}
+        self.fc_driver.configuration.set_override(
+            'storwize_preferred_host_site', host_site_4)
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.fc_driver.initialize_connection,
+                          volume_fc_2,
+                          connector)
 
     @mock.patch.object(storwize_svc_fc.StorwizeSVCFCDriver,
                        '_do_terminate_connection')
@@ -4408,13 +4396,10 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
 
         # Test no preferred node
         if self.USESIM:
-            with mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                                   'is_volume_hyperswap') as hyperswap:
-                hyperswap.return_value = False
-                self.sim.error_injection('lsvdisk', 'no_pref_node')
-                self.assertRaises(exception.VolumeBackendAPIException,
-                                  self.fc_driver.initialize_connection,
-                                  volume1, self._connector)
+            self.sim.error_injection('lsvdisk', 'no_pref_node')
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.fc_driver.initialize_connection,
+                              volume1, self._connector)
 
         # Initialize connection from the second volume to the host with no
         # preferred node set if in simulation mode, otherwise, just
@@ -5827,7 +5812,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             # If qos is empty for both the source and target volumes,
             # add_vdisk_qos and disable_vdisk_qos will not be called for
             # retype.
-            get_vdisk_params.side_effect = [fake_opts, fake_opts]
+            get_vdisk_params.side_effect = [fake_opts, fake_opts, fake_opts]
             self.driver.retype(ctxt, volume, new_type, diff, host)
             self.assertFalse(update_vdisk_qos.called)
             self.assertFalse(disable_vdisk_qos.called)
@@ -5840,7 +5825,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             # If qos is specified for both source and target volumes,
             # add_vdisk_qos will be called for retype, and disable_vdisk_qos
             # will not be called.
-            get_vdisk_params.side_effect = [fake_opts_old, fake_opts_qos]
+            get_vdisk_params.side_effect = [fake_opts_old, fake_opts_qos,
+                                            fake_opts_old]
             self.driver.retype(ctxt, volume, new_type, diff, host)
             update_vdisk_qos.assert_called_with(volume['name'],
                                                 fake_opts_qos['qos'])
@@ -5854,7 +5840,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             # If qos is empty for source and speficied for target volume,
             # add_vdisk_qos will be called for retype, and disable_vdisk_qos
             # will not be called.
-            get_vdisk_params.side_effect = [fake_opts, fake_opts_qos]
+            get_vdisk_params.side_effect = [fake_opts, fake_opts_qos,
+                                            fake_opts]
             self.driver.retype(ctxt, volume, new_type, diff, host)
             update_vdisk_qos.assert_called_with(volume['name'],
                                                 fake_opts_qos['qos'])
@@ -5868,7 +5855,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             # If qos is empty for target volume and specified for source
             # volume, add_vdisk_qos will not be called for retype, and
             # disable_vdisk_qos will be called.
-            get_vdisk_params.side_effect = [fake_opts_qos, fake_opts]
+            get_vdisk_params.side_effect = [fake_opts_qos, fake_opts,
+                                            fake_opts]
             self.driver.retype(ctxt, volume, new_type, diff, host)
             self.assertFalse(update_vdisk_qos.called)
             disable_vdisk_qos.assert_called_with(volume['name'],
@@ -5979,7 +5967,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             # If qos is empty for both the source and target volumes,
             # add_vdisk_qos and disable_vdisk_qos will not be called for
             # retype.
-            get_vdisk_params.side_effect = [fake_opts, fake_opts]
+            get_vdisk_params.side_effect = [fake_opts, fake_opts, fake_opts]
             self.driver.retype(ctxt, volume, new_type, diff, host)
             self.assertFalse(update_vdisk_qos.called)
             self.assertFalse(disable_vdisk_qos.called)
@@ -5992,7 +5980,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             # If qos is specified for both source and target volumes,
             # add_vdisk_qos will be called for retype, and disable_vdisk_qos
             # will not be called.
-            get_vdisk_params.side_effect = [fake_opts_old, fake_opts_qos]
+            get_vdisk_params.side_effect = [fake_opts_old, fake_opts_qos,
+                                            fake_opts_qos]
             self.driver.retype(ctxt, volume, new_type, diff, host)
             update_vdisk_qos.assert_called_with(volume['name'],
                                                 fake_opts_qos['qos'])
@@ -6006,7 +5995,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             # If qos is empty for source and speficied for target volume,
             # add_vdisk_qos will be called for retype, and disable_vdisk_qos
             # will not be called.
-            get_vdisk_params.side_effect = [fake_opts, fake_opts_qos]
+            get_vdisk_params.side_effect = [fake_opts, fake_opts_qos,
+                                            fake_opts]
             self.driver.retype(ctxt, volume, new_type, diff, host)
             update_vdisk_qos.assert_called_with(volume['name'],
                                                 fake_opts_qos['qos'])
@@ -6020,7 +6010,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             # If qos is empty for target volume and specified for source
             # volume, add_vdisk_qos will not be called for retype, and
             # disable_vdisk_qos will be called.
-            get_vdisk_params.side_effect = [fake_opts_qos, fake_opts]
+            get_vdisk_params.side_effect = [fake_opts_qos, fake_opts,
+                                            fake_opts]
             self.driver.retype(ctxt, volume, new_type, diff, host)
             self.assertFalse(update_vdisk_qos.called)
             disable_vdisk_qos.assert_called_with(volume['name'],
@@ -7293,9 +7284,6 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self._assert_vol_exists('site2' + vol.name, True)
         self._assert_vol_exists('fcsite1' + vol.name, True)
         self._assert_vol_exists('fcsite2' + vol.name, True)
-        is_volume_hyperswap = self.driver._helpers.is_volume_hyperswap(
-            vol.name)
-        self.assertEqual(is_volume_hyperswap, True)
         self.driver.delete_volume(vol)
         self._assert_vol_exists(vol.name, False)
         self._assert_vol_exists('site2' + vol.name, False)
@@ -7351,9 +7339,6 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self._assert_vol_exists('site2' + vol2.name, True)
         self._assert_vol_exists('fcsite1' + vol2.name, True)
         self._assert_vol_exists('fcsite2' + vol2.name, True)
-        is_volume_hyperswap = self.driver._helpers.is_volume_hyperswap(
-            vol2.name)
-        self.assertEqual(is_volume_hyperswap, True)
 
         self.driver.delete_volume(vol)
         self._assert_vol_exists(vol.name, False)
@@ -7522,9 +7507,6 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self._assert_vol_exists('site2' + volume.name, True)
         self._assert_vol_exists('fcsite1' + volume.name, True)
         self._assert_vol_exists('fcsite2' + volume.name, True)
-        is_volume_hyperswap = self.driver._helpers.is_volume_hyperswap(
-            volume.name)
-        self.assertEqual(is_volume_hyperswap, True)
 
         # Retype from hyperswap volume to non hyperswap volume---move site2
         diff, _equal = volume_types.volume_types_diff(
