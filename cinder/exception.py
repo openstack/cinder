@@ -146,7 +146,7 @@ class VolumeDriverException(CinderException):
 
 
 class BackupDriverException(CinderException):
-    message = _("Backup driver reported an error: %(message)s")
+    message = _("Backup driver reported an error: %(reason)s")
 
 
 class BackupRestoreCancel(CinderException):

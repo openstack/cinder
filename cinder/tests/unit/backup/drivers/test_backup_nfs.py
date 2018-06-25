@@ -582,7 +582,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
 
         def fake_backup_metadata(self, backup, object_meta):
-            raise exception.BackupDriverException(message=_('fake'))
+            raise exception.BackupDriverException(reason=_('fake'))
 
         # Raise a pseudo exception.BackupDriverException.
         self.mock_object(nfs.NFSBackupDriver, '_backup_metadata',
@@ -609,7 +609,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
 
         def fake_backup_metadata(self, backup, object_meta):
-            raise exception.BackupDriverException(message=_('fake'))
+            raise exception.BackupDriverException(reason=_('fake'))
 
         # Raise a pseudo exception.BackupDriverException.
         self.mock_object(nfs.NFSBackupDriver, '_backup_metadata',
