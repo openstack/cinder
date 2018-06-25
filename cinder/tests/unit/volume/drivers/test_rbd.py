@@ -1332,9 +1332,8 @@ class RBDTestCase(test.TestCase):
         self.assertEqual((free_capacity, total_capacity), result)
 
     @common_mocks
-    def test_get_pool_bytes(self, free_capacity=1.56, total_capacity=3.0,
-                            dynamic_total=True):
-        """test for mon_commands returning bytes instead of str"""
+    def test_get_pool_bytes(self):
+        """Test for mon_commands returning bytes instead of strings."""
         client = self.mock_client.return_value
         client.__enter__.return_value = client
         client.cluster.mon_command.side_effect = [
@@ -1347,14 +1346,14 @@ class RBDTestCase(test.TestCase):
             (0, b'{"pool_name":"volumes","pool_id":4,"quota_max_objects":0,'
              b'"quota_max_bytes":3221225472}\n', ''),
         ]
-        with mock.patch.object(self.driver.configuration, 'safe_get',
-                               return_value=dynamic_total):
-            result = self.driver._get_pool_stats()
+        result = self.driver._get_pool_stats()
         client.cluster.mon_command.assert_has_calls([
             mock.call('{"prefix":"df", "format":"json"}', ''),
             mock.call('{"prefix":"osd pool get-quota", "pool": "rbd",'
                       ' "format":"json"}', ''),
         ])
+        free_capacity = 1.56
+        total_capacity = 3.0
         self.assertEqual((free_capacity, total_capacity), result)
 
     @common_mocks
