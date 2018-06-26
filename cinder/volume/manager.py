@@ -1018,7 +1018,7 @@ class VolumeManager(manager.CleanableManager,
             msg = _("Revert finished, but failed to reset "
                     "volume %(id)s status to %(status)s, "
                     "please manually reset it.") % msg_args
-            raise exception.BadResetResourceStatus(message=msg)
+            raise exception.BadResetResourceStatus(reason=msg)
 
         s_res = snapshot.update_single_status_where(
             fields.SnapshotStatus.AVAILABLE,
@@ -1030,7 +1030,7 @@ class VolumeManager(manager.CleanableManager,
             msg = _("Revert finished, but failed to reset "
                     "snapshot %(id)s status to %(status)s, "
                     "please manually reset it.") % msg_args
-            raise exception.BadResetResourceStatus(message=msg)
+            raise exception.BadResetResourceStatus(reason=msg)
         if backup_snapshot:
             self.delete_snapshot(context,
                                  backup_snapshot, handle_quota=False)

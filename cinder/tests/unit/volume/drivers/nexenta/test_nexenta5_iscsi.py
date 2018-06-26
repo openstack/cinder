@@ -118,7 +118,8 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.assertRaises(
             exception.NexentaException, self.drv.check_for_setup_error)
 
-        self.nef_mock.get.side_effect = exception.NexentaException()
+        self.nef_mock.get.side_effect = exception.NexentaException(
+            'fake_exception')
         self.assertRaises(LookupError, self.drv.check_for_setup_error)
 
     def test_create_volume(self):
@@ -169,8 +170,8 @@ class TestNexentaISCSIDriver(test.TestCase):
         self._create_volume_db_entry()
         vol = self.TEST_VOLUME_REF2
         src_vref = self.TEST_VOLUME_REF
-        crt_vol.side_effect = exception.NexentaException()
-        dlt_snap.side_effect = exception.NexentaException()
+        crt_vol.side_effect = exception.NexentaException('fake_exception')
+        dlt_snap.side_effect = exception.NexentaException('fake_exception')
         self.assertRaises(
             exception.NexentaException,
             self.drv.create_cloned_volume, vol, src_vref)
