@@ -1334,7 +1334,7 @@ class InvalidAttachment(Invalid):
 
 # Veritas driver
 class UnableToExecuteHyperScaleCmd(VolumeDriverException):
-    message = _("Failed HyperScale command for '%(message)s'")
+    message = _("Failed HyperScale command for '%(command)s'")
 
 
 class UnableToProcessHyperScaleCmdOutput(VolumeDriverException):

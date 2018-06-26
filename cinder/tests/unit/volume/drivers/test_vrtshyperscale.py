@@ -341,7 +341,7 @@ class VRTSHyperScaleDriverTestCase(test.TestCase):
         vol_a = _stub_volume()
         vol_b = _stub_volume()
         mock_mdp.side_effect = exception.UnableToExecuteHyperScaleCmd(
-            cmd_out='mock error')
+            command='mock error')
         self.assertRaises(exception.UnableToExecuteHyperScaleCmd,
                           self.driver.create_cloned_volume, vol_b, vol_a)
 
@@ -411,7 +411,7 @@ class VRTSHyperScaleDriverTestCase(test.TestCase):
         """Test case create volume from snapshot thorws exception."""
         fake_volume, fake_snapshot = _stub_volume(), _stub_snapshot()
         mock_mdp.side_effect = exception.UnableToExecuteHyperScaleCmd(
-            cmd_out='mock error')
+            command='mock error')
         self.assertRaises(exception.UnableToExecuteHyperScaleCmd,
                           self.driver.create_volume_from_snapshot, fake_volume,
                           fake_snapshot)
@@ -485,7 +485,7 @@ class VRTSHyperScaleDriverTestCase(test.TestCase):
         mock_es_obj = {'payload': {'update': False}}
         mock_es.return_value = mock_es_obj
         mock_mcp.side_effect = exception.UnableToExecuteHyperScaleCmd(
-            cmd_out='mock error')
+            command='mock error')
         fake_snapshot = _stub_snapshot()
         self.assertRaises(exception.UnableToExecuteHyperScaleCmd,
                           self.driver.create_snapshot, fake_snapshot)
