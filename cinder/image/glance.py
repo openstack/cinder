@@ -114,14 +114,16 @@ def _create_glance_client(context, netloc, use_ssl):
     if use_ssl and CONF.auth_strategy == 'noauth':
         params = {'insecure': CONF.glance_api_insecure,
                   'cacert': CONF.glance_ca_certificates_file,
-                  'timeout': CONF.glance_request_timeout
+                  'timeout': CONF.glance_request_timeout,
+                  'split_loggers': CONF.split_loggers
                   }
     if CONF.auth_strategy == 'keystone':
         global _SESSION
         if not _SESSION:
             config_options = {'insecure': CONF.glance_api_insecure,
                               'cacert': CONF.glance_ca_certificates_file,
-                              'timeout': CONF.glance_request_timeout
+                              'timeout': CONF.glance_request_timeout,
+                              'split_loggers': CONF.split_loggers
                               }
             _SESSION = ks_session.Session().load_from_options(**config_options)
 

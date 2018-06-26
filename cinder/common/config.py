@@ -175,6 +175,9 @@ global_opts = [
     cfg.StrOpt('group_api_class',
                default='cinder.group.api.API',
                help='The full class name of the group API class'),
+    cfg.BoolOpt('split_loggers',
+                default=False,
+                help='Log requests to multiple loggers.')
 ]
 
 CONF.register_opts(core_opts)
