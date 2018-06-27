@@ -656,6 +656,7 @@ class MStorageVolumeCommon(object):
                           {'mode': tmode, 'line': unit.sourceline, 'out': xml})
             ldset = {'ldsetname': ldsetname,
                      'protocol': 'iSCSI',
+                     'mode': tmode,
                      'portal_list': portals,
                      'lds': ldsetlds,
                      'initiator_list': initiators}

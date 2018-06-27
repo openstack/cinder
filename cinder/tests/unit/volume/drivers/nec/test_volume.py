@@ -832,7 +832,8 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.vol.status = None
         self.vol.migration_status = None
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
-        self.iscsi_do_export(None, self.vol, connector)
+        self.iscsi_do_export(None, self.vol, connector,
+                             self._properties['diskarray_name'])
 
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
                 patch_execute)
@@ -1013,7 +1014,8 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
         self._properties['ldset_controller_node_name'] = 'LX:OpenStack1'
         self._properties['portal_number'] = 2
-        location = self.iscsi_do_export(None, self.vol, connector)
+        location = self.iscsi_do_export(None, self.vol, connector,
+                                        self._properties['diskarray_name'])
         self.assertEqual('192.168.1.90:3260;192.168.1.91:3260;'
                          '192.168.2.92:3260;192.168.2.93:3260'
                          ',1 iqn.2001-03.target0000 0',
@@ -1113,6 +1115,7 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f232XX"}
         mock_data = {'ldsetname': 'LX:redhatd1d8e8f23',
                      'protocol': 'iSCSI',
+                     'mode': 'Multi-Target',
                      'portal_list': ['1.1.1.1:3260', '2.2.2.2:3260'],
                      'lds': {},
                      'initiator_list':
@@ -1222,6 +1225,50 @@ class VolumeStats_test(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual(self.VERSION, stats.get('driver_version'))
         self.assertEqual('10.0.0.1', stats.get('location_info').split(':')[0])
         self.assertEqual('0,1', stats.get('location_info').split(':')[1])
+
+
+class GetFreeLun_test(volume_helper.MStorageDSVDriver, test.TestCase):
+
+    def setUp(self):
+        super(GetFreeLun_test, self).setUp()
+        self.do_setup(None)
+
+    def test_get_free_lun_iscsi_multi(self):
+        ldset = {'protocol': 'iSCSI',
+                 'mode': 'Multi-Target',
+                 'lds': {}}
+        target_lun = self._get_free_lun(ldset)
+        self.assertIsNone(target_lun)
+
+    def test_get_free_lun_iscsi_lun0(self):
+        ldset = {'protocol': 'iSCSI',
+                 'mode': 'Normal',
+                 'lds': {}}
+        target_lun = self._get_free_lun(ldset)
+        self.assertEqual(0, target_lun)
+
+    def test_get_free_lun_iscsi_lun2(self):
+        ld0 = {'lun': 0}
+        ld1 = {'lun': 1}
+        ld3 = {'lun': 3}
+        ldsetlds = {}
+        ldsetlds[0] = ld0
+        ldsetlds[1] = ld1
+        ldsetlds[3] = ld3
+        ldset = {'protocol': 'iSCSI',
+                 'mode': 'Normal',
+                 'lds': ldsetlds}
+        target_lun = self._get_free_lun(ldset)
+        self.assertEqual(2, target_lun)
+
+    def test_get_free_lun_fc_lun1(self):
+        ld0 = {'lun': 0}
+        ldsetlds = {}
+        ldsetlds[0] = ld0
+        ldset = {'lds': ldsetlds,
+                 'protocol': 'FC'}
+        target_lun = self._get_free_lun(ldset)
+        self.assertEqual(1, target_lun)
 
 
 class Migrate_test(volume_helper.MStorageDSVDriver, test.TestCase):
