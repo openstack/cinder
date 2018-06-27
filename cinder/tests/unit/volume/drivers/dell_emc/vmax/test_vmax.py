@@ -3130,7 +3130,7 @@ class VMAXRestTest(test.TestCase):
         VMAXCommonData.private_vol_rest_response_iterator_second['result'])
     @mock.patch.object(
         rest.VMAXRest, 'get_resource', return_value=
-        VMAXCommonData.private_vol_rest_response_iterator_first)
+        deepcopy(VMAXCommonData.private_vol_rest_response_iterator_first))
     def test_get_private_volume_list_iterator(self, mock_get_resource,
                                               mock_iterator):
         array_id = self.data.array
@@ -3161,9 +3161,11 @@ class VMAXRestTest(test.TestCase):
             result_count = 1500
             start_position = 1
             end_position = 1000
+            max_page_size = 1000
 
             actual_response = self.rest.get_iterator_page_list(
-                iterator_id, result_count, start_position, end_position)
+                iterator_id, result_count, start_position, end_position,
+                max_page_size)
             self.assertEqual(expected_response, actual_response)
 
     def test_set_rest_credentials(self):
@@ -3180,6 +3182,16 @@ class VMAXRestTest(test.TestCase):
         self.assertTrue(self.rest.verify)
         self.assertEqual('https://10.10.10.10:8443/univmax/restapi',
                          self.rest.base_uri)
+
+    @mock.patch.object(
+        rest.VMAXRest, 'get_iterator_page_list', return_value=
+        VMAXCommonData.private_vol_rest_response_iterator_second['result'])
+    def test_list_pagination(self, mock_iter):
+        result_list = self.rest.list_pagination(
+            deepcopy(self.data.private_vol_rest_response_iterator_first))
+        # reflects sample data, 1 from first iterator page and 1 from
+        # second iterator page
+        self.assertTrue(2 == len(result_list))
 
 
 class VMAXProvisionTest(test.TestCase):

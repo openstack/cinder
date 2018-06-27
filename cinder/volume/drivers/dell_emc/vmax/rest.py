@@ -1012,8 +1012,8 @@ class VMAXRest(object):
         device_ids = []
         volumes = self.get_resource(
             array, SLOPROVISIONING, 'volume', params=params)
+        volume_dict_list = self.list_pagination(volumes)
         try:
-            volume_dict_list = volumes['resultList']['result']
             for vol_dict in volume_dict_list:
                 device_id = vol_dict['volumeId']
                 device_ids.append(device_id)
@@ -1028,64 +1028,11 @@ class VMAXRest(object):
         :param params: filter parameters
         :returns: list -- dicts with volume information
         """
-        volumes = []
         volume_info = self.get_resource(
             array, SLOPROVISIONING, 'volume', params=params,
             private='/private')
-        try:
-            volumes = volume_info['resultList']['result']
-            iterator_id = volume_info['id']
-            volume_count = volume_info['count']
-            max_page_size = volume_info['maxPageSize']
-            start_position = volume_info['resultList']['from']
-            end_position = volume_info['resultList']['to']
-        except (KeyError, TypeError):
-            return volumes
 
-        if volume_count > max_page_size:
-            LOG.info("More entries exist in the result list, retrieving "
-                     "remainder of results from iterator.")
-
-            start_position += 1000
-            end_position += 1000
-            iterator_response = self.get_iterator_page_list(
-                iterator_id, volume_count, start_position, end_position)
-
-            volumes += iterator_response
-
-        return volumes
-
-    def get_iterator_page_list(self, iterator_id, result_count, start_position,
-                               end_position):
-        """Iterate through response if more than one page available.
-
-        :param iterator_id: the iterator ID
-        :param result_count: the amount of results in the iterator
-        :param start_position: position to begin iterator from
-        :param end_position: position to stop iterator
-        :return: list -- merged results from multiple pages
-        """
-        iterator_result = []
-        has_more_entries = True
-
-        while has_more_entries:
-            if start_position <= result_count <= end_position:
-                end_position = result_count
-                has_more_entries = False
-
-            params = {'to': start_position, 'from': end_position}
-            target_uri = ('/common/Iterator/%(iterator_id)s/page' % {
-                'iterator_id': iterator_id})
-            iterator_response = self._get_request(target_uri, 'iterator',
-                                                  params)
-            try:
-                iterator_result += iterator_response['result']
-                start_position += 1000
-                end_position += 1000
-            except (KeyError, TypeError):
-                pass
-
-        return iterator_result
+        return self.list_pagination(volume_info)
 
     def _modify_volume(self, array, device_id, payload):
         """Modify a volume (PUT operation).
@@ -2416,3 +2363,69 @@ class VMAXRest(object):
                             'rdf_num': rdf_group_num})
         self.delete_resource(
             array, REPLICATION, 'storagegroup', resource_name=resource_name)
+
+    def list_pagination(self, list_info):
+        """Process lists under or over the maxPageSize
+
+        :param list_info: the object list information
+        :return: the result list
+        """
+        result_list = []
+        try:
+            result_list = list_info['resultList']['result']
+            iterator_id = list_info['id']
+            list_count = list_info['count']
+            max_page_size = list_info['maxPageSize']
+            start_position = list_info['resultList']['from']
+            end_position = list_info['resultList']['to']
+        except (KeyError, TypeError):
+            return result_list
+
+        if list_count > max_page_size:
+            LOG.info("More entries exist in the result list, retrieving "
+                     "remainder of results from iterator.")
+
+            start_position = end_position + 1
+            if list_count < (end_position + max_page_size):
+                end_position = list_count
+            else:
+                end_position += max_page_size
+            iterator_response = self.get_iterator_page_list(
+                iterator_id, list_count, start_position, end_position,
+                max_page_size)
+
+            result_list += iterator_response
+        return result_list
+
+    def get_iterator_page_list(self, iterator_id, result_count, start_position,
+                               end_position, max_page_size):
+        """Iterate through response if more than one page available.
+
+        :param iterator_id: the iterator ID
+        :param result_count: the amount of results in the iterator
+        :param start_position: position to begin iterator from
+        :param end_position: position to stop iterator
+        :param max_page_size: the max page size
+        :return: list -- merged results from multiple pages
+        """
+        iterator_result = []
+        has_more_entries = True
+
+        while has_more_entries:
+            if start_position <= result_count <= end_position:
+                end_position = result_count
+                has_more_entries = False
+
+            params = {'to': end_position, 'from': start_position}
+            target_uri = ('/common/Iterator/%(iterator_id)s/page' % {
+                'iterator_id': iterator_id})
+            iterator_response = self._get_request(target_uri, 'iterator',
+                                                  params)
+            try:
+                iterator_result += iterator_response['result']
+                start_position += max_page_size
+                end_position += max_page_size
+            except (KeyError, TypeError):
+                pass
+
+        return iterator_result
