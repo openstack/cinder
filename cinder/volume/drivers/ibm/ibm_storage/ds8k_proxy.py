@@ -1080,9 +1080,8 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 backend_helper.check_vol_mapped_to_host(connector, lun.ds_id))
             if host_id is None or not vol_mapped:
                 if host_id is None and not lun.type_replication:
-                    msg = (_('Failed to find the Host information.'))
-                    LOG.error(msg)
-                    raise exception.VolumeDriverException(message=msg)
+                    LOG.warning('Failed to find the Host information.')
+                    return ret_info
                 if host_id and not lun.type_replication and not vol_mapped:
                     LOG.warning("Volume %(vol)s is already not mapped to "
                                 "host %(host)s.",
