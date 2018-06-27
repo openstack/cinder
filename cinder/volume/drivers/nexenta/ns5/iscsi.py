@@ -33,7 +33,7 @@ from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.4'
+VERSION = '1.3.5'
 LOG = logging.getLogger(__name__)
 
 
@@ -52,6 +52,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         1.3.1 - Refactored _do_export to query exact lunMapping.
         1.3.3 - Refactored LUN creation, use host group for LUN mappings.
         1.3.4 - Adapted NexentaException for the latest Cinder.
+        1.3.5 - Added deferred deletion for snapshots.
     """
 
     VERSION = VERSION
@@ -167,50 +168,53 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         self.nef.post(url, data)
 
     def delete_volume(self, volume):
-        """Destroy a zfs volume on appliance.
+        """Deletes a logical volume.
 
         :param volume: volume reference
         """
         LOG.debug('Delete volume %(volume)s',
                   {'volume': volume['name']})
-        path = '%2F'.join([
-            self.storage_pool, self.volume_group, volume['name']])
-        url = 'storage/volumes?path=%s' % path
+        path = self._get_volume_path(volume)
+        params = {'path': path}
+        url = 'storage/volumes?%s' % (
+            urllib.parse.urlencode(params))
         data = self.nef.get(url).get('data')
-        if data:
-            origin = data[0].get('originalSnapshot')
-        else:
-            LOG.debug('Volume %(volume)s does not exist, '
-                      'it seems it was already deleted',
-                      {'volume': volume['name']})
+        if not data:
             return
+        params = {'snapshots': 'true'}
+        url = 'storage/volumes/%s?%s' % (
+            urllib.parse.quote_plus(path),
+            urllib.parse.urlencode(params))
         try:
-            url = 'storage/volumes/%s?snapshots=true' % path
             self.nef.delete(url)
         except exception.NexentaException as ex:
             err = utils.ex2err(ex)
             if 'Failed to destroy snap' in err['message']:
-                url = 'storage/snapshots?parent=%s' % path
+                params = {'parent': path}
+                url = 'storage/snapshots?%s' % (
+                    urllib.parse.urlencode(params))
                 snap_map = {}
                 for snap in self.nef.get(url)['data']:
                     url = 'storage/snapshots/%s' % (
                         urllib.parse.quote_plus(snap['path']))
                     data = self.nef.get(url)
-                    if data['clones']:
+                    if data and data.get('clones'):
                         snap_map[data['creationTxg']] = snap['path']
-                snap = snap_map[max(snap_map)]
-                url = 'storage/snapshots/%s' % urllib.parse.quote_plus(snap)
-                clone = self.nef.get(url)['clones'][0]
-                url = 'storage/volumes/%s/promote' % urllib.parse.quote_plus(
-                    clone)
-                self.nef.post(url)
-                url = 'storage/volumes/%s?snapshots=true' % path
-                self.nef.delete(url)
+                if snap_map:
+                    snap = snap_map[max(snap_map)]
+                    url = 'storage/snapshots/%s' % urllib.parse.quote_plus(
+                        snap)
+                    clone = self.nef.get(url)['clones'][0]
+                    url = 'storage/volumes/%s/promote' % (
+                        urllib.parse.quote_plus(clone))
+                    self.nef.post(url)
+                    params = {'snapshots': 'true'}
+                    url = 'storage/volumes/%s?%s' % (
+                        urllib.parse.quote_plus(path),
+                        urllib.parse.urlencode(params))
+                    self.nef.delete(url)
             else:
                 raise ex
-        if origin and 'clone' in origin:
-            url = 'storage/snapshots/%s' % urllib.parse.quote_plus(origin)
-            self.nef.delete(url)
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
@@ -242,21 +246,25 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         self.nef.post(url, data)
 
     def delete_snapshot(self, snapshot):
-        """Delete volume's snapshot on appliance.
+        """Deletes a snapshot.
 
         :param snapshot: snapshot reference
         """
         LOG.debug('Delete snapshot: %(snapshot)s',
                   {'snapshot': snapshot['name']})
-        snapshot_vol = self._get_snapshot_volume(snapshot)
-        volume_path = self._get_volume_path(snapshot_vol)
-        pool, group, volume = volume_path.split('/')
-        path = '%2F'.join([self.storage_pool, self.volume_group, volume])
-        url = 'storage/snapshots/%s@%s' % (path, snapshot['name'])
-        try:
-            self.nef.delete(url)
-        except exception.NexentaException:
+        volume = self._get_snapshot_volume(snapshot)
+        path = '%s@%s' % (self._get_volume_path(volume),
+                          snapshot['name'])
+        params = {'path': path}
+        url = 'storage/snapshots?%s' % urllib.parse.urlencode(params)
+        snap_data = self.nef.get(url).get('data')
+        if not snap_data:
             return
+        params = {'defer': 'true'}
+        url = 'storage/snapshots/%s?%s' % (
+            urllib.parse.quote_plus(path),
+            urllib.parse.urlencode(params))
+        self.nef.delete(url)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create new volume from other's snapshot on appliance.
