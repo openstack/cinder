@@ -116,7 +116,6 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
              mock.call(volume_policies.MULTIATTACH_POLICY,
                        target_obj=mock.ANY),
              mock.call(volume_policies.CREATE_POLICY),
-             mock.call(volume_policies.MULTIATTACH_POLICY),
              mock.call(volume_policies.CREATE_POLICY),
              mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY),
              mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY),
