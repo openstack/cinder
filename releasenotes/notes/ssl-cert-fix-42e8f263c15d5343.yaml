@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    VMAX driver - fixes SSL certificate verification error.

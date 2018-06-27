@@ -75,14 +75,10 @@ class VMAXRest(object):
         port = array_info['RestServerPort']
         self.user = array_info['RestUserName']
         self.passwd = array_info['RestPassword']
-        self.cert = array_info['SSLCert']
-        verify = array_info['SSLVerify']
-        if verify and verify.lower() == 'false':
-            verify = False
-        self.verify = verify
+        self.verify = array_info['SSLVerify']
         ip_port = "%(ip)s:%(port)s" % {'ip': ip, 'port': port}
-        self.base_uri = ("https://%(ip_port)s/univmax/restapi"
-                         % {'ip_port': ip_port})
+        self.base_uri = ("https://%(ip_port)s/univmax/restapi" % {
+            'ip_port': ip_port})
         self.session = self._establish_rest_session()
 
     def _establish_rest_session(self):
@@ -97,8 +93,6 @@ class VMAXRest(object):
         session.auth = requests.auth.HTTPBasicAuth(self.user, self.passwd)
         if self.verify is not None:
             session.verify = self.verify
-        if self.cert:
-            session.cert = self.cert
 
         return session
 

@@ -95,6 +95,7 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Support for multiattach volumes (bp vmax-allow-multi-attach)
               - Support for list manageable volumes and snapshots
                 (bp/vmax-list-manage-existing)
+              - Fix for SSL verification/cert application (bug #1772924)
     """
 
     VERSION = "3.2.0"

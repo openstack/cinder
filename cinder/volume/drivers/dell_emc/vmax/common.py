@@ -4227,7 +4227,6 @@ class VMAXCommon(object):
 
         :returns: kwargs
         """
-        LOG.debug("Using cinder.conf file")
         kwargs = None
         username = self.configuration.safe_get(utils.VMAX_USER_NAME)
         password = self.configuration.safe_get(utils.VMAX_PASSWORD)
@@ -4239,7 +4238,7 @@ class VMAXCommon(object):
             if srp_name is None:
                 LOG.error("SRP Name must be set in cinder.conf")
             slo = self.configuration.safe_get(utils.VMAX_SERVICE_LEVEL)
-            workload = self.configuration.safe_get(utils.WORKLOAD)
+            workload = self.configuration.safe_get(utils.VMAX_WORKLOAD)
             port_groups = self.configuration.safe_get(utils.VMAX_PORT_GROUPS)
             random_portgroup = None
             if port_groups:
@@ -4252,18 +4251,22 @@ class VMAXCommon(object):
                  'RestServerPort': self._get_unisphere_port(),
                  'RestUserName': username,
                  'RestPassword': password,
-                 'SSLCert': self.configuration.safe_get('driver_client_cert'),
                  'SerialNumber': serial_number,
                  'srpName': srp_name,
                  'PortGroup': random_portgroup})
 
             if self.configuration.safe_get('driver_ssl_cert_verify'):
-                kwargs.update({'SSLVerify': self.configuration.safe_get(
-                    'driver_ssl_cert_path')})
+                if self.configuration.safe_get('driver_ssl_cert_path'):
+                    kwargs.update({'SSLVerify': self.configuration.safe_get(
+                        'driver_ssl_cert_path')})
+                else:
+                    kwargs.update({'SSLVerify': True})
             else:
                 kwargs.update({'SSLVerify': False})
-            if slo is not None:
+
+            if slo:
                 kwargs.update({'ServiceLevel': slo, 'Workload': workload})
+
         return kwargs
 
     def _get_unisphere_port(self):
