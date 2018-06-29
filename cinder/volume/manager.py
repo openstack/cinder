@@ -763,11 +763,12 @@ class VolumeManager(manager.CleanableManager,
 
         # To backup a snapshot or a 'in-use' volume, create a temp volume
         # from the snapshot or in-use volume, and back it up.
-        # Get admin_metadata to detect temporary volume.
+        # Get admin_metadata (needs admin context) to detect temporary volume.
         is_temp_vol = False
-        if volume.admin_metadata.get('temporary', 'False') == 'True':
-            is_temp_vol = True
-            LOG.info("Trying to delete temp volume: %s", volume.id)
+        with volume.obj_as_admin():
+            if volume.admin_metadata.get('temporary', 'False') == 'True':
+                is_temp_vol = True
+                LOG.info("Trying to delete temp volume: %s", volume.id)
 
         # The status 'deleting' is not included, because it only applies to
         # the source volume to be deleted after a migration. No quota

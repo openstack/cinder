@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fix a quota usage error triggered by a non-admin user backing up an
+    in-use volume. The forced backup uses a temporary volume, and quota
+    usage was incorrectly updated when the temporary volume was deleted
+    after the backup operation completed.
+    Fixes `bug 1778774 <https://bugs.launchpad.net/tripleo/+bug/1778774>`__.
