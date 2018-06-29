@@ -647,9 +647,9 @@ cgsnapshots:
   type: object
 cinder_id:
   description: |
-    The UUID of the snapshot in Cinder.
+    The UUID of the resource in Cinder.
   in: body
-  required: false
+  required: true
   type: string
 cipher:
   description: |
@@ -1043,7 +1043,7 @@ extra_info:
   description: |
     More information about the resource.
   in: body
-  required: false
+  required: true
   type: string
 extra_specs_volume_type_optional:
   description: |
@@ -2255,7 +2255,7 @@ reason_not_safe:
   description: |
     The reason why the resource can't be managed.
   in: body
-  required: false
+  required: true
   type: string
 ref:
   description: |
