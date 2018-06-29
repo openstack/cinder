@@ -57,6 +57,7 @@ def get_backend_configuration(backend_name):
     config.append_config_values(na_opts.netapp_cluster_opts)
     config.append_config_values(na_opts.netapp_san_opts)
     config.append_config_values(na_opts.netapp_replication_opts)
+    config.append_config_values(na_opts.netapp_support_opts)
 
     return config
 
@@ -72,7 +73,8 @@ def get_client_for_backend(backend_name, vserver_name=None):
         hostname=config.netapp_server_hostname,
         port=config.netapp_server_port,
         vserver=vserver_name or config.netapp_vserver,
-        trace=utils.TRACE_API)
+        trace=utils.TRACE_API,
+        api_trace_pattern=config.netapp_api_trace_pattern)
 
     return client
 

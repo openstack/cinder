@@ -1,0 +1,6 @@
+---
+features:
+  - The NetApp ONTAP driver supports a new configuration option
+    ``netapp_api_trace_pattern`` to enable filtering backend API
+    interactions to log. This option must be specified in the backend
+    section when desired and it accepts a valid python regular expression.

@@ -155,5 +155,6 @@ def get_fake_cmode_config(backend_name):
     config.append_config_values(na_opts.netapp_cluster_opts)
     config.append_config_values(na_opts.netapp_san_opts)
     config.append_config_values(na_opts.netapp_replication_opts)
+    config.append_config_values(na_opts.netapp_support_opts)
 
     return config

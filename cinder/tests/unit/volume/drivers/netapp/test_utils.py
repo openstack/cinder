@@ -28,8 +28,11 @@ from oslo_concurrency import processutils as putils
 from cinder import context
 from cinder import exception
 from cinder import test
+from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
+    fakes as zapi_fakes)
 import cinder.tests.unit.volume.drivers.netapp.fakes as fake
 from cinder import version
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
@@ -157,6 +160,22 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         result = na_utils.get_volume_extra_specs(fake_volume)
 
         self.assertEqual(fake_extra_specs, result)
+
+    def test_trace_filter_func_api(self):
+        na_utils.setup_api_trace_pattern("^(?!(perf)).*$")
+        na_element = zapi_fakes.FAKE_NA_ELEMENT
+        all_args = {'na_element': na_element}
+        self.assertTrue(na_utils.trace_filter_func_api(all_args))
+
+    def test_trace_filter_func_api_invalid(self):
+        all_args = {'fake': 'not_na_element'}
+        self.assertTrue(na_utils.trace_filter_func_api(all_args))
+
+    def test_trace_filter_func_api_filtered(self):
+        na_utils.setup_api_trace_pattern("^(?!(perf)).*$")
+        na_element = netapp_api.NaElement("perf-object-counter-list-info")
+        all_args = {'na_element': na_element}
+        self.assertFalse(na_utils.trace_filter_func_api(all_args))
 
     def test_get_volume_extra_specs_no_type_id(self):
         fake_volume = {}

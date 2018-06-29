@@ -34,7 +34,8 @@ CONNECTION_INFO = {'hostname': 'hostname',
                    'transport_type': 'https',
                    'port': 443,
                    'username': 'admin',
-                   'password': 'passw0rd'}
+                   'password': 'passw0rd',
+                   'api_trace_pattern': 'fake_regex'}
 
 
 class NetAppBaseClientTestCase(test.TestCase):
@@ -53,7 +54,8 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.fake_lun = six.text_type(uuid.uuid4())
         self.fake_size = '1024'
         self.fake_metadata = {'OsType': 'linux', 'SpaceReserved': 'true'}
-        self.mock_send_request = self.mock_object(self.client, 'send_request')
+        self.mock_send_request = self.mock_object(
+            self.client.connection, 'send_request')
 
     def test_get_ontapi_version(self):
         version_response = netapp_api.NaElement(
@@ -534,7 +536,7 @@ class NetAppBaseClientTestCase(test.TestCase):
             'volume': fake.SNAPSHOT['volume_id'],
             'snapshot': fake.SNAPSHOT['name'],
         }
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.delete_snapshot(api_args['volume'],
                                     api_args['snapshot'])
@@ -543,8 +545,8 @@ class NetAppBaseClientTestCase(test.TestCase):
             'volume': api_args['volume'],
             'snapshot': api_args['snapshot'],
         }
-        self.client.send_request.assert_called_once_with('snapshot-delete',
-                                                         asserted_api_args)
+        self.client.connection.send_request.assert_called_once_with(
+            'snapshot-delete', asserted_api_args)
 
     def test_create_cg_snapshot(self):
         self.mock_object(self.client, '_start_cg_snapshot',
@@ -571,21 +573,21 @@ class NetAppBaseClientTestCase(test.TestCase):
             'timeout': 'relaxed',
             'volumes': [{'volume-name': fake.CG_VOLUME_NAME}],
         }
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client._start_cg_snapshot([fake.CG_VOLUME_NAME],
                                        snapshot_init['snapshot'])
 
-        self.client.send_request.assert_called_once_with('cg-start',
-                                                         snapshot_init)
+        self.client.connection.send_request.assert_called_once_with(
+            'cg-start', snapshot_init)
 
     def test_commit_cg_snapshot(self):
         snapshot_commit = {'cg-id': fake.CG_VOLUME_ID}
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client._commit_cg_snapshot(snapshot_commit['cg-id'])
 
-        self.client.send_request.assert_called_once_with(
+        self.client.connection.send_request.assert_called_once_with(
             'cg-commit', {'cg-id': snapshot_commit['cg-id']})
 
     def test_wait_for_busy_snapshot_raise_exception(self):
@@ -609,7 +611,7 @@ class NetAppBaseClientTestCase(test.TestCase):
         mock_get_snapshot.assert_has_calls(calls)
 
     def test_rename_snapshot(self):
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.rename_snapshot(
             fake.SNAPSHOT['volume_id'], fake.SNAPSHOT_NAME,
@@ -622,5 +624,5 @@ class NetAppBaseClientTestCase(test.TestCase):
                 client_base.DELETED_PREFIX + fake.SNAPSHOT_NAME,
         }
 
-        self.client.send_request.assert_called_once_with(
+        self.client.connection.send_request.assert_called_once_with(
             'snapshot-rename', api_args)
