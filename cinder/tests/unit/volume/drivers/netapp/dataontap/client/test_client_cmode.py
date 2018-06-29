@@ -42,7 +42,8 @@ CONNECTION_INFO = {'hostname': 'hostname',
                    'port': 443,
                    'username': 'admin',
                    'password': 'passw0rd',
-                   'vserver': 'fake_vserver'}
+                   'vserver': 'fake_vserver',
+                   'api_trace_pattern': 'fake_regex'}
 
 
 @ddt.ddt
@@ -64,7 +65,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.vserver = CONNECTION_INFO['vserver']
         self.fake_volume = six.text_type(uuid.uuid4())
         self.fake_lun = six.text_type(uuid.uuid4())
-        self.mock_send_request = self.mock_object(self.client, 'send_request')
+        self.mock_send_request = self.mock_object(
+            self.client.connection, 'send_request')
 
     def _mock_api_error(self, code='fake'):
         return mock.Mock(side_effect=netapp_api.NaApiError(code=code))
@@ -115,7 +117,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
                 fake_client.STORAGE_DISK_GET_ITER_RESPONSE_PAGE_3),
         ]
         mock_send_request = self.mock_object(
-            self.client, 'send_request',
+            self.client.connection, 'send_request',
             side_effect=copy.deepcopy(api_responses))
 
         storage_disk_get_iter_args = {
@@ -156,7 +158,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(
             fake_client.STORAGE_DISK_GET_ITER_RESPONSE)
-        mock_send_request = self.mock_object(self.client, 'send_request',
+        mock_send_request = self.mock_object(self.client.connection,
+                                             'send_request',
                                              return_value=api_response)
 
         storage_disk_get_iter_args = {
@@ -183,7 +186,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_send_iter_request_not_found(self):
 
         api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
-        mock_send_request = self.mock_object(self.client, 'send_request',
+        mock_send_request = self.mock_object(self.client.connection,
+                                             'send_request',
                                              return_value=api_response)
 
         result = self.client.send_iter_request('storage-disk-get-iter')
@@ -202,7 +206,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_send_iter_request_invalid(self, fake_response):
 
         api_response = netapp_api.NaElement(fake_response)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -268,7 +272,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(
             fake_client.NO_RECORDS_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -1558,7 +1562,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
                           flexvol_name=fake_client.VOLUME_NAMES[0])
 
     def test_create_flexvol(self):
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.create_flexvol(
             fake_client.VOLUME_NAME, fake_client.VOLUME_AGGREGATE_NAME, 100)
@@ -1571,15 +1575,15 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'junction-path': '/%s' % fake_client.VOLUME_NAME,
         }
 
-        self.client.send_request.assert_called_once_with('volume-create',
-                                                         volume_create_args)
+        self.client.connection.send_request.assert_called_once_with(
+            'volume-create', volume_create_args)
 
     @ddt.data('dp', 'rw', None)
     def test_create_volume_with_extra_specs(self, volume_type):
 
         self.mock_object(self.client, 'enable_flexvol_dedupe')
         self.mock_object(self.client, 'enable_flexvol_compression')
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.create_flexvol(
             fake_client.VOLUME_NAME, fake_client.VOLUME_AGGREGATE_NAME, 100,
@@ -1603,8 +1607,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
             volume_create_args['junction-path'] = ('/%s' %
                                                    fake_client.VOLUME_NAME)
 
-        self.client.send_request.assert_called_with('volume-create',
-                                                    volume_create_args)
+        self.client.connection.send_request.assert_called_with(
+            'volume-create', volume_create_args)
         self.client.enable_flexvol_dedupe.assert_called_once_with(
             fake_client.VOLUME_NAME)
         self.client.enable_flexvol_compression.assert_called_once_with(
@@ -1644,7 +1648,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_flexvol_exists_not_found(self):
 
         api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -1652,7 +1656,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
     def test_rename_flexvol(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.rename_flexvol(fake_client.VOLUME_NAME, 'new_name')
 
@@ -1661,12 +1665,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'new-volume-name': 'new_name',
         }
 
-        self.client.send_request.assert_called_once_with(
+        self.client.connection.send_request.assert_called_once_with(
             'volume-rename', volume_rename_api_args)
 
     def test_mount_flexvol_default_junction_path(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.mount_flexvol(fake_client.VOLUME_NAME)
 
@@ -1675,12 +1679,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'junction-path': '/%s' % fake_client.VOLUME_NAME,
         }
 
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('volume-mount', volume_mount_args)])
 
     def test_mount_flexvol(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
         fake_path = '/fake_path'
 
         self.client.mount_flexvol(fake_client.VOLUME_NAME,
@@ -1691,34 +1695,34 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'junction-path': fake_path,
         }
 
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('volume-mount', volume_mount_args)])
 
     def test_enable_flexvol_dedupe(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.enable_flexvol_dedupe(fake_client.VOLUME_NAME)
 
         sis_enable_args = {'path': '/vol/%s' % fake_client.VOLUME_NAME}
 
-        self.client.send_request.assert_called_once_with('sis-enable',
-                                                         sis_enable_args)
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-enable', sis_enable_args)
 
     def test_disable_flexvol_dedupe(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.disable_flexvol_dedupe(fake_client.VOLUME_NAME)
 
         sis_disable_args = {'path': '/vol/%s' % fake_client.VOLUME_NAME}
 
-        self.client.send_request.assert_called_once_with('sis-disable',
-                                                         sis_disable_args)
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-disable', sis_disable_args)
 
     def test_enable_flexvol_compression(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.enable_flexvol_compression(fake_client.VOLUME_NAME)
 
@@ -1727,12 +1731,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'enable-compression': 'true'
         }
 
-        self.client.send_request.assert_called_once_with('sis-set-config',
-                                                         sis_set_config_args)
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-set-config', sis_set_config_args)
 
     def test_disable_flexvol_compression(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.disable_flexvol_compression(fake_client.VOLUME_NAME)
 
@@ -1741,8 +1745,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'enable-compression': 'false'
         }
 
-        self.client.send_request.assert_called_once_with('sis-set-config',
-                                                         sis_set_config_args)
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-set-config', sis_set_config_args)
 
     def test_get_flexvol_dedupe_info(self):
 
@@ -1867,19 +1871,19 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(
             fake_client.CLONE_SPLIT_STATUS_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
         result = self.client.get_clone_split_info(fake_client.VOLUME_NAMES[0])
 
         self.assertEqual(fake_client.VOLUME_CLONE_SPLIT_STATUS, result)
-        self.client.send_request.assert_called_once_with(
+        self.client.connection.send_request.assert_called_once_with(
             'clone-split-status', {'volume-name': fake_client.VOLUME_NAMES[0]})
 
     def test_get_clone_split_info_api_error(self):
 
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          side_effect=self._mock_api_error())
 
@@ -1892,7 +1896,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(
             fake_client.CLONE_SPLIT_STATUS_NO_DATA_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -1933,7 +1937,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(
             fake_client.NO_RECORDS_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -1944,7 +1948,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
     def test_is_flexvol_mirrored_api_error(self):
 
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          side_effect=self._mock_api_error())
 
@@ -1999,7 +2003,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(
             fake_client.NO_RECORDS_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -2010,7 +2014,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
     def test_is_flexvol_encrypted_api_error(self):
 
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          side_effect=self._mock_api_error())
 
@@ -2023,13 +2027,13 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(
             fake_client.AGGR_GET_ITER_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
         result = self.client._get_aggregates()
 
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('aggr-get-iter', {}, enable_tunneling=False)])
         self.assertListEqual(
             [aggr.to_string() for aggr in api_response.get_child_by_name(
@@ -2040,7 +2044,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(
             fake_client.AGGR_GET_SPACE_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -2068,7 +2072,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'desired-attributes': desired_attributes
         }
 
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('aggr-get-iter', aggr_get_iter_args,
                       enable_tunneling=False)])
         self.assertListEqual(
@@ -2079,13 +2083,13 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_get_aggregates_not_found(self):
 
         api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
         result = self.client._get_aggregates()
 
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('aggr-get-iter', {}, enable_tunneling=False)])
         self.assertListEqual([], result)
 
@@ -2126,7 +2130,9 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_get_node_for_aggregate_api_not_found(self):
 
         api_error = self._mock_api_error(netapp_api.EAPINOTFOUND)
-        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        self.mock_object(self.client.connection,
+                         'send_request',
+                         side_effect=api_error)
 
         result = self.client.get_node_for_aggregate(
             fake_client.VOLUME_AGGREGATE_NAME)
@@ -2135,7 +2141,9 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
     def test_get_node_for_aggregate_api_error(self):
 
-        self.mock_object(self.client, 'send_request', self._mock_api_error())
+        self.mock_object(self.client.connection,
+                         'send_request',
+                         self._mock_api_error())
 
         self.assertRaises(netapp_api.NaApiError,
                           self.client.get_node_for_aggregate,
@@ -2144,7 +2152,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_get_node_for_aggregate_not_found(self):
 
         api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -2194,7 +2202,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_get_aggregate_not_found(self):
 
         api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -2204,7 +2212,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
     def test_get_aggregate_api_error(self):
 
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          side_effect=self._mock_api_error())
 
@@ -2215,7 +2223,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_get_aggregate_api_not_found(self):
 
         api_error = netapp_api.NaApiError(code=netapp_api.EAPINOTFOUND)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_iter_request',
                          side_effect=api_error)
 
@@ -2227,7 +2235,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(
             fake_client.SYSTEM_NODE_GET_ITER_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          mock.Mock(return_value=api_response))
 
@@ -2238,7 +2246,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_list_cluster_nodes_not_found(self):
 
         api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          mock.Mock(return_value=api_response))
 
@@ -2490,7 +2498,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_get_aggregate_capacity_not_found(self):
 
         api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -2501,7 +2509,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
     def test_get_aggregate_capacity_api_error(self):
 
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          side_effect=self._mock_api_error())
 
@@ -2513,7 +2521,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_get_aggregate_capacity_api_not_found(self):
 
         api_error = netapp_api.NaApiError(code=netapp_api.EAPINOTFOUND)
-        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        self.mock_object(
+            self.client.connection, 'send_request', side_effect=api_error)
 
         result = self.client.get_aggregate_capacity(
             fake_client.VOLUME_AGGREGATE_NAME)
@@ -2711,7 +2720,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
     def test_create_cluster_peer(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.create_cluster_peer(['fake_address_1', 'fake_address_2'],
                                         'fake_user', 'fake_password',
@@ -2726,7 +2735,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'password': 'fake_password',
             'passphrase': 'fake_passphrase',
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('cluster-peer-create', cluster_peer_create_args)])
 
     def test_get_cluster_peers(self):
@@ -2795,12 +2804,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
     def test_delete_cluster_peer(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.delete_cluster_peer(fake_client.CLUSTER_NAME)
 
         cluster_peer_delete_args = {'cluster-name': fake_client.CLUSTER_NAME}
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('cluster-peer-delete', cluster_peer_delete_args)])
 
     def test_get_cluster_peer_policy(self):
@@ -2809,7 +2818,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(
             fake_client.CLUSTER_PEER_POLICY_GET_RESPONSE)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -2820,7 +2829,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'passphrase-minimum-length': 8,
         }
         self.assertEqual(expected, result)
-        self.assertTrue(self.client.send_request.called)
+        self.assertTrue(self.client.connection.send_request.called)
 
     def test_get_cluster_peer_policy_not_supported(self):
 
@@ -2830,25 +2839,25 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
     def test_set_cluster_peer_policy_not_supported(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.set_cluster_peer_policy()
 
-        self.assertFalse(self.client.send_request.called)
+        self.assertFalse(self.client.connection.send_request.called)
 
     def test_set_cluster_peer_policy_no_arguments(self):
 
         self.client.features.add_feature('CLUSTER_PEER_POLICY')
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.set_cluster_peer_policy()
 
-        self.assertFalse(self.client.send_request.called)
+        self.assertFalse(self.client.connection.send_request.called)
 
     def test_set_cluster_peer_policy(self):
 
         self.client.features.add_feature('CLUSTER_PEER_POLICY')
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.set_cluster_peer_policy(
             is_unauthenticated_access_permitted=True,
@@ -2858,13 +2867,13 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'is-unauthenticated-access-permitted': 'true',
             'passphrase-minlength': '12',
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('cluster-peer-policy-modify',
                       cluster_peer_policy_modify_args)])
 
     def test_create_vserver_peer(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.create_vserver_peer('fake_vserver', 'fake_vserver_peer')
 
@@ -2875,12 +2884,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
                 {'vserver-peer-application': 'snapmirror'},
             ],
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('vserver-peer-create', vserver_peer_create_args)])
 
     def test_delete_vserver_peer(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.delete_vserver_peer('fake_vserver', 'fake_vserver_peer')
 
@@ -2888,12 +2897,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'vserver': 'fake_vserver',
             'peer-vserver': 'fake_vserver_peer',
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('vserver-peer-delete', vserver_peer_delete_args)])
 
     def test_accept_vserver_peer(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.accept_vserver_peer('fake_vserver', 'fake_vserver_peer')
 
@@ -2901,7 +2910,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'vserver': 'fake_vserver',
             'peer-vserver': 'fake_vserver_peer',
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('vserver-peer-accept', vserver_peer_accept_args)])
 
     def test_get_vserver_peers(self):
@@ -2964,7 +2973,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
               {'schedule': None, 'policy': None})
     @ddt.unpack
     def test_create_snapmirror(self, schedule, policy):
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.create_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -2982,12 +2991,13 @@ class NetAppCmodeClientTestCase(test.TestCase):
             snapmirror_create_args['schedule'] = schedule
         if policy:
             snapmirror_create_args['policy'] = policy
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-create', snapmirror_create_args)])
 
     def test_create_snapmirror_already_exists(self):
         api_error = netapp_api.NaApiError(code=netapp_api.ERELATION_EXISTS)
-        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        self.mock_object(
+            self.client.connection, 'send_request', side_effect=api_error)
 
         self.client.create_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3000,12 +3010,13 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'destination-volume': fake_client.SM_DEST_VOLUME,
             'relationship-type': 'data_protection',
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-create', snapmirror_create_args)])
 
     def test_create_snapmirror_error(self):
         api_error = netapp_api.NaApiError(code=0)
-        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        self.mock_object(
+            self.client.connection, 'send_request', side_effect=api_error)
 
         self.assertRaises(netapp_api.NaApiError,
                           self.client.create_snapmirror,
@@ -3013,7 +3024,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
                           fake_client.SM_SOURCE_VOLUME,
                           fake_client.SM_DEST_VSERVER,
                           fake_client.SM_DEST_VOLUME)
-        self.assertTrue(self.client.send_request.called)
+        self.assertTrue(self.client.connection.send_request.called)
 
     @ddt.data(
         {
@@ -3030,7 +3041,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(
             fake_client.SNAPMIRROR_INITIALIZE_RESULT)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -3050,7 +3061,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
             snapmirror_initialize_args['source-snapshot'] = source_snapshot
         if transfer_priority:
             snapmirror_initialize_args['transfer-priority'] = transfer_priority
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-initialize', snapmirror_initialize_args)])
 
         expected = {
@@ -3065,7 +3076,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
     @ddt.data(True, False)
     def test_release_snapmirror(self, relationship_info_only):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.release_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3084,12 +3095,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
                 }
             }
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-release-iter', snapmirror_release_args)])
 
     def test_quiesce_snapmirror(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.quiesce_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3101,13 +3112,13 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'destination-vserver': fake_client.SM_DEST_VSERVER,
             'destination-volume': fake_client.SM_DEST_VOLUME,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-quiesce', snapmirror_quiesce_args)])
 
     @ddt.data(True, False)
     def test_abort_snapmirror(self, clear_checkpoint):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.abort_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3121,13 +3132,14 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'destination-volume': fake_client.SM_DEST_VOLUME,
             'clear-checkpoint': 'true' if clear_checkpoint else 'false',
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-abort', snapmirror_abort_args)])
 
     def test_abort_snapmirror_no_transfer_in_progress(self):
         api_error = netapp_api.NaApiError(
             code=netapp_api.ENOTRANSFER_IN_PROGRESS)
-        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        self.mock_object(
+            self.client.connection, 'send_request', side_effect=api_error)
 
         self.client.abort_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3140,12 +3152,13 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'destination-volume': fake_client.SM_DEST_VOLUME,
             'clear-checkpoint': 'false',
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-abort', snapmirror_abort_args)])
 
     def test_abort_snapmirror_error(self):
         api_error = netapp_api.NaApiError(code=0)
-        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        self.mock_object(
+            self.client.connection, 'send_request', side_effect=api_error)
 
         self.assertRaises(netapp_api.NaApiError,
                           self.client.abort_snapmirror,
@@ -3156,7 +3169,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
     def test_break_snapmirror(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.break_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3168,7 +3181,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'destination-vserver': fake_client.SM_DEST_VSERVER,
             'destination-volume': fake_client.SM_DEST_VOLUME,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-break', snapmirror_break_args)])
 
     @ddt.data(
@@ -3189,7 +3202,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_modify_snapmirror(self, schedule, policy, tries,
                                max_transfer_rate):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.modify_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3211,12 +3224,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
             snapmirror_modify_args['tries'] = tries
         if max_transfer_rate:
             snapmirror_modify_args['max-transfer-rate'] = max_transfer_rate
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-modify', snapmirror_modify_args)])
 
     def test_delete_snapmirror(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.delete_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3232,12 +3245,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
                 }
             }
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-destroy-iter', snapmirror_delete_args)])
 
     def test_update_snapmirror(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.update_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3249,13 +3262,14 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'destination-vserver': fake_client.SM_DEST_VSERVER,
             'destination-volume': fake_client.SM_DEST_VOLUME,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-update', snapmirror_update_args)])
 
     def test_update_snapmirror_already_transferring(self):
         api_error = netapp_api.NaApiError(
             code=netapp_api.ETRANSFER_IN_PROGRESS)
-        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        self.mock_object(
+            self.client.connection, 'send_request', side_effect=api_error)
 
         self.client.update_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3267,12 +3281,13 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'destination-vserver': fake_client.SM_DEST_VSERVER,
             'destination-volume': fake_client.SM_DEST_VOLUME,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-update', snapmirror_update_args)])
 
     def test_update_snapmirror_already_transferring_two(self):
         api_error = netapp_api.NaApiError(code=netapp_api.EANOTHER_OP_ACTIVE)
-        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        self.mock_object(
+            self.client.connection, 'send_request', side_effect=api_error)
 
         self.client.update_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3284,12 +3299,13 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'destination-vserver': fake_client.SM_DEST_VSERVER,
             'destination-volume': fake_client.SM_DEST_VOLUME,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-update', snapmirror_update_args)])
 
     def test_update_snapmirror_error(self):
         api_error = netapp_api.NaApiError(code=0)
-        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        self.mock_object(
+            self.client.connection, 'send_request', side_effect=api_error)
 
         self.assertRaises(netapp_api.NaApiError,
                           self.client.update_snapmirror,
@@ -3299,7 +3315,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
                           fake_client.SM_DEST_VOLUME)
 
     def test_resume_snapmirror(self):
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.resume_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3311,13 +3327,14 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'destination-vserver': fake_client.SM_DEST_VSERVER,
             'destination-volume': fake_client.SM_DEST_VOLUME,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-resume', snapmirror_resume_args)])
 
     def test_resume_snapmirror_not_quiesed(self):
         api_error = netapp_api.NaApiError(
             code=netapp_api.ERELATION_NOT_QUIESCED)
-        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        self.mock_object(
+            self.client.connection, 'send_request', side_effect=api_error)
 
         self.client.resume_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3329,12 +3346,13 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'destination-vserver': fake_client.SM_DEST_VSERVER,
             'destination-volume': fake_client.SM_DEST_VOLUME,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-resume', snapmirror_resume_args)])
 
     def test_resume_snapmirror_error(self):
         api_error = netapp_api.NaApiError(code=0)
-        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        self.mock_object(
+            self.client.connection, 'send_request', side_effect=api_error)
 
         self.assertRaises(netapp_api.NaApiError,
                           self.client.resume_snapmirror,
@@ -3344,7 +3362,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
                           fake_client.SM_DEST_VOLUME)
 
     def test_resync_snapmirror(self):
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client.connection, 'send_request')
 
         self.client.resync_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
@@ -3356,7 +3374,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'destination-vserver': fake_client.SM_DEST_VSERVER,
             'destination-volume': fake_client.SM_DEST_VOLUME,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.connection.send_request.assert_has_calls([
             mock.call('snapmirror-resync', snapmirror_resync_args)])
 
     def test__get_snapmirrors(self):
@@ -3545,7 +3563,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
     @ddt.unpack
     def test_get_snapshots_marked_for_deletion(self, mock_return, expected):
         api_response = netapp_api.NaElement(mock_return)
-        self.mock_object(self.client,
+        self.mock_object(self.client.connection,
                          'send_request',
                          return_value=api_response)
 
@@ -3568,6 +3586,6 @@ class NetAppCmodeClientTestCase(test.TestCase):
             },
         }
 
-        self.client.send_request.assert_called_once_with(
+        self.client.connection.send_request.assert_called_once_with(
             'snapshot-get-iter', api_args)
         self.assertListEqual(expected, result)

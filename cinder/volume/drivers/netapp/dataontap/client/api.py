@@ -34,6 +34,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import ssh_utils
 from cinder import utils
+from cinder.volume.drivers.netapp import utils as na_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class NaServer(object):
     def __init__(self, host, server_type=SERVER_TYPE_FILER,
                  transport_type=TRANSPORT_TYPE_HTTP,
                  style=STYLE_LOGIN_PASSWORD, username=None,
-                 password=None, port=None):
+                 password=None, port=None, api_trace_pattern=None):
         self._host = host
         self.set_server_type(server_type)
         self.set_transport_type(transport_type)
@@ -77,6 +78,9 @@ class NaServer(object):
         self._username = username
         self._password = password
         self._refresh_conn = True
+
+        if api_trace_pattern is not None:
+            na_utils.setup_api_trace_pattern(api_trace_pattern)
 
         LOG.debug('Using NetApp controller: %s', self._host)
 
@@ -171,7 +175,7 @@ class NaServer(object):
         """Set the vserver to use if tunneling gets enabled."""
         self._vserver = vserver
 
-    @utils.trace_api
+    @utils.trace_api(filter_function=na_utils.trace_filter_func_api)
     def send_http_request(self, na_element, enable_tunneling=False):
         """Invoke the API on the server."""
         if not na_element or not isinstance(na_element, NaElement):
@@ -220,6 +224,13 @@ class NaServer(object):
                 or result.get_child_content('reason')\
                 or 'Execution status is failed due to unknown reason'
         raise NaApiError(code, msg)
+
+    def send_request(self, api_name, api_args=None, enable_tunneling=True):
+        """Sends request to Ontapi."""
+        request = NaElement(api_name)
+        if api_args:
+            request.translate_struct(api_args)
+        return self.invoke_successfully(request, enable_tunneling)
 
     def _create_request(self, na_element, enable_tunneling=False):
         """Creates request in the desired format."""

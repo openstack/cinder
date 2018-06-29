@@ -99,7 +99,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         ssc = self.ssc_library.get_ssc()
         self.perf_library._update_for_failover(self.zapi_client, ssc)
 
-    @utils.trace_method
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
         self._add_looping_tasks()
@@ -404,7 +403,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 return ssc_vol_name
         return None
 
-    @utils.trace_method
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         self._delete_backing_file_for_volume(volume)
@@ -443,7 +441,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                   'backend.', {'path': path_on_backend, 'file_id': file_id})
         self.zapi_client.delete_file(path_on_backend)
 
-    @utils.trace_method
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
         self._delete_backing_file_for_snapshot(snapshot)
@@ -660,7 +657,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
         return cloned
 
-    @utils.trace_method
     def unmanage(self, volume):
         """Removes the specified volume from Cinder management.
 
@@ -705,7 +701,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
         return flexvols
 
-    @utils.trace_method
     def delete_group_snapshot(self, context, group_snapshot, snapshots):
         """Delete files backing each snapshot in the group snapshot.
 
@@ -718,7 +713,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
         return None, None
 
-    @utils.trace_method
     def create_group(self, context, group):
         """Driver entry point for creating a generic volume group.
 
@@ -731,7 +725,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         model_update = {'status': fields.GroupStatus.AVAILABLE}
         return model_update
 
-    @utils.trace_method
     def delete_group(self, context, group, volumes):
         """Driver entry point for deleting a generic volume group.
 
@@ -753,7 +746,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                               "deleted.", {'vol': volume})
         return model_update, volumes_model_update
 
-    @utils.trace_method
     def update_group(self, context, group, add_volumes=None,
                      remove_volumes=None):
         """Driver entry point for updating a generic volume group.
@@ -765,7 +757,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
         return None, None, None
 
-    @utils.trace_method
     def create_group_snapshot(self, context, group_snapshot, snapshots):
         """Creates a Cinder group snapshot object.
 
@@ -825,7 +816,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 self.zapi_client.mark_snapshot_for_deletion(
                     flexvol_name, group_snapshot['id'])
 
-    @utils.trace_method
     def create_group_from_src(self, context, group, volumes,
                               group_snapshot=None, sorted_snapshots=None,
                               source_group=None, sorted_source_vols=None):

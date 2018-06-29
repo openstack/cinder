@@ -57,6 +57,7 @@ BACKEND_QOS_CONSUMERS = frozenset(['back-end', 'both'])
 # Secret length cannot be less than 96 bits. http://tools.ietf.org/html/rfc3723
 CHAP_SECRET_LENGTH = 16
 DEFAULT_CHAP_USER_NAME = 'NetApp_iSCSI_CHAP_Username'
+API_TRACE_PATTERN = '(.*)'
 
 
 def validate_instantiation(**kwargs):
@@ -125,6 +126,25 @@ def get_volume_extra_specs(volume):
     extra_specs = volume_type.get('extra_specs', {})
     log_extra_spec_warnings(extra_specs)
     return extra_specs
+
+
+def setup_api_trace_pattern(api_trace_pattern):
+    global API_TRACE_PATTERN
+    try:
+        re.compile(api_trace_pattern)
+    except (re.error, TypeError):
+        msg = _('Cannot parse the API trace pattern. %s is not a '
+                'valid python regular expression.') % api_trace_pattern
+        raise exception.InvalidConfigurationValue(reason=msg)
+    API_TRACE_PATTERN = api_trace_pattern
+
+
+def trace_filter_func_api(all_args):
+    na_element = all_args.get('na_element')
+    if na_element is None:
+        return True
+    api_name = na_element.get_name()
+    return re.match(API_TRACE_PATTERN, api_name) is not None
 
 
 def resolve_hostname(hostname):

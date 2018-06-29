@@ -81,6 +81,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         config.netapp_server_port = '80'
         config.netapp_vserver = fake.VSERVER_NAME
         config.netapp_copyoffload_tool_path = 'copyoffload_tool_path'
+        config.netapp_api_trace_pattern = 'fake_regex'
         return config
 
     @ddt.data({'active_backend_id': None, 'targets': ['dev1', 'dev2']},

@@ -225,7 +225,6 @@ class NetAppApiServerTests(test.TestCase):
     def test_send_http_request_valid(self):
         """Tests the method send_http_request with valid parameters"""
         na_element = zapi_fakes.FAKE_NA_ELEMENT
-        self.root._trace = True
         self.mock_object(self.root, '_create_request',
                          return_value=('abc', zapi_fakes.FAKE_NA_ELEMENT))
         self.mock_object(netapp_api, 'LOG')
