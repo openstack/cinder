@@ -122,7 +122,8 @@ class VMAXMasking(object):
                    'volumeName': volume_name,
                    'errorMessage': error_message})
             LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
 
         return rollback_dict
 
@@ -704,7 +705,7 @@ class VMAXMasking(object):
                 % {'vol': volume_name, 'sg_name': storagegroup_name})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
-                data=exception_message)
+                message=exception_message)
 
     def remove_volumes_from_storage_group(
             self, serial_number, list_of_device_ids,
@@ -740,7 +741,7 @@ class VMAXMasking(object):
                         % {'dev_id': device_id, 'sg_name': storagegroup_name})
                     LOG.error(exception_message)
                     raise exception.VolumeBackendAPIException(
-                        data=exception_message)
+                        message=exception_message)
         return do_remove_volumes_from_storage_group(storagegroup_name)
 
     def find_initiator_names(self, connector):
@@ -763,12 +764,12 @@ class VMAXMasking(object):
                 msg = (_("FC is the protocol but wwpns are "
                          "not supplied by OpenStack."))
                 LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
+                raise exception.VolumeBackendAPIException(message=msg)
 
         if not foundinitiatornames:
             msg = (_("Error finding %(name)s.") % {'name': name})
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.VolumeBackendAPIException(message=msg)
 
         LOG.debug("Found %(name)s: %(initiator)s.",
                   {'name': name,
@@ -866,7 +867,7 @@ class VMAXMasking(object):
                 % {'volume_name': rollback_dict['volume_name'],
                    'e': six.text_type(e)})
             LOG.exception(error_message)
-            raise exception.VolumeBackendAPIException(data=error_message)
+            raise exception.VolumeBackendAPIException(message=error_message)
 
     def _verify_initiator_group_from_masking_view(
             self, serial_number, maskingview_name, maskingview_dict,
@@ -1505,7 +1506,7 @@ class VMAXMasking(object):
                     % {'sg_name': storagegroup_name, 'mvs': masking_views})
                 LOG.error(exception_message)
                 raise exception.VolumeBackendAPIException(
-                    data=exception_message)
+                    message=exception_message)
         # If qos exists, update storage group to reflect qos parameters
         if 'qos' in extra_specs:
             self.rest.update_storagegroup_qos(
@@ -1660,7 +1661,7 @@ class VMAXMasking(object):
                                    "of the following error: %(error_msg)s.")
                                  % {'error_msg': sys.exc_info()[1]})
             raise exception.VolumeBackendAPIException(
-                data=exception_message)
+                message=exception_message)
         return mv_dict
 
     def return_volume_to_fast_managed_group(

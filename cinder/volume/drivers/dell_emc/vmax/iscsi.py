@@ -270,7 +270,8 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
             exception_message = (_("Cannot get iSCSI ipaddresses, multipath "
                                    "flag, or hostlunid. Exception is %(e)s.")
                                  % {'e': six.text_type(e)})
-            raise exception.VolumeBackendAPIException(data=exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
 
         if device_info.get('metro_ip_and_iqn'):
             LOG.debug("Volume is Metro device...")
