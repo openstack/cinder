@@ -177,10 +177,12 @@ class VolumeStatus(BaseCinderEnum):
     IN_USE = 'in-use'
     DETACHING = 'detaching'
     MAINTENANCE = 'maintenance'
+    RESTORING_BACKUP = 'restoring-backup'
+    ERROR_RESTORING = 'error_restoring'
 
     ALL = (CREATING, AVAILABLE, DELETING, ERROR, ERROR_DELETING,
            ERROR_MANAGING, MANAGING, ATTACHING, IN_USE, DETACHING,
-           MAINTENANCE)
+           MAINTENANCE, RESTORING_BACKUP, ERROR_RESTORING)
 
 
 class VolumeStatusField(BaseEnumField):
