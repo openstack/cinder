@@ -1273,7 +1273,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         LOG.info("Done copying image: %(id)s to volume: %(vol)s.",
                  {'id': image_id, 'vol': volume['name']})
 
-    def _extend_backing(self, backing, new_size_in_gb):
+    def _extend_backing(self, backing, new_size_in_gb, disk_type):
         """Extend volume backing's virtual disk.
 
         :param backing: volume backing
@@ -1281,8 +1281,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """
         root_vmdk_path = self.volumeops.get_vmdk_path(backing)
         datacenter = self.volumeops.get_dc(backing)
+        eager_zero = disk_type == EAGER_ZEROED_THICK_VMDK_TYPE
         self.volumeops.extend_virtual_disk(new_size_in_gb, root_vmdk_path,
-                                           datacenter)
+                                           datacenter, eager_zero)
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Creates volume from image.
@@ -1359,7 +1360,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                       {'name': volume['name'],
                        'vol_size': volume_size,
                        'disk_size': disk_size})
-            self._extend_backing(backing, volume['size'])
+            self._extend_backing(backing, volume['size'],
+                                 VMwareVcVmdkDriver._get_disk_type(volume))
         # TODO(vbala): handle volume_size < disk_size case.
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
@@ -1623,7 +1625,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         # try extending vmdk in place
         try:
-            self._extend_backing(backing, new_size)
+            self._extend_backing(backing, new_size,
+                                 VMwareVcVmdkDriver._get_disk_type(volume))
             LOG.info("Successfully extended volume: %(vol)s to size: "
                      "%(size)s GB.",
                      {'vol': vol_name, 'size': new_size})
@@ -1646,7 +1649,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             self.volumeops.relocate_backing(backing, summary.datastore, rp,
                                             host)
             self.volumeops.move_backing_to_folder(backing, folder)
-            self._extend_backing(backing, new_size)
+            self._extend_backing(backing, new_size,
+                                 VMwareVcVmdkDriver._get_disk_type(volume))
         except exceptions.VMwareDriverException:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed to extend volume: %(vol)s to size: "
@@ -2031,7 +2035,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         # we need to extend/resize the capacity of the vmdk virtual disk from
         # the size of the source volume to the volume size.
         if volume['size'] > src_vsize:
-            self._extend_backing(clone, volume['size'])
+            self._extend_backing(clone, volume['size'],
+                                 VMwareVcVmdkDriver._get_disk_type(volume))
         LOG.info("Successfully created clone: %s.", clone)
 
     def _create_volume_from_template(self, volume, path):
@@ -2129,7 +2134,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         volume_size = volume.size * units.Gi
         disk_size = self.volumeops.get_disk_size(backing)
         if volume_size > disk_size:
-            self._extend_backing(backing, volume.size)
+            self._extend_backing(backing, volume.size,
+                                 VMwareVcVmdkDriver._get_disk_type(volume))
 
     def _create_volume_from_temp_backing(self, volume, tmp_backing):
         try:
