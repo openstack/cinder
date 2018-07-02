@@ -255,8 +255,7 @@ class MStorageISMCLI(object):
 
     def addldset_iscsi(self, ldsetname, connector):
         """Create new iSCSI LD Set."""
-        cmd = ('iSMcfg addldset -ldset LX:%s -multitarget on'
-               ' -type iscsi' % ldsetname)
+        cmd = ('iSMcfg addldset -ldset LX:%s -type iscsi' % ldsetname)
         out, err, status = self._execute(cmd, [0], False)
         if status != 0:
             return False

@@ -693,13 +693,30 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
     def backup_use_temp_snapshot(self):
         return True
 
+    def _get_free_lun(self, ldset):
+        # Lun can't be specified when multi target mode.
+        if ldset['protocol'] == 'iSCSI' and ldset['mode'] == 'Multi-Target':
+            return None
+        # get free lun.
+        luns = []
+        ldsetlds = ldset['lds']
+        for ld in ldsetlds.values():
+            luns.append(ld['lun'])
+        target_lun = 0
+        for lun in sorted(luns):
+            if target_lun < lun:
+                break
+            target_lun += 1
+        return target_lun
+
     def iscsi_do_export(self, _ctx, volume, connector, ensure=False):
         msgparm = ('Volume ID = %(id)s, '
                    'Initiator Name = %(initiator)s'
                    % {'id': volume.id,
                       'initiator': connector['initiator']})
         try:
-            ret = self._iscsi_do_export(_ctx, volume, connector, ensure)
+            ret = self._iscsi_do_export(_ctx, volume, connector, ensure,
+                                        self._properties['diskarray_name'])
             LOG.info('Created iSCSI Export (%s)', msgparm)
             return ret
         except exception.CinderException as e:
@@ -708,7 +725,9 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
-    def _iscsi_do_export(self, _ctx, volume, connector, ensure):
+    @coordination.synchronized('mstorage_bind_execute_{diskarray_name}')
+    def _iscsi_do_export(self, _ctx, volume, connector, ensure,
+                         diskarray_name):
         LOG.debug('_iscsi_do_export'
                   '(Volume ID = %(id)s, connector = %(connector)s) Start.',
                   {'id': volume.id, 'connector': connector})
@@ -731,7 +750,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
 
         if ld['ldn'] not in ldset['lds']:
             # assign the LD to LD Set.
-            self._cli.addldsetld(ldset['ldsetname'], ldname)
+            self._cli.addldsetld(ldset['ldsetname'], ldname,
+                                 self._get_free_lun(ldset))
             # update local info.
             xml = self._cli.view_all(self._properties['ismview_path'])
             pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
@@ -784,17 +804,6 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         ldset = self._validate_fcldset_exist(ldsets, connector)
         ldname = self.get_ldname(volume.id, self._properties['ld_name_format'])
 
-        # get free lun.
-        luns = []
-        ldsetlds = ldset['lds']
-        for ld in ldsetlds.values():
-            luns.append(ld['lun'])
-        target_lun = 0
-        for lun in sorted(luns):
-            if target_lun < lun:
-                break
-            target_lun += 1
-
         # add LD to LD set.
         if ldname not in lds:
             msg = _('Logical Disk `%s` could not be found.') % ldname
@@ -803,13 +812,58 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
 
         if ld['ldn'] not in ldset['lds']:
             # assign the LD to LD Set.
-            self._cli.addldsetld(ldset['ldsetname'], ldname, target_lun)
+            self._cli.addldsetld(ldset['ldsetname'], ldname,
+                                 self._get_free_lun(ldset))
             LOG.debug('Add LD `%(ld)s` to LD Set `%(ldset)s`.',
                       {'ld': ldname, 'ldset': ldset['ldsetname']})
 
         LOG.debug('%(ensure)sexport LD `%(ld)s`.',
                   {'ensure': 'ensure_' if ensure else '',
                    'ld': ldname})
+
+    @coordination.synchronized('mstorage_bind_execute_{diskarray_name}')
+    def _create_snapshot_and_link(self, context, snapshot, connector,
+                                  diskarray_name, validate_ldset_exist):
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+
+        LOG.debug('validate data.')
+        svname = self._validate_ld_exist(
+            lds, snapshot.id, self._properties['ld_name_format'])
+        bvname = self._validate_ld_exist(
+            lds, snapshot.volume_id, self._properties['ld_name_format'])
+        lvname = svname + '_l'
+        ldset = validate_ldset_exist(ldsets, connector)
+        svstatus = self._cli.query_BV_SV_status(bvname[3:], svname[3:])
+        if svstatus != 'snap/active':
+            msg = _('Logical Disk (%s) is invalid snapshot.') % svname
+            raise exception.VolumeBackendAPIException(data=msg)
+        lvldn = self._select_ldnumber(used_ldns, max_ld_count)
+
+        LOG.debug('configure backend.')
+        lun0 = [ld for (ldn, ld) in ldset['lds'].items() if ld['lun'] == 0]
+        if not lun0:
+            LOG.debug('create and attach control volume.')
+            used_ldns.append(lvldn)
+            cvldn = self._select_ldnumber(used_ldns, max_ld_count)
+            self._cli.cvbind(lds[bvname]['pool_num'], cvldn)
+            self._cli.changeldname(cvldn,
+                                   self._properties['cv_name_format'] % cvldn)
+            self._cli.addldsetld(ldset['ldsetname'],
+                                 self._properties['cv_name_format'] % cvldn,
+                                 self._get_free_lun(ldset))
+            xml = self._cli.view_all(self._properties['ismview_path'])
+            pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+                self.configs(xml))
+
+        self._cli.lvbind(bvname, lvname[3:], lvldn)
+        self._cli.lvlink(svname[3:], lvname[3:])
+        self._cli.addldsetld(ldset['ldsetname'], lvname,
+                             self._get_free_lun(ldset))
+        LOG.debug('Add LD `%(ld)s` to LD Set `%(ldset)s`.',
+                  {'ld': lvname, 'ldset': ldset['ldsetname']})
+        return lvname
 
     def iscsi_do_export_snapshot(self, context, snapshot, connector):
         """Exports the snapshot."""
@@ -826,42 +880,15 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
-    @coordination.synchronized('mstorage_bind_execute_{diskarray_name}')
     def _iscsi_do_export_snapshot(self, context, snapshot, connector,
                                   diskarray_name):
         LOG.debug('_iscsi_do_export_snapshot(Snapshot ID = %s) Start.',
                   snapshot.id)
-        xml = self._cli.view_all(self._properties['ismview_path'])
-        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self.configs(xml))
 
-        LOG.debug('validate data.')
-        svname = self._validate_ld_exist(
-            lds, snapshot.id, self._properties['ld_name_format'])
-        bvname = self._validate_ld_exist(
-            lds, snapshot.volume_id, self._properties['ld_name_format'])
-        lvname = svname + '_l'
-        ldset = self._validate_iscsildset_exist(ldsets, connector)
-        svstatus = self._cli.query_BV_SV_status(bvname[3:], svname[3:])
-        if svstatus != 'snap/active':
-            msg = _('Logical Disk (%s) is invalid snapshot.') % svname
-            raise exception.VolumeBackendAPIException(data=msg)
-        lvldn = self._select_ldnumber(used_ldns, max_ld_count)
-
-        LOG.debug('configure backend.')
-        if not ldset['lds']:
-            LOG.debug('create and attach control volume.')
-            used_ldns.append(lvldn)
-            cvldn = self._select_ldnumber(used_ldns, max_ld_count)
-            self._cli.cvbind(lds[bvname]['pool_num'], cvldn)
-            self._cli.changeldname(cvldn,
-                                   self._properties['cv_name_format'] % cvldn)
-            self._cli.addldsetld(ldset['ldsetname'],
-                                 self._properties['cv_name_format'] % cvldn)
-
-        self._cli.lvbind(bvname, lvname[3:], lvldn)
-        self._cli.lvlink(svname[3:], lvname[3:])
-        self._cli.addldsetld(ldset['ldsetname'], lvname)
+        lvname = (
+            self._create_snapshot_and_link(context, snapshot, connector,
+                                           diskarray_name,
+                                           self._validate_iscsildset_exist))
 
         xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
@@ -899,58 +926,13 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
-    @coordination.synchronized('mstorage_bind_execute_{diskarray_name}')
     def _fc_do_export_snapshot(self, context, snapshot, connector, ensure,
                                diskarray_name):
         LOG.debug('_fc_do_export_snapshot(Snapshot ID = %s) Start.',
                   snapshot.id)
-        xml = self._cli.view_all(self._properties['ismview_path'])
-        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self.configs(xml))
-
-        LOG.debug('validate data.')
-        svname = self._validate_ld_exist(
-            lds, snapshot.id, self._properties['ld_name_format'])
-        bvname = self._validate_ld_exist(
-            lds, snapshot.volume_id, self._properties['ld_name_format'])
-        lvname = svname + '_l'
-        ldset = self._validate_fcldset_exist(ldsets, connector)
-        svstatus = self._cli.query_BV_SV_status(bvname[3:], svname[3:])
-        if svstatus != 'snap/active':
-            msg = _('Logical Disk (%s) is invalid snapshot.') % svname
-            raise exception.VolumeBackendAPIException(data=msg)
-        lvldn = self._select_ldnumber(used_ldns, max_ld_count)
-
-        LOG.debug('configure backend.')
-        lun0 = [ld for (ldn, ld) in ldset['lds'].items() if ld['lun'] == 0]
-        if not lun0:
-            LOG.debug('create and attach control volume.')
-            used_ldns.append(lvldn)
-            cvldn = self._select_ldnumber(used_ldns, max_ld_count)
-            self._cli.cvbind(lds[bvname]['pool_num'], cvldn)
-            self._cli.changeldname(cvldn,
-                                   self._properties['cv_name_format'] % cvldn)
-            self._cli.addldsetld(ldset['ldsetname'],
-                                 self._properties['cv_name_format'] % cvldn, 0)
-
-        self._cli.lvbind(bvname, lvname[3:], lvldn)
-        self._cli.lvlink(svname[3:], lvname[3:])
-
-        luns = []
-        ldsetlds = ldset['lds']
-        for ld in ldsetlds.values():
-            luns.append(ld['lun'])
-        if 0 not in luns:
-            luns.append(0)
-        target_lun = 0
-        for lun in sorted(luns):
-            if target_lun < lun:
-                break
-            target_lun += 1
-
-        self._cli.addldsetld(ldset['ldsetname'], lvname, target_lun)
-        LOG.debug('Add LD `%(ld)s` to LD Set `%(ldset)s`.',
-                  {'ld': lvname, 'ldset': ldset['ldsetname']})
+        lvname = self._create_snapshot_and_link(context, snapshot, connector,
+                                                diskarray_name,
+                                                self._validate_fcldset_exist)
         LOG.debug('%(ensure)sexport LD `%(ld)s`.',
                   {'ensure': 'ensure_' if ensure else '',
                    'ld': lvname})
