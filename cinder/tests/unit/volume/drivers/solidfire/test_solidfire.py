@@ -26,6 +26,7 @@ from cinder import exception
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.image import fake as fake_image
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import solidfire
 from cinder.volume import qos_specs
@@ -515,16 +516,12 @@ class SolidFireVolumeTestCase(test.TestCase):
                           sfv._get_sfaccount_by_name, 'some-name')
 
     def test_delete_volume(self):
-        vol_id = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
-        testvol = {'project_id': 'testprjid',
-                   'name': 'test_volume',
-                   'size': 1,
-                   'id': vol_id,
-                   'name_id': vol_id,
-                   'created_at': timeutils.utcnow(),
-                   'provider_id': '1 5 None',
-                   'multiattach': True
-                   }
+        testvol = test_utils.create_volume(
+            self.ctxt,
+            display_name='test_volume',
+            provider_id='1 5 None',
+            multiattach=True)
+
         fake_sfaccounts = [{'accountID': 5,
                             'name': 'testprjid',
                             'targetSecret': 'shhhh',
@@ -565,13 +562,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                             'targetSecret': 'shhhh',
                             'username': 'john-wayne'}]
         fake_no_volumes = []
-        vol_id = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
-        testvol = {'project_id': 'testprjid',
-                   'name': 'no-name',
-                   'size': 1,
-                   'id': vol_id,
-                   'name_id': vol_id,
-                   'created_at': timeutils.utcnow()}
+        testvol = test_utils.create_volume(self.ctxt)
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         with mock.patch.object(sfv,
@@ -588,14 +579,12 @@ class SolidFireVolumeTestCase(test.TestCase):
                             'targetSecret': 'shhhh',
                             'username': 'john-wayne'}]
         fake_no_volumes = []
-        snap_id = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
-        testsnap = {'project_id': 'testprjid',
-                    'name': 'no-name',
-                    'size': 1,
-                    'id': snap_id,
-                    'name_id': snap_id,
-                    'volume_id': 'b831c4d1-d1f0-11e1-9b23-0800200c9a66',
-                    'created_at': timeutils.utcnow()}
+        testvol = test_utils.create_volume(
+            self.ctxt,
+            volume_id='b831c4d1-d1f0-11e1-9b23-0800200c9a66')
+        testsnap = test_utils.create_snapshot(
+            self.ctxt,
+            volume_id=testvol.id)
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         with mock.patch.object(sfv,
