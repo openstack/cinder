@@ -33,7 +33,7 @@ from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.5'
+VERSION = '1.3.6'
 LOG = logging.getLogger(__name__)
 
 
@@ -53,6 +53,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         1.3.3 - Refactored LUN creation, use host group for LUN mappings.
         1.3.4 - Adapted NexentaException for the latest Cinder.
         1.3.5 - Added deferred deletion for snapshots.
+        1.3.6 - Fixed race between volume/clone deletion.
     """
 
     VERSION = VERSION
@@ -189,7 +190,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             self.nef.delete(url)
         except exception.NexentaException as ex:
             err = utils.ex2err(ex)
-            if 'Failed to destroy snap' in err['message']:
+            if err['code'] == 'EEXIST':
                 params = {'parent': path}
                 url = 'storage/snapshots?%s' % (
                     urllib.parse.urlencode(params))
@@ -208,11 +209,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                     url = 'storage/volumes/%s/promote' % (
                         urllib.parse.quote_plus(clone))
                     self.nef.post(url)
-                    params = {'snapshots': 'true'}
-                    url = 'storage/volumes/%s?%s' % (
-                        urllib.parse.quote_plus(path),
-                        urllib.parse.urlencode(params))
-                    self.nef.delete(url)
+                params = {'snapshots': 'true'}
+                url = 'storage/volumes/%s?%s' % (
+                    urllib.parse.quote_plus(path),
+                    urllib.parse.urlencode(params))
+                self.nef.delete(url)
             else:
                 raise ex
 
