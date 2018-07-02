@@ -280,8 +280,9 @@ options must be correctly configured:
   ``cinder.conf`` file within the driver-specific stanza (for example,
   ``[myDriver]``).
 
-- The ``iscsi_use_multipath`` option should be set to ``True`` in the
+- The ``volume_use_multipath`` option should be set to ``True`` in the
   ``nova.conf`` file within the ``[libvirt]`` stanza.
+  In versions prior to Newton, the option was called ``iscsi_use_multipath``.
 
 **Configuration options**
 

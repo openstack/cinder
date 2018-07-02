@@ -815,8 +815,9 @@ The major configuration includes:
 #. Specify ``use_multipath_for_image_xfer=true`` in the ``cinder.conf`` file
    for each FC/iSCSI back end.
 
-#. Specify ``iscsi_use_multipath=True`` in ``libvirt`` section of the
+#. Specify ``volume_use_multipath=True`` in ``libvirt`` section of the
    ``nova.conf`` file. This option is valid for both iSCSI and FC driver.
+   In versions prior to Newton, the option was called ``iscsi_use_multipath``.
 
 For multipath-tools, here is an EMC recommended sample of
 ``/etc/multipath.conf`` file.
