@@ -1,3 +1,4 @@
+# encoding:utf-8
 # Copyright 2010 OpenStack Foundation
 # All Rights Reserved.
 #
@@ -401,7 +402,17 @@ class GeneralFiltersTest(test.TestCase):
                'is_admin': True,
                'result': {'pool': []},
                'expected': None,
-               'resource': 'pool'})
+               'resource': 'pool'},
+              {'filters': {'中文': 'value1'},
+               'is_admin': True,
+               'result': None,
+               'expected': None,
+               'resource': None},
+              {'filters': {'中文': 'value1'},
+               'is_admin': False,
+               'result': {'fake_resource': []},
+               'expected': None,
+               'resource': 'fake_resource'})
     @ddt.unpack
     @mock.patch('cinder.api.common.get_enabled_resource_filters')
     def test_reject_invalid_filters(self, mock_get, filters,

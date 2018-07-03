@@ -405,6 +405,20 @@ def convert_filter_attributes(filters, resource):
 
 def reject_invalid_filters(context, filters, resource,
                            enable_like_filter=False):
+    invalid_filters = []
+    for key in filters.copy().keys():
+        try:
+            # Only ASCII characters can be valid filter keys,
+            # in PY2/3, the key can be either unicode or string.
+            if isinstance(key, str):
+                key.encode('ascii')
+            else:
+                key.decode('ascii')
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            raise webob.exc.HTTPBadRequest(
+                explanation=_('Filter keys can only contain '
+                              'ASCII characters.'))
+
     if context.is_admin and resource not in ['pool']:
         # Allow all options except resource is pool
         # pool API is only available for admin
@@ -415,7 +429,6 @@ def reject_invalid_filters(context, filters, resource,
         configured_filters = configured_filters[resource]
     else:
         configured_filters = []
-    invalid_filters = []
     for key in filters.copy().keys():
         if not enable_like_filter:
             if key not in configured_filters:
