@@ -106,7 +106,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self._mock_volume.get_size.return_value = 1 * units.Gi
         self._mock_volume.has_children.return_value = False
         self._mock_volume.get_logical_units.return_value = []
-        self._mock_volume.create_child.return_value = self._mock_volume
+        self._mock_volume.create_snapshot.return_value = self._mock_volume
         self._mock_host = mock.Mock()
         self._mock_host.get_luns.return_value = []
         self._mock_host.map_volume().get_lun.return_value = 1
@@ -340,7 +340,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           test_clone, test_snapshot)
 
     def test_create_volume_from_snapshot_create_fails(self):
-        self._mock_volume.create_child.side_effect = self._raise_infinisdk
+        self._mock_volume.create_snapshot.side_effect = self._raise_infinisdk
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           test_clone, test_snapshot)
