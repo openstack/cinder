@@ -267,17 +267,17 @@ Option                                               Description   Default
 Automatic thin-provisioning/oversubscription ratio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To enable this feature where we calculate the array oversubscription ratio as
-(total provisioned/actual used), add the following option in the
-``cinder.conf`` file:
+This feature allows the driver to calculate the array oversubscription ratio as
+(total provisioned/actual used). By default this feature is enabled.
+
+To disable this feature and honor the hard-coded configuration option
+``max_over_subscription_ratio`` add the following option in the ``cinder.conf``
+file:
 
 .. code-block:: ini
 
     [puredriver-1]
-    pure_automatic_max_oversubscription_ratio = True
-
-By default, this is disabled and we honor the hard-coded configuration option
-``max_over_subscription_ratio``.
+    pure_automatic_max_oversubscription_ratio = False
 
 .. note::
 
