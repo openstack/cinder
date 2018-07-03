@@ -1134,6 +1134,44 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup.status)
         self.assertTrue(mock_run_restore.called)
 
+    def test_restore_backup_with_creating_volume(self):
+        """Test restore backup with a creating volume."""
+        vol_id = self._create_volume_db_entry(
+            status=fields.VolumeStatus.CREATING,
+            size=1)
+        backup = self._create_backup_db_entry(
+            status=fields.BackupStatus.RESTORING, volume_id=vol_id)
+        mock_run_restore = self.mock_object(
+            self.backup_mgr,
+            '_run_restore')
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+        vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+        self.assertEqual(fields.VolumeStatus.AVAILABLE, vol.status)
+        self.assertIsNotNone(vol.launched_at)
+        backup.refresh()
+        self.assertEqual(fields.BackupStatus.AVAILABLE, backup.status)
+        self.assertTrue(mock_run_restore.called)
+
+    def test_restore_backup_canceled_with_creating_volume(self):
+        """Test restore backup with a creating volume."""
+        vol_id = self._create_volume_db_entry(
+            status=fields.VolumeStatus.CREATING,
+            size=1)
+        backup = self._create_backup_db_entry(
+            status=fields.BackupStatus.RESTORING, volume_id=vol_id)
+        mock_run_restore = self.mock_object(
+            self.backup_mgr,
+            '_run_restore')
+        mock_run_restore.side_effect = exception.BackupRestoreCancel(
+            vol_id=vol_id, back_id=backup.id)
+        # We shouldn't raise an exception on the call, it's OK to cancel
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+        vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+        self.assertEqual(fields.VolumeStatus.ERROR, vol.status)
+        backup.refresh()
+        self.assertEqual(fields.BackupStatus.AVAILABLE, backup.status)
+        self.assertTrue(mock_run_restore.called)
+
     def test_restore_backup_with_bad_service(self):
         """Test error handling.
 
