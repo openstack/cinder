@@ -20,6 +20,7 @@ from oslo_utils import uuidutils
 import six
 
 from cinder import exception
+import cinder.privsep
 from cinder import utils
 from cinder.volume.targets import nvmeof
 
@@ -76,13 +77,8 @@ class NVMET(nvmeof.NVMeOF):
         with tempfile.NamedTemporaryFile() as tmp_fd:
             tmp_fd.write(json.dumps(nvmf_subsystems))
             tmp_fd.flush()
-            cmd = [
-                'nvmetcli',
-                'restore',
-                tmp_fd.name]
             try:
-                out, err = utils.execute(*cmd, run_as_root=True)
-
+                out, err = cinder.privsep.nvmcli.restore(tmp_fd.name)
             except putils.ProcessExecutionError:
                 with excutils.save_and_reraise_exception():
                     LOG.exception('Error from nvmetcli restore')
@@ -156,22 +152,22 @@ class NVMET(nvmeof.NVMeOF):
                      "for volume: %s", volume['id'])
 
     def _delete_nvmf_subsystem(self, nvmf_subsystems, subsystem_name):
-            LOG.debug(
-                'Removing this subsystem: %s', subsystem_name)
+        LOG.debug(
+            'Removing this subsystem: %s', subsystem_name)
 
-            for port in nvmf_subsystems['ports']:
-                if subsystem_name in port['subsystems']:
-                    port['subsystems'].remove(subsystem_name)
-                    break
-            for subsys in nvmf_subsystems['subsystems']:
-                if subsys['nqn'] == subsystem_name:
-                    nvmf_subsystems['subsystems'].remove(subsys)
-                    break
+        for port in nvmf_subsystems['ports']:
+            if subsystem_name in port['subsystems']:
+                port['subsystems'].remove(subsystem_name)
+                break
+        for subsys in nvmf_subsystems['subsystems']:
+            if subsys['nqn'] == subsystem_name:
+                nvmf_subsystems['subsystems'].remove(subsys)
+                break
 
-            LOG.debug(
-                'Newly loaded subsystems will be: %s', nvmf_subsystems)
-            self._restore(nvmf_subsystems)
-            return subsystem_name
+        LOG.debug(
+            'Newly loaded subsystems will be: %s', nvmf_subsystems)
+        self._restore(nvmf_subsystems)
+        return subsystem_name
 
     def _get_nvmf_subsystem(self, nvmf_subsystems, volume_id):
         subsystem_name = self._get_target_info(
@@ -184,12 +180,8 @@ class NVMET(nvmeof.NVMeOF):
         __, tmp_file_path = tempfile.mkstemp(prefix='nvmet')
 
         # nvmetcli doesn't support printing to stdout yet,
-        cmd = [
-            'nvmetcli',
-            'save',
-            tmp_file_path]
         try:
-            out, err = utils.execute(*cmd, run_as_root=True)
+            out, err = cinder.privsep.nvmcli.save(tmp_file_path)
         except putils.ProcessExecutionError:
             with excutils.save_and_reraise_exception():
                 LOG.exception('Error from nvmetcli save')
@@ -198,9 +190,8 @@ class NVMET(nvmeof.NVMeOF):
         # temp file must be readable by this process user
         # in order to avoid executing cat as root
         with utils.temporary_chown(tmp_file_path):
-            cmd = ['cat', tmp_file_path]
             try:
-                out, err = utils.execute(*cmd)
+                out = cinder.privsep.utils.readfile(tmp_file_path)
             except putils.ProcessExecutionError:
                 with excutils.save_and_reraise_exception():
                     LOG.exception('Failed to read: %s', tmp_file_path)
@@ -215,8 +206,7 @@ class NVMET(nvmeof.NVMeOF):
         return "nqn.%s-%s" % (subsystem, volume_id)
 
     def _delete_file(self, file_path):
-        cmd = ['rm', '-f', file_path]
         try:
-            out, err = utils.execute(*cmd, run_as_root=True)
+            cinder.privsep.utils.removefile(file_path)
         except putils.ProcessExecutionError:
             LOG.exception('Failed to delete file: %s', file_path)
