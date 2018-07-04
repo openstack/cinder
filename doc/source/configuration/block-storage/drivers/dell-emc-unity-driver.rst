@@ -10,13 +10,13 @@ and a Dell EMC distributed Python package
 Prerequisites
 ~~~~~~~~~~~~~
 
-+-------------------+----------------+
-|    Software       |    Version     |
-+===================+================+
-| Unity OE          | 4.1.X or newer |
-+-------------------+----------------+
-| storops           | 0.5.7 or newer |
-+-------------------+----------------+
++-------------------+-----------------+
+|    Software       |    Version      |
++===================+=================+
+| Unity OE          | 4.1.X or newer  |
++-------------------+-----------------+
+| storops           | 0.5.10 or newer |
++-------------------+-----------------+
 
 
 Supported operations
@@ -33,6 +33,7 @@ Supported operations
 - Get volume statistics.
 - Efficient non-disruptive volume backup.
 - Revert a volume to a snapshot.
+- Create thick volumes.
 
 Driver configuration
 ~~~~~~~~~~~~~~~~~~~~
@@ -237,7 +238,14 @@ To enable multipath in live migration:
 Thin and thick provisioning
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Only thin volume provisioning is supported in Unity volume driver.
+By default, the volume created by Unity driver is thin provisioned. Run the
+following commands to create a thick volume.
+
+.. code-block:: console
+
+    # openstack volume type create --property provisioning:type=thick \
+      --property thick_provisioning_support='<is> True' thick_volume_type
+    # openstack volume create --type thick_volume_type thick_volume
 
 
 QoS support

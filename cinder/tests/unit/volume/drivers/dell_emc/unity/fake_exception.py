@@ -84,3 +84,11 @@ class AdapterSetupError(Exception):
 
 class HostDeleteIsCalled(Exception):
     pass
+
+
+class UnityThinCloneNotAllowedError(StoropsException):
+    pass
+
+
+class SystemAPINotSupported(StoropsException):
+    pass

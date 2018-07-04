@@ -48,6 +48,7 @@ class MockResource(object):
         self.pool_name = 'Pool0'
         self._storage_resource = None
         self.host_cache = []
+        self.is_thin = None
 
     @property
     def id(self):
@@ -111,13 +112,16 @@ class MockResource(object):
         return self.alu_hlu_map.get(lun.get_id(), None)
 
     @staticmethod
-    def create_lun(lun_name, size_gb, description=None, io_limit_policy=None):
+    def create_lun(lun_name, size_gb, description=None, io_limit_policy=None,
+                   is_thin=None):
         if lun_name == 'in_use':
             raise ex.UnityLunNameInUseError()
         ret = MockResource(lun_name, 'lun_2')
         if io_limit_policy is not None:
             ret.max_iops = io_limit_policy.max_iops
             ret.max_kbps = io_limit_policy.max_kbps
+        if is_thin is not None:
+            ret.is_thin = is_thin
         return ret
 
     @staticmethod
@@ -339,6 +343,13 @@ class ClientTest(unittest.TestCase):
         limit.max_kbps = 100
         lun = self.client.create_lun('LUN 4', 6, pool, io_limit_policy=limit)
         self.assertEqual(100, lun.max_kbps)
+
+    def test_create_lun_thick(self):
+        name = 'thick_lun'
+        pool = MockResource('Pool 0')
+        lun = self.client.create_lun(name, 6, pool, is_thin=False)
+        self.assertIsNotNone(lun.is_thin)
+        self.assertFalse(lun.is_thin)
 
     def test_thin_clone_success(self):
         name = 'tc_77'

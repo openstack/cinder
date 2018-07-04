@@ -38,7 +38,6 @@ else:
     # Set storops_ex to be None for unit test
     storops_ex = None
 
-
 LOG = logging.getLogger(__name__)
 
 PROTOCOL_FC = 'FC'
@@ -58,6 +57,7 @@ class VolumeParams(object):
                              else volume.display_name)
         self._pool = None
         self._io_limit_policy = None
+        self._is_thick = None
 
     @property
     def volume_id(self):
@@ -109,11 +109,21 @@ class VolumeParams(object):
     def io_limit_policy(self, value):
         self._io_limit_policy = value
 
+    @property
+    def is_thick(self):
+        if self._is_thick is None:
+            provision = utils.get_extra_spec(self._volume, 'provisioning:type')
+            support = utils.get_extra_spec(self._volume,
+                                           'thick_provisioning_support')
+            self._is_thick = (provision == 'thick' and support == '<is> True')
+        return self._is_thick
+
     def __eq__(self, other):
         return (self.volume_id == other.volume_id and
                 self.name == other.name and
                 self.size == other.size and
-                self.io_limit_policy == other.io_limit_policy)
+                self.io_limit_policy == other.io_limit_policy and
+                self.is_thick == other.is_thick)
 
 
 class CommonAdapter(object):
@@ -149,8 +159,8 @@ class CommonAdapter(object):
         self.reserved_percentage = self.config.reserved_percentage
         self.max_over_subscription_ratio = (
             self.config.max_over_subscription_ratio)
-        self.volume_backend_name = (
-            self.config.safe_get('volume_backend_name') or self.driver_name)
+        self.volume_backend_name = (self.config.safe_get('volume_backend_name')
+                                    or self.driver_name)
         self.ip = self.config.san_ip
         self.username = self.config.san_login
         self.password = self.config.san_password
@@ -274,18 +284,21 @@ class CommonAdapter(object):
             'size': params.size,
             'description': params.description,
             'pool': params.pool,
-            'io_limit_policy': params.io_limit_policy}
+            'io_limit_policy': params.io_limit_policy,
+            'is_thick': params.is_thick
+        }
 
         LOG.info('Create Volume: %(name)s, size: %(size)s, description: '
                  '%(description)s, pool: %(pool)s, io limit policy: '
-                 '%(io_limit_policy)s.', log_params)
+                 '%(io_limit_policy)s, thick: %(is_thick)s.', log_params)
 
         return self.makeup_model(
             self.client.create_lun(name=params.name,
                                    size=params.size,
                                    pool=params.pool,
                                    description=params.description,
-                                   io_limit_policy=params.io_limit_policy))
+                                   io_limit_policy=params.io_limit_policy,
+                                   is_thin=False if params.is_thick else None))
 
     def delete_volume(self, volume):
         lun_id = self.get_lun_id(volume)
@@ -404,7 +417,7 @@ class CommonAdapter(object):
             'volume_backend_name': self.volume_backend_name,
             'storage_protocol': self.protocol,
             'thin_provisioning_support': True,
-            'thick_provisioning_support': False,
+            'thick_provisioning_support': True,
             'pools': self.get_pools_stats(),
         }
 
@@ -428,7 +441,7 @@ class CommonAdapter(object):
                               {'pool_name': pool.name,
                                'array_serial': self.serial_number}),
             'thin_provisioning_support': True,
-            'thick_provisioning_support': False,
+            'thick_provisioning_support': True,
             'max_over_subscription_ratio': (
                 self.max_over_subscription_ratio)}
 
@@ -583,7 +596,8 @@ class CommonAdapter(object):
         dest_lun = self.client.create_lun(
             name=vol_params.name, size=vol_params.size, pool=vol_params.pool,
             description=vol_params.description,
-            io_limit_policy=vol_params.io_limit_policy)
+            io_limit_policy=vol_params.io_limit_policy,
+            is_thin=False if vol_params.is_thick else None)
         src_id = src_snap.get_id()
         try:
             conn_props = cinder_utils.brick_get_connector_properties()
@@ -651,6 +665,16 @@ class CommonAdapter(object):
             LOG.debug(
                 'Volume copied via dd because array OE is too old to support '
                 'thin clone api. source snap: %(src_snap)s, lun: %(src_lun)s.',
+                {'src_snap': src_snap.name,
+                 'src_lun': 'Unknown' if src_lun is None else src_lun.name})
+        except storops_ex.UnityThinCloneNotAllowedError:
+            # Thin clone not allowed on some resources,
+            # like thick luns and their snaps
+            lun = self._dd_copy(vol_params, src_snap, src_lun=src_lun)
+            LOG.debug(
+                'Volume copied via dd because source snap/lun is not allowed '
+                'to thin clone, i.e. it is thick. source snap: %(src_snap)s, '
+                'lun: %(src_lun)s.',
                 {'src_snap': src_snap.name,
                  'src_lun': 'Unknown' if src_lun is None else src_lun.name})
         return lun
