@@ -5469,7 +5469,7 @@ class VMAXCommonTest(test.TestCase):
                 'reason_not_safe': None, 'cinder_id': None,
                 'extra_info': {
                     'generation': 0, 'secured': False, 'timeToLive': 'N/A',
-                    'timestamp': '2017/12/08, 20:01:18'},
+                    'timestamp': mock.ANY},
                 'source_reference': {'source-id': '00001'}}]
             self.assertEqual(snap_list, expected_response)
 
@@ -5486,13 +5486,13 @@ class VMAXCommonTest(test.TestCase):
                  'safe_to_manage': True, 'size': 300, 'reason_not_safe': None,
                  'cinder_id': None, 'extra_info': {
                     'generation': 0, 'secured': False, 'timeToLive': 'N/A',
-                    'timestamp': '2017/12/08, 20:01:18'},
+                    'timestamp': mock.ANY},
                  'source_reference': {'source-id': '00003'}},
                 {'reference': {'source-name': 'testSnap4'},
                  'safe_to_manage': True, 'size': 400, 'reason_not_safe': None,
                  'cinder_id': None, 'extra_info': {
                     'generation': 0, 'secured': False, 'timeToLive': 'N/A',
-                    'timestamp': '2017/12/08, 20:01:18'},
+                    'timestamp': mock.ANY},
                  'source_reference': {'source-id': '00004'}}]
             self.assertEqual(vols_lists, expected_response)
 
