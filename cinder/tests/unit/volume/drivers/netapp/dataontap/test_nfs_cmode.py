@@ -226,7 +226,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'pool_name': '10.10.10.10:/vola',
             'reserved_percentage': fake.RESERVED_PERCENTAGE,
             'max_over_subscription_ratio': fake.MAX_OVER_SUBSCRIPTION_RATIO,
-            'multiattach': False,
+            'multiattach': True,
             'total_capacity_gb': total_capacity_gb,
             'free_capacity_gb': free_capacity_gb,
             'netapp_dedupe_used_percent': 55.0,
