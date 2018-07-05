@@ -118,9 +118,6 @@ truncate: CommandFilter, truncate, root
 chmod: CommandFilter, chmod, root
 rm: CommandFilter, rm, root
 
-# cinder/volume/drivers/remotefs.py
-mkdir: CommandFilter, mkdir, root
-
 # cinder/volume/drivers/netapp/dataontap/nfs_base.py:
 netapp_nfs_find: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdepth, \d+, -name, img-cache.*, -amin, \+\d+
 netapp_nfs_touch: CommandFilter, touch, root
