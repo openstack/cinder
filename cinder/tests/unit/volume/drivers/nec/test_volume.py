@@ -884,17 +884,34 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
         loc = "127.0.0.1:3260:1 iqn.2010-10.org.openstack:volume-00000001 88"
         self.vol.provider_location = loc
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255",
-                     'multipath': True}
+                     'multipath': False}
         info = self._iscsi_initialize_connection(self.vol, connector)
         self.assertEqual('iscsi', info['driver_volume_type'])
         self.assertEqual('iqn.2010-10.org.openstack:volume-00000001',
                          info['data']['target_iqn'])
         self.assertEqual('127.0.0.1:3260', info['data']['target_portal'])
         self.assertEqual(88, info['data']['target_lun'])
+
+    def test_iscsi_multipath_initialize_connection(self):
+        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
+        loc = ("1.1.1.1:3260;2.2.2.2:3260,1 "
+               "iqn.2010-10.org.openstack:volume-00000001 88")
+        self.vol.provider_location = loc
+        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255",
+                     'multipath': True}
+        info = self._iscsi_initialize_connection(self.vol, connector)
+        self.assertEqual('iscsi', info['driver_volume_type'])
+        self.assertEqual('iqn.2010-10.org.openstack:volume-00000001',
+                         info['data']['target_iqn'])
+        self.assertEqual(88, info['data']['target_lun'])
         self.assertEqual('iqn.2010-10.org.openstack:volume-00000001',
                          info['data']['target_iqns'][0])
-        self.assertEqual('127.0.0.1:3260', info['data']['target_portals'][0])
+        self.assertEqual('iqn.2010-10.org.openstack:volume-00000001',
+                         info['data']['target_iqns'][1])
+        self.assertEqual('1.1.1.1:3260', info['data']['target_portals'][0])
+        self.assertEqual('2.2.2.2:3260', info['data']['target_portals'][1])
         self.assertEqual(88, info['data']['target_luns'][0])
+        self.assertEqual(88, info['data']['target_luns'][1])
 
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
                 patch_execute)
