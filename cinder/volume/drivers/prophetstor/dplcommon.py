@@ -1438,9 +1438,6 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
                 pool['free_capacity_gb'] = (
                     self._convert_size_GB(
                         int(output['metadata']['available_capacity'])))
-                pool['allocated_capacity_gb'] = (
-                    self._convert_size_GB(
-                        int(output['metadata']['used_capacity'])))
                 pool['QoS_support'] = False
                 pool['reserved_percentage'] = 0
                 pools.append(pool)
