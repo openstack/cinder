@@ -2707,11 +2707,8 @@ class DS8KProxyTest(test.TestCase):
 
         map_data = self.driver.initialize_connection(volume, TEST_CONNECTOR)
         self.assertEqual(int(TEST_LUN_ID), map_data['data']['target_lun'])
-        self.assertTrue(
-            list(map_data['data']['initiator_target_map'].keys())[0] in
-            [TEST_SOURCE_WWPN_1, TEST_SOURCE_WWPN_2])
-        self.assertTrue(
-            list(map_data['data']['initiator_target_map'].keys())[1] in
+        self.assertEqual(sorted(list(
+            map_data['data']['initiator_target_map'].keys()), key=str.lower),
             [TEST_SOURCE_WWPN_1, TEST_SOURCE_WWPN_2])
 
     def test_initialize_connection_of_eckd_volume(self):
@@ -2876,9 +2873,7 @@ class DS8KProxyTest(test.TestCase):
             }
         ]
         mock_get_host_ports.side_effect = [host_ports]
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.terminate_connection, volume,
-                          TEST_CONNECTOR)
+        self.driver.terminate_connection(volume, TEST_CONNECTOR)
 
     @mock.patch.object(helper.DS8KCommonHelper, '_get_host_ports')
     @mock.patch.object(helper.DS8KCommonHelper, '_get_mappings')
@@ -2918,7 +2913,10 @@ class DS8KProxyTest(test.TestCase):
         ]
         mock_get_host_ports.side_effect = [host_ports]
         mock_get_mappings.side_effect = [mappings]
-        self.driver.terminate_connection(volume, TEST_CONNECTOR)
+        ret_info = self.driver.terminate_connection(volume, TEST_CONNECTOR)
+        self.assertEqual(sorted(list(
+            ret_info['data']['initiator_target_map'].keys()), key=str.lower),
+            [TEST_SOURCE_WWPN_1, TEST_SOURCE_WWPN_2])
 
     @mock.patch.object(helper.DS8KCommonHelper, '_get_host_ports')
     @mock.patch.object(helper.DS8KCommonHelper, '_get_mappings')

@@ -696,7 +696,7 @@ class DS8KCommonHelper(object):
                 self._delete_host_ports(port)
             self._delete_host(host_id)
             target_ports = [p['wwpn'] for p in self._get_ioports()]
-            target_map = {initiator.upper(): target_ports
+            target_map = {initiator: target_ports
                           for initiator in connector['wwpns']}
             ret_info['data']['initiator_target_map'] = target_map
         return ret_info
