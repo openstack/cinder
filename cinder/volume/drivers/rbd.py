@@ -37,6 +37,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
+from cinder import objects
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume import configuration
@@ -1777,3 +1778,16 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             volume.set_snap(None)
             if not children and volume.is_protected_snap(snapshot.name):
                 volume.unprotect_snap(snapshot.name)
+
+    def get_backup_device(self, context, backup):
+        """Get a backup device from an existing volume.
+
+        To support incremental backups on Ceph to Ceph we don't clone
+        the volume.
+        """
+
+        if not backup.service.endswith('ceph') or backup.snapshot_id:
+            return super(RBDDriver, self).get_backup_device(context, backup)
+
+        volume = objects.Volume.get_by_id(context, backup.volume_id)
+        return (volume, False)
