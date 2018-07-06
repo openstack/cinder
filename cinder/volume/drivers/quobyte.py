@@ -566,7 +566,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
 
         if not mounted:
             if not os.path.isdir(mount_path):
-                self._execute('mkdir', '-p', mount_path)
+                os.mkdir(mount_path)
 
             command = ['mount.quobyte', '--disable-xattrs',
                        quobyte_volume, mount_path]
