@@ -2689,8 +2689,9 @@ class DS8KProxyTest(test.TestCase):
         }
         mock_get_flashcopy.side_effect = [[TEST_FLASHCOPY], {}]
         with mock.patch.object(helper.DS8KCommonHelper,
-                               '_get_pools') as get_pools:
-            get_pools.return_value = FAKE_GET_POOL_RESPONSE_2['data']['pools']
+                               '_get_pool') as get_pool:
+            get_pool.return_value = FAKE_GET_POOL_RESPONSE_2['data'][
+                'pools'][0]
             moved, model_update = self.driver.migrate_volume(
                 self.ctxt, volume, backend)
             self.assertTrue(moved)
