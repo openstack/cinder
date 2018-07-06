@@ -100,7 +100,6 @@ ionice_2: ChainingRegExpFilter, ionice, root, ionice, -c[0-3]
 cgexec: ChainingRegExpFilter, cgexec, root, cgexec, -g, blkio:\S+
 
 # cinder/volume/driver.py
-dmsetup: CommandFilter, dmsetup, root
 ln: CommandFilter, ln, root
 
 # cinder/image/image_utils.py
