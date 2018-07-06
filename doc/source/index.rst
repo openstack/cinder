@@ -60,6 +60,7 @@ Configuration Reference
     :maxdepth: 2
 
     configuration/index
+    reference/support-matrix
     drivers
 
 CLI Reference
