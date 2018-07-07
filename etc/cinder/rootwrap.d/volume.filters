@@ -125,10 +125,6 @@ netapp_nfs_touch: CommandFilter, touch, root
 chgrp: CommandFilter, chgrp, root
 umount: CommandFilter, umount, root
 
-# cinder/volumes/drivers/hds/hds.py:
-hus-cmd: CommandFilter, hus-cmd, root
-hus-cmd_local: CommandFilter, /usr/local/bin/hus-cmd, root
-
 # cinder/brick/initiator/connector.py:
 ls: CommandFilter, ls, root
 tee: CommandFilter, tee, root
