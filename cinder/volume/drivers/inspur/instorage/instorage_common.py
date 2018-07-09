@@ -1208,8 +1208,6 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                 in_tier = pool_data['in_tier'] in ['on', 'auto']
                 total_capacity_gb = float(pool_data['capacity']) / units.Gi
                 free_capacity_gb = float(pool_data['free_capacity']) / units.Gi
-                allocated_capacity_gb = (float(pool_data['used_capacity']) /
-                                         units.Gi)
                 provisioned_capacity_gb = float(
                     pool_data['virtual_capacity']) / units.Gi
 
@@ -1226,7 +1224,6 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                     'pool_name': pool_data['name'],
                     'total_capacity_gb': total_capacity_gb,
                     'free_capacity_gb': free_capacity_gb,
-                    'allocated_capacity_gb': allocated_capacity_gb,
                     'provisioned_capacity_gb': provisioned_capacity_gb,
                     'compression_support': self._state['compression_enabled'],
                     'reserved_percentage':

@@ -882,8 +882,6 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
             self.assertFalse(each_pool['multiattach'])
             self.assertLessEqual(each_pool['free_capacity_gb'],
                                  each_pool['total_capacity_gb'])
-            self.assertLessEqual(each_pool['allocated_capacity_gb'],
-                                 each_pool['total_capacity_gb'])
             self.assertEqual(25, each_pool['reserved_percentage'])
             self.assertEqual(is_thin_provisioning_enabled,
                              each_pool['thin_provisioning_support'])
@@ -896,8 +894,6 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
                           self._def_flags['instorage_mcs_volpool_name'])
             self.assertAlmostEqual(3328.0, each_pool['total_capacity_gb'])
             self.assertAlmostEqual(3287.5, each_pool['free_capacity_gb'])
-            self.assertAlmostEqual(25.0,
-                                   each_pool['allocated_capacity_gb'])
             if is_thin_provisioning_enabled:
                 self.assertAlmostEqual(
                     1576.96, each_pool['provisioned_capacity_gb'])
