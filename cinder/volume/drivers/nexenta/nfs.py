@@ -20,6 +20,7 @@ import six
 
 from eventlet import greenthread
 from oslo_log import log as logging
+from oslo_utils import fileutils
 from oslo_utils import units
 
 from cinder import context
@@ -693,8 +694,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                         LOG.info('Already mounted: %s', mount_path)
                         return
 
-                    self._execute('mkdir', '-p', mount_path,
-                                  check_exit_code=False)
+                    fileutils.ensure_tree(mount_path)
                     self._remotefsclient._mount_nfs(nfs_share, mount_path,
                                                     mnt_flags)
                 return

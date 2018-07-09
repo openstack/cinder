@@ -24,6 +24,7 @@ import traceback
 
 import mock
 from oslo_concurrency import processutils as putils
+from oslo_utils import fileutils
 from oslo_utils import imageutils
 from oslo_utils import units
 
@@ -150,7 +151,7 @@ class QuobyteDriverTestCase(test.TestCase):
             tmp_path, self._driver.QUOBYTE_VOLUME_SNAP_CACHE_DIR_NAME)
         self.assertFalse(os_makedirs_mock.called)
 
-    @mock.patch.object(os, "makedirs")
+    @mock.patch.object(fileutils, "ensure_tree")
     @mock.patch.object(os.path, "join", return_value="dummy_path")
     @mock.patch.object(os, "access", return_value=True)
     def test__ensure_volume_cache_create(self, os_access_mock, os_join_mock,
@@ -202,6 +203,7 @@ class QuobyteDriverTestCase(test.TestCase):
         with mock.patch.object(self._driver, '_execute') as mock_execute, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount') as mock_open, \
+                mock.patch('oslo_utils.fileutils.ensure_tree') as mock_mkdir, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '._validate_volume') as mock_validate:
             # Content of /proc/mount (not mounted yet).
@@ -211,14 +213,13 @@ class QuobyteDriverTestCase(test.TestCase):
             self._driver._mount_quobyte(self.TEST_QUOBYTE_VOLUME,
                                         self.TEST_MNT_POINT)
 
-            mkdir_call = mock.call('mkdir', '-p', self.TEST_MNT_POINT)
-
+            mock_mkdir.assert_called_once_with(self.TEST_MNT_POINT)
             mount_call = mock.call(
                 'mount.quobyte', '--disable-xattrs', self.TEST_QUOBYTE_VOLUME,
                 self.TEST_MNT_POINT, run_as_root=False)
 
             mock_execute.assert_has_calls(
-                [mkdir_call, mount_call], any_order=False)
+                [mount_call], any_order=False)
             mock_validate.called_once_with(self.TEST_MNT_POINT)
 
     def test_mount_quobyte_already_mounted_detected_seen_in_proc_mount(self):
@@ -250,6 +251,7 @@ class QuobyteDriverTestCase(test.TestCase):
         with mock.patch.object(self._driver, '_execute') as mock_execute, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount') as mock_open, \
+                mock.patch('oslo_utils.fileutils.ensure_tree') as mock_mkdir, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '._validate_volume') as mock_validate:
             # Content of /proc/mount (empty).
@@ -261,11 +263,11 @@ class QuobyteDriverTestCase(test.TestCase):
                                         self.TEST_MNT_POINT,
                                         ensure=True)
 
-            mkdir_call = mock.call('mkdir', '-p', self.TEST_MNT_POINT)
+            mock_mkdir.assert_called_once_with(self.TEST_MNT_POINT)
             mount_call = mock.call(
                 'mount.quobyte', '--disable-xattrs', self.TEST_QUOBYTE_VOLUME,
                 self.TEST_MNT_POINT, run_as_root=False)
-            mock_execute.assert_has_calls([mkdir_call, mount_call],
+            mock_execute.assert_has_calls([mount_call],
                                           any_order=False)
             mock_validate.assert_called_once_with(self.TEST_MNT_POINT)
 
@@ -276,6 +278,7 @@ class QuobyteDriverTestCase(test.TestCase):
         but with ensure=False.
         """
         with mock.patch.object(self._driver, '_execute') as mock_execute, \
+                mock.patch('oslo_utils.fileutils.ensure_tree') as mock_mkdir, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount') as mock_open:
             mock_open.return_value = six.StringIO()
@@ -284,17 +287,17 @@ class QuobyteDriverTestCase(test.TestCase):
                 putils.ProcessExecutionError(  # mount
                     stderr='is busy or already mounted')]
 
-            self.assertRaises(putils.ProcessExecutionError,
+            self.assertRaises(exception.VolumeDriverException,
                               self._driver._mount_quobyte,
                               self.TEST_QUOBYTE_VOLUME,
                               self.TEST_MNT_POINT,
                               ensure=False)
 
-            mkdir_call = mock.call('mkdir', '-p', self.TEST_MNT_POINT)
+            mock_mkdir.assert_called_once_with(self.TEST_MNT_POINT)
             mount_call = mock.call(
                 'mount.quobyte', '--disable-xattrs', self.TEST_QUOBYTE_VOLUME,
                 self.TEST_MNT_POINT, run_as_root=False)
-            mock_execute.assert_has_calls([mkdir_call, mount_call],
+            mock_execute.assert_has_calls([mount_call],
                                           any_order=False)
 
     @mock.patch.object(image_utils, "qemu_img_info")
