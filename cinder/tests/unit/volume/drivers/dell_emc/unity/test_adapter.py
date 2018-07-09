@@ -482,7 +482,8 @@ class CommonAdapterTest(test.TestCase):
 
     def test_terminate_connection_volume(self):
         def f():
-            volume = MockOSResource(provider_location='id^lun_43', id='id_43')
+            volume = MockOSResource(provider_location='id^lun_43', id='id_43',
+                                    volume_attachment=None)
             connector = {'host': 'host1'}
             self.adapter.terminate_connection(volume, connector)
 
@@ -490,7 +491,8 @@ class CommonAdapterTest(test.TestCase):
 
     def test_terminate_connection_force_detach(self):
         def f():
-            volume = MockOSResource(provider_location='id^lun_44', id='id_44')
+            volume = MockOSResource(provider_location='id^lun_44', id='id_44',
+                                    volume_attachment=None)
             self.adapter.terminate_connection(volume, None)
 
         self.assertRaises(ex.DetachAllIsCalled, f)
@@ -498,7 +500,8 @@ class CommonAdapterTest(test.TestCase):
     def test_terminate_connection_snapshot(self):
         def f():
             connector = {'host': 'host1'}
-            snap = MockOSResource(name='snap_0', id='snap_0')
+            snap = MockOSResource(name='snap_0', id='snap_0',
+                                  volume_attachment=None)
             self.adapter.terminate_connection_snapshot(snap, connector)
 
         self.assertRaises(ex.DetachIsCalled, f)
@@ -508,10 +511,26 @@ class CommonAdapterTest(test.TestCase):
 
         def f():
             connector = {'host': 'empty-host'}
-            vol = MockOSResource(provider_location='id^lun_45', id='id_45')
+            vol = MockOSResource(provider_location='id^lun_45', id='id_45',
+                                 volume_attachment=None)
             self.adapter.terminate_connection(vol, connector)
 
         self.assertRaises(ex.HostDeleteIsCalled, f)
+
+    def test_terminate_connection_multiattached_volume(self):
+        def f():
+            connector = {'host': 'host1'}
+            attachments = [MockOSResource(id='id-1',
+                                          attach_status='attached',
+                                          attached_host='host1'),
+                           MockOSResource(id='id-2',
+                                          attach_status='attached',
+                                          attached_host='host1')]
+            vol = MockOSResource(provider_location='id^lun_45', id='id_45',
+                                 volume_attachment=attachments)
+            self.adapter.terminate_connection(vol, connector)
+
+        self.assertIsNone(f())
 
     def test_manage_existing_by_name(self):
         ref = {'source-id': 12}
@@ -844,7 +863,8 @@ class FCAdapterTest(test.TestCase):
 
     def test_terminate_connection_auto_zone_enabled(self):
         connector = {'host': 'host1', 'wwpns': 'abcdefg'}
-        volume = MockOSResource(provider_location='id^lun_41', id='id_41')
+        volume = MockOSResource(provider_location='id^lun_41', id='id_41',
+                                volume_attachment=None)
         ret = self.adapter.terminate_connection(volume, connector)
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
         data = ret['data']
@@ -857,7 +877,8 @@ class FCAdapterTest(test.TestCase):
 
     def test_terminate_connection_auto_zone_enabled_none_host_luns(self):
         connector = {'host': 'host-no-host_luns', 'wwpns': 'abcdefg'}
-        volume = MockOSResource(provider_location='id^lun_41', id='id_41')
+        volume = MockOSResource(provider_location='id^lun_41', id='id_41',
+                                volume_attachment=None)
         ret = self.adapter.terminate_connection(volume, connector)
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
         data = ret['data']
@@ -871,7 +892,8 @@ class FCAdapterTest(test.TestCase):
     def test_terminate_connection_remove_empty_host_return_data(self):
         self.adapter.remove_empty_host = True
         connector = {'host': 'empty-host-return-data', 'wwpns': 'abcdefg'}
-        volume = MockOSResource(provider_location='id^lun_41', id='id_41')
+        volume = MockOSResource(provider_location='id^lun_41', id='id_41',
+                                volume_attachment=None)
         ret = self.adapter.terminate_connection(volume, connector)
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
         data = ret['data']
