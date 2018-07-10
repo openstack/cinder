@@ -1250,9 +1250,10 @@ class BaseVD(object):
             'attach_status': fields.VolumeAttachStatus.DETACHED,
             'availability_zone': volume.availability_zone,
             'volume_type_id': volume.volume_type_id,
+            'admin_metadata': {'temporary': 'True'},
         }
         kwargs.update(volume_options or {})
-        temp_vol_ref = objects.Volume(context=context, **kwargs)
+        temp_vol_ref = objects.Volume(context=context.elevated(), **kwargs)
         temp_vol_ref.create()
         return temp_vol_ref
 
