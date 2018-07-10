@@ -1,0 +1,6 @@
+---
+deprecations:
+  - The NetApp E-Series drivers are deprecated as of the Rocky release and
+    will be removed in the Stein release. Other configurations of the
+    NetApp driver, i.e Clustered Data ONTAP and Solidfire, are
+    unaffected.
