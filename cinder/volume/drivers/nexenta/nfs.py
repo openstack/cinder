@@ -693,7 +693,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                         LOG.info('Already mounted: %s', mount_path)
                         return
 
-                    os.mkdir(mount_path)
+                    self._execute('mkdir', '-p', mount_path,
+                                  check_exit_code=False)
                     self._remotefsclient._mount_nfs(nfs_share, mount_path,
                                                     mnt_flags)
                 return

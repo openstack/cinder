@@ -202,7 +202,6 @@ class QuobyteDriverTestCase(test.TestCase):
         with mock.patch.object(self._driver, '_execute') as mock_execute, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount') as mock_open, \
-                mock.patch('os.mkdir') as mock_mkdir, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '._validate_volume') as mock_validate:
             # Content of /proc/mount (not mounted yet).
@@ -212,13 +211,14 @@ class QuobyteDriverTestCase(test.TestCase):
             self._driver._mount_quobyte(self.TEST_QUOBYTE_VOLUME,
                                         self.TEST_MNT_POINT)
 
-            mock_mkdir.assert_called_once_with(self.TEST_MNT_POINT)
+            mkdir_call = mock.call('mkdir', '-p', self.TEST_MNT_POINT)
+
             mount_call = mock.call(
                 'mount.quobyte', '--disable-xattrs', self.TEST_QUOBYTE_VOLUME,
                 self.TEST_MNT_POINT, run_as_root=False)
 
             mock_execute.assert_has_calls(
-                [mount_call], any_order=False)
+                [mkdir_call, mount_call], any_order=False)
             mock_validate.called_once_with(self.TEST_MNT_POINT)
 
     def test_mount_quobyte_already_mounted_detected_seen_in_proc_mount(self):
@@ -250,7 +250,6 @@ class QuobyteDriverTestCase(test.TestCase):
         with mock.patch.object(self._driver, '_execute') as mock_execute, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount') as mock_open, \
-                mock.patch('os.mkdir') as mock_mkdir, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '._validate_volume') as mock_validate:
             # Content of /proc/mount (empty).
@@ -262,11 +261,11 @@ class QuobyteDriverTestCase(test.TestCase):
                                         self.TEST_MNT_POINT,
                                         ensure=True)
 
-            mock_mkdir.assert_called_once_with(self.TEST_MNT_POINT)
+            mkdir_call = mock.call('mkdir', '-p', self.TEST_MNT_POINT)
             mount_call = mock.call(
                 'mount.quobyte', '--disable-xattrs', self.TEST_QUOBYTE_VOLUME,
                 self.TEST_MNT_POINT, run_as_root=False)
-            mock_execute.assert_has_calls([mount_call],
+            mock_execute.assert_has_calls([mkdir_call, mount_call],
                                           any_order=False)
             mock_validate.assert_called_once_with(self.TEST_MNT_POINT)
 
@@ -277,7 +276,6 @@ class QuobyteDriverTestCase(test.TestCase):
         but with ensure=False.
         """
         with mock.patch.object(self._driver, '_execute') as mock_execute, \
-                mock.patch('os.mkdir') as mock_mkdir, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount') as mock_open:
             mock_open.return_value = six.StringIO()
@@ -286,17 +284,17 @@ class QuobyteDriverTestCase(test.TestCase):
                 putils.ProcessExecutionError(  # mount
                     stderr='is busy or already mounted')]
 
-            self.assertRaises(exception.VolumeDriverException,
+            self.assertRaises(putils.ProcessExecutionError,
                               self._driver._mount_quobyte,
                               self.TEST_QUOBYTE_VOLUME,
                               self.TEST_MNT_POINT,
                               ensure=False)
 
-            mock_mkdir.assert_called_once_with(self.TEST_MNT_POINT)
+            mkdir_call = mock.call('mkdir', '-p', self.TEST_MNT_POINT)
             mount_call = mock.call(
                 'mount.quobyte', '--disable-xattrs', self.TEST_QUOBYTE_VOLUME,
                 self.TEST_MNT_POINT, run_as_root=False)
-            mock_execute.assert_has_calls([mount_call],
+            mock_execute.assert_has_calls([mkdir_call, mount_call],
                                           any_order=False)
 
     @mock.patch.object(image_utils, "qemu_img_info")
