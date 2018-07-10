@@ -129,9 +129,6 @@ umount: CommandFilter, umount, root
 hus-cmd: CommandFilter, hus-cmd, root
 hus-cmd_local: CommandFilter, /usr/local/bin/hus-cmd, root
 
-# cinder/volumes/drivers/hds/hnas_backend.py
-ssc: CommandFilter, ssc, root
-
 # cinder/brick/initiator/connector.py:
 ls: CommandFilter, ls, root
 tee: CommandFilter, tee, root
