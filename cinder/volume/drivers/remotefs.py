@@ -217,7 +217,7 @@ class RemoteFSDriver(driver.BaseVD):
         provisioned_size = 0.0
         for share in self.shares.keys():
             mount_path = self._get_mount_point_for_share(share)
-            out, _ = self._execute('du', '--bytes', mount_path,
+            out, _ = self._execute('du', '--bytes', '-s', mount_path,
                                    run_as_root=self._execute_as_root)
             provisioned_size += int(out.split()[0])
         return round(provisioned_size / units.Gi, 2)
