@@ -190,15 +190,14 @@ class BackupManager(manager.ThreadPoolManager):
         self.backup_rpcapi = backup_rpcapi.BackupAPI()
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
 
-    @utils.synchronized('backup-pgid-%s' % os.getpgrp(),
+    @utils.synchronized('cleanup_incomplete_backups',
                         external=True, delay=0.1)
     def _cleanup_incomplete_backup_operations(self, ctxt):
         # Only the first launched process should do the cleanup, the others
         # have waited on the lock for the first one to finish the cleanup and
         # can now continue with the start process.
         if self._process_number != 1:
-            LOG.debug("Process #%s (pgid=%s) skips cleanup.",
-                      self._process_number, os.getpgrp())
+            LOG.debug("Process #%s skips cleanup.", self._process_number)
             return
 
         LOG.info("Cleaning up incomplete backup operations.")
