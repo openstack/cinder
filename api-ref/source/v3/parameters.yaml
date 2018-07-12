@@ -1438,7 +1438,7 @@ key:
   type: string
 key_size:
   description: |
-    Size of encryption key, in bits. For example, 128 or 256. The default value
+    Size of encryption key, in bits. This is usually 256. The default value
     is None.
   in: body
   required: false
