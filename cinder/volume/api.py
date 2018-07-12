@@ -289,9 +289,6 @@ class API(base.Base):
 
         utils.check_metadata_properties(metadata)
 
-        if (volume_type and self._is_multiattach(volume_type)) or multiattach:
-            context.authorize(vol_policy.MULTIATTACH_POLICY)
-
         create_what = {
             'context': context,
             'raw_size': size,
@@ -308,7 +305,7 @@ class API(base.Base):
             'optional_args': {'is_quota_committed': False},
             'consistencygroup': consistencygroup,
             'cgsnapshot': cgsnapshot,
-            'multiattach': multiattach,
+            'raw_multiattach': multiattach,
             'group': group,
             'group_snapshot': group_snapshot,
             'source_group': source_group,
@@ -349,8 +346,6 @@ class API(base.Base):
                 # Refresh the object here, otherwise things ain't right
                 vref = objects.Volume.get_by_id(
                     context, vref['id'])
-                vref.multiattach = (self._is_multiattach(volume_type) or
-                                    multiattach)
                 vref.save()
                 LOG.info("Create volume request issued successfully.",
                          resource=vref)
