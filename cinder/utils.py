@@ -850,17 +850,26 @@ def trace_method(f):
     return trace_method_logging_wrapper
 
 
-def trace_api(f):
+def trace_api(*dec_args, **dec_kwargs):
     """Decorates a function if TRACE_API is true."""
-    @functools.wraps(f)
-    def trace_api_logging_wrapper(*args, **kwargs):
-        if TRACE_API:
-            return trace(f)(*args, **kwargs)
-        return f(*args, **kwargs)
-    return trace_api_logging_wrapper
+
+    def _decorator(f):
+        @functools.wraps(f)
+        def trace_api_logging_wrapper(*args, **kwargs):
+            if TRACE_API:
+                return trace(f, *dec_args, **dec_kwargs)(*args, **kwargs)
+            return f(*args, **kwargs)
+        return trace_api_logging_wrapper
+
+    if len(dec_args) == 0:
+        # filter_function is passed and args does not contain f
+        return _decorator
+    else:
+        # filter_function is not passed
+        return _decorator(dec_args[0])
 
 
-def trace(f):
+def trace(*dec_args, **dec_kwargs):
     """Trace calls to the decorated function.
 
     This decorator should always be defined as the outermost decorator so it
@@ -873,55 +882,70 @@ def trace(f):
     :returns: a function decorator
     """
 
-    func_name = f.__name__
+    def _decorator(f):
 
-    @functools.wraps(f)
-    def trace_logging_wrapper(*args, **kwargs):
-        if len(args) > 0:
-            maybe_self = args[0]
-        else:
-            maybe_self = kwargs.get('self', None)
+        func_name = f.__name__
 
-        if maybe_self and hasattr(maybe_self, '__module__'):
-            logger = logging.getLogger(maybe_self.__module__)
-        else:
-            logger = LOG
+        @functools.wraps(f)
+        def trace_logging_wrapper(*args, **kwargs):
+            filter_function = dec_kwargs.get('filter_function')
 
-        # NOTE(ameade): Don't bother going any further if DEBUG log level
-        # is not enabled for the logger.
-        if not logger.isEnabledFor(py_logging.DEBUG):
-            return f(*args, **kwargs)
+            if len(args) > 0:
+                maybe_self = args[0]
+            else:
+                maybe_self = kwargs.get('self', None)
 
-        all_args = inspect.getcallargs(f, *args, **kwargs)
+            if maybe_self and hasattr(maybe_self, '__module__'):
+                logger = logging.getLogger(maybe_self.__module__)
+            else:
+                logger = LOG
 
-        logger.debug('==> %(func)s: call %(all_args)r',
-                     {'func': func_name, 'all_args': all_args})
+            # NOTE(ameade): Don't bother going any further if DEBUG log level
+            # is not enabled for the logger.
+            if not logger.isEnabledFor(py_logging.DEBUG):
+                return f(*args, **kwargs)
 
-        start_time = time.time() * 1000
-        try:
-            result = f(*args, **kwargs)
-        except Exception as exc:
+            all_args = inspect.getcallargs(f, *args, **kwargs)
+
+            pass_filter = filter_function is None or filter_function(all_args)
+
+            if pass_filter:
+                logger.debug('==> %(func)s: call %(all_args)r',
+                             {'func': func_name, 'all_args': all_args})
+
+            start_time = time.time() * 1000
+            try:
+                result = f(*args, **kwargs)
+            except Exception as exc:
+                total_time = int(round(time.time() * 1000)) - start_time
+                logger.debug('<== %(func)s: exception (%(time)dms) %(exc)r',
+                             {'func': func_name,
+                              'time': total_time,
+                              'exc': exc})
+                raise
             total_time = int(round(time.time() * 1000)) - start_time
-            logger.debug('<== %(func)s: exception (%(time)dms) %(exc)r',
-                         {'func': func_name,
-                          'time': total_time,
-                          'exc': exc})
-            raise
-        total_time = int(round(time.time() * 1000)) - start_time
 
-        if isinstance(result, dict):
-            mask_result = strutils.mask_dict_password(result)
-        elif isinstance(result, six.string_types):
-            mask_result = strutils.mask_password(result)
-        else:
-            mask_result = result
+            if isinstance(result, dict):
+                mask_result = strutils.mask_dict_password(result)
+            elif isinstance(result, six.string_types):
+                mask_result = strutils.mask_password(result)
+            else:
+                mask_result = result
 
-        logger.debug('<== %(func)s: return (%(time)dms) %(result)r',
-                     {'func': func_name,
-                      'time': total_time,
-                      'result': mask_result})
-        return result
-    return trace_logging_wrapper
+            if pass_filter:
+                logger.debug('<== %(func)s: return (%(time)dms) %(result)r',
+                             {'func': func_name,
+                              'time': total_time,
+                              'result': mask_result})
+            return result
+        return trace_logging_wrapper
+
+    if len(dec_args) == 0:
+        # filter_function is passed and args does not contain f
+        return _decorator
+    else:
+        # filter_function is not passed
+        return _decorator(dec_args[0])
 
 
 class TraceWrapperMetaclass(type):
