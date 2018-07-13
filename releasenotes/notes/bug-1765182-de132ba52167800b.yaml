@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    NetApp ONTAP (bug 1765182): Make ONTAP NetApp NFS driver report to the
+    Cinder scheduler that it doesn't support online volume extending.
