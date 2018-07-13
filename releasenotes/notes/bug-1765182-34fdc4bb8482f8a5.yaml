@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp ONTAP (bug 1765182): Make ONTAP NetApp iSCSI driver and FC driver
+    report to the Cinder scheduler that they don't support online volume
+    extending.
