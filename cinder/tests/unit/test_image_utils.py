@@ -592,24 +592,22 @@ class TestVerifyImage(test.TestCase):
 
 class TestTemporaryDir(test.TestCase):
     @mock.patch('cinder.image.image_utils.CONF')
-    @mock.patch('os.makedirs')
-    @mock.patch('os.path.exists', return_value=True)
+    @mock.patch('oslo_utils.fileutils.ensure_tree')
     @mock.patch('cinder.image.image_utils.utils.tempdir')
-    def test_conv_dir_exists(self, mock_tempdir, mock_exists, mock_make,
+    def test_conv_dir_exists(self, mock_tempdir, mock_make,
                              mock_conf):
         mock_conf.image_conversion_dir = mock.sentinel.conv_dir
 
         output = image_utils.temporary_dir()
 
-        self.assertFalse(mock_make.called)
+        self.assertTrue(mock_make.called)
         mock_tempdir.assert_called_once_with(dir=mock.sentinel.conv_dir)
         self.assertEqual(output, mock_tempdir.return_value)
 
     @mock.patch('cinder.image.image_utils.CONF')
-    @mock.patch('os.makedirs')
-    @mock.patch('os.path.exists', return_value=False)
+    @mock.patch('oslo_utils.fileutils.ensure_tree')
     @mock.patch('cinder.image.image_utils.utils.tempdir')
-    def test_create_conv_dir(self, mock_tempdir, mock_exists, mock_make,
+    def test_create_conv_dir(self, mock_tempdir, mock_make,
                              mock_conf):
         mock_conf.image_conversion_dir = mock.sentinel.conv_dir
 
@@ -620,16 +618,15 @@ class TestTemporaryDir(test.TestCase):
         self.assertEqual(output, mock_tempdir.return_value)
 
     @mock.patch('cinder.image.image_utils.CONF')
-    @mock.patch('os.makedirs')
-    @mock.patch('os.path.exists', return_value=False)
+    @mock.patch('oslo_utils.fileutils.ensure_tree')
     @mock.patch('cinder.image.image_utils.utils.tempdir')
-    def test_no_conv_dir(self, mock_tempdir, mock_exists, mock_make,
+    def test_no_conv_dir(self, mock_tempdir, mock_make,
                          mock_conf):
         mock_conf.image_conversion_dir = None
 
         output = image_utils.temporary_dir()
 
-        self.assertFalse(mock_make.called)
+        self.assertTrue(mock_make.called)
         mock_tempdir.assert_called_once_with(dir=None)
         self.assertEqual(output, mock_tempdir.return_value)
 
@@ -1704,11 +1701,10 @@ class TestVhdUtils(test.TestCase):
 class TestCreateTemporaryFile(test.TestCase):
     @mock.patch('cinder.image.image_utils.os.close')
     @mock.patch('cinder.image.image_utils.CONF')
-    @mock.patch('cinder.image.image_utils.os.path.exists')
     @mock.patch('cinder.image.image_utils.os.makedirs')
     @mock.patch('cinder.image.image_utils.tempfile.mkstemp')
     def test_create_temporary_file_no_dir(self, mock_mkstemp, mock_dirs,
-                                          mock_path, mock_conf, mock_close):
+                                          mock_conf, mock_close):
         mock_conf.image_conversion_dir = None
         fd = mock.sentinel.file_descriptor
         path = mock.sentinel.absolute_pathname
@@ -1722,11 +1718,10 @@ class TestCreateTemporaryFile(test.TestCase):
 
     @mock.patch('cinder.image.image_utils.os.close')
     @mock.patch('cinder.image.image_utils.CONF')
-    @mock.patch('cinder.image.image_utils.os.path.exists', return_value=True)
     @mock.patch('cinder.image.image_utils.os.makedirs')
     @mock.patch('cinder.image.image_utils.tempfile.mkstemp')
     def test_create_temporary_file_with_dir(self, mock_mkstemp, mock_dirs,
-                                            mock_path, mock_conf, mock_close):
+                                            mock_conf, mock_close):
         conv_dir = mock.sentinel.image_conversion_dir
         mock_conf.image_conversion_dir = conv_dir
         fd = mock.sentinel.file_descriptor
@@ -1736,17 +1731,16 @@ class TestCreateTemporaryFile(test.TestCase):
         output = image_utils.create_temporary_file()
 
         self.assertEqual(path, output)
-        self.assertFalse(mock_dirs.called)
+        self.assertTrue(mock_dirs.called)
         mock_mkstemp.assert_called_once_with(dir=conv_dir)
         mock_close.assert_called_once_with(fd)
 
     @mock.patch('cinder.image.image_utils.os.close')
     @mock.patch('cinder.image.image_utils.CONF')
-    @mock.patch('cinder.image.image_utils.os.path.exists', return_value=False)
-    @mock.patch('cinder.image.image_utils.os.makedirs')
+    @mock.patch('cinder.image.image_utils.fileutils.ensure_tree')
     @mock.patch('cinder.image.image_utils.tempfile.mkstemp')
     def test_create_temporary_file_and_dir(self, mock_mkstemp, mock_dirs,
-                                           mock_path, mock_conf, mock_close):
+                                           mock_conf, mock_close):
         conv_dir = mock.sentinel.image_conversion_dir
         mock_conf.image_conversion_dir = conv_dir
         fd = mock.sentinel.file_descriptor
