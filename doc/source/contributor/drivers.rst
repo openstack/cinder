@@ -87,6 +87,11 @@ the backend cannot report the value or 'infinite' if the backend has no upper
 limit. But, it is recommended to report real values as the Cinder scheduler
 assigns lowest weight to any storage backend reporting 'unknown' or 'infinite'.
 
+**NOTE:** By default, Cinder assumes that the driver supports attached volume
+extending. If it doesn't, it should report 'online_extend_support=False'.
+Otherwise the scheduler will attempt to perform the operation, and may leave
+the volume in 'error_extending' state.
+
 Feature Enforcement
 -------------------
 

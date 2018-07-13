@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Make Cinder scheduler check if backend reports `online_extend_support`
+    before performing an online extend operation.
