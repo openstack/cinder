@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Dell EMC Unity Driver: Add thick volume support. Refer to `Unity Cinder
+    Configuration document
+    <https://docs.openstack.org/cinder/latest/configuration/block-storage/drivers/dell-emc-unity-driver.html>`__
+    to create a thick volume.

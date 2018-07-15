@@ -31,8 +31,8 @@ pyxcli>=1.1.5 # Apache-2.0
 rados # LGPLv2.1
 rbd # LGPLv2.1
 
-# Dell EMC VNX
-storops>=0.5.7 # Apache-2.0
+# Dell EMC VNX and Unity
+storops>=0.5.10 # Apache-2.0
 
 # Violin
 vmemclient>=1.1.8 # Apache-2.0
