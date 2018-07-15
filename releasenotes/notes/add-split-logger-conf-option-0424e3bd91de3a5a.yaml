@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Added boolean conf option 'split_loggers' in [default] section of
+    cinder.conf to `enable split logging`_ functionality. The default
+    value of split_loggers option is set to False. Operator can set it's
+    value to True to split HTTP content into subloggers to allow for
+    fine-grained control of what is logged and how. This new config option
+    'split_loggers' should be enabled only when keystoneauth log level is
+    set to DEBUG in 'default_log_levels' config option.
+
+    .. _`enable split logging`: https://docs.openstack.org/keystoneauth/latest/using-sessions.html#logging

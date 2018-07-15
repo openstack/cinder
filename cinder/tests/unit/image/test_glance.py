@@ -972,7 +972,8 @@ class TestGlanceImageServiceClient(test.TestCase):
 
         config_options = {'insecure': False,
                           'cacert': None,
-                          'timeout': None}
+                          'timeout': None,
+                          'split_loggers': False}
 
         mock_get_auth_plugin.return_value = context._ContextAuthPlugin
         mock_load.return_value = session.Session
@@ -1003,7 +1004,8 @@ class TestGlanceImageServiceClient(test.TestCase):
 
         config_options = {'insecure': False,
                           'cacert': '/opt/stack/data/ca-bundle.pem',
-                          'timeout': 60}
+                          'timeout': 60,
+                          'split_loggers': False}
 
         mock_get_auth_plugin.return_value = context._ContextAuthPlugin
         mock_load.return_value = session.Session
