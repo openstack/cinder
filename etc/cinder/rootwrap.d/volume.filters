@@ -127,7 +127,6 @@ umount: CommandFilter, umount, root
 
 # cinder/brick/initiator/connector.py:
 ls: CommandFilter, ls, root
-tee: CommandFilter, tee, root
 multipath: CommandFilter, multipath, root
 multipathd: CommandFilter, multipathd, root
 systool: CommandFilter, systool, root
