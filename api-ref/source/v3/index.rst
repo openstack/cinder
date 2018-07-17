@@ -52,3 +52,6 @@ Block Storage API V3 (CURRENT)
 .. include:: quota-classes.inc
 .. include:: quota-sets.inc
 .. include:: worker-cleanup.inc
+
+.. valid values for boolean parameters.
+.. include:: valid-boolean-values.inc
