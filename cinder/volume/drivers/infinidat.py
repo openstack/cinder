@@ -174,6 +174,13 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             raise exception.VolumeDriverException(message=msg)
         LOG.debug('setup complete')
 
+    def validate_connector(self, connector):
+        required = 'initiator' if self._protocol == 'iSCSI' else 'wwpns'
+        if required not in connector:
+            LOG.error('The volume driver requires %(data)s '
+                      'in the connector.', {'data': required})
+            raise exception.InvalidConnectorException(missing=required)
+
     def _make_volume_name(self, cinder_volume):
         return 'openstack-vol-%s' % cinder_volume.id
 
