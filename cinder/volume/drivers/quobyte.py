@@ -131,7 +131,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
             LOG.info("Volume from snapshot cache directory does not exist, "
                      "creating the directory %(volcache)s",
                      {'volcache': cache_path})
-            os.makedirs(cache_path)
+            fileutils.ensure_tree(cache_path)
         if not (os.access(cache_path, os.R_OK)
                 and os.access(cache_path, os.W_OK)
                 and os.access(cache_path, os.X_OK)):
@@ -566,7 +566,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
 
         if not mounted:
             if not os.path.isdir(mount_path):
-                self._execute('mkdir', '-p', mount_path)
+                fileutils.ensure_tree(mount_path)
 
             command = ['mount.quobyte', '--disable-xattrs',
                        quobyte_volume, mount_path]
