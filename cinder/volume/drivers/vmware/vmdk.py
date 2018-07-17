@@ -287,7 +287,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         if not self._volumeops:
             max_objects = self.configuration.vmware_max_objects_retrieval
             self._volumeops = volumeops.VMwareVolumeOps(self.session,
-                                                        max_objects)
+                                                        max_objects,
+                                                        EXTENSION_KEY,
+                                                        EXTENSION_TYPE
+                                                        )
         return self._volumeops
 
     @property
@@ -1848,8 +1851,6 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         # recreate session and initialize volumeops and ds_sel
         # TODO(vbala) remove properties: session, volumeops and ds_sel
         max_objects = self.configuration.vmware_max_objects_retrieval
-        self._volumeops = volumeops.VMwareVolumeOps(
-            self.session, max_objects, EXTENSION_KEY, EXTENSION_TYPE)
         self._ds_sel = hub.DatastoreSelector(
             self.volumeops, self.session, max_objects)
 
