@@ -208,7 +208,8 @@ nullable_string = {
 volume_size = {
     'type': ['integer', 'string'],
     'pattern': '^[0-9]+$',
-    'minimum': 1
+    'minimum': 1,
+    'maximum': constants.DB_MAX_INT
 }
 
 
@@ -262,3 +263,11 @@ key_size = {'type': ['string', 'integer', 'null'],
             'minimum': 0,
             'maximum': constants.DB_MAX_INT,
             'format': 'key_size'}
+
+
+availability_zone = {
+    'type': ['string', 'null'], 'minLength': 1, 'maxLength': 255
+}
+
+
+optional_boolean = {'oneOf': [{'type': 'null'}, boolean]}

@@ -74,7 +74,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body()
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
         ex = self._expected_vol_from_controller()
         self.assertEqual(ex, res_dict)
         self.assertTrue(mock_validate.called)
@@ -100,19 +100,19 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 404 when type name isn't valid
         self.assertRaises(exception.VolumeTypeNotFoundByName,
-                          self.controller.create, req, body)
+                          self.controller.create, req, body=body)
 
         # Use correct volume type name
-        vol.update(dict(volume_type=CONF.default_volume_type))
+        vol = self._vol_in_request_body(volume_type=CONF.default_volume_type)
         body.update(dict(volume=vol))
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
         volume_id = res_dict['volume']['id']
         self.assertEqual(1, len(res_dict))
 
         # Use correct volume type id
-        vol.update(dict(volume_type=db_vol_type['id']))
+        vol = self._vol_in_request_body(volume_type=db_vol_type['id'])
         body.update(dict(volume=vol))
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
         volume_id = res_dict['volume']['id']
         self.assertEqual(1, len(res_dict))
 
@@ -241,7 +241,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(snapshot_id=snapshot_id)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
 
         ex = self._expected_vol_from_controller(snapshot_id=snapshot_id)
         self.assertEqual(ex, res_dict)
@@ -268,7 +268,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 404 when snapshot cannot be found.
         self.assertRaises(exception.SnapshotNotFound, self.controller.create,
-                          req, body)
+                          req, body=body)
         context = req.environ['cinder.context']
         get_snapshot.assert_called_once_with(self.controller.volume_api,
                                              context, snapshot_id)
@@ -282,8 +282,8 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 400 when snapshot has not uuid type.
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
-                          req, body)
+        self.assertRaises(exception.ValidationError, self.controller.create,
+                          req, body=body)
 
     @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
                        autospec=True)
@@ -299,7 +299,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(source_volid=source_volid)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
 
         ex = self._expected_vol_from_controller(source_volid=source_volid)
         self.assertEqual(ex, res_dict)
@@ -329,7 +329,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 404 when source volume cannot be found.
         self.assertRaises(exception.VolumeNotFound, self.controller.create,
-                          req, body)
+                          req, body=body)
 
         context = req.environ['cinder.context']
         get_volume.assert_called_once_with(self.controller.volume_api,
@@ -345,8 +345,8 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 400 for resource requested with invalid uuids.
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
-                          req, body)
+        self.assertRaises(exception.ValidationError, self.controller.create,
+                          req, body=body)
 
     @mock.patch.object(groupAPI.API, 'get', autospec=True)
     def test_volume_creation_fails_with_invalid_consistency_group(self,
@@ -361,7 +361,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 404 when consistency group is not found.
         self.assertRaises(exception.GroupNotFound,
-                          self.controller.create, req, body)
+                          self.controller.create, req, body=body)
 
         context = req.environ['cinder.context']
         get_cg.assert_called_once_with(self.controller.group_api,
@@ -371,10 +371,10 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(size="")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        self.assertRaises(exception.InvalidInput,
+        self.assertRaises(exception.ValidationError,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
     def test_volume_creation_fails_with_bad_availability_zone(self):
         vol = self._vol_in_request_body(availability_zone="zonen:hostn")
@@ -382,7 +382,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes')
         self.assertRaises(exception.InvalidAvailabilityZone,
                           self.controller.create,
-                          req, body)
+                          req, body=body)
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
@@ -399,7 +399,7 @@ class VolumeApiTest(test.TestCase):
         ex = self._expected_vol_from_controller(availability_zone="nova")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
         self.assertEqual(ex, res_dict)
         self.assertTrue(mock_validate.called)
 
@@ -410,10 +410,10 @@ class VolumeApiTest(test.TestCase):
                                         image_ref=1234)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
     def test_volume_create_with_image_ref_not_uuid_format(self):
         self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
@@ -428,7 +428,7 @@ class VolumeApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
     def test_volume_create_with_image_ref_with_empty_string(self):
         self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
@@ -443,7 +443,7 @@ class VolumeApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
@@ -460,7 +460,7 @@ class VolumeApiTest(test.TestCase):
         ex = self._expected_vol_from_controller(availability_zone="nova")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
         self.assertEqual(ex, res_dict)
         self.assertTrue(mock_validate.called)
 
@@ -471,10 +471,10 @@ class VolumeApiTest(test.TestCase):
                                         image_id=1234)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
     def test_volume_create_with_image_id_not_uuid_format(self):
         self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
@@ -489,7 +489,7 @@ class VolumeApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
     def test_volume_create_with_image_id_with_empty_string(self):
         self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
@@ -504,7 +504,7 @@ class VolumeApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
@@ -524,9 +524,8 @@ class VolumeApiTest(test.TestCase):
         ex = self._expected_vol_from_controller(availability_zone="nova")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
         self.assertEqual(ex, res_dict)
-        self.assertTrue(mock_validate.called)
 
     def test_volume_create_with_image_name_has_multiple(self):
         self.mock_object(db, 'volume_get', v2_fakes.fake_volume_get_db)
@@ -544,7 +543,7 @@ class VolumeApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPConflict,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
     def test_volume_create_with_image_name_no_match(self):
         self.mock_object(db, 'volume_get', v2_fakes.fake_volume_get_db)
@@ -562,17 +561,17 @@ class VolumeApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
     def test_volume_create_with_invalid_multiattach(self):
         vol = self._vol_in_request_body(multiattach="InvalidBool")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
 
-        self.assertRaises(exception.InvalidParameterValue,
+        self.assertRaises(exception.ValidationError,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
     @mock.patch.object(volume_api.API, 'create', autospec=True)
     @mock.patch.object(volume_api.API, 'get', autospec=True)
@@ -591,7 +590,7 @@ class VolumeApiTest(test.TestCase):
         ex = self._expected_vol_from_controller(multiattach=True)
 
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        res_dict = self.controller.create(req, body)
+        res_dict = self.controller.create(req, body=body)
 
         self.assertEqual(ex, res_dict)
 
@@ -605,36 +604,36 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
 
-        if len(list(value.keys())[0]) == 0 or list(value.values())[0] is None:
-            exc = exception.InvalidVolumeMetadata
-        else:
-            exc = exception.InvalidVolumeMetadataSize
-        self.assertRaises(exc,
+        self.assertRaises(exception.ValidationError,
                           self.controller.create,
                           req,
-                          body)
+                          body=body)
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_update(self, mock_validate):
+    @ddt.data({"name": "Updated Test Name",
+               "description": "Updated Test Description"},
+              {"name": "      test name   ",
+               "description": "    test description   "})
+    def test_volume_update(self, body):
         self.mock_object(volume_api.API, 'get', v2_fakes.fake_volume_api_get)
         self.mock_object(volume_api.API, "update", v2_fakes.fake_volume_update)
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
-
         updates = {
-            "name": "Updated Test Name",
+            "name": body['name'],
+            "description": body['description']
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
         self.assertEqual(0, len(self.notifier.notifications))
-        res_dict = self.controller.update(req, fake.VOLUME_ID, body)
+        name = updates["name"].strip()
+        description = updates["description"].strip()
         expected = self._expected_vol_from_controller(
-            availability_zone=v2_fakes.DEFAULT_AZ, name="Updated Test Name",
+            availability_zone=v2_fakes.DEFAULT_AZ, name=name,
+            description=description,
             metadata={'attached_mode': 'rw', 'readonly': 'False'})
+        res_dict = self.controller.update(req, fake.VOLUME_ID, body=body)
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
-        self.assertTrue(mock_validate.called)
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
@@ -651,7 +650,7 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
         self.assertEqual(0, len(self.notifier.notifications))
-        res_dict = self.controller.update(req, fake.VOLUME_ID, body)
+        res_dict = self.controller.update(req, fake.VOLUME_ID, body=body)
         expected = self._expected_vol_from_controller(
             availability_zone=v2_fakes.DEFAULT_AZ, name="Updated Test Name",
             description="Updated Test Description",
@@ -678,7 +677,7 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
         self.assertEqual(0, len(self.notifier.notifications))
-        res_dict = self.controller.update(req, fake.VOLUME_ID, body)
+        res_dict = self.controller.update(req, fake.VOLUME_ID, body=body)
         expected = self._expected_vol_from_controller(
             availability_zone=v2_fakes.DEFAULT_AZ,
             name="New Name", description="New Description",
@@ -701,7 +700,7 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
         self.assertEqual(0, len(self.notifier.notifications))
-        res_dict = self.controller.update(req, fake.VOLUME_ID, body)
+        res_dict = self.controller.update(req, fake.VOLUME_ID, body=body)
         expected = self._expected_vol_from_controller(
             availability_zone=v2_fakes.DEFAULT_AZ,
             metadata={'attached_mode': 'rw', 'readonly': 'False',
@@ -742,7 +741,7 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(0, len(self.notifier.notifications))
         admin_ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         req.environ['cinder.context'] = admin_ctx
-        res_dict = self.controller.update(req, fake.VOLUME_ID, body)
+        res_dict = self.controller.update(req, fake.VOLUME_ID, body=body)
         expected = self._expected_vol_from_controller(
             availability_zone=v2_fakes.DEFAULT_AZ, volume_type=None,
             status='in-use', name='Updated Test Name',
@@ -776,29 +775,36 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
 
-        if len(list(value.keys())[0]) == 0 or list(value.values())[0] is None:
-            exc = exception.InvalidVolumeMetadata
-        else:
-            exc = webob.exc.HTTPRequestEntityTooLarge
-        self.assertRaises(exc,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update,
-                          req, fake.VOLUME_ID, body)
+                          req, fake.VOLUME_ID, body=body)
 
     def test_update_empty_body(self):
         body = {}
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update,
-                          req, fake.VOLUME_ID, body)
+                          req, fake.VOLUME_ID, body=body)
 
     def test_update_invalid_body(self):
         body = {
             'name': 'missing top level volume key'
         }
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update,
-                          req, fake.VOLUME_ID, body)
+                          req, fake.VOLUME_ID, body=body)
+
+    @ddt.data({'name': 'a' * 256},
+              {'description': 'a' * 256},
+              {'display_name': 'a' * 256},
+              {'display_description': 'a' * 256})
+    def test_update_exceeds_length_name_description(self, vol):
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        body = {'volume': vol}
+        self.assertRaises(exception.InvalidInput,
+                          self.controller.update,
+                          req, fake.VOLUME_ID, body=body)
 
     def test_update_not_found(self):
         self.mock_object(volume_api.API, "get",
@@ -810,7 +816,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
         self.assertRaises(exception.VolumeNotFound,
                           self.controller.update,
-                          req, fake.VOLUME_ID, body)
+                          req, fake.VOLUME_ID, body=body)
 
     def test_volume_list_summary(self):
         self.mock_object(volume_api.API, 'get_all',
@@ -1476,8 +1482,8 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
         req.method = 'POST'
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, body=body)
 
     def test_create_no_body(self):
         self._create_volume_bad_request(body=None)

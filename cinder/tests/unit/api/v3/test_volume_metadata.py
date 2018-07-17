@@ -163,7 +163,7 @@ class VolumeMetaDataTest(test.TestCase):
                "metadata": {}}
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        self.volume_controller.create(req, body)
+        self.volume_controller.create(req, body=body)
 
     def test_index(self):
         req = fakes.HTTPRequest.blank(self.url, version=mv.ETAGS)
