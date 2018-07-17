@@ -111,7 +111,7 @@ class Client(client_base.Client):
         api_args['max-records'] = max_page_length
 
         # Get first page
-        result = self.send_request(
+        result = self.connection.send_request(
             api_name, api_args, enable_tunneling=enable_tunneling)
 
         # Most commonly, we can just return here if there is no more data
@@ -130,7 +130,7 @@ class Client(client_base.Client):
         while next_tag is not None:
             next_api_args = copy.deepcopy(api_args)
             next_api_args['tag'] = next_tag
-            next_result = self.send_request(
+            next_result = self.connection.send_request(
                 api_name, next_api_args, enable_tunneling=enable_tunneling)
 
             next_attributes_list = next_result.get_child_by_name(
@@ -204,7 +204,8 @@ class Client(client_base.Client):
 
         try:
             node_client.set_vserver(self._get_ems_log_destination_vserver())
-            node_client.send_request('ems-autosupport-log', message_dict)
+            node_client.connection.send_request('ems-autosupport-log',
+                                                message_dict)
             LOG.debug('EMS executed successfully.')
         except netapp_api.NaApiError as e:
             LOG.warning('Failed to invoke EMS. %s', e)
@@ -526,7 +527,7 @@ class Client(client_base.Client):
             'file': file_path,
             'vserver': self.vserver,
         }
-        return self.send_request('file-assign-qos', api_args, False)
+        return self.connection.send_request('file-assign-qos', api_args, False)
 
     def provision_qos_policy_group(self, qos_policy_group_info):
         """Create QOS policy group on the backend if appropriate."""
@@ -562,9 +563,9 @@ class Client(client_base.Client):
                 },
             },
         }
-        result = self.send_request('qos-policy-group-get-iter',
-                                   api_args,
-                                   False)
+        result = self.connection.send_request('qos-policy-group-get-iter',
+                                              api_args,
+                                              False)
         return self._has_records(result)
 
     def qos_policy_group_create(self, qos_policy_group_name, max_throughput):
@@ -574,7 +575,8 @@ class Client(client_base.Client):
             'max-throughput': max_throughput,
             'vserver': self.vserver,
         }
-        return self.send_request('qos-policy-group-create', api_args, False)
+        return self.connection.send_request(
+            'qos-policy-group-create', api_args, False)
 
     def qos_policy_group_modify(self, qos_policy_group_name, max_throughput):
         """Modifies a QOS policy group."""
@@ -582,12 +584,14 @@ class Client(client_base.Client):
             'policy-group': qos_policy_group_name,
             'max-throughput': max_throughput,
         }
-        return self.send_request('qos-policy-group-modify', api_args, False)
+        return self.connection.send_request(
+            'qos-policy-group-modify', api_args, False)
 
     def qos_policy_group_delete(self, qos_policy_group_name):
         """Attempts to delete a QOS policy group."""
         api_args = {'policy-group': qos_policy_group_name}
-        return self.send_request('qos-policy-group-delete', api_args, False)
+        return self.connection.send_request(
+            'qos-policy-group-delete', api_args, False)
 
     def qos_policy_group_rename(self, qos_policy_group_name, new_name):
         """Renames a QOS policy group."""
@@ -595,7 +599,8 @@ class Client(client_base.Client):
             'policy-group-name': qos_policy_group_name,
             'new-name': new_name,
         }
-        return self.send_request('qos-policy-group-rename', api_args, False)
+        return self.connection.send_request(
+            'qos-policy-group-rename', api_args, False)
 
     def mark_qos_policy_group_for_deletion(self, qos_policy_group_info):
         """Do (soft) delete of backing QOS policy group for a cinder volume."""
@@ -639,7 +644,8 @@ class Client(client_base.Client):
         }
 
         try:
-            self.send_request('qos-policy-group-delete-iter', api_args, False)
+            self.connection.send_request(
+                'qos-policy-group-delete-iter', api_args, False)
         except netapp_api.NaApiError as ex:
             msg = 'Could not delete QOS policy groups. Details: %(ex)s'
             msg_args = {'ex': ex}
@@ -651,7 +657,8 @@ class Client(client_base.Client):
             'path': path,
             'qos-policy-group': qos_policy_group,
         }
-        return self.send_request('lun-set-qos-policy-group', api_args)
+        return self.connection.send_request(
+            'lun-set-qos-policy-group', api_args)
 
     def get_if_info_by_ip(self, ip):
         """Gets the network interface info by ip."""
@@ -777,7 +784,7 @@ class Client(client_base.Client):
                 },
             },
         }
-        result = self.send_request(
+        result = self.connection.send_request(
             'system-user-capability-get-iter', api_args, False)
 
         if not self._has_records(result):
@@ -812,7 +819,7 @@ class Client(client_base.Client):
             raise ValueError(_('Non-getter API passed to API test method.'))
 
         try:
-            self.send_request(api, enable_tunneling=False)
+            self.connection.send_request(api, enable_tunneling=False)
         except netapp_api.NaApiError as ex:
             if ex.code in (netapp_api.EAPIPRIVILEGE, netapp_api.EAPINOTFOUND):
                 return False
@@ -1134,8 +1141,8 @@ class Client(client_base.Client):
         """Get the status of unsplit file/LUN clones in a flexvol."""
 
         try:
-            result = self.send_request('clone-split-status',
-                                       {'volume-name': flexvol_name})
+            result = self.connection.send_request(
+                'clone-split-status', {'volume-name': flexvol_name})
         except netapp_api.NaApiError:
             LOG.exception('Failed to get clone split info for volume %s.',
                           flexvol_name)
@@ -1243,7 +1250,7 @@ class Client(client_base.Client):
         if snapshot_reserve is not None:
             api_args['percentage-snapshot-reserve'] = six.text_type(
                 snapshot_reserve)
-        self.send_request('volume-create', api_args)
+        self.connection.send_request('volume-create', api_args)
 
         # cDOT compression requires that deduplication be enabled.
         if dedupe_enabled or compression_enabled:
@@ -1280,7 +1287,7 @@ class Client(client_base.Client):
             'volume': orig_flexvol_name,
             'new-volume-name': new_flexvol_name,
         }
-        self.send_request('volume-rename', api_args)
+        self.connection.send_request('volume-rename', api_args)
 
     def mount_flexvol(self, flexvol_name, junction_path=None):
         """Mounts a volume on a junction path."""
@@ -1289,17 +1296,17 @@ class Client(client_base.Client):
             'junction-path': (junction_path if junction_path
                               else '/%s' % flexvol_name)
         }
-        self.send_request('volume-mount', api_args)
+        self.connection.send_request('volume-mount', api_args)
 
     def enable_flexvol_dedupe(self, flexvol_name):
         """Enable deduplication on volume."""
         api_args = {'path': '/vol/%s' % flexvol_name}
-        self.send_request('sis-enable', api_args)
+        self.connection.send_request('sis-enable', api_args)
 
     def disable_flexvol_dedupe(self, flexvol_name):
         """Disable deduplication on volume."""
         api_args = {'path': '/vol/%s' % flexvol_name}
-        self.send_request('sis-disable', api_args)
+        self.connection.send_request('sis-disable', api_args)
 
     def enable_flexvol_compression(self, flexvol_name):
         """Enable compression on volume."""
@@ -1307,7 +1314,7 @@ class Client(client_base.Client):
             'path': '/vol/%s' % flexvol_name,
             'enable-compression': 'true'
         }
-        self.send_request('sis-set-config', api_args)
+        self.connection.send_request('sis-set-config', api_args)
 
     def disable_flexvol_compression(self, flexvol_name):
         """Disable compression on volume."""
@@ -1315,7 +1322,7 @@ class Client(client_base.Client):
             'path': '/vol/%s' % flexvol_name,
             'enable-compression': 'false'
         }
-        self.send_request('sis-set-config', api_args)
+        self.connection.send_request('sis-set-config', api_args)
 
     @utils.trace_method
     def delete_file(self, path_to_file):
@@ -1327,7 +1334,7 @@ class Client(client_base.Client):
         # Use fast clone deletion engine if it is supported.
         if self.features.FAST_CLONE_DELETE:
             api_args['is-clone-file'] = 'true'
-        self.send_request('file-delete-file', api_args, True)
+        self.connection.send_request('file-delete-file', api_args, True)
 
     def _get_aggregates(self, aggregate_names=None, desired_attributes=None):
 
@@ -1343,9 +1350,9 @@ class Client(client_base.Client):
         if desired_attributes:
             api_args['desired-attributes'] = desired_attributes
 
-        result = self.send_request('aggr-get-iter',
-                                   api_args,
-                                   enable_tunneling=False)
+        result = self.connection.send_request('aggr-get-iter',
+                                              api_args,
+                                              enable_tunneling=False)
         if not self._has_records(result):
             return []
         else:
@@ -1566,9 +1573,9 @@ class Client(client_base.Client):
             }
         }
 
-        result = self.send_request('perf-object-instance-list-info-iter',
-                                   api_args,
-                                   enable_tunneling=False)
+        result = self.connection.send_request(
+            'perf-object-instance-list-info-iter', api_args,
+            enable_tunneling=False)
 
         uuids = []
 
@@ -1595,9 +1602,8 @@ class Client(client_base.Client):
             ],
         }
 
-        result = self.send_request('perf-object-get-instances',
-                                   api_args,
-                                   enable_tunneling=False)
+        result = self.connection.send_request(
+            'perf-object-get-instances', api_args, enable_tunneling=False)
 
         counter_data = []
 
@@ -1648,7 +1654,7 @@ class Client(client_base.Client):
             },
         }
 
-        result = self.send_request('snapshot-get-iter', api_args)
+        result = self.connection.send_request('snapshot-get-iter', api_args)
 
         snapshots = []
 
@@ -1689,7 +1695,7 @@ class Client(client_base.Client):
                 },
             },
         }
-        result = self.send_request('snapshot-get-iter', api_args)
+        result = self.connection.send_request('snapshot-get-iter', api_args)
 
         self._handle_get_snapshot_return_failure(result, snapshot_name)
 
@@ -1764,7 +1770,7 @@ class Client(client_base.Client):
         if passphrase:
             api_args['passphrase'] = passphrase
 
-        self.send_request('cluster-peer-create', api_args)
+        self.connection.send_request('cluster-peer-create', api_args)
 
     def get_cluster_peers(self, remote_cluster_name=None):
         """Gets one or more cluster peer relationships."""
@@ -1822,7 +1828,7 @@ class Client(client_base.Client):
         """Deletes a cluster peer relationship."""
 
         api_args = {'cluster-name': cluster_name}
-        self.send_request('cluster-peer-delete', api_args)
+        self.connection.send_request('cluster-peer-delete', api_args)
 
     def get_cluster_peer_policy(self):
         """Gets the cluster peering policy configuration."""
@@ -1830,7 +1836,7 @@ class Client(client_base.Client):
         if not self.features.CLUSTER_PEER_POLICY:
             return {}
 
-        result = self.send_request('cluster-peer-policy-get')
+        result = self.connection.send_request('cluster-peer-policy-get')
 
         attributes = result.get_child_by_name(
             'attributes') or netapp_api.NaElement('none')
@@ -1876,7 +1882,7 @@ class Client(client_base.Client):
             api_args['passphrase-minlength'] = six.text_type(
                 passphrase_minimum_length)
 
-        self.send_request('cluster-peer-policy-modify', api_args)
+        self.connection.send_request('cluster-peer-policy-modify', api_args)
 
     def create_vserver_peer(self, vserver_name, peer_vserver_name):
         """Creates a Vserver peer relationship for SnapMirrors."""
@@ -1887,19 +1893,19 @@ class Client(client_base.Client):
                 {'vserver-peer-application': 'snapmirror'},
             ],
         }
-        self.send_request('vserver-peer-create', api_args)
+        self.connection.send_request('vserver-peer-create', api_args)
 
     def delete_vserver_peer(self, vserver_name, peer_vserver_name):
         """Deletes a Vserver peer relationship."""
 
         api_args = {'vserver': vserver_name, 'peer-vserver': peer_vserver_name}
-        self.send_request('vserver-peer-delete', api_args)
+        self.connection.send_request('vserver-peer-delete', api_args)
 
     def accept_vserver_peer(self, vserver_name, peer_vserver_name):
         """Accepts a pending Vserver peer relationship."""
 
         api_args = {'vserver': vserver_name, 'peer-vserver': peer_vserver_name}
-        self.send_request('vserver-peer-accept', api_args)
+        self.connection.send_request('vserver-peer-accept', api_args)
 
     def get_vserver_peers(self, vserver_name=None, peer_vserver_name=None):
         """Gets one or more Vserver peer relationships."""
@@ -1962,7 +1968,7 @@ class Client(client_base.Client):
             api_args['policy'] = policy
 
         try:
-            self.send_request('snapmirror-create', api_args)
+            self.connection.send_request('snapmirror-create', api_args)
         except netapp_api.NaApiError as e:
             if e.code != netapp_api.ERELATION_EXISTS:
                 raise
@@ -1984,7 +1990,8 @@ class Client(client_base.Client):
         if transfer_priority:
             api_args['transfer-priority'] = transfer_priority
 
-        result = self.send_request('snapmirror-initialize', api_args)
+        result = self.connection.send_request('snapmirror-initialize',
+                                              api_args)
 
         result_info = {}
         result_info['operation-id'] = result.get_child_content(
@@ -2016,7 +2023,7 @@ class Client(client_base.Client):
                 }
             }
         }
-        self.send_request('snapmirror-release-iter', api_args)
+        self.connection.send_request('snapmirror-release-iter', api_args)
 
     def quiesce_snapmirror(self, source_vserver, source_volume,
                            destination_vserver, destination_volume):
@@ -2029,7 +2036,7 @@ class Client(client_base.Client):
             'destination-volume': destination_volume,
             'destination-vserver': destination_vserver,
         }
-        self.send_request('snapmirror-quiesce', api_args)
+        self.connection.send_request('snapmirror-quiesce', api_args)
 
     def abort_snapmirror(self, source_vserver, source_volume,
                          destination_vserver, destination_volume,
@@ -2045,7 +2052,7 @@ class Client(client_base.Client):
             'clear-checkpoint': 'true' if clear_checkpoint else 'false',
         }
         try:
-            self.send_request('snapmirror-abort', api_args)
+            self.connection.send_request('snapmirror-abort', api_args)
         except netapp_api.NaApiError as e:
             if e.code != netapp_api.ENOTRANSFER_IN_PROGRESS:
                 raise
@@ -2061,7 +2068,7 @@ class Client(client_base.Client):
             'destination-volume': destination_volume,
             'destination-vserver': destination_vserver,
         }
-        self.send_request('snapmirror-break', api_args)
+        self.connection.send_request('snapmirror-break', api_args)
 
     def modify_snapmirror(self, source_vserver, source_volume,
                           destination_vserver, destination_volume,
@@ -2085,7 +2092,7 @@ class Client(client_base.Client):
         if max_transfer_rate is not None:
             api_args['max-transfer-rate'] = max_transfer_rate
 
-        self.send_request('snapmirror-modify', api_args)
+        self.connection.send_request('snapmirror-modify', api_args)
 
     def delete_snapmirror(self, source_vserver, source_volume,
                           destination_vserver, destination_volume):
@@ -2102,7 +2109,7 @@ class Client(client_base.Client):
                 }
             }
         }
-        self.send_request('snapmirror-destroy-iter', api_args)
+        self.connection.send_request('snapmirror-destroy-iter', api_args)
 
     def update_snapmirror(self, source_vserver, source_volume,
                           destination_vserver, destination_volume):
@@ -2116,7 +2123,7 @@ class Client(client_base.Client):
             'destination-vserver': destination_vserver,
         }
         try:
-            self.send_request('snapmirror-update', api_args)
+            self.connection.send_request('snapmirror-update', api_args)
         except netapp_api.NaApiError as e:
             if (e.code != netapp_api.ETRANSFER_IN_PROGRESS and
                     e.code != netapp_api.EANOTHER_OP_ACTIVE):
@@ -2134,7 +2141,7 @@ class Client(client_base.Client):
             'destination-vserver': destination_vserver,
         }
         try:
-            self.send_request('snapmirror-resume', api_args)
+            self.connection.send_request('snapmirror-resume', api_args)
         except netapp_api.NaApiError as e:
             if e.code != netapp_api.ERELATION_NOT_QUIESCED:
                 raise
@@ -2150,7 +2157,7 @@ class Client(client_base.Client):
             'destination-volume': destination_volume,
             'destination-vserver': destination_vserver,
         }
-        self.send_request('snapmirror-resync', api_args)
+        self.connection.send_request('snapmirror-resync', api_args)
 
     def _get_snapmirrors(self, source_vserver=None, source_volume=None,
                          destination_vserver=None, destination_volume=None,

@@ -672,7 +672,6 @@ class NetAppNfsDriver(driver.ManageableVD,
         else:
             return False
 
-    @utils.trace_method
     def _touch_path_to_refresh(self, path):
         try:
             # Touching parent directory forces NFS client to flush its cache.
@@ -680,7 +679,6 @@ class NetAppNfsDriver(driver.ManageableVD,
         except processutils.ProcessExecutionError:
             LOG.exception("Failed to touch path %s.", path)
 
-    @utils.trace_method
     def _discover_file_till_timeout(self, path, timeout=75):
         """Checks if file size at path is equal to size."""
         # Sometimes nfs takes time to discover file

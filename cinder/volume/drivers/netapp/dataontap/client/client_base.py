@@ -41,12 +41,14 @@ class Client(object):
         host = kwargs['hostname']
         username = kwargs['username']
         password = kwargs['password']
+        api_trace_pattern = kwargs['api_trace_pattern']
         self.connection = netapp_api.NaServer(
             host=host,
             transport_type=kwargs['transport_type'],
             port=kwargs['port'],
             username=username,
-            password=password)
+            password=password,
+            api_trace_pattern=api_trace_pattern)
 
         self.ssh_client = self._init_ssh_client(host, username, password)
 
@@ -81,13 +83,6 @@ class Client(object):
         """Checks if object is instance of NaElement."""
         if not isinstance(elem, netapp_api.NaElement):
             raise ValueError('Expects NaElement')
-
-    def send_request(self, api_name, api_args=None, enable_tunneling=True):
-        """Sends request to Ontapi."""
-        request = netapp_api.NaElement(api_name)
-        if api_args:
-            request.translate_struct(api_args)
-        return self.connection.invoke_successfully(request, enable_tunneling)
 
     def create_lun(self, volume_name, lun_name, size, metadata,
                    qos_policy_group_name=None):
@@ -288,9 +283,9 @@ class Client(object):
         """Gets info about one or more Data ONTAP performance counters."""
 
         api_args = {'objectname': object_name}
-        result = self.send_request('perf-object-counter-list-info',
-                                   api_args,
-                                   enable_tunneling=False)
+        result = self.connection.send_request('perf-object-counter-list-info',
+                                              api_args,
+                                              enable_tunneling=False)
 
         counters = result.get_child_by_name(
             'counters') or netapp_api.NaElement('None')
@@ -317,7 +312,7 @@ class Client(object):
     def delete_snapshot(self, volume_name, snapshot_name):
         """Deletes a volume snapshot."""
         api_args = {'volume': volume_name, 'snapshot': snapshot_name}
-        self.send_request('snapshot-delete', api_args)
+        self.connection.send_request('snapshot-delete', api_args)
 
     def create_cg_snapshot(self, volume_names, snapshot_name):
         """Creates a consistency group snapshot out of one or more flexvols.
@@ -341,12 +336,12 @@ class Client(object):
                 {'volume-name': volume_name} for volume_name in volume_names
             ],
         }
-        result = self.send_request('cg-start', snapshot_init)
+        result = self.connection.send_request('cg-start', snapshot_init)
         return result.get_child_content('cg-id')
 
     def _commit_cg_snapshot(self, cg_id):
         snapshot_commit = {'cg-id': cg_id}
-        self.send_request('cg-commit', snapshot_commit)
+        self.connection.send_request('cg-commit', snapshot_commit)
 
     def get_snapshot(self, volume_name, snapshot_name):
         """Gets a single snapshot."""
@@ -384,4 +379,4 @@ class Client(object):
             'current-name': current_name,
             'new-name': new_name,
         }
-        return self.send_request('snapshot-rename', api_args)
+        return self.connection.send_request('snapshot-rename', api_args)
