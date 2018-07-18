@@ -414,7 +414,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'consistent_group_snapshot_enabled': True,
             'reserved_percentage': 5,
             'max_over_subscription_ratio': 10.0,
-            'multiattach': False,
+            'multiattach': True,
             'total_capacity_gb': 10.0,
             'free_capacity_gb': 2.0,
             'netapp_dedupe_used_percent': 55.0,
