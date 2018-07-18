@@ -102,7 +102,8 @@ EXTRA_SPECS_DEFAULTS = {
     'os400': '',
     'storage_pool_ids': '',
     'storage_lss_ids': '',
-    'async_clone': False
+    'async_clone': False,
+    'multiattach': False
 }
 
 ds8k_opts = [
@@ -164,6 +165,7 @@ class Lun(object):
             self.specified_pool = lun.specified_pool
             self.specified_lss = lun.specified_lss
             self.async_clone = lun.async_clone
+            self.multiattach = lun.multiattach
             self.status = lun.status
             if not self.is_snapshot:
                 self.replica_ds_name = lun.replica_ds_name
@@ -186,6 +188,8 @@ class Lun(object):
                 volume_update.pop('replication_driver_data', None)
                 volume_update['metadata'].pop('replication', None)
             volume_update['metadata']['vol_hex_id'] = self.ds_id
+            volume_update['multiattach'] = self.multiattach
+
             return volume_update
 
     def __init__(self, volume, is_snapshot=False):
@@ -210,6 +214,9 @@ class Lun(object):
             'drivers:storage_lss_ids',
             EXTRA_SPECS_DEFAULTS['storage_lss_ids']
         )
+        self.multiattach = self.specs.get(
+            'multiattach', '<is> %s' % EXTRA_SPECS_DEFAULTS['multiattach']
+        ).upper() == strings.METADATA_IS_TRUE
 
         if volume.provider_location:
             provider_location = ast.literal_eval(volume.provider_location)
@@ -335,6 +342,7 @@ class Lun(object):
             volume_update['replication_status'] = (
                 self.replication_status or
                 fields.ReplicationStatus.NOT_CAPABLE)
+            volume_update['multiattach'] = self.multiattach
 
         self.metadata['data_type'] = (self.data_type or
                                       self.metadata['data_type'])
@@ -964,6 +972,10 @@ class DS8KProxy(proxy.IBMStorageProxy):
         old_type_replication, new_type_replication = _check_extra_specs(
             'replication_enabled', strings.METADATA_IS_TRUE)
 
+        # check multiattach capability
+        old_multiattach, new_multiattach = _check_extra_specs(
+            'multiattach', strings.METADATA_IS_TRUE)
+
         # start retype, please note that the order here is important
         # because of rollback problem once failed to retype.
         new_props = {}
@@ -1028,6 +1040,11 @@ class DS8KProxy(proxy.IBMStorageProxy):
                     self._replication.delete_replica(lun)
                 except Exception:
                     pass
+            if new_multiattach:
+                new_lun.multiattach = True
+            elif old_multiattach:
+                new_lun.multiattach = False
+
             try:
                 self._helper.delete_lun(lun)
             except Exception:
@@ -1042,6 +1059,10 @@ class DS8KProxy(proxy.IBMStorageProxy):
             elif old_type_replication and not new_type_replication:
                 lun = self._replication.delete_replica(lun)
                 lun.type_replication = False
+            if not old_multiattach and new_multiattach:
+                lun.multiattach = True
+            elif old_multiattach and not new_multiattach:
+                lun.multiattach = False
             volume_update = lun.get_volume_update()
         return True, volume_update
 
