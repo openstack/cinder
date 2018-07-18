@@ -2115,7 +2115,8 @@ class API(base.Base):
                           ctxt,
                           volume_ref,
                           instance_uuid,
-                          connector=None):
+                          connector=None,
+                          attach_mode='null'):
         """Create an attachment record for the specified volume."""
         ctxt.authorize(attachment_policy.CREATE_POLICY, target_obj=volume_ref)
         connection_info = {}
@@ -2129,10 +2130,23 @@ class API(base.Base):
                                                      connector,
                                                      attachment_ref.id))
         attachment_ref.connection_info = connection_info
+
+        # Use of admin_metadata for RO settings is deprecated
+        # switch to using mode argument to attachment-create
         if self.db.volume_admin_metadata_get(
                 ctxt.elevated(),
                 volume_ref['id']).get('readonly', False):
+            LOG.warning("Using volume_admin_metadata to set "
+                        "Read Only mode is deprecated!  Please "
+                        "use the mode argument in attachment-create.")
             attachment_ref.attach_mode = 'ro'
+            # for now we have to let the admin_metadata override
+            # so we're using an else in the next step here, in
+            # other words, using volume_admin_metadata and mode params
+            # are NOT compatible
+        else:
+            attachment_ref.attach_mode = attach_mode
+
         attachment_ref.save()
         return attachment_ref
 

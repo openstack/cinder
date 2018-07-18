@@ -125,6 +125,7 @@ REST_API_VERSION_HISTORY = """
              2. Update volume API expects user to pass at least one valid
              parameter in the request body in order to update the volume.
              Also, additional parameters will not be allowed.
+    * 3.54 - Add ``mode`` argument to attachment-create.
 """
 
 # The minimum and maximum versions of the API supported
@@ -132,9 +133,9 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.53"
+_MAX_API_VERSION = "3.54"
 _LEGACY_API_VERSION2 = "2.0"
-UPDATED = "2018-06-29T05:34:49Z"
+UPDATED = "2018-07-17T00:00:00Z"
 
 
 # NOTE(cyeoh): min and max versions declared as functions so we can

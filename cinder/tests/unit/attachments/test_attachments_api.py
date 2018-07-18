@@ -57,7 +57,7 @@ class AttachmentManagerTestCase(test.TestCase):
         self.assertEqual(fake.UUID2, aref.instance_uuid)
         self.assertIsNone(aref.attach_time)
         self.assertEqual('reserved', aref.attach_status)
-        self.assertIsNone(aref.attach_mode)
+        self.assertEqual('null', aref.attach_mode)
         self.assertEqual(vref.id, aref.volume_id)
         self.assertEqual({}, aref.connection_info)
 
@@ -162,7 +162,7 @@ class AttachmentManagerTestCase(test.TestCase):
         self.assertEqual(fake.UUID2, aref.instance_uuid)
         self.assertIsNone(aref.attach_time)
         self.assertEqual('reserved', aref.attach_status)
-        self.assertIsNone(aref.attach_mode)
+        self.assertEqual('null', aref.attach_mode)
         self.assertEqual(vref.id, aref.volume_id)
         self.assertEqual({}, aref.connection_info)
 
