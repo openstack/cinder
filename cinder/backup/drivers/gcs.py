@@ -166,7 +166,8 @@ class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
             creds = service_account.Credentials.from_service_account_file(
                 backup_credential)
             OAUTH_EXCEPTIONS = (gexceptions.RefreshError,
-                                gexceptions.DefaultCredentialsError)
+                                gexceptions.DefaultCredentialsError,
+                                client.Error)
 
         # Can't use google-auth, use deprecated oauth2client
         else:
