@@ -551,7 +551,12 @@ class SolidFireDriver(san.SanISCSIDriver):
         return vlist
 
     def _get_sfvol_by_cinder_vref(self, vref):
+        # sfvols is one or more element objects returned from a list call
+        # sfvol is the single volume object that will be returned or it will
+        # be None
+        sfvols = None
         sfvol = None
+
         provider_id = vref.get('provider_id', None)
         if provider_id:
             try:
@@ -569,6 +574,10 @@ class SolidFireDriver(san.SanISCSIDriver):
                         {'startVolumeID': sf_vid,
                          'limit': 1},
                         version='8.0')['result']['volumes'][0]
+                    # Bug 1782373 validate the list returned has what we asked
+                    # for, check if there was no match
+                    if sfvol['volumeID'] != int(sf_vid):
+                        sfvol = None
                 except Exception:
                     pass
         if not sfvol:
@@ -578,18 +587,13 @@ class SolidFireDriver(san.SanISCSIDriver):
                 sfvols = self._issue_api_request(
                     'ListVolumesForAccount',
                     {'accountID': account['accountID']})['result']['volumes']
-                if len(sfvols) >= 1:
-                    sfvol = sfvols[0]
-                    break
-        if not sfvol:
-            # Hmmm, frankly if we get here there's a problem,
-            # but try one last trick
-            LOG.info("Failed to find volume by provider_id or account, "
-                     "attempting find by attributes.")
-            for v in sfvols:
-                if v['Attributes'].get('uuid', None):
-                    sfvol = v
-                    break
+                # Bug 1782373  match single vref.id encase no provider as the
+                # above call will return a list for the account
+                for sfv in sfvols:
+                    if sfv['attributes'].get('uuid', None) == vref.id:
+                        sfvol = sfv
+                        break
+
         return sfvol
 
     def _get_sfaccount_by_name(self, sf_account_name, endpoint=None):
@@ -1003,6 +1007,8 @@ class SolidFireDriver(san.SanISCSIDriver):
             tvol['provider_location'] = template_vol['provider_location']
             tvol['provider_auth'] = template_vol['provider_auth']
 
+            attach_info = None
+
             try:
                 connector = {'multipath': False}
                 conn = self.initialize_connection(tvol, connector)
@@ -1029,7 +1035,8 @@ class SolidFireDriver(san.SanISCSIDriver):
                           exc)
                 LOG.debug('Removing SolidFire Cache Volume (SF ID): %s',
                           vol['volumeID'])
-                self._detach_volume(context, attach_info, tvol, properties)
+                if attach_info is not None:
+                    self._detach_volume(context, attach_info, tvol, properties)
                 self._issue_api_request('DeleteVolume', params)
                 self._issue_api_request('PurgeDeletedVolume', params)
                 return
