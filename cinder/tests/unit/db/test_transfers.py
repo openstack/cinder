@@ -118,3 +118,39 @@ class TransfersTableTestCase(test.TestCase):
         db.transfer_destroy(nctxt.elevated(), xfer_id2)
         xfer = db.transfer_get_all(context.get_admin_context())
         self.assertEqual(0, len(xfer), "Unexpected number of transfer records")
+
+    def test_transfer_accept_with_snapshots(self):
+        volume_id = utils.create_volume(self.ctxt)['id']
+        snapshot_id1 = utils.create_snapshot(self.ctxt, volume_id,
+                                             status='available')['id']
+        snapshot_id2 = utils.create_snapshot(self.ctxt, volume_id,
+                                             status='available')['id']
+        xfer_id = self._create_transfer(volume_id)
+        nctxt = context.RequestContext(user_id=fake.USER2_ID,
+                                       project_id=fake.PROJECT2_ID)
+        db.transfer_accept(nctxt.elevated(), xfer_id, fake.USER2_ID,
+                           fake.PROJECT2_ID)
+        self.assertEqual(fake.PROJECT2_ID,
+                         db.snapshot_get(nctxt, snapshot_id1)['project_id'])
+        self.assertEqual(fake.PROJECT2_ID,
+                         db.snapshot_get(nctxt, snapshot_id2)['project_id'])
+
+    def test_transfer_accept_with_snapshots_invalid_status(self):
+        volume_id = utils.create_volume(self.ctxt)['id']
+        snapshot_id1 = utils.create_snapshot(self.ctxt, volume_id,
+                                             status='available')['id']
+        snapshot_id2 = utils.create_snapshot(self.ctxt, volume_id)['id']
+        xfer_id = self._create_transfer(volume_id)
+        nctxt = context.RequestContext(user_id=fake.USER2_ID,
+                                       project_id=fake.PROJECT2_ID)
+        self.assertRaises(exception.InvalidSnapshot, db.transfer_accept,
+                          nctxt.elevated(), xfer_id, fake.USER2_ID,
+                          fake.PROJECT2_ID)
+        self.assertEqual(fake.PROJECT_ID,
+                         db.snapshot_get(self.ctxt,
+                                         snapshot_id1)['project_id'])
+        self.assertEqual(fake.PROJECT_ID,
+                         db.snapshot_get(self.ctxt,
+                                         snapshot_id2)['project_id'])
+        self.assertEqual('awaiting-transfer',
+                         db.volume_get(self.ctxt, volume_id)['status'])

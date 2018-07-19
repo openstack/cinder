@@ -5417,7 +5417,8 @@ def transfer_get(context, transfer_id):
 
 
 def _translate_transfers(transfers):
-    fields = ('id', 'volume_id', 'display_name', 'created_at', 'deleted')
+    fields = ('id', 'volume_id', 'display_name', 'created_at', 'deleted',
+              'no_snapshots')
     return [{k: transfer[k] for k in fields} for transfer in transfers]
 
 
@@ -5491,8 +5492,37 @@ def transfer_destroy(context, transfer_id):
         return updated_values
 
 
+def _roll_back_transferred_volume_and_snapshots(context, volume_id,
+                                                old_user_id, old_project_id,
+                                                transffered_snapshots):
+    expected = {'id': volume_id, 'status': 'available'}
+    update = {'status': 'awaiting-transfer',
+              'user_id': old_user_id,
+              'project_id': old_project_id,
+              'updated_at': timeutils.utcnow()}
+    if not conditional_update(context, models.Volume, update, expected):
+        LOG.warning('Volume: %(volume_id)s is not in the expected available '
+                    'status. Rolling it back.', {'volume_id': volume_id})
+        return
+
+    for snapshot_id in transffered_snapshots:
+        LOG.info('Beginning to roll back transferred snapshots: %s',
+                 snapshot_id)
+        expected = {'id': snapshot_id,
+                    'status': 'available'}
+        update = {'user_id': old_user_id,
+                  'project_id': old_project_id,
+                  'updated_at': timeutils.utcnow()}
+        if not conditional_update(context, models.Snapshot, update, expected):
+            LOG.warning('Snapshot: %(snapshot_id)s is not in the expected '
+                        'available state. Rolling it back.',
+                        {'snapshot_id': snapshot_id})
+            return
+
+
 @require_context
-def transfer_accept(context, transfer_id, user_id, project_id):
+def transfer_accept(context, transfer_id, user_id, project_id,
+                    no_snapshots=False):
     session = get_session()
     with session.begin():
         volume_id = _transfer_get(context, transfer_id, session)['volume_id']
@@ -5500,13 +5530,41 @@ def transfer_accept(context, transfer_id, user_id, project_id):
                     'status': 'awaiting-transfer'}
         update = {'status': 'available',
                   'user_id': user_id,
-                  'project_id': project_id}
+                  'project_id': project_id,
+                  'updated_at': timeutils.utcnow()}
         if not conditional_update(context, models.Volume, update, expected):
             msg = (_('Transfer %(transfer_id)s: Volume id %(volume_id)s '
                      'expected in awaiting-transfer state.')
                    % {'transfer_id': transfer_id, 'volume_id': volume_id})
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
+
+        # Update snapshots for transfer snapshots with volume.
+        if not no_snapshots:
+            snapshots = snapshot_get_all_for_volume(context, volume_id)
+            transferred_snapshots = []
+            for snapshot in snapshots:
+                LOG.info('Begin to transfer snapshot: %s', snapshot['id'])
+                old_user_id = snapshot['user_id']
+                old_project_id = snapshot['project_id']
+                expected = {'id': snapshot['id'],
+                            'status': 'available'}
+                update = {'user_id': user_id,
+                          'project_id': project_id,
+                          'updated_at': timeutils.utcnow()}
+                if not conditional_update(context, models.Snapshot, update,
+                                          expected):
+                    msg = (_('Transfer %(transfer_id)s: Snapshot '
+                             '%(snapshot_id)s is not in the expected '
+                             'available state.')
+                           % {'transfer_id': transfer_id,
+                              'snapshot_id': snapshot['id']})
+                    LOG.warning(msg)
+                    _roll_back_transferred_volume_and_snapshots(
+                        context, volume_id, old_user_id, old_project_id,
+                        transferred_snapshots)
+                    raise exception.InvalidSnapshot(reason=msg)
+                transferred_snapshots.append(snapshot['id'])
 
         (session.query(models.Transfer)
          .filter_by(id=transfer_id)

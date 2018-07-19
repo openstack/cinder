@@ -274,8 +274,10 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
                            volume=self.fake_volume_obj,
                            new_user=fake.USER_ID,
                            new_project=fake.PROJECT_ID,
+                           no_snapshots=True,
                            expected_kwargs_diff={
-                               'volume_id': self.fake_volume_obj.id})
+                               'volume_id': self.fake_volume_obj.id},
+                           version='3.16')
 
     @ddt.data(None, 'mycluster')
     def test_extend_volume(self, cluster_name):

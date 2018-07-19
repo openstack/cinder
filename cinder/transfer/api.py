@@ -113,7 +113,7 @@ class API(base.Base):
             auth_key = auth_key.encode('utf-8')
         return hmac.new(salt, auth_key, hashlib.sha1).hexdigest()
 
-    def create(self, context, volume_id, display_name):
+    def create(self, context, volume_id, display_name, no_snapshots=False):
         """Creates an entry in the transfers table."""
         LOG.info("Generating transfer record for volume %s", volume_id)
         volume_ref = self.db.volume_get(context, volume_id)
@@ -123,6 +123,18 @@ class API(base.Base):
         if volume_ref['encryption_key_id'] is not None:
             raise exception.InvalidVolume(
                 reason=_("transferring encrypted volume is not supported"))
+
+        if not no_snapshots:
+            snapshots = self.db.snapshot_get_all_for_volume(context, volume_id)
+            for snapshot in snapshots:
+                if snapshot['status'] != "available":
+                    msg = _("snapshot: %s status must be "
+                            "available") % snapshot['id']
+                    raise exception.InvalidSnapshot(reason=msg)
+                if snapshot.get('encryption_key_id'):
+                    msg = _("snapshot: %s encrypted snapshots cannot be "
+                            "transferred") % snapshot['id']
+                    raise exception.InvalidSnapshot(reason=msg)
 
         volume_utils.notify_about_volume_usage(context, volume_ref,
                                                "transfer.create.start")
@@ -136,7 +148,8 @@ class API(base.Base):
                         'display_name': display_name,
                         'salt': salt,
                         'crypt_hash': crypt_hash,
-                        'expires_at': None}
+                        'expires_at': None,
+                        'no_snapshots': no_snapshots}
 
         try:
             transfer = self.db.transfer_create(context, transfer_rec)
@@ -149,7 +162,44 @@ class API(base.Base):
                 'volume_id': transfer['volume_id'],
                 'display_name': transfer['display_name'],
                 'auth_key': auth_key,
-                'created_at': transfer['created_at']}
+                'created_at': transfer['created_at'],
+                'no_snapshots': transfer['no_snapshots']}
+
+    def _handle_snapshot_quota(self, context, snapshots, volume_type_id,
+                               donor_id):
+        snapshots_num = len(snapshots)
+        volume_sizes = 0
+        if not CONF.no_snapshot_gb_quota:
+            for snapshot in snapshots:
+                volume_sizes += snapshot.volume_size
+        try:
+            reserve_opts = {'snapshots': snapshots_num,
+                            'gigabytes': volume_sizes}
+            QUOTAS.add_volume_type_opts(context,
+                                        reserve_opts,
+                                        volume_type_id)
+            reservations = QUOTAS.reserve(context, **reserve_opts)
+        except exception.OverQuota as e:
+            quota_utils.process_reserve_over_quota(
+                context, e,
+                resource='snapshots',
+                size=volume_sizes)
+
+        try:
+            reserve_opts = {'snapshots': -snapshots_num,
+                            'gigabytes': -volume_sizes}
+            QUOTAS.add_volume_type_opts(context.elevated(),
+                                        reserve_opts,
+                                        volume_type_id)
+            donor_reservations = QUOTAS.reserve(context,
+                                                project_id=donor_id,
+                                                **reserve_opts)
+        except exception.OverQuota as e:
+            donor_reservations = None
+            LOG.exception("Failed to update volume providing snapshots quota:"
+                          " Over quota.")
+
+        return reservations, donor_reservations
 
     def accept(self, context, transfer_id, auth_key):
         """Accept a volume that has been offered for transfer."""
@@ -206,6 +256,15 @@ class API(base.Base):
             LOG.exception("Failed to update quota donating volume"
                           " transfer id %s", transfer_id)
 
+        snap_res = None
+        snap_donor_res = None
+        if transfer['no_snapshots'] is False:
+            snapshots = objects.SnapshotList.get_all_for_volume(
+                context.elevated(), volume_id)
+            volume_type_id = vol_ref.volume_type_id
+            snap_res, snap_donor_res = self._handle_snapshot_quota(
+                context, snapshots, volume_type_id, vol_ref['project_id'])
+
         volume_utils.notify_about_volume_usage(context, vol_ref,
                                                "transfer.accept.start")
         try:
@@ -214,20 +273,31 @@ class API(base.Base):
             self.volume_api.accept_transfer(context,
                                             vol_ref,
                                             context.user_id,
-                                            context.project_id)
+                                            context.project_id,
+                                            transfer['no_snapshots'])
             self.db.transfer_accept(context.elevated(),
                                     transfer_id,
                                     context.user_id,
-                                    context.project_id)
+                                    context.project_id,
+                                    transfer['no_snapshots'])
             QUOTAS.commit(context, reservations)
+            if snap_res:
+                QUOTAS.commit(context, snap_res)
             if donor_reservations:
                 QUOTAS.commit(context, donor_reservations, project_id=donor_id)
+            if snap_donor_res:
+                QUOTAS.commit(context, snap_donor_res, project_id=donor_id)
             LOG.info("Volume %s has been transferred.", volume_id)
         except Exception:
             with excutils.save_and_reraise_exception():
                 QUOTAS.rollback(context, reservations)
+                if snap_res:
+                    QUOTAS.rollback(context, snap_res)
                 if donor_reservations:
                     QUOTAS.rollback(context, donor_reservations,
+                                    project_id=donor_id)
+                if snap_donor_res:
+                    QUOTAS.rollback(context, snap_donor_res,
                                     project_id=donor_id)
 
         vol_ref = self.db.volume_get(context, volume_id)

@@ -449,6 +449,14 @@ donor, or original owner, creates a transfer request and sends the created
 transfer ID and authorization key to the volume recipient. The volume
 recipient, or new owner, accepts the transfer by using the ID and key.
 
+In Rocky, Cinder changes the API behavior for V2 and 3.x < 3.55, snapshots will
+be transferred with volume by default. That means if the volume has some
+snapshots, when a user transfers a volume from one owner to another, then those
+snapshots will be transferred with the volume as well. After microversion 3.55,
+Cinder supports the ability to transfer volume without snapshots. If users
+don't want to transfer snapshots, they need to specify the new optional
+argument `--no_snapshots`.
+
 .. note::
 
    The procedure for volume transfer is intended for projects (both the
@@ -484,10 +492,15 @@ Create a volume transfer request
 
    .. code-block:: console
 
-      $ openstack volume transfer request create <volume>
+      $ openstack volume transfer request create [--no-snapshots] <volume>
 
-    <volume>
-       Name or ID of volume to transfer.
+The arguments to be passed are:
+
+``<volume>``
+Name or ID of volume to transfer.
+
+``--no-snapshots``
+Transfer the volume without snapshots.
 
    The volume must be in an ``available`` state or the request will be
    denied. If the transfer request is valid in the database (that is, it

@@ -405,6 +405,10 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         volume_attachment = db_utils.get_table(engine, 'volume_attachment')
         self.assertIn('connector', volume_attachment.c)
 
+    def _check_123(self, engine, data):
+        volume_transfer = db_utils.get_table(engine, 'transfers')
+        self.assertIn('no_snapshots', volume_transfer.c)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
         self.assert_each_foreign_key_is_part_of_an_index()

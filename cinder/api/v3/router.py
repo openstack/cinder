@@ -38,6 +38,7 @@ from cinder.api.v3 import snapshot_manage
 from cinder.api.v3 import snapshots
 from cinder.api.v3 import volume_manage
 from cinder.api.v3 import volume_metadata
+from cinder.api.v3 import volume_transfer
 from cinder.api.v3 import volumes
 from cinder.api.v3 import workers
 from cinder.api import versions
@@ -192,3 +193,10 @@ class APIRouter(cinder.api.openstack.APIRouter):
             ext_mgr)
         mapper.resource('resource_filter', 'resource_filters',
                         controller=self.resources['resource_filters'])
+
+        self.resources['volume_transfers'] = (
+            volume_transfer.create_resource())
+        mapper.resource("volume_transfer", "volume_transfers",
+                        controller=self.resources['volume_transfers'],
+                        collection={'detail': 'GET'},
+                        member={'accept': 'POST'})

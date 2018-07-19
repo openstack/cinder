@@ -437,3 +437,7 @@ volume APIs.
 3.54
 ----
 Add ``mode`` argument to attachment-create.
+
+3.55
+----
+Support ability to transfer snapshots along with their parent volume.

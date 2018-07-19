@@ -30,7 +30,7 @@ create = {
                 'name': {'oneOf': [{'type': 'string',
                                     'format':
                                         "name_skip_leading_trailing_spaces"},
-                                   {'type': 'null'}]}
+                                   {'type': 'null'}]},
             },
             'required': ['volume_id'],
             'additionalProperties': False,
@@ -54,5 +54,27 @@ accept = {
         },
     },
     'required': ['accept'],
+    'additionalProperties': False,
+}
+
+
+create_v355 = {
+    'type': 'object',
+    'properties': {
+        'transfer': {
+            'type': 'object',
+            'properties': {
+                'volume_id': parameter_types.uuid,
+                'name': {'oneOf': [{'type': 'string',
+                                    'format':
+                                        "name_skip_leading_trailing_spaces"},
+                                   {'type': 'null'}]},
+                'no_snapshots': parameter_types.boolean
+            },
+            'required': ['volume_id'],
+            'additionalProperties': False,
+        },
+    },
+    'required': ['transfer'],
     'additionalProperties': False,
 }
