@@ -73,6 +73,8 @@ class QnapISCSIDriver(san.SanISCSIDriver):
               Compression and CHAP.
         1.2.002:
               Add support for QES fw 2.0.0.
+        1.2.003:
+              Add support for QES fw 2.1.0.
 
     NOTE: Set driver_ssl_cert_verify as True under backend section to
           enable SSL verification.
@@ -81,7 +83,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "QNAP_CI"
 
-    VERSION = '1.2.002'
+    VERSION = '1.2.003'
 
     TIME_INTERVAL = 3
 
@@ -208,7 +210,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                         password=self.configuration.san_password,
                         management_url=self.configuration.qnap_management_url,
                         verify_ssl=self.configuration.driver_ssl_cert_verify))
-            elif "1.1.2" <= fw_version <= "2.0.9999":
+            elif "1.1.2" <= fw_version <= "2.1.9999":
                 LOG.debug('Create TES API Executor')
                 return (QnapAPIExecutorTES(
                     username=self.configuration.san_login,
@@ -216,7 +218,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                     management_url=self.configuration.qnap_management_url,
                     verify_ssl=self.configuration.driver_ssl_cert_verify))
         elif model_type in es_model_types:
-            if "1.1.2" <= fw_version <= "2.0.9999":
+            if "1.1.2" <= fw_version <= "2.1.9999":
                 LOG.debug('Create ES API Executor')
                 return (QnapAPIExecutor(
                     username=self.configuration.san_login,
@@ -391,7 +393,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 LOG.debug('in ES FW before 1.1.2/1.1.3: get_lun_info')
                 del_lun = self.api_executor.get_lun_info(
                     LUNIndex=lun_index)
-            elif "1.1.4" <= fw_version <= "2.0.9999":
+            elif "1.1.4" <= fw_version <= "2.1.9999":
                 LOG.debug('in ES FW after 1.1.4: get_one_lun_info')
                 ret = self.api_executor.get_one_lun_info(lun_index)
                 del_lun = (ET.fromstring(ret['data']).find('LUNInfo')
@@ -830,7 +832,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 LOG.debug('in ES FW before 1.1.2/1.1.3: get_lun_info')
                 selected_lun = self.api_executor.get_lun_info(
                     LUNNAA=lun_naa)
-            elif "1.1.4" <= fw_version <= "2.0.9999":
+            elif "1.1.4" <= fw_version <= "2.1.9999":
                 LOG.debug('in ES FW after 1.1.4: get_one_lun_info')
                 ret = self.api_executor.get_one_lun_info(lun_index)
                 selected_lun = (ET.fromstring(ret['data']).find('LUNInfo')
@@ -883,7 +885,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                     eventlet.sleep(self.TIME_INTERVAL)
                     if(try_times > max_wait_sec or LUNNumber != ""):
                         break
-                elif "1.1.4" <= fw_version <= "2.0.9999":
+                elif "1.1.4" <= fw_version <= "2.1.9999":
                     LOG.debug('in ES FW after 1.1.4: get_one_lun_info')
                     ret = self.api_executor.get_one_lun_info(lun_index)
                     root = ET.fromstring(ret['data'])
@@ -1029,7 +1031,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 LOG.debug('in ES FW before 1.1.2/1.1.3: get_lun_info')
                 selected_lun = self.api_executor.get_lun_info(
                     LUNIndex=lun_index)
-            elif "1.1.4" <= fw_version <= "2.0.9999":
+            elif "1.1.4" <= fw_version <= "2.1.9999":
                 LOG.debug('in ES FW after 1.1.4: get_one_lun_info')
                 ret = self.api_executor.get_one_lun_info(lun_index)
                 selected_lun = (ET.fromstring(ret['data']).find('LUNInfo')
