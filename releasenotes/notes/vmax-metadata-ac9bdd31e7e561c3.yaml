@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Log VMAX specific metadata of a volume if debug is enabled.

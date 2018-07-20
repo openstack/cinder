@@ -430,13 +430,23 @@ class VMAXRest(object):
         :return: version and major_version(e.g. ("V8.4.0.16", "84"))
         """
         version, major_version = None, None
-        target_uri = "/%s/system/version" % U4V_VERSION
-        response = self._get_request(target_uri, 'version')
+        response = self.get_unisphere_version()
         if response and response.get('version'):
             version = response['version']
             version_list = version.split('.')
             major_version = version_list[0][1] + version_list[1]
         return version, major_version
+
+    def get_unisphere_version(self):
+        """Get the unisphere version from the server.
+
+        :returns: version dict
+        """
+        version_url = "/%s/system/version" % U4V_VERSION
+        version_dict = self._get_request(version_url, 'version')
+        if not version_dict:
+            LOG.error("Unisphere version info not found.")
+        return version_dict
 
     def get_srp_by_name(self, array, srp=None):
         """Returns the details of a storage pool.

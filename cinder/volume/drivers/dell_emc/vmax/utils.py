@@ -690,6 +690,36 @@ class VMAXUtils(object):
             return True
         return False
 
+    def derive_default_sg_from_extra_specs(self, extra_specs, rep_mode=None):
+        """Get the name of the default sg from the extra specs.
+
+        :param extra_specs: extra specs
+        :returns: default sg - string
+        """
+        do_disable_compression = self.is_compression_disabled(
+            extra_specs)
+        rep_enabled = self.is_replication_enabled(extra_specs)
+        return self.get_default_storage_group_name(
+            extra_specs[SRP], extra_specs[SLO],
+            extra_specs[WORKLOAD],
+            is_compression_disabled=do_disable_compression,
+            is_re=rep_enabled, rep_mode=rep_mode)
+
+    @staticmethod
+    def merge_dicts(d1, *args):
+        """Merge dictionaries
+
+        :param d1: dict 1
+        :param *args: one or more dicts
+        :returns: merged dict
+        """
+        d2 = {}
+        for d in args:
+            d2 = d.copy()
+            d2.update(d1)
+            d1 = d2
+        return d2
+
     @staticmethod
     def get_temp_failover_grp_name(rep_config):
         """Get the temporary group name used for failover.
