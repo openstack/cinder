@@ -64,6 +64,7 @@ if __name__ == "__main__":
 
     opt_file.write("import itertools\n\n")
 
+    opt_file.write("from keystoneauth1 import loading\n\n")
     # NOTE(geguileo): We need to register all OVOs before importing any other
     # cinder files, otherwise any decorator that uses cinder.objects.YYY will
     # fail with exception AttributeError: 'module' object has no attribute
@@ -166,6 +167,9 @@ if __name__ == "__main__":
                 opt_file.write("                " + opt_line[2])
             else:
                 opt_file.write(opt_line[0])
+        if opts.endswith('service_user_opts'):
+            opt_file.write(
+                "                loading.get_session_conf_options(),\n")
 
     def _retrieve_name(aline):
         if REGISTER_OPT_STR in aline:
