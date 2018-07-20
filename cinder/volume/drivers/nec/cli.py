@@ -34,6 +34,13 @@ LOG = logging.getLogger(__name__)
 retry_msgids = ['iSM31005', 'iSM31015', 'iSM42408', 'iSM42412', 'iSM19411']
 
 
+def get_sleep_time_for_clone(retry_count):
+    if retry_count < 19:
+        return int(10.0 * (1.1 ** retry_count))
+    else:
+        return 60
+
+
 class MStorageISMCLI(object):
     """SSH client."""
 
@@ -682,13 +689,16 @@ class UnpairWait(object):
     def _wait(self, unpair=True):
         timeout = self._local_conf['thread_timeout'] * 24
         start_time = time.time()
+        retry_count = 0
         while True:
             cur_time = time.time()
             if (cur_time - start_time) > timeout:
                 raise exception.APITimeout(_('UnpairWait wait timeout.'))
 
-            LOG.debug('Sleep 60 seconds Start')
-            time.sleep(60)
+            sleep_time = get_sleep_time_for_clone(retry_count)
+            LOG.debug('Sleep %d seconds Start', sleep_time)
+            time.sleep(sleep_time)
+            retry_count += 1
 
             query_status = self._cli.query_MV_RV_status(self._rvname, 'RV')
             if query_status == 'separated':
