@@ -656,7 +656,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
     def ensure_export(self, _ctx, volume):
         self._do_export(_ctx, volume)
 
-    @coordination.synchronized('{self.lock}')
     def _do_export(self, _ctx, volume):
         """Recreate parts of export if necessary.
 
@@ -695,7 +694,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             model_update = {'provider_location': provider_location}
         return model_update
 
-    @coordination.synchronized('{self.lock}')
     def remove_export(self, _ctx, volume):
         """Destroy all resources created to export zvol.
 
