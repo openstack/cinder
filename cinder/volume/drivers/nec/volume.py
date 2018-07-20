@@ -27,7 +27,7 @@ class MStorageISCSIDriver(volume_helper.MStorageDSVDriver,
                           driver.ISCSIDriver):
     """M-Series Storage Snapshot iSCSI Driver."""
 
-    VERSION = '1.10.2'
+    VERSION = '1.10.3'
     WIKI_NAME = 'NEC_Cinder_CI'
 
     def __init__(self, *args, **kwargs):
@@ -69,7 +69,7 @@ class MStorageFCDriver(volume_helper.MStorageDSVDriver,
                        driver.FibreChannelDriver):
     """M-Series Storage Snapshot FC Driver."""
 
-    VERSION = '1.10.2'
+    VERSION = '1.10.3'
     WIKI_NAME = 'NEC_Cinder_CI'
 
     def __init__(self, *args, **kwargs):
