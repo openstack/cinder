@@ -331,6 +331,7 @@ class VMAXVolumeMetadata(object):
             port_group=port_group,
             host=host, is_multipath=is_multipath,
             identifier_name=self.utils.get_volume_element_name(volume.id),
+            openstack_name=volume.display_name,
             mv_list=mv_list, sg_list=sg_list)
 
         volume_metadata = self.update_volume_info_metadata(
@@ -357,6 +358,7 @@ class VMAXVolumeMetadata(object):
             workload=extra_specs[utils.WORKLOAD], srp=extra_specs[utils.SRP],
             default_sg_name=default_sg,
             identifier_name=self.utils.get_volume_element_name(volume.id),
+            openstack_name=volume.display_name,
             mv_list=mv_list, sg_list=sg_list
         )
         volume_metadata = self.update_volume_info_metadata(
@@ -383,6 +385,7 @@ class VMAXVolumeMetadata(object):
             workload=extra_specs[utils.WORKLOAD],
             srp=extra_specs[utils.SRP],
             identifier_name=self.utils.get_volume_element_name(volume.id),
+            openstack_name=volume.display_name,
             is_compression_disabled=self.utils.is_compression_disabled(
                 extra_specs))
         volume_metadata = self.update_volume_info_metadata(
@@ -416,6 +419,7 @@ class VMAXVolumeMetadata(object):
                 srp=extra_specs[utils.SRP],
                 identifier_name=(
                     self.utils.get_volume_element_name(source.id)),
+                openstack_name=source.display_name,
                 snapshot_count=snapshot_count,
                 last_ss_name=last_ss_name)
             volume_metadata = self.update_volume_info_metadata(
@@ -494,6 +498,7 @@ class VMAXVolumeMetadata(object):
             workload=extra_specs[utils.WORKLOAD],
             srp=extra_specs[utils.SRP],
             identifier_name=self.utils.get_volume_element_name(volume.id),
+            openstack_name=volume.display_name,
             source_volid=volume.source_volid,
             group_name=group_name, group_id=group_id,
             rdf_group_no=rdf_group_no,
@@ -558,6 +563,7 @@ class VMAXVolumeMetadata(object):
             workload=extra_specs[utils.WORKLOAD],
             srp=extra_specs[utils.SRP],
             identifier_name=self.utils.get_volume_element_name(volume.id),
+            openstack_name=volume.display_name,
             source_volid=volume.source_volid,
             rdf_group_no=rdf_group, remote_array=array,
             target_device_id=device_id, vol_grp_name=vol_grp_name,
@@ -605,6 +611,7 @@ class VMAXVolumeMetadata(object):
             workload=extra_specs[utils.WORKLOAD],
             srp=extra_specs[utils.SRP],
             identifier_name=self.utils.get_volume_element_name(volume.id),
+            openstack_name=volume.display_name,
             source_volid=volume.source_volid,
             rdf_group_no=rdf_group_no,
             target_name=target_name, remote_array=remote_array,
@@ -618,7 +625,7 @@ class VMAXVolumeMetadata(object):
 
     @debug_required
     def capture_retype_info(
-            self, volume_id, volume_size, device_id, array, srp, target_slo,
+            self, volume, device_id, array, srp, target_slo,
             target_workload, target_sg_name, is_rep_enabled, rep_mode,
             is_compression_disabled):
         """Captures manage existing info in volume metadata
@@ -636,18 +643,33 @@ class VMAXVolumeMetadata(object):
         """
         operation = "retype"
         datadict = self.gather_volume_info(
-            volume_id, operation, False, volume_size=volume_size,
+            volume.id, operation, False, volume_size=volume.size,
             device_id=device_id,
             target_sg_name=target_sg_name,
             serial_number=array,
             target_service_level=target_slo,
             target_workload=target_workload,
             srp=srp,
-            identifier_name=self.utils.get_volume_element_name(volume_id),
+            identifier_name=self.utils.get_volume_element_name(volume.id),
+            openstack_name=volume.display_name,
             is_rep_enabled=('yes' if is_rep_enabled else 'no'),
             rep_mode=rep_mode, is_compression_disabled = (
                 'yes' if is_compression_disabled else 'no')
         )
+        volume_metadata = self.update_volume_info_metadata(
+            datadict, self.version_dict)
+        self.print_pretty_table(volume_metadata)
+
+    @debug_required
+    def capture_delete_info(self, volume):
+        """Captures delete info in volume metadata
+
+        :param volume: the volume object
+        """
+        datadict = self.gather_volume_info(
+            volume.id, 'delete', False,
+            identifier_name=self.utils.get_volume_element_name(volume.id),
+            openstack_name=volume.display_name)
         volume_metadata = self.update_volume_info_metadata(
             datadict, self.version_dict)
         self.print_pretty_table(volume_metadata)
