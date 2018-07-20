@@ -20,7 +20,8 @@ from oslo_utils import uuidutils
 import six
 
 from cinder import exception
-import cinder.privsep
+from cinder.privsep import nvmcli
+import cinder.privsep.utils
 from cinder import utils
 from cinder.volume.targets import nvmeof
 
@@ -78,7 +79,7 @@ class NVMET(nvmeof.NVMeOF):
             tmp_fd.write(json.dumps(nvmf_subsystems))
             tmp_fd.flush()
             try:
-                out, err = cinder.privsep.nvmcli.restore(tmp_fd.name)
+                out, err = nvmcli.restore(tmp_fd.name)
             except putils.ProcessExecutionError:
                 with excutils.save_and_reraise_exception():
                     LOG.exception('Error from nvmetcli restore')
@@ -181,7 +182,7 @@ class NVMET(nvmeof.NVMeOF):
 
         # nvmetcli doesn't support printing to stdout yet,
         try:
-            out, err = cinder.privsep.nvmcli.save(tmp_file_path)
+            out, err = nvmcli.save(tmp_file_path)
         except putils.ProcessExecutionError:
             with excutils.save_and_reraise_exception():
                 LOG.exception('Error from nvmetcli save')
