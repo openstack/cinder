@@ -559,7 +559,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         # Add flags for supported features
         data['consistencygroup_support'] = True
         data['thin_provisioning_support'] = True
-        data['multiattach'] = False
+        data['multiattach'] = True
         data['QoS_support'] = False
 
         # Add capacity info for scheduler
