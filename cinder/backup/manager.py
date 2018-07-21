@@ -96,6 +96,7 @@ MAPPING = {
     # driver when it imports google.auth
     'cinder.backup.drivers.google': 'cinder.backup.drivers.gcs',
 }
+SERVICE_PGRP = '' if os.name == 'nt' else os.getpgrp()
 
 
 # TODO(geguileo): Once Eventlet issue #432 gets fixed we can just tpool.execute
@@ -190,14 +191,16 @@ class BackupManager(manager.ThreadPoolManager):
         self.backup_rpcapi = backup_rpcapi.BackupAPI()
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
 
-    @utils.synchronized('cleanup_incomplete_backups',
+    @utils.synchronized('cleanup_incomplete_backups_%s' % SERVICE_PGRP,
                         external=True, delay=0.1)
     def _cleanup_incomplete_backup_operations(self, ctxt):
         # Only the first launched process should do the cleanup, the others
         # have waited on the lock for the first one to finish the cleanup and
         # can now continue with the start process.
         if self._process_number != 1:
-            LOG.debug("Process #%s skips cleanup.", self._process_number)
+            LOG.debug("Process #%s %sskips cleanup.",
+                      self._process_number,
+                      '(pgid=%s) ' % SERVICE_PGRP if SERVICE_PGRP else '')
             return
 
         LOG.info("Cleaning up incomplete backup operations.")
