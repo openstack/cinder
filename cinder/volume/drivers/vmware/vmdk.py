@@ -335,7 +335,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     'storage_protocol': 'vmdk',
                     'reserved_percentage': 0,
                     'total_capacity_gb': 'unknown',
-                    'free_capacity_gb': 'unknown'}
+                    'free_capacity_gb': 'unknown',
+                    'shared_targets': False}
             self._stats = data
         return self._stats
 

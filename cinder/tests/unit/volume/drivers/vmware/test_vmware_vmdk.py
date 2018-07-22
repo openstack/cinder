@@ -117,6 +117,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertEqual(0, stats['reserved_percentage'])
         self.assertEqual('unknown', stats['total_capacity_gb'])
         self.assertEqual('unknown', stats['free_capacity_gb'])
+        self.assertFalse(stats['shared_targets'])
 
     def _create_volume_dict(self,
                             vol_id=VOL_ID,
