@@ -719,6 +719,7 @@ class SCCommonDriver(driver.ManageableVD,
             data['thin_provisioning_support'] = True
             data['QoS_support'] = False
             data['replication_enabled'] = self.replication_enabled
+            data['multiattach'] = True
             if self.replication_enabled:
                 data['replication_type'] = ['async', 'sync']
                 data['replication_count'] = len(self.backends)
