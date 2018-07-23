@@ -87,7 +87,7 @@ with the prefix "XIV" and in the ``.pem`` format. For example: XIV-my_cert.pem.
 
 * In order to prevent the CVE-2014-3566 MITM attack, follow the OpenStack
   community directions:
-  (http://osdir.com/ml/openstack-dev/2014-10/msg01349.html).
+  (http://osdir.com/openstack-developers/msg01349.html).
 
 Troubleshooting
 ~~~~~~~~~~~~~~~
