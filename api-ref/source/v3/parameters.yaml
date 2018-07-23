@@ -444,6 +444,14 @@ attach_mode:
   in: body
   required: true
   type: string
+attach_mode_1:
+  description: |
+    The attach mode of attachment, acceptable values are
+    read-only ('ro') and read-and-write ('rw').
+  in: body
+  required: false
+  type: string
+  min_version: 3.54
 attach_status:
   description: |
     The volume attach status.

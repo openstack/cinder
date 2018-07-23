@@ -256,6 +256,7 @@ Request
    - instance_uuid: instance_uuid_1
    - connector: connector
    - volume_uuid: volume_id_7
+   - mode: attach_mode_1
 
 Request Example
 ---------------
