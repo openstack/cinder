@@ -45,12 +45,13 @@ class VolumeTransferAPITestCase(test.TestCase):
     def _create_transfer(self, volume_id=fake.VOLUME_ID,
                          display_name='test_transfer'):
         """Create a transfer object."""
-        return self.volume_transfer_api.create(context.get_admin_context(),
-                                               volume_id,
-                                               display_name)
+        transfer = self.volume_transfer_api.create(context.get_admin_context(),
+                                                   volume_id, display_name)
+        self.addCleanup(db.transfer_destroy, context.get_admin_context(),
+                        transfer['id'])
+        return transfer
 
-    @staticmethod
-    def _create_volume(display_name='test_volume',
+    def _create_volume(self, display_name='test_volume',
                        display_description='this is a test volume',
                        status='available',
                        size=1,
@@ -67,7 +68,10 @@ class VolumeTransferAPITestCase(test.TestCase):
         vol['display_description'] = display_description
         vol['attach_status'] = attach_status
         vol['availability_zone'] = 'fake_zone'
-        return db.volume_create(context.get_admin_context(), vol)['id']
+        volume_id = db.volume_create(context.get_admin_context(), vol)['id']
+        self.addCleanup(db.volume_destroy, context.get_admin_context(),
+                        volume_id)
+        return volume_id
 
     def test_show_transfer(self):
         volume_id = self._create_volume(size=5)
@@ -84,9 +88,6 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual('test_transfer', res_dict['transfer']['name'])
         self.assertEqual(transfer['id'], res_dict['transfer']['id'])
         self.assertEqual(volume_id, res_dict['transfer']['volume_id'])
-
-        db.transfer_destroy(context.get_admin_context(), transfer['id'])
-        db.volume_destroy(context.get_admin_context(), volume_id)
 
     def test_list_transfers_json(self):
         volume_id_1 = self._create_volume(size=5)
@@ -108,12 +109,8 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(transfer1['id'], res_dict['transfers'][0]['id'])
         self.assertEqual('test_transfer', res_dict['transfers'][0]['name'])
         self.assertEqual(4, len(res_dict['transfers'][1]))
+        self.assertEqual(transfer2['id'], res_dict['transfers'][1]['id'])
         self.assertEqual('test_transfer', res_dict['transfers'][1]['name'])
-
-        db.transfer_destroy(context.get_admin_context(), transfer2['id'])
-        db.transfer_destroy(context.get_admin_context(), transfer1['id'])
-        db.volume_destroy(context.get_admin_context(), volume_id_1)
-        db.volume_destroy(context.get_admin_context(), volume_id_2)
 
     def test_list_transfers_detail_json(self):
         volume_id_1 = self._create_volume(size=5)
@@ -143,11 +140,6 @@ class VolumeTransferAPITestCase(test.TestCase):
                          res_dict['transfers'][1]['name'])
         self.assertEqual(transfer2['id'], res_dict['transfers'][1]['id'])
         self.assertEqual(volume_id_2, res_dict['transfers'][1]['volume_id'])
-
-        db.transfer_destroy(context.get_admin_context(), transfer2['id'])
-        db.transfer_destroy(context.get_admin_context(), transfer1['id'])
-        db.volume_destroy(context.get_admin_context(), volume_id_2)
-        db.volume_destroy(context.get_admin_context(), volume_id_1)
 
     def test_list_transfers_detail_json_with_no_snapshots(self):
         volume_id_1 = self._create_volume(size=5)
@@ -180,11 +172,6 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(volume_id_2, res_dict['transfers'][1]['volume_id'])
         self.assertEqual(False, res_dict['transfers'][1]['no_snapshots'])
 
-        db.transfer_destroy(context.get_admin_context(), transfer2['id'])
-        db.transfer_destroy(context.get_admin_context(), transfer1['id'])
-        db.volume_destroy(context.get_admin_context(), volume_id_2)
-        db.volume_destroy(context.get_admin_context(), volume_id_1)
-
     def test_create_transfer_json(self):
         volume_id = self._create_volume(status='available', size=5)
         body = {"transfer": {"name": "transfer1",
@@ -207,8 +194,6 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertIn('created_at', res_dict['transfer'])
         self.assertIn('name', res_dict['transfer'])
         self.assertIn('volume_id', res_dict['transfer'])
-
-        db.volume_destroy(context.get_admin_context(), volume_id)
 
     def test_create_transfer_with_no_snapshots(self):
         volume_id = self._create_volume(status='available', size=5)
@@ -235,11 +220,10 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertIn('volume_id', res_dict['transfer'])
         self.assertIn('no_snapshots', res_dict['transfer'])
 
-        db.volume_destroy(context.get_admin_context(), volume_id)
-
     def test_delete_transfer_awaiting_transfer(self):
         volume_id = self._create_volume()
-        transfer = self._create_transfer(volume_id)
+        transfer = self.volume_transfer_api.create(context.get_admin_context(),
+                                                   volume_id, 'test_transfer')
         req = webob.Request.blank('/v3/%s/volume_transfers/%s' % (
                                   fake.PROJECT_ID, transfer['id']))
         req.method = 'DELETE'
@@ -267,11 +251,10 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(db.volume_get(context.get_admin_context(),
                          volume_id)['status'], 'available')
 
-        db.volume_destroy(context.get_admin_context(), volume_id)
-
     def test_accept_transfer_volume_id_specified_json(self):
         volume_id = self._create_volume()
-        transfer = self._create_transfer(volume_id)
+        transfer = self.volume_transfer_api.create(context.get_admin_context(),
+                                                   volume_id, 'test_transfer')
 
         svc = self.start_service('volume', host='fake_host')
         body = {"accept": {"auth_key": transfer['auth_key']}}
