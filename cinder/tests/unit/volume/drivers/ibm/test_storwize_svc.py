@@ -5115,6 +5115,23 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                 if fcmap['target'] == vol1['name']:
                     self.assertEqual('149', fcmap['copyrate'])
 
+        # create cloned volume with new type diffrent iogrp
+        key_specs_old = {'iogrp': '0'}
+        key_specs_new = {'iogrp': '1'}
+        old_type_ref = volume_types.create(ctxt, 'oldio', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'newio', key_specs_new)
+        old_io_type = objects.VolumeType.get_by_id(ctxt,
+                                                   old_type_ref['id'])
+        new_io_type = objects.VolumeType.get_by_id(ctxt,
+                                                   new_type_ref['id'])
+
+        volume3 = self._generate_vol_info(old_io_type)
+        self.driver.create_volume(volume3)
+        volume4 = self._generate_vol_info(new_io_type)
+        self.driver.create_cloned_volume(volume4, volume)
+        attributes = self.driver._helpers.get_vdisk_attributes(volume4['name'])
+        self.assertEqual('1', attributes['IO_group_id'])
+
     def test_storwize_svc_create_volume_from_snapshot(self):
         vol1 = self._create_volume()
         snap1 = self._generate_snap_info(vol1.id)
@@ -7163,9 +7180,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         pool = 'openstack3'
         opts['iogrp'] = '0,1'
         state['available_iogrps'] = [0, 1, 2, 3]
-        self.assertRaises(exception.InvalidInput,
-                          self.driver._helpers.select_io_group,
-                          state, opts, pool)
+        iog = self.driver._helpers.select_io_group(state, opts, pool)
+        self.assertEqual(0, iog)
         state['storage_nodes']['2']['site_id'] = '2'
 
         pool = 'openstack2'

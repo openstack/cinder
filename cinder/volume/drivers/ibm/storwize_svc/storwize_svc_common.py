@@ -869,22 +869,23 @@ class StorwizeHelpers(object):
                 if pool_data['site_id'] == node['site_id']:
                     site_iogrp.append(node['IO_group'])
             site_iogrp = list(map(int, site_iogrp))
-            iog_list = list(set(site_iogrp).intersection(iog_list))
-            if len(iog_list) == 0:
-                raise exception.InvalidInput(
-                    reason=_('The storage system topology is hyperswap or '
-                             'stretched, The site_id of pool %(pool)s is '
-                             '%(site_id)s, the available I/O groups on this '
-                             'site is %(site_iogrp)s, but the given I/O'
-                             ' group(s) is %(iogrp)s.')
-                    % {'pool': pool, 'site_id': pool_data['site_id'],
-                       'site_iogrp': site_iogrp, 'iogrp': opts['iogrp']})
-
+            iogroup_list = list(set(site_iogrp).intersection(iog_list))
+            if len(iogroup_list) == 0:
+                LOG.warning('The storage system topology is hyperswap or '
+                            'stretched, The site_id of pool %(pool)s is '
+                            '%(site_id)s, the available I/O groups on this '
+                            'site is %(site_iogrp)s, but the given I/O'
+                            ' group(s) is %(iogrp)s.',
+                            {'pool': pool, 'site_id': pool_data['site_id'],
+                             'site_iogrp': site_iogrp, 'iogrp': opts['iogrp']})
+                iogroup_list = iog_list
+        else:
+            iogroup_list = iog_list
         iog_vdc = self.get_vdisk_count_by_io_group()
         LOG.debug("IO group current balance %s", iog_vdc)
-        min_vdisk_count = iog_vdc[iog_list[0]]
-        selected_iog = iog_list[0]
-        for iog in iog_list:
+        min_vdisk_count = iog_vdc[iogroup_list[0]]
+        selected_iog = iogroup_list[0]
+        for iog in iogroup_list:
             if iog_vdc[iog] < min_vdisk_count:
                 min_vdisk_count = iog_vdc[iog]
                 selected_iog = iog
@@ -2272,7 +2273,7 @@ class StorwizeHelpers(object):
         LOG.debug('Leave: delete_vdisk: vdisk %s.', vdisk)
 
     def create_copy(self, src, tgt, src_id, config, opts,
-                    full_copy, pool=None):
+                    full_copy, state, pool=None):
         """Create a new snapshot using FlashCopy."""
         LOG.debug('Enter: create_copy: snapshot %(src)s to %(tgt)s.',
                   {'tgt': tgt, 'src': src})
@@ -2289,7 +2290,7 @@ class StorwizeHelpers(object):
         if not pool:
             pool = src_attrs['mdisk_grp_name']
 
-        opts['iogrp'] = src_attrs['IO_group_id']
+        opts['iogrp'] = self.select_io_group(state, opts, pool)
         self.create_vdisk(tgt, src_size, 'b', pool, opts)
         timeout = config.storwize_svc_flashcopy_timeout
         try:
@@ -3136,7 +3137,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         self._helpers.create_copy(snapshot['volume_name'], snapshot['name'],
                                   snapshot['volume_id'], self.configuration,
-                                  opts, False, pool=pool)
+                                  opts, False, self._state, pool=pool)
 
     def delete_snapshot(self, snapshot):
         self._helpers.delete_vdisk(snapshot['name'], False)
@@ -3151,7 +3152,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         pool = utils.extract_host(volume['host'], 'pool')
         self._helpers.create_copy(snapshot['name'], volume['name'],
                                   snapshot['id'], self.configuration,
-                                  opts, True, pool=pool)
+                                  opts, True, self._state, pool=pool)
         # The volume size is equal to the snapshot size in most
         # of the cases. But in some scenario, the volume size
         # may be bigger than the source volume size.
@@ -3190,7 +3191,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         pool = utils.extract_host(tgt_volume['host'], 'pool')
         self._helpers.create_copy(src_volume['name'], tgt_volume['name'],
                                   src_volume['id'], self.configuration,
-                                  opts, True, pool=pool)
+                                  opts, True, self._state, pool=pool)
 
         # The source volume size is equal to target volume size
         # in most of the cases. But in some scenarios, the target
