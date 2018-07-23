@@ -32,6 +32,7 @@ from cinder import exception
 from cinder.group import api as group_api
 from cinder import objects
 from cinder.objects import fields
+from cinder.policies import volumes as policy
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
@@ -528,6 +529,31 @@ class VolumeApiTest(test.TestCase):
                          res_dict['volume']['name'])
         self.assertEqual(ex['volume']['description'],
                          res_dict['volume']['description'])
+
+    @ddt.data(mv.get_prior_version(mv.VOLUME_DELETE_FORCE),
+              mv.VOLUME_DELETE_FORCE)
+    @mock.patch('cinder.context.RequestContext.authorize')
+    def test_volume_delete_with_force(self, request_version, mock_authorize):
+        mock_delete = self.mock_object(volume_api.API, "delete")
+        self.mock_object(volume_api.API, 'get', return_value="fake_volume")
+
+        req = fakes.HTTPRequest.blank('/v3/volumes/fake_id?force=True')
+        req.api_version_request = mv.get_api_version(request_version)
+        self.controller.delete(req, 'fake_id')
+        context = req.environ['cinder.context']
+        if request_version == mv.VOLUME_DELETE_FORCE:
+            mock_authorize.assert_called_with(policy.FORCE_DELETE_POLICY,
+                                              target_obj="fake_volume")
+            mock_delete.assert_called_with(context,
+                                           "fake_volume",
+                                           cascade=False,
+                                           force=True)
+        else:
+            mock_authorize.assert_not_called()
+            mock_delete.assert_called_with(context,
+                                           "fake_volume",
+                                           cascade=False,
+                                           force=False)
 
     @ddt.data(mv.GROUP_SNAPSHOTS, mv.get_prior_version(mv.GROUP_SNAPSHOTS))
     @mock.patch.object(group_api.API, 'get')
