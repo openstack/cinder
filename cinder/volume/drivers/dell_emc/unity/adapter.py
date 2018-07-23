@@ -348,12 +348,14 @@ class CommonAdapter(object):
         # No target info for iSCSI driver
         return []
 
-    def _detach_and_delete_host(self, host_name, lun_or_snap):
+    def _detach_and_delete_host(self, host_name, lun_or_snap,
+                                is_multiattach_to_host=False):
         @utils.lock_if(self.to_lock_host, '{lock_name}')
         def _lock_helper(lock_name):
             # Only get the host from cache here
             host = self.client.create_host_wo_lock(host_name)
-            self.client.detach(host, lun_or_snap)
+            if not is_multiattach_to_host:
+                self.client.detach(host, lun_or_snap)
             host.update()  # need update to get the latest `host_luns`
             targets = self.filter_targets_by_host(host)
             if self.remove_empty_host and not host.host_luns:
@@ -368,14 +370,16 @@ class CommonAdapter(object):
         # No return data from terminate_connection for iSCSI driver
         return {}
 
-    def _terminate_connection(self, lun_or_snap, connector):
+    def _terminate_connection(self, lun_or_snap, connector,
+                              is_multiattach_to_host=False):
         is_force_detach = connector is None
         data = {}
         if is_force_detach:
             self.client.detach_all(lun_or_snap)
         else:
-            targets = self._detach_and_delete_host(connector['host'],
-                                                   lun_or_snap)
+            targets = self._detach_and_delete_host(
+                connector['host'], lun_or_snap,
+                is_multiattach_to_host=is_multiattach_to_host)
             data = self.get_terminate_connection_info(connector, targets)
         return {
             'driver_volume_type': self.driver_volume_type,
@@ -385,7 +389,14 @@ class CommonAdapter(object):
     @cinder_utils.trace
     def terminate_connection(self, volume, connector):
         lun = self.client.get_lun(lun_id=self.get_lun_id(volume))
-        return self._terminate_connection(lun, connector)
+        # None `connector` indicates force detach, then detach all even the
+        # volume is multi-attached.
+        multiattach_flag = (connector is not None and
+                            utils.is_multiattach_to_host(
+                                volume.volume_attachment,
+                                connector['host']))
+        return self._terminate_connection(
+            lun, connector, is_multiattach_to_host=multiattach_flag)
 
     def get_connector_uids(self, connector):
         return None
@@ -443,7 +454,9 @@ class CommonAdapter(object):
             'thin_provisioning_support': True,
             'thick_provisioning_support': True,
             'max_over_subscription_ratio': (
-                self.max_over_subscription_ratio)}
+                self.max_over_subscription_ratio),
+            'multiattach': True
+        }
 
     def get_lun_id(self, volume):
         """Retrieves id of the volume's backing LUN.

@@ -34,6 +34,7 @@ Supported operations
 - Efficient non-disruptive volume backup.
 - Revert a volume to a snapshot.
 - Create thick volumes.
+- Attach a volume to multiple servers simultaneously (multiattach).
 
 Driver configuration
 ~~~~~~~~~~~~~~~~~~~~

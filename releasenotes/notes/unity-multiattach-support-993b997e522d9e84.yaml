@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Dell EMC Unity: Implements `bp unity-multiattach-support
+    <https://blueprints.launchpad.net/cinder/+spec/unity-multiattach-support>`__
+    to support attaching a volume to multiple servers simultaneously.
+
