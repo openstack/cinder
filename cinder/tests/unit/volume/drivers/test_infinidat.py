@@ -562,6 +562,13 @@ class InfiniboxDriverTestCaseFC(InfiniboxDriverTestCaseBase):
         result = self.driver.initialize_connection(test_volume, connector)
         self.assertEqual(1, result["data"]["target_lun"])
 
+    def test_validate_connector(self):
+        fc_connector = {'wwpns': [TEST_WWN_1, TEST_WWN_2]}
+        iscsi_connector = {'initiator': TEST_IQN}
+        self.driver.validate_connector(fc_connector)
+        self.assertRaises(exception.InvalidConnectorException,
+                          self.driver.validate_connector, iscsi_connector)
+
 
 class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
     def setUp(self):
@@ -627,6 +634,13 @@ class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
 
     def test_terminate_connection(self):
         self.driver.terminate_connection(test_volume, test_connector)
+
+    def test_validate_connector(self):
+        fc_connector = {'wwpns': [TEST_WWN_1, TEST_WWN_2]}
+        iscsi_connector = {'initiator': TEST_IQN}
+        self.driver.validate_connector(iscsi_connector)
+        self.assertRaises(exception.InvalidConnectorException,
+                          self.driver.validate_connector, fc_connector)
 
 
 class InfiniboxDriverTestCaseQoS(InfiniboxDriverTestCaseBase):
