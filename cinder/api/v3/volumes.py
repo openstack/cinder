@@ -57,7 +57,7 @@ class VolumeController(volumes_v2.VolumeController):
         force = False
 
         params = ""
-        if req_version.matches(mv.VOLUME_LIST_BOOTABLE):
+        if req_version.matches(mv.VOLUME_DELETE_FORCE):
             force = utils.get_bool_param('force', req.params)
             if cascade or force:
                 params = "(cascade: %(c)s, force: %(f)s)" % {'c': cascade,
