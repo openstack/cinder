@@ -185,6 +185,15 @@ FC_TARGET_INFO_UNMAP = {'driver_volume_type': 'fibre_channel',
                         'data': {'target_wwn': FC_TARGET_WWPNS,
                                  'initiator_target_map': FC_I_T_MAP}}
 
+ISCSI_ONE_MAP_LIST = [{'initiator-group': 'openstack-faketgt1',
+                       'vserver': 'vserver_123', 'lun-id': '1'}]
+ISCSI_MULTI_MAP_LIST = [{'initiator-group': 'openstack-faketgt1',
+                        'vserver': 'vserver_123', 'lun-id': '1'},
+                        {'initiator-group': 'openstack-faketgt2',
+                         'vserver': 'vserver_123', 'lun-id': '2'}
+                        ]
+ISCSI_EMPTY_MAP_LIST = []
+
 IGROUP1_NAME = 'openstack-igroup1'
 
 IGROUP1 = {

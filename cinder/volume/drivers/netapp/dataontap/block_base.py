@@ -440,9 +440,19 @@ class NetAppBlockStorageLibrary(object):
 
     def _unmap_lun(self, path, initiator_list):
         """Unmaps a LUN from given initiator."""
-        (igroup_name, _lun_id) = self._find_mapped_lun_igroup(path,
-                                                              initiator_list)
-        self.zapi_client.unmap_lun(path, igroup_name)
+
+        if len(initiator_list) != 0:
+            lun_unmap_list = []
+            (igroup_name, _) = self._find_mapped_lun_igroup(
+                path, initiator_list)
+            lun_unmap_list.append((path, igroup_name))
+        else:
+            lun_maps = self.zapi_client.get_lun_map(path)
+            lun_unmap_list = [(path, lun_m['initiator-group'])
+                              for lun_m in lun_maps]
+
+        for _path, _igroup_name in lun_unmap_list:
+            self.zapi_client.unmap_lun(_path, _igroup_name)
 
     def _find_mapped_lun_igroup(self, path, initiator_list):
         """Find an igroup for a LUN mapped to the given initiator(s)."""
@@ -891,14 +901,21 @@ class NetAppBlockStorageLibrary(object):
         longer access it.
         """
 
-        initiator_name = connector['initiator']
         name = volume['name']
+        if connector is None:
+            initiators = []
+            LOG.debug('Unmapping LUN %(name)s from all initiators',
+                      {'name': name})
+        else:
+            initiators = [connector['initiator']]
+            LOG.debug("Unmapping LUN %(name)s from the initiator "
+                      "%(initiator_name)s", {'name': name,
+                                             'initiator_name': initiators})
+
         metadata = self._get_lun_attr(name, 'metadata')
         path = metadata['Path']
-        self._unmap_lun(path, [initiator_name])
-        LOG.debug("Unmapped LUN %(name)s from the initiator "
-                  "%(initiator_name)s",
-                  {'name': name, 'initiator_name': initiator_name})
+
+        self._unmap_lun(path, initiators)
 
     def initialize_connection_fc(self, volume, connector):
         """Initializes the connection and returns connection info.
@@ -990,21 +1007,27 @@ class NetAppBlockStorageLibrary(object):
                          an empty dict for the 'data' key
         """
 
-        initiators = [fczm_utils.get_formatted_wwn(wwpn)
-                      for wwpn in connector['wwpns']]
         name = volume['name']
+        if connector is None:
+            initiators = []
+            LOG.debug('Unmapping LUN %(name)s from all initiators',
+                      {'name': name})
+        else:
+            initiators = [fczm_utils.get_formatted_wwn(wwpn)
+                          for wwpn in connector['wwpns']]
+            LOG.debug("Unmapping LUN %(name)s from the initiators "
+                      "%(initiator_name)s", {'name': name,
+                                             'initiator_name': initiators})
+
         metadata = self._get_lun_attr(name, 'metadata')
         path = metadata['Path']
 
         self._unmap_lun(path, initiators)
 
-        LOG.debug("Unmapped LUN %(name)s from the initiator %(initiators)s",
-                  {'name': name, 'initiators': initiators})
-
         info = {'driver_volume_type': 'fibre_channel',
                 'data': {}}
 
-        if not self._has_luns_mapped_to_initiators(initiators):
+        if connector and not self._has_luns_mapped_to_initiators(initiators):
             # No more exports for this host, so tear down zone.
             LOG.info("Need to remove FC Zone, building initiator target map")
 
