@@ -198,8 +198,10 @@ class VolumeAdminController(AdminController):
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-migrate_volume')
-    @validation.schema(admin_actions.migrate_volume, '2.0', '3.15')
-    @validation.schema(admin_actions.migrate_volume_v316, '3.16')
+    @validation.schema(admin_actions.migrate_volume, mv.V2_BASE_VERSION,
+                       mv.get_prior_version(mv.VOLUME_MIGRATE_CLUSTER))
+    @validation.schema(admin_actions.migrate_volume_v316,
+                       mv.VOLUME_MIGRATE_CLUSTER)
     def _migrate_volume(self, req, id, body):
         """Migrate a volume to the specified host."""
         context = req.environ['cinder.context']

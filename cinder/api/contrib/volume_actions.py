@@ -193,8 +193,10 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-volume_upload_image')
-    @validation.schema(volume_action.volume_upload_image, '2.0', '3.0')
-    @validation.schema(volume_action.volume_upload_image_v31, '3.1')
+    @validation.schema(volume_action.volume_upload_image, mv.V2_BASE_VERSION,
+                       mv.get_prior_version(mv.UPLOAD_IMAGE_PARAMS))
+    @validation.schema(volume_action.volume_upload_image_v31,
+                       mv.UPLOAD_IMAGE_PARAMS)
     def _volume_upload_image(self, req, id, body):
         """Uploads the specified volume to image service."""
         context = req.environ['cinder.context']

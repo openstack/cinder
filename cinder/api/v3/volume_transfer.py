@@ -18,6 +18,7 @@ from six.moves import http_client
 from webob import exc
 
 from cinder.api.contrib import volume_transfer as volume_transfer_v2
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.schemas import volume_transfer
 from cinder.api import validation
@@ -30,8 +31,9 @@ class VolumeTransferController(volume_transfer_v2.VolumeTransferController):
     """The transfer API controller for the OpenStack API V3."""
 
     @wsgi.response(http_client.ACCEPTED)
-    @validation.schema(volume_transfer.create, '3.0', '3.54')
-    @validation.schema(volume_transfer.create_v355, '3.55')
+    @validation.schema(volume_transfer.create, mv.BASE_VERSION,
+                       mv.get_prior_version(mv.TRANSFER_WITH_SNAPSHOTS))
+    @validation.schema(volume_transfer.create_v355, mv.TRANSFER_WITH_SNAPSHOTS)
     def create(self, req, body):
         """Create a new volume transfer."""
         LOG.debug('Creating new volume transfer %s', body)

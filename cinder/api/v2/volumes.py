@@ -26,6 +26,7 @@ from webob import exc
 
 from cinder.api import common
 from cinder.api.contrib import scheduler_hints
+from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.schemas import volumes
 from cinder.api.v2.views import volumes as volume_views
@@ -175,7 +176,7 @@ class VolumeController(wsgi.Controller):
         raise exc.HTTPBadRequest(explanation=msg)
 
     @wsgi.response(http_client.ACCEPTED)
-    @validation.schema(volumes.create, '2.0')
+    @validation.schema(volumes.create, mv.V2_BASE_VERSION)
     def create(self, req, body):
         """Creates a new volume."""
 
@@ -276,8 +277,10 @@ class VolumeController(wsgi.Controller):
         """Return volume search options allowed by non-admin."""
         return CONF.query_volume_filters
 
-    @validation.schema(volumes.update, '2.0', '3.52')
-    @validation.schema(volumes.update_volume_v353, '3.53')
+    @validation.schema(volumes.update, mv.V2_BASE_VERSION,
+                       mv.get_prior_version(mv.SUPPORT_VOLUME_SCHEMA_CHANGES))
+    @validation.schema(volumes.update_volume_v353,
+                       mv.SUPPORT_VOLUME_SCHEMA_CHANGES)
     def update(self, req, id, body):
         """Update a volume."""
         context = req.environ['cinder.context']

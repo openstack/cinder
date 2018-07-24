@@ -226,10 +226,15 @@ class VolumeController(volumes_v2.VolumeController):
             return image_snapshot
 
     @wsgi.response(http_client.ACCEPTED)
-    @validation.schema(volumes.create, '3.0', '3.12')
-    @validation.schema(volumes.create_volume_v313, '3.13', '3.46')
-    @validation.schema(volumes.create_volume_v347, '3.47', '3.52')
-    @validation.schema(volumes.create_volume_v353, '3.53')
+    @validation.schema(volumes.create, mv.BASE_VERSION,
+                       mv.get_prior_version(mv.GROUP_VOLUME))
+    @validation.schema(volumes.create_volume_v313, mv.GROUP_VOLUME,
+                       mv.get_prior_version(mv.VOLUME_CREATE_FROM_BACKUP))
+    @validation.schema(volumes.create_volume_v347,
+                       mv.VOLUME_CREATE_FROM_BACKUP,
+                       mv.get_prior_version(mv.SUPPORT_VOLUME_SCHEMA_CHANGES))
+    @validation.schema(volumes.create_volume_v353,
+                       mv.SUPPORT_VOLUME_SCHEMA_CHANGES)
     def create(self, req, body):
         """Creates a new volume.
 
