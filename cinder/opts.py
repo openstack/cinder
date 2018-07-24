@@ -23,6 +23,8 @@
 
 import itertools
 
+from keystoneauth1 import loading
+
 from cinder import objects
 objects.register_all()
 
@@ -276,6 +278,7 @@ def list_opts():
         ('service_user',
             itertools.chain(
                 cinder_serviceauth.service_user_opts,
+                loading.get_session_conf_options(),
             )),
         ('backend_defaults',
             itertools.chain(
