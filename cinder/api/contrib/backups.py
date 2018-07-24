@@ -143,8 +143,10 @@ class BackupsController(wsgi.Controller):
     #   immediately
     # - maybe also do validation of swift container name
     @wsgi.response(http_client.ACCEPTED)
-    @validation.schema(backup.create, '2.0', '3.42')
-    @validation.schema(backup.create_backup_v343, '3.43', '3.50')
+    @validation.schema(backup.create, mv.V2_BASE_VERSION,
+                       mv.get_prior_version(mv.BACKUP_METADATA))
+    @validation.schema(backup.create_backup_v343, mv.BACKUP_METADATA,
+                       mv.get_prior_version(mv.BACKUP_AZ))
     @validation.schema(backup.create_backup_v351, mv.BACKUP_AZ)
     def create(self, req, body):
         """Create a new backup."""

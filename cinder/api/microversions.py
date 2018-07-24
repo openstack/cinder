@@ -37,6 +37,8 @@ from cinder import exception
 
 # Add new constants here for each new microversion.
 
+V2_BASE_VERSION = '2.0'
+
 BASE_VERSION = '3.0'
 
 UPLOAD_IMAGE_PARAMS = '3.1'

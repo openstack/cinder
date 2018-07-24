@@ -35,8 +35,9 @@ class BackupsController(backups_v2.BackupsController):
     _view_builder_class = backup_views.ViewBuilder
 
     @wsgi.Controller.api_version(mv.BACKUP_UPDATE)
-    @validation.schema(backup.update, '3.9', '3.42')
-    @validation.schema(backup.update_backup_v343, '3.43')
+    @validation.schema(backup.update, mv.BACKUP_UPDATE,
+                       mv.get_prior_version(mv.BACKUP_METADATA))
+    @validation.schema(backup.update_backup_v343, mv.BACKUP_METADATA)
     def update(self, req, id, body):
         """Update a backup."""
         context = req.environ['cinder.context']
