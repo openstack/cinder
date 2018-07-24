@@ -22,6 +22,21 @@
         - cinder-tox-py36
         - cinder-rally-task:
             voting: false
+        - tempest-scenario-all:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
     gate:
       jobs:
         - cinder-tox-compliance
