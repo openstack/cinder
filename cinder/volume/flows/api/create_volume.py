@@ -537,7 +537,13 @@ class EntryCreateTask(flow_utils.CinderTask):
         bootable = False
         if src_vol is not None:
             bootable = src_vol.bootable
-
+        elif kwargs.get('snapshot_id'):
+            snapshot = objects.Snapshot.get_by_id(context,
+                                                  kwargs.get('snapshot_id'))
+            volume_id = snapshot.volume_id
+            snp_vol = objects.Volume.get_by_id(context, volume_id)
+            if snp_vol is not None:
+                bootable = snp_vol.bootable
         availability_zones = kwargs.pop('availability_zones')
         volume_properties = {
             'size': kwargs.pop('size'),
