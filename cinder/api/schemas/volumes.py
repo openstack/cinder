@@ -55,7 +55,6 @@ create = {
                 'imageRef': {'type': ['string', 'null'], 'minLength': 0,
                              'maxLength': 255},
             },
-            'required': ['size'],
             'additionalProperties': True,
         },
         'OS-SCH-HNT:scheduler_hints': {

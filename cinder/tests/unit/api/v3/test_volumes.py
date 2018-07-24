@@ -667,9 +667,7 @@ class VolumeApiTest(test.TestCase):
     @ddt.data({'size': 'a'},
               {'size': ''},
               {'size': 0},
-              {'size': 2 ** 31},
-              {'size': None},
-              {})
+              {'size': 2 ** 31})
     def test_volume_creation_fails_with_invalid_parameters(
             self, vol_body):
         body = {"volume": vol_body}
