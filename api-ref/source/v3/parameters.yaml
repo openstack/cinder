@@ -714,12 +714,30 @@ availability_zone_backup:
   required: false
   type: string
   min_version: 3.51
+availability_zone_info:
+  description: |
+    The list of availability zone information.
+  in: body
+  required: true
+  type: array
 availability_zone_required:
   description: |
     The availability zone name.
   in: body
   required: true
   type: string
+availability_zone_state:
+  description: |
+    The current state of the availability zone.
+  in: body
+  required: true
+  type: object
+available:
+  description: |
+    Whether the availability zone is available for use.
+  in: body
+  required: true
+  type: boolean
 backend_id:
   description: |
     ID of backend to failover to. Default is ``None``.
