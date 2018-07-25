@@ -19,6 +19,7 @@ Tests for group_snapshot code.
 
 import ddt
 import mock
+from oslo_policy import policy as oslo_policy
 from six.moves import http_client
 import webob
 
@@ -30,6 +31,9 @@ from cinder import exception
 from cinder.group import api as group_api
 from cinder import objects
 from cinder.objects import fields
+from cinder.policies import base as base_policy
+from cinder.policies import group_snapshots as group_snapshots_policy
+from cinder import policy
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -486,6 +490,27 @@ class GroupSnapshotsAPITestCase(test.TestCase):
                           req, group_snapshot.id)
 
         group_snapshot.destroy()
+
+    def test_delete_group_snapshot_policy_not_authorized(self):
+        group_snapshot = utils.create_group_snapshot(
+            self.context,
+            group_id=self.group.id,
+            status=fields.GroupSnapshotStatus.AVAILABLE)
+
+        req = fakes.HTTPRequest.blank('/v3/%s/group_snapshots/%s/' %
+                                      (fake.PROJECT_ID, group_snapshot.id),
+                                      version=mv.GROUP_SNAPSHOTS,
+                                      use_admin_context=False)
+
+        rules = {
+            group_snapshots_policy.DELETE_POLICY: base_policy.RULE_ADMIN_API
+        }
+        policy.set_rules(oslo_policy.Rules.from_dict(rules))
+        self.addCleanup(policy.reset)
+
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.controller.delete,
+                          req, group_snapshot.id)
 
     @ddt.data((mv.GROUP_TYPE, 'fake_snapshot_001',
                fields.GroupSnapshotStatus.AVAILABLE,
