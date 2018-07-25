@@ -30,6 +30,7 @@ from oslo_utils import netutils
 import random
 import six
 from six.moves import urllib
+import ssl
 
 from cinder import exception
 from cinder.i18n import _
@@ -295,7 +296,8 @@ class NaServer(object):
             auth_handler = self._create_basic_auth_handler()
         else:
             auth_handler = self._create_certificate_auth_handler()
-        opener = urllib.request.build_opener(auth_handler)
+        https_handler = self._create_no_cert_check_handler()
+        opener = urllib.request.build_opener(https_handler, auth_handler)
         self._opener = opener
 
     def _create_basic_auth_handler(self):
@@ -307,6 +309,13 @@ class NaServer(object):
 
     def _create_certificate_auth_handler(self):
         raise NotImplementedError()
+
+    def _create_no_cert_check_handler(self):
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return urllib.request.HTTPSHandler(context=ctx)
+
 
     def __str__(self):
         return "server: %s" % self._host
