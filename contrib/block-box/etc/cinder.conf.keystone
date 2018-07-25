@@ -17,7 +17,7 @@ connection = mysql+pymysql://cinder:password@mariadb/cinder?charset=utf8
 
 [keystone_authtoken]
 www_authenticate_uri = http://keystone:5000
-auth_url = http://keystone:35357
+auth_url = http://keystone:5000
 memcached_servers = keystone:11211
 auth_type = password
 project_domain_name = default
