@@ -5559,7 +5559,7 @@ def transfer_accept(context, transfer_id, user_id, project_id,
                              'available state.')
                            % {'transfer_id': transfer_id,
                               'snapshot_id': snapshot['id']})
-                    LOG.warning(msg)
+                    LOG.error(msg)
                     _roll_back_transferred_volume_and_snapshots(
                         context, volume_id, old_user_id, old_project_id,
                         transferred_snapshots)
