@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Volume "force delete" was introduced with the 3.23 API microversion,
+    however the check for in the service was incorrectly looking for
+    microversion 3.2. That check has now been fixed. It is possible that an API
+    call using a microversion below 3.23 would previously work for this call,
+    which will now fail. This closes
+    `bug #1783028 <https://bugs.launchpad.net/cinder/+bug/1783028>`_.
