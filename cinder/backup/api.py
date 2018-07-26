@@ -483,6 +483,8 @@ class API(base.Base):
         :raises InvalidBackup:
         :raises InvalidInput:
         """
+        reservations = None
+        backup = None
         # Deserialize string backup record into a dictionary
         backup_record = objects.Backup.decode_record(backup_url)
 
@@ -490,6 +492,22 @@ class API(base.Base):
         if 'id' not in backup_record:
             msg = _('Provided backup record is missing an id')
             raise exception.InvalidInput(reason=msg)
+
+        # Since we use size to reserve&commit quota, size is another required
+        # field.
+        if 'size' not in backup_record:
+            msg = _('Provided backup record is missing size attribute')
+            raise exception.InvalidInput(reason=msg)
+
+        try:
+            reserve_opts = {'backups': 1,
+                            'backup_gigabytes': backup_record['size']}
+            reservations = QUOTAS.reserve(context, **reserve_opts)
+        except exception.OverQuota as e:
+            quota_utils.process_reserve_over_quota(
+                context, e,
+                resource='backups',
+                size=backup_record['size'])
 
         kwargs = {
             'user_id': context.user_id,
@@ -502,29 +520,37 @@ class API(base.Base):
         }
 
         try:
-            # Try to get the backup with that ID in all projects even among
-            # deleted entries.
-            backup = objects.BackupImport.get_by_id(
-                context.elevated(read_deleted='yes'),
-                backup_record['id'],
-                project_only=False)
+            try:
+                # Try to get the backup with that ID in all projects even among
+                # deleted entries.
+                backup = objects.BackupImport.get_by_id(
+                    context.elevated(read_deleted='yes'),
+                    backup_record['id'],
+                    project_only=False)
 
-            # If record exists and it's not deleted we cannot proceed with the
-            # import
-            if backup.status != fields.BackupStatus.DELETED:
-                msg = _('Backup already exists in database.')
-                raise exception.InvalidBackup(reason=msg)
+                # If record exists and it's not deleted we cannot proceed
+                # with the import
+                if backup.status != fields.BackupStatus.DELETED:
+                    msg = _('Backup already exists in database.')
+                    raise exception.InvalidBackup(reason=msg)
 
-            # Otherwise we'll "revive" delete backup record
-            backup.update(kwargs)
-            backup.save()
-
-        except exception.BackupNotFound:
-            # If record doesn't exist create it with the specific ID
-            backup = objects.BackupImport(context=context,
-                                          id=backup_record['id'], **kwargs)
-            backup.create()
-
+                # Otherwise we'll "revive" delete backup record
+                backup.update(kwargs)
+                backup.save()
+                QUOTAS.commit(context, reservations)
+            except exception.BackupNotFound:
+                # If record doesn't exist create it with the specific ID
+                backup = objects.BackupImport(context=context,
+                                              id=backup_record['id'], **kwargs)
+                backup.create()
+                QUOTAS.commit(context, reservations)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    if backup and 'id' in backup:
+                        backup.destroy()
+                finally:
+                    QUOTAS.rollback(context, reservations)
         return backup
 
     def import_record(self, context, backup_service, backup_url):

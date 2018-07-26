@@ -35,6 +35,7 @@ from cinder import db
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
+from cinder import quota
 from cinder import test
 from cinder.tests import fake_driver
 from cinder.tests.unit import fake_constants as fake
@@ -2058,3 +2059,26 @@ class BackupAPITestCase(BaseBackupTest):
         self.api.restore(self.ctxt, backup.id, volume_id)
         backup = objects.Backup.get_by_id(self.ctxt, backup.id)
         self.assertEqual(volume_id, backup.restore_volume_id)
+
+    @mock.patch.object(objects.Backup, 'decode_record')
+    @mock.patch.object(quota.QUOTAS, 'commit')
+    @mock.patch.object(quota.QUOTAS, 'rollback')
+    @mock.patch.object(quota.QUOTAS, 'reserve')
+    def test__get_import_backup_invalid_backup(
+            self, mock_reserve, mock_rollback, mock_commit, mock_decode):
+
+        backup = self._create_backup_db_entry(size=1,
+                                              status='available')
+        mock_decode.return_value = {'id': backup.id,
+                                    'project_id': backup.project_id,
+                                    'user_id': backup.user_id,
+                                    'volume_id': backup.volume_id,
+                                    'size': 1}
+        mock_reserve.return_value = 'fake_reservation'
+
+        self.assertRaises(exception.InvalidBackup,
+                          self.api._get_import_backup,
+                          self.ctxt, 'fake_backup_url')
+        mock_reserve.assert_called_with(
+            self.ctxt, backups=1, backup_gigabytes=1)
+        mock_rollback.assert_called_with(self.ctxt, "fake_reservation")
