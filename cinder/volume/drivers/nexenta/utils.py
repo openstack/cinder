@@ -78,7 +78,7 @@ def parse_nms_url(url):
     """Parse NMS url into normalized parts like scheme, user, host and others.
 
     Example NMS URL:
-        auto://admin:nexenta@192.168.1.1:2000/
+        auto://admin:nexenta@192.168.1.1:8457/
 
     NMS URL parts:
 
@@ -91,31 +91,27 @@ def parse_nms_url(url):
         user (admin)        NMS user;
         password (nexenta)  NMS password;
         host (192.168.1.1)  NMS host;
-        port (2000)         NMS port.
+        port (8457)         NMS port.
 
     :param url: url string
-    :return: tuple (auto, scheme, user, password, host, port, path)
+    :return: tuple (scheme, host, port, path, user, password, auto)
     """
-    pr = urlparse.urlparse(url)
-    scheme = pr.scheme
+    parsed = urlparse.urlparse(url)
+    scheme = parsed.scheme
+    host = parsed.hostname
+    port = parsed.port
+    path = parsed.path
+    user = parsed.username
+    password = parsed.password
     auto = scheme == 'auto'
     if auto:
         scheme = 'http'
-    user = 'admin'
-    password = 'nexenta'
-    if '@' not in pr.netloc:
-        host_and_port = pr.netloc
-    else:
-        user_and_password, host_and_port = pr.netloc.split('@', 1)
-        if ':' in user_and_password:
-            user, password = user_and_password.split(':')
-        else:
-            user = user_and_password
-    if ':' in host_and_port:
-        host, port = host_and_port.split(':', 1)
-    else:
-        host, port = host_and_port, '2000'
-    return auto, scheme, user, password, host, port, '/rest/nms/'
+    if not port:
+        port = '8457'
+    if not path:
+        path = '/rest/nms'
+
+    return scheme, host, port, path, user, password, auto
 
 
 def get_migrate_snapshot_name(volume):

@@ -1,4 +1,4 @@
-# Copyright 2016 Nexenta Systems, Inc.
+# Copyright 2018 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,6 +14,7 @@
 #    under the License.
 
 import hashlib
+import json
 import os
 import re
 import six
@@ -31,7 +32,7 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.3.2'
+VERSION = '1.3.3'
 LOG = logging.getLogger(__name__)
 
 
@@ -54,6 +55,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         1.3.1 - Cache capacity info and check shared folders on setup.
         1.3.2 - Pass mount_point_base in init_conn to support host-based
                 migration.
+        1.3.3 - Fixed automatic mode for nexenta_rest_protocol, improved logging.
     """
 
     driver_prefix = 'nexenta'
@@ -92,6 +94,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         self.share2nms = {}
         self.nfs_versions = {}
         self.shares_with_capacities = {}
+        self.lock = hashlib.md5(options.DEFAULT_NMS_LOCK).hexdigest()
 
     @property
     def backend_name(self):
@@ -763,11 +766,52 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
     def _get_nms_for_url(self, url):
         """Returns initialized nms object for url."""
-        auto, scheme, user, password, host, port, path = (
-            utils.parse_nms_url(url))
-        return jsonrpc.NexentaJSONProxy(scheme, host, port, path, user,
-                                        password, auto=auto,
-                                        verify=self.verify_ssl)
+        parsed_url = utils.parse_nms_url(url)
+        args = parsed_url + (self.verify_ssl, self.lock)
+        nms = jsonrpc.NexentaJSONProxy(*args)
+        license = nms.appliance.get_license_info()
+        signature = license.get('machine_sig')
+        LOG.debug('NexentaStor Host Signature: %(signature)s',
+                  {'signature': signature})
+        plugin = 'nms-rsf-cluster'
+        plugins = nms.plugin.get_names('')
+        if isinstance(plugins, list) and plugin in plugins:
+            names = nms.rsf_plugin.get_names('')
+            if isinstance(names, list) and len(names) == 1:
+                name = names[0]
+                prop = 'machinesigs'
+                props = nms.rsf_plugin.get_child_props(name, '')
+                if isinstance(props, dict) and prop in props:
+                    signatures = json.loads(props.get(prop))
+                    if (isinstance(signatures, dict) and
+                        signature in signatures.values()):
+                        signature = ':'.join(sorted(signatures.values()))
+                        LOG.debug('NexentaStor HA Cluster Signature: '
+                                  '%(signature)s',
+                                  {'signature': signature})
+                    else:
+                        LOG.debug('HA Cluster plugin %(plugin)s is not '
+                                  'configured for NexentaStor Host '
+                                  '%(signature)s: %(signatures)s',
+                                  {'plugin': plugin,
+                                   'signature': signature,
+                                   'signatures': signatures})
+                else:
+                    LOG.debug('HA Cluster plugin %(plugin)s is misconfigured',
+                              {'plugin': plugin})
+            else:
+                LOG.debug('HA Cluster plugin %(plugin)s is not configured '
+                          'or is misconfigured',
+                          {'plugin': plugin})
+        else:
+            LOG.debug('HA Cluster plugin %(plugin)s is not installed',
+                      {'plugin': plugin})
+
+        lock = hashlib.md5(signature).hexdigest()
+        LOG.debug('NMS coordination lock: %(lock)s',
+                  {'lock': lock})
+        args = parsed_url + (self.verify_ssl, lock)
+        return jsonrpc.NexentaJSONProxy(*args)
 
     def _get_snapshot_volume(self, snapshot):
         ctxt = context.get_admin_context()

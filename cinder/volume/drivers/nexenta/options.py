@@ -19,6 +19,8 @@ POLL_RETRIES = 5
 DEFAULT_ISCSI_PORT = 3260
 DEFAULT_HOST_GROUP = 'all'
 DEFAULT_TARGET_GROUP = 'all'
+DEFAULT_NMS_PATH = '/rest/nms'
+DEFAULT_NMS_LOCK = 'nms'
 
 NEXENTA_EDGE_OPTS = [
     cfg.StrOpt('nexenta_nbd_symlinks_dir',

@@ -19,7 +19,6 @@ import six
 from oslo_log import log as logging
 from oslo_utils import excutils
 
-from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.volume import driver
@@ -27,7 +26,7 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.3'
+VERSION = '1.3.4'
 LOG = logging.getLogger(__name__)
 
 
@@ -55,6 +54,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         1.3.1 - Added ZFS cleanup.
         1.3.2 - Added support for target_portal_group and zvol folder.
         1.3.3 - Added synchronization for Comstar API calls.
+        1.3.4 - Fixed automatic mode for nexenta_rest_protocol, improved logging.
     """
 
     VERSION = VERSION
@@ -81,6 +81,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         self.nms_port = self.configuration.nexenta_rest_port
         self.nms_user = self.configuration.nexenta_user
         self.nms_password = self.configuration.nexenta_password
+        self.nms_path = options.DEFAULT_NMS_PATH
         self.volume = self.configuration.nexenta_volume
         self.folder = self.configuration.nexenta_folder
         self.tpgs = self.configuration.nexenta_iscsi_target_portal_groups
@@ -94,6 +95,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         self.rrmgr_connections = self.configuration.nexenta_rrmgr_connections
         self.iscsi_target_portal_port = (
             self.configuration.nexenta_iscsi_target_portal_port)
+        self.lock = hashlib.md5(options.DEFAULT_NMS_LOCK).hexdigest()
 
     @property
     def backend_name(self):
@@ -105,57 +107,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         return backend_name
 
     def do_setup(self, context):
-        if self.nms_protocol == 'auto':
-            protocol, auto = 'http', True
-        else:
-            protocol, auto = self.nms_protocol, False
-
-        self.nms = jsonrpc.NexentaJSONProxy(
-            protocol, self.nms_host, self.nms_port, '/rest/nms', self.nms_user,
-            self.nms_password, self.verify_ssl, auto=auto)
-
-        license = self.nms.appliance.get_license_info()
-        signature = license.get('machine_sig')
-        LOG.debug('NexentaStor Host Signature: %(signature)s',
-                  {'signature': signature})
-
-        plugin = 'nms-rsf-cluster'
-        plugins = self.nms.plugin.get_names('')
-        if isinstance(plugins, list) and plugin in plugins:
-            names = self.nms.rsf_plugin.get_names('')
-            if isinstance(names, list) and len(names) == 1:
-                name = names[0]
-                prop = 'machinesigs'
-                props = self.nms.rsf_plugin.get_child_props(name, '')
-                if isinstance(props, dict) and prop in props:
-                    signatures = json.loads(props.get(prop))
-                    if isinstance(signatures, dict) and \
-                       signature in signatures.values():
-                        signature = ':'.join(sorted(signatures.values()))
-                        LOG.debug('NexentaStor HA Cluster Signature: '
-                                  '%(signature)s',
-                                  {'signature': signature})
-                    else:
-                        LOG.debug('HA Cluster plugin %(plugin)s is not '
-                                  'configured for NexentaStor Host '
-                                  '%(signature)s: %(signatures)s',
-                                  {'plugin': plugin,
-                                   'signature': signature,
-                                   'signatures': signatures})
-                else:
-                    LOG.debug('HA Cluster plugin %(plugin)s is misconfigured',
-                              {'plugin': plugin})
-            else:
-                LOG.debug('HA Cluster plugin %(plugin)s is not configured '
-                          'or is misconfigured',
-                          {'plugin': plugin})
-        else:
-            LOG.debug('HA Cluster plugin %(plugin)s is not installed',
-                      {'plugin': plugin})
-
-        self.lock = hashlib.md5(signature).hexdigest()
-        LOG.debug('NMS coordination lock: %(lock)s',
-                  {'lock': self.lock})
+        url = '%s://%s:%s@%s:%s%s' % (self.nms_protocol, self.nms_user,
+                                      self.nms_password, self.nms_host,
+                                      self.nms_port, self.nms_path)
+        self.nms = self.get_nms_for_url(url)
 
     def check_for_setup_error(self):
         """Verify that the volume for our zvols exists.
@@ -360,13 +315,54 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                                    tcp_buf_size=self.rrmgr_tcp_buf_size,
                                    connections=self.rrmgr_connections)
 
-    @staticmethod
-    def get_nms_for_url(url):
+    def get_nms_for_url(self, url):
         """Returns initialized nms object for url."""
-        auto, scheme, user, password, host, port, path = (
-            utils.parse_nms_url(url))
-        return jsonrpc.NexentaJSONProxy(scheme, host, port, path, user,
-                                        password, auto=auto)
+        parsed_url = utils.parse_nms_url(url)
+        args = parsed_url + (self.verify_ssl, self.lock)
+        nms = jsonrpc.NexentaJSONProxy(*args)
+        license = nms.appliance.get_license_info()
+        signature = license.get('machine_sig')
+        LOG.debug('NexentaStor Host Signature: %(signature)s',
+                  {'signature': signature})
+        plugin = 'nms-rsf-cluster'
+        plugins = nms.plugin.get_names('')
+        if isinstance(plugins, list) and plugin in plugins:
+            names = nms.rsf_plugin.get_names('')
+            if isinstance(names, list) and len(names) == 1:
+                name = names[0]
+                prop = 'machinesigs'
+                props = nms.rsf_plugin.get_child_props(name, '')
+                if isinstance(props, dict) and prop in props:
+                    signatures = json.loads(props.get(prop))
+                    if (isinstance(signatures, dict) and
+                        signature in signatures.values()):
+                        signature = ':'.join(sorted(signatures.values()))
+                        LOG.debug('NexentaStor HA Cluster Signature: '
+                                  '%(signature)s',
+                                  {'signature': signature})
+                    else:
+                        LOG.debug('HA Cluster plugin %(plugin)s is not '
+                                  'configured for NexentaStor Host '
+                                  '%(signature)s: %(signatures)s',
+                                  {'plugin': plugin,
+                                   'signature': signature,
+                                   'signatures': signatures})
+                else:
+                    LOG.debug('HA Cluster plugin %(plugin)s is misconfigured',
+                              {'plugin': plugin})
+            else:
+                LOG.debug('HA Cluster plugin %(plugin)s is not configured '
+                          'or is misconfigured',
+                          {'plugin': plugin})
+        else:
+            LOG.debug('HA Cluster plugin %(plugin)s is not installed',
+                      {'plugin': plugin})
+
+        lock = hashlib.md5(signature).hexdigest()
+        LOG.debug('NMS coordination lock: %(lock)s',
+                  {'lock': lock})
+        args = parsed_url + (self.verify_ssl, lock)
+        return jsonrpc.NexentaJSONProxy(*args)
 
     def migrate_volume(self, ctxt, volume, host):
         """Migrate if volume and host are managed by Nexenta appliance.
