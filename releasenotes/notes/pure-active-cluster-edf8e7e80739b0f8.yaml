@@ -1,0 +1,4 @@
+---
+features:
+  - Added support to Pure Storage Volume Drivers for Active Cluster using the
+    standard replication API's for the Block Storage Service.
