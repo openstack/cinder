@@ -1,0 +1,4 @@
+---
+fixes:
+  - Now cinder will keep track of 'multiattach' attribute when managing
+    backend volumes.
