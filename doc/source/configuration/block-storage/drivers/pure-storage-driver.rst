@@ -10,7 +10,8 @@ Support for iSCSI storage protocol is available with the PureISCSIDriver
 Volume Driver class, and Fibre Channel with PureFCDriver.
 
 All drivers are compatible with Purity FlashArrays that support the REST
-API version 1.2, 1.3, 1.4, or 1.5 (Purity 4.0.0 and newer).
+API version 1.2, 1.3, 1.4, 1.5, 1.13, and 1.14 (Purity 4.0.0 and newer).
+Some features may require newer versions of Purity.
 
 Limitations and known issues
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -208,28 +209,40 @@ Array to replicate to:
 .. code-block:: ini
 
     [puredriver-1]
-    replication_device = backend_id:PURE2_NAME,san_ip:IP_PURE2_MGMT,api_token:PURE2_API_TOKEN
+    replication_device = backend_id:PURE2_NAME,san_ip:IP_PURE2_MGMT,api_token:PURE2_API_TOKEN,type:REPLICATION_TYPE
 
 Where ``PURE2_NAME`` is the name of the remote Pure Storage system,
 ``IP_PURE2_MGMT`` is the management IP address of the remote array,
 and ``PURE2_API_TOKEN`` is the Purity Authorization token
 of the remote array.
 
+The ``REPLICATION_TYPE`` value for the ``type`` key can be either ``sync`` or
+``async``
+
+If the ``type`` is ``sync`` volumes will be created in a stretched Pod. This
+requires two arrays pre-configured with Active Cluster enabled. You can
+optionally specify ``uniform`` as ``true`` or ``false``, this will instruct
+the driver that data paths are uniform between arrays in the cluster and data
+connections should be made to both upon attaching.
+
 Note that more than one ``replication_device`` line can be added to allow for
 multi-target device replication.
 
 A volume is only replicated if the volume is of a volume-type that has
-the extra spec ``replication_enabled`` set to ``<is> True``.
+the extra spec ``replication_enabled`` set to ``<is> True``. You can optionally specify
+the ``replication_type`` key to specify ``<in> sync`` or ``<in> async`` to choose the
+type of replication for that volume. If not specified it will default to ``async``.
 
-To create a volume type that specifies replication to remote back ends:
+To create a volume type that specifies replication to remote back ends with async replication:
 
 .. code-block:: console
 
    $ openstack volume type create ReplicationType
    $ openstack volume type set --property replication_enabled='<is> True' ReplicationType
+   $ openstack volume type set --property replication_type='<in> async' ReplicationType
 
 The following table contains the optional configuration parameters available
-for replication configuration with the Pure Storage array.
+for async replication configuration with the Pure Storage array.
 
 ==================================================== ============= ======
 Option                                               Description   Default
@@ -260,8 +273,8 @@ Option                                               Description   Default
 
 .. note::
 
-   ``replication-failover`` is only supported from the primary array to any of the
-   multiple secondary arrays, but subsequent ``replication-failover`` is only
+   ``failover-host`` is only supported from the primary array to any of the
+   multiple secondary arrays, but subsequent ``failover-host`` is only
    supported back to the original primary array.
 
 Automatic thin-provisioning/oversubscription ratio
@@ -309,6 +322,7 @@ Metrics reported include, but are not limited to:
    usec_per_read_op
    usec_per_read_op
    queue_depth
+   replication_type
 
 .. note::
 
