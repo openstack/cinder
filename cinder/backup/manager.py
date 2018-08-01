@@ -369,7 +369,6 @@ class BackupManager(manager.ThreadPoolManager):
         self._notify_about_backup_usage(context, backup, "create.start")
 
         backup.host = self.host
-        backup.service = self.driver_name
         backup.availability_zone = self.az
         backup.save()
 
@@ -408,9 +407,12 @@ class BackupManager(manager.ThreadPoolManager):
 
         try:
             if not self.is_working():
-                err = _('Create backup aborted due to backup service is down')
+                err = _('Create backup aborted due to backup service is down.')
                 self._update_backup_error(backup, err)
                 raise exception.InvalidBackup(reason=err)
+
+            backup.service = self.driver_name
+            backup.save()
             updates = self._run_backup(context, backup, volume)
         except Exception as err:
             with excutils.save_and_reraise_exception():
@@ -736,8 +738,8 @@ class BackupManager(manager.ThreadPoolManager):
             self._update_backup_error(backup, err)
             raise exception.InvalidBackup(reason=err)
 
-        if not self.is_working():
-            err = _('Delete backup is aborted due to backup service is down')
+        if backup.service and not self.is_working():
+            err = _('Delete backup is aborted due to backup service is down.')
             status = fields.BackupStatus.ERROR_DELETING
             self._update_backup_error(backup, err, status)
             raise exception.InvalidBackup(reason=err)
