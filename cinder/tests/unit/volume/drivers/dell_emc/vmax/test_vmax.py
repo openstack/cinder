@@ -517,6 +517,18 @@ class VMAXCommonData(object):
                    "fba_used_capacity": 5244.7,
                    "reserved_cap_percent": 10}
 
+    array_info_wl = {'RestServerIp': '1.1.1.1', 'RestServerPort': 3448,
+                     'RestUserName': 'smc', 'RestPassword': 'smc',
+                     'SSLVerify': False, 'SerialNumber': array,
+                     'srpName': 'SRP_1', 'PortGroup': port_group_name_i,
+                     'SLO': 'Diamond', 'Workload': 'OLTP'}
+
+    array_info_no_wl = {'RestServerIp': '1.1.1.1', 'RestServerPort': 3448,
+                        'RestUserName': 'smc', 'RestPassword': 'smc',
+                        'SSLVerify': False, 'SerialNumber': array,
+                        'srpName': 'SRP_1', 'PortGroup': port_group_name_i,
+                        'SLO': 'Diamond'}
+
     volume_details = [{"cap_gb": 2,
                        "num_of_storage_groups": 1,
                        "volumeId": device_id,
@@ -568,9 +580,19 @@ class VMAXCommonData(object):
                      "remoteDeviceID": device_id2,
                      "remoteSymmetrixID": remote_array}]}}]}}
 
+    # Service Levels / Workloads
     workloadtype = {"workloadId": ["OLTP", "OLTP_REP", "DSS", "DSS_REP"]}
-    slo_details = {"sloId": ["Bronze", "Diamond", "Gold",
-                             "Optimized", "Platinum", "Silver"]}
+    srp_slo_details = {"serviceLevelDemand": [
+        {"serviceLevelId": "None"}, {"serviceLevelId": "Diamond"},
+        {"serviceLevelId": "Gold"}, {"serviceLevelId": "Optimized"}]}
+    slo_details = ['None', 'Diamond', 'Gold', 'Optimized']
+    powermax_slo_details = {"sloId": ["Bronze", "Diamond", "Gold",
+                                      "Optimized", "Platinum", "Silver"]}
+    powermax_model_details = {"symmetrixId": array,
+                              "model": "PowerMax_2000",
+                              "ucode": "5978.1091.1092"}
+    vmax_slo_details = {"sloId": ["Diamond", "Optimized"]}
+    vmax_model_details = {"model": "VMAX450F"}
 
     # replication
     volume_snap_vx = {"snapshotLnks": [],
@@ -734,8 +756,8 @@ class FakeRequestsSession(object):
                 return_object = self.data.workloadtype
             elif 'compressionCapable' in url:
                 return_object = self.data.compression_info
-            else:
-                return_object = self.data.slo_details
+            elif 'slo' in url:
+                return_object = self.data.powermax_slo_details
 
         elif 'replication' in url:
             return_object = self._replication(url)
@@ -1672,10 +1694,17 @@ class VMAXRestTest(test.TestCase):
             self.data.array, self.data.srp)
         self.assertEqual(ref_details, srp_details)
 
-    def test_get_slo_list(self):
-        ref_settings = self.data.slo_details['sloId']
+    def test_get_slo_list_powermax(self):
+        ref_settings = self.data.powermax_slo_details['sloId']
         slo_settings = self.rest.get_slo_list(self.data.array)
         self.assertEqual(ref_settings, slo_settings)
+
+    def test_get_slo_list_vmax(self):
+        ref_settings = ['Diamond']
+        with mock.patch.object(self.rest, 'get_resource',
+                               return_value=self.data.vmax_slo_details):
+            slo_settings = self.rest.get_slo_list(self.data.array)
+            self.assertEqual(ref_settings, slo_settings)
 
     def test_get_workload_settings(self):
         ref_settings = self.data.workloadtype['workloadId']
@@ -2884,6 +2913,13 @@ class VMAXRestTest(test.TestCase):
         self.assertEqual('https://10.10.10.10:8443/univmax/restapi',
                          self.rest.base_uri)
 
+    def test_get_vmax_model(self):
+        reference = 'PowerMax_2000'
+        with mock.patch.object(self.rest, '_get_request',
+                               return_value=self.data.powermax_model_details):
+            self.assertEqual(self.rest.get_vmax_model(self.data.array),
+                             reference)
+
 
 class VMAXProvisionTest(test.TestCase):
     def setUp(self):
@@ -3444,11 +3480,18 @@ class VMAXCommonTest(test.TestCase):
         configuration = FakeConfiguration(None, 'config_group', None, None)
         fc.VMAXFCDriver(configuration=configuration)
 
-    def test_get_slo_workload_combinations_success(self):
-        array_info = self.utils.parse_file_to_get_array_map(
-            self.common.pool_info['config_file'])
+    def test_get_slo_workload_combinations_powermax(self):
         finalarrayinfolist = self.common._get_slo_workload_combinations(
-            array_info)
+            self.data.array_info_no_wl)
+        self.assertTrue(len(finalarrayinfolist) > 1)
+
+    @mock.patch.object(rest.VMAXRest, 'get_vmax_model',
+                       return_value=VMAXCommonData.vmax_model_details['model'])
+    @mock.patch.object(rest.VMAXRest, 'get_slo_list',
+                       return_value=VMAXCommonData.vmax_slo_details['sloId'])
+    def test_get_slo_workload_combinations_vmax(self, mck_slo, mck_model):
+        finalarrayinfolist = self.common._get_slo_workload_combinations(
+            self.data.array_info_wl)
         self.assertTrue(len(finalarrayinfolist) > 1)
 
     def test_get_slo_workload_combinations_failed(self):
@@ -3747,6 +3790,20 @@ class VMAXCommonTest(test.TestCase):
                 self.common._set_config_file_and_get_extra_specs(volume))
             self.assertIsNone(extra_specs)
             self.assertEqual(ref_config, config_file)
+
+    def test_update_srp_stats_with_wl(self):
+        with mock.patch.object(self.rest, 'get_srp_by_name',
+                               return_value=self.data.srp_details):
+            location_info, __, __, __, __ = self.common._update_srp_stats(
+                self.data.array_info_wl)
+            self.assertEqual(location_info, '000197800123#SRP_1#Diamond#OLTP')
+
+    def test_update_srp_stats_no_wl(self):
+        with mock.patch.object(self.rest, 'get_srp_by_name',
+                               return_value=self.data.srp_details):
+            location_info, __, __, __, __ = self.common._update_srp_stats(
+                self.data.array_info_no_wl)
+            self.assertEqual(location_info, '000197800123#SRP_1#Diamond')
 
     def test_find_device_on_array_success(self):
         volume = self.data.test_volume
@@ -4082,10 +4139,11 @@ class VMAXCommonTest(test.TestCase):
         self.assertEqual(ref_extra_specs, extra_specs)
 
     def test_set_vmax_extra_specs_no_srp_name(self):
-        srp_record = self.utils.parse_file_to_get_array_map(
-            self.fake_xml)
-        extra_specs = self.common._set_vmax_extra_specs({}, srp_record)
-        self.assertEqual('Optimized', extra_specs['slo'])
+        with mock.patch.object(self.rest, 'get_slo_list',
+                               return_value=[]):
+            extra_specs = self.common._set_vmax_extra_specs(
+                {}, self.data.array_info_wl)
+            self.assertIsNone(extra_specs['slo'])
 
     def test_set_vmax_extra_specs_compr_disabled(self):
         with mock.patch.object(self.rest, 'is_compression_capable',

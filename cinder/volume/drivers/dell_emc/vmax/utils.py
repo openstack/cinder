@@ -38,6 +38,7 @@ FC = 'fc'
 INTERVAL = 'interval'
 RETRIES = 'retries'
 VOLUME_ELEMENT_NAME_PREFIX = 'OS-'
+VMAX_AFA_MODELS = ['VMAX250F', 'VMAX450F', 'VMAX850F', 'VMAX950F']
 MAX_SRP_LENGTH = 16
 TRUNCATE_5 = 5
 TRUNCATE_27 = 27
@@ -692,9 +693,14 @@ class VMAXUtils(object):
             if 'none' in pool['pool_name'].lower():
                 extra_pools.append(pool)
         for pool in extra_pools:
-            slo = pool['pool_name'].split('+')[0]
-            srp = pool['pool_name'].split('+')[2]
-            array = pool['pool_name'].split('+')[3]
+            try:
+                slo = pool['pool_name'].split('+')[0]
+                srp = pool['pool_name'].split('+')[2]
+                array = pool['pool_name'].split('+')[3]
+            except IndexError:
+                slo = pool['pool_name'].split('+')[0]
+                srp = pool['pool_name'].split('+')[1]
+                array = pool['pool_name'].split('+')[2]
             new_pool_name = ('%(slo)s+%(srp)s+%(array)s'
                              % {'slo': slo, 'srp': srp, 'array': array})
             new_pool = deepcopy(pool)
