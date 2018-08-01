@@ -451,7 +451,7 @@ class VolumeTypeProjects(BASE, CinderBase):
         foreign_keys=volume_type_id,
         primaryjoin='and_('
         'VolumeTypeProjects.volume_type_id == VolumeTypes.id,'
-        'VolumeTypeProjects.deleted == 0)')
+        'not_(VolumeTypeProjects.deleted))')
 
 
 class GroupTypeProjects(BASE, CinderBase):
@@ -671,7 +671,7 @@ class Reservation(BASE, CinderBase):
         "QuotaUsage",
         foreign_keys=usage_id,
         primaryjoin='and_(Reservation.usage_id == QuotaUsage.id,'
-                    'QuotaUsage.deleted == 0)')
+                    'not_(QuotaUsage.deleted))')
     quota = relationship(
         "Quota",
         foreign_keys=allocated_id,
