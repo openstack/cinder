@@ -47,7 +47,7 @@ create = {
                 'snapshot_id': parameter_types.optional_uuid,
                 'source_volid': parameter_types.optional_uuid,
                 'consistencygroup_id': parameter_types.optional_uuid,
-                'size': parameter_types.volume_size,
+                'size': parameter_types.volume_size_allows_null,
                 'availability_zone': parameter_types.availability_zone,
                 'multiattach': parameter_types.optional_boolean,
                 'image_id': {'type': ['string', 'null'], 'minLength': 0,
