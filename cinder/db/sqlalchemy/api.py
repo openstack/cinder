@@ -257,13 +257,11 @@ def model_query(context, model, *args, **kwargs):
     query = session.query(model, *args)
 
     if read_deleted == 'no':
-        query = query.filter_by(deleted=False)
+        query = query.filter(~model.deleted)
     elif read_deleted == 'yes':
         pass  # omit the filter to include deleted and active
     elif read_deleted == 'only':
-        query = query.filter_by(deleted=True)
-    elif read_deleted == 'int_no':
-        query = query.filter_by(deleted=0)
+        query = query.filter(model.deleted)
     else:
         raise Exception(
             _("Unrecognized read_deleted value '%s'") % read_deleted)
@@ -4150,8 +4148,8 @@ def volume_type_destroy(context, id):
             update({'deleted': True,
                     'deleted_at': utcnow,
                     'updated_at': literal_column('updated_at')})
-        model_query(context, models.VolumeTypeProjects, session=session,
-                    read_deleted="int_no").filter_by(
+        model_query(context, models.VolumeTypeProjects, session=session
+                    ).filter_by(
             volume_type_id=id).soft_delete(synchronize_session=False)
     del updated_values['updated_at']
     return updated_values
@@ -4208,13 +4206,11 @@ def volume_get_all_active_by_window(context,
 
 
 def _volume_type_access_query(context, session=None):
-    return model_query(context, models.VolumeTypeProjects, session=session,
-                       read_deleted="int_no")
+    return model_query(context, models.VolumeTypeProjects, session=session)
 
 
 def _group_type_access_query(context, session=None):
-    return model_query(context, models.GroupTypeProjects, session=session,
-                       read_deleted="int_no")
+    return model_query(context, models.GroupTypeProjects, session=session)
 
 
 @require_admin_context
