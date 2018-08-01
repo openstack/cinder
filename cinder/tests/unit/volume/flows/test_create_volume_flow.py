@@ -166,6 +166,54 @@ class CreateVolumeFlowTestCase(test.TestCase):
         consistencygroup_get_by_id.assert_called_once_with(self.ctxt, 5)
         mock_extract_host.assert_called_once_with('host@backend#pool')
 
+    @mock.patch('cinder.db.volume_create')
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    def test_create_volume_from_snapshot(self, snapshot_get_by_id,
+                                         volume_get_by_id,
+                                         volume_create):
+
+        volume_db = {'bootable': True}
+        volume_obj = fake_volume.fake_volume_obj(self.ctxt, **volume_db)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctxt)
+        snapshot_get_by_id.return_value = snapshot_obj
+        volume_get_by_id.return_value = volume_obj
+        volume_create.return_value = {'id': '123456'}
+
+        task = create_volume.EntryCreateTask()
+
+        result = task.execute(self.ctxt,
+                              optional_args=None,
+                              source_volid=None,
+                              snapshot_id=snapshot_obj.id,
+                              availability_zones=['nova'],
+                              size=1,
+                              encryption_key_id=None,
+                              description='123',
+                              name='123',
+                              multiattach=None)
+        self.assertTrue(result['volume_properties']['bootable'])
+
+        volume_db = {'bootable': False}
+        volume_obj = fake_volume.fake_volume_obj(self.ctxt, **volume_db)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctxt)
+        snapshot_get_by_id.return_value = snapshot_obj
+        volume_get_by_id.return_value = volume_obj
+
+        task = create_volume.EntryCreateTask()
+
+        result = task.execute(self.ctxt,
+                              optional_args=None,
+                              source_volid=None,
+                              snapshot_id=snapshot_obj.id,
+                              availability_zones=['nova'],
+                              size=1,
+                              encryption_key_id=None,
+                              description='123',
+                              name='123',
+                              multiattach=None)
+        self.assertFalse(result['volume_properties']['bootable'])
+
     @ddt.data(('enabled', {'replication_enabled': '<is> True'}),
               ('disabled', {'replication_enabled': '<is> False'}),
               ('disabled', {}))
