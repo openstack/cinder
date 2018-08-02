@@ -211,6 +211,8 @@ volume_size = {
     'minimum': 1,
     'maximum': constants.DB_MAX_INT
 }
+volume_size_allows_null = copy.deepcopy(volume_size)
+volume_size_allows_null['type'] += ['null']
 
 
 hostname = {
