@@ -14,7 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import random
 import re
 import traceback
 
@@ -289,8 +288,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                         break
             if (self._properties['portal_number'] > 0 and
                     len(dirportal) > self._properties['portal_number']):
-                nominated.extend(random.sample(
-                    dirportal, self._properties['portal_number']))
+                nominated.extend(
+                    dirportal[0:self._properties['portal_number']])
             else:
                 nominated.extend(dirportal)
 
@@ -1096,12 +1095,12 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         provider_location = volume.provider_location
         provider_location = provider_location.split()
         info = {'driver_volume_type': 'iscsi',
-                'data': {'target_portal': random.choice(
-                    provider_location[0][0:-2].split(";")),
-                    'target_iqn': provider_location[1],
-                    'target_lun': int(provider_location[2]),
-                    'target_discovered': False,
-                    'volume_id': volume.id}
+                'data': {'target_portal':
+                         provider_location[0][0:-2].split(";")[0],
+                         'target_iqn': provider_location[1],
+                         'target_lun': int(provider_location[2]),
+                         'target_discovered': False,
+                         'volume_id': volume.id}
                 }
         if connector.get('multipath'):
             portals_len = len(provider_location[0][0:-2].split(";"))

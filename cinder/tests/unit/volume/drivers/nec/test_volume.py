@@ -769,6 +769,7 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual('iscsi', info['driver_volume_type'])
         self.assertEqual('iqn.2010-10.org.openstack:volume-00000001',
                          info['data']['target_iqn'])
+        self.assertEqual('1.1.1.1:3260', info['data']['target_portal'])
         self.assertEqual(88, info['data']['target_lun'])
         self.assertEqual('iqn.2010-10.org.openstack:volume-00000001',
                          info['data']['target_iqns'][0])
