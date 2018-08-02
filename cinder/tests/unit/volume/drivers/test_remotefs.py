@@ -681,7 +681,6 @@ class RemoteFSPoolMixinTestCase(test.TestCase):
         share_total_gb = 3
         share_free_gb = 2
         share_used_gb = 4  # provisioned space
-        expected_allocated_gb = share_total_gb - share_free_gb
 
         self._driver._mounted_shares = [mock.sentinel.share]
 
@@ -710,7 +709,6 @@ class RemoteFSPoolMixinTestCase(test.TestCase):
             'total_capacity_gb': float(share_total_gb),
             'free_capacity_gb': float(share_free_gb),
             'provisioned_capacity_gb': float(share_used_gb),
-            'allocated_capacity_gb': float(expected_allocated_gb),
             'reserved_percentage': (
                 self._driver.configuration.reserved_percentage),
             'max_over_subscription_ratio': (
