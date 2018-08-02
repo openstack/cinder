@@ -502,41 +502,41 @@ Name or ID of volume to transfer.
 ``--no-snapshots``
 Transfer the volume without snapshots.
 
-   The volume must be in an ``available`` state or the request will be
-   denied. If the transfer request is valid in the database (that is, it
-   has not expired or been deleted), the volume is placed in an
-   ``awaiting-transfer`` state. For example:
+The volume must be in an ``available`` state or the request will be
+denied. If the transfer request is valid in the database (that is, it
+has not expired or been deleted), the volume is placed in an
+``awaiting-transfer`` state. For example:
 
-   .. code-block:: console
+.. code-block:: console
 
-      $ openstack volume transfer request create a1cdace0-08e4-4dc7-b9dc-457e9bcfe25f
+   $ openstack volume transfer request create a1cdace0-08e4-4dc7-b9dc-457e9bcfe25f
 
-   The output shows the volume transfer ID in the ``id`` row and the
-   authorization key.
+The output shows the volume transfer ID in the ``id`` row and the
+authorization key.
 
-   .. code-block:: console
+.. code-block:: console
 
-      +------------+--------------------------------------+
-      | Field      | Value                                |
-      +------------+--------------------------------------+
-      | auth_key   | 0a59e53630f051e2                     |
-      | created_at | 2016-11-03T11:49:40.346181           |
-      | id         | 34e29364-142b-4c7b-8d98-88f765bf176f |
-      | name       | None                                 |
-      | volume_id  | a1cdace0-08e4-4dc7-b9dc-457e9bcfe25f |
-      +------------+--------------------------------------+
+   +------------+--------------------------------------+
+   | Field      | Value                                |
+   +------------+--------------------------------------+
+   | auth_key   | 0a59e53630f051e2                     |
+   | created_at | 2016-11-03T11:49:40.346181           |
+   | id         | 34e29364-142b-4c7b-8d98-88f765bf176f |
+   | name       | None                                 |
+   | volume_id  | a1cdace0-08e4-4dc7-b9dc-457e9bcfe25f |
+   +------------+--------------------------------------+
 
-   .. note::
+.. note::
 
-      Optionally, you can specify a name for the transfer by using the
-      ``--name transferName`` parameter.
+   Optionally, you can specify a name for the transfer by using the
+   ``--name transferName`` parameter.
 
-   .. note::
+.. note::
 
-      While the ``auth_key`` property is visible in the output of
-      ``openstack volume transfer request create VOLUME_ID``, it will not be
-      available in subsequent ``openstack volume transfer request show TRANSFER_ID``
-      command.
+   While the ``auth_key`` property is visible in the output of
+   ``openstack volume transfer request create VOLUME_ID``, it will not be
+   available in subsequent ``openstack volume transfer request show TRANSFER_ID``
+   command.
 
 #. Send the volume transfer ID and authorization key to the new owner (for
    example, by email).
