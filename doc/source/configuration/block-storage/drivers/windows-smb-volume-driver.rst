@@ -56,7 +56,7 @@ specific shares (pools) to be requested through volume types.
 
 .. code-block:: console
 
-   cinder type-key $volume_type set pool_name=$pool_name
+   openstack volume type set $volume_type --property pool_name=$pool_name
 .. end
 
 Frontend QoS specs may be associated with the volume types and enforced on the
@@ -64,9 +64,9 @@ consumer side (e.g. Hyper-V).
 
 .. code-block:: console
 
-   cinder qos-create $rule_name consumer=front-end total_bytes_sec=20971520
-   cinder qos-associate $rule_name $volume_type_id
-   cinder create $size --volume-type $volume_type_id
+   openstack volume qos create $rule_name --property consumer=front-end --property total_bytes_sec=20971520
+   openstack volume qos associate $rule_name $volume_type_id
+   openstack volume create $volume_name --type $volume_type_id --size $size
 .. end
 
 The ``Cinder Backup Service`` can be run on Windows. This driver stores
