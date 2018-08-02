@@ -173,7 +173,7 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
                                               _mock_volume_get,
                                               _mock_volume_admin_metadata_get,
                                               mock_get_target):
-        """Make sure initialize_connection returns correct information."""
+        """QoS test with no minimum value."""
         _fake_admin_meta = [{'key': 'fake-key', 'value': 'fake-value'}]
         _fake_volume = {'size': 3,
                         'volume_type_id': fake.VOLUME_TYPE_ID,
@@ -213,6 +213,140 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
                                   'read_bytes_sec': 30,
                                   'write_bytes_sec': 120,
                                   'total_bytes_sec': 3145728}
+            # initialize_connection() passes qos_specs that is designated to
+            # be consumed by front-end or both front-end and back-end
+            conn_info = self.volume.initialize_connection(
+                self.context, fake_volume_obj, connector,)
+            self.assertDictEqual(qos_specs_expected,
+                                 conn_info['data']['qos_specs'])
+
+            qos_values.update({'consumer': 'both'})
+            conn_info = self.volume.initialize_connection(
+                self.context, fake_volume_obj, connector)
+            self.assertDictEqual(qos_specs_expected,
+                                 conn_info['data']['qos_specs'])
+
+    @mock.patch.object(cinder.volume.targets.iscsi.ISCSITarget,
+                       '_get_target_chap_auth')
+    @mock.patch.object(db, 'volume_admin_metadata_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
+    @mock.patch.object(db, 'volume_update')
+    def test_initialize_connection_qos_per_gb_with_min_small(
+            self, _mock_volume_update, _mock_volume_get,
+            _mock_volume_admin_metadata_get, mock_get_target):
+        """QoS test when volume size results in using minimum."""
+        _fake_admin_meta = [{'key': 'fake-key', 'value': 'fake-value'}]
+        _fake_volume = {'size': 1,
+                        'volume_type_id': fake.VOLUME_TYPE_ID,
+                        'name': 'fake_name',
+                        'host': 'fake_host',
+                        'id': fake.VOLUME_ID,
+                        'volume_admin_metadata': _fake_admin_meta}
+        fake_volume_obj = fake_volume.fake_volume_obj(self.context,
+                                                      **_fake_volume)
+
+        _mock_volume_get.return_value = _fake_volume
+        _mock_volume_update.return_value = _fake_volume
+        _mock_volume_admin_metadata_get.return_value = {
+            'fake-key': 'fake-value'}
+
+        connector = {'ip': 'IP', 'initiator': 'INITIATOR'}
+        qos_values = {'consumer': 'front-end',
+                      'specs': {
+                          'write_iops_sec_per_gb_min': 15,
+                          'write_iops_sec_per_gb': 5,
+                          'read_iops_sec_per_gb_min': 23100,
+                          'read_iops_sec_per_gb': 7700,
+                          'total_iops_sec_per_gb_min': 900000,
+                          'total_iops_sec_per_gb': 300000,
+                          'read_bytes_sec_per_gb_min': 30,
+                          'read_bytes_sec_per_gb': 10,
+                          'write_bytes_sec_per_gb_min': 120,
+                          'write_bytes_sec_per_gb': 40,
+                          'total_bytes_sec_per_gb_min': 3145728,
+                          'total_bytes_sec_per_gb': 1048576}
+                      }
+
+        with mock.patch.object(cinder.volume.volume_types,
+                               'get_volume_type_qos_specs') as type_qos, \
+            mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
+                              'initialize_connection') as driver_init:
+            type_qos.return_value = dict(qos_specs=qos_values)
+            driver_init.return_value = {'data': {}}
+            mock_get_target.return_value = None
+            qos_specs_expected = {'write_iops_sec': 15,
+                                  'read_iops_sec': 23100,
+                                  'total_iops_sec': 900000,
+                                  'read_bytes_sec': 30,
+                                  'write_bytes_sec': 120,
+                                  'total_bytes_sec': 3145728}
+            # initialize_connection() passes qos_specs that is designated to
+            # be consumed by front-end or both front-end and back-end
+            conn_info = self.volume.initialize_connection(
+                self.context, fake_volume_obj, connector,)
+            self.assertDictEqual(qos_specs_expected,
+                                 conn_info['data']['qos_specs'])
+
+            qos_values.update({'consumer': 'both'})
+            conn_info = self.volume.initialize_connection(
+                self.context, fake_volume_obj, connector)
+            self.assertDictEqual(qos_specs_expected,
+                                 conn_info['data']['qos_specs'])
+
+    @mock.patch.object(cinder.volume.targets.iscsi.ISCSITarget,
+                       '_get_target_chap_auth')
+    @mock.patch.object(db, 'volume_admin_metadata_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
+    @mock.patch.object(db, 'volume_update')
+    def test_initialize_connection_qos_per_gb_with_min_large(
+            self, _mock_volume_update, _mock_volume_get,
+            _mock_volume_admin_metadata_get, mock_get_target):
+        """QoS test when volume size results in using per-gb values."""
+        _fake_admin_meta = [{'key': 'fake-key', 'value': 'fake-value'}]
+        _fake_volume = {'size': 100,
+                        'volume_type_id': fake.VOLUME_TYPE_ID,
+                        'name': 'fake_name',
+                        'host': 'fake_host',
+                        'id': fake.VOLUME_ID,
+                        'volume_admin_metadata': _fake_admin_meta}
+        fake_volume_obj = fake_volume.fake_volume_obj(self.context,
+                                                      **_fake_volume)
+
+        _mock_volume_get.return_value = _fake_volume
+        _mock_volume_update.return_value = _fake_volume
+        _mock_volume_admin_metadata_get.return_value = {
+            'fake-key': 'fake-value'}
+
+        connector = {'ip': 'IP', 'initiator': 'INITIATOR'}
+        qos_values = {'consumer': 'front-end',
+                      'specs': {
+                          'write_iops_sec_per_gb_min': 15,
+                          'write_iops_sec_per_gb': 5,
+                          'read_iops_sec_per_gb_min': 23100,
+                          'read_iops_sec_per_gb': 7700,
+                          'total_iops_sec_per_gb_min': 900000,
+                          'total_iops_sec_per_gb': 300000,
+                          'read_bytes_sec_per_gb_min': 30,
+                          'read_bytes_sec_per_gb': 10,
+                          'write_bytes_sec_per_gb_min': 120,
+                          'write_bytes_sec_per_gb': 40,
+                          'total_bytes_sec_per_gb_min': 3145728,
+                          'total_bytes_sec_per_gb': 1048576}
+                      }
+
+        with mock.patch.object(cinder.volume.volume_types,
+                               'get_volume_type_qos_specs') as type_qos, \
+            mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
+                              'initialize_connection') as driver_init:
+            type_qos.return_value = dict(qos_specs=qos_values)
+            driver_init.return_value = {'data': {}}
+            mock_get_target.return_value = None
+            qos_specs_expected = {'write_iops_sec': 500,
+                                  'read_iops_sec': 770000,
+                                  'total_iops_sec': 30000000,
+                                  'read_bytes_sec': 1000,
+                                  'write_bytes_sec': 4000,
+                                  'total_bytes_sec': 104857600}
             # initialize_connection() passes qos_specs that is designated to
             # be consumed by front-end or both front-end and back-end
             conn_info = self.volume.initialize_connection(

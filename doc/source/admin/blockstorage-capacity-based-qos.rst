@@ -31,6 +31,17 @@ which values should be fairly self explanatory:
 * `write_bytes_sec_per_gb`
 * `total_bytes_sec_per_gb`
 
+In addition, there are 6 more options which allow you to control the minimum
+possible value.  This can be useful in cases where a user creates a volume that
+is very small and ends up with an unusable volume because of performance.
+
+* `read_iops_sec_per_gb_min`
+* `write_iops_sec_per_gb_min`
+* `total_iops_sec_per_gb_min`
+* `read_bytes_sec_per_gb_min`
+* `write_bytes_sec_per_gb_min`
+* `total_bytes_sec_per_gb_min`
+
 For example, in order to create a QoS with 30 IOPs total writes per GB and
 a throughput of 1MB per GB, you might use the Cinder client in the following
 way:

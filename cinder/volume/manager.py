@@ -1612,8 +1612,11 @@ class VolumeManager(manager.CleanableManager,
 
                 for option in tune_opts:
                     option_per_gb = '%s_per_gb' % option
+                    option_per_gb_min = '%s_per_gb_min' % option
                     if option_per_gb in specs:
-                        specs[option] = int(specs[option_per_gb]) * volume_size
+                        minimum_value = specs.pop(option_per_gb_min, 0)
+                        value = int(specs[option_per_gb]) * volume_size
+                        specs[option] = max(minimum_value, value)
                         specs.pop(option_per_gb)
 
         qos_spec = dict(qos_specs=specs)

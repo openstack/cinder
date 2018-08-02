@@ -1,0 +1,10 @@
+---
+features:
+  - Cinder now allows for a minimum value when using the capacity based QoS
+    in order to make sure small volumes can get a minimum allocation for them
+    to be usable.
+
+    The newly added QoS specs are `read_iops_sec_per_gb_min`,
+    `write_iops_sec_per_gb_min`, `total_iops_sec_per_gb_min`,
+    `read_bytes_sec_per_gb_min`, `write_bytes_sec_per_gb_min` and
+    `total_bytes_sec_per_gb_min`
