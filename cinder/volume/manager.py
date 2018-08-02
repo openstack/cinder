@@ -2684,8 +2684,10 @@ class VolumeManager(manager.CleanableManager,
                 volume.update(status_update)
                 volume.save()
             finally:
-                QUOTAS.rollback(context, old_reservations)
-                QUOTAS.rollback(context, new_reservations)
+                if old_reservations:
+                    QUOTAS.rollback(context, old_reservations)
+                if new_reservations:
+                    QUOTAS.rollback(context, new_reservations)
 
         status_update = {'status': volume.previous_status}
         if context.project_id != volume.project_id:
