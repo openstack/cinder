@@ -1657,7 +1657,7 @@ class NimbleRestAPIExecutor(object):
     def get_query(self, api, query):
         url = self.uri + api
         return requests.get(url, headers=self.headers,
-                            params=query, verify=False)
+                            params=query, verify=self.verify)
 
     @_connection_checker
     def put(self, api, payload):
