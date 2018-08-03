@@ -448,7 +448,7 @@ class XIVProxy(proxy.IBMStorageProxy):
     def _create_volume(self, volume):
         """Internal implementation to create a volume."""
         size = storage.gigabytes_to_blocks(float(volume['size']))
-        pool = self.storage_info[storage.FLAG_KEYS['storage_pool']]
+        pool = self._get_backend_pool()
         try:
             self._call_xiv_xcli(
                 "vol_create", vol=volume['name'], size_blocks=size, pool=pool)
@@ -1510,7 +1510,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         if (dest != strings.XIV_BACKEND_PREFIX or dest_host != volume_host):
             return False
 
-        pool_name = self.storage_info[storage.FLAG_KEYS['storage_pool']]
+        pool_name = self._get_backend_pool()
 
         # if pool is different. else - we're on the same pool and retype is ok.
         if (pool_name != dest_pool):
@@ -1611,16 +1611,23 @@ class XIVProxy(proxy.IBMStorageProxy):
 
     @proxy._trace_time
     def _get_pool(self):
+        pool_name = self._get_backend_pool()
         pools = self._call_xiv_xcli(
-            "pool_list", pool=self.storage_info[
-                storage.FLAG_KEYS['storage_pool']]).as_list
+            "pool_list", pool=pool_name).as_list
         if not pools:
             msg = (_(
                 "Pool %(pool)s not available on storage") %
-                {'pool': self.storage_info[storage.FLAG_KEYS['storage_pool']]})
+                {'pool': pool_name})
             LOG.error(msg)
             raise self.meta['exception'].VolumeBackendAPIException(data=msg)
         return pools
+
+    def _get_backend_pool(self):
+        if self.active_backend_id == strings.PRIMARY_BACKEND_ID:
+            return self.storage_info[storage.FLAG_KEYS['storage_pool']]
+        else:
+            return self._get_target_params(
+                self.active_backend_id)['san_clustername']
 
     def _retrieve_pool_stats(self, data):
         try:
@@ -2419,7 +2426,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         return fc_targets
 
     def _get_pool_domain(self, connector):
-        pool_name = self.storage_info[storage.FLAG_KEYS['storage_pool']]
+        pool_name = self._get_backend_pool()
         LOG.debug("pool name from configuration: %s", pool_name)
         domain = None
         try:
@@ -2524,7 +2531,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         LOG.debug("send event SERVICE_STARTED")
         service_start_evnt_prop = {
             "openstack_version": self.meta['openstack_version'],
-            "pool_name": self.storage_info[storage.FLAG_KEYS['storage_pool']]}
+            "pool_name": self._get_backend_pool()}
         ev_mgr = events.EventsManager(self.ibm_storage_cli,
                                       OPENSTACK_PRODUCT_NAME,
                                       self.full_version)
@@ -2537,7 +2544,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         compute_host_name = socket.getfqdn()
         vol_attach_evnt_prop = {
             "openstack_version": self.meta['openstack_version'],
-            "pool_name": self.storage_info[storage.FLAG_KEYS['storage_pool']],
+            "pool_name": self._get_backend_pool(),
             "compute_hostname": compute_host_name}
 
         ev_mgr = events.EventsManager(self.ibm_storage_cli,
