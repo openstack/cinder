@@ -1,16 +1,16 @@
 .. -*- rst -*-
 
-Volume transfer
-===============
+Volume transfer (3.55 or later)
+===============================
 
 Transfers a volume from one user to another user.
-This is the new transfer APIs with microversion 3.53.
+This is the new transfer APIs with microversion 3.55.
 
 
 Accept a volume transfer
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  POST /v3/{project_id}/volume_transfers/{transfer_id}/accept
+.. rest_method::  POST /v3/{project_id}/volume-transfers/{transfer_id}/accept
 
 Accepts a volume transfer.
 
@@ -24,9 +24,6 @@ Response codes
 .. rest_status_code:: error ../status.yaml
 
    - 400
-
-.. rest_status_code:: error ../status.yaml
-
    - 413
 
 Request
@@ -65,7 +62,7 @@ Response Example
 Create a volume transfer
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  POST /v3/{project_id}/volume_transfers
+.. rest_method::  POST /v3/{project_id}/volume-transfers
 
 Creates a volume transfer.
 
@@ -121,7 +118,7 @@ Response Example
 List volume transfers for a project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{project_id}/volume_transfers
+.. rest_method::  GET /v3/{project_id}/volume-transfers
 
 Lists volume transfers.
 
@@ -163,7 +160,7 @@ Response Example
 Show volume transfer detail
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{project_id}/volume_transfers/{transfer_id}
+.. rest_method::  GET /v3/{project_id}/volume-transfers/{transfer_id}
 
 Shows details for a volume transfer.
 
@@ -206,7 +203,7 @@ Response Example
 Delete a volume transfer
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  DELETE /v3/{project_id}/volume_transfers/{transfer_id}
+.. rest_method::  DELETE /v3/{project_id}/volume-transfers/{transfer_id}
 
 Deletes a volume transfer.
 
@@ -230,7 +227,7 @@ Request
 List volume transfers and details
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{project_id}/volume_transfers/detail
+.. rest_method::  GET /v3/{project_id}/volume-transfers/detail
 
 Lists volume transfers, with details.
 

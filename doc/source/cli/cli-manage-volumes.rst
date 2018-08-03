@@ -449,13 +449,15 @@ donor, or original owner, creates a transfer request and sends the created
 transfer ID and authorization key to the volume recipient. The volume
 recipient, or new owner, accepts the transfer by using the ID and key.
 
-In Rocky, Cinder changes the API behavior for V2 and 3.x < 3.55, snapshots will
-be transferred with volume by default. That means if the volume has some
-snapshots, when a user transfers a volume from one owner to another, then those
-snapshots will be transferred with the volume as well. After microversion 3.55,
-Cinder supports the ability to transfer volume without snapshots. If users
-don't want to transfer snapshots, they need to specify the new optional
-argument `--no_snapshots`.
+Starting with the Rocky release, Cinder changes the API behavior for the v2 and
+v3 API up to microversion 3.55. Snapshots will be transferred with the volume
+by default. That means if the volume has some snapshots, when a user transfers
+a volume from one owner to another, then those snapshots will be transferred
+with the volume as well.
+
+Starting with microversion 3.55 and later, Cinder supports the ability to
+transfer volume without snapshots. If users don't want to transfer snapshots,
+they need to specify the new optional argument `--no-snapshots`.
 
 .. note::
 
