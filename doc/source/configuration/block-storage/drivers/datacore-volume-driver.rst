@@ -196,15 +196,15 @@ Examples of option configuration in the ``cinder.conf`` file.
 
      $ sudo mkdir /var/lib/cinder/datacore -p
 
-     $ sudo /bin/sh –c "> /var/lib/cinder/datacore/.chap"
+     $ sudo /bin/sh -c "> /var/lib/cinder/datacore/.chap"
 
      $ sudo chown cinder:cinder /var/lib/cinder/datacore
 
-     $ sudo chmod –v 750 /var/lib/cinder/datacore
+     $ sudo chmod -v 750 /var/lib/cinder/datacore
 
      $ sudo chown cinder:cinder /var/lib/cinder/datacore/.chap
 
-     $ sudo chmod –v 600 /var/lib/cinder/datacore/.chap
+     $ sudo chmod -v 600 /var/lib/cinder/datacore/.chap
 
   After setting **datacore_iscsi_chap_enabled** and
   **datacore_iscsi_chap_storage**, CHAP authentication will be enabled in

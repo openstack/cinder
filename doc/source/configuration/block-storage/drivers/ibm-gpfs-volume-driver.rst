@@ -181,19 +181,19 @@ options supported by the GPFS volume driver.
    * - Metadata Item Name
      - Description
    * - fstype
-     - Specifies whether to create a file system or a swap area on the new volume. If fstype=swap is specified, the mkswap command is used to create a swap area. Otherwise the mkfs command is passed the specified file system type, for example ext3, ext4 or ntfs.
+     - Specifies whether to create a file system or a swap area on the new volume. If fstype=swap is specified, the mkswap command is used to create a swap area. Otherwise the mkfs command is passed the specified file system type, for example ext3, ext4 or ntfs.
    * - fslabel
-     - Sets the file system label for the file system specified by fstype option. This value is only used if fstype is specified.
+     - Sets the file system label for the file system specified by fstype option. This value is only used if fstype is specified.
    * - data_pool_name
      - Specifies the GPFS storage pool to which the volume is to be assigned. Note: The GPFS storage pool must already have been created.
    * - replicas
-     - Specifies how many copies of the volume file to create. Valid values are 1, 2, and, for Spectrum Scale V3.5.0.7 and later, 3. This value cannot be greater than the value of the MaxDataReplicasattribute of the file system.
+     - Specifies how many copies of the volume file to create. Valid values are 1, 2, and, for Spectrum Scale V3.5.0.7 and later, 3. This value cannot be greater than the value of the MaxDataReplicasattribute of the file system.
    * - dio
-     - Enables or disables the Direct I/O caching policy for the volume file. Valid values are yes and no.
+     - Enables or disables the Direct I/O caching policy for the volume file. Valid values are yes and no.
    * - write_affinity_depth
-     - Specifies the allocation policy to be used for the volume file. Note: This option only works if allow-write-affinity is set for the GPFS data pool.
+     - Specifies the allocation policy to be used for the volume file. Note: This option only works if allow-write-affinity is set for the GPFS data pool.
    * - block_group_factor
-     - Specifies how many blocks are laid out sequentially in the volume file to behave as a single large block. Note: This option only works if allow-write-affinity is set for the GPFS data pool.
+     - Specifies how many blocks are laid out sequentially in the volume file to behave as a single large block. Note: This option only works if allow-write-affinity is set for the GPFS data pool.
    * - write_affinity_failure_group
      - Specifies the range of nodes (in GPFS shared nothing architecture) where replicas of blocks in the volume file are to be written. See Spectrum Scale documentation for more details about this option.
 
