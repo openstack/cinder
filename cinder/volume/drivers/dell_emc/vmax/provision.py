@@ -119,19 +119,20 @@ class VMAXProvision(object):
                       start_time, time.time())})
 
     def create_volume_snapvx(self, array, source_device_id,
-                             snap_name, extra_specs):
+                             snap_name, extra_specs, ttl=0):
         """Create a snapVx of a volume.
 
         :param array: the array serial number
         :param source_device_id: source volume device id
         :param snap_name: the snapshot name
         :param extra_specs: the extra specifications
+        :param ttl: time to live in hours, defaults to 0
         """
         start_time = time.time()
         LOG.debug("Create Snap Vx snapshot of: %(source)s.",
                   {'source': source_device_id})
         self.rest.create_volume_snap(
-            array, snap_name, source_device_id, extra_specs)
+            array, snap_name, source_device_id, extra_specs, ttl)
         LOG.debug("Create volume snapVx took: %(delta)s H:MM:SS.",
                   {'delta': self.utils.get_time_delta(start_time,
                                                       time.time())})
@@ -150,8 +151,9 @@ class VMAXProvision(object):
         """
         start_time = time.time()
         if create_snap:
+            # We are creating a temporary snapshot. Specify a ttl of 1 hour
             self.create_volume_snapvx(array, source_device_id,
-                                      snap_name, extra_specs)
+                                      snap_name, extra_specs, ttl=1)
         # Link source to target
         self.rest.modify_volume_snap(
             array, source_device_id, target_device_id, snap_name,
@@ -163,7 +165,7 @@ class VMAXProvision(object):
 
     def break_replication_relationship(
             self, array, target_device_id, source_device_id, snap_name,
-            extra_specs):
+            extra_specs, generation=0):
         """Unlink a snapshot from its target volume.
 
         :param array: the array serial number
@@ -171,17 +173,19 @@ class VMAXProvision(object):
         :param target_device_id: target volume device id
         :param snap_name: the name for the snap shot
         :param extra_specs: extra specifications
+        :param generation: the generation number of the snapshot
         """
         LOG.debug("Break snap vx link relationship between: %(src)s "
                   "and: %(tgt)s.",
                   {'src': source_device_id, 'tgt': target_device_id})
 
         self._unlink_volume(array, source_device_id, target_device_id,
-                            snap_name, extra_specs)
+                            snap_name, extra_specs,
+                            list_volume_pairs=None, generation=generation)
 
     def _unlink_volume(
             self, array, source_device_id, target_device_id, snap_name,
-            extra_specs, list_volume_pairs=None):
+            extra_specs, list_volume_pairs=None, generation=0):
         """Unlink a target volume from its source volume.
 
         :param array: the array serial number
@@ -190,6 +194,7 @@ class VMAXProvision(object):
         :param snap_name: the snap name
         :param extra_specs: extra specifications
         :param list_volume_pairs: list of volume pairs, optional
+        :param generation: the generation number of the snapshot
         :return: return code
         """
 
@@ -205,7 +210,8 @@ class VMAXProvision(object):
                     self.rest.modify_volume_snap(
                         array, source_device_id, target_device_id, snap_name,
                         extra_specs, unlink=True,
-                        list_volume_pairs=list_volume_pairs)
+                        list_volume_pairs=list_volume_pairs,
+                        generation=generation)
                     kwargs['modify_vol_success'] = True
             except exception.VolumeBackendAPIException:
                 pass
@@ -224,18 +230,19 @@ class VMAXProvision(object):
         return rc
 
     def delete_volume_snap(self, array, snap_name,
-                           source_device_id, restored=False):
+                           source_device_id, restored=False, generation=0):
         """Delete a snapVx snapshot of a volume.
 
         :param array: the array serial number
         :param snap_name: the snapshot name
         :param source_device_id: the source device id
         :param restored: Flag to indicate if restored session is being deleted
+        :param generation: the snapshot generation number
         """
         LOG.debug("Delete SnapVx: %(snap_name)s for volume %(vol)s.",
                   {'vol': source_device_id, 'snap_name': snap_name})
         self.rest.delete_volume_snap(
-            array, snap_name, source_device_id, restored)
+            array, snap_name, source_device_id, restored, generation)
 
     def is_restore_complete(self, array, source_device_id,
                             snap_name, extra_specs):
@@ -303,7 +310,8 @@ class VMAXProvision(object):
                         restored = True
         return restored
 
-    def delete_temp_volume_snap(self, array, snap_name, source_device_id):
+    def delete_temp_volume_snap(self, array, snap_name,
+                                source_device_id, generation=0):
         """Delete the temporary snapshot created for clone operations.
 
         There can be instances where the source and target both attempt to
@@ -312,19 +320,22 @@ class VMAXProvision(object):
         :param array: the array serial number
         :param snap_name: the snapshot name
         :param source_device_id: the source device id
+        :param generation: the generation number for the snapshot
         """
 
         @coordination.synchronized("emc-snapvx-{snapvx_name}")
         def do_delete_temp_snap(snapvx_name):
             # Ensure snap has not been recently deleted
             if self.rest.get_volume_snap(
-                    array, source_device_id, snapvx_name):
-                self.delete_volume_snap(array, snapvx_name, source_device_id)
+                    array, source_device_id, snapvx_name, generation):
+                self.delete_volume_snap(
+                    array, snapvx_name, source_device_id,
+                    restored=False, generation=generation)
 
         do_delete_temp_snap(snap_name)
 
-    def delete_volume_snap_check_for_links(self, array, snap_name,
-                                           source_devices, extra_specs):
+    def delete_volume_snap_check_for_links(
+            self, array, snap_name, source_devices, extra_specs, generation=0):
         """Check if a snap has any links before deletion.
 
         If a snapshot has any links, break the replication relationship
@@ -333,6 +344,7 @@ class VMAXProvision(object):
         :param snap_name: the snapshot name
         :param source_devices: the source device ids
         :param extra_specs: the extra specifications
+        :param generation: the generation number for the snapshot
         """
         list_device_pairs = []
         if not isinstance(source_devices, list):
@@ -342,7 +354,7 @@ class VMAXProvision(object):
                       "for volume %(vol)s.",
                       {'vol': source_device, 'snap_name': snap_name})
             linked_list = self.rest.get_snap_linked_device_list(
-                array, source_device, snap_name)
+                array, source_device, snap_name, generation)
             if len(linked_list) == 1:
                 target_device = linked_list[0]['targetDevice']
                 list_device_pairs.append((source_device, target_device))
@@ -352,11 +364,13 @@ class VMAXProvision(object):
                     # we must unlink each target individually
                     target_device = link['targetDevice']
                     self._unlink_volume(array, source_device, target_device,
-                                        snap_name, extra_specs)
+                                        snap_name, extra_specs, generation)
         if list_device_pairs:
             self._unlink_volume(array, "", "", snap_name, extra_specs,
-                                list_volume_pairs=list_device_pairs)
-        self.delete_volume_snap(array, snap_name, source_devices)
+                                list_volume_pairs=list_device_pairs,
+                                generation=generation)
+        self.delete_volume_snap(array, snap_name, source_devices,
+                                restored=False, generation=generation)
 
     def extend_volume(self, array, device_id, new_size, extra_specs,
                       rdf_group=None):

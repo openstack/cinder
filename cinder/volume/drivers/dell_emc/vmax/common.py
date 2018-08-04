@@ -61,6 +61,12 @@ vmax_opts = [
                default=200,
                help='Use this value to specify '
                     'number of retries.'),
+    cfg.IntOpt(utils.VMAX_SNAPVX_UNLINK_LIMIT,
+               default=3,
+               help='Use this value to specify '
+                    'the maximum number of unlinks '
+                    'for the temporary snapshots '
+                    'before a clone operation.'),
     cfg.BoolOpt('initiator_check',
                 default=False,
                 help='Use this value to enable '
@@ -149,6 +155,8 @@ class VMAXCommon(object):
         """Get relevent details from configuration file."""
         self.interval = self.configuration.safe_get('interval')
         self.retries = self.configuration.safe_get('retries')
+        self.snapvx_unlink_limit = self.configuration.safe_get(
+            utils.VMAX_SNAPVX_UNLINK_LIMIT)
         self.pool_info['backend_name'] = (
             self.configuration.safe_get('volume_backend_name'))
         mosr = volume_utils.get_max_over_subscription_ratio(
@@ -1310,9 +1318,8 @@ class VMAXCommon(object):
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-        # Check if source is currently a snap target. Wait for sync if true.
-        self._sync_check(array, source_device_id, source_volume.name,
-                         extra_specs, tgt_only=True)
+        # Perform any snapvx cleanup if required before creating the clone
+        self._clone_check(array, source_device_id, extra_specs)
 
         if not is_snapshot:
             clone_dict = self._create_replica(
@@ -1419,7 +1426,8 @@ class VMAXCommon(object):
             return volume_name
 
         array = extra_specs[utils.ARRAY]
-        # Check if volume is snap source
+        # Check if the volume being deleted is a
+        # source or target for copy session
         self._sync_check(array, device_id, volume_name, extra_specs)
         # Remove from any storage groups and cleanup replication
         self._remove_vol_and_cleanup_replication(
@@ -1780,8 +1788,7 @@ class VMAXCommon(object):
             LOG.info("The target device id is: %(device_id)s.",
                      {'device_id': target_device_id})
             if not snap_name:
-                snap_name = self.utils.get_temp_snap_name(
-                    clone_name, source_device_id)
+                snap_name = self.utils.get_temp_snap_name(source_device_id)
                 create_snap = True
             self.provision.create_volume_replica(
                 array, source_device_id, target_device_id,
@@ -1801,7 +1808,7 @@ class VMAXCommon(object):
 
     def _cleanup_target(
             self, array, target_device_id, source_device_id,
-            clone_name, snap_name, extra_specs):
+            clone_name, snap_name, extra_specs, generation=0):
         """Cleanup target volume on failed clone/ snapshot creation.
 
         :param array: the array serial number
@@ -1809,13 +1816,14 @@ class VMAXCommon(object):
         :param source_device_id: the source device ID
         :param clone_name: the name of the clone volume
         :param extra_specs: the extra specifications
+        :param generation: the generation number of the snapshot
         """
         snap_session = self.rest.get_sync_session(
-            array, source_device_id, snap_name, target_device_id)
+            array, source_device_id, snap_name, target_device_id, generation)
         if snap_session:
             self.provision.break_replication_relationship(
                 array, target_device_id, source_device_id,
-                snap_name, extra_specs)
+                snap_name, extra_specs, generation)
         self._delete_from_srp(
             array, target_device_id, clone_name, extra_specs)
 
@@ -1828,6 +1836,7 @@ class VMAXCommon(object):
         :param volume_name: volume name
         :param tgt_only: Flag - return only sessions where device is target
         :param extra_specs: extra specifications
+        :param is_clone: Flag to specify if it is a clone operation
         """
         get_sessions = False
         snapvx_tgt, snapvx_src, __ = self.rest.is_vol_in_rep_session(
@@ -1840,17 +1849,21 @@ class VMAXCommon(object):
             snap_vx_sessions = self.rest.find_snap_vx_sessions(
                 array, device_id, tgt_only)
             if snap_vx_sessions:
+                snap_vx_sessions.sort(
+                    key=lambda k: k['generation'], reverse=True)
                 for session in snap_vx_sessions:
                     source = session['source_vol']
                     snap_name = session['snap_name']
                     targets = session['target_vol_list']
+                    generation = session['generation']
+                    # Break the replication relationship
                     for target in targets:
-                        # Break the replication relationship
                         LOG.debug("Unlinking source from target. Source: "
                                   "%(volume)s, Target: %(target)s.",
-                                  {'volume': volume_name, 'target': target})
+                                  {'volume': source, 'target': target[0]})
                         self.provision.break_replication_relationship(
-                            array, target, source, snap_name, extra_specs)
+                            array, target[0], source, snap_name,
+                            extra_specs, generation)
                     # The snapshot name will only have 'temp' (or EMC_SMI for
                     # legacy volumes) if it is a temporary volume.
                     # Only then is it a candidate for deletion.
@@ -1858,8 +1871,72 @@ class VMAXCommon(object):
                         @coordination.synchronized("emc-source-{source}")
                         def do_delete_temp_volume_snap(source):
                             self.provision.delete_temp_volume_snap(
-                                array, snap_name, source)
+                                array, snap_name, source, generation)
                         do_delete_temp_volume_snap(source)
+
+    def _clone_check(self, array, device_id, extra_specs):
+        """Perform any snapvx cleanup before creating clones or snapshots
+
+        :param array: the array serial
+        :param device_id: the device ID of the volume
+        :param extra_specs: extra specifications
+        """
+        snapvx_tgt, snapvx_src, __ = self.rest.is_vol_in_rep_session(
+            array, device_id)
+        if snapvx_src or snapvx_tgt:
+            snap_vx_sessions = self.rest.find_snap_vx_sessions(
+                array, device_id)
+            if snap_vx_sessions:
+                snap_vx_sessions.sort(
+                    key=lambda k: k['generation'], reverse=True)
+                count = 0
+                for session in snap_vx_sessions:
+                    source = session['source_vol']
+                    snap_name = session['snap_name']
+                    targets = session['target_vol_list']
+                    generation = session['generation']
+                    # Only unlink a set number of targets
+                    if count == self.snapvx_unlink_limit:
+                        break
+                    is_temp = False
+                    is_temp = 'temp' in snap_name or 'EMC_SMI' in snap_name
+                    if utils.CLONE_SNAPSHOT_NAME in snap_name:
+                        is_temp = False
+                    for target in targets:
+                        if snapvx_src:
+                            if not is_temp and target[1] == "Copied":
+                                # Break the replication relationship
+                                LOG.debug("Unlinking source from "
+                                          "target. Source: %(volume)s, "
+                                          "Target: %(target)s.",
+                                          {'volume': source,
+                                           'target': target[0]})
+                                self.provision.break_replication_relationship(
+                                    array, target[0], source, snap_name,
+                                    extra_specs, generation)
+                                count = count + 1
+                        elif snapvx_tgt:
+                            # If our device is a target, we need to wait
+                            # and then unlink
+                            LOG.debug("Unlinking source from "
+                                      "target. Source: %(volume)s, "
+                                      "Target: %(target)s.",
+                                      {'volume': source,
+                                       'target': target[0]})
+                            self.provision.break_replication_relationship(
+                                array, target[0], source, snap_name,
+                                extra_specs, generation)
+                            # For older styled temp snapshots for clone
+                            # do a delete as well
+                            if is_temp:
+
+                                @coordination.synchronized(
+                                    "emc-source-{source}")
+                                def do_delete_temp_volume_snap(source):
+                                    self.provision.delete_temp_volume_snap(
+                                        array, snap_name, source, generation)
+
+                                do_delete_temp_volume_snap(source)
 
     def manage_existing(self, volume, external_ref):
         """Manages an existing VMAX Volume (import to Cinder).
@@ -4416,7 +4493,7 @@ class VMAXCommon(object):
             LOG.debug("Terminating restore session")
             # This may throw an exception if restore_complete is False
             self.provision.delete_volume_snap(
-                array, snap_name, sourcedevice_id, restored=True)
+                array, snap_name, sourcedevice_id, restored=True, generation=0)
             # Revert volume to snapshot is successful if termination was
             # successful - possible even if restore_complete was False
             # when we checked last.
