@@ -48,7 +48,7 @@ try:
     from infi.dtypes import wwn
     import infinisdk
 except ImportError:
-    capacity = None
+    from oslo_utils import units as capacity
     infinisdk = None
     iqn = None
     wwn = None
