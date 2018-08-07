@@ -1008,6 +1008,8 @@ class SolidFireDriver(san.SanISCSIDriver):
             tvol['provider_location'] = template_vol['provider_location']
             tvol['provider_auth'] = template_vol['provider_auth']
 
+            attach_info = None
+
             try:
                 connector = {'multipath': False}
                 conn = self.initialize_connection(tvol, connector)
@@ -1034,7 +1036,8 @@ class SolidFireDriver(san.SanISCSIDriver):
                           exc)
                 LOG.debug('Removing SolidFire Cache Volume (SF ID): %s',
                           vol['volumeID'])
-                self._detach_volume(context, attach_info, tvol, properties)
+                if attach_info is not None:
+                    self._detach_volume(context, attach_info, tvol, properties)
                 self._issue_api_request('DeleteVolume', params)
                 self._issue_api_request('PurgeDeletedVolume', params)
                 return
