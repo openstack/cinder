@@ -438,6 +438,6 @@ volume APIs.
 ----
 Add ``mode`` argument to attachment-create.
 
-3.55
-----
+3.55 (Maximum in Rocky)
+-----------------------
 Support ability to transfer snapshots along with their parent volume.
