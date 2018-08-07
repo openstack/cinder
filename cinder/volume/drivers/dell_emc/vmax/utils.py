@@ -344,7 +344,7 @@ class VMAXUtils(object):
         else:
             exception_message = (_("Source volume device ID is required."))
             raise exception.VolumeBackendAPIException(
-                data=exception_message)
+                message=exception_message)
         return array, device_id
 
     @staticmethod
@@ -419,7 +419,8 @@ class VMAXUtils(object):
                                    "information. Error received: %(ke)s.") %
                                  {'ke': six.text_type(ke)})
                 LOG.exception(error_message)
-                raise exception.VolumeBackendAPIException(data=error_message)
+                raise exception.VolumeBackendAPIException(
+                    message=error_message)
 
             allow_extend = target.get('allow_extend', 'false')
             if strutils.bool_from_string(allow_extend):
@@ -537,7 +538,7 @@ class VMAXUtils(object):
         else:
             msg = (_("Unable to get volume type ids."))
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.VolumeBackendAPIException(message=msg)
 
         if len(arrays) != 1:
             if not arrays:
@@ -549,7 +550,7 @@ class VMAXUtils(object):
                          "associated with volume group: %(groupid)s.")
                        % {'groupid': group.id})
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.VolumeBackendAPIException(message=msg)
         array = arrays.pop()
         intervals_retries_dict = {INTERVAL: interval, RETRIES: retries}
         return array, intervals_retries_dict

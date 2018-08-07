@@ -273,7 +273,7 @@ class VMAXProvision(object):
                                        "restore."))
                 LOG.exception(exception_message)
                 raise exception.VolumeBackendAPIException(
-                    data=exception_message)
+                    message=exception_message)
 
             if kwargs['wait_for_restore_called']:
                 raise loopingcall.LoopingCallDone()
@@ -510,7 +510,8 @@ class VMAXProvision(object):
                 "Could not retrieve storage group %(sg_name)s. ") %
                 {'sg_name': sg_name})
             LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
         return '%(slo)s+%(workload)s' % {'slo': slo, 'workload': workload}
 
     @coordination.synchronized('emc-rg-{rdf_group}')
