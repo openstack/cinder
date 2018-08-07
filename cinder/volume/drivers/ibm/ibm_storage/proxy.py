@@ -360,7 +360,7 @@ class IBMStorageProxy(object):
         if not self.targets:
             return None
         try:
-            target = self.targets.keys().next()
+            target = list(self.targets.keys())[0]
             return target
         except Exception:
             return None

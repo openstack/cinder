@@ -691,6 +691,32 @@ class XIVProxyTest(test.TestCase):
             resource_id=group['name'],
             new_role='Slave')
 
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.XIVProxy._get_target_params",
+                mock.MagicMock(return_value=REPLICA_PARAMS))
+    def test_pool_with_replication_failover_back(self):
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        pool_name = p._get_backend_pool()
+        self.assertEqual(self.default_storage_info['vol_pool'], pool_name)
+
+        p_failback = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver,
+            REPLICA_ID)
+
+        pool_name = p_failback._get_backend_pool()
+        self.assertEqual(REPLICA_POOL, pool_name)
+
     @mock.patch("cinder.volume.utils.is_group_a_cg_snapshot_type",
                 mock.MagicMock(return_value=True))
     def test_create_volume_with_consistency_group(self):
