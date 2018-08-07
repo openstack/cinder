@@ -215,35 +215,44 @@ class VMAXCommon(object):
         """
         try:
             array = array_info['SerialNumber']
-            srp = array_info['srpName']
             if self.failover:
                 array = self.active_backend_id
-            # Get the srp slo & workload settings
-            slo_settings = self.rest.get_slo_list(array, srp)
-            # Remove 'None' from the list (so a 'None' slo is not combined
-            # with a workload, which is not permitted)
+
+            slo_settings = self.rest.get_slo_list(array)
+            # Remove 'None' and 'Optimized from SL list, they cannot be mixed
+            # with workloads so will be added later again
             slo_list = [x for x in slo_settings
                         if x.lower() not in ['none', 'optimized']]
             workload_settings = self.rest.get_workload_settings(array)
             workload_settings.append("None")
-            slo_workload_set = set(
-                ['%(slo)s:%(workload)s' % {'slo': slo, 'workload': workload}
-                 for slo in slo_list for workload in workload_settings])
-            # Add back in in the only allowed 'None' slo/ workload combination
-            slo_workload_set.add('None:None')
-            for x in slo_settings:
-                if 'optimized' == x.lower():
-                    slo_workload_set.add('Optimized:None')
-                    break
+            slo_workload_set = set()
+
+            if self.rest.is_next_gen_array(array):
+                for slo in slo_list:
+                    slo_workload_set.add(slo)
+                slo_workload_set.add('None')
+                slo_workload_set.add('Optimized')
+            else:
+                slo_workload_set = set(
+                    ['%(slo)s:%(workload)s' % {'slo': slo,
+                                               'workload': workload}
+                     for slo in slo_list for workload in workload_settings])
+                slo_workload_set.add('None:None')
+
+            if not any(self.rest.get_vmax_model(array) in x for x in
+                       utils.VMAX_AFA_MODELS) and not \
+                    self.rest.is_next_gen_array(array):
+                slo_workload_set.add('Optimized:None')
 
             finalarrayinfolist = []
             for sloWorkload in slo_workload_set:
-                # Doing a shallow copy will work as we are modifying
-                # only strings
                 temparray_info = array_info.copy()
-                slo, workload = sloWorkload.split(':')
-                temparray_info['SLO'] = slo
-                temparray_info['Workload'] = workload
+                try:
+                    slo, workload = sloWorkload.split(':')
+                    temparray_info['SLO'] = slo
+                    temparray_info['Workload'] = workload
+                except ValueError:
+                    temparray_info['SLO'] = sloWorkload
                 finalarrayinfolist.append(temparray_info)
         except Exception as e:
             exception_message = (_(
@@ -870,21 +879,35 @@ class VMAXCommon(object):
                      provisioned_capacity_gb, array_reserve_percent])
             else:
                 already_queried = True
-            pool_name = ("%(slo)s+%(workload)s+%(srpName)s+%(array)s"
-                         % {'slo': array_info['SLO'],
-                            'workload': array_info['Workload'],
-                            'srpName': array_info['srpName'],
-                            'array': array_info['SerialNumber']})
+            try:
+                pool_name = ("%(slo)s+%(workload)s+%(srpName)s+%(array)s"
+                             % {'slo': array_info['SLO'],
+                                'workload': array_info['Workload'],
+                                'srpName': array_info['srpName'],
+                                'array': array_info['SerialNumber']})
+            except KeyError:
+                pool_name = ("%(slo)s+%(srpName)s+%(array)s"
+                             % {'slo': array_info['SLO'],
+                                'srpName': array_info['srpName'],
+                                'array': array_info['SerialNumber']})
 
             if already_queried:
                 # The dictionary will only have one key per VMAX
                 # Construct the location info
-                temp_location_info = (
-                    ("%(arrayName)s#%(srpName)s#%(slo)s#%(workload)s"
-                     % {'arrayName': array_info['SerialNumber'],
-                        'srpName': array_info['srpName'],
-                        'slo': array_info['SLO'],
-                        'workload': array_info['Workload']}))
+                try:
+                    temp_location_info = (
+                        ("%(arrayName)s#%(srpName)s#%(slo)s#%(workload)s"
+                         % {'arrayName': array_info['SerialNumber'],
+                            'srpName': array_info['srpName'],
+                            'slo': array_info['SLO'],
+                            'workload': array_info['Workload']}))
+                except KeyError:
+                    temp_location_info = (
+                        ("%(arrayName)s#%(srpName)s#%(slo)s"
+                         % {'arrayName': array_info['SerialNumber'],
+                            'srpName': array_info['srpName'],
+                            'slo': array_info['SLO']}))
+
                 pool = {'pool_name': pool_name,
                         'total_capacity_gb':
                             arrays[array_info['SerialNumber']][0],
@@ -981,11 +1004,17 @@ class VMAXCommon(object):
                   'free_capacity_gb': remainingManagedSpaceGbs,
                   'provisioned_capacity_gb': provisionedManagedSpaceGbs})
 
-        location_info = ("%(arrayName)s#%(srpName)s#%(slo)s#%(workload)s"
-                         % {'arrayName': array_info['SerialNumber'],
-                            'srpName': array_info['srpName'],
-                            'slo': array_info['SLO'],
-                            'workload': array_info['Workload']})
+        try:
+            location_info = ("%(arrayName)s#%(srpName)s#%(slo)s#%(workload)s"
+                             % {'arrayName': array_info['SerialNumber'],
+                                'srpName': array_info['srpName'],
+                                'slo': array_info['SLO'],
+                                'workload': array_info['Workload']})
+        except KeyError:
+            location_info = ("%(arrayName)s#%(srpName)s#%(slo)s"
+                             % {'arrayName': array_info['SerialNumber'],
+                                'srpName': array_info['srpName'],
+                                'slo': array_info['SLO']})
 
         return (location_info, totalManagedSpaceGbs,
                 remainingManagedSpaceGbs, provisionedManagedSpaceGbs,
@@ -1561,8 +1590,7 @@ class VMAXCommon(object):
                       'wl': workload_from_extra_spec})
 
         else:
-            slo_list = self.rest.get_slo_list(
-                pool_record['SerialNumber'], extra_specs[utils.SRP])
+            slo_list = self.rest.get_slo_list(pool_record['SerialNumber'])
             if 'Optimized' in slo_list:
                 slo_from_extra_spec = 'Optimized'
             elif 'Diamond' in slo_list:
@@ -1604,6 +1632,7 @@ class VMAXCommon(object):
             self.version_dict = (
                 self.volume_metadata.gather_version_info(
                     extra_specs[utils.ARRAY]))
+
         return extra_specs
 
     def _delete_from_srp(self, array, device_id, volume_name,
