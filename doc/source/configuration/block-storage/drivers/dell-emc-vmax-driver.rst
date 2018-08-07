@@ -338,80 +338,56 @@ complex and open-zoning would raise security concerns.
    .. code-block:: console
 
       # openssl s_client -showcerts \
-                         -connect my_unisphere_host:8443 </dev/null 2>/dev/null \
+                         -connect my_unisphere_host:8443 \
+                         </dev/null 2>/dev/null \
                          | openssl x509 -outform PEM > my_unisphere_host.pem
 
    Where ``my_unisphere_host`` is the hostname of the unisphere instance and
    ``my_unisphere_host.pem`` is the name of the .pem file.
 
-#. Add this path to the ``cinder.conf`` under the backend stanza
+#. Add this path to ``cinder.conf`` under the VMAX backend stanza and set SSL
+   verify to True
 
    .. code-block:: console
 
+      driver_ssl_cert_verify = True
       driver_ssl_cert_path = /path/to/my_unisphere_host.pem
 
-   ``OR`` follow the steps below:
+   ``OR`` follow the steps 3-6 below if you would like to add the CA cert to
+   the system certificate bundle instead of specifying the path to cert:
 
-#. OPTIONAL (if step 2 completed): Copy the pem file to the system certificate
-   directory:
+#. OPTIONAL: Copy the ``.pem`` cert to the system certificate
+   directory and convert to ``.crt``:
 
    .. code-block:: console
 
       # cp my_unisphere_host.pem /usr/share/ca-certificates/ca_cert.crt
 
-#. OPTIONAL: Update CA certificate database with the following commands:
+#. OPTIONAL: Update CA certificate database with the following command. Ensure
+   you select to enable the cert from step 3 when prompted:
 
    .. code-block:: console
 
       # sudo dpkg-reconfigure ca-certificates
 
-   .. note::
+#. OPTIONAL: Set a system environment variable to tell the Requests library to
+   use the system cert bundle instead of the default Certifi bundle:
 
-      Check that the new ``ca_cert.crt`` will activate by selecting ask on the
-      dialog. If it is not enabled for activation, use the down and up keys to
-      select, and the space key to enable or disable.
+   .. code-block:: console
 
-      .. code-block:: console
+      # export REQUESTS_CA_BUNDLE = /etc/ssl/certs/ca-certificates.crt
 
-         # sudo update-ca-certificates
+#. OPTIONAL: Set cert verification to ``true`` under the VMAX backend stanza in
+   ``cinder.conf``:
 
-#. Ensure ``driver_ssl_cert_verify`` is set to ``True`` in cinder.conf backend
-   stanza ``OR`` the path defined in step 1.
+   .. code-block:: console
 
+      # driver_ssl_cert_verify = True
 
-.. note::
-
-   Issue
-
-   "Caused by SSLError(CertificateError("hostname 'xx.xx.xx.xx' doesn't match 'xx.xx.xx.xx'
-
-   Solution
-
-   #. Check that ``requests`` and it's dependencies are up to date:
-
-      .. code-block:: console
-
-         $ sudo pip install requests --upgrade
-
-   #. Verify the SSL cert was created using the command:
-
-      .. code-block:: console
-
-         $ openssl s_client -showcerts -connect {my_unisphere_host}:{port} </dev/null 2>/dev/null|openssl x509 -outform PEM >{cert_name}.pem
-
-   #. Verify the cert using command:
-
-      .. code-block:: console
-
-         $ openssl s_client -connect {ip_address}:{port} -CAfile {cert_name}.pem -verify 9
-
-   #. If requests is up to date and the cert is created correctly and verified
-      but the hostname error still persists, install ``ipaddress`` to
-      determine if it clears the hostname error:
-
-      .. code-block:: console
-
-         $ sudo pip install ipaddress
+#. Ensure ``driver_ssl_cert_path`` is set to ``True`` in ``cinder.conf`` backend
+   stanza if steps 3-6 are skipped, otherwise ensure both
+   ``driver_ssl_cert_path`` and ``driver_ssl_cert_path`` are set in
+   ``cinder.conf`` backend stanza.
 
 
 6. Create Volume Types
