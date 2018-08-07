@@ -321,7 +321,7 @@ OpenStack software.
    .. note::
 
       To stop the Web Services API Server, use the :command:`stopwsapi` command. For
-      other options run the :command:`setwsapi –h` command.
+      other options run the :command:`setwsapi -h` command.
 
 #. If you are not using an existing CPG, create a CPG on the HPE 3PAR storage
    system to be used as the default location for creating volumes.

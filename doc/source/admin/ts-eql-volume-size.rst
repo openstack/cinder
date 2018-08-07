@@ -55,8 +55,8 @@ following example, the ID and size are
 Verify the volume size on the EQL array by using its command-line
 interface.
 
-The actual size (``VolReserve``) is 1.01 GB. The EQL Group Manager
-should also report a volume size of 1.01 GB:
+The actual size (``VolReserve``) is 1.01GB. The EQL Group Manager
+should also report a volume size of 1.01GB:
 
 .. code-block:: console
 
@@ -112,7 +112,7 @@ Create a new image from this volume:
 When you uploaded the volume in the previous step, the Image service
 reported the volume's size as ``1`` (GB). However, when using
 :command:`openstack image show` to show the image, the displayed size is
-1085276160 bytes, or roughly 1.01 GB:
+1085276160 bytes, or roughly 1.01 GB:
 
 +------------------+--------------------------------------+
 | Property         | Value                                |
@@ -139,7 +139,7 @@ reported the volume's size as ``1`` (GB). However, when using
 
 Create a new volume using the previous image (``image_id 3020a21d-ba37-4495
 -8899-07fc201161b9`` in this example) as
-the source. Set the target volume size to 1 GB; this is the size
+the source. Set the target volume size to 1GB; this is the size
 reported by the ``cinder`` tool when you uploaded the volume to the
 Image service:
 
@@ -156,9 +156,9 @@ Solution
 ~~~~~~~~
 
 To work around this problem, increase the target size of the new image
-to the next whole number. In the problem example, you created a 1 GB
+to the next whole number. In the problem example, you created a 1GB
 volume to be used as volume-backed image, so a new volume using this
-volume-backed image should use a size of 2 GB:
+volume-backed image should use a size of 2GB:
 
 .. code-block:: console
 

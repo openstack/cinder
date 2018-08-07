@@ -146,7 +146,7 @@ in the ``multipath.conf`` file:
         device {
             vendor "DATERA"
             product "IBLOCK"
-            getuid_callout "/lib/udev/scsi_id --whitelisted –
+            getuid_callout "/lib/udev/scsi_id --whitelisted --
             replace-whitespace --page=0x80 --device=/dev/%n"
             path_grouping_policy group_by_prio
             path_checker tur

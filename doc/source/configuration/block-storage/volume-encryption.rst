@@ -126,7 +126,7 @@ left out, the default volume type, ``unencrypted``, is used.
 
       $ . admin-openrc.sh
 
-#. Create an unencrypted 1 GB test volume:
+#. Create an unencrypted 1GB test volume:
 
    .. code-block:: console
 
@@ -134,7 +134,7 @@ left out, the default volume type, ``unencrypted``, is used.
       $ openstack volume create --size 1 'unencrypted volume'
 
 
-#. Create an encrypted 1 GB test volume:
+#. Create an encrypted 1GB test volume:
 
    .. code-block:: console
 
