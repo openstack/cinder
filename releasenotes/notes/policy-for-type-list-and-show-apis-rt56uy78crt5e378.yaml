@@ -1,0 +1,5 @@
+---
+fixes:
+  - Two new policies "volume_extension:type_get" and
+    "volume_extension:type_get_all" have been added to
+    control type show and type list APIs.

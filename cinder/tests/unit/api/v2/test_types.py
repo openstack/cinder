@@ -24,6 +24,7 @@ from cinder.api.v2 import types
 from cinder.api.v2.views import types as views_types
 from cinder import context
 from cinder import exception
+from cinder.policies import volume_type as type_policy
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -91,6 +92,8 @@ class VolumeTypesApiTest(test.TestCase):
         self.ctxt = context.RequestContext(user_id=fake.USER_ID,
                                            project_id=fake.PROJECT_ID,
                                            is_admin=True)
+        self.mock_authorize = self.patch(
+            'cinder.context.RequestContext.authorize')
         self.type_id1 = self._create_volume_type('volume_type1',
                                                  {'key1': 'value1'})
         self.type_id2 = self._create_volume_type('volume_type2',
@@ -114,6 +117,7 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertEqual(set(expected_names), set(actual_names))
         for entry in res_dict['volume_types']:
             self.assertEqual('value1', entry['extra_specs']['key1'])
+        self.mock_authorize.assert_any_call(type_policy.GET_ALL_POLICY)
 
     def test_volume_types_index_no_data(self):
         self.mock_object(volume_types, 'get_all_types',
@@ -242,6 +246,8 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertEqual(type_id, res_dict['volume_type']['id'])
         type_name = 'vol_type_' + type_id
         self.assertEqual(type_name, res_dict['volume_type']['name'])
+        self.mock_authorize.assert_any_call(
+            type_policy.GET_POLICY, target_obj=mock.ANY)
 
     def test_volume_types_show_not_found(self):
         self.mock_object(volume_types, 'get_volume_type',
@@ -275,7 +281,7 @@ class VolumeTypesApiTest(test.TestCase):
 
     def test_view_builder_show(self):
         view_builder = views_types.ViewBuilder()
-
+        self.mock_authorize.return_value = False
         now = timeutils.utcnow().isoformat()
         raw_volume_type = dict(
             name='new_type',
@@ -304,7 +310,7 @@ class VolumeTypesApiTest(test.TestCase):
 
     def test_view_builder_show_admin(self):
         view_builder = views_types.ViewBuilder()
-
+        self.mock_authorize.return_value = True
         now = timeutils.utcnow().isoformat()
         raw_volume_type = dict(
             name='new_type',
@@ -458,7 +464,7 @@ class VolumeTypesApiTest(test.TestCase):
 
     def test_view_builder_list(self):
         view_builder = views_types.ViewBuilder()
-
+        self.mock_authorize.return_value = False
         now = timeutils.utcnow().isoformat()
         raw_volume_types = []
         for i in range(0, 10):
