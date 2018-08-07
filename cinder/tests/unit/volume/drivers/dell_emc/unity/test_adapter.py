@@ -79,7 +79,7 @@ class MockClient(object):
 
     @staticmethod
     def create_lun(name, size, pool, description=None, io_limit_policy=None,
-                   is_thin=None):
+                   is_thin=None, is_compressed=None):
         lun_id = name
         if is_thin is not None and not is_thin:
             lun_id += '_thick'
@@ -391,6 +391,16 @@ class CommonAdapterTest(test.TestCase):
         expected = get_lun_pl('lun_3_thick')
         self.assertEqual(expected, ret['provider_location'])
 
+    @patch_for_unity_adapter
+    def test_create_compressed_volume(self):
+        volume_type = MockOSResource(
+            extra_specs={'compression_support': '<is> True'})
+        volume = MockOSResource(name='lun_3', size=5, host='unity#pool1',
+                                volume_type=volume_type)
+        ret = self.adapter.create_volume(volume)
+        expected = get_lun_pl('lun_3')
+        self.assertEqual(expected, ret['provider_location'])
+
     def test_create_snapshot(self):
         volume = MockOSResource(provider_location='id^lun_43')
         snap = MockOSResource(volume=volume, name='abc-def_snap')
@@ -431,6 +441,7 @@ class CommonAdapterTest(test.TestCase):
         self.assertEqual(5, stats['reserved_percentage'])
         self.assertTrue(stats['thick_provisioning_support'])
         self.assertTrue(stats['thin_provisioning_support'])
+        self.assertTrue(stats['compression_support'])
 
     def test_update_volume_stats(self):
         stats = self.adapter.update_volume_stats()

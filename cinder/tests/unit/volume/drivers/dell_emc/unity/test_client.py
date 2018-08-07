@@ -49,6 +49,7 @@ class MockResource(object):
         self._storage_resource = None
         self.host_cache = []
         self.is_thin = None
+        self.is_all_flash = True
 
     @property
     def id(self):
@@ -113,7 +114,7 @@ class MockResource(object):
 
     @staticmethod
     def create_lun(lun_name, size_gb, description=None, io_limit_policy=None,
-                   is_thin=None):
+                   is_thin=None, is_compression=None):
         if lun_name == 'in_use':
             raise ex.UnityLunNameInUseError()
         ret = MockResource(lun_name, 'lun_2')

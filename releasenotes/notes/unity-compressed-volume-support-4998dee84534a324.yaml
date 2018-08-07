@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Dell EMC Unity driver: Add compressed volume support.
