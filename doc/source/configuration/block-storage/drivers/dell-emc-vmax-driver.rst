@@ -1333,6 +1333,61 @@ nodes. The following were also used in live migration.
    created through virsh.
 
 
+14. Multi-attach support
+------------------------
+
+VMAX cinder driver supports the ability to attach a volume to multiple
+hosts/servers simultaneously. Please see
+https://docs.openstack.org/cinder/latest/admin/blockstorage-volume-multiattach.html
+for configuration information.
+
+Multi-attach Architecture
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In VMAX, a volume cannot belong to two or more FAST storage groups at the same
+time. This can cause issues when we are attaching a volume to multiple
+instances on different hosts. To get around this limitation, we leverage both
+cascaded storage groups and non-FAST storage groups (i.e. a storage group with
+no service level, workload, or SRP specified).
+
+.. note::
+
+   If no service level is assigned to the volume type, no extra work on the
+   backend is required – the volume is attached to and detached from each
+   host as normal.
+
+Example Use Case
+~~~~~~~~~~~~~~~~
+
+Volume ``Multi-attach-Vol-1`` (with a multi-attach capable volume type, and
+associated with a Diamond Service Level) is attached to Instance
+``Multi-attach-Instance-A`` on HostA. We then issue the command to attach
+``Multi-attach-Vol-1`` to ``Multi-attach-Instance-B`` on HostB:
+
+#. In the HostA masking view, the volume is moved from the FAST managed
+   storage group to the non-FAST managed storage group within the parent
+   storage group.
+
+#. The volume is attached as normal on Host B – i.e., it is added to a FAST
+   managed storage group within the parent storage group of the HostB masking
+   view. The volume now belongs to two masking views, and is exposed to both
+   HostA and HostB.
+
+We then decide to detach the volume from ‘Multi-attach-Instance-B’ on HostB:
+
+#. The volume is detached as normal from Host B – i.e., it is removed from
+   the FAST managed storage group within the parent storage group of the
+   HostB masking view – this includes cleanup of the associated elements
+   if required. The volume now belongs to one masking view, and is no longer
+   exposed to HostB.
+
+#. In the HostA masking view, the volume is returned to the FAST managed
+   storage group from the non-FAST managed storage group within the parent
+   storage group. The non-FAST managed storage group is cleaned up,
+   if required.
+
+
+
 Cinder supported operations
 ===========================
 
