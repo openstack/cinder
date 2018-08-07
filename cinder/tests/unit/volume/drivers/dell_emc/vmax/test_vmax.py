@@ -8216,6 +8216,13 @@ class VMAXVolumeMetadataDebugTest(test.TestCase):
     @mock.patch.object(metadata.VMAXVolumeMetadata,
                        'update_volume_info_metadata',
                        return_value={})
+    def test_capture_delete_info(self, mock_uvim):
+        self.volume_metadata.capture_delete_info(self.data.test_volume)
+        mock_uvim.assert_called_once()
+
+    @mock.patch.object(metadata.VMAXVolumeMetadata,
+                       'update_volume_info_metadata',
+                       return_value={})
     def test_capture_manage_existing(self, mock_uvim):
         self.volume_metadata.capture_manage_existing(
             self.data.test_volume, {}, self.data.device_id,
@@ -8275,7 +8282,7 @@ class VMAXVolumeMetadataDebugTest(test.TestCase):
                        return_value={})
     def test_capture_retype_info(self, mock_uvim):
         self.volume_metadata.capture_retype_info(
-            self.data.test_volume.id, 20, self.data.device_id, self.data.array,
+            self.data.test_volume, self.data.device_id, self.data.array,
             self.data.srp, self.data.slo, self.data.workload,
             self.data.storagegroup_name_target, False, None,
             False)

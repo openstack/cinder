@@ -427,6 +427,7 @@ class VMAXCommon(object):
         LOG.info("Deleting Volume: %(volume)s",
                  {'volume': volume.name})
         volume_name = self._delete_volume(volume)
+        self.volume_metadata.capture_delete_info(volume)
         LOG.info("Leaving delete_volume: %(volume_name)s.",
                  {'volume_name': volume_name})
 
@@ -2605,7 +2606,7 @@ class VMAXCommon(object):
                 rep_mode, is_rep_enabled, target_extra_specs)
 
         self.volume_metadata.capture_retype_info(
-            volume.id, volume.size, device_id, array, srp, target_slo,
+            volume, device_id, array, srp, target_slo,
             target_workload, target_sg_name, is_rep_enabled, rep_mode,
             is_compression_disabled)
 
