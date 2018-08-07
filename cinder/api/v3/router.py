@@ -196,7 +196,7 @@ class APIRouter(cinder.api.openstack.APIRouter):
 
         self.resources['volume_transfers'] = (
             volume_transfer.create_resource())
-        mapper.resource("volume_transfer", "volume_transfers",
+        mapper.resource("volume-transfer", "volume-transfers",
                         controller=self.resources['volume_transfers'],
                         collection={'detail': 'GET'},
                         member={'accept': 'POST'})

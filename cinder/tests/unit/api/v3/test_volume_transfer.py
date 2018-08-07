@@ -76,7 +76,7 @@ class VolumeTransferAPITestCase(test.TestCase):
     def test_show_transfer(self):
         volume_id = self._create_volume(size=5)
         transfer = self._create_transfer(volume_id)
-        req = webob.Request.blank('/v3/%s/volume_transfers/%s' % (
+        req = webob.Request.blank('/v3/%s/volume-transfers/%s' % (
             fake.PROJECT_ID, transfer['id']))
         req.method = 'GET'
         req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
@@ -89,13 +89,13 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(transfer['id'], res_dict['transfer']['id'])
         self.assertEqual(volume_id, res_dict['transfer']['volume_id'])
 
-    def test_list_transfers_json(self):
+    def test_list_transfers(self):
         volume_id_1 = self._create_volume(size=5)
         volume_id_2 = self._create_volume(size=5)
         transfer1 = self._create_transfer(volume_id_1)
         transfer2 = self._create_transfer(volume_id_2)
 
-        req = webob.Request.blank('/v3/%s/volume_transfers' %
+        req = webob.Request.blank('/v3/%s/volume-transfers' %
                                   fake.PROJECT_ID)
         req.method = 'GET'
         req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
@@ -112,13 +112,13 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(transfer2['id'], res_dict['transfers'][1]['id'])
         self.assertEqual('test_transfer', res_dict['transfers'][1]['name'])
 
-    def test_list_transfers_detail_json(self):
+    def test_list_transfers_detail(self):
         volume_id_1 = self._create_volume(size=5)
         volume_id_2 = self._create_volume(size=5)
         transfer1 = self._create_transfer(volume_id_1)
         transfer2 = self._create_transfer(volume_id_2)
 
-        req = webob.Request.blank('/v3/%s/volume_transfers/detail' %
+        req = webob.Request.blank('/v3/%s/volume-transfers/detail' %
                                   fake.PROJECT_ID)
         req.method = 'GET'
         req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
@@ -141,13 +141,13 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(transfer2['id'], res_dict['transfers'][1]['id'])
         self.assertEqual(volume_id_2, res_dict['transfers'][1]['volume_id'])
 
-    def test_list_transfers_detail_json_with_no_snapshots(self):
+    def test_list_transfers_detail_with_no_snapshots(self):
         volume_id_1 = self._create_volume(size=5)
         volume_id_2 = self._create_volume(size=5)
         transfer1 = self._create_transfer(volume_id_1)
         transfer2 = self._create_transfer(volume_id_2)
 
-        req = webob.Request.blank('/v3/%s/volume_transfers/detail' %
+        req = webob.Request.blank('/v3/%s/volume-transfers/detail' %
                                   fake.PROJECT_ID)
         req.method = 'GET'
         req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
@@ -172,12 +172,12 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(volume_id_2, res_dict['transfers'][1]['volume_id'])
         self.assertEqual(False, res_dict['transfers'][1]['no_snapshots'])
 
-    def test_create_transfer_json(self):
+    def test_create_transfer(self):
         volume_id = self._create_volume(status='available', size=5)
         body = {"transfer": {"name": "transfer1",
                              "volume_id": volume_id}}
 
-        req = webob.Request.blank('/v3/%s/volume_transfers' %
+        req = webob.Request.blank('/v3/%s/volume-transfers' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
@@ -201,7 +201,7 @@ class VolumeTransferAPITestCase(test.TestCase):
                              "volume_id": volume_id,
                              'no_snapshots': True}}
 
-        req = webob.Request.blank('/v3/%s/volume_transfers' %
+        req = webob.Request.blank('/v3/%s/volume-transfers' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
@@ -224,7 +224,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         volume_id = self._create_volume()
         transfer = self.volume_transfer_api.create(context.get_admin_context(),
                                                    volume_id, 'test_transfer')
-        req = webob.Request.blank('/v3/%s/volume_transfers/%s' % (
+        req = webob.Request.blank('/v3/%s/volume-transfers/%s' % (
                                   fake.PROJECT_ID, transfer['id']))
         req.method = 'DELETE'
         req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
@@ -235,7 +235,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(http_client.ACCEPTED, res.status_int)
 
         # verify transfer has been deleted
-        req = webob.Request.blank('/v3/%s/volume_transfers/%s' % (
+        req = webob.Request.blank('/v3/%s/volume-transfers/%s' % (
             fake.PROJECT_ID, transfer['id']))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -251,14 +251,14 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(db.volume_get(context.get_admin_context(),
                          volume_id)['status'], 'available')
 
-    def test_accept_transfer_volume_id_specified_json(self):
+    def test_accept_transfer_volume_id_specified(self):
         volume_id = self._create_volume()
         transfer = self.volume_transfer_api.create(context.get_admin_context(),
                                                    volume_id, 'test_transfer')
 
         svc = self.start_service('volume', host='fake_host')
         body = {"accept": {"auth_key": transfer['auth_key']}}
-        req = webob.Request.blank('/v3/%s/volume_transfers/%s/accept' % (
+        req = webob.Request.blank('/v3/%s/volume-transfers/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
         req.method = 'POST'
         req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)

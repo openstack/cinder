@@ -45,7 +45,7 @@ volume_transfer_policies = [
             },
             {
                 'method': 'GET',
-                'path': '/volume_transfers/detail'
+                'path': '/volume-transfers/detail'
             }
         ]),
     policy.DocumentedRuleDefault(
@@ -73,7 +73,7 @@ volume_transfer_policies = [
             },
             {
                 'method': 'GET',
-                'path': '/volume_transfers/{transfer_id}'
+                'path': '/volume-transfers/{transfer_id}'
             }
         ]),
     policy.DocumentedRuleDefault(
@@ -87,7 +87,7 @@ volume_transfer_policies = [
             },
             {
                 'method': 'POST',
-                'path': '/volume_transfers/{transfer_id}/accept'
+                'path': '/volume-transfers/{transfer_id}/accept'
             }
         ]),
     policy.DocumentedRuleDefault(
@@ -101,7 +101,7 @@ volume_transfer_policies = [
             },
             {
                 'method': 'DELETE',
-                'path': '/volume_transfers/{transfer_id}'
+                'path': '/volume-transfers/{transfer_id}'
             }
         ]),
 ]
