@@ -87,6 +87,9 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
               - Support for volume replication
               - Support for live migration
               - Support for Generic Volume Group
+        backport from 3.3.0
+              - Fix for initiator retrieval and short hostname unmapping
+                (bugs #1783855 #1783867)
     """
 
     VERSION = "3.0.0"
