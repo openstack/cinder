@@ -1728,6 +1728,61 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           volume)
         db.volume_destroy(self.context, volume.id)
 
+    def test_attachment_reserve_with_bootable_volume(self):
+        # test the private _attachment_reserve method with a bootable,
+        # in-use, multiattach volume.
+        instance_uuid = fake.UUID1
+        volume = tests_utils.create_volume(self.context, status='in-use')
+        tests_utils.attach_volume(self.context, volume.id, instance_uuid,
+                                  'attached_host', 'mountpoint', mode='rw')
+        volume.multiattach = True
+        volume.bootable = True
+
+        attachment = self.volume_api._attachment_reserve(
+            self.context, volume, instance_uuid)
+
+        self.assertEqual(attachment.attach_status, 'reserved')
+
+    def test_attachment_reserve_conditional_update_attach_race(self):
+        # Tests a scenario where two instances are racing to attach the
+        # same multiattach=False volume. One updates the volume status to
+        # "reserved" but the other fails the conditional update which is
+        # then validated to not be the same instance that is already attached
+        # to the multiattach=False volume which triggers a failure.
+        volume = tests_utils.create_volume(self.context)
+        # Assert that we're not dealing with a multiattach volume and that
+        # it does not have any existing attachments.
+        self.assertFalse(volume.multiattach)
+        self.assertEqual(0, len(volume.volume_attachment))
+        # Attach the first instance which is OK and should update the volume
+        # status to 'reserved'.
+        self.volume_api._attachment_reserve(self.context, volume, fake.UUID1)
+        # Try attaching a different instance to the same volume which should
+        # fail.
+        ex = self.assertRaises(exception.InvalidVolume,
+                               self.volume_api._attachment_reserve,
+                               self.context, volume, fake.UUID2)
+        self.assertIn("status must be available or downloading",
+                      six.text_type(ex))
+
+    def test_attachment_reserve_with_instance_uuid_error_volume(self):
+        # Tests that trying to create an attachment (with an instance_uuid
+        # provided) on a volume that's not 'available' or 'downloading' status
+        # will fail if the volume does not have any attachments, similar to how
+        # the volume reserve action works.
+        volume = tests_utils.create_volume(self.context, status='error')
+        # Assert that we're not dealing with a multiattach volume and that
+        # it does not have any existing attachments.
+        self.assertFalse(volume.multiattach)
+        self.assertEqual(0, len(volume.volume_attachment))
+        # Try attaching an instance to the volume which should fail based on
+        # the volume status.
+        ex = self.assertRaises(exception.InvalidVolume,
+                               self.volume_api._attachment_reserve,
+                               self.context, volume, fake.UUID1)
+        self.assertIn("status must be available or downloading",
+                      six.text_type(ex))
+
     def test_unreserve_volume_success_in_use(self):
         UUID = six.text_type(uuid.uuid4())
         volume = tests_utils.create_volume(self.context, status='attaching')
