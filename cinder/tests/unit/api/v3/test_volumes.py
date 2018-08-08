@@ -508,7 +508,14 @@ class VolumeApiTest(test.TestCase):
               (mv.get_prior_version(mv.GROUP_VOLUME),
                {'name': ' test name ',
                 'description': ' test desc ',
-                'size': 1}))
+                'size': 1}),
+              ('3.0',
+               {'name': 'test name',
+                'description': 'test desc',
+                'size': 1,
+                'user_id': 'teapot',
+                'project_id': 'kettle',
+                'status': 'confused'}))
     @ddt.unpack
     def test_volume_create(self, max_ver, volume_body):
         self.mock_object(volume_api.API, 'get', v2_fakes.fake_volume_get)
@@ -529,6 +536,28 @@ class VolumeApiTest(test.TestCase):
                          res_dict['volume']['name'])
         self.assertEqual(ex['volume']['description'],
                          res_dict['volume']['description'])
+
+    def test_volume_create_extra_params(self):
+        self.mock_object(volume_api.API, 'get', v2_fakes.fake_volume_get)
+        self.mock_object(volume_api.API, "create",
+                         v2_fakes.fake_volume_api_create)
+        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
+                         v2_fakes.fake_volume_type_get)
+
+        req = fakes.HTTPRequest.blank('/v3/volumes')
+        req.api_version_request = mv.get_api_version(
+            mv.SUPPORT_VOLUME_SCHEMA_CHANGES)
+
+        body = {'volume': {
+                'name': 'test name',
+                'description': 'test desc',
+                'size': 1,
+                'user_id': 'teapot',
+                'project_id': 'kettle',
+                'status': 'confused'}}
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create,
+                          req, body=body)
 
     @ddt.data(mv.get_prior_version(mv.VOLUME_DELETE_FORCE),
               mv.VOLUME_DELETE_FORCE)
