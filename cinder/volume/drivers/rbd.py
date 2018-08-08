@@ -102,9 +102,9 @@ RBD_OPTS = [
                     'value is used.'),
     cfg.BoolOpt('report_dynamic_total_capacity', default=True,
                 help='Set to True for driver to report total capacity as a '
-                     'dynamic value -used + current free- and to False to '
-                     'report a static value -quota max bytes if defined and '
-                     'global size of cluster if not.'),
+                     'dynamic value (used + current free) and to False to '
+                     'report a static value (quota max bytes if defined and '
+                     'global size of cluster if not).'),
     cfg.BoolOpt('rbd_exclusive_cinder_pool', default=False,
                 help="Set to True if the pool is used exclusively by Cinder. "
                      "On exclusive use driver won't query images' provisioned "
