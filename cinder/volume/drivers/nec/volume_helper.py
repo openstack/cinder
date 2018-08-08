@@ -938,74 +938,60 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                    'ld': lvname})
 
     def remove_export(self, context, volume):
-        msgparm = 'Volume ID = %s' % volume.id
-        try:
-            self._remove_export(context, volume)
-            LOG.info('Removed Export (%s)', msgparm)
-        except exception.CinderException as e:
-            with excutils.save_and_reraise_exception():
-                LOG.warning('Failed to Remove Export '
-                            '(%(msgparm)s) (%(exception)s)',
-                            {'msgparm': msgparm, 'exception': e})
+        pass
 
-    def _remove_export(self, context, volume):
-        if (volume.status == 'uploading' and
-                volume.attach_status == 'attached'):
-            return
+    def _detach_from_all(self, volume):
+        LOG.debug('_detach_from_all Start.')
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+
+        # get target LD Set.
+        ldset = self.get_ldset(ldsets)
+        ldname = self.get_ldname(volume.id, self._properties['ld_name_format'])
+
+        if ldname not in lds:
+            LOG.debug('LD `%s` already unbound?', ldname)
+            return False
+
+        ld = lds[ldname]
+        ldsetlist = []
+
+        if ldset is None:
+            for tldset in ldsets.values():
+                if ld['ldn'] in tldset['lds']:
+                    ldsetlist.append(tldset)
+                    LOG.debug('ldset=%s.', tldset)
+            if len(ldsetlist) == 0:
+                return False
         else:
-            LOG.debug('_remove_export Start.')
-            xml = self._cli.view_all(self._properties['ismview_path'])
-            pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-                self.configs(xml))
+            if ld['ldn'] not in ldset['lds']:
+                LOG.debug('LD `%(ld)s` already deleted '
+                          'from LD Set `%(ldset)s`?',
+                          {'ld': ldname, 'ldset': ldset['ldsetname']})
+                return False
+            ldsetlist.append(ldset)
 
-            # get target LD Set.
-            ldset = self.get_ldset(ldsets)
-            ldname = self.get_ldname(
-                volume.id, self._properties['ld_name_format'])
+        # delete LD from LD set.
+        for tagetldset in ldsetlist:
+            retnum, errnum = (self._cli.delldsetld(
+                tagetldset['ldsetname'], ldname))
 
-            if ldname not in lds:
-                LOG.debug('LD `%s` already unbound?', ldname)
-                return
+            if retnum is not True:
+                if 'iSM31065' in errnum:
+                    LOG.debug(
+                        'LD `%(ld)s` already deleted '
+                        'from LD Set `%(ldset)s`?',
+                        {'ld': ldname, 'ldset': tagetldset['ldsetname']})
+                else:
+                    msg = (_('Failed to unregister Logical Disk from '
+                             'Logical Disk Set (%s)') % errnum)
+                    raise exception.VolumeBackendAPIException(data=msg)
+            LOG.debug('LD `%(ld)s` deleted from LD Set `%(ldset)s`.',
+                      {'ld': ldname, 'ldset': tagetldset['ldsetname']})
 
-            ld = lds[ldname]
-            ldsetlist = []
-
-            if ldset is None:
-                for tldset in ldsets.values():
-                    if ld['ldn'] in tldset['lds']:
-                        ldsetlist.append(tldset)
-                        LOG.debug('ldset=%s.', tldset)
-                if len(ldsetlist) == 0:
-                    LOG.debug('LD `%s` already deleted from LD Set?',
-                              ldname)
-                    return
-            else:
-                if ld['ldn'] not in ldset['lds']:
-                    LOG.debug('LD `%(ld)s` already deleted '
-                              'from LD Set `%(ldset)s`?',
-                              {'ld': ldname, 'ldset': ldset['ldsetname']})
-                    return
-                ldsetlist.append(ldset)
-
-            # delete LD from LD set.
-            for tagetldset in ldsetlist:
-                retnum, errnum = (self._cli.delldsetld(
-                    tagetldset['ldsetname'], ldname))
-
-                if retnum is not True:
-                    if 'iSM31065' in errnum:
-                        LOG.debug(
-                            'LD `%(ld)s` already deleted '
-                            'from LD Set `%(ldset)s`?',
-                            {'ld': ldname, 'ldset': tagetldset['ldsetname']})
-                    else:
-                        msg = (_('Failed to unregister Logical Disk from '
-                                 'Logical Disk Set (%s)') % errnum)
-                        raise exception.VolumeBackendAPIException(data=msg)
-                LOG.debug('LD `%(ld)s` deleted from LD Set `%(ldset)s`.',
-                          {'ld': ldname, 'ldset': tagetldset['ldsetname']})
-
-            LOG.debug('_remove_export(Volume ID = %s) End.', volume.id)
+        LOG.debug('_detach_from_all(Volume ID = %s) End.', volume.id)
+        return True
 
     def remove_export_snapshot(self, context, snapshot):
         """Removes an export for a snapshot."""
@@ -1500,13 +1486,14 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
 
     def _delete_volume(self, volume):
         LOG.debug('_delete_volume Start.')
-        xml = self._cli.view_all(self._properties['ismview_path'])
+
+        detached = self._detach_from_all(volume)
+        xml = self._cli.view_all(self._properties['ismview_path'], detached)
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
             self.configs(xml))
 
-        ldname = (
-            self.get_ldname(volume.id,
-                            self._properties['ld_name_format']))
+        ldname = self.get_ldname(volume.id,
+                                 self._properties['ld_name_format'])
         if ldname not in lds:
             LOG.debug('LD `%s` already unbound?', ldname)
             return
