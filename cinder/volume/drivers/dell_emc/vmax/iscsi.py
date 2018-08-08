@@ -103,9 +103,11 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
               - Fix for SSL verification/cert application (bug #1772924)
               - Log VMAX metadata of a volume (bp vmax-metadata)
               - Fix for get-pools command (bug #1784856)
+        3.3.0 - Fix for initiator retrieval and short hostname unmapping
+                (bugs #1783855 #1783867)
     """
 
-    VERSION = "3.2.0"
+    VERSION = "3.3.0"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"

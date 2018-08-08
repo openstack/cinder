@@ -532,7 +532,7 @@ class VMAXCommon(object):
         async_grp = None
         LOG.info("Unmap volume: %(volume)s.", {'volume': volume})
         if connector is not None:
-            host = connector['host']
+            host = self.utils.get_host_short_name(connector['host'])
             attachment_list = volume.volume_attachment
             LOG.debug("Volume attachment list: %(atl)s. "
                       "Attachment type: %(at)s",
