@@ -136,6 +136,7 @@ six==1.10.0
 smmap2==2.0.3
 snowballstemmer==1.2.1
 Sphinx==1.6.5
+sphinx-feature-classification==0.1.0
 sphinxcontrib-websupport==1.0.1
 sqlalchemy-migrate==0.11.0
 SQLAlchemy==1.0.10

@@ -54,6 +54,7 @@ sys.path.insert(0, os.path.abspath('./'))
 
 extensions = ['sphinx.ext.coverage',
               'sphinx.ext.graphviz',
+              'sphinx_feature_classification.support_matrix',
               'openstackdocstheme',
               'stevedore.sphinxext',
               'oslo_config.sphinxconfiggen',
