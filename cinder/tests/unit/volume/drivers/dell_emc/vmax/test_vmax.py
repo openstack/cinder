@@ -2195,19 +2195,6 @@ class VMAXRestTest(test.TestCase):
             init_list = self.rest.get_initiator_list(array)
             self.assertEqual([], init_list)
 
-    def test_get_in_use_initiator_list_from_array(self):
-        ref_list = self.data.initiator_list[2]['initiatorId']
-        init_list = self.rest.get_in_use_initiator_list_from_array(
-            self.data.array)
-        self.assertEqual(ref_list, init_list)
-
-    def test_get_in_use_initiator_list_from_array_failed(self):
-        array = self.data.array
-        with mock.patch.object(self.rest, 'get_initiator_list',
-                               return_value=[]):
-            init_list = self.rest.get_in_use_initiator_list_from_array(array)
-            self.assertEqual([], init_list)
-
     def test_get_initiator_group_from_initiator(self):
         initiator = self.data.wwpn1
         ref_group = self.data.initiatorgroup_name_f
@@ -6168,18 +6155,26 @@ class VMAXMaskingTest(test.TestCase):
             exception.VolumeBackendAPIException,
             self.driver_fc.masking.find_initiator_names, connector)
 
-    def test_find_initiator_group(self):
+    def test_find_initiator_group_found(self):
         with mock.patch.object(
-                rest.VMAXRest, 'get_in_use_initiator_list_from_array',
+                rest.VMAXRest, 'get_initiator_list',
                 return_value=self.data.initiator_list[2]['initiatorId']):
             with mock.patch.object(
-                rest.VMAXRest, 'get_initiator_group_from_initiator',
+                    rest.VMAXRest, 'get_initiator_group_from_initiator',
                     return_value=self.data.initiator_list):
                 found_init_group_nam = (
                     self.driver.masking._find_initiator_group(
                         self.data.array, ['FA-1D:4:123456789012345']))
                 self.assertEqual(self.data.initiator_list,
                                  found_init_group_nam)
+
+    def test_find_initiator_group_not_found(self):
+        with mock.patch.object(
+                rest.VMAXRest, 'get_initiator_list',
+                return_value=self.data.initiator_list[2]['initiatorId']):
+            with mock.patch.object(
+                    rest.VMAXRest, 'get_initiator_group_from_initiator',
+                    return_value=None):
                 found_init_group_nam = (
                     self.driver.masking._find_initiator_group(
                         self.data.array, ['Error']))

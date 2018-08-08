@@ -1302,17 +1302,6 @@ class VMAXRest(object):
             init_list = []
         return init_list
 
-    def get_in_use_initiator_list_from_array(self, array):
-        """Get the list of initiators which are in-use from the array.
-
-        Gets the list of initiators from the array which are in
-        hosts/ initiator groups.
-        :param array: the array serial number
-        :returns: init_list
-        """
-        params = {'in_a_host': 'true'}
-        return self.get_initiator_list(array, params)
-
     def get_initiator_group_from_initiator(self, array, initiator):
         """Given an initiator, get its corresponding initiator group, if any.
 

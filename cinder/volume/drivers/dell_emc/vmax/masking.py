@@ -796,10 +796,9 @@ class VMAXMasking(object):
         :returns: initiator group name -- string or None
         """
         ig_name = None
-        init_list = self.rest.get_in_use_initiator_list_from_array(
-            serial_number)
         for initiator in initiator_names:
-            found_init = [init for init in init_list if initiator in init]
+            params = {'initiator_hba': initiator.lower()}
+            found_init = self.rest.get_initiator_list(serial_number, params)
             if found_init:
                 ig_name = self.rest.get_initiator_group_from_initiator(
                     serial_number, found_init[0])

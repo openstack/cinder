@@ -101,6 +101,9 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
               - Deleting snapshot that is source of multiple volumes fails
                 (bug #1768047)
               - Block revert to snapshot for replicated volumes (bug #1777871)
+        backport from 3.3.0
+              - Fix for initiator retrieval and short hostname unmapping
+                (bugs #1783855 #1783867)
     """
 
     VERSION = "3.1.0"

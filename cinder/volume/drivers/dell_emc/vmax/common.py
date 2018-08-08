@@ -479,7 +479,7 @@ class VMAXCommon(object):
         LOG.info("Unmap volume: %(volume)s.",
                  {'volume': volume_name})
         if connector is not None:
-            host = connector['host']
+            host = self.utils.get_host_short_name(connector['host'])
         else:
             LOG.warning("Cannot get host name from connector object - "
                         "assuming force-detach.")

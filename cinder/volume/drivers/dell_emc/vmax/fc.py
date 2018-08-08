@@ -90,12 +90,15 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Support for manage/unmanage snapshots
                 (vmax-manage-unmanage-snapshot)
               - Support for revert to volume snapshot
-         backport from 3.2.0
+        backport from 3.2.0
               - Fix for SSL verification/cert application (bug #1772924)
               - Incorrect condition for an empty list (bug #1787219)
               - Deleting snapshot that is source of multiple volumes fails
                 (bug #1768047)
               - Block revert to snapshot for replicated volumes (bug #1777871)
+        backport from 3.3.0
+              - Fix for initiator retrieval and short hostname unmapping
+                (bugs #1783855 #1783867)
     """
 
     VERSION = "3.1.0"
@@ -302,7 +305,7 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         """
         loc = volume.provider_location
         name = ast.literal_eval(loc)
-        host = connector['host']
+        host = self.common.utils.get_host_short_name(connector['host'])
         zoning_mappings = {}
         try:
             array = name['array']
