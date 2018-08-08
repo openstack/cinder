@@ -699,6 +699,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
         expected_calls = [mock.call.online_vol(
             'testvolume', False),
             mock.call.delete_vol('testvolume'),
+            mock.call.delete_vol('testvolume'),
+            mock.call.delete_vol('testvolume'),
             mock.call.online_vol('testvolume', True)]
         self.mock_client_service.assert_has_calls(expected_calls)
 
