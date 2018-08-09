@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-06-16 03:06+0000\n"
+"POT-Creation-Date: 2018-08-09 06:04+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -490,10 +490,6 @@ msgstr "备份RBD操作失败"
 
 msgid "Backup already exists in database."
 msgstr "数据库中已存在备份。"
-
-#, python-format
-msgid "Backup driver reported an error: %(message)s"
-msgstr "备份驱动程序已报告错误：%(message)s"
 
 msgid "Backup id required"
 msgstr "需要备份标识"
@@ -1055,10 +1051,6 @@ msgstr "配置“max_over_subscription_ratio”无效。必须大于 0：%s"
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "配置错误：未设置 dell_sc_ssn。"
-
-#, python-format
-msgid "Configuration file %(configurationFile)s does not exist."
-msgstr "配置文件 %(configurationFile)s 不存在。"
 
 msgid "Configuration is not found."
 msgstr "找不到配置。"
@@ -3525,10 +3517,6 @@ msgid "Invalid backup: %(reason)s"
 msgstr "备份无效：%(reason)s"
 
 #, python-format
-msgid "Invalid body provided for creating volume. Request API version: %s."
-msgstr "创建卷时提供了无效请求主体。请求API版本：%s。"
-
-#, python-format
 msgid "Invalid connection initialization response of volume %(name)s"
 msgstr "卷 %(name)s 的连接初始化响应无效"
 
@@ -3979,19 +3967,12 @@ msgstr "缺少“purestorage”python 模块，请确保库已安装并且可用
 msgid "Missing Fibre Channel SAN configuration param - fc_fabric_names"
 msgstr "缺少光纤通道 SAN 配置参数 - fc_fabric_names"
 
-msgid "Missing request body"
-msgstr "缺少请求主体"
-
 msgid "Missing request body."
 msgstr "缺少请求主体。"
 
 #, python-format
 msgid "Missing required element '%(element)s' in request body."
 msgstr "请求主体中缺少必要的元素'%(element)s'"
-
-#, python-format
-msgid "Missing required element '%s' in request body"
-msgstr "在请求主体中缺少必需元素“%s”"
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -4830,12 +4811,6 @@ msgstr "找不到卷 %s 的大小，无法进行安全删除。"
 
 #, python-format
 msgid ""
-"Size is %(image_size)dGB and doesn't fit in a volume of size "
-"%(volume_size)dGB."
-msgstr "大小为 %(image_size)dGB，无法容纳在大小为 %(volume_size)dGB 的卷中。"
-
-#, python-format
-msgid ""
 "Size of specified image %(image_size)sGB is larger than volume size "
 "%(volume_size)sGB."
 msgstr "所指定映像的大小 %(image_size)sGB 大于卷大小 %(volume_size)sGB。"
@@ -5581,17 +5556,6 @@ msgid "Unable to find ssh_hosts_key_file: %s"
 msgstr "找不到 ssh_hosts_key_file：%s"
 
 #, python-format
-msgid ""
-"Unable to find viable pg snapshot to use forfailover on selected secondary "
-"array: %(id)s."
-msgstr "找不到可行 pg 快照，无法在所选辅助阵列上使用故障转移：%(id)s。"
-
-#, python-format
-msgid ""
-"Unable to find viable secondary array fromconfigured targets: %(targets)s."
-msgstr "无法根据所配置目标找到可行辅助阵列：%(targets)s。"
-
-#, python-format
 msgid "Unable to find volume %s"
 msgstr "找不到卷 %s"
 
@@ -6180,10 +6144,6 @@ msgid ""
 "Volume cannot be created individually from a snapshot that is part of a "
 "Consistency Group"
 msgstr "无法单独地从快照创建卷，因为它是一致性组的一部分"
-
-#, python-format
-msgid "Volume connected to host %s."
-msgstr "连接到主机 %s 上的卷。"
 
 msgid "Volume create failed while extracting volume ref."
 msgstr "抽取卷引用时创建卷失败。"

@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-06-16 03:06+0000\n"
+"POT-Creation-Date: 2018-08-09 06:04+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -426,10 +426,6 @@ msgstr "La operación de RBD de copia de seguridad ha fallado"
 
 msgid "Backup already exists in database."
 msgstr "La copia de seguridad ya existe en la base de datos."
-
-#, python-format
-msgid "Backup driver reported an error: %(message)s"
-msgstr "Driver de copia de seguridad ha reportado un error: %(message)s"
 
 msgid "Backup id required"
 msgstr "Se necesita una copia de seguridad"
@@ -940,10 +936,6 @@ msgstr ""
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "Error de configuración: dell_sc_ssn no está establecido."
-
-#, python-format
-msgid "Configuration file %(configurationFile)s does not exist."
-msgstr "El archivo de configuración %(configurationFile)s no existe."
 
 msgid "Configuration is not found."
 msgstr "No se ha encontrado la configuración."
@@ -3866,9 +3858,6 @@ msgid "Missing Fibre Channel SAN configuration param - fc_fabric_names"
 msgstr ""
 "Falta parámetro de configuración de SAN de canal de fibra - fc_fabric_names"
 
-msgid "Missing request body"
-msgstr "Falta el cuerpo de la solicitud"
-
 msgid "Missing request body."
 msgstr "No se ha hallado el cuerpo de la solicitud."
 
@@ -3876,10 +3865,6 @@ msgstr "No se ha hallado el cuerpo de la solicitud."
 msgid "Missing required element '%(element)s' in request body."
 msgstr ""
 "Falta el elemento obligatorio '%(element)s' en el cuerpo de la solicitud."
-
-#, python-format
-msgid "Missing required element '%s' in request body"
-msgstr "Falta el elemento requerido '%s' en el cuerpo de la solicitud"
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -4766,14 +4751,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Size is %(image_size)dGB and doesn't fit in a volume of size "
-"%(volume_size)dGB."
-msgstr ""
-"El tamaño es %(image_size)dGB y no se ajusta en un volumen de tamaño "
-"%(volume_size)dGB."
-
-#, python-format
-msgid ""
 "Size of specified image %(image_size)sGB is larger than volume size "
 "%(volume_size)sGB."
 msgstr ""
@@ -5455,21 +5432,6 @@ msgstr "No se pueden encontrar correlaciones iSCSI."
 #, python-format
 msgid "Unable to find ssh_hosts_key_file: %s"
 msgstr "No se puede encontrar ssh_hosts_key_file: %s"
-
-#, python-format
-msgid ""
-"Unable to find viable pg snapshot to use forfailover on selected secondary "
-"array: %(id)s."
-msgstr ""
-"No se ha podido encontrar una instantánea pg viable para utilizar para la "
-"migración tras error en la matriz secundaria seleccionada: %(id)s."
-
-#, python-format
-msgid ""
-"Unable to find viable secondary array fromconfigured targets: %(targets)s."
-msgstr ""
-"No se ha podido encontrar una matriz secundaria viable a partir de los "
-"destinos configurados: %(targets)s."
 
 #, python-format
 msgid "Unable to find volume %s"

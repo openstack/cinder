@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-06-16 03:06+0000\n"
+"POT-Creation-Date: 2018-08-09 06:04+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -426,10 +426,6 @@ msgstr "RBD-Sicherungsoperation ist fehlgeschlagen."
 
 msgid "Backup already exists in database."
 msgstr "Die Sicherungskopie ist bereits in Datenbank vorhanden."
-
-#, python-format
-msgid "Backup driver reported an error: %(message)s"
-msgstr "Sicherungstreiber meldete einen Fehler: %(message)s"
 
 msgid "Backup id required"
 msgstr "Datensicherungs-ID erforderlich"
@@ -942,10 +938,6 @@ msgstr ""
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "Konfigurationsfehler: dell_sc_ssn ist nicht festgelegt."
-
-#, python-format
-msgid "Configuration file %(configurationFile)s does not exist."
-msgstr "Konfigurationsdatei %(configurationFile)s ist nicht vorhanden."
 
 msgid "Configuration is not found."
 msgstr "Die Konfiguration wurde nicht gefunden. "
@@ -3877,15 +3869,8 @@ msgstr ""
 msgid "Missing Fibre Channel SAN configuration param - fc_fabric_names"
 msgstr "Fehlende Fibre Channel-SAN-Konfigurationsparameter - fc_fabric_names"
 
-msgid "Missing request body"
-msgstr "Fehlender Anforderungshauptteil"
-
 msgid "Missing request body."
 msgstr "Anforderungshauptteil fehlt."
-
-#, python-format
-msgid "Missing required element '%s' in request body"
-msgstr "Fehlendes erforderliches Element '%s' im Anforderungshauptteil"
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -4767,14 +4752,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Size is %(image_size)dGB and doesn't fit in a volume of size "
-"%(volume_size)dGB."
-msgstr ""
-"Größe beträgt %(image_size)d GB und passt nicht in einen Datenträger mit der "
-"Größe %(volume_size)d GB."
-
-#, python-format
-msgid ""
 "Size of specified image %(image_size)sGB is larger than volume size "
 "%(volume_size)sGB."
 msgstr ""
@@ -5467,21 +5444,6 @@ msgstr "iSCSI-Zuordnungen wurden nicht gefunden."
 #, python-format
 msgid "Unable to find ssh_hosts_key_file: %s"
 msgstr "ssh_hosts_key_file wurde nicht gefunden: %s"
-
-#, python-format
-msgid ""
-"Unable to find viable pg snapshot to use forfailover on selected secondary "
-"array: %(id)s."
-msgstr ""
-"Es wurde keine funktionsfähige pg-Schattenkopie für ein Failover des "
-"ausgewählten sekundären Arrays gefunden: %(id)s."
-
-#, python-format
-msgid ""
-"Unable to find viable secondary array fromconfigured targets: %(targets)s."
-msgstr ""
-"Es wurden keine funktionsfähigen, sekundären Arrays in den konfigurierten "
-"Zielen gefunden: %(targets)s."
 
 #, python-format
 msgid "Unable to find volume %s"

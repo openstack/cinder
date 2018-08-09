@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-06-16 03:06+0000\n"
+"POT-Creation-Date: 2018-08-09 06:04+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -358,10 +358,6 @@ msgstr "Záložní operace RBD selhala"
 
 msgid "Backup already exists in database."
 msgstr "Záloha již existuje v databázi."
-
-#, python-format
-msgid "Backup driver reported an error: %(message)s"
-msgstr "Záložní ovladač nahlásil chybu: %(message)s"
 
 msgid "Backup id required"
 msgstr "ID zálohy je vyžadováno"
@@ -719,10 +715,6 @@ msgstr "Výpočetní cluster: %(cluster)s nenalezen."
 
 msgid "Condition has no field."
 msgstr "Podmínka nemá žádné pole."
-
-#, python-format
-msgid "Configuration file %(configurationFile)s does not exist."
-msgstr "Konfigurační soubor %(configurationFile)s neexistuje."
 
 #, python-format
 msgid "Configuration value %s is not set."
@@ -2995,15 +2987,8 @@ msgstr ""
 msgid "Missing Fibre Channel SAN configuration param - fc_fabric_names"
 msgstr "Chybí parametr nastavení Fibre Channel SAN - fc_fabric_names"
 
-msgid "Missing request body"
-msgstr "Chybí tělo žádosti"
-
 msgid "Missing request body."
 msgstr "Chybí tělo žádosti."
-
-#, python-format
-msgid "Missing required element '%s' in request body"
-msgstr "V těle žádosti chybí povinný prvek '%s'"
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -3667,14 +3652,6 @@ msgstr "Velikost"
 #, python-format
 msgid "Size for volume: %s not found, cannot secure delete."
 msgstr "Velikost pro svazek: %s nenalezeno, nelze bezpečně smazat."
-
-#, python-format
-msgid ""
-"Size is %(image_size)dGB and doesn't fit in a volume of size "
-"%(volume_size)dGB."
-msgstr ""
-"Velikost je %(image_size)dGB a nevejde se do svazku o velikosti "
-"%(volume_size)dGB."
 
 #, python-format
 msgid ""

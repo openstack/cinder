@@ -14,7 +14,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-06-16 03:06+0000\n"
+"POT-Creation-Date: 2018-08-09 06:04+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -408,10 +408,6 @@ msgstr "백업 RBD 조작이 실패함 "
 
 msgid "Backup already exists in database."
 msgstr "데이터베이스에 이미 백업이 있습니다. "
-
-#, python-format
-msgid "Backup driver reported an error: %(message)s"
-msgstr "백업 드라이버 오류 보고서: %(message)s"
 
 msgid "Backup id required"
 msgstr "백업 ID 필요"
@@ -871,10 +867,6 @@ msgstr ""
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "구성 오류: dell_sc_ssn이 설정되지 않았습니다."
-
-#, python-format
-msgid "Configuration file %(configurationFile)s does not exist."
-msgstr "구성 파일 %(configurationFile)s이(가) 없습니다. "
 
 msgid "Configuration is not found."
 msgstr "구성을 찾을 수 없습니다."
@@ -3612,15 +3604,8 @@ msgstr ""
 msgid "Missing Fibre Channel SAN configuration param - fc_fabric_names"
 msgstr "파이버 채널 SAN 구성 매개변수 누락 - fc_fabric_names"
 
-msgid "Missing request body"
-msgstr "요청 본문이 누락됨 "
-
 msgid "Missing request body."
 msgstr "요청 본문이 누락되었습니다. "
-
-#, python-format
-msgid "Missing required element '%s' in request body"
-msgstr "요청 본문에서 '%s' 필수 요소가 누락됨 "
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -4432,13 +4417,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Size is %(image_size)dGB and doesn't fit in a volume of size "
-"%(volume_size)dGB."
-msgstr ""
-"크기는 %(image_size)dGB이며 크기 %(volume_size)dGB의 볼륨에 맞지 않습니다."
-
-#, python-format
-msgid ""
 "Size of specified image %(image_size)sGB is larger than volume size "
 "%(volume_size)sGB."
 msgstr ""
@@ -5060,19 +5038,6 @@ msgstr "iSCSI 맵핑을 찾을 수 없습니다. "
 #, python-format
 msgid "Unable to find ssh_hosts_key_file: %s"
 msgstr "ssh_hosts_key_file을 찾을 수 없음: %s"
-
-#, python-format
-msgid ""
-"Unable to find viable pg snapshot to use forfailover on selected secondary "
-"array: %(id)s."
-msgstr ""
-"선택한 보조 배열에서 장애 복구를 사용하기 위해 실행 가능한 pg 스냅샷을 찾을 "
-"수 없음: %(id)s."
-
-#, python-format
-msgid ""
-"Unable to find viable secondary array fromconfigured targets: %(targets)s."
-msgstr "구성된 대상 %(targets)s에서 실행 가능한 보조 배열을 찾을 수 없습니다."
 
 #, python-format
 msgid "Unable to find volume %s"

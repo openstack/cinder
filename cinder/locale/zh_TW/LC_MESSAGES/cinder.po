@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-06-16 03:06+0000\n"
+"POT-Creation-Date: 2018-08-09 06:04+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -379,10 +379,6 @@ msgstr "執行備份 RBD 作業時失敗"
 
 msgid "Backup already exists in database."
 msgstr "備份已經存在於資料庫中。"
-
-#, python-format
-msgid "Backup driver reported an error: %(message)s"
-msgstr "備份驅動程式報告了錯誤：%(message)s"
 
 msgid "Backup id required"
 msgstr "需要備份 ID"
@@ -817,10 +813,6 @@ msgstr "配置 'max_over_subscription_ratio' 無效。必需大於 0：%s"
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "配置錯誤：未設定 dell_sc_ssn。"
-
-#, python-format
-msgid "Configuration file %(configurationFile)s does not exist."
-msgstr "配置檔 %(configurationFile)s 不存在。"
 
 msgid "Configuration is not found."
 msgstr "找不到配置。"
@@ -3437,15 +3429,8 @@ msgstr "遺漏 'purestorage' Python 模組，請確保該程式庫已安裝且�
 msgid "Missing Fibre Channel SAN configuration param - fc_fabric_names"
 msgstr "遺漏了「光纖通道」SAN 配置參數 - fc_fabric_names"
 
-msgid "Missing request body"
-msgstr "遺漏了要求內文"
-
 msgid "Missing request body."
 msgstr "遺漏要求內文。"
-
-#, python-format
-msgid "Missing required element '%s' in request body"
-msgstr "要求內文中遺漏了必要元素 '%s'"
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -4223,12 +4208,6 @@ msgstr "找不到磁區 %s 的大小，無法安全刪除。"
 
 #, python-format
 msgid ""
-"Size is %(image_size)dGB and doesn't fit in a volume of size "
-"%(volume_size)dGB."
-msgstr "大小為 %(image_size)d GB，無法容納大小為%(volume_size)d GB 的磁區。"
-
-#, python-format
-msgid ""
 "Size of specified image %(image_size)sGB is larger than volume size "
 "%(volume_size)sGB."
 msgstr "所指定映像檔的大小 %(image_size)s GB 大於磁區大小%(volume_size)s GB。"
@@ -4820,17 +4799,6 @@ msgstr "找不到 iSCSI 對映。"
 #, python-format
 msgid "Unable to find ssh_hosts_key_file: %s"
 msgstr "找不到 ssh_hosts_key_file：%s"
-
-#, python-format
-msgid ""
-"Unable to find viable pg snapshot to use forfailover on selected secondary "
-"array: %(id)s."
-msgstr "找不到可行的 pg Snapshot 以用於選定次要陣列上的失效接手：%(id)s。"
-
-#, python-format
-msgid ""
-"Unable to find viable secondary array fromconfigured targets: %(targets)s."
-msgstr "找不到來自已配置目標的可行次要陣列：%(targets)s。"
 
 #, python-format
 msgid "Unable to find volume %s"

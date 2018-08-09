@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-06-16 03:06+0000\n"
+"POT-Creation-Date: 2018-08-09 06:04+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -543,10 +543,6 @@ msgstr "バックアップ RBD 操作が失敗しました。"
 
 msgid "Backup already exists in database."
 msgstr "データベースのバックアップが既に存在しています。"
-
-#, python-format
-msgid "Backup driver reported an error: %(message)s"
-msgstr "バックアップドライバーがエラーを報告しました: %(message)s"
 
 msgid "Backup id required"
 msgstr "バックアップ ID が必要です"
@@ -1221,10 +1217,6 @@ msgstr ""
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "設定エラー: dell_sc_ssn not が設定されていません。"
-
-#, python-format
-msgid "Configuration file %(configurationFile)s does not exist."
-msgstr "構成ファイル %(configurationFile)s が存在しません。"
 
 msgid "Configuration is not found."
 msgstr "設定が見つかりません。"
@@ -4115,12 +4107,6 @@ msgid "Invalid backup: %(reason)s"
 msgstr "無効なバックアップ: %(reason)s"
 
 #, python-format
-msgid "Invalid body provided for creating volume. Request API version: %s."
-msgstr ""
-"ボリューム作成に、無効な本文が指定されました。リクエストされた API のバージョ"
-"ン: %s"
-
-#, python-format
 msgid "Invalid connection initialization response of volume %(name)s"
 msgstr "ボリューム %(name)s の接続初期化応答が無効です"
 
@@ -4637,19 +4623,12 @@ msgstr "API %s の属性リストがありません。"
 msgid "Missing record count for NetApp iterator API invocation."
 msgstr "NetApp のイテレーター API 起動記録カウントがありません。"
 
-msgid "Missing request body"
-msgstr "要求本体がありません。"
-
 msgid "Missing request body."
 msgstr "要求本体がありません。"
 
 #, python-format
 msgid "Missing required element '%(element)s' in request body."
 msgstr "リクエストの本文に必要な要素  '%(element)s'  がありません。"
-
-#, python-format
-msgid "Missing required element '%s' in request body"
-msgstr "要求本体に必須要素 '%s' がありません。"
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -5651,14 +5630,6 @@ msgstr "ボリュームのサイズ %s が見つかりません、セキュア�
 
 #, python-format
 msgid ""
-"Size is %(image_size)dGB and doesn't fit in a volume of size "
-"%(volume_size)dGB."
-msgstr ""
-"サイズは %(image_size)d GB で、サイズ %(volume_size)d GB のボリュームに適合し"
-"ません。"
-
-#, python-format
-msgid ""
 "Size of specified image %(image_size)sGB is larger than volume size "
 "%(volume_size)sGB."
 msgstr ""
@@ -5726,9 +5697,6 @@ msgstr "スナップショット %s はグループの一部であってはな�
 #, python-format
 msgid "Snapshot '%s' doesn't exist on array."
 msgstr "スナップショット '%s' はアレイに存在しません。"
-
-msgid "Snapshot ID must be in UUID form."
-msgstr "スナップショット ID は UUID 形式でなければいけません。"
 
 msgid "Snapshot already managed."
 msgstr "スナップショットはすでに管理されています。"
@@ -6583,21 +6551,6 @@ msgid "Unable to find ssh_hosts_key_file: %s"
 msgstr "ssh_hosts_key_file が見つかりません: %s"
 
 #, python-format
-msgid ""
-"Unable to find viable pg snapshot to use forfailover on selected secondary "
-"array: %(id)s."
-msgstr ""
-"特定のセカンダリー配列のフェイルオーバーで使用すべき適切な pg スナップショッ"
-"トを見つけることができません: %(id)s"
-
-#, python-format
-msgid ""
-"Unable to find viable secondary array fromconfigured targets: %(targets)s."
-msgstr ""
-"設定されたターゲットから適切なセカンダリー配列を見つけることができません: "
-"%(targets)s"
-
-#, python-format
 msgid "Unable to find volume %s"
 msgstr "ボリューム %s が見つかりません。"
 
@@ -7278,10 +7231,6 @@ msgid ""
 msgstr ""
 "整合性グループの一部であるスナップショットから、ボリュームを個別に作成するこ"
 "とはできません。"
-
-#, python-format
-msgid "Volume connected to host %s."
-msgstr "ボリュームがホスト %s に接続されました。"
 
 msgid "Volume create failed while extracting volume ref."
 msgstr "ボリューム参照の抽出中にボリュームの作成に失敗しました。"

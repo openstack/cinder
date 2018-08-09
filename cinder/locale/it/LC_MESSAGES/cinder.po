@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-06-16 03:06+0000\n"
+"POT-Creation-Date: 2018-08-09 06:04+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -413,10 +413,6 @@ msgstr "Operazione di backup RBD non riuscita"
 
 msgid "Backup already exists in database."
 msgstr "Il backup esiste già nel database. "
-
-#, python-format
-msgid "Backup driver reported an error: %(message)s"
-msgstr "Il driver di backup ha riportato un errore: %(message)s"
 
 msgid "Backup id required"
 msgstr "ID backup richiesto"
@@ -900,10 +896,6 @@ msgstr ""
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "Errore di configurazione: dell_sc_ssn non impostato."
-
-#, python-format
-msgid "Configuration file %(configurationFile)s does not exist."
-msgstr "Il file di configurazione %(configurationFile)s non esiste."
 
 msgid "Configuration is not found."
 msgstr "Configurazione non trovata."
@@ -3799,15 +3791,8 @@ msgid "Missing Fibre Channel SAN configuration param - fc_fabric_names"
 msgstr ""
 "Manca parametro di configurazione di Fibre Channel SAN - fc_fabric_names"
 
-msgid "Missing request body"
-msgstr "Manca il corpo della richiesta"
-
 msgid "Missing request body."
 msgstr "Corpo della richiesta mancante."
-
-#, python-format
-msgid "Missing required element '%s' in request body"
-msgstr "Manca l'elemento '%s' richiesto nel corpo della richiesta"
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -4646,14 +4631,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Size is %(image_size)dGB and doesn't fit in a volume of size "
-"%(volume_size)dGB."
-msgstr ""
-"La dimensione è %(image_size)dGB e non è contenuta in un volume di "
-"dimensione %(volume_size)dGB."
-
-#, python-format
-msgid ""
 "Size of specified image %(image_size)sGB is larger than volume size "
 "%(volume_size)sGB."
 msgstr ""
@@ -5318,21 +5295,6 @@ msgstr "Impossibile trovare associazioni iSCSI. "
 #, python-format
 msgid "Unable to find ssh_hosts_key_file: %s"
 msgstr "Impossibile trovare ssh_hosts_key_file: %s"
-
-#, python-format
-msgid ""
-"Unable to find viable pg snapshot to use forfailover on selected secondary "
-"array: %(id)s."
-msgstr ""
-"Impossibile trovare l'istantanea pg utilizzabile da utilizzare per il "
-"failover sull'array secondario selezionato: %(id)s."
-
-#, python-format
-msgid ""
-"Unable to find viable secondary array fromconfigured targets: %(targets)s."
-msgstr ""
-"Impossibile trovare l'array secondario utilizzabile da destinazioni "
-"configurate: %(targets)s."
 
 #, python-format
 msgid "Unable to find volume %s"
