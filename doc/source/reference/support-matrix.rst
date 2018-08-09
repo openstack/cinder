@@ -55,3 +55,13 @@ matrix we include the list of required functions here for reference.
 
 .. support_matrix:: support-matrix.ini
 
+Driver Removal History
+~~~~~~~~~~~~~~~~~~~~~~
+
+The section will be used to track driver removal starting from the Rocky
+release.
+
+* Rocky
+   * CoprHD Storage Driver (FC, iSCSI, ScaleIO)
+
+
