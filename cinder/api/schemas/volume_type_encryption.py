@@ -13,10 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Schema for V3 volume type encryption API.
+"""Schema for V3 volume type encryption API."""
 
-"""
 import copy
 
 from cinder.api.validation import parameter_types
@@ -35,7 +33,7 @@ create = {
                            'minLength': 0, 'maxLength': 255},
             },
             'required': ['provider', 'control_location'],
-            'additionalProperties': False,
+            'additionalProperties': True,
         },
     },
     'required': ['encryption'],
