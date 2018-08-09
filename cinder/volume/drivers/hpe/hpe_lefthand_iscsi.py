@@ -42,6 +42,7 @@ from oslo_utils import importutils
 from oslo_utils import units
 
 from cinder import context
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -174,9 +175,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                  after Retype
         2.0.15 - Fixed bug #1710098, Managed volume, does not pick up the extra
                  specs/capabilities of the selected volume type.
+        2.0.16 - Handled concurrent attachment requests. bug #1779654
     """
 
-    VERSION = "2.0.15"
+    VERSION = "2.0.16"
 
     CI_WIKI_NAME = "HPE_Storage_CI"
 
@@ -957,9 +959,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         return {'provider_location': (
             "%s %s %s" % (iscsi_portal, volume_info['iscsiIqn'], 0))}
 
+    @coordination.synchronized('VSA-{connector[host]}')
     def _create_server(self, connector, client):
         server_info = None
-        chap_enabled = self._client_conf['hpelefthand_iscsi_chap_enabled']
+        chap_enabled = self._client_conf.get('hpelefthand_iscsi_chap_enabled')
         try:
             server_info = client.getServerByName(connector['host'])
             chap_secret = server_info['chapTargetSecret']
