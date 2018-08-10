@@ -250,11 +250,11 @@ class SolidFireDriver(san.SanISCSIDriver):
         self.cluster_pairs = []
         self.replication_enabled = False
         self.failed_over = False
+        self.verify_ssl = self.configuration.driver_ssl_cert_verify
         self.target_driver = SolidFireISCSI(solidfire_driver=self,
                                             configuration=self.configuration)
         self.default_cluster = self._create_cluster_reference()
         self.active_cluster = self.default_cluster
-        self.verify_ssl = self.configuration.driver_ssl_cert_verify
 
         # If we're failed over, we need to parse things out and set the active
         # cluster appropriately
