@@ -4,11 +4,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-08-09 06:02+0000\n"
+"POT-Creation-Date: 2018-08-10 15:41+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2018-08-08 09:06+0000\n"
+"PO-Revision-Date: 2018-08-10 10:03+0000\n"
 "Last-Translator: Andi Chandler <andi@gowling.com>\n"
 "Language-Team: English (United Kingdom)\n"
 "Language: en_GB\n"
@@ -63,8 +63,8 @@ msgstr "11.0.2"
 msgid "11.1.1"
 msgstr "11.1.1"
 
-msgid "11.1.1-8"
-msgstr "11.1.1-8"
+msgid "11.1.1-9"
+msgstr "11.1.1-9"
 
 msgid "12.0.0"
 msgstr "12.0.0"
@@ -78,6 +78,9 @@ msgstr "12.0.2"
 msgid "12.0.3"
 msgstr "12.0.3"
 
+msgid "12.0.3-20"
+msgstr "12.0.3-20"
+
 msgid "13.0.0.0b1"
 msgstr "13.0.0.0b1"
 
@@ -86,6 +89,9 @@ msgstr "13.0.0.0b2"
 
 msgid "13.0.0.0b3"
 msgstr "13.0.0.0b3"
+
+msgid "13.0.0.0rc1"
+msgstr "13.0.0.0rc1"
 
 msgid ""
 "3PAR driver creates FC VLUN of match-set type instead of host sees. With "
@@ -3650,6 +3656,9 @@ msgstr ""
 
 msgid "Retype support added to CloudByte iSCSI driver."
 msgstr "Retype support added to CloudByte iSCSI driver."
+
+msgid "Rocky Series Release Notes"
+msgstr "Rocky Series Release Notes"
 
 msgid ""
 "ScaleIO volumes need to be sized in increments of 8G. Handling added to "
