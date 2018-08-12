@@ -1,0 +1,12 @@
+---
+upgrade:
+  - |
+    With removal of the CoprHD Volume Driver any volumes being used by Cinder
+    within a CoprHD backend should be migrated to a supported storage
+    backend before upgrade.
+other:
+  - |
+    After being marked unsupported in the Rocky release the CoprHD
+    driver is now being removed in Stein.  The vendor has
+    indicated that this is desired as the CoprHD driver has been
+    deprecated.

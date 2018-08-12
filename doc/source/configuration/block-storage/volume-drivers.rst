@@ -31,7 +31,6 @@ Driver Configuration Reference
    drivers/lvm-volume-driver
    drivers/nfs-volume-driver
    drivers/sheepdog-driver
-   drivers/coprhd-driver
    drivers/datacore-volume-driver
    drivers/datera-volume-driver
    drivers/dell-equallogic-driver
