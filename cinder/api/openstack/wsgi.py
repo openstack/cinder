@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import functools
 import inspect
 import math
@@ -1088,7 +1089,7 @@ class ControllerMetaclass(type):
                 versioned_methods.append(getattr(base, VER_METHOD_ATTR))
 
         for key, value in cls_dict.items():
-            if not callable(value):
+            if not isinstance(value, collections.Callable):
                 continue
             if getattr(value, 'wsgi_action', None):
                 actions[value.wsgi_action] = key
