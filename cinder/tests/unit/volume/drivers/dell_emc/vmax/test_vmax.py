@@ -922,6 +922,10 @@ class FakeConfiguration(object):
                 self.chap_username = value
             elif key == 'chap_password':
                 self.chap_password = value
+            elif key == 'driver_ssl_cert_verify':
+                self.driver_ssl_cert_verify = value
+            elif key == 'driver_ssl_cert_path':
+                self.driver_ssl_cert_path = value
 
     def safe_get(self, key):
         try:
@@ -2869,6 +2873,21 @@ class VMAXRestTest(test.TestCase):
             self.data.extra_specs, link=False, unlink=False,
             rename=True, new_snap_name=new_snap_backend_name)
         mock_modify.assert_called_once()
+
+    def test_set_rest_credentials(self):
+        array_info = {
+            'RestServerIp': '10.10.10.10',
+            'RestServerPort': '8443',
+            'RestUserName': 'user_test',
+            'RestPassword': 'pass_test',
+            'SSLVerify': True,
+        }
+        self.rest.set_rest_credentials(array_info)
+        self.assertEqual('user_test', self.rest.user)
+        self.assertEqual('pass_test', self.rest.passwd)
+        self.assertTrue(self.rest.verify)
+        self.assertEqual('https://10.10.10.10:8443/univmax/restapi',
+                         self.rest.base_uri)
 
 
 class VMAXProvisionTest(test.TestCase):
@@ -4956,7 +4975,6 @@ class VMAXCommonTest(test.TestCase):
              'RestServerPort': 8443,
              'RestUserName': 'smc',
              'RestPassword': 'smc',
-             'SSLCert': None,
              'SSLVerify': False,
              'SerialNumber': self.data.array,
              'srpName': 'SRP_1',
@@ -4972,6 +4990,28 @@ class VMAXCommonTest(test.TestCase):
         self.common.configuration = backup_conf
         kwargs = self.common.get_attributes_from_cinder_config()
         self.assertIsNone(kwargs)
+
+    def test_get_ssl_attributes_from_cinder_config(self):
+        conf = FakeConfiguration(
+            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            vmax_port_groups=[self.data.port_group_name_i],
+            driver_ssl_cert_verify=True,
+            driver_ssl_cert_path='/path/to/cert')
+
+        self.common.configuration = conf
+        conf_returned = self.common.get_attributes_from_cinder_config()
+        self.assertEqual('/path/to/cert', conf_returned['SSLVerify'])
+
+        conf.driver_ssl_cert_verify = True
+        conf.driver_ssl_cert_path = None
+        conf_returned = self.common.get_attributes_from_cinder_config()
+        self.assertTrue(conf_returned['SSLVerify'])
+
+        conf.driver_ssl_cert_verify = False
+        conf.driver_ssl_cert_path = None
+        conf_returned = self.common.get_attributes_from_cinder_config()
+        self.assertFalse(conf_returned['SSLVerify'])
 
     @mock.patch.object(rest.VMAXRest,
                        'get_size_of_device_on_array',
@@ -5081,6 +5121,47 @@ class VMAXCommonTest(test.TestCase):
         self.common.configuration.initiator_check = True
         initiator_check = self.common._get_initiator_check_flag()
         self.assertTrue(initiator_check)
+
+    def test_get_slo_workload_combo_from_cinder_conf(self):
+        configuration = FakeConfiguration(
+            None, 'ProvisionTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_rest_port=8443, vmax_port_groups=[self.data.port_group_name_i])
+        #    vmax_service_level='Diamond', vmax_workload='DSS')
+        self.common.configuration = configuration
+
+        self.common.configuration.vmax_service_level = 'Diamond'
+        self.common.configuration.vmax_workload = 'DSS'
+        response1 = self.common.get_attributes_from_cinder_config()
+        self.assertEqual('Diamond', response1['ServiceLevel'])
+        self.assertEqual('DSS', response1['Workload'])
+
+        self.common.configuration.vmax_service_level = 'Diamond'
+        self.common.configuration.vmax_workload = None
+        response2 = self.common.get_attributes_from_cinder_config()
+        self.assertEqual(self.common.configuration.vmax_service_level,
+                         response2['ServiceLevel'])
+        self.assertIsNone(response2['Workload'])
+
+        expected_response = {
+            'RestServerIp': '1.1.1.1',
+            'RestServerPort': 8443,
+            'RestUserName': 'smc',
+            'RestPassword': 'smc',
+            'SSLVerify': False,
+            'SerialNumber': '000197800123',
+            'srpName': 'SRP_1',
+            'PortGroup': 'OS-iscsi-PG'}
+
+        self.common.configuration.vmax_service_level = None
+        self.common.configuration.vmax_workload = 'DSS'
+        response3 = self.common.get_attributes_from_cinder_config()
+        self.assertEqual(expected_response, response3)
+
+        self.common.configuration.vmax_service_level = None
+        self.common.configuration.vmax_workload = None
+        response4 = self.common.get_attributes_from_cinder_config()
+        self.assertEqual(expected_response, response4)
 
 
 class VMAXFCTest(test.TestCase):
