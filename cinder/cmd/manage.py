@@ -54,7 +54,7 @@
 
 from __future__ import print_function
 
-
+import collections
 import logging as python_logging
 import prettytable
 import sys
@@ -765,7 +765,8 @@ def methods_of(obj):
     """
     result = []
     for i in dir(obj):
-        if callable(getattr(obj, i)) and not i.startswith('_'):
+        if isinstance(getattr(obj, i),
+                      collections.Callable) and not i.startswith('_'):
             result.append((i, getattr(obj, i)))
     return result
 

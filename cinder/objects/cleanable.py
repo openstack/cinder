@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import inspect
 
 import decorator
@@ -224,7 +225,8 @@ class CinderCleanableObject(base.CinderPersistentObject):
 
         # If we don't have optional decorator arguments the argument in
         # decorator_args is the function we have to decorate
-        if len(decorator_args) == 1 and callable(decorator_args[0]):
+        if len(decorator_args) == 1 and isinstance(
+                decorator_args[0], collections.Callable):
             function = decorator_args[0]
             decorator_args = None
             return _decorator(function)

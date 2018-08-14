@@ -14,6 +14,7 @@
 
 """Cinder common internal object model"""
 
+import collections
 import contextlib
 import datetime
 
@@ -160,7 +161,8 @@ class CinderObjectRegistry(base.VersionedObjectRegistry):
         setattr(objects, cls.obj_name(), cls)
 
         # If registering class has a callable initialization method, call it.
-        if callable(getattr(cls, 'cinder_ovo_cls_init', None)):
+        if isinstance(getattr(cls, 'cinder_ovo_cls_init', None),
+                      collections.Callable):
             cls.cinder_ovo_cls_init()
 
 
@@ -567,7 +569,7 @@ class CinderObjectSerializer(base.VersionedObjectSerializer):
             entity = self._process_iterable(context, self.serialize_entity,
                                             entity)
         elif (hasattr(entity, 'obj_to_primitive') and
-              callable(entity.obj_to_primitive)):
+              isinstance(entity.obj_to_primitive, collections.Callable)):
             # NOTE(dulek): Backport outgoing object to the capped version.
             backport_ver = self._get_capped_obj_version(entity)
             entity = entity.obj_to_primitive(backport_ver, self.manifest)
