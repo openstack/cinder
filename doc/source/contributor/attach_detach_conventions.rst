@@ -34,7 +34,7 @@ There are three things that happen in the workflow for an attach or detach call.
 2. Handle the connection operations that need to be done on the Volume
 
 - For Attach, this is the cinder.volume.api.initialize_connection method
-- For Detach, the analogous calls is cinder.volume.api.terminate_connection
+- For Detach, the analogous call is cinder.volume.api.terminate_connection
 
 3. Finalize the status of the volume and release the resource
 

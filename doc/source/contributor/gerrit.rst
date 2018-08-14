@@ -14,9 +14,9 @@ site is https://review.openstack.org
 Gerrit is a complete replacement for Github pull requests. `All Github pull
 requests to the Cinder repository will be ignored`.
 
-See `Gerrit Workflow Quick Reference`_ for information about how to get
-started using Gerrit. See `Development Workflow`_ for more detailed
-documentation on how to work with Gerrit.
+See `Quick Reference`_ for information on quick reference for developers.
+See `Getting Started`_ for information on how to get started using Gerrit.
+See `Development Workflow`_ for more detailed information on how to work with Gerrit.
 
 Targeting Milestones
 --------------------
@@ -88,5 +88,6 @@ to the submitter with a request for the addition of unit test.
 
 .. _Review guidelines: https://docs.openstack.org/doc-contrib-guide/docs-review-guidelines.html
 .. _Gerrit: https://review.openstack.org/#/q/project:openstack/cinder+status:open
+.. _Quick Reference: https://docs.openstack.org/infra/manual/developers.html#quick-reference
+.. _Getting Started: https://docs.openstack.org/infra/manual/developers.html#getting-started
 .. _Development Workflow: https://docs.openstack.org/infra/manual/developers.html#development-workflow
-.. _Gerrit Workflow Quick Reference: https://docs.openstack.org/infra/manual/developers.html#development-workflow
