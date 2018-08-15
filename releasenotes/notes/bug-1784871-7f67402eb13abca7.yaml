@@ -1,0 +1,7 @@
+security:
+  - |
+    Removed the ability to create volumes in a ScaleIO Storage Pool
+    that has zero-padding disabled.
+    A new configuration option had been added to override this new
+    behavior and allow volume creation, but should not be enabled if
+    multiple tenants will utilize volumes from a shared Storage Pool.
