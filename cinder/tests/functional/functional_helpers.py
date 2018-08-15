@@ -61,7 +61,7 @@ def generate_new_element(items, prefix, numeric=False):
 
 
 class _FunctionalTestBase(test.TestCase):
-    osapi_version_major = '2'
+    osapi_version_major = '3'
     osapi_version_minor = '0'
 
     def setUp(self):
