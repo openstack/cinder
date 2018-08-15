@@ -654,13 +654,13 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_3
+   - meta: meta
 
 
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-metadata-show-response.json
+.. literalinclude:: ./samples/volume-metadata-show-key-response.json
    :language: javascript
 
 
