@@ -92,6 +92,7 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Support for revert to volume snapshot
          backport from 3.2.0
               - Fix for SSL verification/cert application (bug #1772924)
+              - Incorrect condition for an empty list (bug #1787219)
     """
 
     VERSION = "3.1.0"

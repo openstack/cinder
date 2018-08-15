@@ -4167,13 +4167,15 @@ class VMAXCommonTest(test.TestCase):
                 self.data.extra_specs)
             self.assertEqual(ref_wwns, target_wwns)
 
-    def test_get_target_wwns_from_masking_view_no_mv(self):
+    @mock.patch.object(common.VMAXCommon, 'get_port_group_from_masking_view',
+                       return_value=None)
+    def test_get_target_wwns_from_masking_view_no_mv(self, mock_pgmv):
         with mock.patch.object(self.common, '_get_masking_views_from_volume',
-                               return_value=None):
-            target_wwns = self.common._get_target_wwns_from_masking_view(
+                               return_value=[]):
+            self.common._get_target_wwns_from_masking_view(
                 self.data.device_id, self.data.connector['host'],
                 self.data.extra_specs)
-            self.assertEqual([], target_wwns)
+            mock_pgmv.assert_not_called()
 
     @mock.patch.object(common.VMAXCommon, '_get_replication_extra_specs',
                        return_value=VMAXCommonData.rep_extra_specs)

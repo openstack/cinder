@@ -1705,7 +1705,7 @@ class VMAXCommon(object):
         array = extra_specs[utils.ARRAY]
         masking_view_list = self._get_masking_views_from_volume(
             array, device_id, short_host_name)
-        if masking_view_list is not None:
+        if masking_view_list:
             portgroup = self.get_port_group_from_masking_view(
                 array, masking_view_list[0])
             target_wwns = self.rest.get_target_wwns(array, portgroup)
