@@ -1080,6 +1080,12 @@ name_15:
   in: body
   required: false
   type: string
+name_16:
+  description: |
+    The name of the backend pool.
+  in: body
+  required: true
+  type: string
 name_2:
   description: |
     The consistency group snapshot name.
