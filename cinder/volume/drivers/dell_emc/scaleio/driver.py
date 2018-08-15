@@ -113,6 +113,12 @@ scaleio_opts = [
                      'when zero padding is disabled. This option should '
                      'not be enabled if multiple tenants will utilize '
                      'thick volumes from a shared Storage Pool.'),
+    cfg.BoolOpt('sio_allow_non_padded_volumes',
+                default=False,
+                help='Allow volumes to be created in Storage Pools '
+                     'when zero padding is disabled. This option should '
+                     'not be enabled if multiple tenants will utilize '
+                     'volumes from a shared Storage Pool.'),
 ]
 
 CONF.register_opts(scaleio_opts, group=configuration.SHARED_CONF_GROUP)
@@ -496,17 +502,19 @@ class ScaleIODriver(driver.VolumeDriver):
                                  protection_domain,
                                  storage_pool,
                                  provision_type):
-        """Checks if volume creation is safe or not
+        """Checks if volume creation is safe or not.
 
-           using thick volumes with zero padding disabled can lead
-           to existing data being read off of a newly created volume
+        Using volumes with zero padding disabled can lead to existing data
+        being read off of a newly created volume.
         """
         # if we have been told to allow unsafe volumes
-        if self.configuration.sio_allow_non_padded_thick_volumes:
+        if self.configuration.sio_allow_non_padded_volumes:
+            # Enabled regardless of type, so safe to proceed
             return True
 
-        # all thin volumes are safe
-        if provision_type == 'ThinProvisioned':
+        if (provision_type == 'ThickProvisioned' and
+                self.configuration.sio_allow_non_padded_thick_volumes):
+            # Enabled for thick volumes
             return True
 
         try:
@@ -613,7 +621,8 @@ class ScaleIODriver(driver.VolumeDriver):
                       "zero padding being disabled for pool, %s:%s. "
                       "This behaviour can be changed by setting "
                       "the configuration option "
-                      "sio_allow_non_padded_thick_volumes = True.",
+                      "sio_allow_non_padded_thick_volumes = True or"
+                      "sio_allow_non_padded_volumes = True.",
                       protection_domain_name,
                       storage_pool_name)
             msg = _("Volume creation rejected due to "
