@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    A new volume driver, SPDK, is added for Storage Performance
+    Development Kit NVMe-oF target handling, that allows Cinder
+    to manage volumes in SPDK NVMe-oF driver.
