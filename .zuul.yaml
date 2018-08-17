@@ -12,7 +12,6 @@
       jobs:
         - cinder-tempest-dsvm-lvm-lio-barbican:
             voting: false
-        - cinder-tox-compliance
         - cinder-tox-bandit-baseline:
             voting: false
         - nova-multiattach
@@ -139,7 +138,6 @@
               - ^tox.ini$
     gate:
       jobs:
-        - cinder-tox-compliance
         - nova-multiattach
 
         - legacy-grenade-dsvm-cinder-mn-sub-volbak:
@@ -336,22 +334,6 @@
       - ^doc/.*$
       - ^releasenotes/.*$
       - ^tools/.*$
-
-- job:
-    # Test that all drivers follow the defined interface
-    name: cinder-tox-compliance
-    parent: openstack-tox
-    timeout: 2400
-    vars:
-      tox_envlist: compliance
-    required-projects:
-      - openstack/requirements
-    files:
-      - ^cinder/volume/driver.py
-      - ^cinder/volume/drivers/.*$
-      - ^cinder/interface/.*$
-      - ^cinder/backup/.*$
-      - ^cinder/zonemanager/.*$
 
 - job:
     # Security testing for known issues
