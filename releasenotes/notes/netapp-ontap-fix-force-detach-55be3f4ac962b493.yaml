@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed bug #1783582, where calls to os-force_detach were failing on NetApp
+    ONTAP iSCSI/FC drivers.
