@@ -21,6 +21,7 @@ Tests for NetApp API layer
 import ddt
 from lxml import etree
 import mock
+from oslo_utils import netutils
 import paramiko
 import six
 from six.moves import urllib
@@ -236,6 +237,25 @@ class NetAppApiServerTests(test.TestCase):
         opener_mock.read.side_effect = ['resp1', 'resp2']
 
         self.root.send_http_request(na_element)
+
+    @ddt.data('192.168.1.0', '127.0.0.1', '0.0.0.0',
+              '::ffff:8', 'fdf8:f53b:82e4::53', '2001::1',
+              'fe80::200::abcd', '2001:0000:4136:e378:8000:63bf:3fff:fdd2')
+    def test__get_url(self, host):
+        port = '80'
+        root = netapp_api.NaServer(host, port=port)
+
+        protocol = root.TRANSPORT_TYPE_HTTP
+        url = root.URL_FILER
+
+        if netutils.is_valid_ipv6(host):
+            host = netutils.escape_ipv6(host)
+
+        result = '%s://%s:%s/%s' % (protocol, host, port, url)
+
+        url = root._get_url()
+
+        self.assertEqual(result, url)
 
 
 class NetAppApiElementTransTests(test.TestCase):

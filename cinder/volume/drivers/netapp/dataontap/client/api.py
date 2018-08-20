@@ -26,6 +26,7 @@ from eventlet import semaphore
 
 from lxml import etree
 from oslo_log import log as logging
+from oslo_utils import netutils
 import random
 import six
 from six.moves import urllib
@@ -281,7 +282,12 @@ class NaServer(object):
         return processed_response.get_child_by_name('results')
 
     def _get_url(self):
-        return '%s://%s:%s/%s' % (self._protocol, self._host, self._port,
+        host = self._host
+
+        if netutils.is_valid_ipv6(host):
+            host = netutils.escape_ipv6(host)
+
+        return '%s://%s:%s/%s' % (self._protocol, host, self._port,
                                   self._url)
 
     def _build_opener(self):
