@@ -1,0 +1,13 @@
+---
+deprecations:
+  - |
+    The ScaleIO configuration option ``sio_allow_non_padded_thick_volumes`` has
+    been deprecated and will be removed in a future release. Deployments should
+    now migrate to the option ``sio_allow_non_padded_volumes`` for equivalent
+    functionality.
+upgrade:
+  - |
+    The ScaleIO configuration option ``sio_allow_non_padded_thick_volumes`` has
+    been deprecated and will be removed in a future release. Deployments should
+    now migrate to the option ``sio_allow_non_padded_volumes`` for equivalent
+    functionality.
