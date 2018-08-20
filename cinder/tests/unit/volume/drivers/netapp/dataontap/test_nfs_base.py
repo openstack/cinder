@@ -323,18 +323,16 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.driver._delete_file.assert_called_once_with(snapshot.volume_id,
                                                          snapshot.name)
 
-    def test__get_volume_location(self):
+    @ddt.data(fake.NFS_SHARE, fake.NFS_SHARE_IPV6)
+    def test__get_volume_location(self, provider):
         volume_id = fake.VOLUME_ID
-        self.mock_object(self.driver, '_get_host_ip',
-                         return_value='168.124.10.12')
-        self.mock_object(self.driver, '_get_export_path',
-                         return_value='/fake_mount_path')
+
+        self.mock_object(self.driver, '_get_provider_location',
+                         return_value=provider)
 
         retval = self.driver._get_volume_location(volume_id)
 
-        self.assertEqual('168.124.10.12:/fake_mount_path', retval)
-        self.driver._get_host_ip.assert_called_once_with(volume_id)
-        self.driver._get_export_path.assert_called_once_with(volume_id)
+        self.assertEqual(provider, retval)
 
     def test__clone_backing_file_for_volume(self):
         self.assertRaises(NotImplementedError,
@@ -507,34 +505,35 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
         self.assertEqual(0, mock_delete.call_count)
 
-    def test_get_export_ip_path_volume_id_provided(self):
-        mock_get_host_ip = self.mock_object(self.driver, '_get_host_ip')
-        mock_get_host_ip.return_value = fake.IPV4_ADDRESS
+    @ddt.data((fake.NFS_SHARE, fake.SHARE_IP),
+              (fake.NFS_SHARE_IPV6, fake.IPV6_ADDRESS))
+    @ddt.unpack
+    def test_get_export_ip_path_volume_id_provided(self, provider_location,
+                                                   ip):
+        mock_get_host_ip = self.mock_object(self.driver,
+                                            '_get_provider_location')
+        mock_get_host_ip.return_value = provider_location
 
-        mock_get_export_path = self.mock_object(
-            self.driver, '_get_export_path')
-        mock_get_export_path.return_value = fake.EXPORT_PATH
-
-        expected = (fake.IPV4_ADDRESS, fake.EXPORT_PATH)
+        expected = (ip, fake.EXPORT_PATH)
 
         result = self.driver._get_export_ip_path(fake.VOLUME_ID)
 
         self.assertEqual(expected, result)
 
-    def test_get_export_ip_path_share_provided(self):
-        expected = (fake.SHARE_IP, fake.EXPORT_PATH)
+    @ddt.data((fake.NFS_SHARE, fake.SHARE_IP, fake.EXPORT_PATH),
+              (fake.NFS_SHARE_IPV6, fake.IPV6_ADDRESS, fake.EXPORT_PATH))
+    @ddt.unpack
+    def test_get_export_ip_path_share_provided(self, share, ip, path):
+        expected = (ip, path)
 
-        result = self.driver._get_export_ip_path(share=fake.NFS_SHARE)
+        result = self.driver._get_export_ip_path(share=share)
 
         self.assertEqual(expected, result)
 
     def test_get_export_ip_path_volume_id_and_share_provided(self):
-        mock_get_host_ip = self.mock_object(self.driver, '_get_host_ip')
-        mock_get_host_ip.return_value = fake.IPV4_ADDRESS
-
-        mock_get_export_path = self.mock_object(
-            self.driver, '_get_export_path')
-        mock_get_export_path.return_value = fake.EXPORT_PATH
+        mock_get_host_ip = self.mock_object(self.driver,
+                                            '_get_provider_location')
+        mock_get_host_ip.return_value = fake.NFS_SHARE_IPV4
 
         expected = (fake.IPV4_ADDRESS, fake.EXPORT_PATH)
 
@@ -546,26 +545,6 @@ class NetAppNfsDriverTestCase(test.TestCase):
     def test_get_export_ip_path_no_args(self):
         self.assertRaises(exception.InvalidInput,
                           self.driver._get_export_ip_path)
-
-    def test_get_host_ip(self):
-        mock_get_provider_location = self.mock_object(
-            self.driver, '_get_provider_location')
-        mock_get_provider_location.return_value = fake.NFS_SHARE
-        expected = fake.SHARE_IP
-
-        result = self.driver._get_host_ip(fake.VOLUME_ID)
-
-        self.assertEqual(expected, result)
-
-    def test_get_export_path(self):
-        mock_get_provider_location = self.mock_object(
-            self.driver, '_get_provider_location')
-        mock_get_provider_location.return_value = fake.NFS_SHARE
-        expected = fake.EXPORT_PATH
-
-        result = self.driver._get_export_path(fake.VOLUME_ID)
-
-        self.assertEqual(expected, result)
 
     def test_construct_image_url_loc(self):
         img_loc = fake.FAKE_IMAGE_LOCATION
