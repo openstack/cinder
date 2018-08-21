@@ -278,10 +278,10 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
 
     # DRBDmanage works in kiB units; Cinder uses GiB.
     def _vol_size_to_dm(self, size):
-        return size * units.Gi / units.Ki
+        return size * units.Gi // units.Ki
 
     def _vol_size_to_cinder(self, size):
-        return size * units.Ki / units.Gi
+        return size * units.Ki // units.Gi
 
     def is_clean_volume_name(self, name, prefix):
         try:
