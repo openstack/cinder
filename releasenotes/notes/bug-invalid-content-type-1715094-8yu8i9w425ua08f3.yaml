@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Cinder now will return 415 (HTTPUnsupportedMediaType) when any unsupported
+    content type is specified in request header.

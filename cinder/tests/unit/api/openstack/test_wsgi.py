@@ -366,9 +366,8 @@ class ResourceTest(test.TestCase):
         request.headers['Content-Type'] = 'application/none'
         request.body = b'foo'
 
-        content_type, body = resource.get_body(request)
-        self.assertIsNone(content_type)
-        self.assertEqual('', body)
+        self.assertRaises(exception.InvalidContentType,
+                          resource.get_body, request)
 
     def test_get_body_no_content_type(self):
         class Controller(object):

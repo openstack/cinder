@@ -718,12 +718,7 @@ class Resource(wsgi.Application):
         if len(request.body) == 0:
             LOG.debug("Empty body provided in request")
             return None, ''
-
-        try:
-            content_type = request.get_content_type()
-        except exception.InvalidContentType:
-            LOG.debug("Unrecognized Content-Type provided in request")
-            return None, ''
+        content_type = request.get_content_type()
 
         if not content_type:
             LOG.debug("No Content-Type provided in request")
@@ -832,9 +827,14 @@ class Resource(wsgi.Application):
         # content type
         action_args = self.get_action_args(request.environ)
         action = action_args.pop('action', None)
-        content_type, body = self.get_body(request)
-        accept = request.best_match_content_type()
-
+        # NOTE(sdague): we filter out InvalidContentTypes early so we
+        # know everything is good from here on out.
+        try:
+            content_type, body = self.get_body(request)
+            accept = request.best_match_content_type()
+        except exception.InvalidContentType:
+            msg = _("Unsupported Content-Type")
+            return Fault(webob.exc.HTTPUnsupportedMediaType(explanation=msg))
         # NOTE(Vek): Splitting the function up this way allows for
         #            auditing by external tools that wrap the existing
         #            function.  If we try to audit __call__(), we can
