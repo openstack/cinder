@@ -107,13 +107,8 @@ scaleio_opts = [
                  default=10.0,
                  help='max_over_subscription_ratio setting for the driver. '
                       'Maximum value allowed is 10.0.'),
-    cfg.BoolOpt('sio_allow_non_padded_thick_volumes',
-                default=False,
-                help='Allow thick volumes to be created in Storage Pools '
-                     'when zero padding is disabled. This option should '
-                     'not be enabled if multiple tenants will utilize '
-                     'thick volumes from a shared Storage Pool.'),
     cfg.BoolOpt('sio_allow_non_padded_volumes',
+                deprecated_name='sio_allow_non_padded_thick_volumes',
                 default=False,
                 help='Allow volumes to be created in Storage Pools '
                      'when zero padding is disabled. This option should '
@@ -500,8 +495,7 @@ class ScaleIODriver(driver.VolumeDriver):
 
     def _is_volume_creation_safe(self,
                                  protection_domain,
-                                 storage_pool,
-                                 provision_type):
+                                 storage_pool):
         """Checks if volume creation is safe or not.
 
         Using volumes with zero padding disabled can lead to existing data
@@ -510,11 +504,6 @@ class ScaleIODriver(driver.VolumeDriver):
         # if we have been told to allow unsafe volumes
         if self.configuration.sio_allow_non_padded_volumes:
             # Enabled regardless of type, so safe to proceed
-            return True
-
-        if (provision_type == 'ThickProvisioned' and
-                self.configuration.sio_allow_non_padded_thick_volumes):
-            # Enabled for thick volumes
             return True
 
         try:
@@ -621,7 +610,6 @@ class ScaleIODriver(driver.VolumeDriver):
                       "zero padding being disabled for pool, %s:%s. "
                       "This behaviour can be changed by setting "
                       "the configuration option "
-                      "sio_allow_non_padded_thick_volumes = True or"
                       "sio_allow_non_padded_volumes = True.",
                       protection_domain_name,
                       storage_pool_name)
