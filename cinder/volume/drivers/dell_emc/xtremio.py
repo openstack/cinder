@@ -62,7 +62,6 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
-DEFAULT_PROVISIONING_FACTOR = 20.0
 XTREMIO_OPTS = [
     cfg.StrOpt('xtremio_cluster_name',
                default='',
