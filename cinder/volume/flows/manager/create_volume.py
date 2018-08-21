@@ -10,13 +10,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os
 import traceback
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import fileutils
 from oslo_utils import timeutils
 import taskflow.engines
 from taskflow.patterns import linear_flow
@@ -760,9 +760,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # NOTE(mnaser): This check *only* happens if the backend is not able
         #               to clone volumes and we have to resort to downloading
         #               the image from Glance and uploading it.
-        if (CONF.image_conversion_dir and not
-                os.path.exists(CONF.image_conversion_dir)):
-            os.makedirs(CONF.image_conversion_dir)
+        if CONF.image_conversion_dir:
+            fileutils.ensure_tree(CONF.image_conversion_dir)
         try:
             image_utils.check_available_space(
                 CONF.image_conversion_dir,
