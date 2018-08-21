@@ -405,7 +405,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
     @mock.patch('os.path.basename')
     def _test_qemu_img_info(self, mock_basename,
                             mock_qemu_img_info, backing_file, basedir,
-                            valid_backing_file=True):
+                            template=None, valid_backing_file=True):
         fake_vol_name = 'fake_vol_name'
         mock_info = mock_qemu_img_info.return_value
         mock_info.image = mock.sentinel.image_path
@@ -418,7 +418,8 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
         if valid_backing_file:
             img_info = self._driver._qemu_img_info_base(
-                mock.sentinel.image_path, fake_vol_name, basedir)
+                mock.sentinel.image_path, fake_vol_name, basedir,
+                ext_bf_template=template)
             self.assertEqual(mock_info, img_info)
             self.assertEqual(mock.sentinel.image_basename,
                              mock_info.image)
@@ -463,6 +464,73 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
     def test_qemu_img_info_invalid_backing_file(self, backing_file, basedir):
         self._test_qemu_img_info(backing_file=backing_file,
                                  basedir=basedir,
+                                 valid_backing_file=False)
+
+    @ddt.data([None, '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name', '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name.VHD', '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name.404f-404',
+               '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name.tmp-snap-404f-404',
+               '/fake_basedir'],
+              ['/fake_basedir/cb2016/other_dir/404f-404',
+               '/fake_basedir'],
+              ['/fake_basedir/cb2016/other_dir/tmp-snap-404f-404',
+               '/fake_basedir'],
+              ['/fake_basedir/cb2016/other_dir/404f-404.mod1-404f-404',
+               '/fake_basedir'],
+              ['/fake_basedir/cb2016/other_dir/404f-404.mod2-404f-404',
+               '/fake_basedir'])
+    @ddt.unpack
+    def test_qemu_img_info_extended_backing_file(self, backing_file, basedir):
+        """Tests using a special backing file template
+
+        The special backing file template used in here allows backing files
+        in a subdirectory and with special extended names (.mod1-[], .mod2-[],
+        ...).
+        """
+        ext_template = ("(#basedir/[0-9a-f]+/)?(#volname(.(tmp-snap-)"
+                        "?[0-9a-f-]+)?#valid_ext|other_dir/(tmp-snap-)?"
+                        "[0-9a-f-]+(.(mod1-|mod2-)[0-9a-f-]+)?)$")
+        self._test_qemu_img_info(backing_file=backing_file,
+                                 basedir=basedir,
+                                 template=remotefs.BackingFileTemplate(
+                                     ext_template),
+                                 valid_backing_file=True)
+
+    @ddt.data(['/other_random_path', '/fake_basedir'],
+              ['/other_basedir/cb2016/fake_vol_name', '/fake_basedir'],
+              ['/fake_basedir/invalid_hash/fake_vol_name', '/fake_basedir'],
+              ['/fake_basedir/cb2016/invalid_vol_name', '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name.info', '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name-random-suffix',
+               '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name.invalidext',
+               '/fake_basedir'],
+              ['/fake_basedir/cb2016/invalid_dir/404f-404',
+               '/fake_basedir'],
+              ['/fake_basedir/cb2016/other_dir/invalid-prefix-404f-404',
+               '/fake_basedir'],
+              ['/fake_basedir/cb2016/other_dir/404f-404.mod3-404f-404',
+               '/fake_basedir'],
+              ['/fake_basedir/cb2016/other_dir/404f-404.mod2-404f-404.invalid',
+               '/fake_basedir'])
+    @ddt.unpack
+    def test_qemu_img_info_extended_backing_file_invalid(self, backing_file,
+                                                         basedir):
+        """Tests using a special backing file template with invalid files
+
+        The special backing file template used in here allows backing files
+        in a subdirectory and with special extended names (.mod1-[], .mod2-[],
+        ...).
+        """
+        ext_template = ("(#basedir/[0-9a-f]+/)?(#volname(.(tmp-snap-)"
+                        "?[0-9a-f-]+)?#valid_ext|other_dir/(tmp-snap-)?"
+                        "[0-9a-f-]+(.(mod1-|mod2-)[0-9a-f-]+)?)$")
+        self._test_qemu_img_info(backing_file=backing_file,
+                                 basedir=basedir,
+                                 template=remotefs.BackingFileTemplate(
+                                     ext_template),
                                  valid_backing_file=False)
 
     @mock.patch.object(remotefs.RemoteFSSnapDriver, '_local_volume_dir')
