@@ -1824,6 +1824,13 @@ class SolidFireDriver(san.SanISCSIDriver):
         self._delete_cgsnapshot_by_name(snap_name)
         return None, None
 
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        if vol_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            return self._delete_cgsnapshot(context, group_snapshot, snapshots)
+
+        # Default implementation handles other scenarios.
+        raise NotImplementedError()
+
     def _delete_consistencygroup(self, ctxt, group, volumes):
         # TODO(chris_morrell): exception handling and return correctly updated
         # volume_models.
