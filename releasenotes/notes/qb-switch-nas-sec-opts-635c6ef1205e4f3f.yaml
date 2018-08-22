@@ -1,0 +1,12 @@
+---
+upgrade:
+  - |
+    In order to simplify initial setup for new installations
+    the default behaviour of the Quobyte driver for the options
+    nas_secure_file_operations and nas_secure_file_permissions has changed.
+    The 'auto' values are no longer mapped to true but to false. Therefore
+    the old default behaviour to run with secure settings is changed
+    to run without secure settings as the new default behaviour.
+    Installations using the default values for these options should ensure
+    to explicitly set them to true with this new Cinder Quobyte driver
+    version.
