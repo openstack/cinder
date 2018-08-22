@@ -977,6 +977,7 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
         # This value is set in check_for_setup_error.
         self.configuration = conf.Configuration(None)
         self.configuration.lvm_type = 'thin'
+        self.configuration.target_helper = 'lioadm'
         vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes',
                                        False,
                                        None,
