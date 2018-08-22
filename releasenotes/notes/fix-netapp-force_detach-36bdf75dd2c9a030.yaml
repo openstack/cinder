@@ -1,0 +1,3 @@
+---
+fixes:
+  - Fixes force_detach behavior for volumes in NetApp SolidFire driver.
