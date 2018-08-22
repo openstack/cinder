@@ -1201,6 +1201,13 @@ class SolidFireDriver(san.SanISCSIDriver):
         matching_vags = [vag for vag in vags if vag['name'] == vag_name]
         return matching_vags
 
+    def _get_vags_by_volume(self, vol_id):
+        params = {"volumeID": vol_id}
+        vags = self._issue_api_request(
+            'GetVolumeStats',
+            params)['result']['volumeStats']['volumeAccessGroups']
+        return vags
+
     def _add_initiator_to_vag(self, iqn, vag_id):
         # Added a vag_id return as there is a chance that we might have to
         # create a new VAG if our target VAG is deleted underneath us.
@@ -1258,9 +1265,8 @@ class SolidFireDriver(san.SanISCSIDriver):
     def _remove_volume_from_vags(self, vol_id):
         # Due to all sorts of uncertainty around multiattach, on volume
         # deletion we make a best attempt at removing the vol_id from VAGs.
-        vags = self._base_get_vags()
-        targets = [v for v in vags if vol_id in v['volumes']]
-        for vag in targets:
+        vags = self._get_vags_by_volume(vol_id)
+        for vag in vags:
             self._remove_volume_from_vag(vol_id, vag['volumeAccessGroupID'])
 
     def _remove_vag(self, vag_id):
@@ -2344,21 +2350,26 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
            If the VAG is empty then the VAG is also removed.
         """
         if self.configuration.sf_enable_vag:
-            iqn = properties['initiator']
-            vag = self._get_vags_by_name(iqn)
             provider_id = volume['provider_id']
             vol_id = int(provider_id.split()[0])
 
-            if vag and not volume['multiattach']:
-                # Multiattach causes problems with removing volumes from VAGs.
-                # Compromise solution for now is to remove multiattach volumes
-                # from VAGs during volume deletion.
-                vag = vag[0]
-                vag_id = vag['volumeAccessGroupID']
-                if [vol_id] == vag['volumes']:
-                    self._remove_vag(vag_id)
-                elif vol_id in vag['volumes']:
-                    self._remove_volume_from_vag(vol_id, vag_id)
+            if properties:
+                iqn = properties['initiator']
+                vag = self._get_vags_by_name(iqn)
+
+                if vag and not volume['multiattach']:
+                    # Multiattach causes problems with removing volumes from
+                    # VAGs.
+                    # Compromise solution for now is to remove multiattach
+                    # volumes from VAGs during volume deletion.
+                    vag = vag[0]
+                    vag_id = vag['volumeAccessGroupID']
+                    if [vol_id] == vag['volumes']:
+                        self._remove_vag(vag_id)
+                    elif vol_id in vag['volumes']:
+                        self._remove_volume_from_vag(vol_id, vag_id)
+            else:
+                self._remove_volume_from_vags(vol_id)
 
         return super(SolidFireISCSI, self).terminate_connection(volume,
                                                                 properties,
