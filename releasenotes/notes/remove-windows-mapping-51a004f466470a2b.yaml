@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    The ``WindowsDriver`` was renamed in the Queens release to
+    ``WindowsISCSIDriver`` to avoid confusion with the SMB driver. The
+    backwards compatibility for this has now been removed, so any cinder.conf
+    settings still using
+    ``cinder.volume.drivers.windows.windows.WindowsDriver`` must now be updated
+    to use ``cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver``.
