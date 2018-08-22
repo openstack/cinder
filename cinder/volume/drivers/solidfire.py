@@ -1369,7 +1369,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         if volume['volume_type_id']:
             for setting in self._extract_sf_attributes_from_extra_specs(
                     volume['volume_type_id']):
-                for k, v in setting.iteritems():
+                for k, v in setting.items():
                     attributes[k] = v
 
         vname = '%s%s' % (self.configuration.sf_volume_prefix, volume['id'])
