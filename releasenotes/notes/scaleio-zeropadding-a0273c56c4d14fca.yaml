@@ -1,10 +1,8 @@
 ---
-
 security:
   - |
-    Removed the ability to create thick volumes in a ScaleIO Storage Pool
-    that has zero-padding disabled; creation of thin volumes from these
-    pools is allowed. A new configuration option has been added to
-    override this new behavior and allow thick volumes, but should not
-    be enabled if multiple tenants will utilize thick volumes from a shared
-    Storage Pool.
+    Removed the ability to create volumes in a ScaleIO Storage Pool that has
+    zero-padding disabled. A new configuration option
+    ``sio_allow_non_padded_volumes`` has been added to override this new
+    behavior and allow unpadded volumes, but should not be enabled if multiple
+    tenants will utilize volumes from a shared Storage Pool.

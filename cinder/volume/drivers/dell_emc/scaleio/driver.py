@@ -108,7 +108,6 @@ scaleio_opts = [
                  help='max_over_subscription_ratio setting for the driver. '
                       'Maximum value allowed is 10.0.'),
     cfg.BoolOpt('sio_allow_non_padded_volumes',
-                deprecated_name='sio_allow_non_padded_thick_volumes',
                 default=False,
                 help='Allow volumes to be created in Storage Pools '
                      'when zero padding is disabled. This option should '
