@@ -692,6 +692,20 @@ class NfsDriverTestCase(test.TestCase):
                                            provider_location=loc,
                                            size=size)
 
+    def test_get_provisioned_capacity(self):
+        self._set_driver()
+        drv = self._driver
+
+        mock_execute = self.mock_object(drv, '_execute')
+        mock_execute.return_value = ("148418423\t/dir", "")
+
+        with mock.patch.object(drv, 'shares') as shares:
+            shares.keys.return_value = {'192.0.2.1:/srv/nfs1'}
+            shares.return_value = {'192.0.2.1:/srv/nfs1', ''}
+            ret = drv._get_provisioned_capacity()
+
+            self.assertEqual(ret, 0.14)
+
     def test_create_sparsed_volume(self):
         self._set_driver()
         drv = self._driver
