@@ -86,8 +86,8 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         fake_resp.status_code = status_code
         exc_regex = exc_regex if exc_regex is not None else fake_resp.text
 
-        with self.assertRaisesRegexp(es_exception.WebServiceException,
-                                     exc_regex) as exc:
+        with self.assertRaisesRegex(es_exception.WebServiceException,
+                                    exc_regex) as exc:
             self.my_client._eval_response(fake_resp)
             self.assertEqual(status_code, exc.status_code)
 

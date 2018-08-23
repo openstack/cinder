@@ -781,13 +781,13 @@ class CommonAdapterTest(test.TestCase):
         self.assertEqual(['spa_eth2'], normalized.unity_io_ports)
 
     def test_normalize_config_raise(self):
-        with self.assertRaisesRegexp(exception.InvalidConfigurationValue,
-                                     'unity_storage_pool_names'):
+        with self.assertRaisesRegex(exception.InvalidConfigurationValue,
+                                    'unity_storage_pool_names'):
             config = MockConfig()
             config.unity_storage_pool_names = ['', '    ']
             self.adapter.normalize_config(config)
-        with self.assertRaisesRegexp(exception.InvalidConfigurationValue,
-                                     'unity_io_ports'):
+        with self.assertRaisesRegex(exception.InvalidConfigurationValue,
+                                    'unity_io_ports'):
             config = MockConfig()
             config.unity_io_ports = ['', '   ']
             self.adapter.normalize_config(config)
@@ -932,13 +932,13 @@ class FCAdapterTest(test.TestCase):
         self.assertEqual(set(('spa_iom_0_fc0', 'spa_iom_0_fc1')), set(ports))
 
     def test_validate_ports_no_matched(self):
-        with self.assertRaisesRegexp(exception.InvalidConfigurationValue,
-                                     'unity_io_ports'):
+        with self.assertRaisesRegex(exception.InvalidConfigurationValue,
+                                    'unity_io_ports'):
             self.adapter.validate_ports(['spc_invalid'])
 
     def test_validate_ports_unmatched_whitelist(self):
-        with self.assertRaisesRegexp(exception.InvalidConfigurationValue,
-                                     'unity_io_ports'):
+        with self.assertRaisesRegex(exception.InvalidConfigurationValue,
+                                    'unity_io_ports'):
             self.adapter.validate_ports(['spa_iom*', 'spc_invalid'])
 
 
