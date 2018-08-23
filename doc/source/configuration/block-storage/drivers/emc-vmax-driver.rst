@@ -12,6 +12,17 @@ storage management software. They use the Requests HTTP library to communicate
 with a Unisphere for VMAX instance, using a RESTAPI interface in the backend
 to perform VMAX storage operations.
 
+.. note::
+
+   KNOWN ISSUE:
+   Workload support was dropped in ucode 5978. If a VMAX All Flash array is
+   upgraded to 5978 or greater and existing volume types leveraged workload
+   e.g. DSS, DSS_REP, OLTP and OLTP_REP, attaching and detaching will no
+   longer work and the volume type will be unusable. Refrain from upgrading
+   to ucode 5978 or greater on an All Flash until a fix is merged. Please
+   contact your Dell EMC VMAX customer support representative if in any
+   doubt.
+
 System requirements
 ~~~~~~~~~~~~~~~~~~~
 
