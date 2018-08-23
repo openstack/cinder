@@ -980,6 +980,29 @@ metadata_items:
   in: body
   required: true
   type: integer
+migrate_force_host_copy:
+  description: |
+    If false (the default), rely on the volume backend driver to perform
+    the migration, which might be optimized. If true, or the volume driver
+    fails to migrate the volume itself, a generic host-based migration is
+    performed.
+  in: body
+  required: false
+  type: boolean
+migrate_host:
+  description: |
+    The target host for the volume migration. Host format is ``host@backend``.
+  in: body
+  required: true
+  type: string
+migrate_lock_volume:
+  description: |
+    If true, migrating an ``available`` volume will change its status to
+    ``maintenance`` preventing other operations from being performed on the
+    volume such as attach, detach, retype, etc.
+  in: body
+  required: false
+  type: boolean
 # NOTE(mriedem): We can update the migration_policy retype note about encrypted
 # in-use volumes not being supported once
 # https://bugzilla.redhat.com/show_bug.cgi?id=760547 is fixed.
@@ -1198,6 +1221,12 @@ os-force_delete:
 os-force_detach:
   description: |
     The ``os-force_detach`` action.
+  in: body
+  required: true
+  type: object
+os-migrate_volume:
+  description: |
+    The ``os-migrate_volume`` action.
   in: body
   required: true
   type: object

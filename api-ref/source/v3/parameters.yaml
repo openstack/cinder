@@ -1724,6 +1724,40 @@ metadata_9:
   required: false
   type: object
   min_version: 3.43
+migrate_cluster:
+  description: |
+    The target cluster for the volume migration. Cluster format is
+    ``cluster@backend``. Starting with microversion 3.16, either ``cluster``
+    or ``host`` must be specified. If ``host`` is specified and is part of a
+    cluster, the cluster is used as the target for the migration.
+  in: body
+  required: false
+  type: string
+  min_version: 3.16
+migrate_force_host_copy:
+  description: |
+    If false (the default), rely on the volume backend driver to perform
+    the migration, which might be optimized. If true, or the volume driver
+    fails to migrate the volume itself, a generic host-based migration is
+    performed.
+  in: body
+  required: false
+  type: boolean
+migrate_host:
+  description: |
+    The target host for the volume migration. Host format is ``host@backend``.
+    Required before microversion 3.16.
+  in: body
+  required: false
+  type: string
+migrate_lock_volume:
+  description: |
+    If true, migrating an ``available`` volume will change its status to
+    ``maintenance`` preventing other operations from being performed on the
+    volume such as attach, detach, retype, etc.
+  in: body
+  required: false
+  type: boolean
 # NOTE(mriedem): We can update the migration_policy retype note about encrypted
 # in-use volumes not being supported once
 # https://bugzilla.redhat.com/show_bug.cgi?id=760547 is fixed.
@@ -2007,6 +2041,12 @@ os-force_detach:
 os-initialize_connection:
   description: |
     The ``os-initialize_connection`` action.
+  in: body
+  required: true
+  type: object
+os-migrate_volume:
+  description: |
+    The ``os-migrate_volume`` action.
   in: body
   required: true
   type: object
