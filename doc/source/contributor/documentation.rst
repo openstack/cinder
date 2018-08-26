@@ -50,7 +50,7 @@ reStructuredText is a powerful language for generating web pages.  The
 documentation team has put together an `RST conventions`_ page with information
 and links related to RST.
 
-.. _RST conventions: https://docs.openstack.org/contributor-guide/rst-conv.html
+.. _RST conventions: https://docs.openstack.org/doc-contrib-guide/rst-conv.html
 
 Building Cinder's Documentation
 -------------------------------
