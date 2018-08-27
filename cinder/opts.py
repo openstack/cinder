@@ -108,8 +108,6 @@ from cinder.volume.drivers.huawei import huawei_driver as \
     cinder_volume_drivers_huawei_huaweidriver
 from cinder.volume.drivers.ibm import flashsystem_common as \
     cinder_volume_drivers_ibm_flashsystemcommon
-from cinder.volume.drivers.ibm import flashsystem_fc as \
-    cinder_volume_drivers_ibm_flashsystemfc
 from cinder.volume.drivers.ibm import flashsystem_iscsi as \
     cinder_volume_drivers_ibm_flashsystemiscsi
 from cinder.volume.drivers.ibm import gpfs as cinder_volume_drivers_ibm_gpfs
@@ -300,7 +298,6 @@ def list_opts():
                 cinder_volume_drivers_hpe_hpelefthandiscsi.hpelefthand_opts,
                 cinder_volume_drivers_huawei_huaweidriver.huawei_opts,
                 cinder_volume_drivers_ibm_flashsystemcommon.flashsystem_opts,
-                cinder_volume_drivers_ibm_flashsystemfc.flashsystem_fc_opts,
                 cinder_volume_drivers_ibm_flashsystemiscsi.
                 flashsystem_iscsi_opts,
                 cinder_volume_drivers_ibm_gpfs.gpfs_opts,

@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The IBM FlashSystem configuration options ``flashsystem_multipath_enabled``
+    was deprecated in the Mitaka release. It had no effect, so it can be safely
+    removed and does not have a new equivalent config option.
