@@ -28,6 +28,7 @@ import uuid
 
 from eventlet import tpool
 import fixtures
+from keystonemiddleware import auth_token
 import mock
 from oslo_concurrency import lockutils
 from oslo_config import fixture as config_fixture
@@ -214,6 +215,11 @@ class TestCase(testtools.TestCase):
         # test.
         rpc.LAST_OBJ_VERSIONS = {}
         rpc.LAST_RPC_VERSIONS = {}
+
+        # Init AuthProtocol to register some base options first, such as
+        # auth_url.
+        auth_token.AuthProtocol('fake_app', {'auth_type': 'password',
+                                             'auth_url': 'fake_url'})
 
         conf_fixture.set_defaults(CONF)
         CONF([], default_config_files=[])

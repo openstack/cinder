@@ -43,7 +43,7 @@ class QuotaUtilsTest(test.TestCase):
         self.auth_url = 'http://localhost:5000'
         self.context = context.RequestContext('fake_user', 'fake_proj_id')
         self.fixture = self.useFixture(config_fixture.Config(CONF))
-        self.fixture.config(auth_uri=self.auth_url, group='keystone_authtoken')
+        self.fixture.config(auth_url=self.auth_url, group='keystone_authtoken')
 
     @mock.patch('keystoneclient.client.Client')
     @mock.patch('keystoneauth1.session.Session')

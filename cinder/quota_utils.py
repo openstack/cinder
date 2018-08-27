@@ -25,8 +25,8 @@ from cinder import exception
 from cinder.i18n import _
 
 CONF = cfg.CONF
-CONF.import_opt('auth_uri', 'keystonemiddleware.auth_token.__init__',
-                'keystone_authtoken')
+CONF.import_group('keystone_authtoken',
+                  'keystonemiddleware.auth_token.__init__')
 
 LOG = logging.getLogger(__name__)
 
@@ -227,7 +227,7 @@ def _keystone_client(context, version=(3, 0)):
     :return: keystoneclient.client.Client object
     """
     auth_plugin = identity.Token(
-        auth_url=CONF.keystone_authtoken.auth_uri,
+        auth_url=CONF.keystone_authtoken.auth_url,
         token=context.auth_token,
         project_id=context.project_id)
 
@@ -237,7 +237,7 @@ def _keystone_client(context, version=(3, 0)):
         cacert=CONF.keystone_authtoken.cafile,
         key=CONF.keystone_authtoken.keyfile,
         cert=CONF.keystone_authtoken.certfile)
-    return client.Client(auth_url=CONF.keystone_authtoken.auth_uri,
+    return client.Client(auth_url=CONF.keystone_authtoken.auth_url,
                          session=client_session, version=version)
 
 
