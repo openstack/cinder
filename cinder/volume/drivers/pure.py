@@ -72,6 +72,12 @@ PURE_OPTS = [
     cfg.IntOpt("pure_replica_retention_long_term_default", default=7,
                help="Retain snapshots per day on target for this time "
                     "(in days.)"),
+    cfg.StrOpt("pure_replication_pg_name", default="cinder-group",
+               help="Pure Protection Group name to use for async replication "
+                    "(will be created if it does not exist)."),
+    cfg.StrOpt("pure_replication_pod_name", default="cinder-pod",
+               help="Pure Pod name to use for sync replication "
+                    "(will be created if it does not exist)."),
     cfg.BoolOpt("pure_eradicate_on_delete",
                 default=False,
                 help="When enabled, all Pure volumes, snapshots, and "
@@ -89,8 +95,6 @@ CONF.register_opts(PURE_OPTS, group=configuration.SHARED_CONF_GROUP)
 INVALID_CHARACTERS = re.compile(r"[^-a-zA-Z0-9]")
 GENERATED_NAME = re.compile(r".*-[a-f0-9]{32}-cinder$")
 
-REPLICATION_CG_NAME = "cinder-group"
-REPLICATION_POD_NAME = "cinder-pod"
 REPLICATION_TYPE_SYNC = "sync"
 REPLICATION_TYPE_ASYNC = "async"
 REPLICATION_TYPES = [REPLICATION_TYPE_SYNC, REPLICATION_TYPE_ASYNC]
@@ -181,8 +185,8 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._replication_target_arrays = []
         self._active_cluster_target_arrays = []
         self._uniform_active_cluster_target_arrays = []
-        self._replication_pg_name = REPLICATION_CG_NAME
-        self._replication_pod_name = REPLICATION_POD_NAME
+        self._replication_pg_name = None
+        self._replication_pod_name = None
         self._replication_interval = None
         self._replication_retention_short_term = None
         self._replication_retention_long_term = None
@@ -200,6 +204,10 @@ class PureBaseVolumeDriver(san.SanDriver):
         }
 
     def parse_replication_configs(self):
+        self._replication_pg_name = (
+            self.configuration.pure_replication_pg_name)
+        self._replication_pod_name = (
+            self.configuration.pure_replication_pod_name)
         self._replication_interval = (
             self.configuration.pure_replica_interval_default)
         self._replication_retention_short_term = (
@@ -1519,7 +1527,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         repl_type = self._get_replication_type_from_vol_type(
             volume.volume_type)
         if repl_type == REPLICATION_TYPE_SYNC:
-            base_name = REPLICATION_POD_NAME + "::" + base_name
+            base_name = self._replication_pod_name + "::" + base_name
 
         return base_name + "-cinder"
 
@@ -1547,7 +1555,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         # pod.
         base_name = ""
         if REPLICATION_TYPE_SYNC in self._group_potential_repl_types(pgroup):
-            base_name = REPLICATION_POD_NAME + "::"
+            base_name = self._replication_pod_name + "::"
 
         return "%(base)sconsisgroup-%(id)s-cinder" % {
             'base': base_name, 'id': pgroup.id}
@@ -2068,6 +2076,9 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     @pure_driver_debug_trace
     def _create_pod_if_not_exist(self, source_array, name):
+        if not name:
+            raise exception.PureDriverException(
+                reason=_("Empty string passed for Pod name."))
         try:
             source_array.create_pod(name)
         except purestorage.PureHTTPError as err:
@@ -2088,6 +2099,9 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     @pure_driver_debug_trace
     def _create_protection_group_if_not_exist(self, source_array, pgname):
+        if not pgname:
+            raise exception.PureDriverException(
+                reason=_("Empty string passed for PG name."))
         try:
             source_array.create_pgroup(pgname)
         except purestorage.PureHTTPError as err:
@@ -2154,7 +2168,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             try:
                 secondary_array = array
                 # Ensure the pod is in a good state on the array
-                pod_info = secondary_array.get_pod(REPLICATION_POD_NAME)
+                pod_info = secondary_array.get_pod(self._replication_pod_name)
                 for pod_array in pod_info["arrays"]:
                     # Compare against Purity ID's
                     if pod_array["array_id"] == secondary_array.array_id:
@@ -2251,7 +2265,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         replicated_vol_names = set()
         for vol in array_volumes:
             name = vol['name']
-            if name.startswith(REPLICATION_POD_NAME):
+            if name.startswith(self._replication_pod_name):
                 replicated_vol_names.add(name)
 
         model_updates = []
