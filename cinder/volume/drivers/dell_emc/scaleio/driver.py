@@ -320,7 +320,7 @@ class ScaleIODriver(driver.VolumeDriver):
             if not padded:
                 LOG.warning("Zero padding is disabled for pool, %s. "
                             "This could lead to existing data being "
-                            "accessible on new thick provisioned volumes. "
+                            "accessible on new provisioned volumes. "
                             "Consult the ScaleIO product documentation "
                             "for information on how to enable zero padding "
                             "and prevent this from occurring.",
@@ -602,7 +602,7 @@ class ScaleIODriver(driver.VolumeDriver):
         allowed = self._is_volume_creation_safe(protection_domain_name,
                                                 storage_pool_name)
         if not allowed:
-            # Do not allow thick volume creation on this backend.
+            # Do not allow volume creation on this backend.
             # Volumes may leak data between tenants.
             LOG.error("Volume creation rejected due to "
                       "zero padding being disabled for pool, %s:%s. "
