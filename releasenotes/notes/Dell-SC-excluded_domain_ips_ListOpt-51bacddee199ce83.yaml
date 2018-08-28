@@ -1,0 +1,18 @@
+---
+features:
+  - Added an ``excluded_domain_ips`` option to the Dell EMC SC driver. This
+    is identical to the excluded_domain_ip option only comma separated
+    rather than multiple entry. This is concatenated with the
+    ``excluded_domain_ip`` option.
+deprecations:
+  - |
+    The Dell EMC SC configuration option ``excluded_domain_ip`` has
+    been deprecated and will be removed in a future release. Deployments should
+    now migrate to the option ``excluded_domain_ips`` for equivalent
+    functionality.
+upgrade:
+  - |
+    The Dell EMC SC configuration option ``excluded_domain_ip`` has
+    been deprecated and will be removed in a future release. Deployments should
+    now migrate to the option ``excluded_domain_ips`` for equivalent
+    functionality.

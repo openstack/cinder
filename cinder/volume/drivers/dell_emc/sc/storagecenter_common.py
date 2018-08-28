@@ -67,7 +67,16 @@ common_opts = [
     cfg.MultiOpt('excluded_domain_ip',
                  item_type=types.IPAddress(),
                  default=None,
-                 help='Domain IP to be excluded from iSCSI returns.'),
+                 deprecated_for_removal=True,
+                 deprecated_reason="Replaced by excluded_domain_ips option",
+                 deprecated_since="Stein",
+                 help='DEPRECATED: Fault Domain IP to be excluded from '
+                      'iSCSI returns.'),
+    cfg.ListOpt('excluded_domain_ips',
+                item_type=types.IPAddress(),
+                default=[],
+                help='Comma separated Fault Domain IPs to be excluded '
+                     'from iSCSI returns.'),
     cfg.StrOpt('dell_server_os',
                default='Red Hat Linux 6.x',
                help='Server OS type to use when creating a new server on the '
