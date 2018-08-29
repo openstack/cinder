@@ -31,6 +31,7 @@ import time
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import netutils
 from oslo_utils import units
 import six
 from six.moves import urllib
@@ -279,8 +280,13 @@ class NetAppNfsDriver(driver.ManageableVD,
 
     def _get_volume_location(self, volume_id):
         """Returns NFS mount address as <nfs_ip_address>:<nfs_mount_dir>."""
-        nfs_server_ip = self._get_host_ip(volume_id)
-        export_path = self._get_export_path(volume_id)
+        provider_location = self._get_provider_location(volume_id)
+        nfs_server_ip, export_path = na_utils.get_export_host_junction_path(
+            provider_location)
+
+        if netutils.is_valid_ipv6(nfs_server_ip):
+            nfs_server_ip = netutils.escape_ipv6(nfs_server_ip)
+
         return nfs_server_ip + ':' + export_path
 
     def _clone_backing_file_for_volume(self, volume_name, clone_name,
@@ -302,14 +308,6 @@ class NetAppNfsDriver(driver.ManageableVD,
         """Returns provider location for given volume."""
         volume = self.db.volume_get(self._context, volume_id)
         return volume.provider_location
-
-    def _get_host_ip(self, volume_id):
-        """Returns IP address for the given volume."""
-        return self._get_provider_location(volume_id).rsplit(':')[0]
-
-    def _get_export_path(self, volume_id):
-        """Returns NFS export path for the given volume."""
-        return self._get_provider_location(volume_id).rsplit(':')[1]
 
     def _volume_not_present(self, nfs_mount, volume_name):
         """Check if volume exists."""
@@ -749,7 +747,7 @@ class NetAppNfsDriver(driver.ManageableVD,
                 ip = na_utils.resolve_hostname(host)
                 share_candidates = []
                 for sh in self._mounted_shares:
-                    sh_exp = sh.split(':')[1]
+                    sh_exp = sh.split(':')[-1]
                     if sh_exp == dir:
                         share_candidates.append(sh)
                 if share_candidates:
@@ -864,11 +862,12 @@ class NetAppNfsDriver(driver.ManageableVD,
         """
 
         if volume_id:
-            host_ip = self._get_host_ip(volume_id)
-            export_path = self._get_export_path(volume_id)
+            provider_location = self._get_provider_location(volume_id)
+            host_ip, export_path = na_utils.get_export_host_junction_path(
+                provider_location)
         elif share:
-            host_ip = share.split(':')[0]
-            export_path = share.split(':')[1]
+            host_ip, export_path = na_utils.get_export_host_junction_path(
+                share)
         else:
             raise exception.InvalidInput(
                 'A volume ID or share was not specified.')
