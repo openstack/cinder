@@ -232,7 +232,7 @@ class VZStorageTestCase(test.TestCase):
         snap_info = '{"active": "%s"}' % self.vol.id
         with mock.patch.object(drv, 'get_volume_format',
                                return_value="raw"):
-            with mock.patch.object(drv, 'local_path',
+            with mock.patch.object(drv, 'get_active_image_from_info',
                                    return_value=self._FAKE_VOLUME_PATH):
                 with mock.patch.object(drv, '_read_file',
                                        return_value=snap_info):
@@ -240,23 +240,15 @@ class VZStorageTestCase(test.TestCase):
 
         mock_resize_image.assert_called_once_with(self._FAKE_VOLUME_PATH, 10)
 
-    def _test_check_extend_support(self, has_snapshots=False,
-                                   is_eligible=True):
+    def _test_check_extend_support(self, is_eligible=True):
         drv = self._vz_driver
         drv.local_path = mock.Mock(return_value=self._FAKE_VOLUME_PATH)
         drv._is_share_eligible = mock.Mock(return_value=is_eligible)
 
-        if has_snapshots:
-            active = self._FAKE_SNAPSHOT_PATH
-        else:
-            active = self._FAKE_VOLUME_PATH
+        active = self._FAKE_VOLUME_PATH
 
         drv.get_active_image_from_info = mock.Mock(return_value=active)
-        if has_snapshots:
-            self.assertRaises(exception.InvalidVolume,
-                              drv._check_extend_volume_support,
-                              self.vol, 2)
-        elif not is_eligible:
+        if not is_eligible:
             self.assertRaises(exception.ExtendVolumeError,
                               drv._check_extend_volume_support,
                               self.vol, 2)
@@ -266,9 +258,6 @@ class VZStorageTestCase(test.TestCase):
 
     def test_check_extend_support(self):
         self._test_check_extend_support()
-
-    def test_check_extend_volume_with_snapshots(self):
-        self._test_check_extend_support(has_snapshots=True)
 
     def test_check_extend_volume_uneligible_share(self):
         self._test_check_extend_support(is_eligible=False)
@@ -368,7 +357,7 @@ class VZStorageTestCase(test.TestCase):
 
     def test_extend_volume_ploop(self):
         drv = self._vz_driver
-        drv.local_path = mock.Mock(
+        drv.get_active_image_from_info = mock.Mock(
             return_value=self._FAKE_VOLUME_PATH)
         drv.get_volume_format = mock.Mock(
             return_value=vzstorage.DISK_FORMAT_PLOOP)
