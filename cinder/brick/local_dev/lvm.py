@@ -621,6 +621,7 @@ class LVM(executor.Executor):
                 return True
         return False
 
+    @utils.retry(exception.VolumeNotDeactivated, retries=1, interval=2)
     def deactivate_lv(self, name):
         lv_path = self.vg_name + '/' + self._mangle_lv_name(name)
         cmd = ['lvchange', '-a', 'n']
@@ -630,7 +631,7 @@ class LVM(executor.Executor):
                           root_helper=self._root_helper,
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
-            LOG.exception('Error deactivating LV')
+            LOG.exception('Error deactivating LV, retry may be possible')
             LOG.error('Cmd     :%s', err.cmd)
             LOG.error('StdOut  :%s', err.stdout)
             LOG.error('StdErr  :%s', err.stderr)
