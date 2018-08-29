@@ -6100,8 +6100,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver._check_volume_copy_ops()
         self.driver._rm_vdisk_copy_op(ctxt, volume, new_ops[0], new_ops[1])
         admin_metadata = self.db.volume_admin_metadata_get(ctxt, volume['id'])
-        self.assertIsNone(admin_metadata.get('vdiskcopyops', None),
-                          'Storwize driver delete vdisk copy error')
+        self.assertNotIn('vdiskcopyops', admin_metadata,
+                         'Storwize driver delete vdisk copy error')
         self._delete_volume(volume)
 
     def test_storwize_delete_with_vdisk_copy_ops(self):

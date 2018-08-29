@@ -508,7 +508,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             self.assertEqual('in-use', volume.status)
             self.assertEqual({}, volume.cinder_obj_get_changes())
             self.assertEqual(2, len(volume.volume_attachment))
-            self.assertIsNone(volume.admin_metadata.get('attached_mode'))
+            self.assertNotIn('attached_mode', volume.admin_metadata)
 
     @mock.patch('cinder.db.volume_admin_metadata_delete')
     @mock.patch('cinder.db.sqlalchemy.api.volume_detached')
