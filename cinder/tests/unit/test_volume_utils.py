@@ -1165,3 +1165,47 @@ class VolumeUtilsTestCase(test.TestCase):
         else:
             fake_driver.copy_image_to_volume.assert_called_once_with(
                 ctxt, volume, fake_image_service, image_id)
+
+    @ddt.data({'cipher': 'aes-xts-plain64',
+               'provider': 'luks'},
+              {'cipher': 'aes-xts-plain64',
+               'provider': 'nova.volume.encryptors.luks.LuksEncryptor'})
+    def test_check_encryption_provider(self, encryption_metadata):
+        ctxt = context.get_admin_context()
+        type_ref = volume_types.create(ctxt, "type1")
+        encryption = db.volume_type_encryption_create(
+            ctxt, type_ref['id'], encryption_metadata)
+        with mock.patch(
+                'cinder.db.sqlalchemy.api.volume_encryption_metadata_get',
+                return_value=encryption):
+            volume_data = {'id': fake.VOLUME_ID,
+                           'volume_type_id': type_ref['id']}
+            ctxt = context.get_admin_context()
+            volume = fake_volume.fake_volume_obj(ctxt, **volume_data)
+
+            ret = volume_utils.check_encryption_provider(
+                db,
+                volume,
+                mock.sentinel.context)
+            self.assertEqual('aes-xts-plain64', ret['cipher'])
+
+    def test_check_encryption_provider_invalid(self):
+        encryption_metadata = {'cipher': 'aes-xts-plain64',
+                               'provider': 'invalid'}
+        ctxt = context.get_admin_context()
+        type_ref = volume_types.create(ctxt, "type1")
+        encryption = db.volume_type_encryption_create(
+            ctxt, type_ref['id'], encryption_metadata)
+        with mock.patch(
+                'cinder.db.sqlalchemy.api.volume_encryption_metadata_get',
+                return_value=encryption):
+            volume_data = {'id': fake.VOLUME_ID,
+                           'volume_type_id': type_ref['id']}
+            ctxt = context.get_admin_context()
+            volume = fake_volume.fake_volume_obj(ctxt, **volume_data)
+
+            self.assertRaises(exception.VolumeDriverException,
+                              volume_utils.check_encryption_provider,
+                              db,
+                              volume,
+                              mock.sentinel.context)
