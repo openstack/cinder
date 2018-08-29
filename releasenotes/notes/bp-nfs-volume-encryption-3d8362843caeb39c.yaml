@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    The NFS driver now supports the creation of encrypted volumes.

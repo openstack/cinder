@@ -18,6 +18,7 @@ import errno
 import os
 from unittest import mock
 
+import castellan
 import ddt
 from oslo_utils import imageutils
 from oslo_utils import units
@@ -28,11 +29,17 @@ from cinder.image import image_utils
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit.keymgr import fake as fake_keymgr
 from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers import remotefs
 from cinder.volume import volume_utils
+
+
+class KeyObject(object):
+    def get_encoded(arg):
+        return "asdf".encode('utf-8')
 
 
 class RemoteFsDriverTestCase(test.TestCase):
@@ -374,6 +381,57 @@ Format specific information:
     corrupt: false
     """
 
+QEMU_IMG_INFO_OUT5 = """image: volume-%(volid)s.%(snapid)s
+file format: qcow2
+virtual size: %(size_gb)sG (%(size_b)s bytes)
+disk size: 196K
+encrypted: yes
+cluster_size: 65536
+backing file: volume-%(volid)s
+backing file format: raw
+Format specific information:
+    compat: 1.1
+    lazy refcounts: false
+    refcount bits: 16
+    encrypt:
+        ivgen alg: plain64
+        hash alg: sha256
+        cipher alg: aes-256
+        uuid: 386f8626-33f0-4683-a517-78ddfe385e33
+        format: luks
+        cipher mode: xts
+        slots:
+            [0]:
+                active: true
+                iters: 1892498
+                key offset: 4096
+                stripes: 4000
+            [1]:
+                active: false
+                key offset: 262144
+            [2]:
+                active: false
+                key offset: 520192
+            [3]:
+                active: false
+                key offset: 778240
+            [4]:
+                active: false
+                key offset: 1036288
+            [5]:
+                active: false
+                key offset: 1294336
+            [6]:
+                active: false
+                key offset: 1552384
+            [7]:
+                active: false
+                key offset: 1810432
+        payload offset: 2068480
+        master key iters: 459347
+    corrupt: false
+"""
+
 
 @ddt.ddt
 class NfsDriverTestCase(test.TestCase):
@@ -690,6 +748,17 @@ class NfsDriverTestCase(test.TestCase):
                                            display_name='volume_name',
                                            provider_location=loc,
                                            size=size)
+
+    def _simple_encrypted_volume(self, size=10):
+        loc = self.TEST_NFS_EXPORT1
+        info_dic = {'name': u'volume-0000000a',
+                    'id': '55555555-222f-4b32-b585-9991b3bf0a99',
+                    'size': size,
+                    'encryption_key_id': fake.ENCRYPTION_KEY_ID}
+
+        return fake_volume.fake_volume_obj(self.context,
+                                           provider_location=loc,
+                                           **info_dic)
 
     def test_get_provisioned_capacity(self):
         self._set_driver()
@@ -1124,14 +1193,15 @@ class NfsDriverTestCase(test.TestCase):
         """Case where the mount works the first time."""
 
         self._set_driver()
-        self.mock_object(self._driver._remotefsclient, 'mount')
+        self.mock_object(self._driver._remotefsclient, 'mount', autospec=True)
         drv = self._driver
         drv.configuration.nfs_mount_attempts = 3
         drv.shares = {self.TEST_NFS_EXPORT1: ''}
 
         drv._ensure_share_mounted(self.TEST_NFS_EXPORT1)
 
-        drv._remotefsclient.mount.called_once()
+        drv._remotefsclient.mount.assert_called_once_with(
+            self.TEST_NFS_EXPORT1, [])
 
     @mock.patch('time.sleep')
     def test_ensure_share_mounted_exception(self, _mock_sleep):
@@ -1169,16 +1239,48 @@ class NfsDriverTestCase(test.TestCase):
         self.assertEqual(min_num_attempts,
                          drv._remotefsclient.mount.call_count)
 
-    @ddt.data([NFS_CONFIG1, QEMU_IMG_INFO_OUT3],
-              [NFS_CONFIG2, QEMU_IMG_INFO_OUT4],
-              [NFS_CONFIG3, QEMU_IMG_INFO_OUT3],
-              [NFS_CONFIG4, QEMU_IMG_INFO_OUT4])
+    @mock.patch('tempfile.NamedTemporaryFile')
+    @ddt.data([NFS_CONFIG1, QEMU_IMG_INFO_OUT3, False],
+              [NFS_CONFIG2, QEMU_IMG_INFO_OUT4, False],
+              [NFS_CONFIG3, QEMU_IMG_INFO_OUT3, False],
+              [NFS_CONFIG4, QEMU_IMG_INFO_OUT4, False],
+              [NFS_CONFIG4, QEMU_IMG_INFO_OUT5, True])
     @ddt.unpack
-    def test_copy_volume_from_snapshot(self, nfs_conf, qemu_img_info):
+    def test_copy_volume_from_snapshot(self, nfs_conf, qemu_img_info,
+                                       encryption, mock_temp_file):
+
+        class DictObj(object):
+            # convert a dict to object w/ attributes
+            def __init__(self, d):
+                self.__dict__ = d
+
         self._set_driver(extra_confs=nfs_conf)
         drv = self._driver
-        dest_volume = self._simple_volume()
-        src_volume = self._simple_volume()
+
+        src_encryption_key_id = None
+        dest_encryption_key_id = None
+
+        if encryption:
+            mock_temp_file.return_value.__enter__.side_effect = [
+                DictObj({'name': '/tmp/imgfile'}),
+                DictObj({'name': '/tmp/passfile'})]
+
+            dest_volume = self._simple_encrypted_volume()
+            src_volume = self._simple_encrypted_volume()
+
+            key_mgr = fake_keymgr.fake_api()
+            self.mock_object(castellan.key_manager, 'API',
+                             return_value=key_mgr)
+            key_id = key_mgr.store(self.context, KeyObject())
+
+            src_volume.encryption_key_id = key_id
+            dest_volume.encryption_key_id = key_id
+
+            src_encryption_key_id = src_volume.encryption_key_id
+            dest_encryption_key_id = dest_volume.encryption_key_id
+        else:
+            dest_volume = self._simple_volume()
+            src_volume = self._simple_volume()
 
         fake_snap = fake_snapshot.fake_snapshot_obj(self.context)
         fake_snap.volume = src_volume
@@ -1209,16 +1311,25 @@ class NfsDriverTestCase(test.TestCase):
 
         mock_permission = self.mock_object(drv, '_set_rw_permissions_for_all')
 
-        drv._copy_volume_from_snapshot(fake_snap, dest_volume, size)
+        drv._copy_volume_from_snapshot(fake_snap, dest_volume, size,
+                                       src_encryption_key_id,
+                                       dest_encryption_key_id)
 
         mock_read_info_file.assert_called_once_with(info_path)
         mock_img_info.assert_called_once_with(snap_path,
                                               force_share=True,
                                               run_as_root=True)
         used_qcow = nfs_conf['nfs_qcow2_volumes']
-        mock_convert_image.assert_called_once_with(
-            src_vol_path, dest_vol_path, 'qcow2' if used_qcow else 'raw',
-            run_as_root=True)
+        if encryption:
+            mock_convert_image.assert_called_once_with(
+                src_vol_path, dest_vol_path, 'luks',
+                passphrase_file='/tmp/passfile',
+                run_as_root=True,
+                src_passphrase_file='/tmp/imgfile')
+        else:
+            mock_convert_image.assert_called_once_with(
+                src_vol_path, dest_vol_path, 'qcow2' if used_qcow else 'raw',
+                run_as_root=True)
         mock_permission.assert_called_once_with(dest_vol_path)
 
     @ddt.data([NFS_CONFIG1, QEMU_IMG_INFO_OUT3],

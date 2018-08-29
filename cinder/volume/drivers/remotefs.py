@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import binascii
 import collections
 import errno
 import hashlib
@@ -24,10 +25,13 @@ import os
 import re
 import shutil
 import string
+import tempfile
 import time
 
+from castellan import key_manager
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_serialization import jsonutils
 from oslo_utils import units
 import six
 
@@ -295,8 +299,20 @@ class RemoteFSDriver(driver.BaseVD):
         volume_path = self.local_path(volume)
         volume_size = volume.size
 
-        if getattr(self.configuration,
-                   self.driver_prefix + '_qcow2_volumes', False):
+        encrypted = volume.encryption_key_id is not None
+
+        if encrypted:
+            encryption = volume_utils.check_encryption_provider(
+                self.db,
+                volume,
+                volume.obj_context)
+
+            self._create_encrypted_volume_file(volume_path,
+                                               volume_size,
+                                               encryption,
+                                               volume.obj_context)
+        elif getattr(self.configuration,
+                     self.driver_prefix + '_qcow2_volumes', False):
             # QCOW2 volumes are inherently sparse, so this setting
             # will override the _sparsed_volumes setting.
             self._create_qcow2_file(volume_path, volume_size)
@@ -400,6 +416,47 @@ class RemoteFSDriver(driver.BaseVD):
                       '-o', 'preallocation=metadata',
                       path, str(size_gb * units.Gi),
                       run_as_root=self._execute_as_root)
+
+    def _create_encrypted_volume_file(self,
+                                      path,
+                                      size_gb,
+                                      encryption,
+                                      context):
+        """Create an encrypted volume.
+
+        This works by creating an encrypted image locally,
+        and then uploading it to the volume.
+        """
+
+        cipher_spec = image_utils.decode_cipher(encryption['cipher'],
+                                                encryption['key_size'])
+
+        # TODO(enriquetaso): share this code w/ the RBD driver
+        # Fetch the key associated with the volume and decode the passphrase
+        keymgr = key_manager.API(CONF)
+        key = keymgr.get(context, encryption['encryption_key_id'])
+        passphrase = binascii.hexlify(key.get_encoded()).decode('utf-8')
+
+        # create a file
+        tmp_dir = volume_utils.image_conversion_dir()
+
+        with tempfile.NamedTemporaryFile(dir=tmp_dir) as tmp_key:
+            # TODO(enriquetaso): encrypt w/ aes256 cipher text
+            # (qemu-img feature) ?
+            with open(tmp_key.name, 'w') as f:
+                f.write(passphrase)
+
+            self._execute(
+                'qemu-img', 'create', '-f', 'qcow2',
+                '-o',
+                'encrypt.format=luks,'
+                'encrypt.key-secret=sec1,'
+                'encrypt.cipher-alg=%(cipher_alg)s,'
+                'encrypt.cipher-mode=%(cipher_mode)s,'
+                'encrypt.ivgen-alg=%(ivgen_alg)s' % cipher_spec,
+                '--object', 'secret,id=sec1,format=raw,file=' + tmp_key.name,
+                path, str(size_gb * units.Gi),
+                run_as_root=self._execute_as_root)
 
     def _set_rw_permissions(self, path):
         """Sets access permissions for given NFS path.
@@ -820,22 +877,53 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
     def _qemu_img_info(self, path, volume_name):
         raise NotImplementedError()
 
-    def _img_commit(self, path):
+    def _img_commit(self, path, passphrase_file=None, backing_file=None):
         # TODO(eharney): this is not using the correct permissions for
         # NFS snapshots
         #  It needs to run as root for volumes attached to instances, but
         #  does not when in secure mode.
-        self._execute('qemu-img', 'commit', '-d', path,
-                      run_as_root=self._execute_as_root)
+        cmd = ['qemu-img', 'commit']
+        if passphrase_file:
+            obj = ['--object',
+                   'secret,id=s0,format=raw,file=%s' % passphrase_file]
+            image_opts = ['--image-opts']
+
+            src_opts = \
+                "file.filename=%(filename)s,encrypt.format=luks," \
+                "encrypt.key-secret=s0,backing.file.filename=%(backing)s," \
+                "backing.encrypt.key-secret=s0" % {
+                    'filename': path,
+                    'backing': backing_file,
+                }
+
+            path_no_to_delete = ['-d', src_opts]
+            cmd += obj + image_opts + path_no_to_delete
+        else:
+            cmd += ['-d', path]
+
+        self._execute(*cmd, run_as_root=self._execute_as_root)
         self._delete(path)
 
-    def _rebase_img(self, image, backing_file, volume_format):
+    def _rebase_img(self, image, backing_file, volume_format,
+                    passphrase_file=None):
         # qemu-img create must run as root, because it reads from the
         # backing file, which will be owned by qemu:qemu if attached to an
         # instance.
         # TODO(erlon): Sanity check this.
-        self._execute('qemu-img', 'rebase', '-u', '-b', backing_file, image,
-                      '-F', volume_format, run_as_root=self._execute_as_root)
+        command = ['qemu-img', 'rebase', '-u']
+        # if encrypted
+        if passphrase_file:
+            objectdef = "secret,id=s0,file=%s" % passphrase_file
+            filename = "encrypt.key-secret=s0,"\
+                "file.filename=%(filename)s" % {'filename': image}
+
+            command += ['--object', objectdef, '-b', backing_file,
+                        '-F', volume_format, '--image-opts', filename]
+        # not encrypted
+        else:
+            command += ['-b', backing_file, image, '-F', volume_format]
+
+        self._execute(*command, run_as_root=self._execute_as_root)
 
     def _read_info_file(self, info_path, empty_if_missing=False):
         """Return dict of snapshot information.
@@ -1041,7 +1129,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
         # Create fake volume and snapshot objects
         vol_attrs = ['provider_location', 'size', 'id', 'name', 'status',
-                     'volume_type', 'metadata']
+                     'volume_type', 'metadata', 'obj_context']
         Volume = collections.namedtuple('Volume', vol_attrs)
         volume_info = Volume(provider_location=src_vref.provider_location,
                              size=src_vref.size,
@@ -1049,7 +1137,8 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                              name=volume_name,
                              status=src_vref.status,
                              volume_type=src_vref.volume_type,
-                             metadata=src_vref.metadata)
+                             metadata=src_vref.metadata,
+                             obj_context=volume.obj_context)
 
         if (self._always_use_temp_snap_when_cloning or
                 self._snapshots_exist(src_vref)):
@@ -1071,9 +1160,13 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
             self._create_snapshot(temp_snapshot)
             try:
-                self._copy_volume_from_snapshot(temp_snapshot,
-                                                volume_info,
-                                                volume.size)
+                self._copy_volume_from_snapshot(
+                    temp_snapshot,
+                    volume_info,
+                    volume.size,
+                    src_encryption_key_id=src_vref.encryption_key_id,
+                    new_encryption_key_id=volume.encryption_key_id)
+
                 # remove temp snapshot after the cloning is done
                 temp_snapshot.status = fields.SnapshotStatus.DELETING
                 temp_snapshot.context = context.elevated()
@@ -1134,6 +1227,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         self._validate_state(volume_status, acceptable_states)
 
         vol_path = self._local_volume_dir(snapshot.volume)
+        volume_path = os.path.join(vol_path, snapshot.volume.name)
 
         # Determine the true snapshot file for this snapshot
         # based on the .info file
@@ -1206,14 +1300,33 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                                                 snapshot,
                                                 online_delete_info)
 
+        encrypted = snapshot.encryption_key_id is not None
+
+        if encrypted:
+            keymgr = key_manager.API(CONF)
+            encryption_key = snapshot.encryption_key_id
+            new_key = keymgr.get(snapshot.obj_context, encryption_key)
+            src_passphrase = \
+                binascii.hexlify(new_key.get_encoded()).decode('utf-8')
+
+            tmp_dir = volume_utils.image_conversion_dir()
+
         if utils.paths_normcase_equal(snapshot_file, active_file):
             # There is no top file
             #      T0       |        T1         |
             #     base      |   snapshot_file   | None
             # (guaranteed to|  (being deleted,  |
             #    exist)     |  committed down)  |
-
-            self._img_commit(snapshot_path)
+            if encrypted:
+                with tempfile.NamedTemporaryFile(prefix='luks_',
+                                                 dir=tmp_dir) as src_file:
+                    with open(src_file.name, 'w') as f:
+                        f.write(src_passphrase)
+                    self._img_commit(snapshot_path,
+                                     passphrase_file=src_file.name,
+                                     backing_file=volume_path)
+            else:
+                self._img_commit(snapshot_path)
             # Active file has changed
             snap_info['active'] = base_file
         else:
@@ -1241,11 +1354,25 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                     higher_file
                 raise exception.RemoteFSException(msg)
 
-            self._img_commit(snapshot_path)
+            if encrypted:
+                with tempfile.NamedTemporaryFile(prefix='luks_',
+                                                 dir=tmp_dir) as src_file:
+                    with open(src_file.name, 'w') as f:
+                        f.write(src_passphrase)
+                    self._img_commit(snapshot_path,
+                                     passphrase_file=src_file.name,
+                                     backing_file=volume_path)
 
-            higher_file_path = os.path.join(vol_path, higher_file)
-            base_file_fmt = base_file_img_info.file_format
-            self._rebase_img(higher_file_path, base_file, base_file_fmt)
+                    higher_file_path = os.path.join(vol_path, higher_file)
+                    base_file_fmt = base_file_img_info.file_format
+                    self._rebase_img(higher_file_path, volume_path,
+                                     base_file_fmt, src_file.name)
+            else:
+                self._img_commit(snapshot_path)
+
+                higher_file_path = os.path.join(vol_path, higher_file)
+                base_file_fmt = base_file_img_info.file_format
+                self._rebase_img(higher_file_path, base_file, base_file_fmt)
 
         # Remove snapshot_file from info
         del(snap_info[snapshot.id])
@@ -1274,11 +1401,15 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
         self._copy_volume_from_snapshot(snapshot,
                                         volume,
-                                        volume.size)
+                                        volume.size,
+                                        snapshot.volume.encryption_key_id,
+                                        volume.encryption_key_id)
 
         return {'provider_location': volume.provider_location}
 
-    def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
+    def _copy_volume_from_snapshot(self, snapshot, volume, volume_size,
+                                   src_encryption_key_id=None,
+                                   new_encryption_key_id=None):
         raise NotImplementedError()
 
     def _do_create_snapshot(self, snapshot, backing_filename,
@@ -1294,24 +1425,86 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             self._local_volume_dir(snapshot.volume),
             backing_filename)
 
+        volume_path = os.path.join(
+            self._local_volume_dir(snapshot.volume),
+            snapshot.volume.name)
+
         info = self._qemu_img_info(backing_path_full_path,
                                    snapshot.volume.name)
         backing_fmt = info.file_format
+        obj_context = snapshot.volume.obj_context
 
-        command = ['qemu-img', 'create', '-f', 'qcow2', '-o',
-                   'backing_file=%s,backing_fmt=%s' %
-                   (backing_path_full_path, backing_fmt),
-                   new_snap_path,
-                   "%dG" % snapshot.volume.size]
-        self._execute(*command, run_as_root=self._execute_as_root)
+        # create new qcow2 file
+        if snapshot.volume.encryption_key_id is None:
+            command = ['qemu-img', 'create', '-f', 'qcow2', '-o',
+                       'backing_file=%s,backing_fmt=%s' %
+                       (backing_path_full_path, backing_fmt),
+                       new_snap_path,
+                       "%dG" % snapshot.volume.size]
 
-        command = ['qemu-img', 'rebase', '-u',
-                   '-b', backing_filename,
-                   '-F', backing_fmt,
-                   new_snap_path]
+            self._execute(*command, run_as_root=self._execute_as_root)
 
-        # qemu-img rebase must run as root for the same reasons as above
-        self._execute(*command, run_as_root=self._execute_as_root)
+            command = ['qemu-img', 'rebase', '-u',
+                       '-b', backing_filename,
+                       '-F', backing_fmt,
+                       new_snap_path]
+
+            # qemu-img rebase must run as root for the same reasons as above
+            self._execute(*command, run_as_root=self._execute_as_root)
+
+        else:
+            # encrypted
+            keymgr = key_manager.API(CONF)
+            # Get key for the source volume using the context of this request.
+            key = keymgr.get(obj_context,
+                             snapshot.volume.encryption_key_id)
+            passphrase = binascii.hexlify(key.get_encoded()).decode('utf-8')
+
+            tmp_dir = volume_utils.image_conversion_dir()
+            with tempfile.NamedTemporaryFile(dir=tmp_dir) as tmp_key:
+                with open(tmp_key.name, 'w') as f:
+                    f.write(passphrase)
+
+                file_json_dict = {"driver": "qcow2",
+                                  "encrypt.key-secret": "s0",
+                                  "backing.encrypt.key-secret": "s0",
+                                  "backing.file.filename": volume_path,
+                                  "file": {"driver": "file",
+                                           "filename": backing_path_full_path,
+                                           }}
+                file_json = jsonutils.dumps(file_json_dict)
+
+                encryption = volume_utils.check_encryption_provider(
+                    db=db,
+                    volume=snapshot.volume,
+                    context=obj_context)
+
+                cipher_spec = image_utils.decode_cipher(encryption['cipher'],
+                                                        encryption['key_size'])
+
+                command = ('qemu-img', 'create', '-f' 'qcow2',
+                           '-o', 'encrypt.format=luks,encrypt.key-secret=s1,'
+                           'encrypt.cipher-alg=%(cipher_alg)s,'
+                           'encrypt.cipher-mode=%(cipher_mode)s,'
+                           'encrypt.ivgen-alg=%(ivgen_alg)s' % cipher_spec,
+                           '-b', 'json:' + file_json,
+                           '--object', 'secret,id=s0,file=' + tmp_key.name,
+                           '--object', 'secret,id=s1,file=' + tmp_key.name,
+                           new_snap_path)
+                self._execute(*command, run_as_root=self._execute_as_root)
+
+                command_path = 'encrypt.key-secret=s0,file.filename='
+                command = ['qemu-img', 'rebase',
+                           '--object', 'secret,id=s0,file=' + tmp_key.name,
+                           '--image-opts',
+                           command_path + new_snap_path,
+                           '-u',
+                           '-b', backing_filename,
+                           '-F', backing_fmt]
+
+                # qemu-img rebase must run as root for the same reasons as
+                # above
+                self._execute(*command, run_as_root=self._execute_as_root)
 
         self._set_rw_permissions(new_snap_path)
 

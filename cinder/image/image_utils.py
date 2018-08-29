@@ -164,13 +164,63 @@ def get_qemu_img_version():
 
 
 def qemu_img_supports_force_share():
-    return get_qemu_img_version() > [2, 10, 0]
+    return get_qemu_img_version() >= [2, 10, 0]
+
+
+def _get_qemu_convert_luks_cmd(src, dest, out_format, src_format=None,
+                               out_subformat=None, cache_mode=None,
+                               prefix=None, cipher_spec=None,
+                               passphrase_file=None,
+                               src_passphrase_file=None):
+
+    cmd = ['qemu-img', 'convert']
+
+    if prefix:
+        cmd = list(prefix) + cmd
+
+    if cache_mode:
+        cmd += ('-t', cache_mode)
+
+    obj1 = ['--object',
+            'secret,id=sec1,format=raw,file=%s' % src_passphrase_file]
+    obj2 = ['--object',
+            'secret,id=sec2,format=raw,file=%s' % passphrase_file]
+
+    src_opts = 'encrypt.format=luks,encrypt.key-secret=sec1,' \
+               'file.filename=%s' % src
+
+    image_opts = ['--image-opts', src_opts]
+    output_opts = ['-O', 'luks', '-o', 'key-secret=sec2', dest]
+
+    command = cmd + obj1 + obj2 + image_opts + output_opts
+    return command
 
 
 def _get_qemu_convert_cmd(src, dest, out_format, src_format=None,
                           out_subformat=None, cache_mode=None,
                           prefix=None, cipher_spec=None,
-                          passphrase_file=None, compress=False):
+                          passphrase_file=None, compress=False,
+                          src_passphrase_file=None):
+
+    if src_passphrase_file is not None:
+        if passphrase_file is None:
+            message = _("Can't create unencrypted volume %(format)s "
+                        "from an encrypted source volume."
+                        ) % {'format': out_format}
+            LOG.error(message)
+            # TODO(enriquetaso): handle encrypted->unencrypted
+            raise exception.NotSupportedOperation(operation=message)
+        return _get_qemu_convert_luks_cmd(
+            src,
+            dest,
+            out_format,
+            src_format=src_format,
+            out_subformat=out_subformat,
+            cache_mode=cache_mode,
+            prefix=None,
+            cipher_spec=cipher_spec,
+            passphrase_file=passphrase_file,
+            src_passphrase_file=src_passphrase_file)
 
     if out_format == 'vhd':
         # qemu-img still uses the legacy vpc name
@@ -240,7 +290,8 @@ def check_qemu_img_version(minimum_version):
 def _convert_image(prefix, source, dest, out_format,
                    out_subformat=None, src_format=None,
                    run_as_root=True, cipher_spec=None,
-                   passphrase_file=None, compress=False):
+                   passphrase_file=None, compress=False,
+                   src_passphrase_file=None):
     """Convert image to other format.
 
     :param prefix: command prefix, i.e. cgexec for throttling
@@ -253,6 +304,8 @@ def _convert_image(prefix, source, dest, out_format,
     :param cipher_spec: encryption details
     :param passphrase_file: filename containing luks passphrase
     :param compress: compress w/ qemu-img when possible (best effort)
+    :param src_passphrase_file: filename containing source volume's
+                                luks passphrase
     """
 
     # Check whether O_DIRECT is supported and set '-t none' if it is
@@ -281,7 +334,8 @@ def _convert_image(prefix, source, dest, out_format,
                                 prefix=prefix,
                                 cipher_spec=cipher_spec,
                                 passphrase_file=passphrase_file,
-                                compress=compress)
+                                compress=compress,
+                                src_passphrase_file=src_passphrase_file)
 
     start_time = timeutils.utcnow()
 
@@ -333,7 +387,7 @@ def _convert_image(prefix, source, dest, out_format,
 def convert_image(source, dest, out_format, out_subformat=None,
                   src_format=None, run_as_root=True, throttle=None,
                   cipher_spec=None, passphrase_file=None,
-                  compress=False):
+                  compress=False, src_passphrase_file=None):
     if not throttle:
         throttle = throttling.Throttle.get_default()
     with throttle.subcommand(source, dest) as throttle_cmd:
@@ -345,7 +399,8 @@ def convert_image(source, dest, out_format, out_subformat=None,
                        run_as_root=run_as_root,
                        cipher_spec=cipher_spec,
                        passphrase_file=passphrase_file,
-                       compress=compress)
+                       compress=compress,
+                       src_passphrase_file=src_passphrase_file)
 
 
 def resize_image(source, size, run_as_root=False):
