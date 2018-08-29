@@ -367,7 +367,7 @@ class HyperScaleDriver(driver.VolumeDriver):
         except (exception.VolumeNotFound,
                 exception.UnableToProcessHyperScaleCmdOutput,
                 exception.ErrorInSendingMsg):
-            LOG.error("Exception in creating replica", exc_info = True)
+            LOG.error("Exception in creating replica", exc_info=True)
             metadata_update['Secondary_datanode_key'] = 'NA'
             metadata_update['Secondary_datanode_ip'] = 'NA'
             metadata_update['DN_Resiliency'] = 'degraded'

@@ -507,7 +507,7 @@ class VMAXVolumeMetadata(object):
             source_snapshot_id=source_snapshot_id,
             rep_mode=rep_mode, replication_status=replication_status,
             rdf_group_label=rdf_group_label, use_bias=use_bias,
-            is_compression_disabled = (
+            is_compression_disabled=(
                 'yes' if self.utils.is_compression_disabled(
                     extra_specs) else 'no')
         )
@@ -653,7 +653,7 @@ class VMAXVolumeMetadata(object):
             identifier_name=self.utils.get_volume_element_name(volume.id),
             openstack_name=volume.display_name,
             is_rep_enabled=('yes' if is_rep_enabled else 'no'),
-            rep_mode=rep_mode, is_compression_disabled = (
+            rep_mode=rep_mode, is_compression_disabled=(
                 'yes' if is_compression_disabled else 'no')
         )
         volume_metadata = self.update_volume_info_metadata(

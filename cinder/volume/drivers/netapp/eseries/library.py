@@ -378,7 +378,7 @@ class NetAppESeriesLibrary(object):
                 raise loopingcall.LoopingCallDone()
 
         checker = loopingcall.FixedIntervalLoopingCall(f=check_system_status)
-        checker.start(interval = self.SLEEP_SECS,
+        checker.start(interval=self.SLEEP_SECS,
                       initial_delay=self.SLEEP_SECS).wait()
 
         return True

@@ -111,7 +111,7 @@ class AESCipher(object):
         cipher = Cipher(
             algorithms.AES(self._key),
             modes.CBC(self._iv),
-            backend = default_backend()
+            backend=default_backend()
         )
         encryptor = cipher.encryptor()
         ciphertext = encryptor.update(self._pad(text)) + encryptor.finalize()

@@ -1695,7 +1695,7 @@ class StorwizeHelpers(object):
             LOG.warning('Tried to delete non-existent volume %s.', volume)
             return
         self.ensure_vdisk_no_fc_mappings(volume, allow_snaps=True,
-                                         allow_fctgt = True)
+                                         allow_fctgt=True)
         self.ssh.rmvolume(volume, force=force)
 
     def get_vdisk_attributes(self, vdisk):
@@ -2902,7 +2902,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         return sshpool
 
     def _ssh_execute(self, sshpool, command,
-                     check_exit_code = True, attempts=1):
+                     check_exit_code=True, attempts=1):
         try:
             with sshpool.item() as ssh:
                 while attempts > 0:
