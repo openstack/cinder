@@ -895,7 +895,7 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
         return {
             'driver_volume_type': 'drbd',
             'data': {
-                'provider_location': ' '.join('drbd', nodename),
+                'provider_location': ' '.join(('drbd', nodename)),
                 'device': volume_path,
                 # TODO(pm): consistency groups
                 'devices': [volume_path],
