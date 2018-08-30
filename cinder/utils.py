@@ -1005,11 +1005,10 @@ def resolve_hostname(hostname):
     :param hostname:  Host name to resolve.
     :returns:         IP Address for Host name.
     """
-    result = socket.getaddrinfo(hostname, None)[0]
-    (family, socktype, proto, canonname, sockaddr) = result
+    ip = socket.getaddrinfo(hostname, None)[0][4][0]
     LOG.debug('Asked to resolve hostname %(host)s and got IP %(ip)s.',
-              {'host': hostname, 'ip': sockaddr[0]})
-    return sockaddr[0]
+              {'host': hostname, 'ip': ip})
+    return ip
 
 
 def build_or_str(elements, str_format=None):
