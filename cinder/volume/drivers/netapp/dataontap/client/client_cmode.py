@@ -668,7 +668,7 @@ class Client(client_base.Client):
         net_if_iter.add_child_elem(query)
         query.add_node_with_children(
             'net-interface-info',
-            **{'address': na_utils.resolve_hostname(ip)})
+            **{'address': utils.resolve_hostname(ip)})
         result = self.connection.invoke_successfully(net_if_iter, True)
         num_records = result.get_child_content('num-records')
         if num_records and int(num_records) >= 1:

@@ -26,7 +26,6 @@ NetApp drivers to achieve the desired functionality.
 import decimal
 import platform
 import re
-import socket
 
 from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
@@ -146,13 +145,6 @@ def trace_filter_func_api(all_args):
         return True
     api_name = na_element.get_name()
     return re.match(API_TRACE_PATTERN, api_name) is not None
-
-
-def resolve_hostname(hostname):
-    """Resolves host name to IP address."""
-    res = socket.getaddrinfo(hostname, None)[0]
-    family, socktype, proto, canonname, sockaddr = res
-    return sockaddr[0]
 
 
 def round_down(value, precision='0.00'):
