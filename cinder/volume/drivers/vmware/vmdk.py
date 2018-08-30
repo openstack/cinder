@@ -291,19 +291,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
     @property
     def volumeops(self):
-        if not self._volumeops:
-            max_objects = self.configuration.vmware_max_objects_retrieval
-            self._volumeops = volumeops.VMwareVolumeOps(self.session,
-                                                        max_objects)
         return self._volumeops
 
     @property
     def ds_sel(self):
-        if not self._ds_sel:
-            max_objects = self.configuration.vmware_max_objects_retrieval
-            self._ds_sel = hub.DatastoreSelector(self.volumeops,
-                                                 self.session,
-                                                 max_objects)
         return self._ds_sel
 
     def _validate_params(self):
@@ -1761,29 +1752,31 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
     @property
     def session(self):
-        if not self._session:
-            ip = self.configuration.vmware_host_ip
-            port = self.configuration.vmware_host_port
-            username = self.configuration.vmware_host_username
-            password = self.configuration.vmware_host_password
-            api_retry_count = self.configuration.vmware_api_retry_count
-            task_poll_interval = self.configuration.vmware_task_poll_interval
-            wsdl_loc = self.configuration.safe_get('vmware_wsdl_location')
-            pbm_wsdl = self.pbm_wsdl if hasattr(self, 'pbm_wsdl') else None
-            ca_file = self.configuration.vmware_ca_file
-            insecure = self.configuration.vmware_insecure
-            pool_size = self.configuration.vmware_connection_pool_size
-            self._session = api.VMwareAPISession(ip, username,
-                                                 password, api_retry_count,
-                                                 task_poll_interval,
-                                                 wsdl_loc=wsdl_loc,
-                                                 pbm_wsdl_loc=pbm_wsdl,
-                                                 port=port,
-                                                 cacert=ca_file,
-                                                 insecure=insecure,
-                                                 pool_size=pool_size,
-                                                 op_id_prefix='c-vol')
         return self._session
+
+    def _create_session(self):
+        ip = self.configuration.vmware_host_ip
+        port = self.configuration.vmware_host_port
+        username = self.configuration.vmware_host_username
+        password = self.configuration.vmware_host_password
+        api_retry_count = self.configuration.vmware_api_retry_count
+        task_poll_interval = self.configuration.vmware_task_poll_interval
+        wsdl_loc = self.configuration.safe_get('vmware_wsdl_location')
+        ca_file = self.configuration.vmware_ca_file
+        insecure = self.configuration.vmware_insecure
+        pool_size = self.configuration.vmware_connection_pool_size
+        session = api.VMwareAPISession(ip,
+                                       username,
+                                       password,
+                                       api_retry_count,
+                                       task_poll_interval,
+                                       wsdl_loc=wsdl_loc,
+                                       port=port,
+                                       cacert=ca_file,
+                                       insecure=insecure,
+                                       pool_size=pool_size,
+                                       op_id_prefix='c-vol')
+        return session
 
     def _get_vc_version(self):
         """Connect to vCenter server and fetch version.
@@ -1846,6 +1839,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 raise exception.InvalidInput(reason=_(
                     "Invalid regular expression: %s.") % regex_pattern)
 
+        self._session = self._create_session()
+
         # Validate vCenter version.
         self._vc_version = self._get_vc_version()
         self._validate_vcenter_version(self._vc_version)
@@ -1855,19 +1850,16 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 versionutils.is_compatible(self.PBM_ENABLED_VC_VERSION,
                                            self._vc_version,
                                            same_major=False)):
-            self.pbm_wsdl = pbm.get_pbm_wsdl_location(self._vc_version)
-            if not self.pbm_wsdl:
+            pbm_wsdl_loc = pbm.get_pbm_wsdl_location(self._vc_version)
+            if not pbm_wsdl_loc:
                 LOG.error("Not able to configure PBM for vCenter server: %s",
                           self._vc_version)
                 raise exceptions.VMwareDriverException()
             self._storage_policy_enabled = True
-            # Destroy current session so that it is recreated with pbm enabled
-            self._session = None
+            self._session.pbm_wsdl_loc_set(pbm_wsdl_loc)
 
         self._register_extension()
 
-        # recreate session and initialize volumeops and ds_sel
-        # TODO(vbala) remove properties: session, volumeops and ds_sel
         max_objects = self.configuration.vmware_max_objects_retrieval
         self._volumeops = volumeops.VMwareVolumeOps(
             self.session, max_objects, EXTENSION_KEY, EXTENSION_TYPE)
