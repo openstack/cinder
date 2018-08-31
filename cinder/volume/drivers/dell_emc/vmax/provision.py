@@ -488,7 +488,8 @@ class VMAXProvision(object):
         if storage_group:
             try:
                 slo = storage_group['slo']
-                workload = storage_group['workload']
+                workload = 'NONE' if self.rest.is_next_gen_array(array) else (
+                    storage_group['workload'])
             except KeyError:
                 pass
         else:

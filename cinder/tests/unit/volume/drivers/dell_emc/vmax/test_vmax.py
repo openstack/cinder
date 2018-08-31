@@ -1712,13 +1712,16 @@ class VMAXRestTest(test.TestCase):
             self.data.array)
         self.assertEqual(ref_settings, wl_settings)
 
+    def test_get_workload_settings_next_gen(self):
+        with mock.patch.object(self.rest, 'is_next_gen_array',
+                               return_value=True):
+            wl_settings = self.rest.get_workload_settings(
+                self.data.array_herc)
+            self.assertEqual(['None'], wl_settings)
+
     def test_get_workload_settings_failed(self):
         wl_settings = self.rest.get_workload_settings(
             self.data.failed_resource)
-        self.assertEqual([], wl_settings)
-        # New array
-        wl_settings = self.rest.get_workload_settings(
-            self.data.array_herc)
         self.assertEqual([], wl_settings)
 
     def test_is_compression_capable_true(self):
@@ -1750,6 +1753,28 @@ class VMAXRestTest(test.TestCase):
             self.data.array, self.data.storagegroup_name_f, self.data.srp,
             self.data.slo, self.data.workload, self.data.extra_specs)
         self.assertEqual(self.data.storagegroup_name_f, sg_name)
+
+    def test_create_storage_group_next_gen(self):
+        with mock.patch.object(self.rest, 'is_next_gen_array',
+                               return_value=True):
+            with mock.patch.object(self.rest, '_create_storagegroup',
+                                   return_value=(200, self.data.job_list[0])):
+                self.rest.create_storage_group(
+                    self.data.array, self.data.storagegroup_name_f,
+                    self.data.srp, self.data.slo, self.data.workload,
+                    self.data.extra_specs)
+                payload = {"srpId": self.data.srp,
+                           "storageGroupId": self.data.storagegroup_name_f,
+                           "emulation": "FBA",
+                           "sloBasedStorageGroupParam": [
+                               {"num_of_vols": 0,
+                                "sloId": self.data.slo,
+                                "workloadSelection": 'NONE',
+                                "volumeAttribute": {
+                                    "volume_size": "0",
+                                    "capacityUnit": "GB"}}]}
+                self.rest._create_storagegroup.assert_called_once_with(
+                    self.data.array, payload)
 
     def test_create_storage_group_failed(self):
         self.assertRaises(
@@ -1872,6 +1897,14 @@ class VMAXRestTest(test.TestCase):
                 self.data.slo, self.data.workload))
         self.assertEqual(ref_sg_name, storagegroup_name)
         self.assertEqual(ref_storage_group, storagegroup)
+
+    def test_get_vmax_default_storage_group_next_gen(self):
+        with mock.patch.object(self.rest, 'is_next_gen_array',
+                               return_value=True):
+            __, storagegroup_name = self.rest.get_vmax_default_storage_group(
+                self.data.array, self.data.srp,
+                self.data.slo, self.data.workload)
+            self.assertEqual('OS-SRP_1-Diamond-NONE-SG', storagegroup_name)
 
     def test_delete_storage_group(self):
         operation = 'delete storagegroup resource'
@@ -3234,6 +3267,14 @@ class VMAXProvisionTest(test.TestCase):
                 self.provision.get_slo_workload_settings_from_storage_group(
                     self.data.array, 'no_workload_sg'))
             self.assertEqual(ref_settings2, sg_slo_settings2)
+        # NextGen Array
+        with mock.patch.object(self.rest, 'is_next_gen_array',
+                               return_value=True):
+            ref_settings3 = "Diamond+NONE"
+            sg_slo_settings3 = (
+                self.provision.get_slo_workload_settings_from_storage_group(
+                    self.data.array, self.data.defaultstoragegroup_name))
+            self.assertEqual(ref_settings3, sg_slo_settings3)
 
     @mock.patch.object(rest.VMAXRest, 'wait_for_rdf_consistent_state')
     @mock.patch.object(rest.VMAXRest, 'delete_rdf_pair')
@@ -3480,6 +3521,18 @@ class VMAXCommonTest(test.TestCase):
         configuration = FakeConfiguration(None, 'config_group', None, None)
         fc.VMAXFCDriver(configuration=configuration)
 
+    @mock.patch.object(rest.VMAXRest, 'is_next_gen_array',
+                       return_value=True)
+    @mock.patch.object(rest.VMAXRest, 'set_rest_credentials')
+    @mock.patch.object(common.VMAXCommon, '_get_slo_workload_combinations',
+                       return_value=[])
+    @mock.patch.object(common.VMAXCommon, 'get_attributes_from_cinder_config',
+                       return_value=VMAXCommonData.array_info_wl)
+    def test_gather_info_next_gen(self, mock_parse, mock_combo, mock_rest,
+                                  mock_nextgen):
+        self.common._gather_info()
+        self.assertTrue(self.common.nextGen)
+
     def test_get_slo_workload_combinations_powermax(self):
         finalarrayinfolist = self.common._get_slo_workload_combinations(
             self.data.array_info_no_wl)
@@ -3493,6 +3546,36 @@ class VMAXCommonTest(test.TestCase):
         finalarrayinfolist = self.common._get_slo_workload_combinations(
             self.data.array_info_wl)
         self.assertTrue(len(finalarrayinfolist) > 1)
+
+    @mock.patch.object(rest.VMAXRest, 'get_vmax_model',
+                       return_value=VMAXCommonData.powermax_model_details[
+                           'model'])
+    @mock.patch.object(rest.VMAXRest, 'get_workload_settings',
+                       return_value=[])
+    @mock.patch.object(rest.VMAXRest, 'get_slo_list',
+                       return_value=VMAXCommonData.powermax_slo_details[
+                           'sloId'])
+    def test_get_slo_workload_combinations_next_gen(self, mck_slo, mck_wl,
+                                                    mck_model):
+        self.common.nextGen = True
+        finalarrayinfolist = self.common._get_slo_workload_combinations(
+            self.data.array_info_no_wl)
+        self.assertTrue(len(finalarrayinfolist) == 14)
+
+    @mock.patch.object(rest.VMAXRest, 'get_vmax_model',
+                       return_value=VMAXCommonData.vmax_model_details[
+                           'model'])
+    @mock.patch.object(rest.VMAXRest, 'get_workload_settings',
+                       return_value=[])
+    @mock.patch.object(rest.VMAXRest, 'get_slo_list',
+                       return_value=VMAXCommonData.powermax_slo_details[
+                           'sloId'])
+    def test_get_slo_workload_combinations_next_gen_vmax(
+            self, mck_slo, mck_wl, mck_model):
+        self.common.nextGen = True
+        finalarrayinfolist = self.common._get_slo_workload_combinations(
+            self.data.array_info_no_wl)
+        self.assertTrue(len(finalarrayinfolist) == 18)
 
     def test_get_slo_workload_combinations_failed(self):
         array_info = {}
@@ -3651,6 +3734,21 @@ class VMAXCommonTest(test.TestCase):
         device_info_dict = self.common.initialize_connection(volume, connector)
         self.assertEqual(ref_dict, device_info_dict)
 
+    def test_initialize_connection_already_mapped_next_gen(self):
+        with mock.patch.object(self.rest, 'is_next_gen_array',
+                               return_value=True):
+            volume = self.data.test_volume
+            connector = self.data.connector
+            host_lun = (self.data.maskingview[0]['maskingViewConnection'][0]
+                        ['host_lun_address'])
+            ref_dict = {'hostlunid': int(host_lun, 16),
+                        'maskingview': self.data.masking_view_name_f,
+                        'array': self.data.array,
+                        'device_id': self.data.device_id}
+            device_info_dict = self.common.initialize_connection(volume,
+                                                                 connector)
+            self.assertEqual(ref_dict, device_info_dict)
+
     def test_initialize_connection_not_mapped(self):
         volume = self.data.test_volume
         connector = self.data.connector
@@ -3668,6 +3766,20 @@ class VMAXCommonTest(test.TestCase):
                 self.assertEqual({}, device_info_dict)
                 self.common._attach_volume.assert_called_once_with(
                     volume, connector, extra_specs, masking_view_dict, False)
+
+    @mock.patch.object(rest.VMAXRest, 'is_next_gen_array',
+                       return_value=True)
+    @mock.patch.object(common.VMAXCommon, 'find_host_lun_id',
+                       return_value=({}, False, []))
+    @mock.patch.object(common.VMAXCommon, '_attach_volume',
+                       return_value=({}, VMAXCommonData.port_group_name_f))
+    def test_initialize_connection_not_mapped_next_gen(self, mock_attach,
+                                                       mock_id, mck_gen):
+        volume = self.data.test_volume
+        connector = self.data.connector
+        device_info_dict = self.common.initialize_connection(
+            volume, connector)
+        self.assertEqual({}, device_info_dict)
 
     def test_attach_volume_success(self):
         volume = self.data.test_volume
@@ -3928,7 +4040,9 @@ class VMAXCommonTest(test.TestCase):
         connector = self.data.connector
         extra_specs = deepcopy(self.data.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        extra_specs[utils.WORKLOAD] = self.data.workload
         ref_mv_dict = self.data.masking_view_dict
+        self.common.nextGen = False
         masking_view_dict = self.common._populate_masking_dict(
             volume, connector, extra_specs)
         self.assertEqual(ref_mv_dict, masking_view_dict)
@@ -3966,9 +4080,20 @@ class VMAXCommonTest(test.TestCase):
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         extra_specs[utils.DISABLECOMPRESSION] = "true"
         ref_mv_dict = self.data.masking_view_dict_compression_disabled
+        extra_specs[utils.WORKLOAD] = self.data.workload
         masking_view_dict = self.common._populate_masking_dict(
             volume, connector, extra_specs)
         self.assertEqual(ref_mv_dict, masking_view_dict)
+
+    def test_populate_masking_dict_next_gen(self):
+        volume = self.data.test_volume
+        connector = self.data.connector
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        self.common.nextGen = True
+        masking_view_dict = self.common._populate_masking_dict(
+            volume, connector, extra_specs)
+        self.assertEqual('NONE', masking_view_dict[utils.WORKLOAD])
 
     def test_create_cloned_volume(self):
         volume = self.data.test_clone_volume
@@ -4092,6 +4217,25 @@ class VMAXCommonTest(test.TestCase):
             volume_name, volume_size, extra_specs)
         self.assertEqual(ref_dict, volume_dict)
 
+    def test_create_volume_success_next_gen(self):
+        volume_name = '1'
+        volume_size = self.data.test_volume.size
+        extra_specs = self.data.extra_specs
+        self.common.nextGen = True
+        with mock.patch.object(self.utils, 'is_compression_disabled',
+                               return_value=True):
+            with mock.patch.object(self.rest, 'is_next_gen_array',
+                                   return_value=True):
+                with mock.patch.object(self.masking,
+                                       'get_or_create_default_storage_group'):
+                    self.common._create_volume(
+                        volume_name, volume_size, extra_specs)
+                    (self.masking.get_or_create_default_storage_group
+                        .assert_called_once_with(extra_specs['array'],
+                                                 extra_specs[utils.SRP],
+                                                 extra_specs[utils.SLO],
+                                                 'NONE', extra_specs, True))
+
     def test_create_volume_failed(self):
         volume_name = self.data.test_volume.name
         volume_size = self.data.test_volume.size
@@ -4180,6 +4324,16 @@ class VMAXCommonTest(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.common._set_vmax_extra_specs,
                           {}, srp_record)
+
+    def test_set_vmax_extra_specs_next_gen(self):
+        srp_record = self.utils.parse_file_to_get_array_map(
+            self.fake_xml)
+        self.common.nextGen = True
+        extra_specs = self.common._set_vmax_extra_specs(
+            self.data.vol_type_extra_specs, srp_record)
+        ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)
+        ref_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        self.assertEqual('NONE', extra_specs[utils.WORKLOAD])
 
     def test_delete_volume_from_srp_success(self):
         array = self.data.array
@@ -4769,6 +4923,18 @@ class VMAXCommonTest(test.TestCase):
             device_id, host, self.data.array,
             self.data.srp, volume_name, False)
         self.assertEqual(ref_return, return_val)
+
+    def test_is_valid_for_storage_assisted_migration_next_gen(self):
+        device_id = self.data.device_id
+        host = {'host': self.data.new_host}
+        volume_name = self.data.test_volume.name
+        ref_return = (True, 'Silver', 'NONE')
+        with mock.patch.object(self.rest, 'is_next_gen_array',
+                               return_value=True):
+            return_val = self.common._is_valid_for_storage_assisted_migration(
+                device_id, host, self.data.array,
+                self.data.srp, volume_name, False)
+            self.assertEqual(ref_return, return_val)
 
     def test_find_volume_group(self):
         group = self.data.test_group_1
@@ -6527,6 +6693,20 @@ class VMAXMaskingTest(test.TestCase):
             self.data.array, self.device_id, self.volume_name,
             self.extra_specs, volume=vol_grp_member)
         self.assertEqual(2, mock_add_sg.call_count)
+
+    def test_add_volume_to_default_storage_group_next_gen(self):
+        with mock.patch.object(rest.VMAXRest, 'is_next_gen_array',
+                               return_value=True):
+            with mock.patch.object(
+                    self.mask, 'get_or_create_default_storage_group'):
+                self.mask.add_volume_to_default_storage_group(
+                    self.data.array, self.device_id, self.volume_name,
+                    self.extra_specs)
+                (self.mask.get_or_create_default_storage_group
+                    .assert_called_once_with(self.data.array, self.data.srp,
+                                             self.extra_specs[utils.SLO],
+                                             'NONE', self.extra_specs, False,
+                                             False, None))
 
     @mock.patch.object(provision.VMAXProvision, 'create_storage_group')
     def test_get_or_create_default_storage_group(self, mock_create_sg):
