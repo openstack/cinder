@@ -2299,6 +2299,12 @@ class HuaweiTestBase(test.TestCase):
         self.group = fake_group.fake_group_obj(
             admin_contex, id=ID, status='available')
 
+        constants.DEFAULT_REPLICA_WAIT_INTERVAL = .1
+        constants.DEFAULT_REPLICA_WAIT_TIMEOUT = .5
+        constants.DEFAULT_WAIT_INTERVAL = .1
+        constants.DEFAULT_WAIT_TIMEOUT = .5
+        constants.MIGRATION_WAIT_INTERVAL = .1
+
     def test_encode_name(self):
         lun_name = huawei_utils.encode_name(self.volume.id)
         self.assertEqual('21ec7341-ca82ece92e1ac480c963f1', lun_name)
@@ -4117,7 +4123,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         replica.wait_volume_online(self.driver.client, lun_info)
 
         with mock.patch.object(rest_client.RestClient, 'get_lun_info',
-                               offline_status):
+                               return_value=offline_status):
             self.assertRaises(exception.VolumeBackendAPIException,
                               replica.wait_volume_online,
                               self.driver.client,
@@ -4131,16 +4137,11 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         common_driver = replication.ReplicaCommonDriver(self.configuration, op)
         self.mock_object(replication.PairOp, 'get_replica_info',
                          return_value={'SECRESACCESS': access_ro})
-        self.mock_object(huawei_utils.time, 'time',
-                         side_effect=utils.generate_timeout_series(
-                             constants.DEFAULT_REPLICA_WAIT_TIMEOUT))
 
         common_driver.wait_second_access(pair_id, access_ro)
         self.assertRaises(exception.VolumeBackendAPIException,
                           common_driver.wait_second_access, pair_id, access_rw)
 
-    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
-                new=utils.ZeroIntervalLoopingCall)
     def test_wait_replica_ready(self):
         normal_status = {
             'RUNNINGSTATUS': constants.REPLICA_RUNNING_STATUS_NORMAL,

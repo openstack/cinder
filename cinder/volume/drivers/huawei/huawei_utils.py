@@ -15,12 +15,11 @@
 
 import hashlib
 import json
-import six
-import time
 
 from oslo_log import log as logging
-from oslo_service import loopingcall
 from oslo_utils import units
+import retrying
+import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -62,25 +61,17 @@ def old_encode_host_name(name):
 
 
 def wait_for_condition(func, interval, timeout):
-    start_time = time.time()
 
-    def _inner():
-        try:
-            res = func()
-        except Exception as ex:
-            raise exception.VolumeBackendAPIException(data=ex)
-
-        if res:
-            raise loopingcall.LoopingCallDone()
-
-        if int(time.time()) - start_time > timeout:
-            msg = (_('wait_for_condition: %s timed out.')
-                   % func.__name__)
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-    timer = loopingcall.FixedIntervalLoopingCall(_inner)
-    timer.start(interval=interval).wait()
+    r = retrying.Retrying(retry_on_result=lambda result: not result,
+                          retry_on_exception=lambda result: False,
+                          wait_fixed=interval * 1000,
+                          stop_max_delay=timeout * 1000)
+    try:
+        r.call(func)
+    except retrying.RetryError:
+        msg = _('wait_for_condition: %s timed out.') % func.__name__
+        LOG.error(msg)
+        raise exception.VolumeBackendAPIException(data=msg)
 
 
 def get_volume_size(volume):
