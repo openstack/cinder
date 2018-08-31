@@ -860,29 +860,9 @@ class API(base.Base):
                               cgsnapshot_id,
                               commit_quota=True,
                               group_snapshot_id=None):
-        context.authorize(snapshot_policy.CREATE_POLICY, target_obj=volume)
+        self._create_snapshot_in_db_validate(context, volume)
 
         utils.check_metadata_properties(metadata)
-        if not volume.host:
-            msg = _("The snapshot cannot be created because volume has "
-                    "not been scheduled to any host.")
-            raise exception.InvalidVolume(reason=msg)
-
-        if volume['status'] == 'maintenance':
-            LOG.info('Unable to create the snapshot for volume, '
-                     'because it is in maintenance.', resource=volume)
-            msg = _("The snapshot cannot be created when the volume is in "
-                    "maintenance mode.")
-            raise exception.InvalidVolume(reason=msg)
-        if self._is_volume_migrating(volume):
-            # Volume is migrating, wait until done
-            msg = _("Snapshot cannot be created while volume is migrating.")
-            raise exception.InvalidVolume(reason=msg)
-
-        if volume['status'].startswith('replica_'):
-            # Can't snapshot secondary replica
-            msg = _("Snapshot of secondary replica is not allowed.")
-            raise exception.InvalidVolume(reason=msg)
 
         valid_status = ["available", "in-use"] if force else ["available"]
 
@@ -993,6 +973,10 @@ class API(base.Base):
     def _create_snapshot_in_db_validate(self, context, volume):
         context.authorize(snapshot_policy.CREATE_POLICY, target_obj=volume)
 
+        if not volume.host:
+            msg = _("The snapshot cannot be created because volume has "
+                    "not been scheduled to any host.")
+            raise exception.InvalidVolume(reason=msg)
         if volume['status'] == 'maintenance':
             LOG.info('Unable to create the snapshot for volume, '
                      'because it is in maintenance.', resource=volume)
@@ -1007,6 +991,10 @@ class API(base.Base):
             msg = _("The snapshot cannot be created when the volume is "
                     "in error status.")
             LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+        if volume['status'].startswith('replica_'):
+            # Can't snapshot secondary replica
+            msg = _("Snapshot of secondary replica is not allowed.")
             raise exception.InvalidVolume(reason=msg)
 
     def _create_snapshots_in_db_reserve(self, context, volume_list):
