@@ -15,28 +15,28 @@ to perform VMAX storage operations.
 .. note::
 
    KNOWN ISSUE:
-   Workload support was dropped in ucode 5978. If a VMAX All Flash array is
-   upgraded to 5978 or greater and existing volume types leveraged workload
-   e.g. DSS, DSS_REP, OLTP and OLTP_REP, attaching and detaching will no
-   longer work and the volume type will be unusable. Refrain from upgrading
-   to ucode 5978 or greater on an All Flash until a fix is merged. Please
-   contact your Dell EMC VMAX customer support representative if in any
-   doubt.
+   Workload support was dropped in PowerMax OS 5978. If a VMAX All Flash array
+   is upgraded to PowerMax OS 5978 or greater and existing volume types
+   leveraged workload i.e. DSS, DSS_REP, OLTP and OLTP_REP, attaching and
+   detaching will no longer work and the volume type will be unusable.
+   Refrain from upgrading to PowerMax OS 5978 or greater on an All Flash
+   until a fix is merged. Please contact your Dell EMC VMAX customer support
+   representative if in any doubt.
 
 System requirements and licensing
 =================================
 
-The Dell EMC VMAX Cinder driver supports the VMAX-3 hybrid series and VMAX
-All-Flash arrays.
+The Dell EMC VMAX Cinder driver supports the VMAX-3 hybrid series, VMAX
+All-Flash series and the PowerMax arrays.
 
-The array operating system software, Solutions Enabler 8.4.0.7 or later, and
-Unisphere for VMAX 8.4.0.15 or later are required to run Dell EMC VMAX Cinder
-driver.
+The array operating system software, Solutions Enabler 9.0.0.0 or later, and
+Unisphere for PowerMax 9.0.0.6 or later are required to run Dell EMC VMAX
+Cinder driver.
 
-You can download Solutions Enabler and Unisphere from the Dell EMC's support
-web site (login is required). See the ``Solutions Enabler 8.4.0 Installation
-and Configuration Guide`` and ``Unisphere for VMAX 8.4.0 Installation Guide``
-at ``support.emc.com``.
+Download Solutions Enabler and Unisphere from the Dell EMC's support web site
+(login is required). See the ``Dell EMC Solutions Enabler 9.0 Installation
+and Configuration Guide`` and ``Dell EMC Unisphere for PowerMax Installation
+Guide`` at ``support.emc.com``.
 
 Required VMAX software suites for OpenStack
 -------------------------------------------
@@ -110,6 +110,7 @@ VMAX drivers support these operations:
 -  Volume replication SRDF/S, SRDF/A and SRDF Metro
 -  Quality of service (QoS)
 -  Manage and unmanage volumes and snapshots
+-  List Manageable Volumes/Snapshots
 
 VMAX drivers also support the following features:
 
@@ -119,8 +120,14 @@ VMAX drivers also support the following features:
 -  Oversubscription
 -  Service Level support
 -  SnapVX support
--  Compression support(All Flash only)
+-  Compression support(All Flash and PowerMax)
+-  Deduplication support(PowerMax)
 -  CHAP Authentication
+-  Multi-attach support
+-  Volume Metadata in logs
+-  Encrypted Volume support
+-  Extending attached volume
+-  Replicated volume retype support
 
 .. note::
 
@@ -186,7 +193,7 @@ contains ``child`` storage groups for each configured
 SRP/slo/workload/compression-enabled or disabled/replication-enabled or
 disabled combination.
 
-VMAX All Flash and Hybrid
+PowerMax, VMAX All Flash and Hybrid
 
 Parent storage group:
 
@@ -205,6 +212,11 @@ Child storage groups:
    CD and RE are only set if compression is explicitly disabled or replication
    explicitly enabled. See the compression and replication sections below.
 
+.. note::
+
+   For PowerMax and any All Flash with PowerMax OS (5978) or greater, workload
+   is NONE
+
 
 VMAX Driver Integration
 =======================
@@ -219,16 +231,15 @@ VMAX Driver Integration
    Solutions Enabler can be installed on a physical server, or as a Virtual
    Appliance (a VMware ESX server VM). Additionally, starting with HYPERMAX
    OS Q3 2015, you can manage VMAX3 arrays using the Embedded Management
-   (eManagement) container application. See the ``Solutions Enabler 8.4.0
-   Installation and Configuration Guide`` on ``support.emc.com`` for more
-   details.
+   (eManagement) container application. See the ``Dell EMC Solutions Enabler
+   9.0 Installation and Configuration Guide`` on ``support.emc.com`` for
+   more details.
 
    .. note::
 
       You must discover storage arrays before you can use the VMAX drivers.
-      Follow instructions in ``Solutions Enabler 8.4.0 Installation and
-      Configuration Guide`` on ``support.emc.com`` for more
-      details.
+      Follow instructions in ```Dell EMC Solutions Enabler 9.0 Installation
+      and Configuration Guide`` on ``support.emc.com`` for more details.
 
 #. Download Unisphere from ``support.emc.com`` and install it.
 
@@ -236,8 +247,8 @@ VMAX Driver Integration
    - i.e., on the same server running Solutions Enabler; on a server
    connected to the Solutions Enabler server; or using the eManagement
    container application (containing Solutions Enabler and Unisphere for
-   VMAX). See ``Unisphere for VMAX 8.4.0 Installation Guide`` at
-   ``support.emc.com``.
+   VMAX). See ``Dell EMC Solutions Enabler 9.0 Installation and Configuration
+   Guide`` at ``support.emc.com``.
 
 
 2. FC Zoning with VMAX
@@ -296,6 +307,8 @@ complex and open-zoning would raise security concerns.
       Service Level and workload can be added to the cinder.conf when the
       backend is the default case and there is no associated volume type.
       This not a recommended configuration as it is too restrictive.
+      Workload is NONE for PowerMax and any All Flash with PowerMax OS
+      (5978) or greater.
 
       +-----------------+------------------------+---------+----------+
       |  VMAX parameter | cinder.conf parameter  | Default | Required |
@@ -422,6 +435,8 @@ complex and open-zoning would raise security concerns.
       is the additional property which has to be set and is of the format:
       ``<ServiceLevel>+<Workload>+<SRP>+<Array ID>``.
       This can be obtained from the output of the ``cinder get-pools--detail``.
+      Workload is NONE for PowerMax or any All Flash with PowerMax OS (5978)
+      or greater.
 
    .. code-block:: console
 
@@ -465,9 +480,12 @@ complex and open-zoning would raise security concerns.
 
    .. note::
 
-      VMAX Hybrid supports Optimized, Diamond, Platinum, Gold, Silver, Bronze,
-      and NONE service levels. VMAX All Flash supports Diamond and None. Both
-      support DSS_REP, DSS, OLTP_REP, OLTP, and None workloads.
+      PowerMax and Hybrid support Optimized, Diamond, Platinum, Gold, Silver,
+      Bronze, and NONE service levels. VMAX All Flash supports Diamond and None.
+      Hybrid and All Flash support DSS_REP, DSS, OLTP_REP, OLTP, and None
+      workloads, the latter up until ucode 5977. There is no support for
+      workloads in PowerMax OS (5978) or greater.
+
 
 7. Interval and Retries
 -----------------------
@@ -1087,7 +1105,8 @@ uncompressed.
 
 .. note::
 
-   This feature is only applicable for All Flash arrays, 250F, 450F or 850F.
+   This feature is only applicable for All Flash arrays, 250F, 450F, 850F
+   and 950F and PowerMax 2000 and 8000.
 
 Use case 1 - Compression disabled create, attach, detach, and delete volume
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1193,8 +1212,11 @@ Live migration configuration
 
 Please refer to the following for more information:
 
-https://docs.openstack.org/nova/queens/admin/live-migration-usage.html
-https://docs.openstack.org/nova/queens/admin/configuring-migrations.html
+https://docs.openstack.org/nova/latest/admin/live-migration-usage.html
+
+and
+
+https://docs.openstack.org/nova/latest/admin/configuring-migrations.html
 
 .. note::
 
@@ -1373,6 +1395,55 @@ We then decide to detach the volume from ‘Multi-attach-Instance-B’ on HostB:
    storage group. The non-FAST managed storage group is cleaned up,
    if required.
 
+.. note::
+
+   Known issue - the multi-attach flag is still false after a retype. This
+   is being addressed in https://bugs.launchpad.net/cinder/+bug/1790840
+
+
+15. Volume Encryption support
+-----------------------------
+
+Please refer to the following:
+https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-encryption.html
+
+
+16. Volume metadata in logs
+---------------------------
+
+If debug is enabled in the default section of the cinder.conf, VMAX Cinder
+driver will log additional volume information in the Cinder volume log,
+on each successful operation.  The facilitates bridging the gap between
+OpenStack and the Array by tracing and describing the volume from a VMAX/
+PowerMax view point.
+
+.. code-block:: console
+
+   +-------------------------+---------------------------------------------------------+
+   | Key                     | Value                                                   |
+   +-------------------------+---------------------------------------------------------+
+   | service_level           | Gold                                                    |
+   | is_compression_disabled | no                                                      |
+   | vmax_driver_version     | 3.2.0                                                   |
+   | identifier_name         | OS-819470ab-a6d4-49cc-b4db-6f85e82822b7                 |
+   | openstack_release       | 13.0.0.0b3.dev3                                         |
+   | volume_id               | 819470ab-a6d4-49cc-b4db-6f85e82822b7                    |
+   | vmax_model              | PowerMax_8000                                           |
+   | operation               | delete                                                  |
+   | default_sg_name         | OS-DEFAULT_SRP-Gold-NONE-SG                             |
+   | device_id               | 01C03                                                   |
+   | unisphere_version       | V9.0.0.9                                                |
+   | workload                | NONE                                                    |
+   | openstack_version       | 13.0.0                                                  |
+   | volume_updated_time     | 2018-08-03 03:13:53                                     |
+   | platform                | Linux-4.4.0-127-generic-x86_64-with-Ubuntu-16.04-xenial |
+   | python_version          | 2.7.12                                                  |
+   | volume_size             | 20                                                      |
+   | srp                     | DEFAULT_SRP                                             |
+   | openstack_name          | 91_Test_Vol56                                           |
+   | vmax_firmware_version   | 5978.143.144                                            |
+   | serial_number           | 000197600196                                            |
+   +-------------------------+---------------------------------------------------------+
 
 
 Cinder supported operations
@@ -1624,6 +1695,15 @@ retype, follow these steps:
    .. code-block:: console
 
       $ cinder retype --migration-policy on-demand <volume> <volume-type>
+
+
+.. note::
+
+   With the Rocky release the following is now supported
+
+   - Retype non-replicated volume to a replicated volume type
+   - Retype replicated volume to a non-replicated volume type
+   - Retype a replicated volume to a different replicated volume type
 
 
 Generic volume group support
@@ -2105,6 +2185,55 @@ the VMAX backend will have the ``OS-`` prefix removed to indicate it is no
 longer OpenStack managed. In the example above, the snapshot after unmanaging
 from OpenStack will be named ``VMAXSnapshot`` on the storage backend.
 
+List manageable volumes and snapshots
+-------------------------------------
+
+Manageable volumes
+~~~~~~~~~~~~~~~~~~
+
+Volumes that can be managed by and imported into Openstack.
+
+List manageable volume is filtered by:
+
+- Volume size should be 1026MB or greater (1GB VMAX Cinder Vol = 1026 MB)
+- Volume size should be a whole integer GB capacity
+- Volume should not be a part of masking view.
+- Volume status should be ``Ready``
+- Volume service state should be ``Normal``
+- Volume emulation type should be ``FBA``
+- Volume configuration should be ``TDEV``
+- Volume should not be a system resource.
+- Volume should not be ``private``
+- Volume should not be ``encapsulated``
+- Volume should not be ``reserved``
+- Volume should not be a part of an RDF session
+- Volume should not be a snapVX Target
+- Volume identifier should not begin with ``OS-``.
+
+Manageable snaphots
+~~~~~~~~~~~~~~~~~~~
+
+Snapshots that can be managed by and imported into Openstack
+
+List manageable snapshots is filtered by:
+
+- The source volume should be marked as SnapVX source.
+- The source volume should be 1026MB or greater
+- The source volume should be a whole integer GB capacity.
+- The source volume emulation type should be ``FBA``.
+- The source volume configuration should be ``TDEV``.
+- The source volume should not be ``private``.
+- The source volume should be not be a system resource.
+- The snapshot identifier should not start with ``OS-`` or ``temp-``.
+- The snapshot should not be expired.
+- The snapshot generation number should npt be greater than 0.
+
+.. note::
+
+   There is some delay in the syncing of the Unisphere for PowerMax database
+   when the state/properties of a volume is modified using ``symcli``.  To
+   prevent this it is preferrable to modify state/properties of volumes within
+   Unisphere.
 
 Upgrading from SMI-S based driver to RESTAPI based driver
 =========================================================
