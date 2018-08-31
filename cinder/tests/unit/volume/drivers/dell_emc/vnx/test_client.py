@@ -186,9 +186,9 @@ class TestClient(test.TestCase):
 
     @res_mock.patch_client
     def test_delete_lun_exception(self, client, mocked):
-        self.assertRaisesRegexp(storops_ex.VNXDeleteLunError,
-                                'General lun delete error.',
-                                client.delete_lun, mocked['lun'].name)
+        self.assertRaisesRegex(storops_ex.VNXDeleteLunError,
+                               'General lun delete error.',
+                               client.delete_lun, mocked['lun'].name)
 
     @res_mock.patch_client
     def test_cleanup_async_lun(self, client, mocked):
@@ -374,12 +374,12 @@ class TestClient(test.TestCase):
 
     @res_mock.patch_client
     def test_add_lun_to_sg_alu_in_use(self, client, mocked):
-        self.assertRaisesRegexp(storops_ex.VNXNoHluAvailableError,
-                                'No HLU available.',
-                                client.add_lun_to_sg,
-                                mocked['sg'],
-                                mocked['lun'],
-                                3)
+        self.assertRaisesRegex(storops_ex.VNXNoHluAvailableError,
+                               'No HLU available.',
+                               client.add_lun_to_sg,
+                               mocked['sg'],
+                               mocked['lun'],
+                               3)
 
     @res_mock.patch_client
     def test_update_consistencygroup_no_lun_in_cg(self, client, mocked):

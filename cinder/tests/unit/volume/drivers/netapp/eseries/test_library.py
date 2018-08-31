@@ -182,8 +182,8 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             side_effect=exception.NetAppDriverException(message=exc_str))
         info_log = self.mock_object(library.LOG, 'info')
 
-        self.assertRaisesRegexp(exception.NetAppDriverException, exc_str,
-                                self.library._check_storage_system)
+        self.assertRaisesRegex(exception.NetAppDriverException, exc_str,
+                               self.library._check_storage_system)
 
         info_log.assert_called_once_with(mock.ANY, controller_ips)
 
@@ -212,9 +212,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         self.mock_object(self.library._client, 'update_stored_system_password')
         self.mock_object(time, 'time', side_effect=range(0, 60, 5))
 
-        self.assertRaisesRegexp(exception.NetAppDriverException,
-                                'bad.*?status',
-                                self.library._check_storage_system)
+        self.assertRaisesRegex(exception.NetAppDriverException,
+                               'bad.*?status',
+                               self.library._check_storage_system)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall', new=
                 cinder_utils.ZeroIntervalLoopingCall)
@@ -1885,10 +1885,10 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
                          return_value=fake_label)
         fake_snapshot = copy.deepcopy(eseries_fake.FAKE_CINDER_SNAPSHOT)
 
-        self.assertRaisesRegexp(exception.NetAppDriverException,
-                                exc_msg,
-                                self.library.create_snapshot,
-                                fake_snapshot)
+        self.assertRaisesRegex(exception.NetAppDriverException,
+                               exc_msg,
+                               self.library.create_snapshot,
+                               fake_snapshot)
         self.assertTrue(delete_snap_grp.called)
 
     def test_create_snapshot_no_snap_group(self):
@@ -1941,10 +1941,10 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
 
         # Error message should contain the maximum number of supported
         # snapshots
-        self.assertRaisesRegexp(exception.SnapshotLimitExceeded,
-                                str(self.library.MAX_SNAPSHOT_COUNT *
-                                    grp_count),
-                                self.library.create_snapshot, fake_snapshot)
+        self.assertRaisesRegex(exception.SnapshotLimitExceeded,
+                               str(self.library.MAX_SNAPSHOT_COUNT *
+                                   grp_count),
+                               self.library.create_snapshot, fake_snapshot)
 
     def test_delete_snapshot(self):
         fake_vol = cinder_utils.create_volume(self.ctxt)
