@@ -1215,6 +1215,7 @@ class FakeConfiguration(object):
         self.volume_backend_name = volume_backend_name
         self.config_group = volume_backend_name
         self.san_is_local = False
+        self.max_over_subscription_ratio = 1
         if replication_device:
             self.replication_device = [replication_device]
         for key, value in kwargs.items():
