@@ -2588,13 +2588,6 @@ source_reference:
   in: body
   required: true
   type: object
-source_replica:
-  description: |
-    The UUID of the replication volume to clone. This was for legacy
-    replication functionality and is no longer supported.
-  in: body
-  required: false
-  type: string
 source_volid:
   description: |
     The UUID of the source volume. The API creates a new volume with the same
