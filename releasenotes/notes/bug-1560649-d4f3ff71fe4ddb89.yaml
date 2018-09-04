@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Dell EMC Scale IO Driver: Fixes `bug 1560649
+    <https://bugs.launchpad.net/cinder/+bug/1560649>`
+    for creating volumes with sizes greater than that of the
+    original snapshot.

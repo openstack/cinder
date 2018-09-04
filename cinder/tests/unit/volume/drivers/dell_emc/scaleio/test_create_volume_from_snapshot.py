@@ -98,3 +98,8 @@ class TestCreateVolumeFromSnapShot(scaleio.TestScaleIODriver):
     def test_create_volume_from_snapshot(self):
         self.set_https_response_mode(self.RESPONSE_MODE.Valid)
         self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
+
+    def test_create_volume_from_snapshot_larger(self):
+        self.set_https_response_mode(self.RESPONSE_MODE.Valid)
+        self.volume.size = 2
+        self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
