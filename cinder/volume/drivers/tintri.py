@@ -21,7 +21,6 @@ import json
 import math
 import os
 import re
-import socket
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -321,12 +320,6 @@ class TintriDriver(driver.ManageableVD,
         """Returns NFS export path for the given volume."""
         return self._get_provider_location(volume_id).split(':')[1]
 
-    def _resolve_hostname(self, hostname):
-        """Resolves host name to IP address."""
-        res = socket.getaddrinfo(hostname, None)[0]
-        family, socktype, proto, canonname, sockaddr = res
-        return sockaddr[0]
-
     def _is_volume_present(self, volume_path):
         """Checks if volume exists."""
         try:
@@ -608,9 +601,9 @@ class TintriDriver(driver.ManageableVD,
         try:
             if conn:
                 host = conn.split(':')[0]
-                ip = self._resolve_hostname(host)
+                ip = utils.resolve_hostname(host)
                 for sh in self._mounted_shares + self._mounted_image_shares:
-                    sh_ip = self._resolve_hostname(sh.split(':')[0])
+                    sh_ip = utils.resolve_hostname(sh.split(':')[0])
                     sh_exp = sh.split(':')[1]
                     if sh_ip == ip and sh_exp == dr:
                         LOG.debug('Found share match %s', sh)
@@ -761,7 +754,7 @@ class TintriDriver(driver.ManageableVD,
     def _convert_volume_share(self, volume_share):
         """Converts the share name to IP address."""
         share_split = volume_share.rsplit(':', 1)
-        return self._resolve_hostname(share_split[0]) + ':' + share_split[1]
+        return utils.resolve_hostname(share_split[0]) + ':' + share_split[1]
 
     def _get_share_mount(self, vol_ref):
         """Get the NFS share, NFS mount, and volume path from reference.
