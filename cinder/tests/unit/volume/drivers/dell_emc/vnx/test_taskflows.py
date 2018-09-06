@@ -17,14 +17,14 @@ import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure
 
-from cinder import test
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_exception \
     as vnx_ex
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import res_mock
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import test_base
 import cinder.volume.drivers.dell_emc.vnx.taskflows as vnx_taskflow
 
 
-class TestTaskflow(test.TestCase):
+class TestTaskflow(test_base.TestCase):
     def setUp(self):
         super(TestTaskflow, self).setUp()
         self.work_flow = linear_flow.Flow('test_task')

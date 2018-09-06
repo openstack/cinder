@@ -16,15 +16,15 @@
 import mock
 
 from cinder import exception
-from cinder import test
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_storops \
     as storops
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import res_mock
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import test_base
 from cinder.volume.drivers.dell_emc.vnx import client
 from cinder.volume.drivers.dell_emc.vnx import common
 
 
-class TestExtraSpecs(test.TestCase):
+class TestExtraSpecs(test_base.TestCase):
     def test_valid_extra_spec(self):
         extra_spec = {
             'provisioning:type': 'deduplicated',
@@ -186,7 +186,7 @@ class FakeConfiguration(object):
         self.replication_device = []
 
 
-class TestReplicationDeviceList(test.TestCase):
+class TestReplicationDeviceList(test_base.TestCase):
     def setUp(self):
         super(TestReplicationDeviceList, self).setUp()
         self.configuration = FakeConfiguration()
@@ -244,7 +244,7 @@ class TestReplicationDeviceList(test.TestCase):
         self.assertIn('array_id_1', backend_ids)
 
 
-class TestVNXMirrorView(test.TestCase):
+class TestVNXMirrorView(test_base.TestCase):
     def setUp(self):
         super(TestVNXMirrorView, self).setUp()
         self.primary_client = mock.create_autospec(client.Client)

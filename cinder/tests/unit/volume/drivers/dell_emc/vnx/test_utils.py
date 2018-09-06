@@ -16,12 +16,12 @@
 import mock
 
 from cinder import exception
-from cinder import test
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_exception \
     as storops_ex
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_storops \
     as storops
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import res_mock
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import test_base
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import utils as ut_utils
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import utils as vnx_utils
@@ -35,15 +35,7 @@ class FakeDriver(object):
         return True
 
 
-class TestUtils(test.TestCase):
-    def setUp(self):
-        super(TestUtils, self).setUp()
-        self.origin_timeout = common.DEFAULT_TIMEOUT
-        common.DEFAULT_TIMEOUT = 0.05
-
-    def tearDown(self):
-        super(TestUtils, self).tearDown()
-        common.DEFAULT_TIMEOUT = self.origin_timeout
+class TestUtils(test_base.TestCase):
 
     def test_wait_until(self):
         mock_testmethod = mock.Mock(return_value=True)

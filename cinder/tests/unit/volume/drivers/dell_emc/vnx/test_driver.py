@@ -15,15 +15,13 @@
 
 import mock
 
-from cinder import test
-from cinder.volume import configuration as conf
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import test_base
 from cinder.volume.drivers.dell_emc.vnx import driver
 
 
-class TestVNXDriver(test.TestCase):
+class TestVNXDriver(test_base.TestCase):
     def setUp(self):
         super(TestVNXDriver, self).setUp()
-        self.configuration = conf.Configuration(None)
         self.fc_adapter_patcher = mock.patch(
             'cinder.volume.drivers.dell_emc.vnx.adapter.FCAdapter',
             autospec=True)

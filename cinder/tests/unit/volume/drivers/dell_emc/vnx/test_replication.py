@@ -15,24 +15,18 @@
 
 import mock
 
-from cinder import context
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import res_mock
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import test_base
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import utils
-from cinder.volume import configuration as conf
 from cinder.volume.drivers.dell_emc.vnx import utils as vnx_utils
 
 
-class TestReplicationAdapter(test.TestCase):
+class TestReplicationAdapter(test_base.TestCase):
 
     def setUp(self):
         super(TestReplicationAdapter, self).setUp()
-        self.configuration = conf.Configuration(None)
         vnx_utils.init_ops(self.configuration)
-        self.configuration.san_ip = '192.168.1.1'
-        self.configuration.storage_vnx_authentication_type = 'global'
-        self.ctxt = context.get_admin_context()
 
     @utils.patch_group_specs({
         'consistent_group_replication_enabled': '<is> True'})

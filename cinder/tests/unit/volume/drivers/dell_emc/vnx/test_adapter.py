@@ -18,10 +18,8 @@ import re
 
 from oslo_config import cfg
 
-from cinder import context
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit import utils as test_utils
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_exception \
@@ -29,24 +27,19 @@ from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_exception \
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_storops \
     as storops
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import res_mock
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import test_base
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import utils
-from cinder.volume import configuration as conf
 from cinder.volume.drivers.dell_emc.vnx import adapter
 from cinder.volume.drivers.dell_emc.vnx import client
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import utils as vnx_utils
 
 
-class TestCommonAdapter(test.TestCase):
+class TestCommonAdapter(test_base.TestCase):
 
     def setUp(self):
         super(TestCommonAdapter, self).setUp()
-        self.configuration = conf.Configuration(None)
         vnx_utils.init_ops(self.configuration)
-        self.configuration.san_ip = '192.168.1.1'
-        self.configuration.storage_vnx_authentication_type = 'global'
-        self.configuration.config_group = 'vnx_backend'
-        self.ctxt = context.get_admin_context()
 
     @res_mock.mock_driver_input
     @res_mock.patch_common_adapter
@@ -1427,17 +1420,13 @@ class TestCommonAdapter(test.TestCase):
                           common_adapter._normalize_config)
 
 
-class TestISCSIAdapter(test.TestCase):
+class TestISCSIAdapter(test_base.TestCase):
     STORAGE_PROTOCOL = common.PROTOCOL_ISCSI
 
     def setUp(self):
         super(TestISCSIAdapter, self).setUp()
-        self.configuration = conf.Configuration(None)
         vnx_utils.init_ops(self.configuration)
         self.configuration.storage_protocol = self.STORAGE_PROTOCOL
-
-    def tearDown(self):
-        super(TestISCSIAdapter, self).tearDown()
 
     @res_mock.patch_iscsi_adapter
     def test_validate_ports_iscsi(self, vnx_iscsi, mocked):
@@ -1560,17 +1549,13 @@ class TestISCSIAdapter(test.TestCase):
         adapter.terminate_connection_cleanup.assert_called()
 
 
-class TestFCAdapter(test.TestCase):
+class TestFCAdapter(test_base.TestCase):
     STORAGE_PROTOCOL = common.PROTOCOL_FC
 
     def setUp(self):
         super(TestFCAdapter, self).setUp()
-        self.configuration = conf.Configuration(None)
         vnx_utils.init_ops(self.configuration)
         self.configuration.storage_protocol = self.STORAGE_PROTOCOL
-
-    def tearDown(self):
-        super(TestFCAdapter, self).tearDown()
 
     @res_mock.patch_fc_adapter
     def test_validate_ports_fc(self, vnx_fc, mocked):
