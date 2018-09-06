@@ -1106,6 +1106,7 @@ class DS8KProxyTest(test.TestCase):
         self.storage_info = mock.MagicMock()
         self.logger = mock.MagicMock()
         self.exception = mock.MagicMock()
+        self.patch('eventlet.sleep')
 
     def _create_volume(self, **kwargs):
         properties = {
