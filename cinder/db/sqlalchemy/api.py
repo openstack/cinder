@@ -5192,7 +5192,7 @@ def _process_backups_filters(query, filters):
         filters_dict = {}
         for key, value in filters.items():
             if key == 'metadata':
-                col_attr = getattr(models.Snapshot, 'snapshot_metadata')
+                col_attr = getattr(models.Backup, 'backup_metadata')
                 for k, v in value.items():
                     query = query.filter(col_attr.any(key=k, value=v))
             else:
