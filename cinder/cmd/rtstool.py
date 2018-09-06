@@ -220,18 +220,18 @@ def save_to_file(destination_file):
                            {'file_path': destination_file, 'exc': exc})
 
 
-def restore_from_file(configration_file):
+def restore_from_file(configuration_file):
     rtsroot = rtslib_fb.root.RTSRoot()
     # If configuration file is None, use rtslib default save file.
-    if not configration_file:
-        configration_file = rtslib_fb.root.default_save_file
+    if not configuration_file:
+        configuration_file = rtslib_fb.root.default_save_file
 
     try:
-        rtsroot.restore_from_file(configration_file)
+        rtsroot.restore_from_file(configuration_file)
     except (OSError, IOError) as exc:
         raise RtstoolError(_('Could not restore configuration file '
                              '%(file_path)s: %(exc)s'),
-                           {'file_path': configration_file, 'exc': exc})
+                           {'file_path': configuration_file, 'exc': exc})
 
 
 def parse_optional_create(argv):
