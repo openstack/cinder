@@ -316,7 +316,6 @@ class NaServer(object):
         ctx.verify_mode = ssl.CERT_NONE
         return urllib.request.HTTPSHandler(context=ctx)
 
-
     def __str__(self):
         return "server: %s" % self._host
 

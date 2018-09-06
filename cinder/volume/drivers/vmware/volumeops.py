@@ -1300,7 +1300,8 @@ class VMwareVolumeOps(object):
         disk_spec.operation = 'edit'
         disk_spec.device = disk_device
         disk_spec.device.capacityInKB = new_size_in_kb
-        disk_spec.device.capacityInBytes = disk_spec.device.capacityInKB * units.Ki
+        disk_spec.device.capacityInBytes =\
+            disk_spec.device.capacityInKB * units.Ki
         return disk_spec
 
     def detach_disk_from_backing(self, backing, disk_device):
