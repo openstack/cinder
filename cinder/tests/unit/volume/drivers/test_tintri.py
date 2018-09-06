@@ -22,11 +22,11 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import exception
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as cinder_utils
+from cinder.tests.unit.volume import test_driver
 from cinder.volume.drivers.tintri import TClient
 from cinder.volume.drivers.tintri import TintriDriver
 
@@ -42,12 +42,17 @@ class FakeImage(object):
 
 
 @ddt.ddt
-class TintriDriverTestCase(test.TestCase):
+class TintriDriverTestCase(test_driver.BaseDriverTestCase):
+
+    driver_name = 'cinder.volume.drivers.tintri.TintriDriver'
+
     def setUp(self):
         super(TintriDriverTestCase, self).setUp()
         self.context = context.get_admin_context()
-        kwargs = {'configuration': self.create_configuration()}
-        self._driver = TintriDriver(**kwargs)
+        self.configuration.nfs_mount_point_base = '/mnt/test'
+        self.configuration.nfs_mount_options = None
+        self.configuration.nas_mount_options = None
+        self._driver = TintriDriver(configuration=self.configuration)
         self._driver._hostname = 'host'
         self._driver._username = 'user'
         self._driver._password = 'password'
@@ -56,13 +61,6 @@ class TintriDriverTestCase(test.TestCase):
         self._provider_location = 'localhost:/share'
         self._driver._mounted_shares = [self._provider_location]
         self.fake_stubs()
-
-    def create_configuration(self):
-        configuration = mock.Mock()
-        configuration.nfs_mount_point_base = '/mnt/test'
-        configuration.nfs_mount_options = None
-        configuration.nas_mount_options = None
-        return configuration
 
     def fake_stubs(self):
         self.mock_object(TClient, 'login', self.fake_login)
