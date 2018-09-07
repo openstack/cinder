@@ -15,10 +15,10 @@
 
 import hashlib
 import json
+import math
 
 from oslo_log import log as logging
 from oslo_utils import strutils
-import retrying
 import six
 
 from cinder import context
@@ -26,6 +26,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
+from cinder import utils
 from cinder.volume.drivers.huawei import constants
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
@@ -65,17 +66,30 @@ def old_encode_host_name(name):
 
 
 def wait_for_condition(func, interval, timeout):
-    def _retry_on_result(result):
-        return not result
+    """Wait for ``func`` to return True.
 
-    def _retry_on_exception(result):
-        return False
+    This retries running func until it either returns True or raises an
+    exception.
+    :param func: The function to call.
+    :param interval: The interval to wait in seconds between calls.
+    :param timeout: The maximum time in seconds to wait.
+    """
+    if interval == 0:
+        interval = 1
+    if timeout == 0:
+        timeout = 1
 
-    r = retrying.Retrying(retry_on_result=_retry_on_result,
-                          retry_on_exception=_retry_on_exception,
-                          wait_fixed=interval * 1000,
-                          stop_max_delay=timeout * 1000)
-    r.call(func)
+    @utils.retry(exception.VolumeDriverException,
+                 interval=interval,
+                 backoff_rate=1,
+                 retries=(math.ceil(timeout / interval)))
+    def _retry_call():
+        result = func()
+        if not result:
+            raise exception.VolumeDriverException(
+                _('Timed out waiting for condition.'))
+
+    _retry_call()
 
 
 def _get_volume_type(volume):

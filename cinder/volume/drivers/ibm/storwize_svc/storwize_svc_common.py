@@ -31,7 +31,6 @@ from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import units
 import paramiko
-from retrying import retry
 import six
 
 from cinder import context
@@ -1208,15 +1207,15 @@ class StorwizeHelpers(object):
                       {'volume_name': volume_name, 'host_name': host_name})
             return int(result_lun)
 
-        def _retry_on_exception(e):
-            if hasattr(e, 'msg') and 'CMMVC5879E' in e.msg:
-                return True
-            return False
+        class _RetryableVolumeDriverException(
+                exception.VolumeBackendAPIException):
+            """Exception to identify which types of errors to retry."""
+            pass
 
-        @retry(retry_on_exception=_retry_on_exception,
-               stop_max_attempt_number=3,
-               wait_random_min=1,
-               wait_random_max=10)
+        @cinder_utils.retry(_RetryableVolumeDriverException,
+                            interval=2,
+                            retries=3,
+                            wait_random=True)
         def make_vdisk_host_map():
             try:
                 result_lun = self._get_unused_lun_id(host_name)
@@ -1233,6 +1232,8 @@ class StorwizeHelpers(object):
                         message=_('CMMVC6071E The VDisk-to-host mapping was '
                                   'not created because the VDisk is already '
                                   'mapped to a host.'))
+                if hasattr(ex, 'msg') and 'CMMVC5879E' in ex.msg:
+                    raise _RetryableVolumeDriverException(ex)
                 with excutils.save_and_reraise_exception():
                     LOG.error('Error mapping VDisk-to-host.')
 
