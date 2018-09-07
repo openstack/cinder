@@ -600,8 +600,7 @@ class ScaleIODriver(driver.VolumeDriver):
             provisioning = "ThickProvisioned"
 
         allowed = self._is_volume_creation_safe(protection_domain_name,
-                                                storage_pool_name,
-                                                provisioning)
+                                                storage_pool_name)
         if not allowed:
             # Do not allow thick volume creation on this backend.
             # Volumes may leak data between tenants.
