@@ -216,8 +216,13 @@ class NimbleBaseVolumeDriver(san.SanDriver):
         eventlet.sleep(DEFAULT_SLEEP)
         self.APIExecutor.online_vol(volume['name'], False)
         LOG.debug("Deleting volume %(vol)s", {'vol': volume['name']})
-        try:
+
+        @utils.retry(NimbleAPIException, retries=3)
+        def _retry_remove_vol(volume):
             self.APIExecutor.delete_vol(volume['name'])
+
+        try:
+            _retry_remove_vol(volume)
         except NimbleAPIException as ex:
             LOG.debug("delete volume exception: %s", ex)
             if SM_OBJ_HAS_CLONE in six.text_type(ex):
