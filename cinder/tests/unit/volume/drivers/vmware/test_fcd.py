@@ -44,8 +44,10 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
     IMG_TX_TIMEOUT = 10
     VMDK_DRIVER = vmdk.VMwareVcVmdkDriver
     FCD_DRIVER = fcd.VMwareVStorageObjectDriver
+    VC_VERSION = "6.7.0"
 
     VOL_ID = 'abcdefab-cdef-abcd-efab-cdefabcdefab'
+    SRC_VOL_ID = '9b3f6f1b-03a9-4f1e-aaff-ae15122b6ccf'
     DISPLAY_NAME = 'foo'
     VOL_TYPE_ID = 'd61b8cb3-aa1b-4c9b-b79e-abcdbda8b58a'
     VOL_SIZE = 2
@@ -62,6 +64,7 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         self._config.vmware_image_transfer_timeout_secs = self.IMG_TX_TIMEOUT
         self._driver = fcd.VMwareVStorageObjectDriver(
             configuration=self._config)
+        self._driver._vc_version = self.VC_VERSION
         self._context = context.get_admin_context()
 
     @mock.patch.object(VMDK_DRIVER, 'do_setup')
@@ -71,6 +74,7 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         vmdk_do_setup.assert_called_once_with(self._context)
         self.assertFalse(self._driver._storage_policy_enabled)
         vops.set_vmx_version.assert_called_once_with('vmx-13')
+        self.assertTrue(self._driver._use_fcd_snapshot)
 
     def test_get_volume_stats(self):
         stats = self._driver.get_volume_stats()
@@ -420,31 +424,86 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
 
     @mock.patch.object(FCD_DRIVER, '_select_ds_fcd')
     @mock.patch.object(FCD_DRIVER, '_clone_fcd')
-    def test_create_snapshot(self, clone_fcd, select_ds_fcd):
-        ds_ref = mock.sentinel.ds_ref
-        select_ds_fcd.return_value = ds_ref
+    @mock.patch.object(FCD_DRIVER, 'volumeops')
+    @mock.patch.object(volumeops.FcdLocation, 'from_provider_location')
+    def _test_create_snapshot(
+            self, from_provider_loc, vops, clone_fcd, select_ds_fcd,
+            use_fcd_snapshot=False):
+        self._driver._use_fcd_snapshot = use_fcd_snapshot
 
-        dest_fcd_loc = mock.Mock()
         provider_location = mock.sentinel.provider_location
-        dest_fcd_loc.provider_location.return_value = provider_location
-        clone_fcd.return_value = dest_fcd_loc
+        if use_fcd_snapshot:
+            fcd_loc = mock.sentinel.fcd_loc
+            from_provider_loc.return_value = fcd_loc
+
+            fcd_snap_loc = mock.Mock()
+            fcd_snap_loc.provider_location.return_value = provider_location
+            vops.create_fcd_snapshot.return_value = fcd_snap_loc
+        else:
+            ds_ref = mock.sentinel.ds_ref
+            select_ds_fcd.return_value = ds_ref
+
+            dest_fcd_loc = mock.Mock()
+            dest_fcd_loc.provider_location.return_value = provider_location
+            clone_fcd.return_value = dest_fcd_loc
 
         volume = self._create_volume_obj()
         snapshot = fake_snapshot.fake_snapshot_obj(
             self._context, volume=volume)
         ret = self._driver.create_snapshot(snapshot)
         self.assertEqual({'provider_location': provider_location}, ret)
-        select_ds_fcd.assert_called_once_with(snapshot.volume)
-        clone_fcd.assert_called_once_with(
-            volume.provider_location, snapshot.name, ds_ref)
+
+        if use_fcd_snapshot:
+            vops.create_fcd_snapshot.assert_called_once_with(
+                fcd_loc, description="snapshot-%s" % snapshot.id)
+        else:
+            select_ds_fcd.assert_called_once_with(snapshot.volume)
+            clone_fcd.assert_called_once_with(
+                volume.provider_location, snapshot.name, ds_ref)
+
+    def test_create_snapshot_legacy(self):
+        self._test_create_snapshot()
+
+    def test_create_snapshot(self):
+        self._test_create_snapshot(use_fcd_snapshot=True)
 
     @mock.patch.object(FCD_DRIVER, '_delete_fcd')
-    def test_delete_snapshot(self, delete_fcd):
+    @mock.patch.object(volumeops.FcdSnapshotLocation, 'from_provider_location')
+    @mock.patch.object(FCD_DRIVER, 'volumeops')
+    def _test_delete_snapshot(
+            self, vops, from_provider_loc, delete_fcd,
+            empty_provider_loc=False, use_fcd_snapshot=False):
         volume = self._create_volume_obj()
         snapshot = fake_snapshot.fake_snapshot_obj(
             self._context, volume=volume)
+
+        if empty_provider_loc:
+            snapshot.provider_location = None
+        else:
+            snapshot.provider_location = "test"
+            if use_fcd_snapshot:
+                fcd_snap_loc = mock.sentinel.fcd_snap_loc
+                from_provider_loc.return_value = fcd_snap_loc
+            else:
+                from_provider_loc.return_value = None
+
         self._driver.delete_snapshot(snapshot)
-        delete_fcd.assert_called_once_with(snapshot.provider_location)
+        if empty_provider_loc:
+            delete_fcd.assert_not_called()
+            vops.delete_fcd_snapshot.assert_not_called()
+        elif use_fcd_snapshot:
+            vops.delete_fcd_snapshot.assert_called_once_with(fcd_snap_loc)
+        else:
+            delete_fcd.assert_called_once_with(snapshot.provider_location)
+
+    def test_delete_snapshot_legacy(self):
+        self._test_delete_snapshot()
+
+    def test_delete_snapshot_with_empty_provider_loc(self):
+        self._test_delete_snapshot(empty_provider_loc=True)
+
+    def test_delete_snapshot(self):
+        self._test_delete_snapshot(use_fcd_snapshot=True)
 
     @mock.patch.object(FCD_DRIVER, 'volumeops')
     @ddt.data((1, 1), (1, 2))
@@ -489,14 +548,44 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
             cloned_fcd_loc, cur_size, volume.size)
 
     @mock.patch.object(FCD_DRIVER, '_create_volume_from_fcd')
-    def test_create_volume_from_snapshot(self, create_volume_from_fcd):
-        src_volume = self._create_volume_obj()
+    @mock.patch.object(volumeops.FcdSnapshotLocation, 'from_provider_location')
+    @mock.patch.object(FCD_DRIVER, 'volumeops')
+    @mock.patch.object(FCD_DRIVER, '_extend_if_needed')
+    def _test_create_volume_from_snapshot(
+            self, extend_if_needed, vops, from_provider_loc,
+            create_volume_from_fcd, use_fcd_snapshot=False):
+        src_volume = self._create_volume_obj(vol_id=self.SRC_VOL_ID)
         snapshot = fake_snapshot.fake_snapshot_obj(
             self._context, volume=src_volume)
-        volume = mock.sentinel.volume
-        self._driver.create_volume_from_snapshot(volume, snapshot)
-        create_volume_from_fcd.assert_called_once_with(
-            snapshot.provider_location, snapshot.volume.size, volume)
+        volume = self._create_volume_obj(size=self.VOL_SIZE + 1)
+
+        if use_fcd_snapshot:
+            fcd_snap_loc = mock.sentinel.fcd_snap_loc
+            from_provider_loc.return_value = fcd_snap_loc
+
+            fcd_loc = mock.Mock()
+            provider_loc = mock.sentinel.provider_loc
+            fcd_loc.provider_location.return_value = provider_loc
+            vops.create_fcd_from_snapshot.return_value = fcd_loc
+        else:
+            from_provider_loc.return_value = None
+
+        ret = self._driver.create_volume_from_snapshot(volume, snapshot)
+        if use_fcd_snapshot:
+            self.assertEqual({'provider_location': provider_loc}, ret)
+            vops.create_fcd_from_snapshot.assert_called_once_with(
+                fcd_snap_loc, volume.name)
+            extend_if_needed.assert_called_once_with(
+                fcd_loc, snapshot.volume_size, volume.size)
+        else:
+            create_volume_from_fcd.assert_called_once_with(
+                snapshot.provider_location, snapshot.volume.size, volume)
+
+    def test_create_volume_from_snapshot_legacy(self):
+        self._test_create_volume_from_snapshot()
+
+    def test_create_volume_from_snapshot(self):
+        self._test_create_volume_from_snapshot(use_fcd_snapshot=True)
 
     @mock.patch.object(FCD_DRIVER, '_create_volume_from_fcd')
     def test_create_cloned_volume(self, create_volume_from_fcd):

@@ -2085,7 +2085,7 @@ class VolumeOpsTestCase(test.TestCase):
         fcd_location = mock.Mock()
         fcd_id = mock.sentinel.fcd_id
         fcd_location.id.return_value = fcd_id
-        ds_ref = mock.sentinel.ds_ref
+        ds_ref = mock.Mock()
         fcd_location.ds_ref.return_value = ds_ref
         self.vops.attach_fcd(backing, fcd_location)
 
@@ -2118,6 +2118,92 @@ class VolumeOpsTestCase(test.TestCase):
             'DetachDisk_Task',
             backing,
             diskId=fcd_id)
+        self.session.wait_for_task.assert_called_once_with(task)
+
+    def test_create_fcd_snapshot(self):
+        task = mock.sentinel.task
+        self.session.invoke_api.return_value = task
+
+        task_info = mock.Mock()
+        fcd_snap_id = mock.sentinel.fcd_snap_id
+        task_info.result.id = fcd_snap_id
+        self.session.wait_for_task.return_value = task_info
+
+        fcd_location = mock.Mock()
+        fcd_id = mock.sentinel.fcd_id
+        fcd_location.id.return_value = fcd_id
+        ds_ref = mock.Mock()
+        fcd_location.ds_ref.return_value = ds_ref
+
+        description = mock.sentinel.description
+        ret = self.vops.create_fcd_snapshot(fcd_location, description)
+
+        self.assertEqual(fcd_snap_id, ret.snap_id)
+        self.assertEqual(fcd_location, ret.fcd_loc)
+        self.session.invoke_api.assert_called_once_with(
+            self.session.vim,
+            'VStorageObjectCreateSnapshot_Task',
+            self.session.vim.service_content.vStorageObjectManager,
+            id=fcd_id,
+            datastore=ds_ref,
+            description=description)
+        self.session.wait_for_task.assert_called_once_with(task)
+
+    def test_delete_fcd_snapshot(self):
+        task = mock.sentinel.task
+        self.session.invoke_api.return_value = task
+
+        fcd_location = mock.Mock()
+        fcd_id = mock.sentinel.fcd_id
+        fcd_location.id.return_value = fcd_id
+        ds_ref = mock.Mock()
+        fcd_location.ds_ref.return_value = ds_ref
+        fcd_snap_id = mock.sentinel.fcd_snap_id
+        fcd_snap_loc = mock.Mock(fcd_loc=fcd_location)
+        fcd_snap_loc.id.return_value = fcd_snap_id
+
+        self.vops.delete_fcd_snapshot(fcd_snap_loc)
+        self.session.invoke_api.assert_called_once_with(
+            self.session.vim,
+            'DeleteSnapshot_Task',
+            self.session.vim.service_content.vStorageObjectManager,
+            id=fcd_id,
+            datastore=ds_ref,
+            snapshotId=fcd_snap_id)
+        self.session.wait_for_task(task)
+
+    def test_create_fcd_from_snapshot(self):
+        task = mock.sentinel.task
+        self.session.invoke_api.return_value = task
+
+        task_info = mock.Mock()
+        fcd_id = mock.sentinel.fcd_id
+        task_info.result.config.id.id = fcd_id
+        self.session.wait_for_task.return_value = task_info
+
+        fcd_location = mock.Mock()
+        fcd_id = mock.sentinel.fcd_id
+        fcd_location.id.return_value = fcd_id
+        ds_ref_val = mock.sentinel.ds_ref_val
+        ds_ref = mock.Mock(value=ds_ref_val)
+        fcd_location.ds_ref.return_value = ds_ref
+        fcd_snap_id = mock.sentinel.fcd_snap_id
+        fcd_snap_loc = mock.Mock(fcd_loc=fcd_location)
+        fcd_snap_loc.id.return_value = fcd_snap_id
+
+        name = mock.sentinel.name
+        ret = self.vops.create_fcd_from_snapshot(fcd_snap_loc, name)
+
+        self.assertEqual(fcd_id, ret.fcd_id)
+        self.assertEqual(ds_ref_val, ret.ds_ref_val)
+        self.session.invoke_api.assert_called_once_with(
+            self.session.vim,
+            'CreateDiskFromSnapshot_Task',
+            self.session.vim.service_content.vStorageObjectManager,
+            id=fcd_id,
+            datastore=ds_ref,
+            snapshotId=fcd_snap_id,
+            name=name)
         self.session.wait_for_task.assert_called_once_with(task)
 
 

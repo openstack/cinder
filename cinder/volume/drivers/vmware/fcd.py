@@ -22,6 +22,7 @@ driver requires a minimum vCenter version of 6.5.
 
 from oslo_log import log as logging
 from oslo_utils import units
+from oslo_utils import versionutils
 from oslo_vmware import image_transfer
 from oslo_vmware.objects import datastore
 from oslo_vmware import vim_util
@@ -42,7 +43,8 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
     """Volume driver based on VMware VStorageObject"""
 
     # 1.0 - initial version based on vSphere 6.5 vStorageObject APIs
-    VERSION = '1.0.0'
+    # 1.1 - support for vStorageObject snapshot APIs
+    VERSION = '1.1.0'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
@@ -60,6 +62,8 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         super(VMwareVStorageObjectDriver, self).do_setup(context)
         self._storage_policy_enabled = False
         self.volumeops.set_vmx_version('vmx-13')
+        self._use_fcd_snapshot = versionutils.is_compatible(
+            '6.7.0', self._vc_version, same_major=False)
 
     def get_volume_stats(self, refresh=False):
         """Collects volume backend stats.
@@ -269,6 +273,14 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
         :param snapshot: Information for the snapshot to be created.
         """
+        if self._use_fcd_snapshot:
+            fcd_loc = vops.FcdLocation.from_provider_location(
+                snapshot.volume.provider_location)
+            description = "snapshot-%s" % snapshot.id
+            fcd_snap_loc = self.volumeops.create_fcd_snapshot(
+                fcd_loc, description=description)
+            return {'provider_location': fcd_snap_loc.provider_location()}
+
         ds_ref = self._select_ds_fcd(snapshot.volume)
         cloned_fcd_loc = self._clone_fcd(
             snapshot.volume.provider_location, snapshot.name, ds_ref)
@@ -279,7 +291,16 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
         :param snapshot: The snapshot to delete.
         """
-        self._delete_fcd(snapshot.provider_location)
+        if not snapshot.provider_location:
+            LOG.debug("FCD snapshot location is empty.")
+            return
+
+        fcd_snap_loc = vops.FcdSnapshotLocation.from_provider_location(
+            snapshot.provider_location)
+        if fcd_snap_loc:
+            self.volumeops.delete_fcd_snapshot(fcd_snap_loc)
+        else:
+            self._delete_fcd(snapshot.provider_location)
 
     def _extend_if_needed(self, fcd_loc, cur_size, new_size):
         if new_size > cur_size:
@@ -300,8 +321,16 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         :param snapshot: The snapshot from which to create the volume.
         :returns: A dict of database updates for the new volume.
         """
-        return self._create_volume_from_fcd(
-            snapshot.provider_location, snapshot.volume.size, volume)
+        fcd_snap_loc = vops.FcdSnapshotLocation.from_provider_location(
+            snapshot.provider_location)
+        if fcd_snap_loc:
+            fcd_loc = self.volumeops.create_fcd_from_snapshot(
+                fcd_snap_loc, volume.name)
+            self._extend_if_needed(fcd_loc, snapshot.volume_size, volume.size)
+            return {'provider_location': fcd_loc.provider_location()}
+        else:
+            return self._create_volume_from_fcd(snapshot.provider_location,
+                                                snapshot.volume.size, volume)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume.
