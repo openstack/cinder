@@ -2,6 +2,7 @@
     templates:
       - openstack-python-jobs
       - openstack-python35-jobs
+      - openstack-python36-jobs
       - publish-openstack-docs-pti
       - periodic-stable-jobs
       - check-requirements
@@ -180,10 +181,6 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
-        # TODO(mordred) fix this better
-        # - openstack-tox-pep8:
-        #     nodeset: ubuntu-trusty
-        #     branches: ^(?!driverfixes/mitaka).*$
         - neutron-grenade:
             irrelevant-files:
               - ^(test-|)requirements.txt$
