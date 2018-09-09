@@ -1,4 +1,13 @@
 - project:
+    templates:
+      - openstack-python-jobs
+      - openstack-python35-jobs
+      - publish-openstack-sphinx-docs
+      - periodic-stable-jobs
+      - check-requirements
+      - integrated-gate
+      - integrated-gate-py35
+      - release-notes-jobs
     check:
       jobs:
         - cinder-tempest-dsvm-lvm-lio-barbican:
@@ -7,11 +16,302 @@
         - cinder-tox-bandit-baseline:
             voting: false
         - nova-multiattach
+        - openstack-tox-pylint:
+            voting: false
+            timeout: 5400
+            irrelevant-files:
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+        - legacy-tempest-dsvm-full-devstack-plugin-ceph:
+            voting: false
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - openstack-tox-functional:
+            voting: false
+            irrelevant-files:
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+        - legacy-grenade-dsvm-cinder-mn-sub-volbak:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - legacy-tempest-dsvm-lvm-multibackend:
+            voting: false
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - legacy-tempest-dsvm-full-drbd-devstack:
+            voting: false
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - legacy-tempest-dsvm-full-devstack-plugin-nfs:
+            voting: false
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        # TODO(mordred) fix this better
+        # - openstack-tox-pep8:
+        #     nodeset: ubuntu-trusty
+        #     branches: ^(?!driverfixes/mitaka).*$
+        - neutron-grenade:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
     gate:
       jobs:
         - cinder-tox-compliance
         - nova-multiattach
 
+        - legacy-grenade-dsvm-cinder-mn-sub-volbak:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - neutron-grenade:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+    experimental:
+      jobs:
+        - legacy-tempest-dsvm-full-sheepdog-src-os-brick:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - legacy-tempest-dsvm-zeromq-multibackend:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - legacy-tempest-dsvm-multibackend-matrix:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - legacy-grenade-dsvm-cinder-mn-sub-volschbak:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - legacy-grenade-dsvm-cinder-mn-sub-bak:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - legacy-tempest-dsvm-py35-full-devstack-plugin-ceph:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - legacy-tempest-dsvm-neutron-pg-full:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - legacy-tempest-dsvm-neutron-full-opensuse-423:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - legacy-tempest-dsvm-full-sheepdog:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+    post:
+      jobs:
+        - publish-loci-cinder
 - job:
     # Previously named legacy-tempest-dsvm-full-lio
     name: cinder-tempest-dsvm-lvm-lio-barbican
