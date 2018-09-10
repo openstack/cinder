@@ -2374,7 +2374,7 @@ class RestClient(object):
         result = self.call(url, None, "GET", log_filter_flag=True)
 
         if result['error']['code'] != 0:
-            raise
+            raise Exception(_('Failed to get object count.'))
 
         if result.get("data"):
             return result.get("data").get("COUNT")

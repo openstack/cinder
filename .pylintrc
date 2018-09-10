@@ -80,7 +80,6 @@ disable=
  keyword-arg-before-vararg,
  too-many-function-args,
  unsupported-assignment-operation,
- misplaced-bare-raise,
  not-an-iterable,
  unsupported-membership-test,
  unsupported-assignment-operation,

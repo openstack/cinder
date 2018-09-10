@@ -348,7 +348,7 @@ class NaElement(object):
         if isinstance(na_element, NaElement):
             self._element.append(na_element._element)
             return
-        raise
+        raise Exception(_('Failed to add child element.'))
 
     def get_child_by_name(self, name):
         """Get the child element by the tag name."""
