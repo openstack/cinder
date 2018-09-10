@@ -28,7 +28,7 @@
               - ^contrib/block-box.*$
               - ^doc/.*$
               - ^releasenotes/.*$
-        - legacy-tempest-dsvm-full-devstack-plugin-ceph:
+        - devstack-plugin-ceph-tempest:
             voting: false
             irrelevant-files:
               - ^(test-|)requirements.txt$
@@ -249,7 +249,7 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
-        - legacy-tempest-dsvm-py35-full-devstack-plugin-ceph:
+        - devstack-plugin-ceph-tempest-py3:
             irrelevant-files:
               - ^(test-|)requirements.txt$
               - ^.*\.rst$
