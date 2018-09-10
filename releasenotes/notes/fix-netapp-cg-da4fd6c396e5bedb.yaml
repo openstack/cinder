@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixes a bug in NetApp SolidFire where the deletion of group snapshots
+    was failing.
