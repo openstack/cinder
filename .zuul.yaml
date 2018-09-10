@@ -22,7 +22,7 @@
               - ^contrib/block-box.*$
               - ^doc/.*$
               - ^releasenotes/.*$
-        - legacy-tempest-dsvm-full-devstack-plugin-ceph:
+        - devstack-plugin-ceph-tempest:
             voting: false
             irrelevant-files:
               - ^(test-|)requirements.txt$
