@@ -675,7 +675,7 @@ class DateraApi(object):
         TIMEOUT = 10
         retry = 0
         poll = True
-        while poll and not retry >= TIMEOUT:
+        while poll and retry < TIMEOUT:
             retry += 1
             snap = self._issue_api_request(url, api_version='2')
             if snap['op_state'] == 'available':
@@ -695,7 +695,7 @@ class DateraApi(object):
             policies['default_storage_name']).format(
                 datc._get_name(volume['id']))
         poll = True
-        while poll and not retry >= TIMEOUT:
+        while poll and retry < TIMEOUT:
             retry += 1
             si = self._issue_api_request(check_url, api_version='2')
             if si['op_state'] == 'available':

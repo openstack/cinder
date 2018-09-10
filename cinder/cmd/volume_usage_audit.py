@@ -81,7 +81,7 @@ def _time_error(LOG, begin, end):
                                          "%Y-%m-%d %H:%M:%S")
     begin = begin.replace(tzinfo=iso8601.UTC)
     end = end.replace(tzinfo=iso8601.UTC)
-    if not end > begin:
+    if end <= begin:
         msg = _("The end time (%(end)s) must be after the start "
                 "time (%(start)s).") % {'start': begin,
                                         'end': end}

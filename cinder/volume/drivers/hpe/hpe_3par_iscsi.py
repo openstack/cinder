@@ -199,7 +199,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
                         "target_ip_address '%s.'",
                         (", ".join(temp_iscsi_ip)))
 
-        if not len(iscsi_ip_list) > 0:
+        if not len(iscsi_ip_list):
             msg = _('At least one valid iSCSI IP address must be set.')
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
