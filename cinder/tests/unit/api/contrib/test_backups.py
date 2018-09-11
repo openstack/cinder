@@ -1441,6 +1441,27 @@ class BackupsAPITestCase(test.TestCase):
 
         backup.destroy()
 
+    @mock.patch('cinder.backup.manager.BackupManager.is_working')
+    @mock.patch('cinder.db.service_get_all')
+    def test_delete_backup_service_is_none_and_is_not_working(
+            self, _mock_service_get_all, _mock_backup_is_working):
+        _mock_service_get_all.return_value = [
+            {'availability_zone': 'az1', 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow(),
+             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
+        _mock_backup_is_working.return_value = False
+        backup = utils.create_backup(self.context,
+                                     status=fields.BackupStatus.AVAILABLE,
+                                     availability_zone='az1', host='testhost',
+                                     service=None)
+        req = webob.Request.blank('/v2/%s/backups/%s' % (
+                                  fake.PROJECT_ID, backup.id))
+        req.method = 'DELETE'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_context))
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
+
     @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
     def test_restore_backup_volume_id_specified_json(
             self, _mock_get_backup_host):
