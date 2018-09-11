@@ -40,6 +40,9 @@ class ScaleIODriver(driver.ScaleIODriver):
     def unmanage(self, volume):
         pass
 
+    def _is_volume_creation_safe(self, _pd, _sp):
+        return True
+
 
 class MockHTTPSResponse(requests.Response):
     """Mock HTTP Response
