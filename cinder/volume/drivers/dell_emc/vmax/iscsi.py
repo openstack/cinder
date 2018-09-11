@@ -98,6 +98,8 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         backport from 3.2.0
               - Fix for SSL verification/cert application (bug #1772924)
               - Incorrect condition for an empty list (bug #1787219)
+              - Deleting snapshot that is source of multiple volumes fails
+                (bug #1768047)
     """
 
     VERSION = "3.1.0"
