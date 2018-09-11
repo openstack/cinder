@@ -711,12 +711,14 @@ class VMAXRest(object):
         volume_dict = {'array': array, 'device_id': device_id}
         return volume_dict
 
-    def check_volume_device_id(self, array, device_id, volume_id):
+    def check_volume_device_id(self, array, device_id, volume_id,
+                               name_id=None):
         """Check if the identifiers match for a given volume.
 
         :param array: the array serial number
         :param device_id: the device id
         :param volume_id: cinder volume id
+        :param name_id: name id - used in host_assisted migration, optional
         :returns: found_device_id
         """
         element_name = self.utils.get_volume_element_name(volume_id)
@@ -730,6 +732,11 @@ class VMAXRest(object):
                        'di': device_id, 'vd': vol_details})
             if vol_identifier == element_name:
                 found_device_id = device_id
+            elif name_id:
+                # This may be host-assisted migration case
+                element_name = self.utils.get_volume_element_name(name_id)
+                if vol_identifier == element_name:
+                    found_device_id = device_id
         return found_device_id
 
     def add_vol_to_sg(self, array, storagegroup_name, device_id, extra_specs):
