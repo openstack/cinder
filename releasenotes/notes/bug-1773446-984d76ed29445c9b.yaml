@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed group availability zone-backend host mismatch
+    [`Bug 1773446 <https://bugs.launchpad.net/cinder/+bug/1773446>`_].
