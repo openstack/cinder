@@ -61,6 +61,12 @@ Create volume transfer
 
 Creates a volume transfer.
 
+**Preconditions**
+
+* The volume ``status`` must be ``available``
+* Transferring encrypted volumes is not supported
+* If the volume has snapshots, those snapshots must be ``available``
+
 Response codes
 --------------
 
