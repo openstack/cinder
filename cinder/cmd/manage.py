@@ -259,6 +259,9 @@ class HostCommands(object):
 class DbCommands(object):
     """Class for managing the database."""
 
+    # NOTE: Online migrations cannot depend on having Cinder services running.
+    # Migrations can be called during Fast-Forward Upgrades without having any
+    # Cinder services up.
     online_migrations = (
         # Added in Queens
         db.service_uuids_online_data_migration,
