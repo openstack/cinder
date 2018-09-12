@@ -244,9 +244,9 @@ To create a volume type that specifies replication to remote back ends with asyn
 The following table contains the optional configuration parameters available
 for async replication configuration with the Pure Storage array.
 
-==================================================== ============= ======
+==================================================== ============= ================
 Option                                               Description   Default
-==================================================== ============= ======
+==================================================== ============= ================
 ``pure_replica_interval_default``                    Snapshot
                                                      replication
                                                      interval in
@@ -267,8 +267,25 @@ Option                                               Description   Default
                                                      on target
                                                      for this
                                                      time (in
-                                                     days).         ``7``
-==================================================== ============= ======
+                                                     days).        ``7``
+``pure_replication_pg_name``                         Pure
+                                                     Protection
+                                                     Group name to
+                                                     use for async
+                                                     replication
+                                                     (will be
+                                                     created if
+                                                     it does not
+                                                     exist).       ``cinder-group``
+``pure_replication_pod_name``                        Pure Pod name
+                                                     to use for
+                                                     sync
+                                                     replication
+                                                     (will be
+                                                     created if
+                                                     it does not
+                                                     exist).       ``cinder-pod``
+==================================================== ============= ================
 
 
 .. note::
@@ -276,6 +293,12 @@ Option                                               Description   Default
    ``failover-host`` is only supported from the primary array to any of the
    multiple secondary arrays, but subsequent ``failover-host`` is only
    supported back to the original primary array.
+
+.. note::
+
+   ``pure_replication_pg_name`` and ``pure_replication_pod_name`` should not
+   be changed after volumes have been created in the Cinder backend, as this
+   could have unexpected results in both replication and failover.
 
 Automatic thin-provisioning/oversubscription ratio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

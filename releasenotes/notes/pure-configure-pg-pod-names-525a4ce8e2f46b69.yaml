@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Pure Storage FlashArray driver has added configuration options
+    ``pure_replication_pg_name`` and ``pure_replication_pod_name`` for setting
+    the names for replication PGs and Pods.

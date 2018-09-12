@@ -538,6 +538,8 @@ class PureBaseSharedDriverTestCase(PureDriverTestCase):
         super(PureBaseSharedDriverTestCase, self).setUp()
         self.driver = pure.PureBaseVolumeDriver(configuration=self.mock_config)
         self.driver._array = self.array
+        self.driver._replication_pod_name = 'cinder-pod'
+        self.driver._replication_pg_name = 'cinder-group'
         self.array.get_rest_version.return_value = '1.4'
         self.purestorage_module.FlashArray.side_effect = None
         self.async_array2.get_rest_version.return_value = '1.4'
@@ -603,6 +605,9 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             REPLICATION_RETENTION_LONG_TERM)
         self.mock_config.pure_replica_retention_long_term_default = (
             REPLICATION_RETENTION_LONG_TERM_PER_DAY)
+
+        self.mock_config.pure_replication_pg_name = 'cinder-group'
+        self.mock_config.pure_replication_pod_name = 'cinder-pod'
         self.mock_config.safe_get.return_value = [
             {"backend_id": self.driver._array.array_id,
              "managed_backend_name": None,
@@ -2455,12 +2460,12 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assertEqual(expected_model_update, model_update)
         if expected_add_to_group:
             self.array.set_pgroup.assert_called_once_with(
-                pure.REPLICATION_CG_NAME,
+                self.driver._replication_pg_name,
                 addvollist=[vol_name]
             )
         if expected_remove_from_pgroup:
             self.array.set_pgroup.assert_called_once_with(
-                pure.REPLICATION_CG_NAME,
+                self.driver._replication_pg_name,
                 remvollist=[vol_name]
             )
 
