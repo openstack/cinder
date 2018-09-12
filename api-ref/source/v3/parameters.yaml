@@ -1935,7 +1935,7 @@ new_type:
   type: string
 no_snapshots:
   description: |
-    Transfer volume without snapshots.
+    Transfer volume without snapshots. Defaults to False if not specified.
   in: body
   required: false
   min_version: 3.55
