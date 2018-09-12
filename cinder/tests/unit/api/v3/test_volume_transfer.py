@@ -16,6 +16,7 @@
 """
 Tests for volume transfer code.
 """
+import ddt
 
 from oslo_serialization import jsonutils
 from six.moves import http_client
@@ -23,6 +24,7 @@ import webob
 
 from cinder.api.contrib import volume_transfer
 from cinder.api import microversions as mv
+from cinder.api.v3 import volume_transfer as volume_transfer_v3
 from cinder import context
 from cinder import db
 from cinder.objects import fields
@@ -32,6 +34,7 @@ from cinder.tests.unit import fake_constants as fake
 import cinder.transfer
 
 
+@ddt.ddt
 class VolumeTransferAPITestCase(test.TestCase):
     """Test Case for transfers V3 API."""
 
@@ -44,6 +47,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         super(VolumeTransferAPITestCase, self).setUp()
         self.volume_transfer_api = cinder.transfer.API()
         self.controller = volume_transfer.VolumeTransferController()
+        self.v3_controller = volume_transfer_v3.VolumeTransferController()
         self.user_ctxt = context.RequestContext(
             fake.USER_ID, fake.PROJECT_ID, auth_token=True, is_admin=True)
 
@@ -127,6 +131,55 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(self.SUMMARY_LEN, len(res_dict['transfers'][1]))
         self.assertEqual(transfer2['id'], res_dict['transfers'][1]['id'])
         self.assertEqual('test_transfer', res_dict['transfers'][1]['name'])
+
+    def test_list_transfers_with_limit(self):
+        volume_id_1 = self._create_volume(size=5)
+        volume_id_2 = self._create_volume(size=5)
+        self._create_transfer(volume_id_1)
+        self._create_transfer(volume_id_2)
+        url = '/v3/%s/volume-transfers?limit=1' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url,
+                                      version=mv.SUPPORT_TRANSFER_PAGINATION,
+                                      use_admin_context=True)
+        res_dict = self.v3_controller.index(req)
+
+        self.assertEqual(1, len(res_dict['transfers']))
+
+    def test_list_transfers_with_marker(self):
+        volume_id_1 = self._create_volume(size=5)
+        volume_id_2 = self._create_volume(size=5)
+        transfer1 = self._create_transfer(volume_id_1)
+        transfer2 = self._create_transfer(volume_id_2)
+        url = '/v3/%s/volume-transfers?marker=%s' % (fake.PROJECT_ID,
+                                                     transfer2['id'])
+        req = fakes.HTTPRequest.blank(url,
+                                      version=mv.SUPPORT_TRANSFER_PAGINATION,
+                                      use_admin_context=True)
+        res_dict = self.v3_controller.index(req)
+
+        self.assertEqual(1, len(res_dict['transfers']))
+        self.assertEqual(transfer1['id'],
+                         res_dict['transfers'][0]['id'])
+
+    @ddt.data("desc", "asc")
+    def test_list_transfers_with_sort(self, sort_dir):
+        volume_id_1 = self._create_volume(size=5)
+        volume_id_2 = self._create_volume(size=5)
+        transfer1 = self._create_transfer(volume_id_1)
+        transfer2 = self._create_transfer(volume_id_2)
+        url = '/v3/%s/volume-transfers?sort_key=id&sort_dir=%s' % (
+            fake.PROJECT_ID, sort_dir)
+        req = fakes.HTTPRequest.blank(url,
+                                      version=mv.SUPPORT_TRANSFER_PAGINATION,
+                                      use_admin_context=True)
+        res_dict = self.v3_controller.index(req)
+
+        self.assertEqual(2, len(res_dict['transfers']))
+        order_ids = sorted([transfer1['id'],
+                            transfer2['id']])
+        expect_result = order_ids[1] if sort_dir == "desc" else order_ids[0]
+        self.assertEqual(expect_result,
+                         res_dict['transfers'][0]['id'])
 
     def test_list_transfers_detail(self):
         volume_id_1 = self._create_volume(size=5)

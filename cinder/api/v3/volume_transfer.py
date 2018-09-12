@@ -17,6 +17,7 @@ from oslo_utils import strutils
 from six.moves import http_client
 from webob import exc
 
+from cinder.api import common
 from cinder.api.contrib import volume_transfer as volume_transfer_v2
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
@@ -29,6 +30,49 @@ LOG = logging.getLogger(__name__)
 
 class VolumeTransferController(volume_transfer_v2.VolumeTransferController):
     """The transfer API controller for the OpenStack API V3."""
+
+    def _get_transfers(self, req, is_detail):
+        """Returns a list of transfers, transformed through view builder."""
+        context = req.environ['cinder.context']
+        req_version = req.api_version_request
+        params = req.params.copy()
+        marker = limit = offset = None
+        if req_version.matches(mv.SUPPORT_TRANSFER_PAGINATION):
+            marker, limit, offset = common.get_pagination_params(params)
+            sort_keys, sort_dirs = common.get_sort_params(params)
+        else:
+            # NOTE(yikun): After microversion SUPPORT_TRANSFER_PAGINATION,
+            # transfers list api use the ['created_at'], ['asc']
+            # as default order, but we should keep the compatible in here.
+            sort_keys, sort_dirs = ['created_at', 'id'], ['asc', 'asc']
+        filters = params
+        LOG.debug('Listing volume transfers')
+
+        transfers = self.transfer_api.get_all(context, marker=marker,
+                                              limit=limit,
+                                              sort_keys=sort_keys,
+                                              sort_dirs=sort_dirs,
+                                              filters=filters,
+                                              offset=offset)
+        transfer_count = len(transfers)
+        limited_list = common.limited(transfers, req)
+
+        if is_detail:
+            transfers = self._view_builder.detail_list(req, limited_list,
+                                                       transfer_count)
+        else:
+            transfers = self._view_builder.summary_list(req, limited_list,
+                                                        transfer_count)
+
+        return transfers
+
+    def index(self, req):
+        """Returns a summary list of transfers."""
+        return self._get_transfers(req, is_detail=False)
+
+    def detail(self, req):
+        """Returns a detailed list of transfers."""
+        return self._get_transfers(req, is_detail=True)
 
     @wsgi.response(http_client.ACCEPTED)
     @validation.schema(volume_transfer.create, mv.BASE_VERSION,

@@ -61,7 +61,9 @@ class VolumeTransferController(wsgi.Controller):
         context = req.environ['cinder.context']
         filters = req.params.copy()
         LOG.debug('Listing volume transfers')
-        transfers = self.transfer_api.get_all(context, filters=filters)
+        transfers = self.transfer_api.get_all(context, filters=filters,
+                                              sort_keys=['created_at', 'id'],
+                                              sort_dirs=['asc', 'asc'])
         transfer_count = len(transfers)
         limited_list = common.limited(transfers, req)
 

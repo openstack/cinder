@@ -457,3 +457,8 @@ related api (create/show/list detail transfer APIs) responses.
 ----
 Add ``project_id`` attribute to response body of list groups with detail and show
 group detail APIs.
+
+3.59
+----
+Support volume transfer pagination.
+

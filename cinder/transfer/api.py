@@ -79,14 +79,24 @@ class API(base.Base):
         volume_utils.notify_about_volume_usage(context, volume_ref,
                                                "transfer.delete.end")
 
-    def get_all(self, context, filters=None):
+    def get_all(self, context, marker=None,
+                limit=None, sort_keys=None,
+                sort_dirs=None, filters=None, offset=None):
         filters = filters or {}
         context.authorize(policy.GET_ALL_POLICY)
         if context.is_admin and 'all_tenants' in filters:
-            transfers = self.db.transfer_get_all(context)
+            del filters['all_tenants']
+            transfers = self.db.transfer_get_all(context, marker=marker,
+                                                 limit=limit,
+                                                 sort_keys=sort_keys,
+                                                 sort_dirs=sort_dirs,
+                                                 filters=filters,
+                                                 offset=offset)
         else:
-            transfers = self.db.transfer_get_all_by_project(context,
-                                                            context.project_id)
+            transfers = self.db.transfer_get_all_by_project(
+                context, context.project_id, marker=marker,
+                limit=limit, sort_keys=sort_keys, sort_dirs=sort_dirs,
+                filters=filters, offset=offset)
         return transfers
 
     def _get_random_string(self, length):
