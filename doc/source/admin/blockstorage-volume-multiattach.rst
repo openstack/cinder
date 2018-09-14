@@ -105,8 +105,8 @@ the chosen back end which is indicated through capabilities in the
 corresponding volume driver.
 
 The reference implementation is available on LVM in the Queens release. You can
-check the `Driver Support Matrix`_ for further information on which back end
-provides the functionality.
+check the :ref:`Driver Support Matrix <driver_support_matrix>` for further
+information on which back end provides the functionality.
 
 Policy rules
 ~~~~~~~~~~~~
@@ -145,4 +145,3 @@ Known issues and limitations
 .. _`Nova`: https://specs.openstack.org/openstack/nova-specs/specs/queens/approved/cinder-volume-multi-attach.html
 .. _`new Attach/Detach APIs were added to Cinder`: http://specs.openstack.org/openstack/cinder-specs/specs/ocata/add-new-attach-apis.html
 .. _`Cinder's specs list`: https://specs.openstack.org/openstack/cinder-specs/index.html
-.. _`Driver Support Matrix`: https://wiki.openstack.org/wiki/CinderSupportMatrix
