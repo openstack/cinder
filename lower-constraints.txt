@@ -131,7 +131,6 @@ rfc3986==1.1.0
 Routes==2.3.1
 rsa==3.4.2
 rtslib-fb==2.1.65
-simplejson==3.5.1
 six==1.10.0
 smmap2==2.0.3
 snowballstemmer==1.2.1
