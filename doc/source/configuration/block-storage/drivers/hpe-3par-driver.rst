@@ -1,5 +1,5 @@
 ========================================
-HPE 3PAR Fibre Channel and iSCSI drivers
+HPE 3PAR Driver for OpenStack Cinder
 ========================================
 
 The ``HPE3PARFCDriver`` and ``HPE3PARISCSIDriver`` drivers, which are based on
@@ -8,8 +8,8 @@ by communicating with the HPE 3PAR storage system over HTTP, HTTPS, and SSH
 connections. The HTTP and HTTPS communications use ``python-3parclient``,
 which is part of the Python standard library.
 
-For information about how to manage HPE 3PAR storage systems, see the HPE 3PAR
-user documentation.
+For information on HPE 3PAR Driver for OpenStack Cinder, refer to
+`content kit page <https://www.hpe.com/us/en/product-catalog/storage/storage-software/pip.openstack-device-management-software.1008537377.html>`_.
 
 System requirements
 ~~~~~~~~~~~~~~~~~~~
@@ -30,19 +30,17 @@ the HPE 3PAR storage system:
 
     * python-3parclient version 4.2.0 or newer.
 
-    * Array must have the Adaptive Flash Cache license installed.
-
     * Flash Cache must be enabled on the array with the CLI command
       :command:`createflashcache SIZE`, where size must be in 16 GB increments.
       For example, :command:`createflashcache 128g` will create 128 GB of Flash
       Cache for each node pair in the array.
 
-  * The Dynamic Optimization license is required to support any feature that
+  * The Dynamic Optimization is required to support any feature that
     results in a volume changing provisioning type or CPG. This may apply to
     the volume :command:`migrate`, :command:`retype` and :command:`manage`
     commands.
 
-  * The Virtual Copy License is required to support any feature that involves
+  * The Virtual Copy feature supports any operation that involves
     volume snapshots. This applies to the volume :command:`snapshot-*`
     commands.
 
@@ -52,13 +50,7 @@ the HPE 3PAR storage system:
 
     * HPE 3PAR Operating System software version 3.3.1 MU1 or higher.
 
-    * Array must have the Compression license installed.
-
     * HPE 3PAR Storage System with 8k or 20k series
-
-* HPE 3PAR drivers will now check the licenses installed on the array and
-  disable driver capabilities based on available licenses. This will apply to
-  thin provisioning, QoS support and volume replication.
 
 * HPE 3PAR Web Services API Server must be enabled and running.
 
@@ -205,7 +197,7 @@ pairs and associate them with a volume type, run the following commands:
    $ openstack help volume qos
 
 The following keys require that the HPE 3PAR StoreServ storage array has a
-Priority Optimization license installed.
+Priority Optimization enabled.
 
 ``hpe3par:vvs``
  The virtual volume set name that has been predefined by the Administrator
@@ -243,7 +235,7 @@ Priority Optimization license installed.
    one is set the other will be set to the same value.
 
 The following key requires that the HPE 3PAR StoreServ storage array has an
-Adaptive Flash Cache license installed.
+Adaptive Flash Cache enabled.
 
 * ``hpe3par:flash_cache`` - The flash-cache policy, which can be turned on and
   off by setting the value to ``true`` or ``false``.
