@@ -2257,6 +2257,37 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 expected +
                 self.standard_logout)
 
+    def _FakeRetrying(wait_func=None,
+                      original_retrying = hpecommon.utils.retrying.Retrying,
+                      *args, **kwargs):
+        return original_retrying(wait_func=lambda *a, **k: 0,
+                                 *args, **kwargs)
+
+    @mock.patch('retrying.Retrying', _FakeRetrying)
+    def test_delete_volume_online_active_done(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        ex = hpeexceptions.HTTPConflict("Online clone is active.")
+        ex._error_code = 151
+        mock_client.deleteVolume = mock.Mock(side_effect=[ex, 200])
+        mock_client.isOnlinePhysicalCopy.return_value = False
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            self.driver.delete_volume(self.volume)
+
+            expected = [
+                mock.call.deleteVolume(self.VOLUME_3PAR_NAME),
+                mock.call.isOnlinePhysicalCopy(self.VOLUME_3PAR_NAME),
+                mock.call.deleteVolume(self.VOLUME_3PAR_NAME)]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_delete_volume_replicated(self, _mock_volume_types):
         # setup_mock_client drive with default configuration
