@@ -21,7 +21,9 @@ Implements operations on volumes residing on VMware datastores.
 from oslo_log import log as logging
 from oslo_utils import units
 from oslo_vmware import exceptions
+from oslo_vmware.objects import datastore as ds_obj
 from oslo_vmware import vim_util
+import six
 from six.moves import urllib
 
 from cinder.i18n import _
@@ -1506,7 +1508,32 @@ class VMwareVolumeOps(object):
                                         destName=dest_vmdk_file_path,
                                         destDatacenter=dest_dc_ref,
                                         force=True)
+        self._session.wait_for_task(task)
 
+    def copy_datastore_file(self, vsphere_url, dest_dc_ref, dest_ds_file_path):
+        """Copy file to datastore location.
+
+        :param vsphere_url: vsphere URL of the file
+        :param dest_dc_ref: Reference to destination datacenter
+        :param dest_file_path: Destination datastore file path
+        """
+        LOG.debug("Copying file: %(vsphere_url)s to %(path)s.",
+                  {'vsphere_url': vsphere_url,
+                   'path': dest_ds_file_path})
+        location_url = ds_obj.DatastoreURL.urlparse(vsphere_url)
+        src_path = ds_obj.DatastorePath(location_url.datastore_name,
+                                        location_url.path)
+        src_dc_ref = self.get_entity_by_inventory_path(
+            location_url.datacenter_path)
+
+        task = self._session.invoke_api(
+            self._session.vim,
+            'CopyDatastoreFile_Task',
+            self._session.vim.service_content.fileManager,
+            sourceName=six.text_type(src_path),
+            sourceDatacenter=src_dc_ref,
+            destinationName=dest_ds_file_path,
+            destinationDatacenter=dest_dc_ref)
         self._session.wait_for_task(task)
 
     def delete_vmdk_file(self, vmdk_file_path, dc_ref):
