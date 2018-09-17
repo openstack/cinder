@@ -155,8 +155,10 @@ class ImageVolumeCache(object):
                    'count': current_count,
                    'max_count': self.max_cache_size_count})
 
-        while ((current_size > self.max_cache_size_gb
-               or current_count > self.max_cache_size_count)
+        while (((current_size > self.max_cache_size_gb and
+                 self.max_cache_size_gb > 0)
+                or (current_count > self.max_cache_size_count and
+                    self.max_cache_size_count > 0))
                and len(entries)):
             entry = entries.pop()
             LOG.debug('Reclaiming image-volume cache space; removing cache '
