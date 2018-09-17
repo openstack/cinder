@@ -1989,14 +1989,17 @@ class VMAXCommon(object):
             volume, external_ref)
         volume_id = volume.id
         # Check if the existing volume is valid for cinder management
-        self._check_lun_valid_for_cinder_management(
+        orig_vol_name = self._check_lun_valid_for_cinder_management(
             array, device_id, volume_id, external_ref)
+        # If volume name is not present, then assign the device id as the name
+        if not orig_vol_name:
+            orig_vol_name = device_id
         extra_specs = self._initial_setup(volume)
 
         volume_name = self.utils.get_volume_element_name(volume_id)
         # Rename the volume
         LOG.debug("Rename volume %(vol)s to %(element_name)s.",
-                  {'vol': volume_id,
+                  {'vol': orig_vol_name,
                    'element_name': volume_name})
         self.rest.rename_volume(array, device_id, volume_name)
         provider_location = {'device_id': device_id, 'array': array}
@@ -2010,9 +2013,22 @@ class VMAXCommon(object):
             model_update.update(rep_update)
 
         else:
-            # Add volume to default storage group
-            self.masking.add_volume_to_default_storage_group(
-                array, device_id, volume_name, extra_specs)
+            try:
+                # Add volume to default storage group
+                self.masking.add_volume_to_default_storage_group(
+                    array, device_id, volume_name, extra_specs)
+            except Exception as e:
+                exception_message = (_(
+                    "Unable to move the volume to the default SG. "
+                    "Exception received was %(e)s") % {'e': six.text_type(e)})
+                LOG.error(exception_message)
+                # Try to rename the volume back to the original name
+                LOG.debug("Rename volume %(vol)s back to %(element_name)s.",
+                          {'vol': volume_id,
+                           'element_name': orig_vol_name})
+                self.rest.rename_volume(array, device_id, orig_vol_name)
+                raise exception.VolumeBackendAPIException(
+                    message=exception_message)
 
         self.volume_metadata.capture_manage_existing(
             volume, rep_info_dict, device_id, extra_specs)
@@ -2027,6 +2043,7 @@ class VMAXCommon(object):
         :param device_id: the device id
         :param volume_id: the cinder volume id
         :param external_ref: the external reference
+        :returns volume_identifier - name of the volume on VMAX
         :raises: ManageExistingInvalidReference, ManageExistingAlreadyManaged:
         """
         # Ensure the volume exists on the array
@@ -2036,7 +2053,7 @@ class VMAXCommon(object):
                      'device %(device_id)s') % {'device_id': device_id})
             raise exception.ManageExistingInvalidReference(
                 existing_ref=external_ref, reason=msg)
-
+        volume_identifier = None
         # Check if volume is already cinder managed
         if volume_details.get('volume_identifier'):
             volume_identifier = volume_details['volume_identifier']
@@ -2067,6 +2084,7 @@ class VMAXCommon(object):
                    % {'device_id': device_id})
             raise exception.ManageExistingInvalidReference(
                 existing_ref=external_ref, reason=msg)
+        return volume_identifier
 
     def manage_existing_get_size(self, volume, external_ref):
         """Return size of an existing VMAX volume to manage_existing.
