@@ -15,13 +15,12 @@
 import json
 import uuid
 
-from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder import utils
+from cinder.privsep import hscli
 from cinder.volume.drivers.veritas import hs_constants as constants
 
 LOG = logging.getLogger(__name__)
@@ -59,7 +58,7 @@ def get_hyperscale_version():
         cmdarg_json = json.dumps(cmd_arg)
 
         # call hscli for version
-        (cmd_out, cmd_err) = hsexecute(cmdarg_json)
+        (cmd_out, cmd_err) = hscli.hsexecute(cmdarg_json)
 
         # cmd_err should be None in case of successful execution of cmd
         if not cmd_err:
@@ -89,7 +88,7 @@ def get_datanode_id():
         cmdarg_json = json.dumps(cmd_arg)
 
         # call hscli for get_datanode_id
-        (cmd_out, cmd_err) = hsexecute(cmdarg_json)
+        (cmd_out, cmd_err) = hscli.hsexecute(cmdarg_json)
 
         # cmd_err should be None in case of successful execution of cmd
         if not cmd_err:
@@ -124,7 +123,7 @@ def episodic_snap(meta):
         cmdarg_json = json.dumps(cmd_arg)
 
         # call hscli for episodic_snap
-        (cmd_out, cmd_err) = hsexecute(cmdarg_json)
+        (cmd_out, cmd_err) = hscli.hsexecute(cmdarg_json)
 
         # cmd_err should be None in case of successful execution of cmd
         if not cmd_err:
@@ -162,7 +161,7 @@ def get_image_path(image_id, op_type='image'):
         cmdarg_json = json.dumps(cmd_arg)
 
         # call hscli for get_image_path
-        (cmd_out, cmd_err) = hsexecute(cmdarg_json)
+        (cmd_out, cmd_err) = hscli.hsexecute(cmdarg_json)
 
         # cmd_err should be None in case of successful execution of cmd
         if not cmd_err:
@@ -197,7 +196,7 @@ def update_image(image_path, volume_id, hs_img_id):
         # create a json for cmd argument
         cmdarg_json = json.dumps(cmd_arg)
 
-        (cmd_out, cmd_err) = hsexecute(cmdarg_json)
+        (cmd_out, cmd_err) = hscli.hsexecute(cmdarg_json)
 
         # cmd_err should be None in case of successful execution of cmd
         if not cmd_err:
@@ -216,30 +215,6 @@ def update_image(image_path, volume_id, hs_img_id):
             LOG.debug("Unable to process update_image output",
                       exc_info=True)
     return output
-
-
-def hsexecute(cmdarg_json):
-
-    cmd_out = None
-    cmd_err = None
-    try:
-        # call hyperscale cli
-        (cmd_out, cmd_err) = utils.execute("hscli",
-                                           cmdarg_json,
-                                           run_as_root=True)
-    except (putils.UnknownArgumentError, putils.ProcessExecutionError,
-            OSError):
-        LOG.error("Exception in running the command for %s",
-                  cmdarg_json,
-                  exc_info=True)
-        raise exception.UnableToExecuteHyperScaleCmd(command=cmdarg_json)
-
-    except Exception:
-        LOG.error("Internal exception in cmd for %s", cmdarg_json,
-                  exc_info=True)
-        raise exception.UnableToExecuteHyperScaleCmd(command=cmdarg_json)
-
-    return (cmd_out, cmd_err)
 
 
 def process_cmd_out(cmd_out):
@@ -315,7 +290,7 @@ def _send_message(exchange, routing_key, message_token, **kwargs):
         # create a json for cmd argument
         cmdarg_json = json.dumps(cmd_arg)
 
-        (cmd_out, cmd_err) = hsexecute(cmdarg_json)
+        (cmd_out, cmd_err) = hscli.hsexecute(cmdarg_json)
 
         # cmd_err should be none in case of successful execution of cmd
         if cmd_err:
