@@ -4979,6 +4979,15 @@ class VMAXCommonTest(test.TestCase):
             self.rest.rename_volume.assert_called_once_with(
                 self.data.array, self.data.device_id,
                 self.data.test_volume.id)
+        # Test for success when create storage group fails
+        with mock.patch.object(self.rest, 'rename_volume'):
+            with mock.patch.object(
+                    self.provision, 'create_storage_group',
+                    side_effect=exception.VolumeBackendAPIException):
+                self.common.unmanage(volume)
+                self.rest.rename_volume.assert_called_once_with(
+                    self.data.array, self.data.device_id,
+                    self.data.test_volume.id)
 
     def test_unmanage_device_not_found(self):
         volume = self.data.test_volume
