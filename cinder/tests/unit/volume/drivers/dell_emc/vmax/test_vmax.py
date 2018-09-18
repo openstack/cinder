@@ -19,6 +19,8 @@ import datetime
 import platform
 import time
 
+from ddt import data
+from ddt import ddt
 import mock
 import requests
 import six
@@ -48,6 +50,7 @@ from cinder.volume.drivers.dell_emc.vmax import utils
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
+
 
 CINDER_EMC_CONFIG_DIR = '/etc/cinder/'
 
@@ -1250,6 +1253,7 @@ class FakeConfiguration(object):
         pass
 
 
+@ddt
 class VMAXUtilsTest(test.TestCase):
     def setUp(self):
         self.data = VMAXCommonData()
@@ -1393,6 +1397,23 @@ class VMAXUtilsTest(test.TestCase):
     def test_get_array_and_device_id_exception(self):
         volume = deepcopy(self.data.test_volume)
         external_ref = {u'source-name': None}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.utils.get_array_and_device_id,
+                          volume, external_ref)
+
+    @data({u'source-name': u'000001'}, {u'source-name': u'00028A'})
+    def test_get_array_and_device_id_invalid_long_id(self, external_ref):
+        volume = deepcopy(self.data.test_volume)
+        # Test for device id more than 5 digits
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.utils.get_array_and_device_id,
+                          volume, external_ref)
+
+    @data({u'source-name': u'01'}, {u'source-name': u'028A'},
+          {u'source-name': u'0001'})
+    def test_get_array_and_device_id_invalid_short_id(self, external_ref):
+        volume = deepcopy(self.data.test_volume)
+        # Test for device id less than 5 digits
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.utils.get_array_and_device_id,
                           volume, external_ref)
