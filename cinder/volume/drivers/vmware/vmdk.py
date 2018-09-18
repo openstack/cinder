@@ -1588,18 +1588,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         (_vm, disk) = self._get_existing(existing_ref)
         return int(math.ceil(disk.capacityInKB * units.Ki / float(units.Gi)))
 
-    def manage_existing(self, volume, existing_ref):
-        """Brings an existing virtual disk under Cinder management.
-
-        Detaches the virtual disk identified by existing_ref and attaches
-        it to a volume backing.
-
-        :param volume: Cinder volume to manage
-        :param existing_ref: Driver-specific information used to identify a
-                             volume
-        """
-        (vm, disk) = self._get_existing(existing_ref)
-
+    def _manage_existing_int(self, volume, vm, disk):
+        LOG.debug("Creating volume from disk: %(disk)s attached to %(vm)s.",
+                  {'disk': disk, 'vm': vm})
         # Create a backing for the volume.
         create_params = {CREATE_PARAM_DISK_LESS: True}
         backing = self._create_backing(volume, create_params=create_params)
@@ -1628,6 +1619,19 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             profile_id,
             dest_path.get_descriptor_ds_file_path())
         self.volumeops.update_backing_disk_uuid(backing, volume['id'])
+
+    def manage_existing(self, volume, existing_ref):
+        """Brings an existing virtual disk under Cinder management.
+
+        Detaches the virtual disk identified by existing_ref and attaches
+        it to a volume backing.
+
+        :param volume: Cinder volume to manage
+        :param existing_ref: Driver-specific information used to identify a
+                             volume
+        """
+        (vm, disk) = self._get_existing(existing_ref)
+        self._manage_existing_int(volume, vm, disk)
 
     def unmanage(self, volume):
         backing = self.volumeops.get_backing(volume['name'])
@@ -1916,6 +1920,41 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """
         self._create_volume_from_snapshot(volume, snapshot)
 
+    def _get_volume_device_uuid(self, instance, volume_id):
+        prop = 'config.extraConfig["volume-%s"]' % volume_id
+        opt_val = self.session.invoke_api(vim_util,
+                                          'get_object_property',
+                                          self.session.vim,
+                                          instance,
+                                          prop)
+        if opt_val is not None:
+            return opt_val.value
+
+    def _clone_attached_volume(self, src_vref, volume):
+        instance = self.volumeops.get_backing_by_uuid(
+            src_vref['volume_attachment'][0]['instance_uuid'])
+        vol_dev_uuid = self._get_volume_device_uuid(instance, src_vref['id'])
+        LOG.debug("Cloning volume device: %(dev)s attached to instance: "
+                  "%(instance)s.", {'dev': vol_dev_uuid,
+                                    'instance': instance})
+
+        # Clone the vmdk attached to the instance to create a temporary
+        # backing.
+        tmp_name = uuidutils.generate_uuid()
+        (host, rp, folder, summary) = self._select_ds_for_volume(volume)
+        datastore = summary.datastore
+        tmp_backing = self.volumeops.clone_backing(
+            tmp_name, instance, None, volumeops.FULL_CLONE_TYPE, datastore,
+            host=host, resource_pool=rp, folder=folder,
+            disks_to_clone=[vol_dev_uuid])
+
+        try:
+            # Create volume from temporary backing.
+            disk_device = self.volumeops._get_disk_device(tmp_backing)
+            self._manage_existing_int(volume, tmp_backing, disk_device)
+        finally:
+            self._delete_temp_backing(tmp_backing)
+
     def _create_cloned_volume(self, volume, src_vref):
         """Creates volume clone.
 
@@ -1931,6 +1970,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                      "Not creating any backing for volume: %(vol)s.",
                      {'src': src_vref['name'], 'vol': volume['name']})
             return
+
         clone_type = VMwareVcVmdkDriver._get_clone_type(volume)
         snapshot = None
         if clone_type == volumeops.LINKED_CLONE_TYPE:
@@ -1944,18 +1984,22 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             # snapshot.
             snap_name = 'temp-snapshot-%s' % volume['id']
             snapshot = self.volumeops.create_snapshot(backing, snap_name, None)
-        try:
-            self._clone_backing(volume, backing, snapshot, clone_type,
-                                src_vref['size'])
-        finally:
-            if snapshot:
-                # Delete temporary snapshot.
-                try:
-                    self.volumeops.delete_snapshot(backing, snap_name)
-                except exceptions.VimException:
-                    LOG.debug("Unable to delete temporary snapshot: %s of "
-                              "volume backing.", snap_name, resource=volume,
-                              exc_info=True)
+
+        if self._in_use(src_vref):
+            self._clone_attached_volume(src_vref, volume)
+        else:
+            try:
+                self._clone_backing(volume, backing, snapshot, clone_type,
+                                    src_vref['size'])
+            finally:
+                if snapshot:
+                    # Delete temporary snapshot.
+                    try:
+                        self.volumeops.delete_snapshot(backing, snap_name)
+                    except exceptions.VimException:
+                        LOG.debug("Unable to delete temporary snapshot: %s of "
+                                  "volume backing.", snap_name,
+                                  resource=volume, exc_info=True)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates volume clone.
