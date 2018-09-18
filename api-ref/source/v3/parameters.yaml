@@ -1134,7 +1134,7 @@ gigabytes:
 gigabytes_for_type:
   description: |
     The size (GB) of volumes and snapshots that are allowed for each project
-    and the specifed volume type.
+    and the specified volume type.
   in: body
   required: true
   type: integer
@@ -1252,7 +1252,7 @@ groups_number_usage:
 guaranteed_until:
   description: |
     The expire time of the message, this message could be
-    be deleted after this time.
+    deleted after this time.
   in: body
   required: false
   type: string
