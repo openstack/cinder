@@ -338,6 +338,13 @@ class VMAXUtils(object):
         array = host_list[(len(host_list) - 1)]
 
         if device_id:
+            if len(device_id) != 5:
+                error_message = (_("Device ID: %(device_id)s is invalid. "
+                                   "Device ID should be exactly 5 digits.") %
+                                 {'device_id': device_id})
+                LOG.error(error_message)
+                raise exception.VolumeBackendAPIException(
+                    message=error_message)
             LOG.debug("Get device ID of existing volume - device ID: "
                       "%(device_id)s, Array: %(array)s.",
                       {'device_id': device_id,
