@@ -1032,6 +1032,13 @@ class TestZFSSAISCSIDriver(test.TestCase):
                           self.drv.manage_existing, {'name': 'cindervol'},
                           {'source-id': 'volume-567'})
 
+    def test_volume_manage_nonexistent(self):
+        self.drv.zfssa.get_lun.side_effect = \
+            exception.VolumeNotFound(volume_id='bogus_lun')
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.drv.manage_existing, {'name': 'cindervol'},
+                          {'source-name': 'bogus_lun'})
+
     @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_verify_volume_to_manage')
     def test_volume_manage_negative_api_exception(self,
                                                   _verify_volume_to_manage):
