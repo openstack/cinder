@@ -2728,6 +2728,12 @@ totalGigabytesUsed:
   in: body
   required: true
   type: integer
+totalSnapGigabytesUsed:
+  description: |
+    The total number of gibibytes (GiB) used by snapshots.
+  in: body
+  required: true
+  type: string
 totalSnapshotsUsed:
   description: |
     The total number of snapshots used.

@@ -96,7 +96,7 @@ Response
   - host: host
   - volume_count: total_count
   - total_volume_gb: totalGigabytesUsed
-  - total_snapshot_gb: totalSnapshotsUsed
+  - total_snapshot_gb: totalSnapGigabytesUsed
   - project: project_id_2
   - host: host_name_1
   - snapshot_count: totalSnapshotsUsed
