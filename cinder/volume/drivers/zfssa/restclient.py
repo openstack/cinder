@@ -86,7 +86,7 @@ class RestResult(object):
             self.status = self.response.getcode()
             result = self.response.read()
             while result:
-                self.data += result
+                self.data += result.decode("utf-8")
                 result = self.response.read()
 
         if self.error:
@@ -105,7 +105,7 @@ class RestResult(object):
         if self.response is None:
             return None
         info = self.response.info()
-        return info.getheader(name)
+        return info.get(name)
 
 
 class RestClientError(Exception):
@@ -257,10 +257,11 @@ class RestClientURL(object):
 
         if body:
             if isinstance(body, dict):
-                body = str(json.dumps(body))
-
-        if body and len(body):
+                body = json.dumps(body)
+            body = body.encode("utf-8")
             out_hdrs['content-length'] = len(body)
+        else:
+            body = None
 
         zfssaurl = self._path(path, kwargs.get("base_path"))
         req = urllib.request.Request(zfssaurl, body, out_hdrs)
