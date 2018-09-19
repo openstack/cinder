@@ -2767,7 +2767,7 @@ total_count:
     Total number of volumes.
   in: body
   required: true
-  type: integer
+  type: string
 total_size:
   description: |
     Total size of volumes in GB.
@@ -2803,7 +2803,7 @@ totalSnapshotsUsed:
     The total number of snapshots used.
   in: body
   required: true
-  type: integer
+  type: string
 totalVolumesUsed:
   description: |
     The total number of volumes used.
