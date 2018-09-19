@@ -20,4 +20,5 @@ def upgrade(migrate_engine):
     backups = Table('backups', meta, autoload=True)
 
     encryption_key_id = Column('encryption_key_id', String(length=36))
-    backups.create_column(encryption_key_id)
+    if not hasattr(backups.c, 'encryption_key_id'):
+        backups.create_column(encryption_key_id)

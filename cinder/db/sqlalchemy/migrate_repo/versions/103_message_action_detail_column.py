@@ -19,5 +19,7 @@ def upgrade(migrate_engine):
     messages = Table('messages', meta, autoload=True)
     detail_id = Column('detail_id', String(10), nullable=True)
     action_id = Column('action_id', String(10), nullable=True)
-    messages.create_column(detail_id)
-    messages.create_column(action_id)
+    if not hasattr(messages.c, 'detail_id'):
+        messages.create_column(detail_id)
+    if not hasattr(messages.c, 'action_id'):
+        messages.create_column(action_id)

@@ -19,4 +19,5 @@ def upgrade(migrate_engine):
     # Add connection_info column to attachment table
     attachment = Table('volume_attachment', meta, autoload=True)
     connection_info = Column('connection_info', Text)
-    attachment.create_column(connection_info)
+    if not hasattr(attachment.c, 'connection_info'):
+        attachment.create_column(connection_info)

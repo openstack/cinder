@@ -28,7 +28,9 @@ def upgrade(migrate_engine):
     active_backend_id = Column('active_backend_id', String(length=255))
     frozen = Column('frozen', Boolean, nullable=False, default=False,
                     server_default=expression.false())
-
-    clusters.create_column(replication_status)
-    clusters.create_column(frozen)
-    clusters.create_column(active_backend_id)
+    if not hasattr(clusters.c, 'replication_status'):
+        clusters.create_column(replication_status)
+    if not hasattr(clusters.c, 'frozen'):
+        clusters.create_column(frozen)
+    if not hasattr(clusters.c, 'active_backend_id'):
+        clusters.create_column(active_backend_id)
