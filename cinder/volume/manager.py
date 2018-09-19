@@ -2570,7 +2570,7 @@ class VolumeManager(manager.CleanableManager,
             extra_usage_info=extra_usage_info, host=self.host)
 
         if not volumes:
-            volumes = self.db.volume_get_all_by_generic_group(
+            volumes = objects.VolumeList.get_all_by_generic_group(
                 context, group.id)
         if volumes:
             for volume in volumes:

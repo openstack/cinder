@@ -68,7 +68,8 @@ class API(base.Base):
         """Make the RPC call to delete a volume transfer."""
         transfer = self.db.transfer_get(context, transfer_id)
 
-        volume_ref = self.db.volume_get(context, transfer.volume_id)
+        volume_ref = objects.Volume.get_by_id(context,
+                                              transfer.volume_id)
         context.authorize(policy.DELETE_POLICY, target_obj=volume_ref)
         volume_utils.notify_about_volume_usage(context, volume_ref,
                                                "transfer.delete.start")
@@ -116,7 +117,7 @@ class API(base.Base):
     def create(self, context, volume_id, display_name, no_snapshots=False):
         """Creates an entry in the transfers table."""
         LOG.info("Generating transfer record for volume %s", volume_id)
-        volume_ref = self.db.volume_get(context, volume_id)
+        volume_ref = objects.Volume.get_by_id(context, volume_id)
         context.authorize(policy.CREATE_POLICY, target_obj=volume_ref)
         if volume_ref['status'] != "available":
             raise exception.InvalidVolume(reason=_("status must be available"))
@@ -300,7 +301,8 @@ class API(base.Base):
                     QUOTAS.rollback(context, snap_donor_res,
                                     project_id=donor_id)
 
-        vol_ref = self.db.volume_get(context, volume_id)
+        vol_ref = objects.Volume.get_by_id(context.elevated(),
+                                           volume_id)
         volume_utils.notify_about_volume_usage(context, vol_ref,
                                                "transfer.accept.end")
         return {'id': transfer_id,
