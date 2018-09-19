@@ -1783,11 +1783,21 @@ class VMwareVolumeOps(object):
         backing_spec.datastore = ds_ref
         return backing_spec
 
-    def create_fcd(self, name, size_mb, ds_ref, disk_type):
-        spec = self._session.vim.client.factory.create('ns0:VslmCreateSpec')
+    def _create_profile_spec(self, cf, profile_id):
+        profile_spec = cf.create('ns0:VirtualMachineDefinedProfileSpec')
+        profile_spec.profileId = profile_id
+        return profile_spec
+
+    def create_fcd(self, name, size_mb, ds_ref, disk_type, profile_id=None):
+        cf = self._session.vim.client.factory
+        spec = cf.create('ns0:VslmCreateSpec')
         spec.capacityInMB = size_mb
         spec.name = name
         spec.backingSpec = self._create_fcd_backing_spec(disk_type, ds_ref)
+
+        if profile_id:
+            profile_spec = self._create_profile_spec(cf, profile_id)
+            spec.profile = [profile_spec]
 
         LOG.debug("Creating fcd with spec: %(spec)s on datastore: %(ds_ref)s.",
                   {'spec': spec, 'ds_ref': ds_ref})
@@ -1812,12 +1822,17 @@ class VMwareVolumeOps(object):
                                         datastore=fcd_location.ds_ref())
         self._session.wait_for_task(task)
 
-    def clone_fcd(self, name, fcd_location, dest_ds_ref, disk_type):
+    def clone_fcd(
+            self, name, fcd_location, dest_ds_ref, disk_type, profile_id=None):
         cf = self._session.vim.client.factory
         spec = cf.create('ns0:VslmCloneSpec')
         spec.name = name
         spec.backingSpec = self._create_fcd_backing_spec(disk_type,
                                                          dest_ds_ref)
+
+        if profile_id:
+            profile_spec = self._create_profile_spec(cf, profile_id)
+            spec.profile = [profile_spec]
 
         LOG.debug("Copying fcd: %(fcd_loc)s to datastore: %(ds_ref)s with "
                   "spec: %(spec)s.",
@@ -1921,12 +1936,16 @@ class VMwareVolumeOps(object):
             snapshotId=fcd_snap_loc.id(cf))
         self._session.wait_for_task(task)
 
-    def create_fcd_from_snapshot(self, fcd_snap_loc, name):
+    def create_fcd_from_snapshot(self, fcd_snap_loc, name, profile_id=None):
         LOG.debug("Creating fcd with name: %(name)s from fcd snapshot: "
                   "%(snap)s.", {'name': name, 'snap': fcd_snap_loc})
 
         vstorage_mgr = self._session.vim.service_content.vStorageObjectManager
         cf = self._session.vim.client.factory
+        if profile_id:
+            profile = [self._create_profile_spec(cf, profile_id)]
+        else:
+            profile = None
         task = self._session.invoke_api(
             self._session.vim,
             'CreateDiskFromSnapshot_Task',
@@ -1934,13 +1953,35 @@ class VMwareVolumeOps(object):
             id=fcd_snap_loc.fcd_loc.id(cf),
             datastore=fcd_snap_loc.fcd_loc.ds_ref(),
             snapshotId=fcd_snap_loc.id(cf),
-            name=name)
+            name=name,
+            profile=profile)
         task_info = self._session.wait_for_task(task)
         fcd_loc = FcdLocation.create(task_info.result.config.id,
                                      fcd_snap_loc.fcd_loc.ds_ref())
 
         LOG.debug("Created fcd: %s.", fcd_loc)
         return fcd_loc
+
+    def update_fcd_policy(self, fcd_location, profile_id):
+        LOG.debug("Changing fcd: %(fcd_loc)s storage policy to %(policy)s.",
+                  {'fcd_loc': fcd_location, 'policy': profile_id})
+
+        vstorage_mgr = self._session.vim.service_content.vStorageObjectManager
+        cf = self._session.vim.client.factory
+        if profile_id is None:
+            profile_spec = cf.create('ns0:VirtualMachineEmptyProfileSpec')
+        else:
+            profile_spec = self._create_profile_spec(cf, profile_id)
+        task = self._session.invoke_api(
+            self._session.vim,
+            'UpdateVStorageObjectPolicy_Task',
+            vstorage_mgr,
+            id=fcd_location.id(cf),
+            datastore=fcd_location.ds_ref(),
+            profile=[profile_spec])
+        self._session.wait_for_task(task)
+
+        LOG.debug("Updated fcd storage policy to %s.", profile_id)
 
 
 class FcdLocation(object):
