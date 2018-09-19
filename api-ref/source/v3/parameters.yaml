@@ -529,6 +529,12 @@ backend_id_target:
   in: body
   required: true
   type: string
+backend_state:
+  description: |
+    The state of storage backend. Only in ``cinder-volume`` service.
+  in: body
+  required: false
+  type: string
 backup:
   description: |
     A ``backup`` object.
@@ -2459,7 +2465,7 @@ service_state_1:
   type: string
 service_status:
   description: |
-    The status of the service. One of ``available`` or ``unavailable``.
+    The status of the service. One of ``enabled`` or ``disabled``.
   in: body
   required: true
   type: string

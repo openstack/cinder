@@ -55,6 +55,7 @@ Response Parameters
   - cluster: cluster
   - replication_status: replication_status_1
   - active_backend_id: active_backend_id
+  - backend_state: backend_state
 
 Response Example
 ----------------
