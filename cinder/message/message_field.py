@@ -37,13 +37,15 @@ class Action(object):
     UPDATE_ATTACHMENT = ('004', _('update attachment'))
     COPY_IMAGE_TO_VOLUME = ('005', _('copy image to volume'))
     UNMANAGE_VOLUME = ('006', _('unmanage volume'))
+    EXTEND_VOLUME = ('007', _('extend volume'))
 
     ALL = (SCHEDULE_ALLOCATE_VOLUME,
            ATTACH_VOLUME,
            COPY_VOLUME_TO_IMAGE,
            UPDATE_ATTACHMENT,
            COPY_IMAGE_TO_VOLUME,
-           UNMANAGE_VOLUME
+           UNMANAGE_VOLUME,
+           EXTEND_VOLUME
            )
 
 
@@ -68,6 +70,12 @@ class Detail(object):
     UNMANAGE_ENC_NOT_SUPPORTED = (
         '008',
         _("Unmanaging encrypted volumes is not supported."))
+    NOTIFY_COMPUTE_SERVICE_FAILED = (
+        '009',
+        _("Compute service failed to extend volume."))
+    DRIVER_FAILED_EXTEND = (
+        '010',
+        _("Volume Driver failed to extend volume."))
 
     ALL = (UNKNOWN_ERROR,
            DRIVER_NOT_INITIALIZED,
@@ -77,6 +85,8 @@ class Detail(object):
            QUOTA_EXCEED,
            NOT_ENOUGH_SPACE_FOR_IMAGE,
            UNMANAGE_ENC_NOT_SUPPORTED,
+           NOTIFY_COMPUTE_SERVICE_FAILED,
+           DRIVER_FAILED_EXTEND
            )
 
     # Exception and detail mappings

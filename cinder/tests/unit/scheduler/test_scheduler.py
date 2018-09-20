@@ -125,7 +125,9 @@ class SchedulerManagerTestCase(test.TestCase):
         'cinder.scheduler.host_manager.BackendState.consume_from_volume')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.extend_volume')
     @mock.patch('cinder.quota.QUOTAS.rollback')
-    def test_extend_volume_no_valid_host(self, status, mock_rollback,
+    @mock.patch('cinder.message.api.API.create')
+    def test_extend_volume_no_valid_host(self, status, mock_create,
+                                         mock_rollback,
                                          mock_extend, mock_consume,
                                          mock_backend_passes):
         volume = fake_volume.fake_volume_obj(self.context,
@@ -146,6 +148,11 @@ class SchedulerManagerTestCase(test.TestCase):
                 self.context, 'fake_reservation', project_id=volume.project_id)
             mock_consume.assert_not_called()
             mock_extend.assert_not_called()
+            mock_create.assert_called_once_with(
+                self.context,
+                message_field.Action.EXTEND_VOLUME,
+                resource_uuid=volume.id,
+                exception=no_valid_backend)
 
     @mock.patch('cinder.quota.QuotaEngine.expire')
     def test_clean_expired_reservation(self, mock_clean):

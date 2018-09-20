@@ -27,6 +27,8 @@ from requests import exceptions as request_exceptions
 
 from cinder.db import base
 from cinder import exception
+from cinder.message import api as message_api
+from cinder.message import message_field
 from cinder import service_auth
 
 nova_opts = [
@@ -133,6 +135,9 @@ def novaclient(context, privileged_user=False, timeout=None, api_version=None):
 class API(base.Base):
     """API for interacting with novaclient."""
 
+    def __init__(self):
+        self.message_api = message_api.API()
+
     def _get_volume_extended_event(self, server_id, volume_id):
         return {'name': 'volume-extended',
                 'server_uuid': server_id,
@@ -145,12 +150,14 @@ class API(base.Base):
             response = nova.server_external_events.create(events)
         except nova_exceptions.NotFound:
             LOG.warning('Nova returned NotFound for events: %s.', events)
+            return False
         except Exception:
             LOG.exception('Failed to notify nova on events: %s.', events)
+            return False
         else:
             if not isinstance(response, list):
                 LOG.error('Error response returned from nova: %s.', response)
-                return
+                return False
             response_error = False
             for event in response:
                 code = event.get('code')
@@ -164,6 +171,8 @@ class API(base.Base):
                     LOG.info('Nova event response: %s.', event)
             if response_error:
                 LOG.error('Error response returned from nova: %s.', response)
+                return False
+        return True
 
     def has_extension(self, context, extension, timeout=None):
         try:
@@ -209,4 +218,11 @@ class API(base.Base):
         api_version = '2.51'
         events = [self._get_volume_extended_event(server_id, volume_id)
                   for server_id in server_ids]
-        self._send_events(context, events, api_version=api_version)
+        result = self._send_events(context, events, api_version=api_version)
+        if not result:
+            self.message_api.create(
+                context,
+                message_field.Action.EXTEND_VOLUME,
+                resource_uuid=volume_id,
+                detail=message_field.Detail.NOTIFY_COMPUTE_SERVICE_FAILED)
+        return result
