@@ -392,7 +392,6 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
 
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(
             availability_zone="nova",
             image_ref="c905cedb-7281-47e4-8a62-f26bc5fc4c77")
@@ -405,7 +404,6 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_create_with_image_ref_is_integer(self):
         self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_ref=1234)
         body = {"volume": vol}
@@ -420,7 +418,6 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(fake_image._FakeImageService,
                          "detail",
                          v2_fakes.fake_image_service_detail)
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_ref="12345")
         body = {"volume": vol}
@@ -435,7 +432,6 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(fake_image._FakeImageService,
                          "detail",
                          v2_fakes.fake_image_service_detail)
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_ref="")
         body = {"volume": vol}
@@ -453,7 +449,6 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
 
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(
             availability_zone="nova",
             image_id="c905cedb-7281-47e4-8a62-f26bc5fc4c77")
@@ -466,7 +461,6 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_create_with_image_id_is_integer(self):
         self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_id=1234)
         body = {"volume": vol}
@@ -481,7 +475,6 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(fake_image._FakeImageService,
                          "detail",
                          v2_fakes.fake_image_service_detail)
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_id="12345")
         body = {"volume": vol}
@@ -496,7 +489,6 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(fake_image._FakeImageService,
                          "detail",
                          v2_fakes.fake_image_service_detail)
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_id="")
         body = {"volume": vol}
@@ -518,7 +510,6 @@ class VolumeApiTest(test.TestCase):
                          v2_fakes.fake_image_service_detail)
 
         test_id = "Fedora-x86_64-20-20140618-sda"
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="nova",
                                         image_ref=test_id)
         ex = self._expected_vol_from_controller(availability_zone="nova")
@@ -535,7 +526,6 @@ class VolumeApiTest(test.TestCase):
                          v2_fakes.fake_image_service_detail)
 
         test_id = "multi"
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="nova",
                                         image_ref=test_id)
         body = {"volume": vol}
@@ -553,7 +543,6 @@ class VolumeApiTest(test.TestCase):
                          v2_fakes.fake_image_service_detail)
 
         test_id = "MissingName"
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="nova",
                                         image_ref=test_id)
         body = {"volume": vol}

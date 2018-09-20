@@ -246,11 +246,10 @@ class VolumeController(wsgi.Controller):
 
         LOG.info("Create volume of %s GB", size)
 
-        if self.ext_mgr.is_loaded('os-image-create'):
-            image_ref = volume.get('imageRef')
-            if image_ref is not None:
-                image_uuid = self._image_uuid_from_ref(image_ref, context)
-                kwargs['image_id'] = image_uuid
+        image_ref = volume.get('imageRef')
+        if image_ref is not None:
+            image_uuid = self._image_uuid_from_ref(image_ref, context)
+            kwargs['image_id'] = image_uuid
 
         kwargs['availability_zone'] = volume.get('availability_zone', None)
         kwargs['scheduler_hints'] = volume.get('scheduler_hints', None)
