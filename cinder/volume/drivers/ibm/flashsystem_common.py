@@ -481,7 +481,7 @@ class FlashSystemDriver(san.SanDriver,
         # Get storage system name and id
         ssh_cmd = ['svcinfo', 'lssystem', '-delim', '!']
         attributes = self._execute_command_and_parse_attributes(ssh_cmd)
-        if not attributes or not ('name' in attributes):
+        if not attributes or ('name' not in attributes):
             msg = _('Could not get system name.')
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -490,7 +490,7 @@ class FlashSystemDriver(san.SanDriver,
 
         # Validate value of open_access_enabled flag, for now only
         # support when open_access_enabled is off
-        if not attributes or not ('open_access_enabled' in attributes) or (
+        if not attributes or ('open_access_enabled' not in attributes) or (
                 attributes['open_access_enabled'] != 'off'):
             msg = _('open_access_enabled is not off.')
             LOG.error(msg)
@@ -504,7 +504,7 @@ class FlashSystemDriver(san.SanDriver,
             msg = _('Unable to parse attributes.')
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
-        if not ('status' in attributes) or (
+        if ('status' not in attributes) or (
                 attributes['status'] == 'offline'):
             msg = (_('Array does not exist or is offline. '
                      'Current status of array is %s.')

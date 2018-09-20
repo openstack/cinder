@@ -143,7 +143,6 @@ disable=
  unused-variable,
  len-as-condition,
  cell-var-from-loop,
- unneeded-not,
  singleton-comparison,
  misplaced-comparison-constant,
  unidiomatic-typecheck,

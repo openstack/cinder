@@ -445,7 +445,7 @@ class GPFSDriver(driver.CloneableImageVD,
             raise exception.VolumeBackendAPIException(data=msg)
 
         _gpfs_cluster_release_level = self._get_gpfs_cluster_release_level()
-        if not _gpfs_cluster_release_level >= GPFS_CLONE_MIN_RELEASE:
+        if _gpfs_cluster_release_level < GPFS_CLONE_MIN_RELEASE:
             msg = (_('Downlevel GPFS Cluster Detected.  GPFS Clone feature '
                      'not enabled in cluster daemon level %(cur)s - must '
                      'be at least at level %(min)s.') %
@@ -474,7 +474,7 @@ class GPFSDriver(driver.CloneableImageVD,
 
             filesystem, fslevel = \
                 self._get_gpfs_fs_release_level(directory)
-            if not fslevel >= GPFS_CLONE_MIN_RELEASE:
+            if fslevel < GPFS_CLONE_MIN_RELEASE:
                 msg = (_('The GPFS filesystem %(fs)s is not at the required '
                          'release level.  Current level is %(cur)s, must be '
                          'at least %(min)s.') %

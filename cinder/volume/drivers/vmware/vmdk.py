@@ -2008,7 +2008,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         host = None
         rp = None
         folder = None
-        if not clone_type == volumeops.LINKED_CLONE_TYPE:
+        if clone_type != volumeops.LINKED_CLONE_TYPE:
             # Pick a datastore where to create the full clone under any host
             (host, rp, folder, summary) = self._select_ds_for_volume(volume)
             datastore = summary.datastore
