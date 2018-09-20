@@ -25,6 +25,7 @@ import greenlet
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import excutils
 from six.moves import range
 
@@ -411,6 +412,10 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
     def do_setup(self, context):
         """Disable cli confirmation and tune output format."""
         try:
+            msg = _("The Dell PS driver is moving to maintenance mode"
+                    "in the S release and will be removed in T release.")
+            versionutils.report_deprecated_feature(LOG, msg)
+
             disabled_cli_features = ('confirmation', 'paging', 'events',
                                      'formatoutput')
             for feature in disabled_cli_features:

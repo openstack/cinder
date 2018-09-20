@@ -1,0 +1,6 @@
+---
+deprecations:
+  - The Dell EMC PS Series volume driver which supports
+    Dell PS Series (EqualLogic) Storage is moving to
+    maintenance mode in S Release and will be removed
+    in T Release.

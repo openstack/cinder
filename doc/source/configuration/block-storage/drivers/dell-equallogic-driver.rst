@@ -1,9 +1,13 @@
-================================
-Dell EMC PS Series volume driver
-================================
+=============================================
+Dell EMC PS Series volume driver (Deprecated)
+=============================================
 
 The Dell PS Series (EqualLogic) volume driver interacts with configured PS
 Series arrays and supports various operations.
+
+.. note::
+   The Dell PS Series volume driver is moving into maintanence mode in S
+   release and will be removed in the T release.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
