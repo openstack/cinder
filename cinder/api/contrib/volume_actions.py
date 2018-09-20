@@ -233,7 +233,7 @@ class VolumeActionsController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
 
-        context.authorize(policy.UPLOAD_IMAGE_POLICY)
+        context.authorize(policy.UPLOAD_IMAGE_POLICY, target_obj=volume)
         # check for valid disk-format
         disk_format = params.get("disk_format", "raw")
         if not image_utils.validate_disk_format(disk_format):
@@ -272,7 +272,8 @@ class VolumeActionsController(wsgi.Controller):
             image_metadata['protected'] = params.get('protected', 'False')
 
             if image_metadata['visibility'] == 'public':
-                context.authorize(policy.UPLOAD_PUBLIC_POLICY)
+                context.authorize(policy.UPLOAD_PUBLIC_POLICY,
+                                  target_obj=volume)
 
             image_metadata['protected'] = (
                 utils.get_bool_param('protected', image_metadata))

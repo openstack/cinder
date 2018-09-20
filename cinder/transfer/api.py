@@ -66,10 +66,10 @@ class API(base.Base):
 
     def delete(self, context, transfer_id):
         """Make the RPC call to delete a volume transfer."""
-        context.authorize(policy.DELETE_POLICY)
         transfer = self.db.transfer_get(context, transfer_id)
 
         volume_ref = self.db.volume_get(context, transfer.volume_id)
+        context.authorize(policy.DELETE_POLICY, target_obj=volume_ref)
         volume_utils.notify_about_volume_usage(context, volume_ref,
                                                "transfer.delete.start")
         if volume_ref['status'] != 'awaiting-transfer':
@@ -115,9 +115,9 @@ class API(base.Base):
 
     def create(self, context, volume_id, display_name):
         """Creates an entry in the transfers table."""
-        context.authorize(policy.CREATE_POLICY)
         LOG.info("Generating transfer record for volume %s", volume_id)
         volume_ref = self.db.volume_get(context, volume_id)
+        context.authorize(policy.CREATE_POLICY, target_obj=volume_ref)
         if volume_ref['status'] != "available":
             raise exception.InvalidVolume(reason=_("status must be available"))
         if volume_ref['encryption_key_id'] is not None:

@@ -18,6 +18,7 @@
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import db
+from cinder import objects
 from cinder.policies import volumes as policy
 
 
@@ -27,7 +28,9 @@ class VolumeEncryptionMetadataController(wsgi.Controller):
     def index(self, req, volume_id):
         """Returns the encryption metadata for a given volume."""
         context = req.environ['cinder.context']
-        context.authorize(policy.ENCRYPTION_METADATA_POLICY)
+        volume = objects.Volume.get_by_id(context, volume_id)
+        context.authorize(policy.ENCRYPTION_METADATA_POLICY,
+                          target_obj=volume)
         return db.volume_encryption_metadata_get(context, volume_id)
 
     def show(self, req, volume_id, id):

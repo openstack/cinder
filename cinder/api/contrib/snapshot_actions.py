@@ -40,8 +40,6 @@ class SnapshotActionsController(wsgi.Controller):
         """
 
         context = req.environ['cinder.context']
-        context.authorize(policy.UPDATE_STATUS_POLICY)
-
         LOG.debug("body: %s", body)
         try:
             status = body['os-update_snapshot_status']['status']
@@ -59,6 +57,8 @@ class SnapshotActionsController(wsgi.Controller):
                        fields.SnapshotStatus.ERROR_DELETING]}
 
         current_snapshot = objects.Snapshot.get_by_id(context, id)
+        context.authorize(policy.UPDATE_STATUS_POLICY,
+                          target_obj=current_snapshot)
 
         if current_snapshot.status not in status_map:
             msg = _("Snapshot status %(cur)s not allowed for "

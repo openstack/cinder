@@ -25,6 +25,7 @@ from cinder import exception
 import cinder.group
 from cinder import objects
 from cinder.objects import fields
+from cinder.policies import group_snapshots as g_snap_policies
 from cinder import quota
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
@@ -297,12 +298,16 @@ class GroupAPITestCase(test.TestCase):
                                                       remove_volumes=vol2.id)
 
     @mock.patch('cinder.objects.GroupSnapshot.get_by_id')
-    def test_get_group_snapshot(self, mock_group_snap):
+    @mock.patch('cinder.context.RequestContext.authorize')
+    def test_get_group_snapshot(self, mock_authorize, mock_group_snap):
         fake_group_snap = 'fake_group_snap'
         mock_group_snap.return_value = fake_group_snap
         grp_snap = self.group_api.get_group_snapshot(
             self.ctxt, fake.GROUP_SNAPSHOT_ID)
         self.assertEqual(fake_group_snap, grp_snap)
+        mock_authorize.assert_called_once_with(
+            g_snap_policies.GET_POLICY,
+            target_obj=fake_group_snap)
 
     @ddt.data(True, False)
     @mock.patch('cinder.objects.GroupSnapshotList.get_all')
