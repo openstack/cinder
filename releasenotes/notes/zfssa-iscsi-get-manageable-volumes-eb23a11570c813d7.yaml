@@ -1,0 +1,3 @@
+---
+features:
+  - Oracle ZFSSA iSCSI volume driver implements ``get_manageable_volumes()``

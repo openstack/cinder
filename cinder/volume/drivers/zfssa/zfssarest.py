@@ -754,6 +754,62 @@ class ZFSSAApi(object):
         val = json.loads(ret.data)
         return val
 
+    def _canonify_lun_info(self, lun):
+        def _listify(item):
+            return item if isinstance(item, list) else [item]
+
+        if 'com.sun.ms.vss.hg.maskAll' in lun['initiatorgroup']:
+            # Hide special maskAll value when LUN is not currently presented
+            # to any initiatorgroups:
+            initiatorgroup = []
+            number = []
+        else:
+            # For backward-compatibility with 2013.1.2.x, convert
+            # initiatorgroup and number to lists if they're not already
+            initiatorgroup = _listify(lun['initiatorgroup'])
+            number = _listify(lun['assignednumber'])
+
+        canonical = {
+            'name': lun['name'],
+            'guid': lun['lunguid'],
+            'number': number,
+            'initiatorgroup': initiatorgroup,
+            'size': lun['volsize'],
+            'nodestroy': lun['nodestroy'],
+            'targetgroup': lun['targetgroup']
+        }
+        if 'origin' in lun:
+            canonical['origin'] = lun['origin']
+        for custom in ['image_id', 'updated_at', 'cinder_managed']:
+            custom_value = lun.get('custom:' + custom)
+            if custom_value:
+                canonical[custom] = custom_value
+
+        return canonical
+
+    def get_all_luns(self, pool, project):
+        """return all luns in project."""
+        svc = '/api/storage/v1/pools/' + pool + '/projects/' + \
+            project + "/luns"
+        ret = self.rclient.get(svc)
+        if ret.status != restclient.Status.OK:
+            exception_msg = (_('Error Getting LUNs on '
+                               'Pool: %(pool)s '
+                               'Project: %(project)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'pool': pool,
+                                'project': project,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        canonical = []
+        for lun in json.loads(ret.data)['luns']:
+            canonical.append(self._canonify_lun_info(lun))
+        return canonical
+
     def get_lun(self, pool, project, lun):
         """return iscsi lun properties."""
         svc = '/api/storage/v1/pools/' + pool + '/projects/' + \
@@ -785,40 +841,7 @@ class ZFSSAApi(object):
             LOG.error(exception_msg)
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
-        val = json.loads(ret.data)
-
-        # For backward-compatibility with 2013.1.2.x, convert initiatorgroup
-        # and number to lists if they're not already
-        def _listify(item):
-            return item if isinstance(item, list) else [item]
-
-        initiatorgroup = _listify(val['lun']['initiatorgroup'])
-        number = _listify(val['lun']['assignednumber'])
-
-        # Hide special maskAll value when LUN is not currently presented to
-        # any initiatorgroups:
-        if 'com.sun.ms.vss.hg.maskAll' in initiatorgroup:
-            initiatorgroup = []
-            number = []
-
-        ret = {
-            'name': val['lun']['name'],
-            'guid': val['lun']['lunguid'],
-            'number': number,
-            'initiatorgroup': initiatorgroup,
-            'size': val['lun']['volsize'],
-            'nodestroy': val['lun']['nodestroy'],
-            'targetgroup': val['lun']['targetgroup']
-        }
-        if 'origin' in val['lun']:
-            ret.update({'origin': val['lun']['origin']})
-        if 'custom:image_id' in val['lun']:
-            ret.update({'image_id': val['lun']['custom:image_id']})
-            ret.update({'updated_at': val['lun']['custom:updated_at']})
-        if 'custom:cinder_managed' in val['lun']:
-            ret.update({'cinder_managed': val['lun']['custom:cinder_managed']})
-
-        return ret
+        return self._canonify_lun_info(json.loads(ret.data)['lun'])
 
     def get_lun_snapshot(self, pool, project, lun, snapshot):
         """Return iscsi lun snapshot properties."""
