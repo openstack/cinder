@@ -1374,7 +1374,7 @@ class RestClient(object):
             msg = (_(
                 "Can't find valid IP from rest, please check it on storage."))
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data = msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
         if 'data' in result:
             for item in result['data']:

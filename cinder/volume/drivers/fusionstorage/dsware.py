@@ -45,7 +45,7 @@ volume_opts = [
                help='Fusionstorage agent ip addr range.'),
     cfg.StrOpt('pool_type',
                default='default',
-               help = 'Pool type, like sata-2copy.'),
+               help='Pool type, like sata-2copy.'),
     cfg.ListOpt('pool_id_filter',
                 default=[],
                 help='Pool id permit to use.'),
