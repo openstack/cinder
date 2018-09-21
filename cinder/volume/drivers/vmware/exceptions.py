@@ -55,3 +55,8 @@ class ClusterNotFoundException(exceptions.VMwareDriverException):
 class NoValidHostException(exceptions.VMwareDriverException):
     """Thrown when there are no valid ESX hosts."""
     msg_fmt = _("There are no valid ESX hosts.")
+
+
+class TemplateNotFoundException(exceptions.VMwareDriverException):
+    """Thrown when template cannot be found."""
+    msg_fmt = _("Template cannot be found at path: %(path)s.")

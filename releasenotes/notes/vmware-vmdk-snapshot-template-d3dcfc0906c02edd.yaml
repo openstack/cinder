@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    VMware VMDK driver now supports vSphere template as a
+    volume snapshot format in vCenter server. The snapshot
+    format in vCenter server can be specified using driver
+    config option ``vmware_snapshot_format``.
+upgrade:
+  - |
+    VMware VMDK driver will use vSphere template as the
+    default snapshot format in vCenter server.
