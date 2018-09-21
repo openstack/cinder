@@ -15,6 +15,7 @@ Cinder database.
    :maxdepth: 1
 
    cinder-manage
+   cinder-status
 
 Additional Tools and Information
 --------------------------------

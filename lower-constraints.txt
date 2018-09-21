@@ -163,3 +163,4 @@ voluptuous==0.11.1
 warlock==1.3.0
 WebOb==1.7.1
 wrapt==1.10.11
+oslo.upgradecheck==0.1.0

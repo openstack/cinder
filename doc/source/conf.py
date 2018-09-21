@@ -150,7 +150,9 @@ modindex_common_prefix = ['cinder.']
 
 man_pages = [
     ('cli/cinder-manage', 'cinder-manage', u'Cloud controller fabric',
-     [u'OpenStack'], 1)
+     [u'OpenStack'], 1),
+    ('cli/cinder-status', 'cinder-status', u'Upgrade checking utility',
+     [u'OpenStack'], 1),
 ]
 
 # -- Options for HTML output --------------------------------------------------
