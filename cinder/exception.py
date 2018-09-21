@@ -125,6 +125,11 @@ class CinderException(Exception):
         # overshadowed by the class' message attribute
         self.msg = message
         super(CinderException, self).__init__(message)
+        # Oslo.messaging use the argument 'message' to rebuild exception
+        # directly at the rpc client side, therefore we should not use it
+        # in our keyword arguments, otherwise, the rebuild process will fail
+        # with duplicate keyword exception.
+        self.kwargs.pop('message', None)
 
     def _log_exception(self):
         # kwargs doesn't match a variable in the message
