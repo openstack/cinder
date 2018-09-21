@@ -1854,6 +1854,12 @@ name_2:
   in: body
   required: true
   type: string
+name_20:
+  description: |
+    The name of the backend pool.
+  in: body
+  required: true
+  type: string
 name_3:
   description: |
     The name of the consistency group.
