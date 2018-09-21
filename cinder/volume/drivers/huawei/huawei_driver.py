@@ -684,7 +684,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                 self.configuration.lun_write_cache_policy),
             'OWNINGCONTROLLER': lun_info['OWNINGCONTROLLER'], }
 
-        for item in lun_params.keys():
+        for item in lun_params:
             if lun_params.get(item) == '--':
                 del lun_params[item]
 

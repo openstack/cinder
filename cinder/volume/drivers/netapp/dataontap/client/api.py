@@ -340,7 +340,7 @@ class NaElement(object):
 
     def add_attrs(self, **attrs):
         """Add multiple attributes to the element."""
-        for attr in attrs.keys():
+        for attr in attrs:
             self._element.set(attr, attrs.get(attr))
 
     def add_child_elem(self, na_element):
@@ -405,7 +405,7 @@ class NaElement(object):
     def create_node_with_children(node, **children):
         """Creates and returns named node with children."""
         parent = NaElement(node)
-        for child in children.keys():
+        for child in children:
             parent.add_new_child(child, children.get(child, None))
         return parent
 

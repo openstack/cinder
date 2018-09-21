@@ -840,7 +840,7 @@ class HostManager(object):
         for old_pool in old_pools:
             oldpools[old_pool['pool_name']] = old_pool
 
-        for key in newpools.keys():
+        for key in newpools:
             if key in oldpools.keys():
                 for k in self.REQUIRED_KEYS:
                     if newpools[key][k] != oldpools[key][k]:

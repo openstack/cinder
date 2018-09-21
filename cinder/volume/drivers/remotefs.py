@@ -317,7 +317,7 @@ class RemoteFSDriver(driver.BaseVD):
                                          self.driver_prefix +
                                          '_shares_config'))
 
-        for share in self.shares.keys():
+        for share in self.shares:
             try:
                 self._ensure_share_mounted(share)
                 mounted_shares.append(share)

@@ -1602,7 +1602,7 @@ class XIVProxy(proxy.IBMStorageProxy):
             self.meta['stat']['rpo'] = repl.Replication.get_supported_rpo()
             self.meta['stat']['replication_count'] = len(self.targets)
             self.meta['stat']['replication_targets'] = [target for target in
-                                                        self.targets.keys()]
+                                                        self.targets]
 
         self.meta['stat']['timestamp'] = datetime.datetime.utcnow()
 

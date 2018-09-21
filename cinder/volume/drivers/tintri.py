@@ -800,7 +800,7 @@ class TintriDriver(driver.ManageableVD,
         mounted_image_shares = []
         if self._image_shares_config:
             self._load_shares_config(self._image_shares_config)
-            for share in self.shares.keys():
+            for share in self.shares:
                 try:
                     self._ensure_share_mounted(share)
                     mounted_image_shares.append(share)
