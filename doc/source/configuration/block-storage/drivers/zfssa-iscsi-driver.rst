@@ -39,7 +39,7 @@ Configuration
    .. code-block:: bash
 
       scope=stmf - allow_configure=true
-      scope=nas - allow_clone=true, allow_createProject=true, allow_createShare=true, allow_changeSpaceProps=true, allow_changeGeneralProps=true, allow_destroy=true, allow_rollback=true, allow_takeSnap=true
+      scope=nas - allow_clone=true, allow_createProject=true, allow_createShare=true, allow_changeSpaceProps=true, allow_changeGeneralProps=true, allow_destroy=true, allow_rename=true, allow_rollback=true, allow_takeSnap=true
       scope=schema - allow_modify=true
 
    You can create a role with authorizations as follows:
@@ -63,6 +63,7 @@ Configuration
       zfssa:configuration roles OpenStackRole auth (uncommitted)> set allow_changeSpaceProps=true
       zfssa:configuration roles OpenStackRole auth (uncommitted)> set allow_changeGeneralProps=true
       zfssa:configuration roles OpenStackRole auth (uncommitted)> set allow_destroy=true
+      zfssa:configuration roles OpenStackRole auth (uncommitted)> set allow_rename=true
       zfssa:configuration roles OpenStackRole auth (uncommitted)> set allow_rollback=true
       zfssa:configuration roles OpenStackRole auth (uncommitted)> set allow_takeSnap=true
       zfssa:configuration roles OpenStackRole auth (uncommitted)> commit
