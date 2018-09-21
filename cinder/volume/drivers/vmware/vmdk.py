@@ -2218,7 +2218,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             raise exception.InvalidSnapshot("Cannot revert to template "
                                             "based snapshot")
 
-        backing = self.volumeops.get_backing(volume.name)
+        backing = self.volumeops.get_backing(volume.name, volume.id)
         if not backing:
             LOG.debug("Backing does not exist for volume.", resource=volume)
         else:
