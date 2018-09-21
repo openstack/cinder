@@ -1696,6 +1696,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     @mock.patch.object(VMDK_DRIVER, '_validate_params')
     @mock.patch('re.compile')
+    @mock.patch.object(VMDK_DRIVER, '_create_session')
     @mock.patch.object(VMDK_DRIVER, '_get_vc_version')
     @mock.patch.object(VMDK_DRIVER, '_validate_vcenter_version')
     @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
@@ -1706,9 +1707,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, 'session')
     def _test_do_setup(
             self, session, vops, ds_sel_cls, vops_cls, register_extension,
-            get_pbm_wsdl_loc, validate_vc_version, get_vc_version, re_compile,
-            validate_params, enable_pbm=True, ds_regex_pat=None,
-            invalid_regex=False):
+            get_pbm_wsdl_loc, validate_vc_version, get_vc_version,
+            create_session, re_compile, validate_params, enable_pbm=True,
+            ds_regex_pat=None, invalid_regex=False):
+        mock_session = mock.Mock()
+        create_session.return_value = mock_session
+
         if enable_pbm:
             ver_str = '5.5'
             pbm_wsdl = mock.sentinel.pbm_wsdl
@@ -1740,11 +1744,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             self._driver.do_setup(mock.ANY)
 
             validate_params.assert_called_once_with()
+            create_session.assert_called_once_with()
             get_vc_version.assert_called_once_with()
             validate_vc_version.assert_called_once_with(ver_str)
             if enable_pbm:
                 get_pbm_wsdl_loc.assert_called_once_with(ver_str)
-                self.assertEqual(pbm_wsdl, self._driver.pbm_wsdl)
+                mock_session.pbm_wsdl_loc_set.assert_called_once_with(pbm_wsdl)
             self.assertEqual(enable_pbm, self._driver._storage_policy_enabled)
             register_extension.assert_called_once()
             vops_cls.assert_called_once_with(
@@ -1775,12 +1780,13 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._test_do_setup(enable_pbm=False)
 
     @mock.patch.object(VMDK_DRIVER, '_validate_params')
+    @mock.patch.object(VMDK_DRIVER, '_create_session')
     @mock.patch.object(VMDK_DRIVER, '_get_vc_version')
     @mock.patch.object(VMDK_DRIVER, '_validate_vcenter_version')
     @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
     def test_do_setup_with_invalid_pbm_wsdl(
             self, get_pbm_wsdl_loc, validate_vc_version, get_vc_version,
-            validate_params):
+            create_session, validate_params):
         ver_str = '5.5'
         get_vc_version.return_value = ver_str
 
@@ -1791,6 +1797,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                           mock.ANY)
 
         validate_params.assert_called_once_with()
+        create_session.assert_called_once_with()
         get_vc_version.assert_called_once_with()
         validate_vc_version.assert_called_once_with(ver_str)
         get_pbm_wsdl_loc.assert_called_once_with(ver_str)
@@ -3095,11 +3102,13 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                       volumeops.BACKING_UUID_KEY: ''})
 
     @mock.patch('oslo_vmware.api.VMwareAPISession')
-    def test_session(self, apiSession):
-        self._driver._session = None
+    def test_create_session(self, apiSession):
+        session = mock.sentinel.session
+        apiSession.return_value = session
 
-        self._driver.session()
+        ret = self._driver._create_session()
 
+        self.assertEqual(session, ret)
         config = self._driver.configuration
         apiSession.assert_called_once_with(
             config.vmware_host_ip,
@@ -3108,7 +3117,6 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             config.vmware_api_retry_count,
             config.vmware_task_poll_interval,
             wsdl_loc=config.safe_get('vmware_wsdl_location'),
-            pbm_wsdl_loc=None,
             port=config.vmware_host_port,
             cacert=config.vmware_ca_file,
             insecure=config.vmware_insecure,
