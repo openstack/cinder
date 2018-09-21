@@ -1395,6 +1395,16 @@ class VolumeManager(manager.CleanableManager,
         This assumes that the image has already been downloaded and stored
         in the volume described by the volume_ref.
         """
+        cache_entry = self.image_volume_cache.get_entry(ctx,
+                                                        volume_ref,
+                                                        image_id,
+                                                        image_meta)
+        if cache_entry:
+            LOG.debug('Cache entry already exists with image ID %'
+                      '(image_id)s',
+                      {'image_id': image_id})
+            return
+
         image_volume = None
         try:
             if not self.image_volume_cache.ensure_space(ctx, volume_ref):
@@ -1413,7 +1423,6 @@ class VolumeManager(manager.CleanableManager,
                             '%(image_id)s will not create cache entry.',
                             {'image_id': image_id})
                 return
-
             self.image_volume_cache.create_cache_entry(
                 ctx,
                 image_volume,
