@@ -1451,7 +1451,7 @@ class NestedDbQuotaDriverBaseTestCase(DbQuotaDriverBaseTestCase):
         self.addCleanup(keystone_patcher.stop)
 
         self.fixture = self.useFixture(config_fixture.Config(CONF))
-        self.fixture.config(auth_uri=self.auth_url, group='keystone_authtoken')
+        self.fixture.config(auth_url=self.auth_url, group='keystone_authtoken')
         self.driver = quota.NestedDbQuotaDriver()
 
     def _mock_get_by_subproject(self):

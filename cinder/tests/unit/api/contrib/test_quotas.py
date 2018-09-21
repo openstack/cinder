@@ -117,7 +117,7 @@ class QuotaSetsControllerTestBase(test.TestCase):
 
         self.auth_url = 'http://localhost:5000'
         self.fixture = self.useFixture(config_fixture.Config(CONF))
-        self.fixture.config(auth_uri=self.auth_url, group='keystone_authtoken')
+        self.fixture.config(auth_url=self.auth_url, group='keystone_authtoken')
 
     def _create_project_hierarchy(self):
         r"""Sets an environment used for nested quotas tests.
