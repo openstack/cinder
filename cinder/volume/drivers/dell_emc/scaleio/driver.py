@@ -783,7 +783,15 @@ class ScaleIODriver(driver.VolumeDriver):
                  {'volname': volume_id,
                   'snapname': snapname})
 
-        return self._snapshot_volume(volume_id, snapname)
+        ret = self._snapshot_volume(volume_id, snapname)
+        if volume.size > snapshot.volume_size:
+            LOG.info("Extending volume %(vol)s to size %(size)s",
+                     {'vol': ret['provider_id'],
+                      'size': volume.size})
+            self._extend_volume(ret['provider_id'],
+                                snapshot.volume_size, volume.size)
+
+        return ret
 
     @staticmethod
     def _get_headers():
