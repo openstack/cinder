@@ -208,8 +208,15 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
     @mock.patch.object(FCD_DRIVER, '_delete_fcd')
     def test_delete_volume(self, delete_fcd):
         volume = self._create_volume_obj()
+        volume.provider_location = 'foo@ds1'
         self._driver.delete_volume(volume)
         delete_fcd.assert_called_once_with(volume.provider_location)
+
+    @mock.patch.object(FCD_DRIVER, '_delete_fcd')
+    def test_delete_volume_empty_provider_location(self, delete_fcd):
+        volume = self._create_volume_obj()
+        self._driver.delete_volume(volume)
+        delete_fcd.assert_not_called()
 
     @mock.patch.object(volumeops.FcdLocation, 'from_provider_location')
     @mock.patch.object(FCD_DRIVER, '_get_adapter_type')
