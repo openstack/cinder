@@ -2000,14 +2000,19 @@ class API(base.Base):
         result = vref.conditional_update({'status': 'reserved'}, expected)
 
         if not result:
-            # Make sure we're not going to the same instance, in which case
-            # it could be a live-migrate or similar scenario (LP BUG: 1694530)
             override = False
             if instance_uuid:
-                override = True
+                # Refresh the volume reference in case multiple instances were
+                # being concurrently attached to the same non-multiattach
+                # volume.
+                vref = objects.Volume.get_by_id(ctxt, vref.id)
                 for attachment in vref.volume_attachment:
-                    if attachment.instance_uuid != instance_uuid:
-                        override = False
+                    # If we're attaching the same volume to the same instance,
+                    # we could be migrating the instance to another host in
+                    # which case we want to allow the reservation.
+                    # (LP BUG: 1694530)
+                    if attachment.instance_uuid == instance_uuid:
+                        override = True
                         break
 
             if not override:
