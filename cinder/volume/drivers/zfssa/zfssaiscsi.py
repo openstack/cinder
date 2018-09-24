@@ -1179,10 +1179,11 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                               lcfg.zfssa_project,
                                               existing_ref['source-name'])
         except exception.VolumeNotFound:
-            err_msg = (_("Volume %s doesn't exist on the ZFSSA "
-                         "backend.") % existing_vol['name'])
+            err_msg = (_("No LUN with name %s exists on the ZFSSA "
+                         "backend.") % existing_ref['source-name'])
             LOG.error(err_msg)
-            raise exception.InvalidInput(reason=err_msg)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=err_msg)
         return existing_vol
 
 
