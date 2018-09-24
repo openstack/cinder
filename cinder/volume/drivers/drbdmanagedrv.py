@@ -527,8 +527,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         if not drbd_vol:
             props = self._priv_hash_from_volume(volume)
             # TODO(PM): properties - redundancy, etc
-            res = self.call_or_reconnect(self.odm.create_volume,
-                                         d_res_name,
+            res = self.odm.create_volume(d_res_name,
                                          self._vol_size_to_dm(volume['size']),
                                          props)
             self._check_result(res)
