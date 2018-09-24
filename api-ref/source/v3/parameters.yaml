@@ -1884,12 +1884,6 @@ name_6:
   in: body
   required: false
   type: string
-name_8:
-  description: |
-    The volume name.
-  in: body
-  required: false
-  type: string
 name_9:
   description: |
     The consistency group name.
@@ -2967,7 +2961,7 @@ volume_name:
   in: body
   required: true
   type: string
-volume_name_1:
+volume_name_optional:
   description: |
     The volume name.
   in: body

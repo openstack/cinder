@@ -199,7 +199,7 @@ Request
    - multiattach: multiattach_req
    - snapshot_id: snapshot_id
    - backup_id: backup_id_1
-   - name: name_13
+   - name: volume_name_optional
    - imageRef: imageRef
    - volume_type: volume_type_2
    - metadata: metadata_10
@@ -404,7 +404,7 @@ Request
    - volume_id: volume_id_path
    - volume: volume
    - description: description_5
-   - name: name_8
+   - name: volume_name_optional
    - metadata: metadata_2
 
 Request Example

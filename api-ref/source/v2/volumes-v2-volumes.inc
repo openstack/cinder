@@ -185,7 +185,7 @@ Request
    - multiattach: multiattach_req
    - availability_zone: availability_zone
    - source_volid: source_volid
-   - name: name_13
+   - name: volume_name_optional
    - volume: volume
    - consistencygroup_id: consistencygroup_id_1
    - volume_type: volume_type_2
