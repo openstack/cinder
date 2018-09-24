@@ -46,10 +46,13 @@ Response Parameters
    - backup_gigabytes: maxTotalBackupGigabytes
    - backups: maxTotalBackups
    - gigabytes: maxTotalVolumeGigabytes
+   - gigabytes_{volume_type}: gigabytes_for_type
    - groups: maxTotalGroups
    - per_volume_gigabytes: per_volume_gigabytes
    - snapshots: maxTotalSnapshots
+   - snapshots_{volume_type}: snapshots_number_for_type
    - volumes: maxTotalVolumes
+   - volumes_{volume_type}: volumes_number_for_type
    - id: quota_class_id
 
 
@@ -89,9 +92,11 @@ Request
    - admin_project_id: admin_project_id
    - quota_class_name: quota_class_name
    - gigabytes: maxTotalVolumeGigabytesOptional
+   - gigabytes_{volume_type}: gigabytes_for_type
    - snapshots: maxTotalSnapshotsOptional
+   - snapshots_{volume_type}: snapshots_number_for_type
    - volumes: maxTotalVolumesOptional
-   - volume-type: volume_type_2
+   - volumes_{volume_type}: volumes_number_for_type
 
 Request Example
 ---------------
@@ -109,10 +114,13 @@ Response Parameters
    - backup_gigabytes: maxTotalBackupGigabytes
    - backups: maxTotalBackups
    - gigabytes: maxTotalVolumeGigabytes
+   - gigabytes_{volume_type}: gigabytes_for_type
    - groups: maxTotalGroups
    - per_volume_gigabytes: per_volume_gigabytes
    - snapshots: maxTotalSnapshots
+   - snapshots_{volume_type}: snapshots_number_for_type
    - volumes: maxTotalVolumes
+   - volumes_{volume_type}: volumes_number_for_type
 
 Response Example
 ----------------
