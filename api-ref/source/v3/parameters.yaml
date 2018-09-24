@@ -2987,7 +2987,7 @@ volume_type_1:
   type: object
 volume_type_2:
   description: |
-    The volume type. To create an environment with
+    The volume type (either name or ID). To create an environment with
     multiple-storage back ends, you must specify a volume type. Block
     Storage volume back ends are spawned as children to ``cinder-
     volume``, and they are keyed from a unique queue. They are named
