@@ -14,6 +14,7 @@
 #    under the License.
 import os.path
 
+import mock
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 from oslo_policy import policy as oslo_policy
@@ -75,6 +76,9 @@ class PolicyTestCase(test.TestCase):
                                     "role:admin"),
             oslo_policy.RuleDefault("test:uppercase_admin",
                                     "role:ADMIN"),
+            oslo_policy.RuleDefault("old_action_not_default", "@"),
+            oslo_policy.RuleDefault("new_action", "@"),
+            oslo_policy.RuleDefault("old_action_default", "rule:admin_api"),
         ]
         policy.reset()
         policy.init()
@@ -129,3 +133,26 @@ class PolicyTestCase(test.TestCase):
                                                roles=['AdMiN'])
         policy.authorize(admin_context, lowercase_action, self.target)
         policy.authorize(admin_context, uppercase_action, self.target)
+
+    @mock.patch.object(policy.LOG, 'warning')
+    def test_verify_deprecated_policy_using_old_action(self, mock_warning):
+
+        old_policy = "old_action_not_default"
+        new_policy = "new_action"
+        default_rule = "rule:admin_api"
+
+        using_old_action = policy.verify_deprecated_policy(
+            old_policy, new_policy, default_rule, self.context)
+
+        self.assertTrue(mock_warning.called)
+        self.assertTrue(using_old_action)
+
+    def test_verify_deprecated_policy_using_new_action(self):
+        old_policy = "old_action_default"
+        new_policy = "new_action"
+        default_rule = "rule:admin_api"
+
+        using_old_action = policy.verify_deprecated_policy(
+            old_policy, new_policy, default_rule, self.context)
+
+        self.assertFalse(using_old_action)

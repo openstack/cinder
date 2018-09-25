@@ -20,6 +20,11 @@ from cinder.policies import base
 
 MANAGE_POLICY = "volume_extension:types_manage"
 ENCRYPTION_POLICY = "volume_extension:volume_type_encryption"
+BASE_POLICY_RULE = 'rule:%s' % ENCRYPTION_POLICY
+CREATE_ENCRYPTION_POLICY = "volume_extension:volume_type_encryption:create"
+GET_ENCRYPTION_POLICY = "volume_extension:volume_type_encryption:get"
+UPDATE_ENCRYPTION_POLICY = "volume_extension:volume_type_encryption:update"
+DELETE_ENCRYPTION_POLICY = "volume_extension:volume_type_encryption:delete"
 QOS_POLICY = "volume_extension:access_types_qos_specs_id"
 EXTRA_SPEC_POLICY = "volume_extension:access_types_extra_specs"
 GET_POLICY = "volume_extension:type_get"
@@ -68,7 +73,8 @@ volume_type_policies = [
         name=ENCRYPTION_POLICY,
         check_str=base.RULE_ADMIN_API,
         description="List, show, create, update and delete volume "
-                    "type encryption.",
+                    "type encryption. This is deprecated in the Stein "
+                    "release and will be removed in the future.",
         operations=[
             {
                 'method': 'POST',
@@ -86,6 +92,50 @@ volume_type_policies = [
                 'method': 'GET',
                 'path': '/types/{type_id}/encryption/{encryption_id}'
             },
+            {
+                'method': 'DELETE',
+                'path': '/types/{type_id}/encryption/{encryption_id}'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=CREATE_ENCRYPTION_POLICY,
+        check_str=BASE_POLICY_RULE,
+        description="Create volume type encryption.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/types/{type_id}/encryption'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=GET_ENCRYPTION_POLICY,
+        check_str=BASE_POLICY_RULE,
+        description="Show, list volume type encryption.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/types/{type_id}/encryption/{encryption_id}'
+            },
+            {
+                'method': 'GET',
+                'path': '/types/{type_id}/encryption'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=UPDATE_ENCRYPTION_POLICY,
+        check_str=BASE_POLICY_RULE,
+        description="Update volume type encryption.",
+        operations=[
+            {
+                'method': 'PUT',
+                'path': '/types/{type_id}/encryption/{encryption_id}'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=DELETE_ENCRYPTION_POLICY,
+        check_str=BASE_POLICY_RULE,
+        description="Delete volume type encryption.",
+        operations=[
             {
                 'method': 'DELETE',
                 'path': '/types/{type_id}/encryption/{encryption_id}'
