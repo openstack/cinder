@@ -47,7 +47,7 @@ Request
    - availability_zone: availability_zone
    - bootable: bootable_1
    - volume_type: volume_type
-   - name: volume_name_1
+   - name: volume_name_optional
    - host: host_mutex
    - cluster: cluster_mutex
    - ref: ref

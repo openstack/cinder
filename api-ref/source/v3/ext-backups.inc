@@ -233,7 +233,7 @@ Request
    - project_id: project_id_path
    - backup_id: backup_id
    - restore: restore
-   - name: name_8
+   - name: volume_name_optional
    - volume_id: volume_id_6
 
 Request Example
