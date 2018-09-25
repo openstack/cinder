@@ -89,7 +89,6 @@ class HPE3PARDriverBase(driver.ManageableVD,
                             "time. Since replication is enabled, "
                             "listing replication targets and failing over "
                             "a volume can still be performed.")
-                pass
             else:
                 raise
         return common

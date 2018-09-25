@@ -291,7 +291,6 @@ class API(base.Base):
                                  "Do not need to create again.",
                                  {'grp': group.id,
                                   'vol_type': volume_type_id})
-                        pass
 
                 # Since group snapshot is passed in, the following call will
                 # create a db entry for the volume, but will not call the
@@ -374,7 +373,6 @@ class API(base.Base):
                                  "Do not need to create again.",
                                  {'grp': group.id,
                                   'vol_type': volume_type_id})
-                        pass
 
                 # Since source_group is passed in, the following call will
                 # create a db entry for the volume, but will not call the

@@ -535,7 +535,6 @@ class QnapISCSIDriver(san.SanISCSIDriver):
             self.api_executor.delete_snapshot_api(snapshot_id)
         elif 'ES' in internal_model_name.upper():
             LOG.debug('in ES FW: do nothing')
-            pass
         _metadata = self._get_volume_metadata(volume)
         _metadata['LUNIndex'] = lun_index
         _metadata['LUNNAA'] = lun_naa

@@ -51,8 +51,6 @@ class FJDXFCDriver(driver.FibreChannelDriver):
             LOG.error('pywbem could not be imported! '
                       'pywbem is necessary for this volume driver.')
 
-        pass
-
     def create_volume(self, volume):
         """Create volume."""
         LOG.debug('create_volume, '

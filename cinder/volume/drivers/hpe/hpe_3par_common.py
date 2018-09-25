@@ -1726,7 +1726,6 @@ class HPE3PARCommon(object):
             vluns = self.client.getHostVLUNs(hostname)
         except hpeexceptions.HTTPNotFound:
             LOG.debug("All VLUNs removed from host %s", hostname)
-            pass
 
         if wwn is not None and not isinstance(wwn, list):
             wwn = [wwn]
@@ -3415,7 +3414,6 @@ class HPE3PARCommon(object):
                       "combination: %(host)s, %(vol)s",
                       {'host': host['name'],
                        'vol': vol_name})
-            pass
         return existing_vlun
 
     def find_existing_vluns(self, volume, host):
@@ -3433,7 +3431,6 @@ class HPE3PARCommon(object):
                       "combination: %(host)s, %(vol)s",
                       {'host': host['name'],
                        'vol': vol_name})
-            pass
         return existing_vluns
 
     # v2 replication methods
