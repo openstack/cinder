@@ -1,0 +1,3 @@
+---
+features:
+  - Support for retype and volume migration for HPE Nimble Storage driver.
