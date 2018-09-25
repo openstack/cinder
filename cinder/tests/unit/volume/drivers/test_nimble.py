@@ -174,6 +174,7 @@ FAKE_GENERIC_POSITIVE_RESPONSE = ""
 FAKE_VOLUME_DELETE_HAS_CLONE_RESPONSE = "Object has a clone"
 
 FAKE_TYPE_ID = fake.VOLUME_TYPE_ID
+FAKE_TYPE_ID_NEW = fake.VOLUME_TYPE2_ID
 FAKE_POOL_ID = fake.GROUP_ID
 FAKE_PERFORMANCE_POLICY_ID = fake.OBJECT_ID
 NIMBLE_MANAGEMENT_IP = "10.18.108.55"
@@ -668,7 +669,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     @mock.patch(NIMBLE_ISCSI_DRIVER + ".is_volume_backup_clone", mock.Mock(
-        return_value = ['', '']))
+        return_value=['', '']))
     def test_delete_volume(self):
         self.mock_client_service.online_vol.return_value = (
             FAKE_GENERIC_POSITIVE_RESPONSE)
@@ -688,18 +689,22 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     @mock.patch(NIMBLE_ISCSI_DRIVER + ".is_volume_backup_clone", mock.Mock(
-        return_value = ['', '']))
+        return_value=['', '']))
     def test_delete_volume_with_clone(self):
         self.mock_client_service.delete_vol.side_effect = \
             nimble.NimbleAPIException(FAKE_VOLUME_DELETE_HAS_CLONE_RESPONSE)
+
         self.assertRaises(
             exception.VolumeIsBusy,
             self.driver.delete_volume,
             {'name': 'testvolume'})
-        expected_calls = [mock.call.online_vol(
-            'testvolume', False),
+
+        expected_calls = [
+            mock.call.login(),
+            mock.call.online_vol('testvolume', False),
             mock.call.delete_vol('testvolume'),
             mock.call.online_vol('testvolume', True)]
+
         self.mock_client_service.assert_has_calls(expected_calls)
 
     @mock.patch(NIMBLE_URLLIB2)
@@ -750,11 +755,11 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @mock.patch(NIMBLE_CLIENT)
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
                        mock.Mock(type_id=FAKE_TYPE_ID,
-                                 return_value=
-                                 {'nimble:perfpol-name': 'default',
-                                  'nimble:encryption': 'yes',
-                                  'nimble:multi-initiator': 'false',
-                                  'nimble:iops-limit': '1024'}))
+                                 return_value={
+                                     'nimble:perfpol-name': 'default',
+                                     'nimble:encryption': 'yes',
+                                     'nimble:multi-initiator': 'false',
+                                     'nimble:iops-limit': '1024'}))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*', False))
     @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host')
@@ -964,6 +969,32 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @mock.patch(NIMBLE_CLIENT)
     @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       mock.Mock(type_id=FAKE_TYPE_ID_NEW,
+                                 return_value={
+                                     'id': FAKE_TYPE_ID_NEW,
+                                     'extra_specs':
+                                     {'nimble:perfpol-name': 'default',
+                                      'nimble:encryption': 'yes',
+                                      'nimble:multi-initiator': 'false',
+                                      'nimble:iops-limit': '1024'}}))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_retype(self):
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_ONLINE)
+        retype, update = self.driver.retype(None, FAKE_GET_VOL_INFO_ONLINE,
+                                            volume_types.get_volume_type(
+                                                None,
+                                                FAKE_TYPE_ID_NEW),
+                                            None, None)
+        self.assertTrue(retype)
+        self.assertIsNone(update)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_get_volume_stats(self):
@@ -1118,6 +1149,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
         expected_res = {
             'driver_volume_type': 'iscsi',
             'data': {
+                'target_discovered': False,
                 'volume_id': 12,
                 'target_iqn': '13',
                 'target_lun': 0,
@@ -1136,12 +1168,46 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    @mock.patch(NIMBLE_ISCSI_DRIVER + '._get_data_ips')
+    @mock.patch(NIMBLE_ISCSI_DRIVER + ".get_lun_number")
+    @mock.patch(NIMBLE_ISCSI_DRIVER + '._get_gst_for_group')
+    def test_initialize_connection_group_scoped_target(self, mock_gst_name,
+                                                       mock_lun_number,
+                                                       mock_data_ips):
+        mock_data_ips.return_value = ['12', '13']
+        mock_lun_number.return_value = 0
+        mock_gst_name.return_value = "group_target_name"
+        self.mock_client_service.get_initiator_grp_list.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE)
+        expected_res = {
+            'driver_volume_type': 'iscsi',
+            'data': {
+                'target_discovered': False,
+                'volume_id': 12,
+                'target_iqns': ['group_target_name', 'group_target_name'],
+                'target_luns': [0, 0],
+                'target_portals': ['12', '13']}}
+        self.assertEqual(
+            expected_res,
+            self.driver.initialize_connection(
+                {'name': 'test-volume',
+                 'provider_location': '12 group_target_name',
+                 'id': 12},
+                {'initiator': 'test-initiator1'}))
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_initialize_connection_live_migration(self):
         self.mock_client_service.get_initiator_grp_list.return_value = (
             FAKE_IGROUP_LIST_RESPONSE)
         expected_res = {
             'driver_volume_type': 'iscsi',
             'data': {
+                'target_discovered': False,
                 'volume_id': 12,
                 'target_iqn': '13',
                 'target_lun': 0,
@@ -1221,6 +1287,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
         expected_res = {
             'driver_volume_type': 'iscsi',
             'data': {
+                'target_discovered': False,
                 'target_lun': 0,
                 'volume_id': 12,
                 'target_iqn': '13',
