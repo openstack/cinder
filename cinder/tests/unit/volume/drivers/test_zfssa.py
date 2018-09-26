@@ -966,6 +966,66 @@ class TestZFSSAISCSIDriver(test.TestCase):
             lcfg.zfssa_cache_project,
             volname)
 
+    def test_get_manageable_volumes(self):
+        lcfg = self.configuration
+
+        self.drv.zfssa.get_all_luns.return_value = [
+            {'name': 'volume-11111111-1111-1111-1111-111111111111',
+             'size': 111 * units.Gi,
+             'cinder_managed': True},
+            {'name': 'volume2',
+             'size': 222 * units.Gi,
+             'cinder_managed': False},
+            {'name': 'volume-33333333-3333-3333-3333-333333333333',
+             'size': 333 * units.Gi,
+             'cinder_managed': True},
+            {'name': 'volume4',
+             'size': 444 * units.Gi}
+        ]
+
+        cinder_vols = [{'id': '11111111-1111-1111-1111-111111111111'}]
+        args = (cinder_vols, None, 1000, 0, ['size'], ['asc'])
+
+        lcfg.zfssa_manage_policy = 'strict'
+        expected = [
+            {'reference': {'source-name':
+                           'volume-11111111-1111-1111-1111-111111111111'},
+             'size': 111,
+             'safe_to_manage': False,
+             'reason_not_safe': 'already managed',
+             'cinder_id': '11111111-1111-1111-1111-111111111111',
+             'extra_info': None},
+            {'reference': {'source-name': 'volume2'},
+             'size': 222,
+             'safe_to_manage': True,
+             'reason_not_safe': None,
+             'cinder_id': None,
+             'extra_info': None},
+            {'reference': {'source-name':
+                           'volume-33333333-3333-3333-3333-333333333333'},
+             'size': 333,
+             'safe_to_manage': False,
+             'reason_not_safe': 'managed by another cinder instance?',
+             'cinder_id': None,
+             'extra_info': None},
+            {'reference': {'source-name': 'volume4'},
+             'size': 444,
+             'safe_to_manage': False,
+             'reason_not_safe': 'cinder_managed schema not present',
+             'cinder_id': None,
+             'extra_info': None},
+        ]
+
+        result = self.drv.get_manageable_volumes(*args)
+        self.assertEqual(expected, result)
+
+        lcfg.zfssa_manage_policy = 'loose'
+        expected[3]['safe_to_manage'] = True
+        expected[3]['reason_not_safe'] = None
+
+        result = self.drv.get_manageable_volumes(*args)
+        self.assertEqual(expected, result)
+
     @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_get_existing_vol')
     @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_verify_volume_to_manage')
     def test_volume_manage(self, _get_existing_vol, _verify_volume_to_manage):
