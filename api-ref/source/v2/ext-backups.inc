@@ -177,7 +177,7 @@ Request
 
 
 Restore backup
---------------
+~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/{project_id}/backups/{backup_id}/restore
 

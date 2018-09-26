@@ -320,7 +320,7 @@ Response Parameters
 
 
 List QoS specs
---------------
+~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{project_id}/qos-specs
 
