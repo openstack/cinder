@@ -95,18 +95,16 @@ Response
 
 .. rest_parameters:: parameters.yaml
 
-   - qos_specs: qos_specs
-   - specs: specs
-   - consumer: consumer_1
-   - name: name_4
-   - id: id_3
-   - links: links_2
+   - qos_associations: qos_associations
+   - type: qos_association_type
+   - id: qos_association_id
+   - name: qos_association_name
 
 
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/qos-show-response.json
+.. literalinclude:: ./samples/qos_show_response.json
    :language: javascript
 
 
@@ -331,6 +329,13 @@ Response Parameters
    - id: id_3
    - consumer: consumer
    - specs: specs
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/qos-create-response.json
+   :language: javascript
 
 
 List QoS Specifications

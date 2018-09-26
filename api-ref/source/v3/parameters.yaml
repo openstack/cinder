@@ -2261,6 +2261,30 @@ provider_optional:
   in: body
   required: false
   type: string
+qos_association_id:
+  description: |
+    The Qos association ID.
+  in: body
+  required: true
+  type: string
+qos_association_name:
+  description: |
+    The QoS association name.
+  in: body
+  required: true
+  type: string
+qos_association_type:
+  description: |
+    The QoS association type.
+  in: body
+  required: true
+  type: string
+qos_associations:
+  description: |
+    A collection of ``QoS associations``.
+  in: body
+  required: true
+  type: array
 qos_set_id:
   description: |
     The QoS set ID.
