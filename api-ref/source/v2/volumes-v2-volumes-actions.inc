@@ -405,6 +405,69 @@ Request Example
    :language: javascript
 
 
+Migrate volume
+~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
+
+Specify the ``os-migrate_volume`` action in the request body.
+
+Migrates a volume to the specified host.
+
+It is generally not recommended to migrate an *in-use* multiattach volume if
+that volume has more than one active read/write attachment.
+
+Policy defaults enable only users with the administrative role to perform this
+operation. Cloud providers can change these permissions through the
+policy.json file.
+
+**Preconditions**
+
+* The volume ``status`` must be ``available`` or ``in-use``.
+* The volume ``migration_status`` must be ``None``, ``deleting``, ``error``,
+  or ``success``.
+* The volume ``replication_status`` must be ``None``, ``disabled`` or
+  ``not-capable``.
+* The migration must happen to another host from which the
+  volume currently resides.
+* The volume must not be a member of a group.
+* The volume must not have snapshots.
+
+**Asynchronous Postconditions**
+
+On success, the volume ``status`` will return to its original status of
+``available`` or ``in-use`` and the ``migration_status`` will be ``success``.
+On failure, the ``migration_status`` will be ``error``. In the case of failure,
+if ``lock_volume`` was true and the volume was originally ``available`` when
+it was migrated, the ``status`` will go back to ``available``.
+
+Response codes
+--------------
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - volume_id: volume_id_path
+   - project_id: project_id_path
+   - os-migrate_volume: os-migrate_volume
+   - host: migrate_host
+   - force_host_copy: migrate_force_host_copy
+   - lock_volume: migrate_lock_volume
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-os-migrate_volume-request.json
+   :language: javascript
+
+
 Force delete volume
 ~~~~~~~~~~~~~~~~~~~
 

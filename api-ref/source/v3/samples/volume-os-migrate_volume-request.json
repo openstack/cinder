@@ -1,0 +1,5 @@
+{
+    "os-migrate_volume": {
+        "host": "node1@lvm"
+    }
+}
