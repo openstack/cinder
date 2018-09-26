@@ -5142,6 +5142,14 @@ class VMAXCommonTest(test.TestCase):
         mock_revert.assert_called_once_with(
             array, device_id, snap_name, extra_specs)
 
+    @mock.patch.object(utils.VMAXUtils, 'is_replication_enabled',
+                       return_value=True)
+    def test_revert_to_snapshot_replicated(self, mock_rep):
+        volume = self.data.test_volume
+        snapshot = self.data.test_snapshot
+        self.assertRaises(exception.VolumeDriverException,
+                          self.common.revert_to_snapshot, volume, snapshot)
+
     def test_get_initiator_check_flag(self):
         self.common.configuration.initiator_check = False
         initiator_check = self.common._get_initiator_check_flag()
