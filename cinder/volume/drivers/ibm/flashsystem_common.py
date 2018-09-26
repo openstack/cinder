@@ -1218,4 +1218,3 @@ class FlashSystemDriver(san.SanDriver,
         """Removes the specified volume from Cinder management."""
         LOG.debug('unmanage: volume %(vol)s is no longer managed by cinder.',
                   {'vol': volume})
-        pass

@@ -1238,8 +1238,6 @@ class API(base.Base):
     def get_snapshot_metadata_value(self, snapshot, key):
         LOG.info("Get snapshot metadata value not implemented.",
                  resource=snapshot)
-        # FIXME(jdg): Huh?  Pass?
-        pass
 
     def get_volumes_image_metadata(self, context):
         context.authorize(vol_meta_policy.GET_POLICY)
