@@ -17,6 +17,7 @@
 
 import copy
 
+from oslo_config import cfg
 from six.moves import http_client
 
 from cinder.api import extensions
@@ -24,6 +25,9 @@ from cinder.api import openstack
 from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
 from cinder.api.views import versions as views_versions
+
+
+CONF = cfg.CONF
 
 
 _LINKS = [{
@@ -111,9 +115,15 @@ class VersionsController(wsgi.Controller):
     # available versions.
     @wsgi.response(http_client.MULTIPLE_CHOICES)
     def all(self, req):
-        """Return all known versions."""
+        """Return all known and enabled versions."""
         builder = views_versions.get_view_builder(req)
         known_versions = copy.deepcopy(_KNOWN_VERSIONS)
+
+        if not CONF.enable_v2_api:
+            known_versions.pop('v2.0')
+        if not CONF.enable_v3_api:
+            known_versions.pop('v3.0')
+
         return builder.build_versions(known_versions)
 
 
