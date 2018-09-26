@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    The ability to specify a backup driver by module name was deprecated in
+    the Queens release and the ability has now been removed. Any configuration
+    in cinder.conf still using the module path should be updated to include the
+    full class name. For example, ``cinder.backup.drivers.swift`` should be
+    updated to ``cinder.backup.drivers.swift.SwiftBackupDriver``.

@@ -728,9 +728,9 @@ class BackupTestCase(BaseBackupTest):
         backup = self._create_backup_db_entry(volume_id=vol_id,
                                               parent_id='mock')
 
-        with mock.patch.object(self.backup_mgr, 'get_backup_driver') as \
-                mock_get_backup_driver:
-            mock_get_backup_driver.return_value.backup.return_value = (
+        with mock.patch.object(self.backup_mgr, 'service') as \
+                mock_service:
+            mock_service.return_value.backup.return_value = (
                 {'parent_id': None})
             with mock.patch.object(self.backup_mgr, '_detach_device'):
                 device_path = '/fake/disk/path/'
@@ -763,9 +763,9 @@ class BackupTestCase(BaseBackupTest):
         backup = self._create_backup_db_entry(volume_id=vol_id)
         parent_backup = self._create_backup_db_entry(size=vol_size)
 
-        with mock.patch.object(self.backup_mgr, 'get_backup_driver') as \
-                mock_get_backup_driver:
-            mock_get_backup_driver.return_value.backup.return_value = (
+        with mock.patch.object(self.backup_mgr, 'service') as \
+                mock_service:
+            mock_service.return_value.backup.return_value = (
                 {'parent_id': parent_backup.id})
             with mock.patch.object(self.backup_mgr, '_detach_device'):
                 device_path = '/fake/disk/path/'
@@ -796,9 +796,9 @@ class BackupTestCase(BaseBackupTest):
         vol_id = self._create_volume_db_entry()
         backup = self._create_backup_db_entry(volume_id=vol_id)
 
-        with mock.patch.object(self.backup_mgr, 'get_backup_driver') as \
-                mock_get_backup_driver:
-            mock_get_backup_driver.return_value.backup.side_effect = (
+        with mock.patch.object(self.backup_mgr, 'service') as \
+                mock_service:
+            mock_service.return_value.backup.side_effect = (
                 FakeBackupException('fake'))
             with mock.patch.object(self.backup_mgr, '_detach_device'):
                 device_path = '/fake/disk/path/'
@@ -835,7 +835,7 @@ class BackupTestCase(BaseBackupTest):
         backup_service = lambda: None
         backup_service.backup = mock.Mock(
             return_value=mock.sentinel.backup_update)
-        self.backup_mgr.get_backup_driver = lambda x: backup_service
+        self.backup_mgr.service = lambda x: backup_service
 
         vol_id = self._create_volume_db_entry()
         backup = self._create_backup_db_entry(volume_id=vol_id)
@@ -1471,14 +1471,12 @@ class BackupTestCase(BaseBackupTest):
         backup.save()
         self.backup_mgr.delete_backup(self.ctxt, backup)
 
-    @ddt.data('cinder.tests.unit.backup.fake_service.FakeBackupService',
-              'cinder.tests.unit.backup.fake_service')
-    def test_delete_backup(self, service):
+    def test_delete_backup(self):
         """Test normal backup deletion."""
         vol_id = self._create_volume_db_entry(size=1)
         backup = self._create_backup_db_entry(
             status=fields.BackupStatus.DELETING, volume_id=vol_id,
-            service=service)
+            service='cinder.tests.unit.backup.fake_service.FakeBackupService')
         self.backup_mgr.delete_backup(self.ctxt, backup)
         self.assertRaises(exception.BackupNotFound,
                           db.backup_get,
@@ -1605,10 +1603,9 @@ class BackupTestCase(BaseBackupTest):
                           self.ctxt,
                           backup)
 
-    @ddt.data('cinder.tests.unit.backup.fake_service.FakeBackupService',
-              'cinder.tests.unit.backup.fake_service')
-    def test_export_record(self, service):
+    def test_export_record(self):
         """Test normal backup record export."""
+        service = 'cinder.tests.unit.backup.fake_service.FakeBackupService'
         vol_size = 1
         vol_id = self._create_volume_db_entry(status='available',
                                               size=vol_size)
@@ -1708,7 +1705,7 @@ class BackupTestCase(BaseBackupTest):
         record where the backup driver returns an exception.
         """
         export = self._create_exported_record_entry()
-        backup_driver = self.backup_mgr.get_backup_driver(self.ctxt)
+        backup_driver = self.backup_mgr.service(self.ctxt)
         _mock_record_import_class = ('%s.%s.%s' %
                                      (backup_driver.__module__,
                                       backup_driver.__class__.__name__,
@@ -1730,7 +1727,8 @@ class BackupTestCase(BaseBackupTest):
 
     def test_not_supported_driver_to_force_delete(self):
         """Test force delete check method for not supported drivers."""
-        self.override_config('backup_driver', 'cinder.backup.drivers.ceph')
+        self.override_config('backup_driver',
+                             'cinder.backup.drivers.ceph.CephBackupDriver')
         self.backup_mgr = importutils.import_object(CONF.backup_manager)
         result = self.backup_mgr.check_support_to_force_delete(self.ctxt)
         self.assertFalse(result)
@@ -1742,7 +1740,8 @@ class BackupTestCase(BaseBackupTest):
     def test_check_support_to_force_delete(self, mock_check_configuration,
                                            mock_init_backup_repo_path):
         """Test force delete check method for supported drivers."""
-        self.override_config('backup_driver', 'cinder.backup.drivers.nfs')
+        self.override_config('backup_driver',
+                             'cinder.backup.drivers.nfs.NFSBackupDriver')
         self.backup_mgr = importutils.import_object(CONF.backup_manager)
         result = self.backup_mgr.check_support_to_force_delete(self.ctxt)
         self.assertTrue(result)
@@ -1785,7 +1784,8 @@ class BackupTestCaseWithVerify(BaseBackupTest):
     def setUp(self):
         self.override_config(
             "backup_driver",
-            "cinder.tests.unit.backup.fake_service_with_verify")
+            "cinder.tests.unit.backup.fake_service_with_verify."
+            "FakeBackupServiceWithVerify")
         super(BackupTestCaseWithVerify, self).setUp()
 
     def test_import_record_with_verify(self):
@@ -1801,7 +1801,7 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         imported_record = self._create_export_record_db_entry(
             backup_id=backup_id)
         backup_hosts = []
-        backup_driver = self.backup_mgr.get_backup_driver(self.ctxt)
+        backup_driver = self.backup_mgr.service(self.ctxt)
         _mock_backup_verify_class = ('%s.%s.%s' %
                                      (backup_driver.__module__,
                                       backup_driver.__class__.__name__,
@@ -1835,7 +1835,7 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         imported_record = self._create_export_record_db_entry(
             backup_id=backup_id)
         backup_hosts = []
-        backup_driver = self.backup_mgr.get_backup_driver(self.ctxt)
+        backup_driver = self.backup_mgr.service(self.ctxt)
         _mock_backup_verify_class = ('%s.%s.%s' %
                                      (backup_driver.__module__,
                                       backup_driver.__class__.__name__,
@@ -1896,7 +1896,7 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         backup = self._create_backup_db_entry(status=fields.BackupStatus.ERROR,
                                               volume_id=volume['id'])
 
-        backup_driver = self.backup_mgr.get_backup_driver(self.ctxt)
+        backup_driver = self.backup_mgr.service(self.ctxt)
         _mock_backup_verify_class = ('%s.%s.%s' %
                                      (backup_driver.__module__,
                                       backup_driver.__class__.__name__,

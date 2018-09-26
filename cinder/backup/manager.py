@@ -37,7 +37,6 @@ from castellan import key_manager
 from eventlet import tpool
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_log import versionutils
 import oslo_messaging as messaging
 from oslo_service import loopingcall
 from oslo_service import periodic_task
@@ -81,11 +80,6 @@ backup_manager_opts = [
                     'decreased for specific drivers that don\'t.'),
 ]
 
-# This map doesn't need to be extended in the future since it's only
-# for old backup services
-mapper = {'cinder.backup.services.swift': 'cinder.backup.drivers.swift',
-          'cinder.backup.services.ceph': 'cinder.backup.drivers.ceph'}
-
 CONF = cfg.CONF
 CONF.register_opts(backup_manager_opts)
 CONF.import_opt('use_multipath_for_image_xfer', 'cinder.volume.driver')
@@ -94,7 +88,8 @@ QUOTAS = quota.QUOTAS
 MAPPING = {
     # Module name "google" conflicts with google library namespace inside the
     # driver when it imports google.auth
-    'cinder.backup.drivers.google': 'cinder.backup.drivers.gcs',
+    'cinder.backup.drivers.google.GoogleBackupDriver':
+    'cinder.backup.drivers.gcs.GoogleBackupDriver',
 }
 SERVICE_PGRP = '' if os.name == 'nt' else os.getpgrp()
 
@@ -127,23 +122,7 @@ class BackupManager(manager.ThreadPoolManager):
                         'configuration to the new path %s',
                         self.driver_name, new_name)
             self.driver_name = new_name
-
-    def get_backup_driver(self, context):
-        driver = None
-        try:
-            # TODO(e0ne): remove backward compatibility in S release
-            service = importutils.import_module(self.driver_name)
-            msg = ("Backup driver initialization using module name "
-                   "is deprecated and will be removed in a 'S' "
-                   "release. Please, use classname for backup driver "
-                   "reference in the config.")
-            versionutils.report_deprecated_feature(LOG, msg)
-            driver = service.get_backup_driver(context)
-        except ImportError:
-            driver_class = importutils.import_class(self.driver_name)
-            driver = driver_class(context=context, db=self.db)
-
-        return driver
+        self.service = importutils.import_class(self.driver_name)
 
     def _update_backup_error(self, backup, err,
                              status=fields.BackupStatus.ERROR):
@@ -169,7 +148,7 @@ class BackupManager(manager.ThreadPoolManager):
                                 backups=backups)
 
     def _setup_backup_driver(self, ctxt):
-        backup_service = self.get_backup_driver(ctxt)
+        backup_service = self.service(context=ctxt, db=self.db)
         backup_service.check_for_setup_error()
         self.is_initialized = True
         raise loopingcall.LoopingCallDone()
@@ -470,7 +449,7 @@ class BackupManager(manager.ThreadPoolManager):
                 volume.encryption_key_id)
             backup.save()
 
-        backup_service = self.get_backup_driver(context)
+        backup_service = self.service(context)
 
         properties = utils.brick_get_connector_properties()
 
@@ -638,7 +617,7 @@ class BackupManager(manager.ThreadPoolManager):
 
     def _run_restore(self, context, backup, volume):
         orig_key_id = volume.encryption_key_id
-        backup_service = self.get_backup_driver(context)
+        backup_service = self.service(context)
 
         properties = utils.brick_get_connector_properties()
         secure_enabled = (
@@ -756,7 +735,7 @@ class BackupManager(manager.ThreadPoolManager):
 
         if backup.service:
             try:
-                backup_service = self.get_backup_driver(context)
+                backup_service = self.service(context)
                 backup_service.delete_backup(backup)
             except Exception as err:
                 with excutils.save_and_reraise_exception():
@@ -845,7 +824,7 @@ class BackupManager(manager.ThreadPoolManager):
 
         # Call driver to create backup description string
         try:
-            backup_service = self.get_backup_driver(context)
+            backup_service = self.service(context)
             driver_info = backup_service.export_record(backup)
             backup_url = backup.encode_record(driver_info=driver_info)
             backup_record['backup_url'] = backup_url
@@ -901,7 +880,7 @@ class BackupManager(manager.ThreadPoolManager):
 
                 # Extract driver specific info and pass it to the driver
                 driver_options = backup_options.pop('driver_info', {})
-                backup_service = self.get_backup_driver(context)
+                backup_service = self.service(context)
                 backup_service.import_record(backup, driver_options)
             except Exception as err:
                 msg = six.text_type(err)
@@ -1004,7 +983,7 @@ class BackupManager(manager.ThreadPoolManager):
                 if (status == fields.BackupStatus.AVAILABLE and
                         backup['status'] != fields.BackupStatus.RESTORING):
                     # check whether we could verify the backup is ok or not
-                    backup_service = self.get_backup_driver(context)
+                    backup_service = self.service(context)
                     if isinstance(backup_service,
                                   driver.BackupDriverWithVerify):
                         backup_service.verify(backup.id)
@@ -1069,7 +1048,7 @@ class BackupManager(manager.ThreadPoolManager):
 
         :param context: running context
         """
-        backup_service = self.get_backup_driver(context)
+        backup_service = self.service(context)
         return backup_service.support_force_delete
 
     def _attach_device(self, ctxt, backup_device,
