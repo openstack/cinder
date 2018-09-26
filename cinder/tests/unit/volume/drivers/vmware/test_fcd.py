@@ -42,6 +42,7 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
     IP = 'localhost'
     PORT = 2321
     IMG_TX_TIMEOUT = 10
+    RESERVED_PERCENTAGE = 0
     VMDK_DRIVER = vmdk.VMwareVcVmdkDriver
     FCD_DRIVER = fcd.VMwareVStorageObjectDriver
 
@@ -60,6 +61,7 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         self._config.vmware_host_ip = self.IP
         self._config.vmware_host_port = self.PORT
         self._config.vmware_image_transfer_timeout_secs = self.IMG_TX_TIMEOUT
+        self._config.reserved_percentage = self.RESERVED_PERCENTAGE
         self._driver = fcd.VMwareVStorageObjectDriver(
             configuration=self._config)
         self._context = context.get_admin_context()
@@ -72,15 +74,39 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         self.assertFalse(self._driver._storage_policy_enabled)
         vops.set_vmx_version.assert_called_once_with('vmx-13')
 
-    def test_get_volume_stats(self):
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_datastore_summaries')
+    def test_get_volume_stats(self, _get_datastore_summaries, vops):
+        FREE_GB = 7
+        TOTAL_GB = 11
+
+        class ObjMock(object):
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+
+        _get_datastore_summaries.return_value = \
+            ObjMock(objects= [
+                ObjMock(propSet = [
+                    ObjMock(name = "host",
+                            val = ObjMock(DatastoreHostMount = [])),
+                    ObjMock(name = "summary",
+                            val = ObjMock(freeSpace = FREE_GB * units.Gi,
+                                          capacity = TOTAL_GB * units.Gi,
+                                          accessible = True))
+                ])
+            ])
+
+        vops._in_maintenance.return_value = False
+
         stats = self._driver.get_volume_stats()
 
         self.assertEqual('VMware', stats['vendor_name'])
         self.assertEqual(self._driver.VERSION, stats['driver_version'])
         self.assertEqual(self._driver.STORAGE_TYPE, stats['storage_protocol'])
-        self.assertEqual(0, stats['reserved_percentage'])
-        self.assertEqual('unknown', stats['total_capacity_gb'])
-        self.assertEqual('unknown', stats['free_capacity_gb'])
+        self.assertEqual(self.RESERVED_PERCENTAGE,
+                         stats['reserved_percentage'])
+        self.assertEqual(TOTAL_GB, stats['total_capacity_gb'])
+        self.assertEqual(FREE_GB, stats['free_capacity_gb'])
 
     def _create_volume_dict(self,
                             vol_id=VOL_ID,

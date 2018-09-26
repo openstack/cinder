@@ -34,15 +34,29 @@ from cinder import test
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
-from cinder.volume import configuration
 from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 from cinder.volume.drivers.vmware import vmdk
 from cinder.volume.drivers.vmware import volumeops
 
 
+class MockConfiguration(object):
+    def __init__(self, **kwargs):
+        for kw in kwargs:
+            setattr(self, kw, kwargs[kw])
+
+    def safe_get(self, name):
+        return getattr(self, name) if hasattr(self, name) else None
+
+    def append_config_values(self, opts):
+        for opt in opts:
+            if not hasattr(self, opt.name):
+                setattr(self, opt.name, opt.default or None)
+
 # TODO(vbala) Split test methods handling multiple cases into multiple methods,
 # each handling a specific case.
+
+
 @ddt.ddt
 class VMwareVcVmdkDriverTestCase(test.TestCase):
     """Unit tests for VMwareVcVmdkDriver."""
@@ -80,27 +94,29 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     def setUp(self):
         super(VMwareVcVmdkDriverTestCase, self).setUp()
 
-        self._config = mock.Mock(spec=configuration.Configuration)
-        self._config.vmware_host_ip = self.IP
-        self._config.vmware_host_port = self.PORT
-        self._config.vmware_host_username = self.USERNAME
-        self._config.vmware_host_password = self.PASSWORD
-        self._config.vmware_wsdl_location = None
-        self._config.vmware_volume_folder = self.VOLUME_FOLDER
-        self._config.vmware_api_retry_count = self.API_RETRY_COUNT
-        self._config.vmware_task_poll_interval = self.TASK_POLL_INTERVAL
-        self._config.vmware_image_transfer_timeout_secs = self.IMG_TX_TIMEOUT
-        self._config.vmware_max_objects_retrieval = self.MAX_OBJECTS
-        self._config.vmware_tmp_dir = self.TMP_DIR
-        self._config.vmware_ca_file = self.CA_FILE
-        self._config.vmware_insecure = False
-        self._config.vmware_cluster_name = self.CLUSTERS
-        self._config.vmware_host_version = self.DEFAULT_VC_VERSION
-        self._config.vmware_connection_pool_size = self.POOL_SIZE
-        self._config.vmware_adapter_type = self.ADAPTER_TYPE
-        self._config.vmware_snapshot_format = self.SNAPSHOT_FORMAT
-        self._config.vmware_lazy_create = True
-        self._config.vmware_datastore_regex = None
+        self._config = MockConfiguration(
+            vmware_host_ip=self.IP,
+            vmware_host_port=self.PORT,
+            vmware_host_username=self.USERNAME,
+            vmware_host_password=self.PASSWORD,
+            vmware_wsdl_location=None,
+            vmware_volume_folder=self.VOLUME_FOLDER,
+            vmware_api_retry_count=self.API_RETRY_COUNT,
+            vmware_task_poll_interval=self.TASK_POLL_INTERVAL,
+            vmware_image_transfer_timeout_secs=self.IMG_TX_TIMEOUT,
+            vmware_max_objects_retrieval=self.MAX_OBJECTS,
+            vmware_tmp_dir=self.TMP_DIR,
+            vmware_ca_file=self.CA_FILE,
+            vmware_insecure=False,
+            vmware_cluster_name=self.CLUSTERS,
+            vmware_host_version=self.DEFAULT_VC_VERSION,
+            vmware_connection_pool_size=self.POOL_SIZE,
+            vmware_adapter_type=self.ADAPTER_TYPE,
+            vmware_snapshot_format=self.SNAPSHOT_FORMAT,
+            vmware_lazy_create=True,
+            vmware_datastore_regex=None,
+            reserved_percentage=0
+        )
 
         self._db = mock.Mock()
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config,
@@ -108,15 +124,38 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         self._context = context.get_admin_context()
 
-    def test_get_volume_stats(self):
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_datastore_summaries')
+    def test_get_volume_stats(self, _get_datastore_summaries, vops):
+        FREE_GB = 7
+        TOTAL_GB = 11
+
+        class ObjMock(object):
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+
+        _get_datastore_summaries.return_value = (ObjMock(objects= [
+            ObjMock(propSet = [
+                ObjMock(name = "host",
+                        val = ObjMock(DatastoreHostMount = [])),
+                ObjMock(name = "summary",
+                        val = ObjMock(freeSpace = FREE_GB * units.Gi,
+                                      capacity = TOTAL_GB * units.Gi,
+                                      accessible = True))
+            ])
+        ]))
+
+        vops._in_maintenance.return_value = False
+
         stats = self._driver.get_volume_stats()
 
         self.assertEqual('VMware', stats['vendor_name'])
         self.assertEqual(self._driver.VERSION, stats['driver_version'])
         self.assertEqual('vmdk', stats['storage_protocol'])
-        self.assertEqual(0, stats['reserved_percentage'])
-        self.assertEqual('unknown', stats['total_capacity_gb'])
-        self.assertEqual('unknown', stats['free_capacity_gb'])
+        self.assertEqual(self._config.reserved_percentage,
+                         stats['reserved_percentage'])
+        self.assertEqual(TOTAL_GB, stats['total_capacity_gb'])
+        self.assertEqual(FREE_GB, stats['free_capacity_gb'])
         self.assertFalse(stats['shared_targets'])
 
     def _create_volume_dict(self,
