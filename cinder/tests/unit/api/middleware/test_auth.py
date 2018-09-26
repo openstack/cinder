@@ -82,7 +82,7 @@ class TestCinderKeystoneContextMiddleware(test.TestCase):
 
         self.request.get_response(self.middleware)
 
-        self.assertEqual('domain1', self.context.project_domain)
+        self.assertEqual('domain1', self.context.project_domain_id)
 
     def test_request_project_domain_name(self):
         self.request.headers['X_USER_ID'] = 'testuserid'
@@ -98,7 +98,7 @@ class TestCinderKeystoneContextMiddleware(test.TestCase):
 
         self.request.get_response(self.middleware)
 
-        self.assertEqual('domain2', self.context.user_domain)
+        self.assertEqual('domain2', self.context.user_domain_id)
 
     def test_request_user_domain_name(self):
         self.request.headers['X_USER_ID'] = 'testuserid'
