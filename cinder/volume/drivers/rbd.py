@@ -1623,7 +1623,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 self.RBDProxy().rename(client.ioctx,
                                        utils.convert_str(existing_name),
                                        utils.convert_str(wanted_name))
-            except self.rbd.ImageNotFound:
+            except (self.rbd.ImageNotFound, self.rbd.ImageExists):
                 LOG.error('Unable to rename the logical volume '
                           'for volume %s.', volume.id)
                 # If the rename fails, _name_id should be set to the new
