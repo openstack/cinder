@@ -1363,10 +1363,10 @@ id_7:
   type: integer
 id_8:
   description: |
-    The ID for the message.
+    The UUID for the message.
   in: body
   required: true
-  type: integer
+  type: string
 image_id:
   description: |
     The uuid for the new image.
