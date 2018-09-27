@@ -966,6 +966,11 @@ def is_replicated_spec(extra_specs):
             is_replicated_str(extra_specs.get('replication_enabled')))
 
 
+def is_multiattach_spec(extra_specs):
+    return (extra_specs and
+            is_replicated_str(extra_specs.get('multiattach')))
+
+
 def group_get_by_id(group_id):
     ctxt = context.get_admin_context()
     group = db.group_get(ctxt, group_id)
