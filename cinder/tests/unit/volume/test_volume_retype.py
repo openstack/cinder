@@ -21,6 +21,7 @@ from cinder.policies import volume_actions as vol_action_policies
 from cinder.policies import volumes as volume_policies
 from cinder import quota
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import utils as tests_utils
 from cinder.tests.unit import volume as base
 from cinder.volume import volume_types
 
@@ -41,15 +42,15 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
                                                    project_id=fake.PROJECT_ID)
 
         volume_types.create(self.context,
-                            "old-type",
-                            {},
-                            description="test-multiattach")
-        volume_types.create(self.context,
                             "fake_vol_type",
                             {},
                             description="fake_type")
         volume_types.create(self.context,
                             "multiattach-type",
+                            {'multiattach': "<is> True"},
+                            description="test-multiattach")
+        volume_types.create(self.context,
+                            "multiattach-type2",
                             {'multiattach': "<is> True"},
                             description="test-multiattach")
         self.default_vol_type = objects.VolumeType.get_by_name_or_id(
@@ -58,10 +59,15 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
         self.multiattach_type = objects.VolumeType.get_by_name_or_id(
             self.context,
             'multiattach-type')
+        self.multiattach_type2 = objects.VolumeType.get_by_name_or_id(
+            self.context,
+            'multiattach-type2')
 
     def fake_get_vtype(self, context, identifier):
         if identifier == "multiattach-type":
             return self.multiattach_type
+        elif identifier == 'multiattach-type2':
+            return self.multiattach_type2
         else:
             return self.default_vol_type
 
@@ -97,7 +103,7 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
         vol.save()
         self.volume_api.retype(self.user_context,
                                vol,
-                               'fake_vol-type')
+                               'fake_vol_type')
         vol = objects.Volume.get_by_id(self.context, vol.id)
         self.assertFalse(vol.multiattach)
 
@@ -119,4 +125,24 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
              mock.call(volume_policies.CREATE_POLICY),
              mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY),
              mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY),
+             ])
+
+    @mock.patch('cinder.context.RequestContext.authorize')
+    def test_multiattach_to_multiattach_retype(self, mock_authorize):
+        # Test going from multiattach to multiattach
+
+        vol = tests_utils.create_volume(self.context,
+                                        multiattach=True,
+                                        volume_type_id=
+                                        self.multiattach_type.id)
+
+        self.assertTrue(vol.multiattach)
+        self.volume_api.retype(self.user_context,
+                               vol,
+                               'multiattach-type2')
+        vol.refresh()
+        self.assertTrue(vol.multiattach)
+
+        mock_authorize.assert_has_calls(
+            [mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY)
              ])
