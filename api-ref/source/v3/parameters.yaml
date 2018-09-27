@@ -1946,7 +1946,7 @@ namespace:
   description: |
     Link associated to the extension.
   in: body
-  required: true
+  required: false
   type: string
 namespace_1:
   description: |
