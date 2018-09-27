@@ -315,7 +315,7 @@ class CheckOptRegistrationArgs(BaseASTChecker):
             return None
 
     def _is_list_or_tuple(self, obj):
-        return isinstance(obj, ast.List) or isinstance(obj, ast.Tuple)
+        return isinstance(obj, (ast.List, ast.Tuple))
 
     def visit_Call(self, node):
         """Look for the register_opt/register_opts calls."""
