@@ -144,6 +144,49 @@ class GroupAPITestCase(test.TestCase):
 
     @mock.patch('cinder.group.api.API._cast_create_group')
     @mock.patch('cinder.group.api.API.update_quota')
+    @mock.patch('cinder.db.group_type_get')
+    @mock.patch('cinder.db.group_type_get_by_name')
+    @mock.patch('cinder.db.volume_types_get_by_name_or_id')
+    def test_create_with_uuid_format_group_type_name(
+            self, mock_volume_types_get, mock_group_type_get_by_name,
+            mock_group_type_get, mock_update_quota, mock_cast_create_group):
+        uuid_format_type_name = fake.UUID1
+        mock_volume_types_get.return_value = [{'id': fake.VOLUME_TYPE_ID}]
+        mock_group_type_get.side_effect = exception.GroupTypeNotFound(
+            group_type_id=uuid_format_type_name)
+        mock_group_type_get_by_name.return_value = {'id': fake.GROUP_TYPE_ID}
+
+        ret_group = self.group_api.create(self.ctxt, "test_group", '',
+                                          uuid_format_type_name,
+                                          [fake.VOLUME_TYPE_ID],
+                                          availability_zone='nova')
+        self.assertEqual(ret_group["group_type_id"],
+                         fake.GROUP_TYPE_ID)
+
+    @mock.patch('cinder.group.api.API._cast_create_group')
+    @mock.patch('cinder.group.api.API.update_quota')
+    @mock.patch('cinder.db.group_type_get_by_name')
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get')
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_by_name')
+    def test_create_with_uuid_format_volume_type_name(
+            self, mock_vol_t_get_by_name, mock_vol_types_get_by_id,
+            mock_group_type_get, mock_update_quota, mock_cast_create_group):
+        uuid_format_name = fake.UUID1
+        mock_group_type_get.return_value = {'id': fake.GROUP_TYPE_ID}
+        volume_type = {'id': fake.VOLUME_TYPE_ID, 'name': uuid_format_name}
+        mock_vol_types_get_by_id.side_effect = exception.VolumeTypeNotFound(
+            volume_type_id=uuid_format_name)
+        mock_vol_t_get_by_name.return_value = volume_type
+        group = self.group_api.create(self.ctxt, "test_group",
+                                      "this is a test group",
+                                      "fake-grouptype-name",
+                                      [uuid_format_name],
+                                      availability_zone='nova')
+        self.assertEqual(group["volume_type_ids"],
+                         [volume_type['id']])
+
+    @mock.patch('cinder.group.api.API._cast_create_group')
+    @mock.patch('cinder.group.api.API.update_quota')
     @mock.patch('cinder.db.group_type_get_by_name')
     @mock.patch('cinder.db.volume_types_get_by_name_or_id')
     def test_create_with_multi_types(self, mock_volume_types_get,
