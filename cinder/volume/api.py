@@ -44,6 +44,7 @@ from cinder.message import message_field
 from cinder import objects
 from cinder.objects import base as objects_base
 from cinder.objects import fields
+from cinder.objects import volume_type
 from cinder.policies import attachments as attachment_policy
 from cinder.policies import services as svr_policy
 from cinder.policies import snapshot_metadata as s_meta_policy
@@ -1615,7 +1616,8 @@ class API(base.Base):
         # Support specifying volume type by ID or name
         try:
             new_type = (
-                volume_types.get_by_name_or_id(context.elevated(), new_type))
+                volume_type.VolumeType.get_by_name_or_id(context.elevated(),
+                                                         new_type))
         except exception.InvalidVolumeType:
             msg = _('Invalid volume_type passed: %s.') % new_type
             LOG.error(msg)
