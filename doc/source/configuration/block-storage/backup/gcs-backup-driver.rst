@@ -10,7 +10,7 @@ To enable the GCS backup driver, include the following option in the
 
 .. code-block:: ini
 
-    backup_driver = cinder.backup.drivers.gcs
+    backup_driver = cinder.backup.drivers.gcs.GoogleBackupDriver
 
 The following configuration options are available for the GCS backup
 driver.

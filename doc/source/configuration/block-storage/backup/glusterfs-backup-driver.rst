@@ -9,7 +9,7 @@ To enable the GlusterFS backup driver, include the following option in the
 
 .. code-block:: ini
 
-    backup_driver = cinder.backup.drivers.glusterfs
+    backup_driver = cinder.backup.drivers.glusterfs.GlusterfsBackupDriver
 
 The following configuration options are available for the GlusterFS backup
 driver.

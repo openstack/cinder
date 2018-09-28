@@ -10,7 +10,7 @@ To enable the swift backup driver, include the following option in the
 
 .. code-block:: ini
 
-    backup_driver = cinder.backup.drivers.swift
+    backup_driver = cinder.backup.drivers.swift.SwiftBackupDriver
 
 The following configuration options are available for the Swift back-end
 backup driver.
