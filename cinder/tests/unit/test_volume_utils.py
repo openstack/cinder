@@ -1137,3 +1137,29 @@ class VolumeUtilsTestCase(test.TestCase):
                               db,
                               volume,
                               mock.sentinel.context)
+
+    def test_check_image_metadata(self):
+        image_meta = {'id': 1, 'min_disk': 3, 'status': 'active',
+                      'size': 1 * units.Gi}
+        vol_size = 2
+        res = self.assertRaises(exception.InvalidInput,
+                                volume_utils.check_image_metadata,
+                                image_meta,
+                                vol_size)
+        self.assertIn("Volume size 2GB cannot be smaller than the image "
+                      "minDisk size 3GB.", six.text_type(res))
+
+        image_meta['size'] = 3 * units.Gi
+        res = self.assertRaises(exception.InvalidInput,
+                                volume_utils.check_image_metadata,
+                                image_meta,
+                                vol_size)
+        self.assertIn("Size of specified image 3GB is larger than volume "
+                      "size 2GB.", six.text_type(res))
+
+        image_meta['status'] = 'error'
+        res = self.assertRaises(exception.InvalidInput,
+                                volume_utils.check_image_metadata,
+                                image_meta,
+                                vol_size)
+        self.assertIn("Image 1 is not active.", six.text_type(res))

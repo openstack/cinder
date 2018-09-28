@@ -692,7 +692,8 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
                         'disk_format': 'raw',
                         'container_format': 'bare',
                         'min_disk': 5,
-                        'status': 'deleted'}
+                        'status': 'deleted',
+                        'id': image_id}
 
         volume_api = cinder.volume.api.API(
             image_service=_ModifiedFakeImageService())

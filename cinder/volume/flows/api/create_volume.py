@@ -15,7 +15,6 @@ import six
 
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils import units
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
@@ -37,7 +36,6 @@ LOG = logging.getLogger(__name__)
 
 ACTION = 'volume:create'
 CONF = cfg.CONF
-GB = units.Gi
 QUOTAS = quota.QUOTAS
 
 # Only in these 'sources' status can we attempt to create a volume from a
@@ -225,28 +223,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         # exist, this is expected as it signals that the image_id is missing.
         image_meta = self.image_service.show(context, image_id)
 
-        # check whether image is active
-        if image_meta['status'] != 'active':
-            msg = _('Image %(image_id)s is not active.')\
-                % {'image_id': image_id}
-            raise exception.InvalidInput(reason=msg)
-
-        # Check image size is not larger than volume size.
-        image_size = utils.as_int(image_meta['size'], quiet=False)
-        image_size_in_gb = (image_size + GB - 1) // GB
-        if image_size_in_gb > size:
-            msg = _('Size of specified image %(image_size)sGB'
-                    ' is larger than volume size %(volume_size)sGB.')
-            msg = msg % {'image_size': image_size_in_gb, 'volume_size': size}
-            raise exception.InvalidInput(reason=msg)
-
-        # Check image min_disk requirement is met for the particular volume
-        min_disk = image_meta.get('min_disk', 0)
-        if size < min_disk:
-            msg = _('Volume size %(volume_size)sGB cannot be smaller'
-                    ' than the image minDisk size %(min_disk)sGB.')
-            msg = msg % {'volume_size': size, 'min_disk': min_disk}
-            raise exception.InvalidInput(reason=msg)
+        vol_utils.check_image_metadata(image_meta, size)
 
         return image_meta
 
