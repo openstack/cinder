@@ -91,8 +91,6 @@ from cinder.volume.drivers.dell_emc.vnx import common as \
     cinder_volume_drivers_dell_emc_vnx_common
 from cinder.volume.drivers.dell_emc import xtremio as \
     cinder_volume_drivers_dell_emc_xtremio
-from cinder.volume.drivers.disco import disco as \
-    cinder_volume_drivers_disco_disco
 from cinder.volume.drivers import drbdmanagedrv as \
     cinder_volume_drivers_drbdmanagedrv
 from cinder.volume.drivers.fujitsu import eternus_dx_common as \
@@ -287,7 +285,6 @@ def list_opts():
                 cinder_volume_drivers_dell_emc_vmax_common.vmax_opts,
                 cinder_volume_drivers_dell_emc_vnx_common.VNX_OPTS,
                 cinder_volume_drivers_dell_emc_xtremio.XTREMIO_OPTS,
-                cinder_volume_drivers_disco_disco.disco_opts,
                 cinder_volume_drivers_drbdmanagedrv.drbd_opts,
                 cinder_volume_drivers_fujitsu_eternusdxcommon.
                 FJ_ETERNUS_DX_OPT_opts,

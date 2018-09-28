@@ -1,0 +1,15 @@
+---
+upgrade:
+  - |
+    The ITRI DISCO storage driver has been removed after completion of its
+    deprecation period without a reliable 3rd Party CI system being
+    supported.  Customers using the ITRI DISCO driver should not upgrade
+    Cinder without first migrating all volumes from their DISCO backend
+    to a supported storage backend.  Failure to migrate volumes will
+    result in no longer being able to access volumes back by the ITRI DISCO
+    storage backend.
+other:
+  - |
+    The ITRI DISCO storage driver was marked unsupported  in Rocky due to
+    3rd Party CI not meeting Cinder's requirements.  As a result the
+    driver is removed starting from the Stein release.
