@@ -15,7 +15,7 @@ To enable the IBM TSM backup driver, include the following option in
 
 .. code-block:: ini
 
-    backup_driver = cinder.backup.drivers.tsm
+    backup_driver = cinder.backup.drivers.tsm.TSMBackupDriver
 
 The following configuration options are available for the TSM backup
 driver.
