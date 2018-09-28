@@ -801,8 +801,8 @@ class CommonAdapter(replication.ReplicationAdapter):
             # for later deletion
             self.client.delay_delete_lun(volume.name)
         # Case 2. Migration already finished, try to delete the temp snap
-        # only when it's a cloned volume.
-        if async_migrate and volume.source_volid:
+        # when it's a cloned volume or created from snapshot.
+        if async_migrate and (volume.source_volid or volume.snapshot_id):
             self.client.delete_snapshot(utils.construct_snap_name(volume))
 
     def extend_volume(self, volume, new_size):
