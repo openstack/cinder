@@ -595,6 +595,7 @@ class RBDDriver(driver.CloneableImageVD,
             except Exception as e:
                 src_volume.unprotect_snap(clone_snap)
                 src_volume.remove_snap(clone_snap)
+                src_volume.close()
                 msg = (_("Failed to clone '%(src_vol)s@%(src_snap)s' to "
                          "'%(dest)s', error: %(error)s") %
                        {'src_vol': src_name,
@@ -603,8 +604,6 @@ class RBDDriver(driver.CloneableImageVD,
                         'error': e})
                 LOG.exception(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-            finally:
-                src_volume.close()
 
             depth = self._get_clone_depth(client, src_name)
             # If dest volume is a clone and rbd_max_clone_depth reached,
