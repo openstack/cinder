@@ -214,6 +214,34 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               multiattach=None)
         self.assertFalse(result['volume_properties']['bootable'])
 
+    @ddt.data({'bootable': True},
+              {'bootable': False})
+    @mock.patch('cinder.db.volume_create')
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @ddt.unpack
+    def test_create_from_source_volid_bootable(self,
+                                               volume_get_by_id,
+                                               volume_create,
+                                               bootable):
+
+        volume_db = {'bootable': bootable}
+        volume_obj = fake_volume.fake_volume_obj(self.ctxt, **volume_db)
+        volume_get_by_id.return_value = volume_obj
+        volume_create.return_value = {'id': '123456'}
+        task = create_volume.EntryCreateTask()
+
+        result = task.execute(self.ctxt,
+                              optional_args=None,
+                              source_volid=volume_obj.id,
+                              snapshot_id=None,
+                              availability_zones=['nova'],
+                              size=1,
+                              encryption_key_id=None,
+                              description='123',
+                              name='123',
+                              multiattach=None)
+        self.assertEqual(bootable, result['volume_properties']['bootable'])
+
     @ddt.data(('enabled', {'replication_enabled': '<is> True'}),
               ('disabled', {'replication_enabled': '<is> False'}),
               ('disabled', {}))
