@@ -1045,10 +1045,13 @@ class RBDTestCase(test.TestCase):
                 (self.mock_rbd.Image.return_value.protect_snap
                     .assert_called_once_with('.'.join(
                         (self.volume_b.name, 'clone_snap'))))
+                # We expect clone() to be called exactly once.
                 self.assertEqual(
                     1, self.mock_rbd.RBD.return_value.clone.call_count)
+                # Without flattening, only the source volume is opened,
+                # so only one call to close() should occur.
                 self.assertEqual(
-                    2, self.mock_rbd.Image.return_value.close.call_count)
+                    1, self.mock_rbd.Image.return_value.close.call_count)
                 self.assertTrue(mock_get_clone_depth.called)
                 mock_resize.assert_not_called()
                 mock_enable_repl.assert_not_called()
@@ -1084,7 +1087,7 @@ class RBDTestCase(test.TestCase):
         image.protect_snap.assert_called_once_with(name + '.clone_snap')
         self.assertEqual(1, self.mock_rbd.RBD.return_value.clone.call_count)
         self.assertEqual(
-            2, self.mock_rbd.Image.return_value.close.call_count)
+            1, self.mock_rbd.Image.return_value.close.call_count)
         mock_get_clone_depth.assert_called_once_with(
             self.mock_client().__enter__(), self.volume_a.name)
         mock_resize.assert_not_called()
@@ -1114,7 +1117,7 @@ class RBDTestCase(test.TestCase):
                 self.assertEqual(
                     1, self.mock_rbd.RBD.return_value.clone.call_count)
                 self.assertEqual(
-                    2, self.mock_rbd.Image.return_value.close.call_count)
+                    1, self.mock_rbd.Image.return_value.close.call_count)
                 self.assertTrue(mock_get_clone_depth.called)
                 self.assertEqual(
                     1, mock_resize.call_count)
@@ -1171,7 +1174,7 @@ class RBDTestCase(test.TestCase):
 
                 # We expect the driver to close both volumes, so 2 is expected
                 self.assertEqual(
-                    3, self.mock_rbd.Image.return_value.close.call_count)
+                    2, self.mock_rbd.Image.return_value.close.call_count)
                 self.assertTrue(mock_get_clone_depth.called)
                 mock_enable_repl.assert_not_called()
 
