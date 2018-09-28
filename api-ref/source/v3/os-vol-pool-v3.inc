@@ -44,10 +44,10 @@ Response Parameters
    - updated: updated
    - QoS_support: QoS_support
    - name: name_20
-   - total_capacity: total_capacity
+   - total_capacity_gb: total_capacity
    - volume_backend_name: volume_backend_name
    - capabilities: capabilities
-   - free_capacity: free_capacity
+   - free_capacity_gb: free_capacity
    - driver_version: driver_version
    - reserved_percentage: reserved_percentage
    - storage_protocol: storage_protocol
