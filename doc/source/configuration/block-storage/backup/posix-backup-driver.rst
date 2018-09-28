@@ -10,7 +10,7 @@ option in the ``cinder.conf`` file:
 
 .. code-block:: ini
 
-    backup_driver = cinder.backup.drivers.posix
+    backup_driver = cinder.backup.drivers.posix.PosixBackupDriver
 
 The following configuration options are available for the POSIX
 file systems backup driver.

@@ -37,7 +37,7 @@ To enable the Ceph backup driver, include the following option in the
 
 .. code-block:: ini
 
-    backup_driver = cinder.backup.drivers.ceph
+    backup_driver = cinder.backup.drivers.ceph.CephBackupDriver
 
 The following configuration options are available for the Ceph backup
 driver.
