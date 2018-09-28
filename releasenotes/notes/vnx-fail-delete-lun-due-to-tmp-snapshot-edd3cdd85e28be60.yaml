@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Dell EMC VNX Cinder Driver: Fixes `bug 1794646
+    <https://bugs.launchpad.net/cinder/+bug/1794646>`__ to delete the LUN from
+    the VNX storage. Because a temporary snapshot is created from the LUN
+    during creating a volume from a snapshot and isn't deleted, the LUN cannot
+    be deleted before its snapshot is deleted. The fix makes sure the temp
+    snapshot is deleted.

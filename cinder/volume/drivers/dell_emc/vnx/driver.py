@@ -81,9 +81,11 @@ class VNXDriver(driver.ManageableVD,
           11.0.2 - Fix bug https://bugs.launchpad.net/cinder/+bug/1817385 to
                    make sure sg can be created again after it was destroyed
                    under `destroy_empty_stroage_group` setting to `True`
+          11.0.3 - Fix bug 1794646: failed to delete LUNs from backend due to
+                   the temporary snapshots on them wasn't deleted.
     """
 
-    VERSION = '11.00.02'
+    VERSION = '11.00.03'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_VNX_CI"
