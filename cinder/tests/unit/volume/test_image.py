@@ -291,6 +291,7 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
 
         # creating volume testdata
         self.volume_attrs['instance_uuid'] = None
+        self.volume_attrs['snapshot_id'] = fake.SNAPSHOT_ID
         db.volume_create(self.context, self.volume_attrs)
 
         def fake_create(context, volume, **kwargs):
@@ -314,6 +315,12 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
     def test_copy_volume_to_image_with_image_volume(self):
         image = self._test_copy_volume_to_image_with_image_volume()
         self.assertTrue(image['locations'][0]['url'].startswith('cinder://'))
+        image_volume_id = image['locations'][0]['url'][9:]
+        # The image volume does NOT include the snapshot_id, and include the
+        # source_volid which is the uploaded-volume id.
+        vol_ref = db.volume_get(self.context, image_volume_id)
+        self.assertIsNone(vol_ref['snapshot_id'])
+        self.assertEqual(vol_ref['source_volid'], self.volume_id)
 
     def test_copy_volume_to_image_with_image_volume_qcow2(self):
         self.image_meta['disk_format'] = 'qcow2'
