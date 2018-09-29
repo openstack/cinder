@@ -32,11 +32,10 @@ to a server instance.
      instance gets a new disk (usually a ``/dev/vdX`` disk).
 
 For this particular walkthrough, one cloud controller runs
-``nova-api``, ``nova-scheduler``, ``nova-objectstore``,
-``nova-network`` and ``cinder-*`` services. Two additional compute
-nodes run ``nova-compute``. The walkthrough uses a custom
-partitioning scheme that carves out 60 GB of space and labels it as
-LVM. The network uses the ``FlatManager`` and ``NetworkManager``
+``nova-api``, ``nova-scheduler``, ``nova-conductor`` and ``cinder-*``
+services. Two additional compute nodes run ``nova-compute``. The walkthrough
+uses a custom partitioning scheme that carves out 60 GB of space and labels it
+as LVM. The network uses the ``FlatManager`` and ``NetworkManager``
 settings for OpenStack Compute.
 
 The network mode does not interfere with OpenStack Block Storage
