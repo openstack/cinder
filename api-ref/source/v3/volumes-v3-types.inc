@@ -61,6 +61,7 @@ Response Parameters
    - extra_specs: extra_specs_volume_type_required
    - description: description_volume_type_required
    - name: name_volume_type_required
+   - id: volume_type_id
 
 Response Example
 ----------------
@@ -282,6 +283,8 @@ Response Parameters
    - description: description_volume_type_required
    - name: name_volume_type_required
    - id: volume_type_id_body
+   - is-volume-type-access:is_public: is_public_volume_type_required
+   - qos_specs_id: qos_specs_id
 
 
 Response Example
