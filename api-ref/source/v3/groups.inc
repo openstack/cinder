@@ -95,7 +95,7 @@ Request
    - group: group
    - description: description_group_false
    - availability_zone: availability_zone
-   - group_type: group_type
+   - group_type: group_type_id_2
    - volume_types: volume_types
    - name: group_name
 
@@ -103,6 +103,20 @@ Request Example
 ---------------
 
 .. literalinclude:: ./samples/group-create-request.json
+   :language: javascript
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - id: group_id
+   - name: group_name
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/group-create-response.json
    :language: javascript
 
 
@@ -143,7 +157,9 @@ Response Parameters
    - description: description_group_true
    - availability_zone: availability_zone
    - created_at: created_at
-   - group_type: group_type
+   - group_type: group_type_id_2
+   - group_snapshot_id: group_snapshot_id_2
+   - source_group_id: source_group_id_2
    - volume_types: volume_types
    - id: id
    - name: group_name
@@ -194,6 +210,20 @@ Request Example
 ---------------
 
 .. literalinclude:: ./samples/group-create-from-src-request.json
+   :language: javascript
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - id: group_id
+   - name: group_name
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/group-create-from-src-response.json
    :language: javascript
 
 
@@ -279,7 +309,9 @@ Response Parameters
    - description: description_group_true
    - availability_zone: availability_zone
    - created_at: created_at
-   - group_type: group_type
+   - group_type: group_type_id_2
+   - group_snapshot_id: group_snapshot_id_2
+   - source_group_id: source_group_id_2
    - volume_types: volume_types
    - id: group_id
    - name: name
