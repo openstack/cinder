@@ -1417,9 +1417,12 @@ class VolumeManager(manager.CleanableManager,
         reserve_opts = {'volumes': 1, 'gigabytes': volume.size}
         QUOTAS.add_volume_type_opts(ctx, reserve_opts, volume_type_id)
         reservations = QUOTAS.reserve(ctx, **reserve_opts)
+        # NOTE(yikun): Skip 'snapshot_id', 'source_volid' keys to avoid
+        # creating tmp img vol from wrong snapshot or wrong source vol.
+        skip = {'snapshot_id', 'source_volid'}
+        skip.update(self._VOLUME_CLONE_SKIP_PROPERTIES)
         try:
-            new_vol_values = {k: volume[k] for k in set(volume.keys()) -
-                              self._VOLUME_CLONE_SKIP_PROPERTIES}
+            new_vol_values = {k: volume[k] for k in set(volume.keys()) - skip}
             new_vol_values['volume_type_id'] = volume_type_id
             new_vol_values['attach_status'] = (
                 fields.VolumeAttachStatus.DETACHED)
