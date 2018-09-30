@@ -490,7 +490,6 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - encryption: encryption
    - volume_type_id: volume_type_id_body
    - encryption_id: encryption_id_body
    - key_size: key_size
