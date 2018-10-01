@@ -198,10 +198,10 @@ class SolidFireDriver(san.SanISCSIDriver):
           2.0.10 - Add response to debug on retryable errors
           2.0.11 - Add ability to failback replicating volumes
           2.0.12 - Fix bug #1744005
-
+          2.0.14 - Fix bug #1782588 qos settings on extend
     """
 
-    VERSION = '2.0.12'
+    VERSION = '2.0.14'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "NetApp_SolidFire_CI"
@@ -1337,7 +1337,8 @@ class SolidFireDriver(san.SanISCSIDriver):
                                                          volume)
         return model, True
 
-    def _retrieve_qos_setting(self, volume):
+    # extended_size > 0 when we are extending a volume
+    def _retrieve_qos_setting(self, volume, extended_size=0):
         qos = {}
         if (self.configuration.sf_allow_tenant_qos and
                 volume.get('volume_metadata')is not None):
@@ -1347,7 +1348,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         type_id = volume.get('volume_type_id', None)
         if type_id is not None:
             qos = self._set_qos_by_volume_type(ctxt, type_id,
-                                               volume.get('size'))
+                                               extended_size if extended_size
+                                               > 0 else volume.get('size'))
         return qos
 
     def create_volume(self, volume):
@@ -1886,10 +1888,11 @@ class SolidFireDriver(san.SanISCSIDriver):
                       "the SolidFire Cluster while attempting "
                       "extend_volume operation!", volume['id'])
             raise exception.VolumeNotFound(volume_id=volume['id'])
-
+        qos = self._retrieve_qos_setting(volume, new_size)
         params = {
             'volumeID': sf_vol['volumeID'],
-            'totalSize': int(new_size * units.Gi)
+            'totalSize': int(new_size * units.Gi),
+            'qos': qos
         }
         self._issue_api_request('ModifyVolume',
                                 params, version='5.0')
