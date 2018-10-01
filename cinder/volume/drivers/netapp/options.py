@@ -197,6 +197,15 @@ netapp_replication_opts = [
                     'SnapMirror transfers to complete before aborting '
                     'during a failover.'), ]
 
+netapp_support_opts = [
+    cfg.StrOpt('netapp_api_trace_pattern',
+               default='(.*)',
+               help=('A regular expression to limit the API tracing. This '
+                     'option is honored only if enabling ``api`` tracing '
+                     'with the ``trace_flags`` option. By default, '
+                     'all APIs will be traced.')),
+]
+
 CONF = cfg.CONF
 CONF.register_opts(netapp_proxy_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_connection_opts, group=conf.SHARED_CONF_GROUP)
@@ -209,3 +218,4 @@ CONF.register_opts(netapp_eseries_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_nfs_extra_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_san_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_replication_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_support_opts, group=conf.SHARED_CONF_GROUP)

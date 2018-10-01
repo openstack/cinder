@@ -80,6 +80,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         config.netapp_transport_type = 'https'
         config.netapp_server_port = '443'
         config.netapp_vserver = 'openstack'
+        config.netapp_api_trace_pattern = 'fake_regex'
         return config
 
     @mock.patch.object(perf_cmode, 'PerformanceCmodeLibrary', mock.Mock())

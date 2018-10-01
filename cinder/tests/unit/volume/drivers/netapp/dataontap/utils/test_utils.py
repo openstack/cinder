@@ -46,6 +46,8 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                           group=self.backend)
         CONF.set_override('netapp_server_port', 8866,
                           group=self.backend)
+        CONF.set_override('netapp_api_trace_pattern', "fake_regex",
+                          group=self.backend)
 
     def test_get_backend_configuration(self):
         self.mock_object(utils, 'CONF')
@@ -88,7 +90,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         self.mock_cmode_client.assert_called_once_with(
             hostname='fake_hostname', password='fake_password',
             username='fake_user', transport_type='https', port=8866,
-            trace=mock.ANY, vserver=None)
+            trace=mock.ANY, vserver=None, api_trace_pattern="fake_regex")
 
     def test_get_client_for_backend_with_vserver(self):
         self.mock_object(utils, 'get_backend_configuration',
@@ -102,7 +104,8 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         self.mock_cmode_client.assert_called_once_with(
             hostname='fake_hostname', password='fake_password',
             username='fake_user', transport_type='https', port=8866,
-            trace=mock.ANY, vserver='fake_vserver')
+            trace=mock.ANY, vserver='fake_vserver',
+            api_trace_pattern="fake_regex")
 
 
 @ddt.ddt
