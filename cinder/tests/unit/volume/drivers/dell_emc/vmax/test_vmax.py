@@ -4877,7 +4877,8 @@ class VMAXCommonTest(test.TestCase):
         provider_location = {'device_id': u'00002', 'array': u'000197800123'}
         ref_update = {'provider_location': six.text_type(provider_location)}
         with mock.patch.object(
-                self.common, '_check_lun_valid_for_cinder_management'):
+                self.common, '_check_lun_valid_for_cinder_management',
+                return_value=('vol1')):
             model_update = self.common.manage_existing(
                 self.data.test_volume, external_ref)
             self.assertEqual(ref_update, model_update)
@@ -4890,9 +4891,10 @@ class VMAXCommonTest(test.TestCase):
         return_value=(False, False, None))
     def test_check_lun_valid_for_cinder_management(self, mock_rep, mock_mv):
         external_ref = {u'source-name': u'00003'}
-        self.common._check_lun_valid_for_cinder_management(
+        vol_name = self.common._check_lun_valid_for_cinder_management(
             self.data.array, self.data.device_id3,
             self.data.test_volume.id, external_ref)
+        self.assertEqual(vol_name, '123')
 
     @mock.patch.object(
         rest.VMAXRest, 'get_volume',
@@ -7648,7 +7650,8 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.data.test_volume.id)
         provider_location = {'device_id': u'00002', 'array': self.data.array}
         with mock.patch.object(
-                self.common, '_check_lun_valid_for_cinder_management'):
+                self.common, '_check_lun_valid_for_cinder_management',
+                return_value=(volume_name)):
             self.common.manage_existing(
                 self.data.test_volume, external_ref)
             mock_rep.assert_called_once_with(
