@@ -99,7 +99,6 @@ from cinder.volume.drivers.fujitsu import eternus_dx_common as \
     cinder_volume_drivers_fujitsu_eternusdxcommon
 from cinder.volume.drivers.fusionstorage import dsware as \
     cinder_volume_drivers_fusionstorage_dsware
-from cinder.volume.drivers import hgst as cinder_volume_drivers_hgst
 from cinder.volume.drivers.hpe import hpe_3par_common as \
     cinder_volume_drivers_hpe_hpe3parcommon
 from cinder.volume.drivers.hpe import hpe_lefthand_iscsi as \
@@ -293,7 +292,6 @@ def list_opts():
                 cinder_volume_drivers_fujitsu_eternusdxcommon.
                 FJ_ETERNUS_DX_OPT_opts,
                 cinder_volume_drivers_fusionstorage_dsware.volume_opts,
-                cinder_volume_drivers_hgst.hgst_opts,
                 cinder_volume_drivers_hpe_hpe3parcommon.hpe3par_opts,
                 cinder_volume_drivers_hpe_hpelefthandiscsi.hpelefthand_opts,
                 cinder_volume_drivers_huawei_huaweidriver.huawei_opts,

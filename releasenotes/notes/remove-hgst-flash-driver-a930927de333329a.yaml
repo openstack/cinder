@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    The HGST Flash Suite storage driver has been removed after completion
+    of its deprecation period without a reliable 3rd Party CI system being
+    supported.  Customers using the HGST Flash Suite driver should not upgrade
+    Cinder without first migrating all volumes from their HGST backend
+    to a supported storage backend.  Failure to migrate volumes will
+    result in no longer being able to access volumes backed by the HGST
+    storage backend.
+other:
+  - |
+    The HGST Flash Storage Suite Driver was marked unsupported
+    in the Rocky release because their 3rd Party CI system was not
+    meeting Cinder's requirements.  The system has not started reporting
+    so the driver is now removed as of the Stein release.

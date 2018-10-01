@@ -42,7 +42,6 @@ Driver Configuration Reference
    drivers/emc-xtremio-driver
    drivers/drbd-driver
    drivers/fujitsu-eternus-dx-driver
-   drivers/hgst-driver
    drivers/hpe-3par-driver
    drivers/hpe-lefthand-driver
    drivers/hp-msa-driver
