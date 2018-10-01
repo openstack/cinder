@@ -463,12 +463,22 @@ Delete a snapshot
 
 Deletes a snapshot.
 
+Preconditions:
+
+    - Snapshot status must be ``available`` or ``error``
+
 Response codes
 --------------
 
 .. rest_status_code:: success ../status.yaml
 
    - 202
+
+.. rest_status_code:: error ../status.yaml
+
+   - 400
+   - 403
+   - 404
 
 
 Request
