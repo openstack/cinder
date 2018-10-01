@@ -342,7 +342,7 @@ capabilities:
   description: |
     The capabilities for the back end.  The value is
     either ``null`` or a string value that indicates the capabilities
-    for each pool. For example, ``total_capacity`` or ``QoS_support``.
+    for each pool. For example, ``total_capacity_gb`` or ``QoS_support``.
   in: body
   required: true
   type: object

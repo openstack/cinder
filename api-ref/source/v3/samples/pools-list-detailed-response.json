@@ -4,8 +4,8 @@
             "name": "pool1",
             "capabilities": {
                 "updated": "2014-10-28T00:00:00-00:00",
-                "total_capacity": 1024,
-                "free_capacity": 100,
+                "total_capacity_gb": 1024,
+                "free_capacity_gb": 100,
                 "volume_backend_name": "pool1",
                 "reserved_percentage": 0,
                 "driver_version": "1.0.0",
@@ -17,8 +17,8 @@
             "name": "pool2",
             "capabilities": {
                 "updated": "2014-10-28T00:00:00-00:00",
-                "total_capacity": 512,
-                "free_capacity": 200,
+                "total_capacity_gb": 512,
+                "free_capacity_gb": 200,
                 "volume_backend_name": "pool2",
                 "reserved_percentage": 0,
                 "driver_version": "1.0.1",
