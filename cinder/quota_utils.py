@@ -236,7 +236,8 @@ def _keystone_client(context, version=(3, 0)):
         insecure=CONF.keystone_authtoken.insecure,
         cacert=CONF.keystone_authtoken.cafile,
         key=CONF.keystone_authtoken.keyfile,
-        cert=CONF.keystone_authtoken.certfile)
+        cert=CONF.keystone_authtoken.certfile,
+        split_loggers=CONF.service_user.split_loggers)
     return client.Client(auth_url=CONF.keystone_authtoken.auth_url,
                          session=client_session, version=version)
 
