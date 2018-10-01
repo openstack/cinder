@@ -1,0 +1,9 @@
+- project:
+    check:
+      jobs:
+        - openstack-tox-pep8
+        - openstack-tox-py27
+    gate:
+      jobs:
+        - openstack-tox-pep8
+        - openstack-tox-py27
