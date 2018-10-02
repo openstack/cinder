@@ -346,7 +346,7 @@ class VMAXUtils(object):
             exception_message = (_("Source volume device ID is required."))
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
-        return array, device_id
+        return array, device_id.upper()
 
     @staticmethod
     def is_compression_disabled(extra_specs):

@@ -86,6 +86,7 @@ class VMAXCommonData(object):
     device_id = '00001'
     device_id2 = '00002'
     device_id3 = '00003'
+    device_id4 = '00004'
     rdf_group_name = '23_24_007'
     rdf_group_no = '70'
     u4v_version = '84'
@@ -570,7 +571,15 @@ class VMAXCommonData(object):
                        "num_of_storage_groups": 0,
                        "volumeId": device_id3,
                        "volume_identifier": '123',
-                       "wwn": '600012345'}]
+                       "wwn": '600012345'},
+                      {"cap_gb": 1,
+                       "num_of_storage_groups": 1,
+                       "volumeId": device_id4,
+                       "volume_identifier": "random_name",
+                       "wwn": '600012345',
+                       "storageGroupId": ["random_sg_1",
+                                          "random_sg_2"]},
+                      ]
 
     volume_list = [
         {"resultList": {"result": [{"volumeId": device_id}]}},
@@ -1389,6 +1398,12 @@ class VMAXUtilsTest(test.TestCase):
             volume, external_ref)
         self.assertEqual(self.data.array, array)
         self.assertEqual('00002', device_id)
+        # Test to check if device id returned is in upper case
+        external_ref = {u'source-name': u'0028a'}
+        __, device_id = self.utils.get_array_and_device_id(
+            volume, external_ref)
+        ref_device_id = u'0028A'
+        self.assertEqual(ref_device_id, device_id)
 
     def test_get_array_and_device_id_exception(self):
         volume = deepcopy(self.data.test_volume)
@@ -4878,7 +4893,7 @@ class VMAXCommonTest(test.TestCase):
         ref_update = {'provider_location': six.text_type(provider_location)}
         with mock.patch.object(
                 self.common, '_check_lun_valid_for_cinder_management',
-                return_value=('vol1')):
+                return_value=('vol1', 'test_sg')):
             model_update = self.common.manage_existing(
                 self.data.test_volume, external_ref)
             self.assertEqual(ref_update, model_update)
@@ -4891,10 +4906,26 @@ class VMAXCommonTest(test.TestCase):
         return_value=(False, False, None))
     def test_check_lun_valid_for_cinder_management(self, mock_rep, mock_mv):
         external_ref = {u'source-name': u'00003'}
-        vol_name = self.common._check_lun_valid_for_cinder_management(
+        vol, source_sg = self.common._check_lun_valid_for_cinder_management(
             self.data.array, self.data.device_id3,
             self.data.test_volume.id, external_ref)
-        self.assertEqual(vol_name, '123')
+        self.assertEqual(vol, '123')
+        self.assertIsNone(source_sg)
+
+    @mock.patch.object(
+        rest.VMAXRest, 'get_masking_views_from_storage_group',
+        return_value=None)
+    @mock.patch.object(
+        rest.VMAXRest, 'is_vol_in_rep_session',
+        return_value=(False, False, None))
+    def test_check_lun_valid_for_cinder_management_multiple_sg_exception(
+            self, mock_rep, mock_mv):
+        external_ref = {u'source-name': u'00004'}
+        self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.common._check_lun_valid_for_cinder_management,
+            self.data.array, self.data.device_id4,
+            self.data.test_volume.id, external_ref)
 
     @mock.patch.object(
         rest.VMAXRest, 'get_volume',
@@ -7651,7 +7682,7 @@ class VMAXCommonReplicationTest(test.TestCase):
         provider_location = {'device_id': u'00002', 'array': self.data.array}
         with mock.patch.object(
                 self.common, '_check_lun_valid_for_cinder_management',
-                return_value=(volume_name)):
+                return_value=(volume_name, 'test_sg')):
             self.common.manage_existing(
                 self.data.test_volume, external_ref)
             mock_rep.assert_called_once_with(
