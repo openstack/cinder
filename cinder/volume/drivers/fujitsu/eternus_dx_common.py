@@ -34,6 +34,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
+from cinder import utils
 from cinder.volume import configuration as conf
 
 LOG = logging.getLogger(__name__)
@@ -66,6 +67,8 @@ JOB_RETRIES = 60
 JOB_INTERVAL_SEC = 10
 
 # Error code keyword.
+VOLUME_IS_BUSY = 32786
+DEVICE_IS_BUSY = 32787
 VOLUMENAME_IN_USE = 32788
 COPYSESSION_NOT_EXIST = 32793
 LUNAME_IN_USE = 4102
@@ -1246,6 +1249,7 @@ class FJDXCommon(object):
         return ret
 
     @lockutils.synchronized('ETERNUS-SMIS-exec', 'cinder-', True)
+    @utils.retry(exception.VolumeBackendAPIException)
     def _exec_eternus_service(self, classname, instanceNameList, **param_dict):
         """Execute SMI-S Method."""
         LOG.debug('_exec_eternus_service, '
@@ -1276,6 +1280,10 @@ class FJDXCommon(object):
         if "Job" in retdata:
             rc = self._wait_for_job_complete(self.conn, retdata)
 
+        if rc == DEVICE_IS_BUSY:
+            msg = _('Device is in Busy state')
+            raise exception.VolumeBackendAPIException(data=msg)
+
         errordesc = RETCODE_dic.get(six.text_type(rc), UNDEF_MSG)
 
         ret = (rc, errordesc, retdata)
@@ -1296,6 +1304,7 @@ class FJDXCommon(object):
         return ret
 
     @lockutils.synchronized('ETERNUS-SMIS-other', 'cinder-', True)
+    @utils.retry(exception.VolumeBackendAPIException)
     def _enum_eternus_instances(self, classname):
         """Enumerate Instances."""
         LOG.debug('_enum_eternus_instances, classname: %s.', classname)
@@ -1306,6 +1315,7 @@ class FJDXCommon(object):
         return ret
 
     @lockutils.synchronized('ETERNUS-SMIS-other', 'cinder-', True)
+    @utils.retry(exception.VolumeBackendAPIException)
     def _enum_eternus_instance_names(self, classname):
         """Enumerate Instance Names."""
         LOG.debug('_enum_eternus_instance_names, classname: %s.', classname)
@@ -1316,6 +1326,7 @@ class FJDXCommon(object):
         return ret
 
     @lockutils.synchronized('ETERNUS-SMIS-getinstance', 'cinder-', True)
+    @utils.retry(exception.VolumeBackendAPIException)
     def _get_eternus_instance(self, classname, **param_dict):
         """Get Instance."""
         LOG.debug('_get_eternus_instance, '
@@ -1328,6 +1339,7 @@ class FJDXCommon(object):
         return ret
 
     @lockutils.synchronized('ETERNUS-SMIS-other', 'cinder-', True)
+    @utils.retry(exception.VolumeBackendAPIException)
     def _assoc_eternus(self, classname, **param_dict):
         """Associator."""
         LOG.debug('_assoc_eternus, '
@@ -1340,6 +1352,7 @@ class FJDXCommon(object):
         return ret
 
     @lockutils.synchronized('ETERNUS-SMIS-other', 'cinder-', True)
+    @utils.retry(exception.VolumeBackendAPIException)
     def _assoc_eternus_names(self, classname, **param_dict):
         """Associator Names."""
         LOG.debug('_assoc_eternus_names, '
@@ -1352,6 +1365,7 @@ class FJDXCommon(object):
         return ret
 
     @lockutils.synchronized('ETERNUS-SMIS-other', 'cinder-', True)
+    @utils.retry(exception.VolumeBackendAPIException)
     def _reference_eternus_names(self, classname, **param_dict):
         """Refference Names."""
         LOG.debug('_reference_eternus_names, '
@@ -1520,6 +1534,7 @@ class FJDXCommon(object):
 
             time.sleep(10)
 
+    @utils.retry(exception.VolumeBackendAPIException)
     def _delete_copysession(self, cpsession):
         """delete copysession."""
         LOG.debug('_delete_copysession: cpssession: %s.', cpsession)
@@ -1580,6 +1595,14 @@ class FJDXCommon(object):
                       'cpsession: %(cpsession)s, '
                       'copysession is not exist.',
                       {'cpsession': cpsession})
+        elif rc == VOLUME_IS_BUSY:
+            msg = (_('_delete_copysession, '
+                     'copysession: %(cpsession)s, '
+                     'operation: %(operation)s, '
+                     'Error: Volume is in Busy state')
+                   % {'cpsession': cpsession,
+                      'operation': operation})
+            raise exception.VolumeIsBusy(data=msg)
         elif rc != 0:
             msg = (_('_delete_copysession, '
                      'copysession: %(cpsession)s, '
