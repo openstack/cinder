@@ -82,6 +82,9 @@ class VMAXFCDriver(driver.FibreChannelDriver):
               - Support for volume replication
               - Support for live migration
               - Support for Generic Volume Group
+        backport from 3.3.0
+              - Fix for initiator retrieval and short hostname unmapping
+                (bugs #1783855 #1783867)
     """
 
     VERSION = "3.0.0"
@@ -285,7 +288,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         """
         loc = volume.provider_location
         name = ast.literal_eval(loc)
-        host = connector['host']
+        host = self.common.utils.get_host_short_name(connector['host'])
         try:
             array = name['array']
             device_id = name['device_id']
