@@ -187,7 +187,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             return
         target_path = '%s' % (volume['name'])
         share = volume_utils.extract_host(volume['host'], level='pool')
-        export_path = share.split(':')[1]
+        __, export_path = na_utils.get_export_host_junction_path(share)
         flex_vol_name = self.zapi_client.get_vol_by_junc_vserver(self.vserver,
                                                                  export_path)
         self.zapi_client.file_assign_qos(flex_vol_name,
@@ -324,9 +324,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         vserver_addresses = self.zapi_client.get_operational_lif_addresses()
 
         for share in self._mounted_shares:
+            host, junction_path = na_utils.get_export_host_junction_path(share)
 
-            host = share.split(':')[0]
-            junction_path = share.split(':')[1]
             address = na_utils.resolve_hostname(host)
 
             if address not in vserver_addresses:
@@ -364,7 +363,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         ip_vserver = self._get_vserver_for_ip(ip)
         if ip_vserver and shares:
             for share in shares:
-                ip_sh = share.split(':')[0]
+                ip_sh, __ = na_utils.get_export_host_junction_path(share)
                 sh_vserver = self._get_vserver_for_ip(ip_sh)
                 if sh_vserver == ip_vserver:
                     LOG.debug('Share match found for ip %s', ip)
@@ -540,15 +539,17 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                   volume['id'])
 
     def _get_source_ip_and_path(self, nfs_share, file_name):
-        src_ip = self._get_ip_verify_on_cluster(nfs_share.split(':')[0])
-        src_path = os.path.join(nfs_share.split(':')[1], file_name)
+        host, share_path = na_utils.get_export_host_junction_path(nfs_share)
+        src_ip = self._get_ip_verify_on_cluster(host)
+        src_path = os.path.join(share_path, file_name)
+
         return src_ip, src_path
 
     def _get_destination_ip_and_path(self, volume):
         share = volume_utils.extract_host(volume['host'], level='pool')
-        share_ip_and_path = share.split(":")
-        dest_ip = self._get_ip_verify_on_cluster(share_ip_and_path[0])
-        dest_path = os.path.join(share_ip_and_path[1], volume['name'])
+        share_ip, share_path = na_utils.get_export_host_junction_path(share)
+        dest_ip = self._get_ip_verify_on_cluster(share_ip)
+        dest_path = os.path.join(share_path, volume['name'])
 
         return dest_ip, dest_path
 

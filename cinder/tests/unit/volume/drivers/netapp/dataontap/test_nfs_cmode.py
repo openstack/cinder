@@ -1128,18 +1128,20 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             fake.EXPORT_PATH, fake.IMAGE_FILE_ID, fake.VOLUME['name'],
             fake.VSERVER_NAME, dest_exists=True)
 
-    def test_get_source_ip_and_path(self):
+    @ddt.data((fake.NFS_SHARE, fake.SHARE_IP),
+              (fake.NFS_SHARE_IPV6, fake.IPV6_ADDRESS))
+    @ddt.unpack
+    def test_get_source_ip_and_path(self, share, ip):
         self.driver._get_ip_verify_on_cluster = mock.Mock(
-            return_value=fake.SHARE_IP)
+            return_value=ip)
 
         src_ip, src_path = self.driver._get_source_ip_and_path(
-            fake.NFS_SHARE, fake.IMAGE_FILE_ID)
+            share, fake.IMAGE_FILE_ID)
 
-        self.assertEqual(fake.SHARE_IP, src_ip)
+        self.assertEqual(ip, src_ip)
         assert_path = fake.EXPORT_PATH + '/' + fake.IMAGE_FILE_ID
         self.assertEqual(assert_path, src_path)
-        self.driver._get_ip_verify_on_cluster.assert_called_once_with(
-            fake.SHARE_IP)
+        self.driver._get_ip_verify_on_cluster.assert_called_once_with(ip)
 
     def test_get_destination_ip_and_path(self):
         self.driver._get_ip_verify_on_cluster = mock.Mock(

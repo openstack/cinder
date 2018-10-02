@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed support for IPv6 on management and data paths for NFS, iSCSI
+    and FCP NetApp ONTAP drivers.
