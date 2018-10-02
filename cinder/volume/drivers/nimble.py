@@ -785,6 +785,13 @@ class NimbleISCSIDriver(NimbleBaseVolumeDriver, san.SanISCSIDriver):
                  {'vol': volume['name'],
                   'conn': connector,
                   'loc': volume['provider_location']})
+
+        if connector is None:
+            LOG.warning("Removing ALL host connections for volume %s",
+                        volume)
+            self.APIExecutor.remove_all_acls(volume)
+            return
+
         initiator_name = connector['initiator']
         initiator_group_name = self._get_igroupname_for_initiator(
             initiator_name)
@@ -977,6 +984,12 @@ class NimbleFCDriver(NimbleBaseVolumeDriver, driver.FibreChannelDriver):
                   'conn': connector,
                   'loc': volume['provider_location']})
         wwpns = []
+        if connector is None:
+            LOG.warning("Removing ALL host connections for volume %s",
+                        volume)
+            self.APIExecutor.remove_all_acls(volume)
+            return
+
         initiator_name = connector['initiator']
         for wwpn in connector['wwpns']:
             wwpns.append(wwpn)
@@ -1503,6 +1516,26 @@ class NimbleRestAPIExecutor(object):
                                      {'vol': volume_id,
                                       'igroup': initiator_group_id})
         return r.json()['data'][0]
+
+    def get_volume_acl_records(self, volume_id):
+        api = "volumes/" + six.text_type(volume_id)
+        r = self.get(api)
+        if not r.json()['data']:
+            raise NimbleAPIException(_("Unable to retrieve information for "
+                                       "volume: %s") % volume_id)
+        return r.json()['data']['access_control_records']
+
+    def remove_all_acls(self, volume):
+        LOG.info("removing all access control list from volume=%(vol)s",
+                 {"vol": volume['name']})
+        volume_id = self.get_volume_id_by_name(volume['name'])
+        acl_records = self.get_volume_acl_records(volume_id)
+        if acl_records is not None:
+            for acl_record in acl_records:
+                LOG.info("removing acl=%(acl)s with igroup=%(igroup)s",
+                         {"acl": acl_record['id'],
+                          "igroup": acl_record['initiator_group_name']})
+                self.remove_acl(volume, acl_record['initiator_group_name'])
 
     def remove_acl(self, volume, initiator_group_name):
         LOG.info("removing ACL from volume=%(vol)s"
