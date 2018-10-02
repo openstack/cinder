@@ -315,7 +315,7 @@ class HuaweiConf(object):
             dev_config['san_address'] = dev['san_address'].split(';')
             dev_config['san_user'] = dev['san_user']
             dev_config['san_password'] = dev['san_password']
-            dev_config['storage_pool'] = dev['storage_pool'].split(';')
+            dev_config['storage_pools'] = dev['storage_pool'].split(';')
             dev_config['iscsi_info'] = self._parse_rmt_iscsi_info(
                 dev.get('iscsi_info'))
             dev_config['iscsi_default_target_ip'] = (
@@ -332,7 +332,7 @@ class HuaweiConf(object):
             'san_address': self.conf.san_address,
             'san_user': self.conf.san_user,
             'san_password': self.conf.san_password,
-            'storage_pool': self.conf.storage_pools,
+            'storage_pools': self.conf.storage_pools,
             'iscsi_info': self.conf.iscsi_info,
             'iscsi_default_target_ip': self.conf.iscsi_default_target_ip,
         }
