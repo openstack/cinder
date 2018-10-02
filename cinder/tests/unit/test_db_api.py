@@ -2794,6 +2794,17 @@ class DBAPIBackupTestCase(BaseTest):
         filtered_backups = db.backup_get_all(self.ctxt, filters=filters)
         self._assertEqualListsOfObjects([], filtered_backups)
 
+    def tests_backup_get_all_by_filter_metadata(self):
+        backups = self._get_values()
+        for i in range(3):
+            backup = backups[i]
+            backup['metadata'] = {'fake_key': 'fake' + str(i)}
+        created = [db.backup_create(self.ctxt, values)
+                   for values in backups]
+        filters = {'metadata': created[1]['metadata']}
+        filtered_backups = db.backup_get_all(self.ctxt, filters=filters)
+        self.assertEqual(len([created[1]]), len(filtered_backups))
+
     def test_backup_get_all_by_host(self):
         byhost = db.backup_get_all_by_host(self.ctxt,
                                            self.created[1]['host'])
