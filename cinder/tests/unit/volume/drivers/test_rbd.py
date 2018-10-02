@@ -21,10 +21,12 @@ import uuid
 
 import castellan
 import ddt
+import errno
 import mock
 from mock import call
 from oslo_utils import imageutils
 from oslo_utils import units
+import time
 
 from cinder import context
 from cinder import db
@@ -73,6 +75,11 @@ class MockOSErrorException(MockException):
     """Used as mock for rbd.OSError."""
 
 
+class MockPermissionError(MockException):
+    """Used as mock for PermissionError."""
+    errno = errno.EPERM
+
+
 class KeyObject(object):
     def get_encoded(arg):
         return "asdf".encode('utf-8')
@@ -109,6 +116,7 @@ def common_mocks(f):
             inst.mock_rbd.ImageNotFound = MockImageNotFoundException
             inst.mock_rbd.ImageExists = MockImageExistsException
             inst.mock_rbd.InvalidArgument = MockImageNotFoundException
+            inst.mock_rbd.PermissionError = MockPermissionError
 
             inst.driver.rbd = inst.mock_rbd
             inst.driver.rados = inst.mock_rados
@@ -190,6 +198,7 @@ class RBDTestCase(test.TestCase):
         self.cfg.rados_connection_retries = 3
         self.cfg.rados_connection_interval = 5
         self.cfg.backup_use_temp_snapshot = False
+        self.cfg.enable_deferred_deletion = False
 
         mock_exec = mock.Mock()
         mock_exec.return_value = ('', '')
@@ -658,6 +667,112 @@ class RBDTestCase(test.TestCase):
                     self.driver.rbd.Image.return_value.unprotect_snap.called)
                 self.assertEqual(
                     1, self.driver.rbd.RBD.return_value.remove.call_count)
+
+    @common_mocks
+    def test_deferred_deletion(self):
+        client = self.mock_client.return_value
+
+        self.driver.rbd.Image.return_value.list_snaps.return_value = []
+
+        with mock.patch.object(self.driver, '_get_clone_info') as \
+                mock_get_clone_info:
+            with mock.patch.object(self.driver, '_delete_backup_snaps') as \
+                    mock_delete_backup_snaps:
+                mock_get_clone_info.return_value = (None, None, None)
+                self.cfg.enable_deferred_deletion = True
+                self.cfg.deferred_deletion_delay = 0
+
+                self.driver.delete_volume(self.volume_a)
+
+                mock_get_clone_info.assert_called_once_with(
+                    self.mock_rbd.Image.return_value,
+                    self.volume_a.name,
+                    None)
+                (self.driver.rbd.Image.return_value
+                    .list_snaps.assert_called_once_with())
+                client.__enter__.assert_called_once_with()
+                client.__exit__.assert_called_once_with(None, None, None)
+                mock_delete_backup_snaps.assert_called_once_with(
+                    self.mock_rbd.Image.return_value)
+                self.assertFalse(
+                    self.driver.rbd.Image.return_value.unprotect_snap.called)
+                self.assertEqual(
+                    1, self.driver.rbd.RBD.return_value.trash_move.call_count)
+
+    @common_mocks
+    def test_deferred_deletion_periodic_task(self):
+        self.cfg.rados_connect_timeout = -1
+        self.cfg.enable_deferred_deletion = True
+        self.cfg.deferred_deletion_purge_interval = 1
+
+        self.driver._start_periodic_tasks()
+
+        time.sleep(1)
+        self.assertTrue(self.driver.rbd.RBD.return_value.trash_list.called)
+        self.assertFalse(self.driver.rbd.RBD.return_value.trash_remove.called)
+
+    @common_mocks
+    def test_deferred_deletion_trash_purge(self):
+        with mock.patch.object(self.driver.rbd.RBD(), 'trash_list') as \
+                mock_trash_list:
+            mock_trash_list.return_value = [self.volume_a]
+            self.cfg.enable_deferred_deletion = True
+
+            self.driver._trash_purge()
+
+            self.assertEqual(
+                1, self.driver.rbd.RBD.return_value.trash_list.call_count)
+            self.assertEqual(
+                1, self.driver.rbd.RBD.return_value.trash_remove.call_count)
+
+    @common_mocks
+    def test_deferred_deletion_trash_purge_not_expired(self):
+        with mock.patch.object(self.driver.rbd.RBD(), 'trash_list') as \
+                mock_trash_list:
+            mock_trash_list.return_value = [self.volume_a]
+            self.mock_rbd.RBD.return_value.trash_remove.side_effect = (
+                self.mock_rbd.PermissionError)
+            self.cfg.enable_deferred_deletion = True
+
+            self.driver._trash_purge()
+
+            self.assertEqual(
+                1, self.driver.rbd.RBD.return_value.trash_list.call_count)
+            self.assertEqual(
+                1, self.driver.rbd.RBD.return_value.trash_remove.call_count)
+            # Make sure the exception was raised
+            self.assertEqual(1, len(RAISED_EXCEPTIONS))
+            self.assertIn(self.mock_rbd.PermissionError, RAISED_EXCEPTIONS)
+
+    @common_mocks
+    def test_deferred_deletion_w_parent(self):
+        _get_clone_info_return_values = [
+            (None, self.volume_b.name, None),
+            (None, None, None)]
+        with mock.patch.object(self.driver, '_get_clone_info',
+                               side_effect = _get_clone_info_return_values):
+            self.cfg.enable_deferred_deletion = True
+            self.cfg.deferred_deletion_delay = 0
+
+            self.driver.delete_volume(self.volume_a)
+
+            self.assertEqual(
+                1, self.driver.rbd.RBD.return_value.trash_move.call_count)
+
+    @common_mocks
+    def test_deferred_deletion_w_deleted_parent(self):
+        _get_clone_info_return_values = [
+            (None, "%s.deleted" % self.volume_b.name, None),
+            (None, None, None)]
+        with mock.patch.object(self.driver, '_get_clone_info',
+                               side_effect = _get_clone_info_return_values):
+            self.cfg.enable_deferred_deletion = True
+            self.cfg.deferred_deletion_delay = 0
+
+            self.driver.delete_volume(self.volume_a)
+
+            self.assertEqual(
+                2, self.driver.rbd.RBD.return_value.trash_move.call_count)
 
     @common_mocks
     def delete_volume_not_found(self):
