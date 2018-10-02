@@ -35,7 +35,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.1.10'
+VERSION = '1.1.11'
 
 LOG = logging.getLogger(__name__)
 
@@ -109,6 +109,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.1.8 - Adds optional snapshot merge caching
         1.1.9 - Support for Qemu >= 2.10.0
         1.1.10 - Adds overlay based volumes for snapshot merge caching
+        1.1.11 - NAS secure ownership & permissions are now False by default
 
     """
 
@@ -276,28 +277,21 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
     def set_nas_security_options(self, is_new_cinder_install):
         self._execute_as_root = False
 
-        LOG.debug("nas_secure_file_* settings are %(ops)s and %(perm)s",
+        LOG.debug("nas_secure_file_* settings are %(ops)s (ownership) and "
+                  "%(perm)s (permissions).",
                   {'ops': self.configuration.nas_secure_file_operations,
                    'perm': self.configuration.nas_secure_file_permissions}
                   )
 
         if self.configuration.nas_secure_file_operations == 'auto':
-            """Note (kaisers): All previous Quobyte driver versions ran with
-            secure settings hardcoded to 'True'. Therefore the default 'auto'
-            setting can safely be mapped to the same, secure, setting.
-            """
-            LOG.debug("Mapping 'auto' value to 'true' for"
+            LOG.debug("Mapping 'auto' value to 'false' for"
                       " nas_secure_file_operations.")
-            self.configuration.nas_secure_file_operations = 'true'
+            self.configuration.nas_secure_file_operations = 'false'
 
         if self.configuration.nas_secure_file_permissions == 'auto':
-            """Note (kaisers): All previous Quobyte driver versions ran with
-            secure settings hardcoded to 'True'. Therefore the default 'auto'
-            setting can safely be mapped to the same, secure, setting.
-            """
-            LOG.debug("Mapping 'auto' value to 'true' for"
+            LOG.debug("Mapping 'auto' value to 'false' for"
                       " nas_secure_file_permissions.")
-            self.configuration.nas_secure_file_permissions = 'true'
+            self.configuration.nas_secure_file_permissions = 'false'
 
         if self.configuration.nas_secure_file_operations == 'false':
             LOG.warning("The NAS file operations will be run as "

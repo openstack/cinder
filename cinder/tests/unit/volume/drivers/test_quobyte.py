@@ -96,8 +96,8 @@ class QuobyteDriverTestCase(test.TestCase):
         self._configuration.quobyte_qcow2_volumes = False
         self._configuration.quobyte_mount_point_base = \
             self.TEST_MNT_POINT_BASE
-        self._configuration.nas_secure_file_operations = "auto"
-        self._configuration.nas_secure_file_permissions = "auto"
+        self._configuration.nas_secure_file_operations = "true"
+        self._configuration.nas_secure_file_permissions = "true"
         self._configuration.quobyte_volume_from_snapshot_cache = False
         self._configuration.quobyte_overlay_volumes = False
 
