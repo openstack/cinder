@@ -179,8 +179,6 @@ disable=
  redefined-argument-from-local,
  consider-using-ternary,
  literal-comparison,
- consider-merging-isinstance,
- consider-merging-isinstance,
  too-many-boolean-expressions,
  useless-object-inheritance,
  trailing-comma-tuple,
