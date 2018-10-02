@@ -126,7 +126,6 @@ umount: CommandFilter, umount, root
 ls: CommandFilter, ls, root
 multipath: CommandFilter, multipath, root
 multipathd: CommandFilter, multipathd, root
-systool: CommandFilter, systool, root
 
 # cinder/volume/drivers/ibm/gpfs.py
 # cinder/volume/drivers/tintri.py
