@@ -243,6 +243,13 @@ image-id:
   in: query
   required: false
   type: string
+is_public_volume_type_query:
+  description: |
+    Filter the volume type by public visibility.
+    See :ref:`valid boolean values <valid-boolean-values>`.
+  in: query
+  required: false
+  type: boolean
 limit:
   description: |
     Requests a page size of items. Returns a number
