@@ -34,6 +34,7 @@ requests.packages.urllib3.disable_warnings(urllib_exp.InsecureRequestWarning)
 LOG = logging.getLogger(__name__)
 SLOPROVISIONING = 'sloprovisioning'
 REPLICATION = 'replication'
+SYSTEM = 'system'
 U4V_VERSION = '84'
 UCODE_5978 = '5978'
 retry_exc_tuple = (exception.VolumeBackendAPIException,)
@@ -458,9 +459,16 @@ class VMAXRest(object):
         :returns: slo_list -- list of service level names
         """
         slo_list = []
-        slo_dict = self.get_resource(array, SLOPROVISIONING, 'slo')
+        slo_dict = self.get_resource(array, SLOPROVISIONING, 'slo',
+                                     version='90')
         if slo_dict and slo_dict.get('sloId'):
-            slo_list = slo_dict['sloId']
+            if any(self.get_vmax_model(array) in x for x in
+                   utils.VMAX_AFA_MODELS):
+                if 'Optimized' in slo_dict.get('sloId'):
+                    slo_dict['sloId'].remove('Optimized')
+            for slo in slo_dict['sloId']:
+                if slo and slo not in slo_list:
+                    slo_list.append(slo)
         return slo_list
 
     def get_workload_settings(self, array):
@@ -477,6 +485,20 @@ class VMAXRest(object):
             if wl_details:
                 workload_setting = wl_details['workloadId']
         return workload_setting
+
+    def get_vmax_model(self, array):
+        """Get the VMAX model.
+
+        :param array: the array serial number
+        :return: the VMAX model
+        """
+        vmax_version = ''
+        system_uri = ("/%(version)s/system/symmetrix/%(array)s" % {
+            'version': U4V_VERSION, 'array': array})
+        system_info = self._get_request(system_uri, SYSTEM)
+        if system_info and system_info.get('model'):
+            vmax_version = system_info.get('model')
+        return vmax_version
 
     def is_compression_capable(self, array):
         """Check if array is compression capable.
