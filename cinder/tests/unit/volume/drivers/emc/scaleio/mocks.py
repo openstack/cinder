@@ -44,6 +44,10 @@ class ScaleIODriver(scaleio.ScaleIODriver):
                                    override='test_domain')
         configuration.set_override('sio_storage_pools',
                                    override='test_domain:test_pool')
+        if 'san_thin_provision' in kwargs:
+            configuration.set_override(
+                'san_thin_provision',
+                override=kwargs['san_thin_provision'])
 
         super(ScaleIODriver, self).__init__(configuration=configuration,
                                             *args,
