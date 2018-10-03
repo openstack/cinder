@@ -1442,7 +1442,7 @@ PowerMax view point.
    | srp                     | DEFAULT_SRP                                             |
    | openstack_name          | 91_Test_Vol56                                           |
    | vmax_firmware_version   | 5978.143.144                                            |
-   | serial_number           | 000197600196                                            |
+   | serial_number           | 000123456789                                            |
    +-------------------------+---------------------------------------------------------+
 
 
