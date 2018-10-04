@@ -1055,7 +1055,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
             mock.call('qos-policy-group-delete-iter', api_args, False)])
         self.assertEqual(1, mock_log.call_count)
 
-    @mock.patch('cinder.volume.drivers.netapp.utils.resolve_hostname',
+    @mock.patch('cinder.utils.resolve_hostname',
                 return_value='192.168.1.101')
     def test_get_if_info_by_ip_not_found(self, mock_resolve_hostname):
         fake_ip = '192.168.1.101'
@@ -1070,7 +1070,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertRaises(exception.NotFound, self.client.get_if_info_by_ip,
                           fake_ip)
 
-    @mock.patch('cinder.volume.drivers.netapp.utils.resolve_hostname',
+    @mock.patch('cinder.utils.resolve_hostname',
                 return_value='192.168.1.101')
     def test_get_if_info_by_ip(self, mock_resolve_hostname):
         fake_ip = '192.168.1.101'

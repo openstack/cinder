@@ -21,6 +21,7 @@ import mock
 import socket
 
 from cinder import exception
+from cinder import utils as cinder_utils
 from cinder.volume import configuration as conf
 
 from cinder.tests.unit.volume.drivers.netapp.eseries import fakes as \
@@ -344,7 +345,7 @@ class NetAppESeriesDriverTestCase(object):
         configuration = self._set_config(self.create_configuration())
         configuration.netapp_controller_ips = '987.65.43.21'
         driver = common.NetAppDriver(configuration=configuration)
-        self.mock_object(na_utils, 'resolve_hostname',
+        self.mock_object(cinder_utils, 'resolve_hostname',
                          side_effect=socket.gaierror)
 
         self.assertRaises(
@@ -355,7 +356,7 @@ class NetAppESeriesDriverTestCase(object):
         configuration = self._set_config(self.create_configuration())
         configuration.netapp_controller_ips = '987.65.43.21,127.0.0.1'
         driver = common.NetAppDriver(configuration=configuration)
-        self.mock_object(na_utils, 'resolve_hostname',
+        self.mock_object(cinder_utils, 'resolve_hostname',
                          side_effect=socket.gaierror)
 
         self.assertRaises(
@@ -366,7 +367,7 @@ class NetAppESeriesDriverTestCase(object):
         configuration = self._set_config(self.create_configuration())
         configuration.netapp_controller_ips = '127.0.0.1,987.65.43.21'
         driver = common.NetAppDriver(configuration=configuration)
-        self.mock_object(na_utils, 'resolve_hostname',
+        self.mock_object(cinder_utils, 'resolve_hostname',
                          side_effect=socket.gaierror)
 
         self.assertRaises(
@@ -377,7 +378,7 @@ class NetAppESeriesDriverTestCase(object):
         configuration = self._set_config(self.create_configuration())
         configuration.netapp_controller_ips = '564.124.1231.1,987.65.43.21'
         driver = common.NetAppDriver(configuration=configuration)
-        self.mock_object(na_utils, 'resolve_hostname',
+        self.mock_object(cinder_utils, 'resolve_hostname',
                          side_effect=socket.gaierror)
 
         self.assertRaises(

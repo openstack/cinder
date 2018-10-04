@@ -260,7 +260,7 @@ class NetAppESeriesLibrary(object):
         """Does validity checks for storage system registry and health."""
         def _resolve_host(host):
             try:
-                ip = na_utils.resolve_hostname(host)
+                ip = cinder_utils.resolve_hostname(host)
                 return ip
             except socket.gaierror as e:
                 LOG.error('Error resolving host %(host)s. Error - %(e)s.',
@@ -272,7 +272,7 @@ class NetAppESeriesLibrary(object):
         ips = self.configuration.netapp_controller_ips
         ips = [i.strip() for i in ips.split(",")]
         ips = [x for x in ips if _resolve_host(x)]
-        host = na_utils.resolve_hostname(
+        host = cinder_utils.resolve_hostname(
             self.configuration.netapp_server_hostname)
         if host in ips:
             LOG.info('Embedded mode detected.')
