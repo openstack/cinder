@@ -2212,8 +2212,7 @@ class RBDTestCase(test.TestCase):
             self.assertEqual((True, None), ret)
 
     @mock.patch('tempfile.NamedTemporaryFile')
-    @mock.patch('cinder.volume.drivers.rbd.RBDDriver.'
-                '_check_encryption_provider',
+    @mock.patch('cinder.volume.utils.check_encryption_provider',
                 return_value={'encryption_key_id': fake.ENCRYPTION_KEY_ID})
     def test_create_encrypted_volume(self,
                                      mock_check_enc_prov,
@@ -2237,8 +2236,8 @@ class RBDTestCase(test.TestCase):
                     'cipher': 'aes-xts-essiv',
                     'key_size': 256}
 
-        with mock.patch('cinder.volume.drivers.rbd.RBDDriver.'
-                        '_check_encryption_provider', return_value=enc_info), \
+        with mock.patch('cinder.volume.utils.'
+                        'check_encryption_provider', return_value=enc_info), \
                 mock.patch('cinder.volume.drivers.rbd.open') as mock_open, \
                 mock.patch.object(self.driver, '_execute') as mock_exec:
             self.driver._create_encrypted_volume(self.volume_c,
