@@ -47,6 +47,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Nexenta_Edge_CI"
 
+    # TODO(jsbryant) Remove driver in the 'T' release if CI is not fixed
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(NexentaEdgeISCSIDriver, self).__init__(*args, **kwargs)
         if self.configuration:
