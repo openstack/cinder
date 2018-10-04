@@ -597,7 +597,7 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
 
     @classmethod
     def _get_expected_attrs(cls, context, *args, **kwargs):
-        expected_attrs = ['metadata', 'volume_type']
+        expected_attrs = ['metadata', 'volume_type', 'volume_attachment']
         if context.is_admin:
             expected_attrs.append('admin_metadata')
 

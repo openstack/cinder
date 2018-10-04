@@ -62,9 +62,8 @@ class KeyMigrationTestCase(base.BaseVolumeTestCase):
         if key_id:
             vol.encryption_key_id = key_id
             vol.save()
-        self.my_vols = objects.VolumeList.get_all_by_host(self.context,
-                                                          self.conf.host)
         vol.refresh()
+        self.my_vols.append(vol)
         return vol
 
     def create_backup(self, volume_id=fake.VOLUME_ID, key_id=FIXED_KEY_ID):
