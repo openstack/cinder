@@ -88,6 +88,9 @@ class TintriDriver(driver.ManageableVD,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Tintri_CI"
 
+    # TODO(jsbryant) Remove driver in the 'T' release if CI is not fixed
+    SUPPORTED = False
+
     REQUIRED_OPTIONS = ['tintri_server_hostname', 'tintri_server_username',
                         'tintri_server_password']
 
