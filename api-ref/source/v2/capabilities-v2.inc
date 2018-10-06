@@ -37,7 +37,7 @@ Response Parameters
    - pool_name: pool_name
    - description: description
    - volume_backend_name: volume_backend_name
-   - namespace: namespace
+   - namespace: namespace_1
    - visibility: visibility
    - driver_version: driver_version
    - vendor_name: vendor_name
