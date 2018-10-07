@@ -154,9 +154,6 @@ mmdelsnapshot: CommandFilter, mmdelsnapshot, root
 # cinder/volume/drivers/ibm/ibmnas.py
 find_maxdepth_inum: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdepth, \d+, -ignore_readdir_race, -inum, \d+, -print0, -quit
 
-# cinder/brick/initiator/linuxscsi.py:
-sg_scan: CommandFilter, sg_scan, root
-
 #cinder/backup/services/tsm.py
 dsmc:CommandFilter,/usr/bin/dsmc,root
 

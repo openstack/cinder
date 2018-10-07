@@ -11,7 +11,6 @@ Storage installation.
    ts-cinder-config.rst
    ts-multipath-warn.rst
    ts-eql-volume-size.rst
-   ts-vol-attach-miss-sg-scan.rst
    ts-HTTP-bad-req-in-cinder-vol-log.rst
    ts-duplicate-3par-host.rst
    ts-failed-attach-vol-after-detach.rst
