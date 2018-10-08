@@ -91,7 +91,7 @@ class AdminActionsTest(BaseAdminTest):
                             group='oslo_concurrency')
         self.fixture.config(disable_process_locking=True,
                             group='oslo_concurrency')
-        self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
+        self.flags(transport_url='fake:/')
 
         cast_as_call.mock_cast_as_call(self.volume_api.volume_rpcapi.client)
         cast_as_call.mock_cast_as_call(self.volume_api.scheduler_rpcapi.client)
