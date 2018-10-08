@@ -58,7 +58,7 @@ Response Parameters
 
    - volume_type: volume_type_1
    - is_public: is_public_volume_type_required
-   - extra_specs: extra_specs_volume_type_required
+   - extra_specs: extra_specs_volume_type_optional
    - description: description_volume_type_required
    - name: name_volume_type_required
    - id: volume_type_id
@@ -279,7 +279,7 @@ Response Parameters
 
    - volume_type: volume_type_1
    - is_public: is_public_volume_type_required
-   - extra_specs: extra_specs_volume_type_required
+   - extra_specs: extra_specs_volume_type_optional
    - description: description_volume_type_required
    - name: name_volume_type_required
    - id: volume_type_id_body
@@ -323,7 +323,7 @@ Response Parameters
 
    - volume_type: volume_type_1
    - is_public: is_public_volume_type_required
-   - extra_specs: extra_specs_volume_type_required
+   - extra_specs: extra_specs_volume_type_optional
    - description: description_volume_type_required
    - name: name_volume_type_required
 
@@ -393,7 +393,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - volume_types: volume_types
-   - extra_specs: extra_specs_volume_type_required
+   - extra_specs: extra_specs_volume_type_optional
    - name: name_volume_type_required
    - is_public: is_public_volume_type_required
    - description: description_volume_type_required
@@ -449,7 +449,7 @@ Response Parameters
 
    - volume_type: volume_type_1
    - is_public: is_public_volume_type_required
-   - extra_specs: extra_specs_volume_type_required
+   - extra_specs: extra_specs_volume_type_optional
    - description: description_volume_type_required
    - name: name_volume_type_required
    - id: volume_type_id_body
