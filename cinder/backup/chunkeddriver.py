@@ -427,7 +427,12 @@ class ChunkedBackupDriver(driver.BackupDriver):
                              object_list,
                              volume_meta,
                              extra_metadata)
-        backup.object_count = object_id
+        # NOTE(whoami-rajat) : The object_id variable is used to name
+        # the backup objects and hence differs from the object_count
+        # variable, therefore the increment of object_id value in the last
+        # iteration of _backup_chunk() method shouldn't be reflected in the
+        # object_count variable.
+        backup.object_count = object_id - 1
         backup.save()
         LOG.debug('backup %s finished.', backup['id'])
 
