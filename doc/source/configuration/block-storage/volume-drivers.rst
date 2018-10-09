@@ -64,6 +64,7 @@ Driver Configuration Reference
    drivers/pure-storage-driver
    drivers/quobyte-driver
    drivers/solidfire-volume-driver
+   drivers/spdk-volume-driver
    drivers/storpool-volume-driver
    drivers/synology-dsm-driver
    drivers/tintri-volume-driver
