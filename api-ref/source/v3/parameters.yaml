@@ -1128,7 +1128,7 @@ free_capacity:
   description: |
     The amount of free capacity for the back-end
     volume, in GBs. A valid value is a string, such as ``unknown``, or
-    an integer.
+    a number (integer or floating point).
   in: body
   required: true
   type: string
@@ -2770,8 +2770,8 @@ summary_metadata:
 total_capacity:
   description: |
     The total capacity for the back-end volume, in
-    GBs. A valid value is a string, such as ``unknown``, or an
-    integer.
+    GBs. A valid value is a string, such as ``unknown``, or a
+    number (integer or floating point).
   in: body
   required: true
   type: string
