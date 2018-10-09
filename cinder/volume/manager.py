@@ -2924,6 +2924,9 @@ class VolumeManager(manager.CleanableManager,
             if want_objects:
                 driver_entries = (objects.ManageableVolumeList.
                                   from_primitives(ctxt, driver_entries))
+        except AttributeError:
+            LOG.debug('Driver does not support listing manageable volumes.')
+            return []
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.exception("Listing manageable volumes failed, due "
@@ -4292,6 +4295,9 @@ class VolumeManager(manager.CleanableManager,
             if want_objects:
                 driver_entries = (objects.ManageableSnapshotList.
                                   from_primitives(ctxt, driver_entries))
+        except AttributeError:
+            LOG.debug('Driver does not support listing manageable snapshots.')
+            return []
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.exception("Listing manageable snapshots failed, due "
