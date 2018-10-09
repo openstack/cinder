@@ -19,6 +19,7 @@ import mock
 import time
 
 from oslo_config import cfg
+from oslo_utils import uuidutils
 
 from cinder import context
 from cinder import db
@@ -45,6 +46,16 @@ class VolumeTypeTestCase(test.TestCase):
                                     rpm="7200",
                                     visible="True")
         self.vol_type1_description = self.vol_type1_name + '_desc'
+
+    def test_get_volume_type_by_name_with_uuid_name(self):
+        """Ensure volume types can be created and found."""
+        uuid_format_name = uuidutils.generate_uuid()
+        volume_types.create(self.ctxt, uuid_format_name,
+                            self.vol_type1_specs,
+                            description=self.vol_type1_description)
+        type_ref = volume_types.get_by_name_or_id(self.ctxt,
+                                                  uuid_format_name)
+        self.assertEqual(uuid_format_name, type_ref['name'])
 
     def test_volume_type_create_then_destroy(self):
         """Ensure volume types can be created and deleted."""

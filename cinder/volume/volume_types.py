@@ -132,9 +132,18 @@ def get_volume_type(ctxt, id, expected_fields=None):
 
 def get_by_name_or_id(context, identity):
     """Retrieves volume type by id or name"""
-    if not uuidutils.is_uuid_like(identity):
-        return get_volume_type_by_name(context, identity)
-    return get_volume_type(context, identity)
+    if uuidutils.is_uuid_like(identity):
+        # both name and id can be in uuid format
+        try:
+            return get_volume_type(context, identity)
+        except exception.VolumeTypeNotFound:
+            try:
+                # A user can create a type with the name in a UUID format,
+                # so here we check for the uuid-like name.
+                return get_volume_type_by_name(context, identity)
+            except exception.VolumeTypeNotFoundByName:
+                raise exception.VolumeTypeNotFound(volume_type_id=identity)
+    return get_volume_type_by_name(context, identity)
 
 
 def get_volume_type_by_name(context, name):
