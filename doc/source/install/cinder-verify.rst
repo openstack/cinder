@@ -29,6 +29,7 @@ Verify operation of the Block Storage service.
       +------------------+------------+------+---------+-------+----------------------------+
       | cinder-scheduler | controller | nova | enabled | up    | 2016-09-30T02:27:41.000000 |
       | cinder-volume    | block@lvm  | nova | enabled | up    | 2016-09-30T02:27:46.000000 |
+      | cinder-backup    | controller | nova | enabled | up    | 2016-09-30T02:27:41.000000 |
       +------------------+------------+------+---------+-------+----------------------------+
 
 

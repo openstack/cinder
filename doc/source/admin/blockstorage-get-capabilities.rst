@@ -39,6 +39,7 @@ First, get a list of the services:
    +------------------+-------------------+------+---------+-------+----------------------------+
    | cinder-scheduler | controller        | nova | enabled | up    | 2016-10-24T13:53:35.000000 |
    | cinder-volume    | block1@ABC-driver | nova | enabled | up    | 2016-10-24T13:53:35.000000 |
+   | cinder-backup    | controller        | nova | enabled | up    | 2016-10-24T13:53:35.000000 |
    +------------------+-------------------+------+---------+-------+----------------------------+
 
 With one of the listed hosts, pass that to ``get-capabilities``, then
@@ -93,6 +94,7 @@ command combined with the Binary and Host to disable the service:
       +------------------+----------------------+------+---------+-------+----------------------------+
       | cinder-scheduler | devstack             | nova | enabled | up    | 2016-10-24T13:53:35.000000 |
       | cinder-volume    | devstack@lvmdriver-1 | nova | enabled | up    | 2016-10-24T13:53:35.000000 |
+      | cinder-backup    | devstack             | nova | enabled | up    | 2016-10-24T13:53:35.000000 |
       +------------------+----------------------+------+---------+-------+----------------------------+
 
 #. Disable the service using the Binary and Host name, placing the Host
