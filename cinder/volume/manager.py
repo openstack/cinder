@@ -3541,7 +3541,7 @@ class VolumeManager(manager.CleanableManager,
                 LOG.error("Update group "
                           "failed to %(op)s volume-%(volume_id)s: "
                           "VolumeNotFound.",
-                          {'volume_id': add_vol_ref.id,
+                          {'volume_id': add_vol,
                            'op': 'add' if add else 'remove'},
                           resource={'type': 'group',
                                     'id': group.id})
