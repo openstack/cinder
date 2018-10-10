@@ -73,6 +73,11 @@ class NFSBackupDriver(posix.PosixBackupDriver):
                                                           value=val)
 
     def _init_backup_repo_path(self):
+        if self.backup_share is None:
+            LOG.info("_init_backup_repo_path: "
+                     "backup_share is not set in configuration")
+            return
+
         remotefsclient = remotefs_brick.RemoteFsClient(
             'nfs',
             self._root_helper,
