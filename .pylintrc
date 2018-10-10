@@ -147,7 +147,6 @@ disable=
  unidiomatic-typecheck,
  consider-using-enumerate,
  bad-whitespace,
- consider-iterating-dictionary,
  line-too-long,
  useless-super-delegation,
  pointless-string-statement,

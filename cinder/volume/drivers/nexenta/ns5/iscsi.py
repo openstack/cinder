@@ -322,7 +322,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         else:
             # Choose the best target group among existing ones
             tg_name = None
-            for tg in self.volumes.keys():
+            for tg in self.volumes:
                 if len(self.volumes[tg]) < 20:
                     tg_name = tg
                     break

@@ -113,7 +113,7 @@ def check_exclusive_options(**kwargs):
         #
         # Ex: 'the_key' -> 'the key'
         if pretty_keys:
-            names = [k.replace('_', ' ') for k in kwargs.keys()]
+            names = [k.replace('_', ' ') for k in kwargs]
         else:
             names = kwargs.keys()
         names = ", ".join(sorted(names))

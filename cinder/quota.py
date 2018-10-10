@@ -484,7 +484,7 @@ class NestedDbQuotaDriver(DbQuotaDriver):
                 ctxt, resources, cur_proj_id)
 
             # Validate each resource when compared to it's child quotas
-            for resource in cur_project_quotas.keys():
+            for resource in cur_project_quotas:
                 parent_quota = cur_project_quotas[resource]
                 parent_limit = parent_quota['limit']
                 parent_usage = (parent_quota['in_use'] +
@@ -619,7 +619,7 @@ class NestedDbQuotaDriver(DbQuotaDriver):
             context, resources, project_id)
         # All defaults are 0 for child project
         if quota_utils.get_parent_project_id(context, project_id):
-            for key in defaults.keys():
+            for key in defaults:
                 defaults[key] = 0
         return defaults
 

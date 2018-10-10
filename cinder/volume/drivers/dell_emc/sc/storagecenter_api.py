@@ -1723,7 +1723,7 @@ class SCApi(object):
         # Return the response in lowercase
         wwns_lower = [w.lower() for w in wwns]
         itmap_lower = dict()
-        for key in itmap.keys():
+        for key in itmap:
             itmap_lower[key.lower()] = [v.lower() for v in itmap[key]]
 
         return lun, wwns_lower, itmap_lower

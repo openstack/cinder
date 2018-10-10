@@ -592,7 +592,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
 
         self._load_shares_config()
 
-        for share in self.shares.keys():
+        for share in self.shares:
             try:
                 self._ensure_share_mounted(share)
                 self._mounted_shares.append(share)

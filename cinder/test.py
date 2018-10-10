@@ -347,7 +347,7 @@ class TestCase(testtools.TestCase):
         # Delete attributes that don't start with _ so they don't pin
         # memory around unnecessarily for the duration of the test
         # suite
-        for key in [k for k in self.__dict__.keys() if k[0] != '_']:
+        for key in [k for k in self.__dict__ if k[0] != '_']:
             del self.__dict__[key]
 
     def override_config(self, name, override, group=None):

@@ -250,8 +250,8 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                     'target.')
             raise exception.VolumeBackendAPIException(data=msg)
 
-        for keyFc in dc_fc.keys():
-            for targetuuid in dc_target.keys():
+        for keyFc in dc_fc:
+            for targetuuid in dc_target:
                 if dc_fc[keyFc]['hardware_address'] == \
                         dc_target[targetuuid]['targetAddr']:
                     preferTargets[targetuuid] = dc_target[targetuuid]
@@ -267,7 +267,7 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
             szwwpns.append(szwwpn)
 
         if len(szwwpns):
-            for targetUuid in preferTargets.keys():
+            for targetUuid in preferTargets:
                 targetWwpn = ''
                 targetWwpn = preferTargets.get(targetUuid,
                                                {}).get('targetAddr', '')
