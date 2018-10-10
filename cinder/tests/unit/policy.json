@@ -4,7 +4,6 @@
 
     "volume:create": "",
     "volume:create_from_image": "",
-    "volume:get": "rule:admin_or_owner",
     "volume:get_all": "",
     "volume:get_volume_metadata": "",
     "volume:get_volume_image_metadata": "",
