@@ -1204,6 +1204,12 @@ group_snapshot_id_1:
   in: body
   required: true
   type: string
+group_snapshot_id_2:
+  description: |
+    The ID of the group snapshot.
+  in: body
+  required: false
+  type: string
 group_snapshots:
   description: |
     A collection of group snapshots.
@@ -2658,6 +2664,12 @@ source_group_id:
     The UUID of the source group.
   in: body
   required: true
+  type: string
+source_group_id_2:
+  description: |
+    The UUID of the source group.
+  in: body
+  required: false
   type: string
 source_reference:
   description: |
