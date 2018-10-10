@@ -37,23 +37,18 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - injected_file_content_bytes: injected_file_content_bytes
-   - metadata_items: metadata_items
-   - reserved: reserved
-   - in_use: in_use
-   - ram: ram
-   - floating_ips: floating_ips
-   - key_pairs: key_pairs
-   - injected_file_path_bytes: injected_file_path_bytes
-   - instances: instances
-   - security_group_rules: security_group_rules
-   - injected_files: injected_files
    - quota_set: quota_set
-   - cores: cores
-   - fixed_ips: fixed_ips
    - id: project_id
-   - security_groups: security_groups
-
+   - volumes: volumes_number
+   - volumes_{volume_type}: volumes_number_for_type
+   - snapshots: snapshots_number
+   - snapshots_{volume_type}: snapshots_number_for_type
+   - backups: backups_number
+   - groups: groups_number
+   - per_volume_gigabytes: per_volume_gigabytes
+   - gigabytes: gigabytes
+   - gigabytes_{volume_type}: gigabytes_for_type
+   - backup_gigabytes: backup_gigabytes
 
 Response Example
 ----------------
@@ -81,25 +76,19 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - injected_file_content_bytes: injected_file_content_bytes
-   - metadata_items: metadata_items
-   - reserved: reserved
-   - in_use: in_use
-   - ram: ram
-   - floating_ips: floating_ips
-   - key_pairs: key_pairs
-   - injected_file_path_bytes: injected_file_path_bytes
-   - instances: instances
-   - security_group_rules: security_group_rules
-   - injected_files: injected_files
-   - quota_set: quota_set
-   - cores: cores
-   - fixed_ips: fixed_ips
-   - security_groups: security_groups
-   - project_id: quotas_project_id
    - admin_project_id: admin_project_id
-   - backup_gigabytes: backup_gigabytes
+   - project_id: quotas_project_id
+   - quota_set: quota_set
+   - volumes: volumes_number
+   - volumes_{volume_type}: volumes_number_for_type
+   - snapshots: snapshots_number
+   - snapshots_{volume_type}: snapshots_number_for_type
+   - backups: backups_number
+   - groups: groups_number
    - per_volume_gigabytes: per_volume_gigabytes
+   - gigabytes: gigabytes
+   - gigabytes_{volume_type}: gigabytes_for_type
+   - backup_gigabytes: backup_gigabytes
 
 Request Example
 ---------------
@@ -113,22 +102,17 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - injected_file_content_bytes: injected_file_content_bytes
-   - metadata_items: metadata_items
-   - reserved: reserved
-   - in_use: in_use
-   - ram: ram
-   - floating_ips: floating_ips
-   - key_pairs: key_pairs
-   - injected_file_path_bytes: injected_file_path_bytes
-   - instances: instances
-   - security_group_rules: security_group_rules
-   - injected_files: injected_files
    - quota_set: quota_set
-   - cores: cores
-   - fixed_ips: fixed_ips
-   - id: project_id
-   - security_groups: security_groups
+   - volumes: volumes_number
+   - volumes_{volume_type}: volumes_number_for_type
+   - snapshots: snapshots_number
+   - snapshots_{volume_type}: snapshots_number_for_type
+   - backups: backups_number
+   - groups: groups_number
+   - per_volume_gigabytes: per_volume_gigabytes
+   - gigabytes: gigabytes
+   - gigabytes_{volume_type}: gigabytes_for_type
+   - backup_gigabytes: backup_gigabytes
 
 Response Example
 ----------------
@@ -195,23 +179,18 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - injected_file_content_bytes: injected_file_content_bytes
-   - metadata_items: metadata_items
-   - reserved: reserved
-   - in_use: in_use
-   - ram: ram
-   - floating_ips: floating_ips
-   - key_pairs: key_pairs
-   - injected_file_path_bytes: injected_file_path_bytes
-   - instances: instances
-   - security_group_rules: security_group_rules
-   - injected_files: injected_files
    - quota_set: quota_set
-   - cores: cores
-   - fixed_ips: fixed_ips
    - id: project_id
-   - security_groups: security_groups
-
+   - volumes: volumes_number
+   - volumes_{volume_type}: volumes_number_for_type
+   - snapshots: snapshots_number
+   - snapshots_{volume_type}: snapshots_number_for_type
+   - backups: backups_number
+   - groups: groups_number
+   - per_volume_gigabytes: per_volume_gigabytes
+   - gigabytes: gigabytes
+   - gigabytes_{volume_type}: gigabytes_for_type
+   - backup_gigabytes: backup_gigabytes
 
 Response Example
 ----------------
