@@ -86,7 +86,7 @@ class VolumeActionsTest(test.TestCase):
         self.addCleanup(self.db_get_patcher.stop)
         self.mock_volume_db_get.return_value = vol
 
-        self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
+        self.flags(transport_url='fake:/')
 
     def test_simple_api_actions(self):
         app = fakes.wsgi_app(fake_auth_context=self.context)
@@ -514,7 +514,7 @@ class VolumeRetypeActionsTest(test.TestCase):
 
         self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                               is_admin=False)
-        self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
+        self.flags(transport_url='fake:/')
 
         self.retype_mocks = {}
         paths = ('cinder.quota.QUOTAS.add_volume_type_opts',

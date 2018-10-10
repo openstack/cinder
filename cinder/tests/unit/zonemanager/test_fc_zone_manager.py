@@ -46,10 +46,6 @@ target_list = ['20240002ac000a50']
 
 class TestFCZoneManager(test.TestCase):
 
-    @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
-    def setUp(self, opt_mock):
-        super(TestFCZoneManager, self).setUp()
-
     def __init__(self, *args, **kwargs):
         super(TestFCZoneManager, self).__init__(*args, **kwargs)
 

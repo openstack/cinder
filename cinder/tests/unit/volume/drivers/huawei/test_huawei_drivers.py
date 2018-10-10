@@ -2524,7 +2524,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         super(HuaweiISCSIDriverTestCase, self).setUp()
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.hypermetro_devices = hypermetro_devices
-        self.flags(rpc_backend='oslo_messaging._drivers.impl_fake')
+        self.flags(transport_url='fake:/')
         self.driver = FakeISCSIStorage(configuration=self.configuration)
         self.driver.do_setup()
         self.portgroup = 'portgroup-test'
@@ -4594,7 +4594,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
     def setUp(self):
         super(HuaweiFCDriverTestCase, self).setUp()
         self.configuration = mock.Mock(spec=conf.Configuration)
-        self.flags(rpc_backend='oslo_messaging._drivers.impl_fake')
+        self.flags(transport_url='fake:/')
         self.huawei_conf = FakeHuaweiConf(self.configuration, 'FC')
         self.configuration.hypermetro_devices = hypermetro_devices
         driver = FakeFCStorage(configuration=self.configuration)
