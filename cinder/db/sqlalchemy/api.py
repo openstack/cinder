@@ -6536,9 +6536,9 @@ def purge_deleted_rows(context, age_in_days):
                 if six.text_type(table) == "quality_of_service_specs":
                     session.query(models.QualityOfServiceSpecs).filter(
                         and_(models.QualityOfServiceSpecs.specs_id.isnot(
-                            None), models.QualityOfServiceSpecs.deleted == 1,
-                            models.QualityOfServiceSpecs.deleted_at <
-                            deleted_age)).delete()
+                            None), models.QualityOfServiceSpecs.
+                            deleted.is_(True), models.QualityOfServiceSpecs.
+                            deleted_at < deleted_age)).delete()
                 result = session.execute(
                     table.delete()
                     .where(table.c.deleted_at < deleted_age))
