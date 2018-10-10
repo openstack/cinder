@@ -227,6 +227,18 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
             self.context, extra_specs={'replication_enabled': not_enabled})
         self.assertFalse(volume_type.is_replicated())
 
+    @ddt.data('<is> False', '<is> false', '<is> f')
+    def test_is_multiattach_specs_false(self, false):
+        volume_type = fake_volume.fake_volume_type_obj(
+            self.context, extra_specs={'multiattach': false})
+        self.assertFalse(volume_type.is_multiattach())
+
+    @ddt.data('<is> True', '<is>   True')
+    def test_is_multiattach_specs_true(self, true):
+        volume_type = fake_volume.fake_volume_type_obj(
+            self.context, extra_specs={'multiattach': true})
+        self.assertTrue(volume_type.is_multiattach())
+
 
 class TestVolumeTypeList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.volume.volume_types.get_all_types')

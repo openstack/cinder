@@ -165,6 +165,9 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
     def is_replicated(self):
         return utils.is_replicated_spec(self.extra_specs)
 
+    def is_multiattach(self):
+        return utils.is_multiattach_spec(self.extra_specs)
+
 
 @base.CinderObjectRegistry.register
 class VolumeTypeList(base.ObjectListBase, base.CinderObject):
