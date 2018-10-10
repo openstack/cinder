@@ -1369,6 +1369,27 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
     @mock.patch(NIMBLE_CLIENT)
     @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_terminate_connection_without_connector(self):
+        self.mock_client_service.get_initiator_grp_list.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE)
+        self.driver.terminate_connection(
+            {'name': 'test-volume',
+             'provider_location': '12 13',
+             'id': 12},
+            None)
+        expected_calls = [mock.call._get_igroupname_for_initiator(
+            'test-initiator1'),
+            mock.call.remove_all_acls({'name': 'test-volume'})]
+        self.mock_client_service.assert_has_calls(
+            self.mock_client_service.method_calls,
+            expected_calls)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator_fc(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     @mock.patch(NIMBLE_FC_DRIVER + ".get_wwpns_from_array")
