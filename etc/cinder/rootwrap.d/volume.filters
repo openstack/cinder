@@ -103,8 +103,6 @@ ln: CommandFilter, ln, root
 qemu-img: EnvFilter, env, root, LC_ALL=C, qemu-img
 qemu-img_convert: CommandFilter, qemu-img, root
 
-udevadm: CommandFilter, udevadm, root
-
 # cinder/volume/nfs.py
 stat: CommandFilter, stat, root
 mount: CommandFilter, mount, root

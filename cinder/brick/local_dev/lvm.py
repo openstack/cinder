@@ -28,6 +28,7 @@ from oslo_utils import excutils
 from six import moves
 
 from cinder import exception
+import cinder.privsep.lvm
 from cinder import utils
 
 
@@ -705,9 +706,7 @@ class LVM(executor.Executor):
         """
 
         def run_udevadm_settle():
-            self._execute('udevadm', 'settle',
-                          root_helper=self._root_helper, run_as_root=True,
-                          check_exit_code=False)
+            cinder.privsep.lvm.udevadm_settle()
 
         # LV removal seems to be a race with other writers or udev in
         # some cases (see LP #1270192), so we enable retry deactivation
