@@ -794,6 +794,18 @@ a volume is available for use.
 To disable this feature, user can add ``--metadata async_migrate=False`` when
 creating new volume from source.
 
+**Constraints**
+
+- Before the migration finishes, snapshots cannot be created from the source
+  volume, which could affect subsequent clones from the same source volume.
+  The typical affected use case is that creating volume-2 via cloning
+  volume-1 immediately after creating volume-1 via cloning volume-0. To achieve
+  so, users are advised to take any one of below actions:
+
+  1) wait for the first clone finishing, or
+  2) create volume-2 via cloning volume-0 instead of volume-1, or
+  3) create volume-1 with ``--metadata async_migrate=False``.
+
 
 Best practice
 ~~~~~~~~~~~~~
