@@ -400,7 +400,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                " %(src_id)s metadata")
         src_type = None
         src_id = None
-        self._enable_bootable_flag(context, volume)
+        volume_utils.enable_bootable_flag(volume)
         try:
             if kwargs.get('snapshot_id'):
                 src_type = 'snapshot'
@@ -470,16 +470,6 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             self._handle_bootable_volume_glance_meta(context, volume,
                                                      snapshot_id=snapshot_id)
         return model_update
-
-    def _enable_bootable_flag(self, context, volume):
-        try:
-            LOG.debug('Marking volume %s as bootable.', volume.id)
-            volume.bootable = True
-            volume.save()
-        except exception.CinderException as ex:
-            LOG.exception("Failed updating volume %(volume_id)s bootable "
-                          "flag to true", {'volume_id': volume.id})
-            raise exception.MetadataUpdateFailure(reason=ex)
 
     def _create_from_source_volume(self, context, volume, source_volid,
                                    **kwargs):
@@ -558,33 +548,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
 
     def _capture_volume_image_metadata(self, context, volume_id,
                                        image_id, image_meta):
-
-        # Save some base attributes into the volume metadata
-        base_metadata = {
-            'image_id': image_id,
-        }
-        name = image_meta.get('name', None)
-        if name:
-            base_metadata['image_name'] = name
-
-        # Save some more attributes into the volume metadata from the image
-        # metadata
-        for key in IMAGE_ATTRIBUTES:
-            if key not in image_meta:
-                continue
-            value = image_meta.get(key, None)
-            if value is not None:
-                base_metadata[key] = value
-
-        # Save all the image metadata properties into the volume metadata
-        property_metadata = {}
-        image_properties = image_meta.get('properties', {})
-        for (key, value) in image_properties.items():
-            if value is not None:
-                property_metadata[key] = value
-
-        volume_metadata = dict(property_metadata)
-        volume_metadata.update(base_metadata)
+        volume_metadata = volume_utils.get_volume_image_metadata(
+            image_id, image_meta)
         LOG.debug("Creating volume glance metadata for volume %(volume_id)s"
                   " backed by image %(image_id)s with: %(vol_metadata)s.",
                   {'volume_id': volume_id, 'image_id': image_id,

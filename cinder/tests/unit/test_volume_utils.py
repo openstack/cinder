@@ -38,6 +38,7 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import utils as test_utils
 from cinder import utils
 from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
@@ -1163,3 +1164,25 @@ class VolumeUtilsTestCase(test.TestCase):
                                 image_meta,
                                 vol_size)
         self.assertIn("Image 1 is not active.", six.text_type(res))
+
+    def test_enable_volume_bootable(self):
+        ctxt = context.get_admin_context()
+        volume = test_utils.create_volume(ctxt, bootable=False)
+        volume_utils.enable_bootable_flag(volume)
+        self.assertTrue(volume.bootable)
+
+    def test_get_volume_image_metadata(self):
+        common_meta = {'container_format': 'fake_type',
+                       'disk_format': 'fake_format',
+                       'min_disk': 3,
+                       'min_ram': 1,
+                       'size': 1 * units.Gi}
+        image_meta = {'id': fake.IMAGE_ID, 'other_metada': 'fake'}
+        image_meta.update(common_meta)
+
+        expected = {'image_id': image_meta['id']}
+        expected.update(common_meta)
+
+        self.assertEqual(
+            expected,
+            volume_utils.get_volume_image_metadata(fake.IMAGE_ID, image_meta))

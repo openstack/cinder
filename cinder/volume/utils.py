@@ -60,6 +60,16 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 GB = units.Gi
+# These attributes we will attempt to save for the volume if they exist
+# in the source image metadata.
+IMAGE_ATTRIBUTES = (
+    'checksum',
+    'container_format',
+    'disk_format',
+    'min_disk',
+    'min_ram',
+    'size',
+)
 
 
 def null_safe_str(s):
@@ -1084,3 +1094,45 @@ def check_image_metadata(image_meta, vol_size):
                 ' than the image minDisk size %(min_disk)sGB.')
         msg = msg % {'volume_size': vol_size, 'min_disk': min_disk}
         raise exception.InvalidInput(reason=msg)
+
+
+def enable_bootable_flag(volume):
+    try:
+        LOG.debug('Marking volume %s as bootable.', volume.id)
+        volume.bootable = True
+        volume.save()
+    except exception.CinderException as ex:
+        LOG.exception("Failed updating volume %(volume_id)s bootable "
+                      "flag to true", {'volume_id': volume.id})
+        raise exception.MetadataUpdateFailure(reason=ex)
+
+
+def get_volume_image_metadata(image_id, image_meta):
+
+    # Save some base attributes into the volume metadata
+    base_metadata = {
+        'image_id': image_id,
+    }
+    name = image_meta.get('name', None)
+    if name:
+        base_metadata['image_name'] = name
+
+    # Save some more attributes into the volume metadata from the image
+    # metadata
+    for key in IMAGE_ATTRIBUTES:
+        if key not in image_meta:
+            continue
+        value = image_meta.get(key, None)
+        if value is not None:
+            base_metadata[key] = value
+
+    # Save all the image metadata properties into the volume metadata
+    property_metadata = {}
+    image_properties = image_meta.get('properties', {})
+    for (key, value) in image_properties.items():
+        if value is not None:
+            property_metadata[key] = value
+
+    volume_metadata = dict(property_metadata)
+    volume_metadata.update(base_metadata)
+    return volume_metadata
