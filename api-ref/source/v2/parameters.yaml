@@ -868,6 +868,12 @@ links_4:
   in: body
   required: true
   type: array
+links_5:
+  description: |
+    List of links related to the extension.
+  in: body
+  required: true
+  type: array
 location:
   description: |
     Full URL to a service or server.
@@ -1230,7 +1236,7 @@ os-extended-snapshot-attributes:progress:
     A percentage value for the build progress.
   in: body
   required: true
-  type: integer
+  type: string
 os-extended-snapshot-attributes:project_id:
   description: |
     The UUID of the owning project.

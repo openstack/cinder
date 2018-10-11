@@ -9,6 +9,7 @@
         "os-extended-snapshot-attributes:project_id": "0c2eba2c5af04d3f9e9d0d410b371fde",
         "size": 1,
         "id": "2bb856e1-b3d8-4432-a858-09e4ce939389",
-        "name": "snap-001"
+        "name": "snap-001",
+        "updated_at": "2013-03-11T07:24:57Z"
     }
 }

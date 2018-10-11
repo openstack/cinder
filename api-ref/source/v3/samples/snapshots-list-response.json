@@ -14,7 +14,14 @@
             "os-extended-snapshot-attributes:progress": "100%",
             "os-extended-snapshot-attributes:project_id": "0892d23df5c5471da88299517a412b90",
             "id": "b1323cda-8e4b-41c1-afc5-2fc791809c8c",
-            "description": "volume snapshot"
+            "description": "volume snapshot",
+            "updated_at": "2015-12-11T07:24:57Z"
+        }
+    ],
+    "snapshots_links": [
+        {
+            "href": "https://10.43.176.164:8776/v3/d55fb90e300b436cb2714a17137be023/snapshots?limit=1&marker=2e0cd28e-d7a2-4cdb-87e6-cd37c417c06d",
+            "rel": "next"
         }
     ],
     "count": 10
