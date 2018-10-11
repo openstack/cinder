@@ -12,7 +12,6 @@
 
 import traceback
 
-from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -492,60 +491,6 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 context, volume, source_volid=srcvol_ref.id)
         return model_update
 
-    def _copy_image_to_volume(self, context, volume,
-                              image_meta, image_location, image_service):
-
-        image_id = image_meta['id']
-        """Downloads Glance image to the specified volume."""
-        LOG.debug("Attempting download of %(image_id)s (%(image_location)s)"
-                  " to volume %(volume_id)s.",
-                  {'image_id': image_id, 'volume_id': volume.id,
-                   'image_location': image_location})
-        try:
-            image_encryption_key = image_meta.get('cinder_encryption_key_id')
-
-            if volume.encryption_key_id and image_encryption_key:
-                # If the image provided an encryption key, we have
-                # already cloned it to the volume's key in
-                # _get_encryption_key_id, so we can do a direct copy.
-                self.driver.copy_image_to_volume(
-                    context, volume, image_service, image_id)
-            elif volume.encryption_key_id:
-                # Creating an encrypted volume from a normal, unencrypted,
-                # image.
-                self.driver.copy_image_to_encrypted_volume(
-                    context, volume, image_service, image_id)
-            else:
-                self.driver.copy_image_to_volume(
-                    context, volume, image_service, image_id)
-        except processutils.ProcessExecutionError as ex:
-            LOG.exception("Failed to copy image %(image_id)s to volume: "
-                          "%(volume_id)s",
-                          {'volume_id': volume.id, 'image_id': image_id})
-            raise exception.ImageCopyFailure(reason=ex.stderr)
-        except exception.ImageUnacceptable as ex:
-            LOG.exception("Failed to copy image to volume: %(volume_id)s",
-                          {'volume_id': volume.id})
-            raise exception.ImageUnacceptable(ex)
-        except exception.ImageTooBig as ex:
-            with excutils.save_and_reraise_exception():
-                LOG.exception("Failed to copy image %(image_id)s to volume: "
-                              "%(volume_id)s",
-                              {'volume_id': volume.id, 'image_id': image_id})
-        except Exception as ex:
-            LOG.exception("Failed to copy image %(image_id)s to "
-                          "volume: %(volume_id)s",
-                          {'volume_id': volume.id, 'image_id': image_id})
-            if not isinstance(ex, exception.ImageCopyFailure):
-                raise exception.ImageCopyFailure(reason=ex)
-            else:
-                raise
-
-        LOG.debug("Downloaded image %(image_id)s (%(image_location)s)"
-                  " to volume %(volume_id)s successfully.",
-                  {'image_id': image_id, 'volume_id': volume.id,
-                   'image_location': image_location})
-
     def _capture_volume_image_metadata(self, context, volume_id,
                                        image_id, image_meta):
         volume_metadata = volume_utils.get_volume_image_metadata(
@@ -634,8 +579,9 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                           {'volume_id': volume.id,
                            'updates': model_update})
         try:
-            self._copy_image_to_volume(context, volume, image_meta,
-                                       image_location, image_service)
+            volume_utils.copy_image_to_volume(self.driver, context, volume,
+                                              image_meta, image_location,
+                                              image_service)
         except exception.ImageTooBig:
             with excutils.save_and_reraise_exception():
                 LOG.exception("Failed to copy image to volume "
