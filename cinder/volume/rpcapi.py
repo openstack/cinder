@@ -137,9 +137,10 @@ class VolumeAPI(rpc.RPCAPI):
         3.15 - Add revert_to_snapshot method
         3.16 - Add no_snapshots to accept_transfer method
         3.17 - Make get_backup_device a cast (async)
+        3.18 - Add reimage method
     """
 
-    RPC_API_VERSION = '3.17'
+    RPC_API_VERSION = '3.18'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = constants.VOLUME_BINARY
@@ -533,3 +534,8 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt = self._get_cctxt(group.service_topic_queue, version='3.14')
         return cctxt.call(ctxt, 'list_replication_targets',
                           group=group)
+
+    @rpc.assert_min_rpc_version('3.18')
+    def reimage(self, ctxt, volume, image_meta):
+        cctxt = self._get_cctxt(volume.service_topic_queue, version='3.18')
+        cctxt.cast(ctxt, 'reimage', volume=volume, image_meta=image_meta)

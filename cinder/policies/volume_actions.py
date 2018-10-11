@@ -39,6 +39,8 @@ RESERVE_POLICY = "volume_extension:volume_actions:reserve"
 ROLL_DETACHING_POLICY = "volume_extension:volume_actions:roll_detaching"
 TERMINATE_POLICY = "volume_extension:volume_actions:terminate_connection"
 INITIALIZE_POLICY = "volume_extension:volume_actions:initialize_connection"
+REIMAGE_POLICY = "volume:reimage"
+REIMAGE_RESERVED_POLICY = "volume:reimage_reserved"
 
 deprecated_extend_policy = base.CinderDeprecatedRule(
     name=EXTEND_POLICY,
@@ -323,6 +325,26 @@ volume_action_policies = [
         ],
         deprecated_rule=deprecated_detach_policy,
     ),
+    policy.DocumentedRuleDefault(
+        name=REIMAGE_POLICY,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        description="Reimage a volume in 'available' or 'error' status.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/volumes/{volume_id}/action (os-reimage)'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=REIMAGE_RESERVED_POLICY,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        description="Reimage a volume in 'reserved' status.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/volumes/{volume_id}/action (os-reimage)'
+            }
+        ]),
 ]
 
 

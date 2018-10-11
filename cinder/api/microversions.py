@@ -173,6 +173,8 @@ SNAPSHOT_IN_USE = '3.66'
 
 PROJECT_ID_OPTIONAL_IN_URL = '3.67'
 
+SUPPORT_REIMAGE_VOLUME = '3.68'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.

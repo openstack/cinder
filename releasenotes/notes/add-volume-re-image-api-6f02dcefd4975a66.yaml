@@ -1,0 +1,40 @@
+---
+features:
+  - |
+    Add microversion 3.68 to support ability to re-image a volume with a
+    specific image. Specify the ``os-reimage`` action in the request body.
+
+    The 'available' and 'error' volume can be re-imaged directly, and the
+    'reserved' volume can only be re-imaged when the `reimage_reserved`
+    parameter is set to 'true'. When reimaging a volume, the volume state
+    will be changed to ``downloading`` first.
+
+    Note that this is a destructive action, that is, all data currently
+    contained in a volume is destroyed when the volume is re-imaged.
+
+    Two new policies are introduced to govern this functionality:
+
+    * ``REIMAGE_POLICY`` - users who satisfy this policy may re-image a volume
+      in status ``available`` or ``error``
+    * ``REIMAGE_RESERVED_POLICY`` - users who satisfy this policy may re-image
+      a volume in status ``reserved``
+
+    The default setting for both policies allow an administrator or the volume
+    owner to perform the associated action.  See the `Policy configuration
+    <https://docs.openstack.org/cinder/yoga/configuration/block-storage/policy.html>`_
+    documentation in the `Cinder Service Configuration` guide for details.
+
+upgrade:
+  - |
+    Two new policies are introduced to govern the volume reimage functionality
+    introduced with microversion 3.68:
+
+    * ``REIMAGE_POLICY`` - users who satisfy this policy may re-image a volume
+      in status ``available`` or ``error``
+    * ``REIMAGE_RESERVED_POLICY`` - users who satisfy this policy may re-image
+      a volume in status ``reserved``
+
+    The default setting for both policies allow an administrator or the volume
+    owner to perform the associated action.  See the `Policy configuration
+    <https://docs.openstack.org/cinder/yoga/configuration/block-storage/policy.html>`_
+    documentation in the `Cinder Service Configuration` guide for details.

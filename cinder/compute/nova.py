@@ -143,6 +143,11 @@ class API(base.Base):
                 'server_uuid': server_id,
                 'tag': volume_id}
 
+    def _get_volume_reimaged_event(self, server_id, volume_id):
+        return {'name': 'volume-reimaged',
+                'server_uuid': server_id,
+                'tag': volume_id}
+
     def _send_events(self, context, events, api_version=None):
         nova = novaclient(context, privileged_user=True,
                           api_version=api_version)
@@ -216,6 +221,19 @@ class API(base.Base):
             self.message_api.create(
                 context,
                 message_field.Action.EXTEND_VOLUME,
+                resource_uuid=volume_id,
+                detail=message_field.Detail.NOTIFY_COMPUTE_SERVICE_FAILED)
+        return result
+
+    def reimage_volume(self, context, server_ids, volume_id):
+        api_version = '2.91'
+        events = [self._get_volume_reimaged_event(server_id, volume_id)
+                  for server_id in server_ids]
+        result = self._send_events(context, events, api_version=api_version)
+        if not result:
+            self.message_api.create(
+                context,
+                message_field.Action.REIMAGE_VOLUME,
                 resource_uuid=volume_id,
                 detail=message_field.Detail.NOTIFY_COMPUTE_SERVICE_FAILED)
         return result

@@ -2134,6 +2134,13 @@ os-migrate_volume_completion:
   in: body
   required: true
   type: object
+os-reimage:
+  description: |
+    The ``os-reimage`` action.
+  in: body
+  required: true
+  type: object
+  min_version: 3.68
 os-reserve:
   description: |
     The ``os-reserve`` action.
@@ -2479,6 +2486,15 @@ reference:
   in: body
   required: true
   type: object
+reimage_reserved:
+  description: |
+    Normally, volumes to be re-imaged are in ``available`` or ``error`` status.
+    When ``true``, this parameter will allow a volume in the ``reserved`` status
+    to be re-imaged.  The ability to re-image a volume in ``reserved`` status
+    may be restricted to administrators in some clouds.  Default value is ``false``.
+  in: body
+  required: false
+  type: boolean
 remove_project_access:
   description: |
     Removes volume type access from a project.

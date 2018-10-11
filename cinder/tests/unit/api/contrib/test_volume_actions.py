@@ -1552,3 +1552,70 @@ class VolumeImageActionsTest(test.TestCase):
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
         self.assertEqual('uploading', vol_db.status)
         self.assertEqual('available', vol_db.previous_status)
+
+    def _build_reimage_req(self, body, vol_id,
+                           version=mv.SUPPORT_REIMAGE_VOLUME):
+        req = fakes.HTTPRequest.blank(
+            '/v3/%s/volumes/%s/action' % (fake.PROJECT_ID, id))
+        req.method = "POST"
+        req.body = jsonutils.dump_as_bytes(body)
+        req.environ['cinder.context'] = self.context
+        req.api_version_request = mv.get_api_version(version)
+        req.headers["content-type"] = "application/json"
+        return req
+
+    @ddt.data(None, False, True)
+    @mock.patch.object(volume_api.API, "reimage")
+    def test_volume_reimage(self, reimage_reserved, mock_image):
+        vol = utils.create_volume(self.context)
+        body = {"os-reimage": {"image_id": fake.IMAGE_ID}}
+        if reimage_reserved is not None:
+            body["os-reimage"]["reimage_reserved"] = reimage_reserved
+        req = self._build_reimage_req(body, vol.id)
+        self.controller._reimage(req, vol.id, body=body)
+
+    @mock.patch.object(volume_api.API, "reimage")
+    def test_volume_reimage_invaild_params(self, mock_image):
+        vol = utils.create_volume(self.context)
+        body = {"os-reimage": {"image_id": fake.IMAGE_ID,
+                               "reimage_reserved": 'wrong'}}
+        req = self._build_reimage_req(body, vol)
+        self.assertRaises(exception.ValidationError,
+                          self.controller._reimage, req,
+                          vol.id, body=body)
+
+    def test_volume_reimage_before_3_68(self):
+        vol = utils.create_volume(self.context)
+        body = {"os-reimage": {"image_id": fake.IMAGE_ID}}
+
+        req = self._build_reimage_req(body, vol.id, version="3.67")
+        self.assertRaises(exception.VersionNotFoundForAPIMethod,
+                          self.controller._reimage, req, vol.id, body=body)
+
+    def test_reimage_volume_invalid_status(self):
+        def fake_reimage_volume(*args, **kwargs):
+            msg = "Volume status must be available."
+            raise exception.InvalidVolume(reason=msg)
+        self.mock_object(volume.api.API, 'reimage',
+                         fake_reimage_volume)
+
+        vol = utils.create_volume(self.context)
+        body = {"os-reimage": {"image_id": fake.IMAGE_ID}}
+        req = self._build_reimage_req(body, vol)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._reimage, req,
+                          vol.id, body=body)
+
+    @mock.patch('cinder.context.RequestContext.authorize')
+    def test_reimage_volume_attach_more_than_one_server(self, mock_authorize):
+        vol = utils.create_volume(self.context)
+        va_objs = [objects.VolumeAttachment(context=self.context, id=i)
+                   for i in [fake.OBJECT_ID, fake.OBJECT2_ID, fake.OBJECT3_ID]]
+        va_list = objects.VolumeAttachmentList(context=self.context,
+                                               objects=va_objs)
+        vol.volume_attachment = va_list
+        self.mock_object(volume_api.API, 'get', return_value=vol)
+        body = {"os-reimage": {"image_id": fake.IMAGE_ID}}
+        req = self._build_reimage_req(body, vol)
+        self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller._reimage, req, vol.id, body=body)

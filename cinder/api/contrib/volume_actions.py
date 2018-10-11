@@ -326,6 +326,26 @@ class VolumeActionsController(wsgi.Controller):
 
         self.volume_api.update(context, volume, update_dict)
 
+    @wsgi.Controller.api_version(mv.SUPPORT_REIMAGE_VOLUME)
+    @wsgi.response(HTTPStatus.ACCEPTED)
+    @wsgi.action('os-reimage')
+    @validation.schema(volume_action.reimage, mv.SUPPORT_REIMAGE_VOLUME)
+    def _reimage(self, req, id, body):
+        """Re-image a volume with specific image."""
+        context = req.environ['cinder.context']
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
+        params = body['os-reimage']
+        reimage_reserved = params.get('reimage_reserved', 'False')
+        reimage_reserved = strutils.bool_from_string(reimage_reserved,
+                                                     strict=True)
+        image_id = params['image_id']
+        try:
+            self.volume_api.reimage(context, volume, image_id,
+                                    reimage_reserved)
+        except exception.InvalidVolume as error:
+            raise webob.exc.HTTPBadRequest(explanation=error.msg)
+
 
 class Volume_actions(extensions.ExtensionDescriptor):
     """Enable volume actions."""

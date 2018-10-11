@@ -676,3 +676,12 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
                            server=self.fake_group.host,
                            group=self.fake_group,
                            version='3.14')
+
+    def test_reimage(self):
+        self._test_rpc_api('reimage', rpc_method='cast',
+                           server=self.fake_volume_obj.host,
+                           volume=self.fake_volume_obj,
+                           image_meta={'id': fake.IMAGE_ID,
+                                       'container_format': 'fake_type',
+                                       'disk_format': 'fake_format'},
+                           version='3.18')

@@ -202,3 +202,20 @@ volume_readonly_update = {
     'required': ['os-update_readonly_flag'],
     'additionalProperties': False,
 }
+
+reimage = {
+    'type': 'object',
+    'properties': {
+        'os-reimage': {
+            'type': 'object',
+            'properties': {
+                'image_id': parameter_types.uuid,
+                'reimage_reserved': parameter_types.boolean,
+            },
+            'required': ['image_id'],
+            'additionalProperties': False,
+        },
+    },
+    'required': ['os-reimage'],
+    'additionalProperties': False,
+}

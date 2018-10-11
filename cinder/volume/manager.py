@@ -5305,3 +5305,51 @@ class VolumeManager(manager.CleanableManager,
             raise exception.VolumeBackendAPIException(data=err_msg)
 
         return {'replication_targets': replication_targets}
+
+    def _refresh_volume_glance_meta(self, context, volume, image_meta):
+        volume_utils.enable_bootable_flag(volume)
+        volume_meta = volume_utils.get_volume_image_metadata(
+            image_meta['id'], image_meta)
+        LOG.debug("Creating volume glance metadata for volume %(volume_id)s"
+                  " backed by image %(image_id)s with: %(vol_metadata)s.",
+                  {'volume_id': volume.id, 'image_id': image_meta['id'],
+                   'vol_metadata': volume_meta})
+        self.db.volume_glance_metadata_delete_by_volume(context, volume.id)
+        self.db.volume_glance_metadata_bulk_create(context, volume.id,
+                                                   volume_meta)
+
+    def reimage(self, context, volume, image_meta):
+        """Reimage a volume with specific image."""
+        image_id = None
+        try:
+            image_id = image_meta['id']
+            image_service, _ = glance.get_remote_image_service(
+                context, image_meta['id'])
+            image_location = image_service.get_location(context, image_id)
+
+            volume_utils.copy_image_to_volume(self.driver, context, volume,
+                                              image_meta, image_location,
+                                              image_service)
+
+            self._refresh_volume_glance_meta(context, volume, image_meta)
+            volume.status = volume.previous_status
+            volume.save()
+
+            if volume.status in ['reserved']:
+                nova_api = compute.API()
+                attachments = volume.volume_attachment
+                instance_uuids = [attachment.instance_uuid
+                                  for attachment in attachments]
+                nova_api.reimage_volume(context, instance_uuids, volume.id)
+
+            LOG.debug("Re-image %(image_id)s"
+                      " to volume %(volume_id)s successfully.",
+                      {'image_id': image_id, 'volume_id': volume.id})
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error('Failed to re-image volume %(volume_id)s with '
+                          'image %(image_id)s.',
+                          {'image_id': image_id, 'volume_id': volume.id})
+                volume.previous_status = volume.status
+                volume.status = 'error'
+                volume.save()

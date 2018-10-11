@@ -973,3 +973,44 @@ Request Example
 
 .. literalinclude:: ./samples/volume-readonly-update-request.json
    :language: javascript
+
+
+Reimage a volume
+~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
+
+Re-image a volume with a specific image. Specify the ``os-reimage`` action
+in the request body.
+
+A volume in ``available`` or ``error`` status can be re-imaged directly.  To
+re-image a volume in ``reserved`` status, you must include the
+``reimage_reserved`` parameter set to ``true``.
+
+.. note:: Image signature verification is currently unsupported when
+          re-imaging a volume.
+
+Response codes
+--------------
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - image_id: image_id
+   - reimage_reserved: reimage_reserved
+   - os-reimage: os-reimage
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-os-reimage-request.json
+   :language: javascript
