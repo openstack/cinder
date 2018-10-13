@@ -135,6 +135,18 @@ class BackupNFSShareTestCase(test.TestCase):
         mock_execute.assert_has_calls(mock_execute_calls, any_order=True)
         self.assertEqual(len(mock_execute_calls), mock_execute.call_count)
 
+    def test_init_backup_repo_path_unconfigured(self):
+        """RemoteFsClient is not created if backup_share unset"""
+        self.override_config('backup_share', None)
+
+        mock_remotefsclient = mock.Mock()
+        self.mock_object(remotefs_brick, 'RemoteFsClient')
+
+        driver = nfs.NFSBackupDriver(self.ctxt)
+        driver._init_backup_repo_path()
+
+        self.assertEqual(0, mock_remotefsclient.call_count)
+
 
 def fake_md5(arg):
     class result(object):
