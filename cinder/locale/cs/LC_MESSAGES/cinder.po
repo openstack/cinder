@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-08-29 01:38+0000\n"
+"POT-Creation-Date: 2018-10-12 20:06+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -607,13 +607,6 @@ msgstr "Nelze přetypovat do společné skupiny poskytování v jiné doméně."
 msgid "Cannot retype to a snap CPG in a different domain."
 msgstr "Nelze přetypovat do snímku společné skupiny poskytování v jiné doméně."
 
-msgid ""
-"Cannot run vgc-cluster command, please ensure software is installed and "
-"permissions are set properly."
-msgstr ""
-"Nelze spustit příkaz vgc-cluster, ujistěte se prosím, že je software "
-"nainstalován a máte správně nastavená oprávnění."
-
 msgid "Cannot specify both protection domain name and protection domain id."
 msgstr "Nelze zadat název a id ochranné domény najednou."
 
@@ -695,10 +688,6 @@ msgid ""
 msgstr ""
 "Cluster není zformátován. Pravděpodobně byste měli provést příkaz \"dog "
 "cluster format\"."
-
-#, python-format
-msgid "Command %(cmd)s blocked in the CLI and was cancelled"
-msgstr "Příkaz %(cmd)s byl v klientském řádku zablokován a zrušen"
 
 #, python-format
 msgid "CommandLineHelper._wait_for_condition: %s timeout."
@@ -908,9 +897,6 @@ msgid ""
 msgstr ""
 "Vytvoření a aktivování sady zóny selhalo: (Sada zóny=%(zoneset)s chyba="
 "%(err)s)."
-
-msgid "Current host isn't part of HGST domain."
-msgstr "Současný hostitel není součástí domény HGST."
 
 #, python-format
 msgid ""
@@ -1478,14 +1464,6 @@ msgstr ""
 #, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
 msgstr "Chyba v odpovědi SolidFire API: data=%(data)s"
-
-#, python-format
-msgid "Error in space-create for %(space)s of size %(size)d GB"
-msgstr "Chyba při vytváření prostoru pro %(space)s s velikostí %(size)d GB"
-
-#, python-format
-msgid "Error in space-extend for volume %(space)s with %(size)d additional GB"
-msgstr "Chyba při rozšiřování prostoru svazku %(space)s o dalších %(size)d GB"
 
 #, python-format
 msgid ""
@@ -3744,10 +3722,6 @@ msgid "Storage family %s is not supported."
 msgstr "Druhy úložiště %s nejsou podporovány."
 
 #, python-format
-msgid "Storage host %(svr)s not detected, verify name"
-msgstr "Hostitel úložiště %(svr)s nebyl zjištěn, ověřte název"
-
-#, python-format
 msgid "Storage profile: %(storage_profile)s not found."
 msgstr "Profil úložiště: %(storage_profile)s nenalezen."
 
@@ -4053,11 +4027,6 @@ msgstr ""
 msgid "Unable to access the backend storage via the path %(path)s."
 msgstr "Nelze získat přístup k podpůrné vrstvě úložiště pomocí cesty %(path)s."
 
-#, python-format
-msgid "Unable to add Cinder host to apphosts for space %(space)s"
-msgstr ""
-"Nelze přidat hostitele Cinder do hostitelů aplikací v prostoru %(space)s"
-
 msgid "Unable to connect or find connection to host"
 msgstr "Nelze se připojit nebo nalézt připojení k hostiteli"
 
@@ -4134,32 +4103,6 @@ msgid ""
 msgstr ""
 "Nelze získat informace o nastavení potřebné k vytvoření svazku: "
 "%(errorMessage)s."
-
-#, python-format
-msgid ""
-"Unable to get information on space %(space)s, please verify that the cluster "
-"is running and connected."
-msgstr ""
-"Nelze získat informace o prostoru %(space)s, prosím ověřte, že cluster běží "
-"a je připojen."
-
-msgid ""
-"Unable to get list of IP addresses on this host, check permissions and "
-"networking."
-msgstr ""
-"Nelze získat seznam IP adres na tomto hostiteli. Zkontrolujte oprávnění a "
-"sítě."
-
-msgid ""
-"Unable to get list of domain members, check that the cluster is running."
-msgstr "Nelze získat seznam členů domény. Zkontrolujte, že cluster je spuštěn."
-
-msgid ""
-"Unable to get list of spaces to make new name.  Please verify the cluster is "
-"running."
-msgstr ""
-"Nelze získat seznam prostorů pro vytvoření nového názvu. Ověřte prosím, zda "
-"cluster běží."
 
 #, python-format
 msgid "Unable to get stats for backend_name: %s"
@@ -5112,35 +5055,6 @@ msgid ""
 msgstr ""
 "gpfs_images_share_mode je nastaven na kopírování při zápisu, ale %(vol)s a "
 "%(img)s mají odlišné sady souborů."
-
-#, python-format
-msgid ""
-"hgst_group %(grp)s and hgst_user %(usr)s must map to valid users/groups in "
-"cinder.conf"
-msgstr ""
-"skupina hgst %(grp)s a uživatel hgst %(usr)s musí být namapovány k platným "
-"živatelům/skupinám v cinder.conf"
-
-#, python-format
-msgid "hgst_net %(net)s specified in cinder.conf not found in cluster"
-msgstr "síť hgst %(net)s zadaná v cinder.conf nebyla nalezena v clusteru"
-
-msgid "hgst_redundancy must be set to 0 (non-HA) or 1 (HA) in cinder.conf."
-msgstr ""
-"redundance hgst musí být v cinder.conf nastavena na 0 (pokud nechcete HA) "
-"nebo 1 (pro HA)."
-
-msgid "hgst_space_mode must be an octal/int in cinder.conf"
-msgstr ""
-"režim prostoru hgst musí být v cinder.conf zadán osmičkové soustavě/"
-"celočíselně"
-
-#, python-format
-msgid "hgst_storage server %(svr)s not of format <host>:<dev>"
-msgstr "server úložiště hgst %(svr)s nemá formát <hostitel>:<zařízení>"
-
-msgid "hgst_storage_servers must be defined in cinder.conf"
-msgstr "V cinder.conf musí být určeny servery úložiště hgst"
 
 msgid ""
 "http service may have been abruptly disabled or put to maintenance state in "

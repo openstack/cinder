@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-08-29 01:38+0000\n"
+"POT-Creation-Date: 2018-10-12 20:06+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -559,9 +559,6 @@ msgstr ""
 msgid "Cache volume %s does not have required properties"
 msgstr "El volumen de la memoria caché  %s no tiene las propiedades necesarias"
 
-msgid "Call returned a None object"
-msgstr "La llamada ha devuelto un objeto None"
-
 msgid "Can not add FC port to host."
 msgstr "No se puede añadir el puerto FC al host."
 
@@ -811,13 +808,6 @@ msgstr ""
 "No se puede volver a escribir en un CPG de instantánea en un dominio "
 "diferente."
 
-msgid ""
-"Cannot run vgc-cluster command, please ensure software is installed and "
-"permissions are set properly."
-msgstr ""
-"No se puede ejecutar el mandato vgc-cluster, asegúrese de que el software se "
-"haya instalado y que los permisos se hayan configurado correctamente."
-
 msgid "Cannot specify both protection domain name and protection domain id."
 msgstr ""
 "No se puede especificar el nombre de dominio de protección y el ID de "
@@ -907,10 +897,6 @@ msgid ""
 msgstr ""
 "El clúster no se ha formateado. Debe realizar probablemente \"dog cluster "
 "format\"."
-
-#, python-format
-msgid "Command %(cmd)s blocked in the CLI and was cancelled"
-msgstr "Mandato %(cmd)s bloqueado en la CLI que se ha cancelado"
 
 #, python-format
 msgid "CommandLineHelper._wait_for_condition: %s timeout."
@@ -1043,9 +1029,6 @@ msgstr ""
 "No se ha podido determinar qué punto final Swift debe utilizarse. Puede "
 "establecerse en el catálogo de servicio o con la opción de configuración "
 "cinder.conf 'backup_swift_url'."
-
-msgid "Could not find DISCO wsdl file."
-msgstr "No se ha podido encontrar el archivo wsdl de DISCO."
 
 #, python-format
 msgid "Could not find GPFS cluster id: %s."
@@ -1194,9 +1177,6 @@ msgid ""
 msgstr ""
 "Han fallado la creación y activación del conjunto de zonas: (Zone set="
 "%(zoneset)s error=%(err)s)."
-
-msgid "Current host isn't part of HGST domain."
-msgstr "El host actual no forma parte del dominio HGST."
 
 #, python-format
 msgid ""
@@ -1867,15 +1847,6 @@ msgid "Error in SolidFire API response: data=%(data)s"
 msgstr "Error en respuesta de API SolidFire: data=%(data)s"
 
 #, python-format
-msgid "Error in space-create for %(space)s of size %(size)d GB"
-msgstr "Error en la creación de espacio para %(space)s de tamaño %(size)d GB"
-
-#, python-format
-msgid "Error in space-extend for volume %(space)s with %(size)d additional GB"
-msgstr ""
-"Error en space-extend para el volumen %(space)s con %(size)d GB adicionales"
-
-#, python-format
 msgid "Error managing volume: %s."
 msgstr "Error al gestionar el volumen: %s."
 
@@ -1978,38 +1949,8 @@ msgid "Error while creating authentication token: %s"
 msgstr "Error al crear el token de autenticación: %s"
 
 #, python-format
-msgid "Error while creating snapshot [status] %(stat)s - [result] %(res)s."
-msgstr "Error al crear la instantánea [estado] %(stat)s - [resultado] %(res)s."
-
-#, python-format
-msgid "Error while creating volume [status] %(stat)s - [result] %(res)s."
-msgstr "Error al crear el volumen [estado] %(stat)s - [resultado] %(res)s."
-
-#, python-format
-msgid "Error while deleting snapshot [status] %(stat)s - [result] %(res)s"
-msgstr ""
-"Error al suprimir la instantánea [estado] %(stat)s - [resultado] %(res)s."
-
-#, python-format
-msgid "Error while deleting volume [status] %(stat)s - [result] %(res)s."
-msgstr "Error al suprimir el volumen [estado] %(stat)s - [resultado] %(res)s."
-
-#, python-format
-msgid "Error while extending volume [status] %(stat)s - [result] %(res)s."
-msgstr "Error al extender el volumen [estado] %(stat)s - [resultado] %(res)s."
-
-#, python-format
-msgid "Error while getting %(op)s details, returned code: %(status)s."
-msgstr ""
-"Error al obtener detalles de %(op)s, se ha devuelto el código: %(status)s."
-
-#, python-format
 msgid "Error while getting data via ssh: (command=%(cmd)s error=%(err)s)."
 msgstr "Error al obtener datos mediante ssh: (command=%(cmd)s error=%(err)s)."
-
-#, python-format
-msgid "Error while getting disco information [%s]."
-msgstr "Error al obtener la información de Disco [%s]."
 
 #, python-format
 msgid "Error while getting nvp value: %s."
@@ -2054,23 +1995,6 @@ msgstr ""
 
 msgid "Error writing field to database"
 msgstr "Error al escribir el campo en la base de datos"
-
-#, python-format
-msgid "Error[%(stat)s - %(res)s] while getting volume id."
-msgstr "Error[%(stat)s - %(res)s] al obtener el ID del volumen."
-
-#, python-format
-msgid ""
-"Error[%(stat)s - %(res)s] while restoring snapshot [%(snap_id)s] into volume "
-"[%(vol)s]."
-msgstr ""
-"Error[%(stat)s - %(res)s] al restaurar la instantánea [%(snap_id)s] en el "
-"volumen [%(vol)s]."
-
-#, python-format
-msgid "Error[status] %(stat)s - [result] %(res)s] while getting volume id."
-msgstr ""
-"Error[estado] %(stat)s - [resultado] %(res)s] al obtener el ID del volumen."
 
 msgid "Exceeded the limit of snapshots per volume"
 msgstr "Se ha superado el límite de instantáneas por volumen"
@@ -4881,10 +4805,6 @@ msgstr "Error al detener una instantánea."
 msgid "Storage family %s is not supported."
 msgstr "No hay soporte para la familia de almacenamiento %s."
 
-#, python-format
-msgid "Storage host %(svr)s not detected, verify name"
-msgstr "Host de almacenamiento %(svr)s no detectado, compruebe el nombre."
-
 msgid "Storage pool is not configured."
 msgstr "No se ha configurado la agrupación de almacenamiento."
 
@@ -5237,10 +5157,6 @@ msgstr ""
 "la instantánea %(id)s."
 
 #, python-format
-msgid "Timeout while calling %s "
-msgstr "Tiempo de espera excedido al llamar a %s "
-
-#, python-format
 msgid "Timeout while requesting %(service)s API."
 msgstr "Se ha agotado el tiempo de espera al solicitar la API de %(service)s."
 
@@ -5303,10 +5219,6 @@ msgid "Unable to access the backend storage via the path %(path)s."
 msgstr ""
 "No se ha podido obtener acceso al almacenamiento de extremo trasero por "
 "medio de la ruta %(path)s."
-
-#, python-format
-msgid "Unable to add Cinder host to apphosts for space %(space)s"
-msgstr "No se puede añadir el host Cinder a apphosts para el espacio %(space)s"
 
 #, python-format
 msgid "Unable to complete failover of %s."
@@ -5442,34 +5354,6 @@ msgid ""
 msgstr ""
 "No se puede obtener la información de configuración necesaria para crear un "
 "volumen: %(errorMessage)s."
-
-#, python-format
-msgid ""
-"Unable to get information on space %(space)s, please verify that the cluster "
-"is running and connected."
-msgstr ""
-"No se puede obtener información acerca del espacio %(space)s, verifique que "
-"el clúster se esté ejecutando y esté conectado."
-
-msgid ""
-"Unable to get list of IP addresses on this host, check permissions and "
-"networking."
-msgstr ""
-"No se puede obtener la lista de direcciones IP en este host, compruebe los "
-"permisos y las redes."
-
-msgid ""
-"Unable to get list of domain members, check that the cluster is running."
-msgstr ""
-"No se puede obtener la lista de miembros de dominio, compruebe que el "
-"clúster se está ejecutando."
-
-msgid ""
-"Unable to get list of spaces to make new name.  Please verify the cluster is "
-"running."
-msgstr ""
-"No se puede obtener la lista de espacios para hacer un nuevo nombre. "
-"Verifique que el clúster se esté ejecutando."
 
 #, python-format
 msgid "Unable to get stats for backend_name: %s"
@@ -5656,10 +5540,6 @@ msgstr ""
 "esquema personalizada 'cinder_managed' al volumen y establezca su valor en "
 "False. Como alternativa, establezca el valor de la política de configuración "
 "de Cinder 'zfssa_manage_policy' en 'loose' para eliminar esta restricción."
-
-#, python-format
-msgid "Unknown operation %s."
-msgstr "Operación desconocida %s."
 
 #, python-format
 msgid "Unknown or unsupported command %(cmd)s"
@@ -7038,34 +6918,6 @@ msgid ""
 msgstr ""
 "gpfs_images_share_mode está establecido en copy_on_write, pero %(vol)s y "
 "%(img)s pertenecen a conjuntos de archivos diferentes."
-
-#, python-format
-msgid ""
-"hgst_group %(grp)s and hgst_user %(usr)s must map to valid users/groups in "
-"cinder.conf"
-msgstr ""
-"hgst_group %(grp)s y hgst_user %(usr)s deben correlacionarse con usuarios/"
-"grupos válidos en cinder.conf"
-
-#, python-format
-msgid "hgst_net %(net)s specified in cinder.conf not found in cluster"
-msgstr ""
-"No se ha encontrado hgst_net %(net)s especificado en cinder.conf en el "
-"clúster"
-
-msgid "hgst_redundancy must be set to 0 (non-HA) or 1 (HA) in cinder.conf."
-msgstr ""
-"hgst_redundancy debe establecerse en 0 (no HA) o 1 (HA) en cinder.conf."
-
-msgid "hgst_space_mode must be an octal/int in cinder.conf"
-msgstr "hgst_space_mode debe ser un octal/ent en cinder.conf"
-
-#, python-format
-msgid "hgst_storage server %(svr)s not of format <host>:<dev>"
-msgstr "El servidor hgst_storage %(svr)s no tiene el formato <host>:<dev>"
-
-msgid "hgst_storage_servers must be defined in cinder.conf"
-msgstr "hgst_storage_servers deben definirse en cinder.conf"
 
 msgid ""
 "http service may have been abruptly disabled or put to maintenance state in "

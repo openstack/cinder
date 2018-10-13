@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-08-29 01:38+0000\n"
+"POT-Creation-Date: 2018-10-12 20:06+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -569,9 +569,6 @@ msgstr "高速缓存名称为 None，请在键中设置 smartcache:cachename。"
 msgid "Cache volume %s does not have required properties"
 msgstr "高速缓存卷 %s 没有必需属性。"
 
-msgid "Call returned a None object"
-msgstr "调用返回了 None 对象"
-
 msgid "Can not add FC port to host."
 msgstr "无法将 FC 端口添加至主机。"
 
@@ -854,11 +851,6 @@ msgstr "无法执行 retype 操作，以变为另一个域中的 CPG。"
 msgid "Cannot retype to a snap CPG in a different domain."
 msgstr "无法执行 retype 操作，以变为另一个域中的 SNAP CPG。"
 
-msgid ""
-"Cannot run vgc-cluster command, please ensure software is installed and "
-"permissions are set properly."
-msgstr "无法运行 vgc-cluster 命令，请确保已安装软件，并且正确设置了许可权。"
-
 msgid "Cannot save group_snapshots changes in group object update."
 msgstr "组对象更新时无法保存组快照变更。"
 
@@ -972,10 +964,6 @@ msgstr "成功删除集群 %s。"
 msgid ""
 "Cluster is not formatted. You should probably perform \"dog cluster format\"."
 msgstr "集群未格式化。您可能应该执行“dog cluster format”。"
-
-#, python-format
-msgid "Command %(cmd)s blocked in the CLI and was cancelled"
-msgstr "命令 %(cmd)s 在 CLI 中被阻塞，并且已取消"
 
 #, python-format
 msgid "CommandLineHelper._wait_for_condition: %s timeout."
@@ -1096,9 +1084,6 @@ msgid ""
 msgstr ""
 "无法确定要使用的 Swift 端点。可在服务目录中设置此项，也可使用 cinder.conf 配"
 "置选项 “backup_swift_url”设置此项。"
-
-msgid "Could not find DISCO wsdl file."
-msgstr "找不到 DISCO wsdl 文件。"
 
 #, python-format
 msgid "Could not find GPFS cluster id: %s."
@@ -1248,9 +1233,6 @@ msgid ""
 "Creating and activating zone set failed: (Zone set=%(zoneset)s error="
 "%(err)s)."
 msgstr "创建并激活区域集失败（区域集为 %(zoneset)s，发生的错误为 %(err)s）。"
-
-msgid "Current host isn't part of HGST domain."
-msgstr "当前主机不存在于 HGST 域中。"
 
 #, python-format
 msgid ""
@@ -1871,14 +1853,6 @@ msgid "Error in SolidFire API response: data=%(data)s"
 msgstr "SolidFire API响应里发生错误：data=%(data)s"
 
 #, python-format
-msgid "Error in space-create for %(space)s of size %(size)d GB"
-msgstr "对大小为 %(size)d GB 的 %(space)s 进行空间创建时出错"
-
-#, python-format
-msgid "Error in space-extend for volume %(space)s with %(size)d additional GB"
-msgstr "对卷 %(space)s 进行空间扩充，额外扩充 %(size)d GB 时出错"
-
-#, python-format
 msgid "Error managing volume: %s."
 msgstr "管理卷 %s 时出错。"
 
@@ -1991,37 +1965,9 @@ msgid "Error while creating authentication token: %s"
 msgstr "创建认证令牌时出错：%s"
 
 #, python-format
-msgid "Error while creating snapshot [status] %(stat)s - [result] %(res)s."
-msgstr "创建快照 [status] %(stat)s - [result] %(res)s 时出错。"
-
-#, python-format
-msgid "Error while creating volume [status] %(stat)s - [result] %(res)s."
-msgstr "创建卷 [status] %(stat)s - [result] %(res)s 时出错。"
-
-#, python-format
-msgid "Error while deleting snapshot [status] %(stat)s - [result] %(res)s"
-msgstr "删除快照 [status] %(stat)s - [result] %(res)s 时出错。"
-
-#, python-format
-msgid "Error while deleting volume [status] %(stat)s - [result] %(res)s."
-msgstr "删除卷 [status] %(stat)s - [result] %(res)s 时出错。"
-
-#, python-format
-msgid "Error while extending volume [status] %(stat)s - [result] %(res)s."
-msgstr "扩展卷 [status] %(stat)s - [result] %(res)s 时出错。"
-
-#, python-format
-msgid "Error while getting %(op)s details, returned code: %(status)s."
-msgstr "获取 %(op)s 详细信息时出错，返回码：%(status)s。"
-
-#, python-format
 msgid "Error while getting data via ssh: (command=%(cmd)s error=%(err)s)."
 msgstr ""
 "通过 ssh 获取数据时发生错误：（命令为 %(cmd)s，发生的错误为 %(err)s）。"
-
-#, python-format
-msgid "Error while getting disco information [%s]."
-msgstr "获取 disco 信息 [%s] 时出错。"
 
 #, python-format
 msgid "Error while getting nvp value: %s."
@@ -2065,21 +2011,6 @@ msgstr "更新区域字符串中的 zones 时出错。错误：%(description)s�
 
 msgid "Error writing field to database"
 msgstr "将字段写至数据库时出错。"
-
-#, python-format
-msgid "Error[%(stat)s - %(res)s] while getting volume id."
-msgstr "获取卷标识时发生错误 [%(stat)s - %(res)s]。"
-
-#, python-format
-msgid ""
-"Error[%(stat)s - %(res)s] while restoring snapshot [%(snap_id)s] into volume "
-"[%(vol)s]."
-msgstr ""
-"将快照 [%(snap_id)s] 复原至卷 [%(vol)s] 时发生错误 [%(stat)s - %(res)s]。"
-
-#, python-format
-msgid "Error[status] %(stat)s - [result] %(res)s] while getting volume id."
-msgstr "获取卷标识时发生错误 [status] %(stat)s - [result] %(res)s]。"
 
 msgid "Exceeded the limit of snapshots per volume"
 msgstr "超出每个卷的快照数限制"
@@ -4806,10 +4737,6 @@ msgstr "停止快照时发生错误。"
 msgid "Storage family %s is not supported."
 msgstr "不支持存储器系列 %s。"
 
-#, python-format
-msgid "Storage host %(svr)s not detected, verify name"
-msgstr "未检测到存储器主机 %(svr)s，请验证名称"
-
 msgid "Storage pool is not configured."
 msgstr "未配置存储池。"
 
@@ -5141,10 +5068,6 @@ msgid ""
 msgstr "等待 Nova 更新（以便删除快照 %(id)s）时超时。"
 
 #, python-format
-msgid "Timeout while calling %s "
-msgstr "调用 %s 时超时 "
-
-#, python-format
 msgid "Timeout while requesting %(service)s API."
 msgstr "请求 %(service)s API 时超时。"
 
@@ -5198,10 +5121,6 @@ msgstr "通过文件句柄无法访问后端存储器。"
 #, python-format
 msgid "Unable to access the backend storage via the path %(path)s."
 msgstr "无法通过路径 %(path)s 访问后端存储器。"
-
-#, python-format
-msgid "Unable to add Cinder host to apphosts for space %(space)s"
-msgstr "无法将 Cinder 主机添加至空间 %(space)s 的 apphosts"
 
 #, python-format
 msgid "Unable to complete failover of %s."
@@ -5332,26 +5251,6 @@ msgid ""
 "Unable to get configuration information necessary to create a volume: "
 "%(errorMessage)s."
 msgstr "无法获取创建卷所需要的配置信息：%(errorMessage)s。"
-
-#, python-format
-msgid ""
-"Unable to get information on space %(space)s, please verify that the cluster "
-"is running and connected."
-msgstr "无法获取有关空间 %(space)s 的信息，请验证集群是否正在运行并且已连接。"
-
-msgid ""
-"Unable to get list of IP addresses on this host, check permissions and "
-"networking."
-msgstr "无法获取此主机上的 IP 地址列表，请检查许可权和联网。"
-
-msgid ""
-"Unable to get list of domain members, check that the cluster is running."
-msgstr "无法获取域成员列表，请检查集群是否正在运行。"
-
-msgid ""
-"Unable to get list of spaces to make new name.  Please verify the cluster is "
-"running."
-msgstr "无法获取用于生成新名称的空间的列表。请验证集群是否正在运行。"
 
 #, python-format
 msgid "Unable to get stats for backend_name: %s"
@@ -5516,10 +5415,6 @@ msgstr ""
 "不知道要管理的卷 %s 是否已由 Cinder 管理。正在异常中止管理卷。请"
 "将“cinder_managed”定制模式属性添加至该卷，并将其值设置为 False。或者，将 "
 "Cinder 配置策略“zfssa_manage_policy”的值设置为“loose”以移除此限制。"
-
-#, python-format
-msgid "Unknown operation %s."
-msgstr "未知操作 %s。"
 
 #, python-format
 msgid "Unknown or unsupported command %(cmd)s"
@@ -6868,31 +6763,6 @@ msgstr "已分配组快照"
 
 msgid "group_type_id cannot be None"
 msgstr "group_type_id 不能为None"
-
-#, python-format
-msgid ""
-"hgst_group %(grp)s and hgst_user %(usr)s must map to valid users/groups in "
-"cinder.conf"
-msgstr ""
-"在 cinder.conf 中，hgst_group %(grp)s 和 hgst_user %(usr)s必须映射至有效用户/"
-"组"
-
-#, python-format
-msgid "hgst_net %(net)s specified in cinder.conf not found in cluster"
-msgstr "在集群中找不到 cinder.conf 中所指定的 hgst_net %(net)s"
-
-msgid "hgst_redundancy must be set to 0 (non-HA) or 1 (HA) in cinder.conf."
-msgstr "在 cinder.conf 中，hgst_redundancy 必须设置为 0（非 HA）或者 1 (HA)。"
-
-msgid "hgst_space_mode must be an octal/int in cinder.conf"
-msgstr "在 cinder.conf 中，hgst_space_mode 必须为 octal/int"
-
-#, python-format
-msgid "hgst_storage server %(svr)s not of format <host>:<dev>"
-msgstr "hgst_storage 服务器 %(svr)s 不是 <host>:<dev> 格式"
-
-msgid "hgst_storage_servers must be defined in cinder.conf"
-msgstr "必须在 cinder.conf 中定义 hgst_storage_servers"
 
 msgid ""
 "http service may have been abruptly disabled or put to maintenance state in "

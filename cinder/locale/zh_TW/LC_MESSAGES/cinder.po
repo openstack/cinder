@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-08-29 01:38+0000\n"
+"POT-Creation-Date: 2018-10-12 20:06+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -496,9 +496,6 @@ msgstr "快取名稱為「無」，請在索引鍵中設定 smartcache:cachename
 msgid "Cache volume %s does not have required properties"
 msgstr "快取磁區 %s 沒有必需的內容"
 
-msgid "Call returned a None object"
-msgstr "呼叫傳回了 None 物件。"
-
 msgid "Can not add FC port to host."
 msgstr "無法將 FC 埠新增至主機。"
 
@@ -709,12 +706,6 @@ msgstr "無法執行 Retype 動作，以變為不同網域中的 CPG。"
 msgid "Cannot retype to a snap CPG in a different domain."
 msgstr "無法執行 Retype 動作，以變為不同網域中的 snapCPG。"
 
-msgid ""
-"Cannot run vgc-cluster command, please ensure software is installed and "
-"permissions are set properly."
-msgstr ""
-"無法執行 vgc-cluster 指令，請確保已安裝了軟體，並且已經妥善設定許可權。"
-
 msgid "Cannot specify both protection domain name and protection domain id."
 msgstr "不能同時指定保護網域名稱及保護網域 ID。"
 
@@ -788,10 +779,6 @@ msgstr ""
 msgid ""
 "Cluster is not formatted. You should probably perform \"dog cluster format\"."
 msgstr "叢集未格式化。您可能應該執行 \"dog cluster format\"。"
-
-#, python-format
-msgid "Command %(cmd)s blocked in the CLI and was cancelled"
-msgstr "指令 %(cmd)s 在 CLI 中遭到封鎖，且已取消"
 
 #, python-format
 msgid "CommandLineHelper._wait_for_condition: %s timeout."
@@ -913,9 +900,6 @@ msgid ""
 msgstr ""
 "無法判定要使用的 Swift 端點。這可以在服務型錄中進行設定，也可以使用 cinder."
 "conf 配置選項 'backup_swift_url' 進行設定。"
-
-msgid "Could not find DISCO wsdl file."
-msgstr "找不到 DISCO WSDL 檔。"
 
 #, python-format
 msgid "Could not find GPFS cluster id: %s."
@@ -1048,9 +1032,6 @@ msgid ""
 "Creating and activating zone set failed: (Zone set=%(zoneset)s error="
 "%(err)s)."
 msgstr "建立及啟動區域集時失敗：（區域集 = %(zoneset)s 錯誤 = %(err)s）。"
-
-msgid "Current host isn't part of HGST domain."
-msgstr "現行主機不是 HGST 網域的一部分。"
 
 #, python-format
 msgid ""
@@ -1675,14 +1656,6 @@ msgid "Error in SolidFire API response: data=%(data)s"
 msgstr "SolidFire API 回應發生錯誤：資料 = %(data)s"
 
 #, python-format
-msgid "Error in space-create for %(space)s of size %(size)d GB"
-msgstr "為 %(space)s 建立大小為 %(size)d GB 的空間時發生錯誤"
-
-#, python-format
-msgid "Error in space-extend for volume %(space)s with %(size)d additional GB"
-msgstr "將磁區 %(space)s 的空間額外延伸 %(size)d GB 時發生錯誤"
-
-#, python-format
 msgid "Error managing volume: %s."
 msgstr "管理磁區時發生錯誤：%s。"
 
@@ -1780,36 +1753,8 @@ msgid "Error while creating authentication token: %s"
 msgstr "建立鑑別記號時發生錯誤：%s"
 
 #, python-format
-msgid "Error while creating snapshot [status] %(stat)s - [result] %(res)s."
-msgstr "建立 Snapshot [狀態] %(stat)s 時發生錯誤 - [結果] %(res)s。"
-
-#, python-format
-msgid "Error while creating volume [status] %(stat)s - [result] %(res)s."
-msgstr "建立磁區 [狀態] %(stat)s 時發生錯誤 - [結果] %(res)s。"
-
-#, python-format
-msgid "Error while deleting snapshot [status] %(stat)s - [result] %(res)s"
-msgstr "刪除 Snapshot [狀態] %(stat)s 時發生錯誤 - [結果] %(res)s。"
-
-#, python-format
-msgid "Error while deleting volume [status] %(stat)s - [result] %(res)s."
-msgstr "刪除磁區 [狀態] %(stat)s 時發生錯誤 - [結果] %(res)s。"
-
-#, python-format
-msgid "Error while extending volume [status] %(stat)s - [result] %(res)s."
-msgstr "延伸磁區 [狀態] %(stat)s 時發生錯誤 - [結果] %(res)s。"
-
-#, python-format
-msgid "Error while getting %(op)s details, returned code: %(status)s."
-msgstr "取得 %(op)s 詳細資料時發生錯誤，回覆碼：%(status)s。"
-
-#, python-format
 msgid "Error while getting data via ssh: (command=%(cmd)s error=%(err)s)."
 msgstr "透過 SSH 取得資料時發生錯誤：（指令 = %(cmd)s 錯誤 = %(err)s）。"
-
-#, python-format
-msgid "Error while getting disco information [%s]."
-msgstr "取得 DISCO 資訊 [%s] 時發生錯誤。"
 
 #, python-format
 msgid "Error while getting nvp value: %s."
@@ -1848,22 +1793,6 @@ msgstr "更新區域字串中的新區域和配置時發生錯誤。錯誤：%(d
 
 msgid "Error writing field to database"
 msgstr "將欄位寫入資料庫時發生錯誤"
-
-#, python-format
-msgid "Error[%(stat)s - %(res)s] while getting volume id."
-msgstr "取得磁區 ID 時發生錯誤 [%(stat)s - %(res)s]。"
-
-#, python-format
-msgid ""
-"Error[%(stat)s - %(res)s] while restoring snapshot [%(snap_id)s] into volume "
-"[%(vol)s]."
-msgstr ""
-"將 Snapshot [%(snap_id)s] 還原到磁區 [%(vol)s] 中時，發生錯誤 [%(stat)s - "
-"%(res)s]。"
-
-#, python-format
-msgid "Error[status] %(stat)s - [result] %(res)s] while getting volume id."
-msgstr "取得磁區 ID 時發生錯誤 [狀態] %(stat)s - [結果] %(res)s。"
 
 msgid "Exceeded the limit of snapshots per volume"
 msgstr "已超過每個磁區的 Snapshot 數目限制"
@@ -4326,10 +4255,6 @@ msgstr "停止 Snapshot 時發生錯誤。"
 msgid "Storage family %s is not supported."
 msgstr "儲存體系列 %s 不受支援。"
 
-#, python-format
-msgid "Storage host %(svr)s not detected, verify name"
-msgstr "未偵測到儲存體主機 %(svr)s，請驗證名稱"
-
 msgid "Storage pool is not configured."
 msgstr "未配置儲存區。"
 
@@ -4632,10 +4557,6 @@ msgid ""
 msgstr "等待 Nova 更新以刪除 Snapshot %(id)s 時發生逾時。"
 
 #, python-format
-msgid "Timeout while calling %s "
-msgstr "呼叫 %s 時逾時"
-
-#, python-format
 msgid "Timeout while requesting %(service)s API."
 msgstr "要求 %(service)s API 時發生逾時。"
 
@@ -4686,10 +4607,6 @@ msgstr "無法透過檔案控點來存取後端儲存體。"
 #, python-format
 msgid "Unable to access the backend storage via the path %(path)s."
 msgstr "無法透過路徑 %(path)s 來存取後端儲存體。"
-
-#, python-format
-msgid "Unable to add Cinder host to apphosts for space %(space)s"
-msgstr "無法將 Cinder 主機新增至空間 %(space)s 的應用程式主機"
 
 #, python-format
 msgid "Unable to complete failover of %s."
@@ -4809,26 +4726,6 @@ msgid ""
 "Unable to get configuration information necessary to create a volume: "
 "%(errorMessage)s."
 msgstr "無法取得建立磁區所需的配置資訊：%(errorMessage)s。"
-
-#, python-format
-msgid ""
-"Unable to get information on space %(space)s, please verify that the cluster "
-"is running and connected."
-msgstr "無法取得空間 %(space)s 的相關資訊，請驗證叢集是否在執行中且已連接。"
-
-msgid ""
-"Unable to get list of IP addresses on this host, check permissions and "
-"networking."
-msgstr "無法取得此主機上 IP 位址的清單，請檢查許可權和網路。"
-
-msgid ""
-"Unable to get list of domain members, check that the cluster is running."
-msgstr "無法取得網域成員的清單，請檢查叢集是否在執行中。"
-
-msgid ""
-"Unable to get list of spaces to make new name.  Please verify the cluster is "
-"running."
-msgstr "無法取得空間清單以建立新名稱。請驗證叢集是否在執行中。"
 
 #, python-format
 msgid "Unable to get stats for backend_name: %s"
@@ -4992,10 +4889,6 @@ msgstr ""
 "如果要管理的磁區 %s 已經由 Cinder 進行管理，則是不明情況。正在終止管理磁區。"
 "請將 'cinder_managed' 自訂綱目內容新增至該磁區，並將它的值設為 False。或者，"
 "將 Cinder 配置原則 'zfssa_manage_policy' 的值設為 'loose'，以移除此限制。"
-
-#, python-format
-msgid "Unknown operation %s."
-msgstr "不明作業 %s。"
 
 #, python-format
 msgid "Unknown or unsupported command %(cmd)s"
@@ -6240,31 +6133,6 @@ msgid ""
 msgstr ""
 "gpfs_images_share_mode 已設為 copy_on_write，但 %(vol)s 及 %(img)s 屬於不同的"
 "檔案集。"
-
-#, python-format
-msgid ""
-"hgst_group %(grp)s and hgst_user %(usr)s must map to valid users/groups in "
-"cinder.conf"
-msgstr ""
-"在 cinder.conf 中，hgst_group %(grp)s 和 hgst_user %(usr)s 必須對映至有效的使"
-"用者/群組"
-
-#, python-format
-msgid "hgst_net %(net)s specified in cinder.conf not found in cluster"
-msgstr "在叢集中找不到 cinder.conf 內指定的 hgst_net %(net)s"
-
-msgid "hgst_redundancy must be set to 0 (non-HA) or 1 (HA) in cinder.conf."
-msgstr "在 cinder.conf 中，hgst_redundancy 必須設定為 0（非 HA）或 1 (HA)。"
-
-msgid "hgst_space_mode must be an octal/int in cinder.conf"
-msgstr "在 cinder.conf 中，hgst_space_mode 必須是八進位/整數"
-
-#, python-format
-msgid "hgst_storage server %(svr)s not of format <host>:<dev>"
-msgstr "hgst_storage 伺服器 %(svr)s 的格式不是 <host>:<dev>"
-
-msgid "hgst_storage_servers must be defined in cinder.conf"
-msgstr "在 cinder.conf 中，必須定義 hgst_storage_servers"
 
 msgid ""
 "http service may have been abruptly disabled or put to maintenance state in "
