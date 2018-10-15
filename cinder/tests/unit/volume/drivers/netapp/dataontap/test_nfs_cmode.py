@@ -875,8 +875,10 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     @mock.patch.object(image_utils, 'convert_image')
     @mock.patch.object(image_utils, 'qemu_img_info')
     @mock.patch('os.path.exists')
+    @mock.patch('cinder.privsep.path')
     def test_copy_from_img_service_qcow2_copyoffload_workflow_success(
-            self, mock_exists, mock_qemu_img_info, mock_cvrt_image):
+            self, mock_touch, mock_exists, mock_qemu_img_info,
+            mock_cvrt_image):
         drv = self.driver
         cinder_mount_point_base = '/opt/stack/data/cinder/mnt/'
         # To get the cinder mount point directory, we use:
@@ -933,11 +935,10 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                     '203.0.113.122', '/openstack/glance-flexvol1',
                     destination_copied_file, run_as_root=False,
                     check_exit_code=0
-                ),
-                mock.call('touch', cinder_mount_point, run_as_root=False)
+                )
             ]
         )
-        self.assertEqual(2, drv._execute.call_count)
+        self.assertEqual(1, drv._execute.call_count)
         self.assertEqual(2, drv._delete_file_at_path.call_count)
         self.assertEqual(1, drv._clone_file_dst_exists.call_count)
 

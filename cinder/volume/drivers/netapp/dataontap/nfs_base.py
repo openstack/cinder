@@ -39,6 +39,7 @@ from six.moves import urllib
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
+import cinder.privsep.path
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
@@ -671,11 +672,8 @@ class NetAppNfsDriver(driver.ManageableVD,
             return False
 
     def _touch_path_to_refresh(self, path):
-        try:
-            # Touching parent directory forces NFS client to flush its cache.
-            self._execute('touch', path, run_as_root=self._execute_as_root)
-        except processutils.ProcessExecutionError:
-            LOG.exception("Failed to touch path %s.", path)
+        # Touching parent directory forces NFS client to flush its cache.
+        cinder.privsep.path.touch(path)
 
     def _discover_file_till_timeout(self, path, timeout=75):
         """Checks if file size at path is equal to size."""
