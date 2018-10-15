@@ -52,3 +52,38 @@ Request Example
 
 .. literalinclude:: ./samples/volume-manage-request.json
    :language: javascript
+
+
+Response
+--------
+
+.. rest_parameters:: parameters.yaml
+
+   - volume: volume
+   - status: status_3
+   - migration_status: migration_status
+   - user_id: user_id
+   - attachments: attachments
+   - links: links_3
+   - availability_zone: availability_zone
+   - bootable: bootable_response
+   - encrypted: encrypted
+   - created_at: created_at
+   - description: description_5
+   - updated_at: updated_at
+   - volume_type: volume_type
+   - name: name_13
+   - replication_status: replication_status
+   - consistencygroup_id: consistencygroup_id
+   - source_volid: source_volid
+   - snapshot_id: snapshot_id
+   - multiattach: multiattach_resp
+   - metadata: metadata_1
+   - id: id_5
+   - size: size
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-manage-response.json
+   :language: javascript
