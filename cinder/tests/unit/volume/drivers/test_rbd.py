@@ -2264,7 +2264,7 @@ class RBDTestCase(test.TestCase):
 
         self._create_backup_db_entry(fake.BACKUP_ID, self.volume_a['id'], 1)
         backup = objects.Backup.get_by_id(self.context, fake.BACKUP_ID)
-        backup.service = 'asdf#ceph'
+        backup.service = 'cinder.backup.drivers.ceph'
 
         ret = driver.get_backup_device(self.context, backup)
         self.assertEqual(ret, (self.volume_a, False))
