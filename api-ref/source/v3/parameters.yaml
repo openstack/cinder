@@ -2320,7 +2320,7 @@ qos_specs_id:
   description: |
     The QoS specifications ID.
   in: body
-  required: true
+  required: false
   type: string
 QoS_support:
   description: |
