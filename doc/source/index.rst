@@ -78,7 +78,6 @@ Full documentation on the python-cinderclient is in the
    :maxdepth: 2
 
    cli/index
-   cinder-manage Usage <man/cinder-manage>
 
 Contributor/Developer Docs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
