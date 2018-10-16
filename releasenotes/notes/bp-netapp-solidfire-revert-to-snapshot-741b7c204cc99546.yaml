@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    NetApp SolidFire driver now supports optimized revert to snapshot
+    operations.

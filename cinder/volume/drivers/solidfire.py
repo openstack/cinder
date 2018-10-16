@@ -2288,6 +2288,39 @@ class SolidFireDriver(san.SanISCSIDriver):
         """Thaw backend notification."""
         pass
 
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert a volume to a given snapshot."""
+
+        sfaccount = self._get_sfaccount(volume.project_id)
+        params = {'accountID': sfaccount['accountID']}
+
+        sf_vol = self._get_sf_volume(volume.id, params)
+        if sf_vol is None:
+            LOG.error("Volume ID %s was not found on "
+                      "the SolidFire Cluster while attempting "
+                      "revert_to_snapshot operation!", volume.id)
+            raise exception.VolumeNotFound(volume_id=volume['id'])
+
+        params['volumeID'] = sf_vol['volumeID']
+
+        sf_snap_name = '%s%s' % (self.configuration.sf_volume_prefix,
+                                 snapshot.id)
+        sf_snaps = self._get_sf_snapshots(sf_vol['volumeID'])
+        snap = next((s for s in sf_snaps if s["name"] == sf_snap_name),
+                    None)
+        if not snap:
+            LOG.error("Snapshot ID %s was not found on "
+                      "the SolidFire Cluster while attempting "
+                      "revert_to_snapshot operation!", snapshot.id)
+            raise exception.VolumeSnapshotNotFound(volume_id=volume.id)
+
+        params['snapshotID'] = snap['snapshotID']
+        params['saveCurrentState'] = 'false'
+
+        self._issue_api_request('RollbackToSnapshot',
+                                params,
+                                version='6.0')
+
 
 class SolidFireISCSI(iscsi_driver.SanISCSITarget):
     def __init__(self, *args, **kwargs):

@@ -111,6 +111,35 @@ class SolidFireVolumeTestCase(test.TestCase):
                                 'owner': 'testprjid'}
         self.fake_image_service = fake_image.FakeImageService()
 
+        self.vol = test_utils.create_volume(
+            self.ctxt, volume_id='b831c4d1-d1f0-11e1-9b23-0800200c9a66')
+        self.snap = test_utils.create_snapshot(
+            self.ctxt, volume_id=self.vol.id)
+
+        self.fake_sfaccount = {'accountID': 25,
+                               'name': 'testprjid',
+                               'targetSecret': 'shhhh',
+                               'username': 'john-wayne',
+                               'volumes': [6, 7, 20]}
+
+        self.fake_sfvol = {'volumeID': 6,
+                           'name': 'test_volume',
+                           'accountID': 25,
+                           'sliceCount': 1,
+                           'totalSize': 1 * units.Gi,
+                           'enable512e': True,
+                           'access': "readWrite",
+                           'status': "active",
+                           'attributes': {'uuid': f_uuid[0]},
+                           'qos': None,
+                           'iqn': 'super_fake_iqn'}
+
+        self.fake_sfsnap_name = '%s%s' % (self.configuration.sf_volume_prefix,
+                                          self.snap.id)
+        self.fake_sfsnaps = [{'snapshotID': '5',
+                              'name': self.fake_sfsnap_name,
+                              'volumeID': 6}]
+
     def fake_init_cluster_pairs(*args, **kwargs):
         return None
 
@@ -246,6 +275,31 @@ class SolidFireVolumeTestCase(test.TestCase):
             return {'result': {'clusterAPIVersion': '8.0'}}
         elif method is 'StartVolumePairing':
             return {'result': {'volumePairingKey': 'fake-pairing-key'}}
+        elif method is 'RollbackToSnapshot':
+            return {
+                "id": 1,
+                "result": {
+                    "checksum": "0x0",
+                    "snapshot": {
+                        "attributes": {},
+                        "checksum": "0x0",
+                        "createTime": "2016-04-04T17:27:32Z",
+                        "enableRemoteReplication": "false",
+                        "expirationReason": "None",
+                        "expirationTime": "null",
+                        "groupID": 0,
+                        "groupSnapshotUUID": f_uuid[0],
+                        "name": "test1-copy",
+                        "snapshotID": 1,
+                        "snapshotUUID": f_uuid[1],
+                        "status": "done",
+                        "totalSize": 5000658944,
+                        "virtualVolumeID": "null",
+                        "volumeID": 1
+                    },
+                    "snapshotID": 1
+                }
+            }
         else:
             # Crap, unimplemented API call in Fake
             return None
@@ -2291,3 +2345,71 @@ class SolidFireVolumeTestCase(test.TestCase):
         a = sfv._generate_random_string(12)
         self.assertEqual(len(a), 12)
         self.assertIsNotNone(re.match(r'[A-Z0-9]{12}', a), a)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sfaccount')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_snapshots')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    def test_revert_to_snapshot_success(self, mock_issue_api_request,
+                                        mock_get_sf_snapshots,
+                                        mock_get_sf_volume,
+                                        mock_get_sfaccount):
+        mock_issue_api_request.side_effect = self.fake_issue_api_request
+
+        mock_get_sfaccount.return_value = self.fake_sfaccount
+        mock_get_sf_volume.return_value = self.fake_sfvol
+        mock_get_sf_snapshots.return_value = self.fake_sfsnaps
+
+        expected_params = {'accountID': 25,
+                           'volumeID': 6,
+                           'snapshotID': '5',
+                           'saveCurrentState': 'false'}
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+
+        # Success path
+        sfv.revert_to_snapshot(self.ctxt, self.vol, self.snap)
+        mock_issue_api_request.assert_called_with(
+            'RollbackToSnapshot', expected_params, version='6.0')
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sfaccount')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_snapshots')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    def test_revert_to_snapshot_fail_vol_not_found(
+            self, mock_issue_api_request, mock_get_sf_snapshots,
+            mock_get_sf_volume, mock_get_sfaccount):
+        mock_issue_api_request.side_effect = self.fake_issue_api_request
+
+        mock_get_sfaccount.return_value = self.fake_sfaccount
+        mock_get_sf_volume.return_value = None
+        mock_get_sf_snapshots.return_value = []
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+
+        # Volume not found
+        mock_get_sf_volume.return_value = None
+        self.assertRaises(exception.VolumeNotFound,
+                          sfv.revert_to_snapshot,
+                          self.ctxt, self.vol, self.snap)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sfaccount')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_snapshots')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    def test_revert_to_snapshot_fail_snap_not_found(
+            self, mock_issue_api_request, mock_get_sf_snapshots,
+            mock_get_sf_volume, mock_get_sfaccount):
+        mock_issue_api_request.side_effect = self.fake_issue_api_request
+
+        mock_get_sfaccount.return_value = self.fake_sfaccount
+        mock_get_sf_volume.return_value = self.fake_sfvol
+        mock_get_sf_snapshots.return_value = []
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+
+        # Snapshot not found
+        mock_get_sf_snapshots.return_value = []
+        self.assertRaises(exception.VolumeSnapshotNotFound,
+                          sfv.revert_to_snapshot,
+                          self.ctxt, self.vol, self.snap)
