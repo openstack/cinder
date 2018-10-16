@@ -163,8 +163,8 @@ def fake_md5(arg):
     return ret
 
 
-class BackupNFSSwiftBasedTestCase(test.TestCase):
-    """Test Cases for based on Swift tempest backup tests."""
+class BackupNFSTestCase(test.TestCase):
+    """Test Cases for NFS backup driver."""
 
     _DEFAULT_VOLUME_ID = fake.VOLUME_ID
 
@@ -208,7 +208,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         return self.thread_original_method(*args, **kwargs)
 
     def setUp(self):
-        super(BackupNFSSwiftBasedTestCase, self).setUp()
+        super(BackupNFSTestCase, self).setUp()
 
         self.ctxt = context.get_admin_context()
         self.mock_object(hashlib, 'md5', fake_md5)
