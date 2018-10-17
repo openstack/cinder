@@ -21,7 +21,7 @@ import six
 
 from cinder import exception
 from cinder.privsep import nvmcli
-import cinder.privsep.utils
+import cinder.privsep.path
 from cinder import utils
 from cinder.volume.targets import nvmeof
 
@@ -192,7 +192,7 @@ class NVMET(nvmeof.NVMeOF):
         # in order to avoid executing cat as root
         with utils.temporary_chown(tmp_file_path):
             try:
-                out = cinder.privsep.utils.readfile(tmp_file_path)
+                out = cinder.privsep.path.readfile(tmp_file_path)
             except putils.ProcessExecutionError:
                 with excutils.save_and_reraise_exception():
                     LOG.exception('Failed to read: %s', tmp_file_path)
@@ -208,6 +208,6 @@ class NVMET(nvmeof.NVMeOF):
 
     def _delete_file(self, file_path):
         try:
-            cinder.privsep.utils.removefile(file_path)
+            cinder.privsep.path.removefile(file_path)
         except putils.ProcessExecutionError:
             LOG.exception('Failed to delete file: %s', file_path)
