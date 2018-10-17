@@ -382,6 +382,22 @@ class GroupManagerTestCase(test.TestCase):
         self.volume.db.volume_get.reset_mock()
         self.volume.db.volume_get = volume_get_orig
 
+    def test_update_group_vol_not_found(self):
+        """Test add non existent volume to group"""
+        group = tests_utils.create_group(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type_ids=[fake.VOLUME_TYPE_ID],
+            group_type_id=fake.GROUP_TYPE_ID,
+            host=CONF.host)
+        self.volume.create_group(self.context, group)
+
+        self.assertRaises(exception.VolumeNotFound,
+                          self.volume.update_group,
+                          self.context, group,
+                          add_volumes=fake.VOLUME_ID,
+                          remove_volumes=fake.VOLUME2_ID)
+
     @mock.patch('cinder.db.sqlalchemy.api.'
                 'volume_glance_metadata_copy_to_volume')
     @mock.patch('cinder.db.sqlalchemy.api.'
