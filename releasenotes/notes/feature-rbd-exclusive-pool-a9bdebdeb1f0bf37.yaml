@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    When using the RBD pool exclusively for Cinder we can now set
+    `rbd_exclusive_cinder_pool` to `true` and Cinder will use DB information
+    to calculate provisioned size instead of querying all volumes in the
+    backend, which will reduce the load on the Ceph cluster and the volume
+    service.
+issues:
+  - |
+    If RBD stats collection is taking too long in your environment maybe even
+    leading to the service appearing as down you'll want to use the
+    `rbd_exclusive_cinder_pool = true` configuration option if you are using
+    the pool exclusively for Cinder and maybe even if you are not and can live
+    with the innacuracy.
