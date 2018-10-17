@@ -163,7 +163,7 @@ def get_qemu_img_version():
 
 
 def qemu_img_supports_force_share():
-    return get_qemu_img_version() >= [2, 10, 0]
+    return get_qemu_img_version() >= QEMU_IMG_MIN_FORCE_SHARE_VERSION
 
 
 def _get_qemu_convert_luks_cmd(src, dest, out_format, src_format=None,
