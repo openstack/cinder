@@ -67,16 +67,30 @@ Cinder Db
 
     Purge database entries that are marked as deleted, that are older than the number of days specified.
 
-``cinder-manage db online_data_migrations``
+``cinder-manage db online_data_migrations [--max-count <n>]``
 
-    Perform online data migrations for database upgrade between releases in batches.
+    Perform online data migrations for database upgrade between releases in
+    batches.
 
     This command interprets the following options when it is invoked:
 
-    --max_count     Maximum number of objects to consider.
-    --ignore_state  Force records to migrate even if another operation is
-                    performed on them. This may be dangerous, please refer to
-                    release notes for more information.
+    --max-count     Maximum number of objects to migrate. If not specified,
+                    all possible migrations will be completed, in batches of
+                    50 at a time.
+
+    Returns exit status 0 if no (further) updates are possible, 1 if the
+    ``--max-count`` option was used and some updates were completed
+    successfully (even if others generated errors), 2 if some updates generated
+    errors and no other migrations were able to take effect in the last batch
+    attempted, or 127 if invalid input is provided (e.g.  non-numeric
+    max-count).
+
+    This command should be run after upgrading the database schema. If it exits
+    with partial updates (exit status 1) it should be called again, even if
+    some updates initially generated errors, because some updates may depend on
+    others having completed. If it exits with status 2, intervention is
+    required to resolve the issue causing remaining updates to fail.  It should
+    be considered successfully completed only when the exit status is 0.
 
 Cinder Logs
 ~~~~~~~~~~~

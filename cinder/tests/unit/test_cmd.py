@@ -450,8 +450,8 @@ class TestCinderManageCmd(test.TestCase):
                                  command.online_data_migrations, 10)
         self.assertEqual(1, exit.code)
         expected = """\
-5 rows matched query mock_mig_1, 4 migrated, 1 remaining
-6 rows matched query mock_mig_2, 6 migrated, 0 remaining
+5 rows matched query mock_mig_1, 4 migrated
+6 rows matched query mock_mig_2, 6 migrated
 +------------+--------------+-----------+
 | Migration  | Total Needed | Completed |
 +------------+--------------+-----------+
@@ -465,6 +465,78 @@ class TestCinderManageCmd(test.TestCase):
                                                                  6)])
 
         self.assertEqual(expected, sys.stdout.getvalue())
+
+    @mock.patch('cinder.context.get_admin_context')
+    def test_online_migrations_no_max_count(self, mock_get_context):
+        self.useFixture(fixtures.MonkeyPatch('sys.stdout', StringIO()))
+        fake_remaining = [120]
+
+        def fake_migration(context, count):
+            self.assertEqual(mock_get_context.return_value, context)
+            found = 120
+            done = min(fake_remaining[0], count)
+            fake_remaining[0] -= done
+            return found, done
+
+        command_cls = self._fake_db_command((fake_migration,))
+        command = command_cls()
+
+        exit = self.assertRaises(SystemExit,
+                                 command.online_data_migrations, None)
+        self.assertEqual(0, exit.code)
+        expected = """\
+Running batches of 50 until complete.
+120 rows matched query fake_migration, 50 migrated
+120 rows matched query fake_migration, 50 migrated
+120 rows matched query fake_migration, 20 migrated
+120 rows matched query fake_migration, 0 migrated
++----------------+--------------+-----------+
+|   Migration    | Total Needed | Completed |
++----------------+--------------+-----------+
+| fake_migration |     120      |    120    |
++----------------+--------------+-----------+
+"""
+        self.assertEqual(expected, sys.stdout.getvalue())
+
+    @mock.patch('cinder.context.get_admin_context')
+    def test_online_migrations_error(self, mock_get_context):
+        self.useFixture(fixtures.MonkeyPatch('sys.stdout', StringIO()))
+        good_remaining = [50]
+
+        def good_migration(context, count):
+            self.assertEqual(mock_get_context.return_value, context)
+            found = 50
+            done = min(good_remaining[0], count)
+            good_remaining[0] -= done
+            return found, done
+
+        bad_migration = mock.MagicMock()
+        bad_migration.side_effect = test.TestingException
+        bad_migration.__name__ = 'bad_migration'
+
+        command_cls = self._fake_db_command((bad_migration, good_migration))
+        command = command_cls()
+
+        # bad_migration raises an exception, but it could be because
+        # good_migration had not completed yet. We should get 1 in this case,
+        # because some work was done, and the command should be reiterated.
+        exit = self.assertRaises(SystemExit,
+                                 command.online_data_migrations, max_count=50)
+        self.assertEqual(1, exit.code)
+
+        # When running this for the second time, there's no work left for
+        # good_migration to do, but bad_migration still fails - should
+        # get 2 this time.
+        exit = self.assertRaises(SystemExit,
+                                 command.online_data_migrations, max_count=50)
+        self.assertEqual(2, exit.code)
+
+        # When --max-count is not used, we should get 2 if all possible
+        # migrations completed but some raise exceptions
+        good_remaining = [50]
+        exit = self.assertRaises(SystemExit,
+                                 command.online_data_migrations, None)
+        self.assertEqual(2, exit.code)
 
     @mock.patch('cinder.cmd.manage.DbCommands.online_migrations',
                 (mock.Mock(side_effect=((2, 2), (0, 0)), __name__='foo'),))

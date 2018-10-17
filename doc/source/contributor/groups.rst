@@ -310,10 +310,8 @@ and cgsnapshots will be removed from the database::
 
     cinder-manage db online_data_migrations
     --max_count <max>
-    --ignore_state
 
 max_count is optional. Default is 50.
-ignore_state is optional. Default is False.
 
 After running the above migration command to migrate CGs to generic
 volume groups, CG and group APIs work as follows:
