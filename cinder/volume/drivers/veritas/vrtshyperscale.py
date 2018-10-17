@@ -53,6 +53,9 @@ class HyperScaleDriver(driver.VolumeDriver):
     # ThirdPartySytems wiki page
     CI_WIKI_NAME = "Veritas_HyperScale_CI"
 
+    # TODO(jsbryant) Remove driver in the 'T' release if CI is not fixed.
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         """Initialization"""
 
