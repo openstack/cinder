@@ -459,8 +459,7 @@ class VMAXRest(object):
         :returns: slo_list -- list of service level names
         """
         slo_list = []
-        slo_dict = self.get_resource(array, SLOPROVISIONING, 'slo',
-                                     version='90')
+        slo_dict = self.get_resource(array, SLOPROVISIONING, 'slo')
         if slo_dict and slo_dict.get('sloId'):
             if any(self.get_vmax_model(array) in x for x in
                    utils.VMAX_AFA_MODELS):
