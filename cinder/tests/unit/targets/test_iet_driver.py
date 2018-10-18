@@ -53,13 +53,14 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
 
     @mock.patch('cinder.volume.targets.iet.IetAdm._get_target',
                 return_value=0)
-    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.privsep.targets.iet.new_target')
+    @mock.patch('cinder.privsep.targets.iet.new_logicalunit')
     @mock.patch('os.path.exists', return_value=True)
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch.object(iet, 'LOG')
     def test_create_iscsi_target(self, mock_log, mock_chown, mock_exists,
-                                 mock_execute, mock_get_targ):
-        mock_execute.return_value = ('', '')
+                                 mock_new_logical_unit, mock_new_target,
+                                 mock_get_targ):
         tmp_file = six.StringIO()
         with mock.patch('six.moves.builtins.open') as mock_open:
             mock_open.return_value = contextlib.closing(tmp_file)
@@ -70,9 +71,10 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
                     0,
                     0,
                     self.fake_volumes_dir))
-            self.assertTrue(mock_execute.called)
+            self.assertTrue(mock_new_target.called)
             self.assertTrue(mock_open.called)
             self.assertTrue(mock_get_targ.called)
+            self.assertTrue(mock_new_logical_unit.called)
 
             # Test the failure case: Failed to chown the config file
             mock_open.side_effect = putils.ProcessExecutionError
@@ -84,7 +86,7 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
                               self.fake_volumes_dir)
 
             # Test the failure case: Failed to set new auth
-            mock_execute.side_effect = putils.ProcessExecutionError
+            mock_new_target.side_effect = putils.ProcessExecutionError
             self.assertRaises(exception.ISCSITargetCreateFailed,
                               self.target.create_iscsi_target,
                               self.test_vol,
@@ -107,10 +109,10 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
 
     @mock.patch('cinder.volume.targets.iet.IetAdm._get_target',
                 return_value=1)
-    @mock.patch('cinder.utils.execute')
-    def test_create_iscsi_target_already_exists(self, mock_execute,
-                                                mock_get_targ):
-        mock_execute.return_value = ('fake out', 'fake err')
+    @mock.patch('cinder.privsep.targets.iet.new_target')
+    @mock.patch('cinder.privsep.targets.iet.new_logicalunit')
+    def test_create_iscsi_target_already_exists(
+            self, mock_new_logical_unit, mock_new_target, mock_get_targ):
         self.assertEqual(
             1,
             self.target.create_iscsi_target(
@@ -119,27 +121,28 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
                 0,
                 self.fake_volumes_dir))
         self.assertTrue(mock_get_targ.called)
-        self.assertTrue(mock_execute.called)
+        self.assertTrue(mock_new_target.called)
+        self.assertTrue(mock_new_logical_unit.called)
 
     @mock.patch('cinder.volume.targets.iet.IetAdm._find_sid_cid_for_target',
                 return_value=None)
     @mock.patch('os.path.exists', return_value=False)
-    @mock.patch('cinder.utils.execute')
-    def test_remove_iscsi_target(self, mock_execute, mock_exists, mock_find):
+    @mock.patch('cinder.privsep.targets.iet.delete_logicalunit')
+    @mock.patch('cinder.privsep.targets.iet.delete_target')
+    def test_remove_iscsi_target(
+            self, mock_delete_target,
+            mock_delete_logicalunit, mock_exists, mock_find):
 
         # Test the normal case
         self.target.remove_iscsi_target(1,
                                         0,
                                         self.testvol['id'],
                                         self.testvol['name'])
-        mock_execute.assert_any_call('ietadm',
-                                     '--op',
-                                     'delete',
-                                     '--tid=1',
-                                     run_as_root=True)
+        mock_delete_logicalunit.assert_called_once_with(1, 0)
+        mock_delete_target.assert_called_once_with(1)
 
         # Test the failure case: putils.ProcessExecutionError
-        mock_execute.side_effect = putils.ProcessExecutionError
+        mock_delete_logicalunit.side_effect = putils.ProcessExecutionError
         self.assertRaises(exception.ISCSITargetRemoveFailed,
                           self.target.remove_iscsi_target,
                           1,
@@ -147,7 +150,8 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
                           self.testvol['id'],
                           self.testvol['name'])
 
-    def test_find_sid_cid_for_target(self):
+    @mock.patch('cinder.privsep.targets.iet.delete_target')
+    def test_find_sid_cid_for_target(self, mock_delete_target):
         tmp_file = six.StringIO()
         tmp_file.write(
             'tid:1 name:iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45\n'  # noqa
@@ -165,11 +169,13 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
 
     @mock.patch('cinder.volume.targets.iet.IetAdm._get_target',
                 return_value=1)
-    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.privsep.targets.iet.new_target')
+    @mock.patch('cinder.privsep.targets.iet.new_logicalunit')
+    @mock.patch('cinder.privsep.targets.iet.new_auth')
     @mock.patch.object(iet.IetAdm, '_get_target_chap_auth')
-    def test_create_export(self, mock_get_chap, mock_execute,
-                           mock_get_targ):
-        mock_execute.return_value = ('', '')
+    def test_create_export(
+            self, mock_get_chap, mock_new_auth, mock_new_logicalunit,
+            mock_new_target, mock_get_targ):
         mock_get_chap.return_value = ('QZJbisGmn9AL954FNF4D',
                                       'P68eE7u9eFqDGexd28DQ')
         expected_result = {'location': '10.9.8.7:3260,1 '
@@ -181,7 +187,8 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
                          self.target.create_export(ctxt,
                                                    self.testvol,
                                                    self.fake_volumes_dir))
-        self.assertTrue(mock_execute.called)
+        self.assertTrue(mock_new_logicalunit.called)
+        self.assertTrue(mock_new_target.called)
 
     @mock.patch('cinder.volume.targets.iet.IetAdm._get_target_chap_auth',
                 return_value=None)

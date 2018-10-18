@@ -18,6 +18,7 @@ from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 
 from cinder import exception
+import cinder.privsep.targets.iet
 from cinder import utils
 from cinder.volume.targets import iscsi
 
@@ -91,14 +92,16 @@ class IetAdm(iscsi.ISCSITarget):
         # Create a new iSCSI target. If a target already exists,
         # the command returns 234, but we ignore it.
         try:
-            self._new_target(name, tid)
+            cinder.privsep.targets.iet.new_target(name, tid)
             tid = self._get_target(name)
-            self._new_logicalunit(tid, lun, path)
+            cinder.privsep.targets.iet.new_logicalunit(
+                tid, lun, path, self._iotype(path))
 
             if chap_auth is not None:
                 (username, password) = chap_auth
                 config_auth = ' '.join((self.auth_type,) + chap_auth)
-                self._new_auth(tid, self.auth_type, username, password)
+                cinder.privsep.targets.iet.new_auth(
+                    tid, self.auth_type, username, password)
         except putils.ProcessExecutionError:
             LOG.exception("Failed to create iscsi target for volume "
                           "id:%s", vol_id)
@@ -147,13 +150,13 @@ class IetAdm(iscsi.ISCSITarget):
         LOG.info("Removing iscsi_target for volume: %s", vol_id)
 
         try:
-            self._delete_logicalunit(tid, lun)
+            cinder.privsep.targets.iet.delete_logicalunit(tid, lun)
             session_info = self._find_sid_cid_for_target(tid, vol_name, vol_id)
             if session_info:
                 sid, cid = session_info
-                self._force_delete_target(tid, sid, cid)
+                cinder.privsep.targets.iet.force_delete_target(tid, sid, cid)
 
-            self._delete_target(tid)
+            cinder.privsep.targets.iet.delete_target(tid)
         except putils.ProcessExecutionError:
             LOG.exception("Failed to remove iscsi target for volume "
                           "id:%s", vol_id)
@@ -219,62 +222,3 @@ class IetAdm(iscsi.ISCSITarget):
             return 'blockio' if self._is_block(path) else 'fileio'
         else:
             return self.iscsi_iotype
-
-    def _new_target(self, name, tid):
-        """Create new scsi target using specified parameters.
-
-        If the target already exists, ietadm returns
-        'Invalid argument' and error code '234'.
-        This should be ignored for ensure export case.
-        """
-        utils.execute('ietadm', '--op', 'new',
-                      '--tid=%s' % tid,
-                      '--params', 'Name=%s' % name,
-                      run_as_root=True, check_exit_code=[0, 234])
-
-    def _delete_target(self, tid):
-        utils.execute('ietadm', '--op', 'delete',
-                      '--tid=%s' % tid,
-                      run_as_root=True)
-
-    def _force_delete_target(self, tid, sid, cid):
-        utils.execute('ietadm', '--op', 'delete',
-                      '--tid=%s' % tid,
-                      '--sid=%s' % sid,
-                      '--cid=%s' % cid,
-                      run_as_root=True)
-
-    def show_target(self, tid, iqn=None):
-        utils.execute('ietadm', '--op', 'show',
-                      '--tid=%s' % tid,
-                      run_as_root=True)
-
-    def _new_logicalunit(self, tid, lun, path):
-        """Attach a new volume to scsi target as a logical unit.
-
-        If a logical unit exists on the specified target lun,
-        ietadm returns 'File exists' and error code '239'.
-        This should be ignored for ensure export case.
-        """
-
-        utils.execute('ietadm', '--op', 'new',
-                      '--tid=%s' % tid,
-                      '--lun=%d' % lun,
-                      '--params',
-                      'Path=%s,Type=%s' % (path, self._iotype(path)),
-                      run_as_root=True, check_exit_code=[0, 239])
-
-    def _delete_logicalunit(self, tid, lun):
-        utils.execute('ietadm', '--op', 'delete',
-                      '--tid=%s' % tid,
-                      '--lun=%d' % lun,
-                      run_as_root=True)
-
-    def _new_auth(self, tid, type, username, password):
-        utils.execute('ietadm', '--op', 'new',
-                      '--tid=%s' % tid,
-                      '--user',
-                      '--params=%s=%s,Password=%s' % (type,
-                                                      username,
-                                                      password),
-                      run_as_root=True)
