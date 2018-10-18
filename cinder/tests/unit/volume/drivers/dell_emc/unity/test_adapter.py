@@ -219,6 +219,18 @@ class MockClient(object):
     def restore_snapshot(self, snap_name):
         return test_client.MockResource(name="back_snap")
 
+    def get_pool_id_by_name(self, name):
+        pools = {'PoolA': 'pool_1',
+                 'PoolB': 'pool_2',
+                 'PoolC': 'pool_3'}
+        return pools.get(name, None)
+
+    def migrate_lun(self, lun_id, dest_pool_id):
+        if dest_pool_id == 'pool_2':
+            return True
+        if dest_pool_id == 'pool_3':
+            return False
+
 
 class MockLookupService(object):
     @staticmethod
@@ -796,6 +808,38 @@ class CommonAdapterTest(test.TestCase):
         volume = MockOSResource(id='1', name='vol_1')
         snapshot = MockOSResource(id='2', name='snap_1')
         self.adapter.restore_snapshot(volume, snapshot)
+
+    def test_get_pool_id_by_name(self):
+        pool_name = 'PoolA'
+        pool_id = self.adapter.get_pool_id_by_name(pool_name)
+        self.assertEqual('pool_1', pool_id)
+
+    def test_migrate_volume(self):
+        provider_location = 'id^1|system^FNM001|type^lun|version^05.00'
+        volume = MockOSResource(id='1', name='vol_1',
+                                host='HostA@BackendB#PoolA',
+                                provider_location=provider_location)
+        host = {'host': 'HostA@BackendB#PoolB'}
+        ret = self.adapter.migrate_volume(volume, host)
+        self.assertEqual((True, {}), ret)
+
+    def test_migrate_volume_failed(self):
+        provider_location = 'id^1|system^FNM001|type^lun|version^05.00'
+        volume = MockOSResource(id='1', name='vol_1',
+                                host='HostA@BackendB#PoolA',
+                                provider_location=provider_location)
+        host = {'host': 'HostA@BackendB#PoolC'}
+        ret = self.adapter.migrate_volume(volume, host)
+        self.assertEqual((False, None), ret)
+
+    def test_migrate_volume_cross_backends(self):
+        provider_location = 'id^1|system^FNM001|type^lun|version^05.00'
+        volume = MockOSResource(id='1', name='vol_1',
+                                host='HostA@BackendA#PoolA',
+                                provider_location=provider_location)
+        host = {'host': 'HostA@BackendB#PoolB'}
+        ret = self.adapter.migrate_volume(volume, host)
+        self.assertEqual((False, None), ret)
 
 
 class FCAdapterTest(test.TestCase):

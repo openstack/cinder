@@ -137,6 +137,11 @@ class UnityClient(object):
                       lun_id)
         return lun
 
+    def migrate_lun(self, lun_id, dest_pool_id):
+        lun = self.system.get_lun(lun_id)
+        dest_pool = self.system.get_pool(dest_pool_id)
+        return lun.migrate(dest_pool)
+
     def get_pools(self):
         """Gets all storage pools on the Unity system.
 
@@ -332,6 +337,10 @@ class UnityClient(object):
                 qos_specs.get(utils.QOS_MAX_IOPS),
                 qos_specs.get(utils.QOS_MAX_BWS))
         return limit_policy
+
+    def get_pool_id_by_name(self, name):
+        pool = self.system.get_pool(name=name)
+        return pool.get_id()
 
     def get_pool_name(self, lun_name):
         lun = self.system.get_lun(name=lun_name)

@@ -763,6 +763,9 @@ class CommonAdapter(object):
     def get_pool_name(self, volume):
         return self.client.get_pool_name(volume.name)
 
+    def get_pool_id_by_name(self, name):
+        return self.client.get_pool_id_by_name(name=name)
+
     @cinder_utils.trace
     def initialize_connection_snapshot(self, snapshot, connector):
         snap = self.client.get_snap(snapshot.name)
@@ -776,6 +779,40 @@ class CommonAdapter(object):
     @cinder_utils.trace
     def restore_snapshot(self, volume, snapshot):
         return self.client.restore_snapshot(snapshot.name)
+
+    def migrate_volume(self, volume, host):
+        """Leverage the Unity move session functionality.
+
+        This method is invoked at the source backend.
+        """
+        log_params = {
+            'name': volume.name,
+            'src_host': volume.host,
+            'dest_host': host['host']
+        }
+        LOG.info('Migrate Volume: %(name)s, host: %(src_host)s, destination: '
+                 '%(dest_host)s', log_params)
+
+        src_backend = utils.get_backend_name_from_volume(volume)
+        dest_backend = utils.get_backend_name_from_host(host)
+
+        if src_backend != dest_backend:
+            LOG.debug('Cross-backends migration not supported by Unity '
+                      'driver. Falling back to host-assisted migration.')
+            return False, None
+
+        lun_id = self.get_lun_id(volume)
+        dest_pool_name = utils.get_pool_name_from_host(host)
+        dest_pool_id = self.get_pool_id_by_name(dest_pool_name)
+
+        if self.client.migrate_lun(lun_id, dest_pool_id):
+            LOG.debug('Volume migrated successfully.')
+            model_update = {}
+            return True, model_update
+
+        LOG.debug('Volume migrated failed. Falling back to '
+                  'host-assisted migration.')
+        return False, None
 
 
 class ISCSIAdapter(CommonAdapter):

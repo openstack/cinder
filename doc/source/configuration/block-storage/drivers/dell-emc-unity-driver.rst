@@ -251,7 +251,7 @@ following commands to create a thick volume.
 
 
 Compressed volume support
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Unity driver supports ``compressed volume`` creation, modification and
 deletion. In order to create a compressed volume, a volume type which
@@ -263,6 +263,23 @@ enables compression support needs to be created first:
    $ openstack volume type set --property provisioning:type=compressed --property compression_support='<is> True' CompressedVolumeType
 
 Then create volume and specify the new created volume type.
+
+
+Storage-assisted volume migration support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Unity driver supports storage-assisted volume migration, when the user starts
+migrating with ``cinder migrate --force-host-copy False <volume_id> <host>`` or
+``cinder migrate <volume_id> <host>``, cinder will try to leverage the Unity's
+native volume migration functionality. If Unity fails to migrate the volume,
+host-assisted migration will be triggered.
+
+In the following scenarios, Unity storage-assisted volume migration will not be
+triggered. Instead, host-assisted volume migration will be triggered:
+
+- Volume is to be migrated across backends.
+- Migration of cloned volume. For example, if vol_2 was cloned from vol_1,
+  the storage-assisted volume migration of vol_2 will not be triggered.
 
 
 QoS support

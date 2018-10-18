@@ -59,9 +59,10 @@ class UnityDriver(driver.ManageableVD,
         3.1.0 - Support revert to snapshot API
         4.0.0 - Support remove empty host
         4.2.0 - Support compressed volume
+        5.0.0 - Support storage assisted volume migration
     """
 
-    VERSION = '04.02.00'
+    VERSION = '05.00.00'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
@@ -103,6 +104,10 @@ class UnityDriver(driver.ManageableVD,
     def delete_volume(self, volume):
         """Deletes a volume."""
         self.adapter.delete_volume(volume)
+
+    def migrate_volume(self, context, volume, host):
+        """Migrates a volume."""
+        return self.adapter.migrate_volume(volume, host)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""

@@ -180,6 +180,18 @@ def get_pool_name(volume):
     return vol_utils.extract_host(volume.host, 'pool')
 
 
+def get_pool_name_from_host(host):
+    return vol_utils.extract_host(host['host'], 'pool')
+
+
+def get_backend_name_from_volume(volume):
+    return vol_utils.extract_host(volume.host, 'backend')
+
+
+def get_backend_name_from_host(host):
+    return vol_utils.extract_host(host['host'], 'backend')
+
+
 def get_extra_spec(volume, spec_key):
     spec_value = None
     type_id = volume.volume_type_id
