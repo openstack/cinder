@@ -118,7 +118,6 @@ netapp_nfs_touch: CommandFilter, touch, root
 
 # cinder/volume/drivers/glusterfs.py
 chgrp: CommandFilter, chgrp, root
-umount: CommandFilter, umount, root
 
 # cinder/brick/initiator/connector.py:
 ls: CommandFilter, ls, root

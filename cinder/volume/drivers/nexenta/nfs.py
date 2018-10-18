@@ -28,6 +28,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+import cinder.privsep.fs
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
@@ -451,7 +452,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             mount_path = self.remote_path(volume).strip(
                 '/%s' % self.VOLUME_FILE_NAME)
             if mount_path in self._remotefsclient._read_mounts():
-                self._execute('umount', mount_path, run_as_root=True)
+                cinder.privsep.fs.umount(mount_path)
             try:
                 props = nms.folder.get_child_props(folder, 'origin') or {}
                 nms.folder.destroy(folder, '-r')
