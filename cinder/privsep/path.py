@@ -45,3 +45,10 @@ def touch(path):
         os.utime(path, None)
     else:
         open(path, 'a').close()
+
+
+@cinder.privsep.sys_admin_pctxt.entrypoint
+def symlink(src, dest):
+    if not os.path.exists(src):
+        raise exception.FileNotFound(file_path=src)
+    os.symlink(src, dest)

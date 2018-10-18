@@ -21,6 +21,7 @@ from oslo_utils import excutils
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+import cinder.privsep.path
 from cinder.volume.drivers import nfs
 
 LOG = logging.getLogger(__name__)
@@ -155,7 +156,7 @@ class VeritasCNFSDriver(nfs.NfsDriver):
         tgt_vol_path = self._get_local_volume_path(cnfs_share, tgt_vol_name)
         src_vol_path = self._get_local_volume_path(cnfs_share, src_vol_name)
         tgt_vol_path_spl = tgt_vol_path + "::snap:vxfs:"
-        self._execute('ln', src_vol_path, tgt_vol_path_spl, run_as_root=True)
+        cinder.privsep.path.symlink(src_vol_path, tgt_vol_path_spl)
         LOG.debug("VeritasNFSDriver: do_clone_volume %(src_vol_path)s "
                   "%(tgt_vol_path)s %(tgt_vol_path_spl)s",
                   {'src_vol_path': src_vol_path,

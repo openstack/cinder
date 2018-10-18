@@ -98,13 +98,15 @@ class VeritasCNFSDriverTestCase(test.TestCase):
         volume = fake_volume.fake_volume_obj(self.context,
                                              provider_location=self._loc)
         snapshot = fake_volume.fake_volume_obj(self.context)
-        with mock.patch.object(drv, '_execute'):
+        with mock.patch('cinder.privsep.path.symlink'):
             m_exists.return_value = True
             drv._do_clone_volume(volume, volume.name, snapshot)
 
     @mock.patch.object(cnfs.VeritasCNFSDriver, '_get_local_volume_path')
     @mock.patch.object(os.path, 'exists')
-    def test_do_clone_volume_fail(self, m_exists, m_get_local_volume_path):
+    @mock.patch('cinder.privsep.path.symlink')
+    def test_do_clone_volume_fail(
+            self, m_symlink, m_exists, m_get_local_volume_path):
         """test _do_clone_volume() when filesnap over nfs is supported"""
         drv = self.driver
         volume = fake_volume.fake_volume_obj(self.context)

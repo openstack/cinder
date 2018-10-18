@@ -93,9 +93,6 @@ ionice_2: ChainingRegExpFilter, ionice, root, ionice, -c[0-3]
 # cinder/volume/utils.py: setup_blkio_cgroup()
 cgexec: ChainingRegExpFilter, cgexec, root, cgexec, -g, blkio:\S+
 
-# cinder/volume/driver.py
-ln: CommandFilter, ln, root
-
 # cinder/image/image_utils.py
 qemu-img: EnvFilter, env, root, LC_ALL=C, qemu-img
 qemu-img_convert: CommandFilter, qemu-img, root
