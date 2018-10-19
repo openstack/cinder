@@ -53,6 +53,28 @@ Request Example
    :language: javascript
 
 
+Response
+--------
+
+.. rest_parameters:: parameters.yaml
+
+  - snapshot: snapshot_1
+  - status: status_2
+  - size: size
+  - metadata: metadata_7
+  - name: name_5
+  - volume_id: volume_id
+  - created_at: created_at
+  - description: description_8
+  - id: id
+  - updated_at: updated_at
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/snapshot-manage-response.json
+   :language: javascript
+
 
 List summary of snapshots available to manage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
