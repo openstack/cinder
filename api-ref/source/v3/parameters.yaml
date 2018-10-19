@@ -1555,6 +1555,12 @@ links_6:
   in: body
   required: true
   type: array
+links_7:
+  description: |
+    Links for the snapshot.
+  in: body
+  required: false
+  type: array
 location:
   description: |
     Full URL to a service or server.
@@ -2038,7 +2044,7 @@ os-extended-snapshot-attributes:progress:
     A percentage value for the build progress.
   in: body
   required: true
-  type: integer
+  type: string
 os-extended-snapshot-attributes:project_id:
   description: |
     The UUID of the owning project.

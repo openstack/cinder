@@ -69,11 +69,13 @@ Response Parameters
    - description: description
    - created_at: created_at
    - name: name
-   - volume_id: volume_id
+   - volume_id: volume_id_5
    - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
    - size: size
-   - id: id
+   - id: id_4
    - metadata: metadata
+   - updated_at: updated_at
+   - snapshots_links: links_5
 
 Response Example
 ----------------
@@ -125,9 +127,9 @@ Response Parameters
    - created_at: created_at
    - name: name
    - snapshot: snapshot
-   - volume_id: volume_id
+   - volume_id: volume_id_5
    - metadata: metadata
-   - id: id
+   - id: id_4
    - size: size
 
 
@@ -169,10 +171,12 @@ Response Parameters
    - description: description
    - created_at: created_at
    - name: name
-   - volume_id: volume_id
+   - volume_id: volume_id_5
    - metadata: metadata
-   - id: id
+   - id: id_4
    - size: size
+   - updated_at: updated_at
+   - snapshots_links: links_5
 
 Response Example
 ----------------
@@ -210,16 +214,6 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_2
-   - os-extended-snapshot-attributes:progress: os-extended-snapshot-attributes:progress
-   - description: description
-   - created_at: created_at
-   - name: name
-   - snapshot: snapshot
-   - volume_id: volume_id
-   - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
-   - size: size
-   - id: id
    - metadata: metadata
 
 Response Example
@@ -346,11 +340,12 @@ Response Parameters
    - created_at: created_at
    - name: name
    - snapshot: snapshot
-   - volume_id: volume_id
+   - volume_id: volume_id_5
    - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
    - size: size
-   - id: id
+   - id: id_4
    - metadata: metadata
+   - updated_at: updated_at
 
 Response Example
 ----------------
@@ -404,9 +399,9 @@ Response Parameters
    - created_at: created_at
    - name: name
    - snapshot: snapshot
-   - volume_id: volume_id
+   - volume_id: volume_id_5
    - metadata: metadata
-   - id: id
+   - id: id_4
    - size: size
 
 Response Example

@@ -80,12 +80,14 @@ Response Parameters
    - created_at: created_at
    - name: name
    - user_id: user_id_2
-   - volume_id: volume_id
+   - volume_id: volume_id_5
    - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
    - size: size
-   - id: id
+   - id: id_4
    - metadata: metadata
    - count: count
+   - updated_at: updated_at
+   - snapshots_links: links_7
 
 Response Example
 ----------------
@@ -140,7 +142,7 @@ Response Parameters
    - name: name_12
    - snapshot: snapshot_1
    - user_id: user_id_2
-   - volume_id: volume_id
+   - volume_id: volume_id_5
    - metadata: metadata
    - id: id_4
    - size: size
@@ -198,11 +200,13 @@ Response Parameters
    - created_at: created_at
    - name: name
    - user_id: user_id_2
-   - volume_id: volume_id
+   - volume_id: volume_id_5
    - metadata: metadata
-   - id: id
+   - id: id_4
    - size: size
    - count: count
+   - updated_at: updated_at
+   - snapshots_links: links_7
 
 Response Example
 ----------------
@@ -240,16 +244,6 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_2
-   - os-extended-snapshot-attributes:progress: os-extended-snapshot-attributes:progress
-   - description: description_8
-   - created_at: created_at
-   - name: name
-   - snapshot: snapshot_1
-   - volume_id: volume_id
-   - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
-   - size: size
-   - id: id
    - metadata: metadata
 
 Response Example
@@ -386,11 +380,12 @@ Response Parameters
    - name: name
    - snapshot: snapshot_1
    - user_id: user_id_2
-   - volume_id: volume_id
+   - volume_id: volume_id_5
    - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
    - size: size
-   - id: id
+   - id: id_4
    - metadata: metadata
+   - updated_at: updated_at
 
 Response Example
 ----------------
@@ -443,9 +438,9 @@ Response Parameters
    - created_at: created_at
    - name: name
    - snapshot: snapshot_1
-   - id: id
+   - id: id_4
    - size: size
-   - volume_id: volume_id
+   - volume_id: volume_id_5
    - user_id: user_id_2
    - metadata: metadata
 
