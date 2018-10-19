@@ -59,6 +59,8 @@ CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 
+GB = units.Gi
+
 
 def null_safe_str(s):
     return str(s) if s else ''
@@ -1061,3 +1063,29 @@ def check_encryption_provider(db, volume, context):
         raise exception.VolumeDriverException(message=msg)
 
     return encryption
+
+
+def check_image_metadata(image_meta, vol_size):
+    """Validates the image metadata."""
+    # Check whether image is active
+    if image_meta['status'] != 'active':
+        msg = _('Image %(image_id)s is not active.'
+                ) % {'image_id': image_meta['id']}
+        raise exception.InvalidInput(reason=msg)
+
+    # Check image size is not larger than volume size.
+    image_size = utils.as_int(image_meta['size'], quiet=False)
+    image_size_in_gb = (image_size + GB - 1) // GB
+    if image_size_in_gb > vol_size:
+        msg = _('Size of specified image %(image_size)sGB'
+                ' is larger than volume size %(volume_size)sGB.')
+        msg = msg % {'image_size': image_size_in_gb, 'volume_size': vol_size}
+        raise exception.InvalidInput(reason=msg)
+
+    # Check image min_disk requirement is met for the particular volume
+    min_disk = image_meta.get('min_disk', 0)
+    if vol_size < min_disk:
+        msg = _('Volume size %(volume_size)sGB cannot be smaller'
+                ' than the image minDisk size %(min_disk)sGB.')
+        msg = msg % {'volume_size': vol_size, 'min_disk': min_disk}
+        raise exception.InvalidInput(reason=msg)
