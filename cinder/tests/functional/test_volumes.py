@@ -82,7 +82,8 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
 
         # Create volume
         metadata = {'key1': 'value1',
-                    'key2': 'value2'}
+                    'key2': 'value2',
+                    'volume/created/by': 'cinder'}
         created_volume = self.api.post_volume(
             {'volume': {'size': 1,
                         'metadata': metadata}})

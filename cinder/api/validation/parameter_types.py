@@ -147,7 +147,7 @@ uuid = {
 extra_specs = {
     'type': 'object',
     'patternProperties': {
-        '^[a-zA-Z0-9-_:. ]{1,255}$': {
+        '^[a-zA-Z0-9-_:. /]{1,255}$': {
             'type': 'string', 'maxLength': 255
         }
     },
@@ -173,7 +173,7 @@ group_snapshot_status = {
 
 extra_specs_with_null = copy.deepcopy(extra_specs)
 extra_specs_with_null['patternProperties'][
-    '^[a-zA-Z0-9-_:. ]{1,255}$']['type'] = ['string', 'null']
+    '^[a-zA-Z0-9-_:. /]{1,255}$']['type'] = ['string', 'null']
 
 
 name_allow_zero_min_length = {
