@@ -397,11 +397,7 @@ class ChunkedDriverTestCase(test.TestCase):
                                          object_meta,
                                          object_sha256)
 
-        # TODO(smcginnis): Object count is either misnamed or we use it in an
-        # odd way. We increment the object count from 1, so writing one chunk
-        # results in an object count of 2. Should probably straighten that out
-        # at some point.
-        self.assertEqual(2, self.backup.object_count)
+        self.assertEqual(1, self.backup.object_count)
 
     def test_backup_metadata(self):
         object_meta = {}
