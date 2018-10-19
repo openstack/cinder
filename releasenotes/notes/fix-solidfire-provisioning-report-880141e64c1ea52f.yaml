@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix SolidFire free_capacity_gb reporting and also reports
+    thin_provisioning_support=True. This allow the use of Cinder scheduler's
+    parameters for thin provisioning in the SolidFire plataform.
+
