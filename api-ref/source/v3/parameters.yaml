@@ -2829,6 +2829,12 @@ totalSnapshotsUsed:
   in: body
   required: true
   type: string
+totalSnapshotsUsed_1:
+  description: |
+    The total number of snapshots used.
+  in: body
+  required: true
+  type: integer
 totalVolumesUsed:
   description: |
     The total number of volumes used.
