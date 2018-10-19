@@ -189,7 +189,7 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
         self._driver.create_volume(self.volume)
 
         self.assertEqual(mylist, return_list)
-        self.assertEqual(2, self._driver._access_api.call_count)
+        self.assertEqual(1, self._driver._access_api.call_count)
 
     def test_create_volume_negative(self):
         self.mock_object(self._driver, '_vrts_get_suitable_target')
@@ -225,10 +225,10 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
         index = int(length / 2)
         name1 = self.volume.id[:index]
         name2 = self.volume.id[index:]
-        crc1 = hashlib.md5(name1.encode('utf-8')).hexdigest()[:8]
-        crc2 = hashlib.md5(name2.encode('utf-8')).hexdigest()[:8]
+        crc1 = hashlib.md5(name1.encode('utf-8')).hexdigest()[:5]
+        crc2 = hashlib.md5(name2.encode('utf-8')).hexdigest()[:5]
 
-        volume_name_to_ret = crc1 + '-' + crc2
+        volume_name_to_ret = 'cinder' + '-' + crc1 + '-' + crc2
 
         lun = {}
         lun['lun_name'] = va_lun_name
@@ -240,7 +240,7 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
 
         self._driver.delete_volume(self.volume)
         self.assertEqual(volume_name_to_ret, va_lun_name)
-        self.assertEqual(2, self._driver._access_api.call_count)
+        self.assertEqual(1, self._driver._access_api.call_count)
 
     def test_delete_volume_negative(self):
         self.mock_object(self._driver, '_get_vrts_lun_list')
@@ -258,7 +258,7 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
         self._driver._access_api.return_value = True
 
         self._driver.create_snapshot(self.snapshot)
-        self.assertEqual(2, self._driver._access_api.call_count)
+        self.assertEqual(1, self._driver._access_api.call_count)
 
     def test_create_snapshot_negative(self):
         self.mock_object(self._driver, '_access_api')
@@ -277,7 +277,7 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
         self._driver._access_api.return_value = True
 
         self._driver.delete_snapshot(self.snapshot)
-        self.assertEqual(2, self._driver._access_api.call_count)
+        self.assertEqual(1, self._driver._access_api.call_count)
 
     def test_delete_snapshot_negative(self):
         self.mock_object(self._driver, '_access_api')
@@ -312,7 +312,7 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
         self._driver._access_api.return_value = True
 
         self._driver.create_cloned_volume(self.clone_volume, self.volume)
-        self.assertEqual(2, self._driver._access_api.call_count)
+        self.assertEqual(1, self._driver._access_api.call_count)
         self.assertEqual(0, self._driver._vrts_extend_lun.call_count)
 
     def test_create_cloned_volume_of_greater_size(self):
@@ -337,7 +337,7 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
         self._driver._access_api.return_value = True
 
         self._driver.create_cloned_volume(self.clone_volume2, self.volume)
-        self.assertEqual(2, self._driver._access_api.call_count)
+        self.assertEqual(1, self._driver._access_api.call_count)
         self.assertEqual(1, self._driver._vrts_extend_lun.call_count)
 
     def test_create_cloned_volume_negative(self):
@@ -391,7 +391,7 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
         self._driver._vrts_is_space_available_in_store.return_value = True
 
         self._driver.create_volume_from_snapshot(self.volume, self.snapshot)
-        self.assertEqual(3, self._driver._access_api.call_count)
+        self.assertEqual(2, self._driver._access_api.call_count)
         self.assertEqual(0, self._driver._vrts_extend_lun.call_count)
 
     def test_create_volume_from_snapshot_of_greater_size(self):
@@ -419,7 +419,7 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
         self._driver._vrts_is_space_available_in_store.return_value = True
 
         self._driver.create_volume_from_snapshot(self.volume2, self.snapshot)
-        self.assertEqual(3, self._driver._access_api.call_count)
+        self.assertEqual(2, self._driver._access_api.call_count)
         self.assertEqual(1, self._driver._vrts_extend_lun.call_count)
 
     def test_create_volume_from_snapshot_negative(self):
@@ -593,21 +593,6 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
                                              json.dumps(input_data), 'GET')
 
         self.assertEqual(json_data, ret_value)
-
-    def test__access_api_ret_for_update_object(self):
-        self.mock_object(requests, 'session')
-
-        provider = '%s:%s' % (self._driver._va_ip, self._driver._port)
-        path = self._driver._update_object
-        input_data = None
-        mock_response = MockResponse()
-        session = requests.session
-
-        session.request.return_value = mock_response
-        ret = self._driver._access_api(session, provider, path,
-                                       input_data, 'GET')
-
-        self.assertTrue(ret)
 
     def test__access_api_negative(self):
         session = self._driver.session

@@ -15,6 +15,7 @@
 Veritas Access Driver for ISCSI.
 
 """
+import ast
 import hashlib
 import json
 from random import randint
@@ -109,12 +110,13 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
         self._lun_shrink_str = '/iscsi/lun/shrinkto'
         self._lun_getid_str = '/iscsi/lun/getlunid'
         self._target_map_str = '/iscsi/target/map/add'
-        self._update_object = '/objecttags'
+        self._target_list_status = '/iscsi/target/full_list'
 
         self.configuration.append_config_values(VA_VOL_OPTS)
         self.configuration.append_config_values(san.san_opts)
-        self.backend_name = (self.configuration.safe_get('volume_backend_name')
-                             or 'ACCESS_ISCSI')
+        self.backend_name = (self.configuration.safe_get('volume_'
+                                                         'backend_name') or
+                             'ACCESS_ISCSI')
         self.verify = (self.configuration.
                        safe_get('driver_ssl_cert_verify') or False)
 
@@ -153,31 +155,17 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
         index = int(length / 2)
         name1 = name[:index]
         name2 = name[index:]
-        crc1 = hashlib.md5(name1.encode('utf-8')).hexdigest()[:8]
-        crc2 = hashlib.md5(name2.encode('utf-8')).hexdigest()[:8]
-        return crc1 + '-' + crc2
+        crc1 = hashlib.md5(name1.encode('utf-8')).hexdigest()[:5]
+        crc2 = hashlib.md5(name2.encode('utf-8')).hexdigest()[:5]
+        return 'cinder' + '-' + crc1 + '-' + crc2
 
     def check_for_setup_error(self):
         """Check if veritas access target is online."""
         target_list = self._vrts_parse_xml_file(self.target_info_file)
-
-        path = self._target_status
-        provider = '%s:%s' % (self._va_ip, self._port)
-
-        for target in target_list:
-            target_name = target['name']
-            data = {}
-            data["name"] = target_name
-
-            output = self._access_api(self.session, provider, path,
-                                      json.dumps(data), 'GET')
-
-            target_status = output['output']['header']['messages'][0]
-
-            if 'ONLINE' not in target_status:
-                message = (_('ACCESSIscsiDriver setup error as %s '
-                             'target is offline') % target_name)
-                raise exception.VolumeBackendAPIException(message=message)
+        if not self._vrts_get_online_targets(target_list):
+            message = ('ACCESSIscsiDriver setup error as '
+                       'no target is online')
+            raise exception.VolumeBackendAPIException(message=message)
 
     def create_export(self, context, volume, connector):
         """Driver entry point to get the export info for a new volume."""
@@ -202,7 +190,13 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
         lun_id_list = self._access_api(self.session, provider, path,
                                        json.dumps(data), 'GET')
 
-        for lun in eval(lun_id_list['output']):
+        if not lun_id_list:
+            message = _('ACCESSIscsiDriver get LUN ID list '
+                        'operation failed')
+            LOG.error(message)
+            raise exception.VolumeBackendAPIException(message=message)
+
+        for lun in ast.literal_eval(lun_id_list['output']):
             vrts_lun_name = lun['storage_object'].split('/')[3]
             if vrts_lun_name == lun_name:
                 lun_id = int(lun['index'])
@@ -260,6 +254,12 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
 
         lun_list = self._access_api(self.session, provider, path,
                                     json.dumps(data), 'GET')
+
+        if not lun_list:
+            message = _('ACCESSIscsiDriver get LUN list '
+                        'operation failed')
+            LOG.error(message)
+            raise exception.VolumeBackendAPIException(message=message)
 
         return lun_list
 
@@ -393,7 +393,40 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
         data = {}
         fs_list = self._access_api(self.session, provider, path,
                                    json.dumps(data), 'GET')
+
+        if not fs_list:
+            message = _('ACCESSIscsiDriver get FS list '
+                        'operation failed')
+            LOG.error(message)
+            raise exception.VolumeBackendAPIException(message=message)
+
         return fs_list
+
+    def _vrts_get_online_targets(self, available_targets):
+        """Out of available targets get list of targets which are online."""
+
+        online_targets = []
+        path = self._target_list_status
+        provider = '%s:%s' % (self._va_ip, self._port)
+        data = {}
+        target_status_list = self._access_api(self.session, provider, path,
+                                              json.dumps(data), 'GET')
+
+        try:
+            target_status_output = (ast.
+                                    literal_eval(target_status_list['output']))
+        except KeyError:
+            message = _('ACCESSIscsiDriver get online target list '
+                        'operation failed')
+            LOG.error(message)
+            raise exception.VolumeBackendAPIException(message=message)
+
+        for target in available_targets:
+            if target['name'] in target_status_output.keys():
+                if target_status_output[target['name']] == 'ONLINE':
+                    online_targets.append(target)
+
+        return online_targets
 
     def _vrts_get_targets_store(self):
         """Get target and its store list."""
@@ -402,6 +435,12 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
         data = {}
         target_list = self._access_api(self.session, provider, path,
                                        json.dumps(data), 'GET')
+
+        if not target_list:
+            message = _('ACCESSIscsiDriver get target list '
+                        'operation failed')
+            LOG.error(message)
+            raise exception.VolumeBackendAPIException(message=message)
 
         return target_list['output']['output']['targets']
 
@@ -504,13 +543,6 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
             LOG.error(message)
             raise exception.VolumeBackendAPIException(message=message)
 
-        data2 = {"type": "LUN", "key": "cinder_iscsi"}
-        data2["id"] = lun_name
-        data2["value"] = 'cinder_lun'
-        path = self._update_object
-        result = self._access_api(self.session, provider, path,
-                                  json.dumps(data2), 'POST')
-
     def delete_volume(self, volume):
         """Deletes a Veritas Access Iscsi LUN."""
         lun_name = self._get_va_lun_name(volume.id)
@@ -537,12 +569,6 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
             LOG.error(message)
             raise exception.VolumeBackendAPIException(message=message)
 
-        data2 = {"type": "LUN", "key": "cinder_iscsi"}
-        data2["id"] = lun_name
-        path = self._update_object
-        result = self._access_api(self.session, provider, path,
-                                  json.dumps(data2), 'DELETE')
-
     def create_snapshot(self, snapshot):
         """Creates a snapshot of LUN."""
         lun_name = self._get_va_lun_name(snapshot.volume_id)
@@ -563,13 +589,6 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
             LOG.error(message)
             raise exception.VolumeBackendAPIException(message=message)
 
-        data2 = {"type": "LUN_SNAP", "key": "cinder_iscsi"}
-        data2["id"] = snap_name
-        data2["value"] = 'cinder_lun_snap'
-        path = self._update_object
-        result = self._access_api(self.session, provider, path,
-                                  json.dumps(data2), 'POST')
-
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot of LUN."""
         lun_name = self._get_va_lun_name(snapshot.volume_id)
@@ -589,12 +608,6 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
                        % snapshot.id)
             LOG.error(message)
             raise exception.VolumeBackendAPIException(message=message)
-
-        data2 = {"type": "LUN_SNAP", "key": "cinder_iscsi"}
-        data2["id"] = snap_name
-        path = self._update_object
-        result = self._access_api(self.session, provider, path,
-                                  json.dumps(data2), 'DELETE')
 
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone of the volume."""
@@ -645,13 +658,6 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
         if volume.size > src_vref.size:
             self._vrts_extend_lun(volume, volume.size)
 
-        data2 = {"type": "LUN", "key": "cinder_iscsi"}
-        data2["id"] = cloned_lun_name
-        data2["value"] = 'cinder_lun'
-        path = self._update_object
-        result = self._access_api(self.session, provider, path,
-                                  json.dumps(data2), 'POST')
-
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from snapshot."""
         LOG.debug('ACCESSIscsiDriver create_volume_from_snapshot called')
@@ -667,9 +673,11 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
                                      json.dumps(data), 'GET')
 
         target_name = ""
-        for snap in snap_info['output']['output']['snapshots']:
-            if snap['snapshot_name'] == snap_name:
-                target_name = snap['target_name']
+        if snap_info:
+            for snap in snap_info['output']['output']['snapshots']:
+                if snap['snapshot_name'] == snap_name:
+                    target_name = snap['target_name']
+                    break
 
         if target_name == "":
             message = (_('ACCESSIscsiDriver create volume from snapshot '
@@ -711,13 +719,6 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
 
         if volume.size > snapshot.volume_size:
             self._vrts_extend_lun(volume, volume.size)
-
-        data2 = {"type": "LUN", "key": "cinder_iscsi"}
-        data2["id"] = lun_name
-        data2["value"] = 'cinder_lun'
-        path = self._update_object
-        result = self._access_api(self.session, provider, path,
-                                  json.dumps(data2), 'POST')
 
     def _vrts_extend_lun(self, volume, size):
         """Extend vrts LUN to given size."""
@@ -790,7 +791,7 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
 
     def _get_api(self, provider, tail):
         api_root = 'https://%s/api/access' % (provider)
-        if tail == self._fs_list_str or tail == self._update_object:
+        if tail == self._fs_list_str:
             api_root = 'https://%s/api' % (provider)
 
         return api_root + tail
@@ -802,8 +803,12 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
             kwargs['headers'] = {'Content-Type': 'application/json'}
         full_url = self._get_api(provider, path)
         response = session.request(method, full_url, **kwargs)
-        if path == self._update_object:
-            return True
+        if response.status_code == 401:
+            LOG.debug('Generating new session.')
+            self.session = self._authenticate_access(self._va_ip,
+                                                     self._user, self._pwd)
+            response = self.session.request(method, full_url, **kwargs)
+
         if response.status_code != http_client.OK:
             LOG.error('Access API operation failed with HTTP error code %s.',
                       str(response.status_code))
@@ -868,10 +873,8 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
 
     def get_volume_stats(self, refresh=False):
         """Retrieve status info from share volume group."""
-        total_capacity, free_capacity = self._get_va_backend_capacity()
-        self.session = self._authenticate_access(self._va_ip,
-                                                 self._user, self._pwd)
 
+        total_capacity, free_capacity = self._get_va_backend_capacity()
         backend_name = self.configuration.safe_get('volume_backend_name')
         res_percentage = self.configuration.safe_get('reserved_percentage')
         self._stats["volume_backend_name"] = backend_name or 'VeritasISCSI'
