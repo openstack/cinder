@@ -1271,7 +1271,7 @@ class BackupCephTestCase(test.TestCase):
             glance_tag = driver.BackupMetadataAPI.TYPE_TAG_VOL_GLANCE_META
             return jsonutils.dumps({base_tag: {'image_name': 'image.base'},
                                     glance_tag: {'image_name': 'image.glance'},
-                                    'version': version})
+                                    'version': version}).encode('utf-8')
 
         self.mock_rados.Object.return_value.read.side_effect = mock_read
 
@@ -1347,7 +1347,7 @@ class BackupCephTestCase(test.TestCase):
             glance_tag = driver.BackupMetadataAPI.TYPE_TAG_VOL_GLANCE_META
             return jsonutils.dumps({base_tag: {'image_name': 'image.base'},
                                     glance_tag: {'image_name': 'image.glance'},
-                                    'version': 3})
+                                    'version': 3}).encode('utf-8')
 
         self.mock_rados.Object.return_value.read.side_effect = mock_read
         with mock.patch.object(ceph.VolumeMetadataBackup, '_exists') as \
@@ -1457,12 +1457,14 @@ class VolumeMetadataBackupTestCase(test.TestCase):
 
         self.mb.get = mock.Mock()
         self.mb.get.side_effect = mock_read
+        serialized_meta_1 = jsonutils.dumps({'foo': 'bar'})
+        serialized_meta_2 = jsonutils.dumps({'doo': 'dah'})
 
         with mock.patch.object(ceph.VolumeMetadataBackup, 'set') as mock_write:
             mock_write.side_effect = _mock_write
 
-            self.mb.set({'foo': 'bar'})
-            self.assertEqual({'foo': 'bar'}, self.mb.get())
+            self.mb.set(serialized_meta_1)
+            self.assertEqual(serialized_meta_1, self.mb.get())
             self.assertTrue(self.mb.get.called)
 
             self.mb._exists = mock.Mock()
@@ -1470,15 +1472,15 @@ class VolumeMetadataBackupTestCase(test.TestCase):
 
         # use the unmocked set() method.
         self.assertRaises(exception.VolumeMetadataBackupExists,
-                          self.mb.set, {'doo': 'dah'})
+                          self.mb.set, serialized_meta_2)
 
         # check the meta obj state has not changed.
-        self.assertEqual({'foo': 'bar'}, self.mb.get())
+        self.assertEqual(serialized_meta_1, self.mb.get())
 
         self.assertEqual(['write', 'read', 'read'], called)
 
         self.mb._exists.return_value = False
-        self.mb.set({'doo': 'dah'})
+        self.mb.set(serialized_meta_2)
         self.assertNotEqual(thread_dict['thread'],
                             threading.current_thread)
 
@@ -1486,7 +1488,8 @@ class VolumeMetadataBackupTestCase(test.TestCase):
     def test_get(self):
         self.mock_rados.Object.return_value.stat.side_effect = (
             self.mock_rados.ObjectNotFound)
-        self.mock_rados.Object.return_value.read.return_value = 'meta'
+        self.mock_rados.Object.return_value.read.return_value = (
+            'meta'.encode('utf-8'))
         self.assertIsNone(self.mb.get())
         self.mock_rados.Object.return_value.stat.side_effect = None
         self.assertEqual('meta', self.mb.get())
