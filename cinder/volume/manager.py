@@ -1997,7 +1997,7 @@ class VolumeManager(manager.CleanableManager,
     def _copy_volume_data(self, ctxt, src_vol, dest_vol, remote=None):
         """Copy data from src_vol to dest_vol."""
 
-        LOG.debug('copy_data_between_volumes %(src)s -> %(dest)s.',
+        LOG.debug('_copy_volume_data %(src)s -> %(dest)s.',
                   {'src': src_vol['name'], 'dest': dest_vol['name']})
         attach_encryptor = False
         # If the encryption method or key is changed, we have to
