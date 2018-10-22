@@ -483,8 +483,15 @@ class BackupCephTestCase(test.TestCase):
                                  {'name': 'backup.mock.snap.15341241.90'},
                                  {'name': 'backup.mock.snap.199994362.10'}])
 
+                            self.backup.parent_id = fake.UUID1
                             output = self.service.backup(self.backup, rbdio)
-                            self.assertDictEqual({}, output)
+
+                            # Confirm that the backup process is not able to
+                            # find the parent backup for incremental (creates
+                            # a full backup) and requests the DB to be changed
+                            # to reflect that there's no parent (is full
+                            # backup).
+                            self.assertIsNone(output['parent_id'])
 
                             self.assertEqual(['popen_init',
                                               'read',
@@ -502,10 +509,16 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_backup_volume_from_rbd_set_parent_id(self):
+        """Test volume from rbd with parent id.
+
+        If the backup has parent_id an incremental backup should
+        be performance.
+        """
         with mock.patch.object(self.service, '_backup_rbd') as \
                 mock_backup_rbd, mock.patch.object(self.service,
                                                    '_backup_metadata'):
-            mock_backup_rbd.return_value = {'parent_id': 'mock'}
+            self.backup.parent_id = fake.UUID1
+            mock_backup_rbd.return_value = {'parent_id': fake.UUID1}
             image = self.service.rbd.Image()
             meta = linuxrbd.RBDImageMetadata(image,
                                              'pool_foo',
@@ -513,7 +526,7 @@ class BackupCephTestCase(test.TestCase):
                                              'conf_foo')
             rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
             output = self.service.backup(self.backup, rbdio)
-            self.assertDictEqual({'parent_id': 'mock'}, output)
+            self.assertDictEqual({'parent_id': fake.UUID1}, output)
 
     @common_mocks
     def test_backup_volume_from_rbd_set_parent_id_none(self):
@@ -596,6 +609,7 @@ class BackupCephTestCase(test.TestCase):
         """
         backup_name = self.service._get_backup_base_name(self.backup_id,
                                                          diff_format=True)
+        self.backup.parent_id = fake.UUID1
 
         def mock_write_data():
             self.volume_file.seek(0)
