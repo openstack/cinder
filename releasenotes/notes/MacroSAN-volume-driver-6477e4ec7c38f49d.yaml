@@ -1,0 +1,3 @@
+---
+features:
+  - Added MacroSAN drivers that allows cinder to manage volumes in ISCSI and FC environment
