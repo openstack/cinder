@@ -971,7 +971,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                      "at the backend and then schedule the request to the "
                      "backup service to restore the volume with backup.",
                      {'id': backup_id})
-            model_update = self._create_raw_volume(volume, **kwargs) or {}
+            model_update = self._create_raw_volume(
+                context, volume, **kwargs) or {}
             volume.update(model_update)
             volume.save()
 
@@ -993,9 +994,17 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                   'backup_id': backup_id})
         return ret, need_update_volume
 
-    def _create_raw_volume(self, volume, **kwargs):
+    def _create_raw_volume(self, context, volume, **kwargs):
         try:
             ret = self.driver.create_volume(volume)
+        except Exception as ex:
+            with excutils.save_and_reraise_exception():
+                self.message.create(
+                    context,
+                    message_field.Action.CREATE_VOLUME_FROM_BACKEND,
+                    resource_uuid=volume.id,
+                    detail=message_field.Detail.DRIVER_FAILED_CREATE,
+                    exception=ex)
         finally:
             self._cleanup_cg_in_volume(volume)
         return ret
@@ -1028,7 +1037,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                  {'volume_spec': volume_spec, 'volume_id': volume_id,
                   'create_type': create_type})
         if create_type == 'raw':
-            model_update = self._create_raw_volume(volume, **volume_spec)
+            model_update = self._create_raw_volume(
+                context, volume, **volume_spec)
         elif create_type == 'snap':
             model_update = self._create_from_snapshot(context, volume,
                                                       **volume_spec)

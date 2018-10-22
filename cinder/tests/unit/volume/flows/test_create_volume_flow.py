@@ -1225,7 +1225,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
         fake_driver.create_volume_from_backup.assert_called_once_with(
             volume_obj, backup_obj)
         if driver_error:
-            mock_create_volume.assert_called_once_with(volume_obj)
+            mock_create_volume.assert_called_once_with(self.ctxt, volume_obj)
             mock_get_backup_host.assert_called_once_with(
                 backup_obj.host, backup_obj.availability_zone)
             mock_restore_backup.assert_called_once_with(self.ctxt,
@@ -1235,6 +1235,29 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
         else:
             fake_driver.create_volume_from_backup.assert_called_once_with(
                 volume_obj, backup_obj)
+
+    @mock.patch('cinder.message.api.API.create')
+    def test_create_drive_error(self, mock_message_create):
+        fake_db = mock.MagicMock()
+        fake_driver = mock.MagicMock()
+        fake_volume_manager = mock.MagicMock()
+        fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
+            fake_volume_manager, fake_db, fake_driver)
+        volume_obj = fake_volume.fake_volume_obj(self.ctxt)
+        err = NotImplementedError()
+
+        fake_driver.create_volume.side_effect = [err]
+        self.assertRaises(
+            NotImplementedError,
+            fake_manager._create_raw_volume,
+            self.ctxt,
+            volume_obj)
+        mock_message_create.assert_called_once_with(
+            self.ctxt,
+            message_field.Action.CREATE_VOLUME_FROM_BACKEND,
+            resource_uuid=volume_obj.id,
+            detail=message_field.Detail.DRIVER_FAILED_CREATE,
+            exception=err)
 
 
 class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
