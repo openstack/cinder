@@ -323,6 +323,10 @@ class GlanceImageService(object):
         except Exception:
             _reraise_translated_image_exception(image_id)
 
+        if image_chunks is None:
+            raise exception.ImageDownloadFailed(
+                image_href=image_id, reason=_('image contains no data.'))
+
         if not data:
             return image_chunks
         else:

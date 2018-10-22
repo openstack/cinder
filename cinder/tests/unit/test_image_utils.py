@@ -346,6 +346,26 @@ class TestFetch(test.TestCase):
                               context, image_service, image_id, path,
                               _user_id, _project_id)
 
+    def test_fetch_ioerror(self):
+        context = mock.sentinel.context
+        image_service = mock.Mock()
+        image_id = mock.sentinel.image_id
+        e = IOError()
+        e.errno = errno.ECONNRESET
+        e.strerror = 'Some descriptive message'
+        image_service.download.side_effect = e
+        path = '/test_path'
+        _user_id = mock.sentinel._user_id
+        _project_id = mock.sentinel._project_id
+
+        with mock.patch('cinder.image.image_utils.open',
+                        new=mock.mock_open(), create=True):
+            self.assertRaisesRegex(exception.ImageDownloadFailed,
+                                   e.strerror,
+                                   image_utils.fetch,
+                                   context, image_service, image_id, path,
+                                   _user_id, _project_id)
+
 
 class TestVerifyImage(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info')

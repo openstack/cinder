@@ -16,6 +16,7 @@
 
 import datetime
 import itertools
+import six
 
 import ddt
 import glanceclient.exc
@@ -527,6 +528,20 @@ class TestGlanceImageService(test.TestCase):
         tries = [0]
         self.flags(glance_num_retries=1)
         service.download(self.context, image_id, writer)
+
+    def test_download_no_data(self):
+        class MyGlanceStubClient(glance_stubs.StubGlanceClient):
+            """Returns None instead of an iterator."""
+            def data(self, image_id):
+                return None
+
+        client = MyGlanceStubClient()
+        service = self._create_image_service(client)
+        image_id = 'fake-image-uuid'
+        e = self.assertRaises(exception.ImageDownloadFailed, service.download,
+                              self.context, image_id)
+        self.assertIn('image contains no data', six.text_type(e))
+        self.assertIn(image_id, six.text_type(e))
 
     def test_client_forbidden_converts_to_imagenotauthed(self):
         class MyGlanceStubClient(glance_stubs.StubGlanceClient):

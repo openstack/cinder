@@ -724,6 +724,10 @@ class GlanceMetadataNotFound(NotFound):
     message = _("Glance metadata for volume/snapshot %(id)s cannot be found.")
 
 
+class ImageDownloadFailed(CinderException):
+    message = _("Failed to download image %(image_href)s, reason: %(reason)s")
+
+
 class ExportFailure(Invalid):
     message = _("Failed to export for volume: %(reason)s")
 

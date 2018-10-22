@@ -313,6 +313,12 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
                     raise exception.ImageTooBig(image_id=image_id,
                                                 reason=reason)
 
+                reason = ("IOError: %(errno)s %(strerror)s" %
+                          {'errno': e.errno, 'strerror': e.strerror})
+                LOG.error(reason)
+                raise exception.ImageDownloadFailed(image_href=image_id,
+                                                    reason=reason)
+
     duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
 
     # NOTE(jdg): use a default of 1, mostly for unit test, but in
