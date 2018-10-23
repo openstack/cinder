@@ -155,9 +155,11 @@ CONF = cfg.CONF
 CONF.register_opts(volume_manager_opts)
 CONF.register_opts(volume_backend_opts, group=config.SHARED_CONF_GROUP)
 
+# MAPPING is used for driver renames to keep backwards compatibilty. When a
+# driver is renamed, add a mapping here from the old name (the dict key) to the
+# new name (the dict value) for at least a cycle to allow time for deployments
+# to transition.
 MAPPING = {
-    'cinder.volume.drivers.windows.windows.WindowsDriver':
-    'cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver',
 }
 
 
