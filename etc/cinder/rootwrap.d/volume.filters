@@ -163,9 +163,6 @@ pstorage-mount: CommandFilter, pstorage-mount, root
 pstorage: CommandFilter, pstorage, root
 ploop: CommandFilter, ploop, root
 
-# initiator/connector.py:
-drv_cfg: CommandFilter, /opt/emc/scaleio/sdc/bin/drv_cfg, root, /opt/emc/scaleio/sdc/bin/drv_cfg, --query_guid
-
 # cinder/volume/drivers/quobyte.py
 mount.quobyte: CommandFilter, mount.quobyte, root
 umount.quobyte: CommandFilter, umount.quobyte, root
