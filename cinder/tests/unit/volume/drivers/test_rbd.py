@@ -69,6 +69,10 @@ class MockImageExistsException(MockException):
     """Used as mock for rbd.ImageExists."""
 
 
+class MockOSErrorException(MockException):
+    """Used as mock for rbd.OSError."""
+
+
 class KeyObject(object):
     def get_encoded(arg):
         return "asdf".encode('utf-8')
@@ -1978,17 +1982,24 @@ class RBDTestCase(test.TestCase):
             return mock.Mock(return_value=mock.Mock(
                 size=mock.Mock(side_effect=(size_or_exc,))))
 
-        volumes = ['volume-1', 'non-existent', 'non-cinder-volume']
+        volumes = [
+            'volume-1',
+            'non-existent',
+            'non-existent',
+            'non-cinder-volume'
+        ]
 
         client = client_mock.return_value.__enter__.return_value
         rbdproxy_mock.return_value.list.return_value = volumes
 
         with mock.patch.object(self.driver, 'rbd',
-                               ImageNotFound=MockImageNotFoundException):
+                               ImageNotFound=MockImageNotFoundException,
+                               OSError=MockOSErrorException):
             volproxy_mock.side_effect = [
                 mock.MagicMock(**{'__enter__': FakeVolProxy(s)})
                 for s in (1.0 * units.Gi,
                           self.driver.rbd.ImageNotFound,
+                          self.driver.rbd.OSError,
                           2.0 * units.Gi)
             ]
             total_provision = self.driver._get_usage_info()
