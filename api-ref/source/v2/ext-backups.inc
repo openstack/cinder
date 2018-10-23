@@ -7,9 +7,7 @@ A backup is a full copy of a volume stored in an external service.
 The service can be configured. The only supported service is Object
 Storage. A backup can subsequently be restored from the external
 service to either the same volume that the backup was originally
-taken from or to a new volume. Backup and restore operations can
-only be carried out on volumes that are in an unattached and
-available state.
+taken from or to a new volume.
 
 When you create, list, or delete backups, these status values are
 possible:
@@ -186,6 +184,8 @@ Restores a Block Storage backup to an existing or new Block Storage volume.
 You must specify either the UUID or name of the volume. If you
 specify both the UUID and name, the UUID takes priority.
 
+If specifying ``volume_id`` the status of the volume must be ``available``.
+
 Response codes
 --------------
 
@@ -237,6 +237,9 @@ Create backup
 .. rest_method::  POST /v2/{project_id}/backups
 
 Creates a Block Storage backup from a volume.
+
+The status of the volume must be ``available`` or if the ``force`` flag is
+used, backups of ``in-use`` volumes may also be created.
 
 Response codes
 --------------
