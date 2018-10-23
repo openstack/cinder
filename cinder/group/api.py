@@ -110,7 +110,15 @@ class API(base.Base):
             req_group_type = self.db.group_type_get_by_name(context,
                                                             group_type)
         else:
-            req_group_type = self.db.group_type_get(context, group_type)
+            try:
+                req_group_type = self.db.group_type_get(context, group_type)
+            except exception.GroupTypeNotFound:
+                # check again if we get this group type by uuid-like name
+                try:
+                    req_group_type = self.db.group_type_get_by_name(
+                        context, group_type)
+                except exception.GroupTypeNotFoundByName:
+                    raise exception.GroupTypeNotFound(group_type_id=group_type)
 
         availability_zone = self._extract_availability_zone(availability_zone)
         kwargs = {'user_id': context.user_id,
