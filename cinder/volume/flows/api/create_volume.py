@@ -69,7 +69,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                             'source_volid', 'volume_type', 'volume_type_id',
                             'encryption_key_id', 'consistencygroup_id',
                             'cgsnapshot_id', 'qos_specs', 'group_id',
-                            'refresh_az', 'backup_id'])
+                            'refresh_az', 'backup_id',
+                            'multiattach'])
 
     def __init__(self, image_service, availability_zones, **kwargs):
         super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION],
@@ -417,7 +418,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
     def execute(self, context, size, snapshot, image_id, source_volume,
                 availability_zone, volume_type, metadata, key_manager,
-                consistencygroup, cgsnapshot, group, group_snapshot, backup):
+                consistencygroup, cgsnapshot, group, group_snapshot, backup,
+                multiattach=False):
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -464,11 +466,21 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             source_volume,
             image_meta)
 
-        if encryption_key_id is not None and volume_type is not None:
+        if volume_type_id:
+            volume_type = objects.VolumeType.get_by_name_or_id(
+                context, volume_type_id)
             extra_specs = volume_type.get('extra_specs', {})
-            if extra_specs.get('multiattach', '') == '<is> True':
+            # NOTE(tommylikehu): Although the parameter `multiattach` from
+            # create volume API is deprecated now, we still need to consider
+            # it when multiattach is not enabled in volume type.
+            multiattach = (extra_specs.get(
+                'multiattach', '') == '<is> True' or multiattach)
+            if multiattach and encryption_key_id:
                 msg = _('Multiattach cannot be used with encrypted volumes.')
                 raise exception.InvalidVolume(reason=msg)
+
+        if multiattach:
+            context.authorize(policy.MULTIATTACH_POLICY)
 
         specs = {}
         if volume_type_id:
@@ -504,6 +516,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             'replication_status': replication_status,
             'refresh_az': refresh_az,
             'backup_id': backup_id,
+            'multiattach': multiattach,
         }
 
 
@@ -840,7 +853,8 @@ def get_flow(db_api, image_service_api, availability_zones, create_what,
         availability_zones,
         rebind={'size': 'raw_size',
                 'availability_zone': 'raw_availability_zone',
-                'volume_type': 'raw_volume_type'}))
+                'volume_type': 'raw_volume_type',
+                'multiattach': 'raw_multiattach'}))
     api_flow.add(QuotaReserveTask(),
                  EntryCreateTask(),
                  QuotaCommitTask())
