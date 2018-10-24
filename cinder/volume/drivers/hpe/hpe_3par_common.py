@@ -490,7 +490,7 @@ class HPE3PARCommon(object):
 
         # Get the client ID for provider_location. We only need to retrieve
         # the ID directly from the array if the driver stats are not provided.
-        if not stats:
+        if not stats or 'array_id' not in stats:
             try:
                 self.client_login()
                 info = self.client.getStorageSystemInfo()
