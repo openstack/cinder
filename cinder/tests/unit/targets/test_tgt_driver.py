@@ -87,7 +87,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
         self.assertEqual('iscsi', self.target.iscsi_protocol)
 
     def test_get_target(self):
-        with mock.patch('cinder.utils.execute',
+        with mock.patch('cinder.privsep.targets.tgt.tgtadmin_show',
                         return_value=(self.fake_iscsi_scan, None)):
             iqn = self.test_vol
             self.assertEqual('1', self.target._get_target(iqn))
@@ -95,35 +95,29 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
     def test_verify_backing_lun(self):
         iqn = self.test_vol
 
-        with mock.patch('cinder.utils.execute',
+        with mock.patch('cinder.privsep.targets.tgt.tgtadmin_show',
                         return_value=(self.fake_iscsi_scan, None)):
             self.assertTrue(self.target._verify_backing_lun(iqn, '1'))
 
         # Test the failure case
         bad_scan = self.fake_iscsi_scan.replace('LUN: 1', 'LUN: 3')
 
-        with mock.patch('cinder.utils.execute',
+        with mock.patch('cinder.privsep.targets.tgt.tgtadmin_show',
                         return_value=(bad_scan, None)):
             self.assertFalse(self.target._verify_backing_lun(iqn, '1'))
 
     @mock.patch.object(time, 'sleep')
-    @mock.patch('cinder.utils.execute')
-    def test_recreate_backing_lun(self, mock_execute, mock_sleep):
-        mock_execute.return_value = ('out', 'err')
+    @mock.patch('cinder.privsep.targets.tgt.tgtadm_create')
+    def test_recreate_backing_lun(self, mock_privsep, mock_sleep):
+        mock_privsep.return_value = ('out', 'err')
         self.target._recreate_backing_lun(self.test_vol, '1',
                                           self.testvol['name'],
                                           self.testvol_path)
 
-        expected_command = ('tgtadm', '--lld', 'iscsi', '--op', 'new',
-                            '--mode', 'logicalunit', '--tid', '1',
-                            '--lun', '1', '-b',
-                            self.testvol_path)
-
-        mock_execute.assert_called_once_with(*expected_command,
-                                             run_as_root=True)
+        mock_privsep.assert_called_once_with('1', self.testvol_path)
 
         # Test the failure case
-        mock_execute.side_effect = putils.ProcessExecutionError
+        mock_privsep.side_effect = putils.ProcessExecutionError
         self.assertIsNone(
             self.target._recreate_backing_lun(self.test_vol,
                                               '1',
@@ -147,9 +141,11 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
     @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_create_iscsi_target(self):
-        with mock.patch('cinder.utils.execute', return_value=('', '')),\
+        with mock.patch('cinder.privsep.targets.tgt.tgtadm_show', return_value=('', '')),\
                 mock.patch.object(self.target, '_get_target',
                                   side_effect=lambda x: 1),\
+                mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',
+                           return_value=('', '')), \
                 mock.patch.object(self.target, '_verify_backing_lun',
                                   side_effect=lambda x, y: True):
             self.assertEqual(
@@ -167,11 +163,14 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
         self.iscsi_write_cache = 'bar'
 
         mock_open = mock.mock_open()
-        with mock.patch('cinder.utils.execute', return_value=('', '')),\
+        with mock.patch('cinder.privsep.targets.tgt.tgtadm_show',
+                        return_value=('', '')),\
                 mock.patch.object(self.target, '_get_target',
                                   side_effect=lambda x: 1),\
                 mock.patch.object(self.target, '_verify_backing_lun',
                                   side_effect=lambda x, y: True),\
+                mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',
+                           return_value=('', '')), \
                 mock.patch('cinder.volume.targets.tgt.open',
                            mock_open, create=True):
             self.assertEqual(
@@ -199,7 +198,10 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                                side_effect=lambda x: 1),\
                 mock.patch.object(self.target, '_verify_backing_lun',
                                   side_effect=lambda x, y: True),\
-                mock.patch('cinder.utils.execute', _fake_execute):
+                mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',
+                           return_value=('', '')), \
+                mock.patch('cinder.privsep.targets.tgt.tgtadm_show',
+                           _fake_execute):
             self.assertEqual(
                 1,
                 self.target.create_iscsi_target(
@@ -210,7 +212,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
     @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('os.path.exists', return_value=True)
-    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.privsep.targets.tgt.tgtadmin_delete')
     @mock.patch('os.unlink', return_value=None)
     def test_delete_target_not_found(self,
                                      mock_unlink,
@@ -250,7 +252,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
     @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('os.path.exists', return_value=True)
-    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.privsep.targets.tgt.tgtadmin_delete')
     @mock.patch('os.unlink', return_value=None)
     def test_delete_target_acl_not_found(self,
                                          mock_unlink,
@@ -306,7 +308,9 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
     @mock.patch.object(os.path, 'exists')
     @mock.patch.object(os.path, 'isfile')
     @mock.patch.object(os, 'unlink')
+    @mock.patch('cinder.privsep.targets.tgt.tgtadmin_delete')
     def test_remove_iscsi_target(self,
+                                 mock_delete,
                                  mock_unlink,
                                  mock_isfile,
                                  mock_path_exists,
@@ -328,14 +332,8 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                                         1,
                                         self.testvol['id'],
                                         self.testvol['name'])
-        calls = [mock.call('tgt-admin', '--force', '--delete',
-                           self.iscsi_target_prefix + self.testvol['name'],
-                           run_as_root=True),
-                 mock.call('tgt-admin', '--delete',
-                           self.iscsi_target_prefix + self.testvol['name'],
-                           run_as_root=True)]
-
-        mock_execute.assert_has_calls(calls)
+        mock_delete.assert_called_with(
+            self.iscsi_target_prefix + self.testvol['name'])
 
     @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_create_export(self):
@@ -344,7 +342,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                            self.testvol['name'] + ' 1',
                            'auth': 'CHAP QZJb P68e'}
 
-        with mock.patch('cinder.utils.execute', return_value=('', '')),\
+        with mock.patch('cinder.privsep.targets.tgt.tgtadm_show', return_value=('', '')),\
                 mock.patch.object(self.target, '_get_target',
                                   side_effect=lambda x: 1),\
                 mock.patch.object(self.target, '_verify_backing_lun',
@@ -353,6 +351,8 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                                   side_effect=lambda x, y: None) as m_chap,\
                 mock.patch.object(vutils, 'generate_username',
                                   side_effect=lambda: 'QZJb'),\
+                mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',
+                           return_value=('', '')), \
                 mock.patch.object(vutils, 'generate_password',
                                   side_effect=lambda: 'P68e'):
 
@@ -390,9 +390,11 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
     @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_create_iscsi_target_retry(self):
-        with mock.patch('cinder.utils.execute', return_value=('', '')),\
+        with mock.patch('cinder.privsep.targets.tgt.tgtadm_show', return_value=('', '')),\
                 mock.patch.object(self.target, '_get_target',
                                   side_effect=[None, None, 1]) as get_target,\
+                mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',
+                           return_value=('', '')), \
                 mock.patch.object(self.target, '_verify_backing_lun',
                                   side_effect=lambda x, y: True):
             self.assertEqual(
