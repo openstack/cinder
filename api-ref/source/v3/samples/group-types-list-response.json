@@ -1,16 +1,20 @@
 {
     "group_types": [
         {
+            "is_public": true,
             "group_specs": {
                 "consistent_group_snapshot_enabled": "<is> False"
             },
             "id": "6685584b-1eac-4da6-b5c3-555430cf68ff",
-            "name": "group_type1"
+            "name": "group_type1",
+            "description": "tempest-group-type-description-1261576824"
         },
         {
+            "is_public": true,
             "group_specs": {},
             "id": "8eb69a46-df97-4e41-9586-9a40a7533803",
-            "name": "group_type2"
+            "name": "group_type2",
+            "description": "tempest-group-type-description-3927295731"
         }
     ]
 }

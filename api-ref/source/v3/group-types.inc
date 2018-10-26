@@ -227,6 +227,8 @@ Response Parameters
    - id: group_type_id_2
    - group_specs: group_specs
    - name: name_16
+   - is_public: is_public_group_type_required
+   - description: description_group_type_required
 
 Response Example
 ----------------
