@@ -47,7 +47,6 @@ privsep-rootwrap-sys_admin: RegExpFilter, privsep-helper, root, privsep-helper, 
 # The following and any cinder/brick/* entries should all be obsoleted
 # by privsep, and may be removed once the os-brick version requirement
 # is updated appropriately.
-scsi_id: CommandFilter, /lib/udev/scsi_id, root
 drbdadm: CommandFilter, drbdadm, root
 
 # cinder/brick/local_dev/lvm.py: 'vgcreate', vg_name, pv_list
