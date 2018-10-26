@@ -190,6 +190,12 @@ class VolumeController(volumes_v2.VolumeController):
                     "the latest one of volume %(v_id)s.")
             raise exc.HTTPBadRequest(explanation=msg % {'s_id': snapshot_id,
                                                         'v_id': volume.id})
+        if volume.size != l_snap.volume_size:
+            msg = _("Can't revert volume %(v_id)s to its latest snapshot "
+                    "%(s_id)s. The volume size must be equal to the snapshot "
+                    "size.")
+            raise exc.HTTPBadRequest(explanation=msg % {'s_id': snapshot_id,
+                                                        'v_id': volume.id})
         try:
             msg = 'Reverting volume %(v_id)s to snapshot %(s_id)s.'
             LOG.info(msg, {'v_id': volume.id,
