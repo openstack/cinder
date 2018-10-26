@@ -24,4 +24,5 @@ def upgrade(migrate_engine):
     workers = Table('workers', meta, autoload=True)
     race_preventer = Column('race_preventer', Integer, nullable=False,
                             default=0, server_default=text('0'))
-    race_preventer.create(workers, populate_default=True)
+    if not hasattr(workers.c, 'race_preventer'):
+        race_preventer.create(workers, populate_default=True)

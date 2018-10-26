@@ -24,4 +24,5 @@ def upgrade(migrate_engine):
 
     image_cache = Table('image_volume_cache_entries', meta, autoload=True)
     cluster_name = Column('cluster_name', String(255), nullable=True)
-    image_cache.create_column(cluster_name)
+    if not hasattr(image_cache.c, 'cluster_name'):
+        image_cache.create_column(cluster_name)
