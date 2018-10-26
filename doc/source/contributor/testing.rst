@@ -233,9 +233,10 @@ Then run the unit test with pdb enabled:
 .. code-block:: bash
 
    source .tox/py35/bin/activate
-   testr init
-   ostestr --pdb cinder.tests.unit.test_volume_utils
-   # or
-   ostestr -n cinder.tests.unit.test_volume_utils
-   # or
-   ostestr -n cinder/tests/unit/test_context.py
+
+   python -m testtools.run cinder.tests.unit.test_volume_utils
+
+   # Or to get a list of tests to run
+
+   python -m testtools.run discover -t ./ cinder/tests/unit --list | grep group > tests_to_run.txt
+   python -m testtools.run --load-list tests_to_run.txt
