@@ -947,8 +947,29 @@ class QuobyteDriverTestCase(test.TestCase):
 
     @mock.patch.object(psutil, "disk_partitions")
     @mock.patch.object(os, "stat")
-    def test_validate_volume_all_good(self, stat_mock, part_mock):
+    def test_validate_volume_all_good_prefix_val(self, stat_mock, part_mock):
         part_mock.return_value = self.get_mock_partitions()
+        drv = self._driver
+
+        def statMockCall(*args):
+            if args[0] == self.TEST_MNT_POINT:
+                stat_result = mock.Mock()
+                stat_result.st_size = 0
+                return stat_result
+            return os.stat(args)
+        stat_mock.side_effect = statMockCall
+
+        drv._validate_volume(self.TEST_MNT_POINT)
+
+        stat_mock.assert_called_once_with(self.TEST_MNT_POINT)
+        part_mock.assert_called_once_with(all=True)
+
+    @mock.patch.object(psutil, "disk_partitions")
+    @mock.patch.object(os, "stat")
+    def test_validate_volume_all_good_subtype_val(self, stat_mock, part_mock):
+        part_mock.return_value = self.get_mock_partitions()
+        part_mock.return_value[0].device = "not_quobyte"
+        part_mock.return_value[0].fstype = "fuse.quobyte"
         drv = self._driver
 
         def statMockCall(*args):
