@@ -6,16 +6,17 @@
 # eshumakher, 2013
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
+# Dmytriy Rabotjagov <noonedeadpunk@ya.ru>, 2018. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-10-12 20:06+0000\n"
+"POT-Creation-Date: 2018-10-26 02:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-04-12 04:59+0000\n"
-"Last-Translator: Copied by Zanata <copied-by-zanata@zanata.org>\n"
+"PO-Revision-Date: 2018-10-25 03:16+0000\n"
+"Last-Translator: Dmytriy Rabotjagov <noonedeadpunk@ya.ru>\n"
 "Language: ru\n"
 "Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
 "%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n"
@@ -379,6 +380,10 @@ msgstr ""
 "Ошибка идентификации. Проверьте идентификационные данные. Код ошибки %s."
 
 #, python-format
+msgid "Availability zone '%(az)s' is invalid."
+msgstr "Зона доступности \"%(az)s\" недопустима."
+
+#, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
 msgstr "Зона доступности %(s_az)s недопустима."
 
@@ -406,6 +411,10 @@ msgstr "Сбой операции резервного копирования RB
 
 msgid "Backup already exists in database."
 msgstr "Резервная копия уже есть в базе данных."
+
+#, python-format
+msgid "Backup driver reported an error: %(reason)s"
+msgstr "Драйвер резервного копирования сообщил об ошибке: %(reason)s"
 
 msgid "Backup id required"
 msgstr "Требуется ИД резервной копии"
@@ -655,6 +664,10 @@ msgstr ""
 
 msgid "Can't parse backup record."
 msgstr "Не удалось проанализировать запись резервной копии."
+
+#, python-format
+msgid "Canceled backup %(back_id)s restore on volume %(vol_id)s"
+msgstr "Восстановление резервной копии %(back_id)s на диск %(vol_id)s отменено"
 
 #, python-format
 msgid ""
