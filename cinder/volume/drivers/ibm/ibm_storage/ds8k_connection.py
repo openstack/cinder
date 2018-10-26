@@ -114,7 +114,8 @@ class DS8KHTTPSConnection(connection.VerifiedHTTPSConnection):
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
-        self.sock = ssl.SSLContext.wrap_socket(conn)
+        context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        self.sock = context.wrap_socket(conn)
 
         self._verify_cert(self.sock, self.ca_certs)
         self.is_verified = True
