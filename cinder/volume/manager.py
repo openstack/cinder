@@ -711,14 +711,15 @@ class VolumeManager(manager.CleanableManager,
                 self._update_allocated_capacity(volume, decrement=True,
                                                 host=original_host)
 
-        shared_targets = (
-            1
-            if self.driver.capabilities.get('shared_targets', True)
-            else 0)
-        updates = {'service_uuid': self.service_uuid,
-                   'shared_targets': shared_targets}
-
-        volume.update(updates)
+        # Shared targets is only relevant for iSCSI connections.
+        # We default to True to be on the safe side.
+        volume.shared_targets = (
+            self.driver.capabilities.get('storage_protocol') == 'iSCSI' and
+            self.driver.capabilities.get('shared_targets', True))
+        # TODO(geguileo): service_uuid won't be enough on Active/Active
+        # deployments. There can be 2 services handling volumes from the same
+        # backend.
+        volume.service_uuid = self.service_uuid
         volume.save()
 
         LOG.info("Created volume successfully.", resource=volume)

@@ -108,7 +108,9 @@ def _get_non_shared_target_hosts(ctxt):
                                                     constants.VOLUME_TOPIC)
     for service in services:
         capabilities = rpcapi.get_capabilities(ctxt, service.host, True)
-        if not capabilities.get('shared_targets', True):
+        # Select only non iSCSI connections and iSCSI that are explicit
+        if (capabilities.get('storage_protocol') != 'iSCSI' or
+                not capabilities.get('shared_targets', True)):
             hosts.append(service.host)
             numvols_needing_update += db_api.model_query(
                 ctxt, models.Volume).filter_by(
