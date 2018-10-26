@@ -17,6 +17,7 @@
 import hashlib
 import os
 import tempfile
+import threading
 import uuid
 
 import ddt
@@ -402,9 +403,11 @@ class BackupCephTestCase(test.TestCase):
     @common_mocks
     def test_backup_volume_from_file(self):
         checksum = hashlib.sha256()
+        thread_dict = {}
 
         def mock_write_data(data, offset):
             checksum.update(data)
+            thread_dict['thread'] = threading.current_thread()
             test_file.write(data)
 
         self.service.rbd.Image.return_value.write.side_effect = mock_write_data
@@ -418,6 +421,7 @@ class BackupCephTestCase(test.TestCase):
                     self.assertEqual(checksum.digest(), self.checksum.digest())
 
         self.assertTrue(self.service.rbd.Image.return_value.write.called)
+        self.assertNotEqual(threading.current_thread(), thread_dict['thread'])
 
     @common_mocks
     def test_get_backup_base_name(self):
@@ -843,7 +847,10 @@ class BackupCephTestCase(test.TestCase):
 
         self.mock_rbd.RBD.return_value.list.return_value = [backup_name]
 
+        thread_dict = {}
+
         def mock_read_data(offset, length):
+            thread_dict['thread'] = threading.current_thread()
             return self.volume_file.read(self.data_length)
 
         self.mock_rbd.Image.return_value.read.side_effect = mock_read_data
@@ -874,13 +881,21 @@ class BackupCephTestCase(test.TestCase):
                     self.assertTrue(mock_discard_bytes.called)
 
         self.assertTrue(self.service.rbd.Image.return_value.read.called)
+        self.assertNotEqual(threading.current_thread(), thread_dict['thread'])
 
     @common_mocks
     def test_discard_bytes(self):
         # Lower the chunksize to a memory manageable number
+        thread_dict = {}
         self.service.chunk_size = 1024
         image = self.mock_rbd.Image.return_value
         wrapped_rbd = self._get_wrapped_rbd_io(image)
+
+        def mock_discard(offset, length):
+            thread_dict['thread'] = threading.current_thread()
+            return self.mock_rbd.Image.discard(offset, length)
+
+        self.mock_rbd.Image.return_value.discard.side_effect = mock_discard
 
         self.service._discard_bytes(wrapped_rbd, 0, 0)
         self.assertEqual(0, image.discard.call_count)
@@ -903,6 +918,8 @@ class BackupCephTestCase(test.TestCase):
             zeroes = '\0' * self.service.chunk_size
             image.write.assert_has_calls([mock.call(zeroes, 0),
                                          mock.call(zeroes, self.chunk_size)])
+            self.assertNotEqual(threading.current_thread(),
+                                thread_dict['thread'])
 
         image.reset_mock()
         image.write.reset_mock()
@@ -931,6 +948,13 @@ class BackupCephTestCase(test.TestCase):
         base_name = self.service._get_backup_base_name(self.volume_id,
                                                        diff_format=True)
         self.mock_rbd.RBD.remove_snap = mock.Mock()
+        thread_dict = {}
+
+        def mock_side_effect(snap):
+            thread_dict['thread'] = threading.current_thread()
+
+        self.mock_rbd.Image.return_value.remove_snap.side_effect = \
+            mock_side_effect
 
         with mock.patch.object(self.service, '_get_backup_snap_name') as \
                 mock_get_backup_snap_name:
@@ -945,6 +969,8 @@ class BackupCephTestCase(test.TestCase):
                 self.assertTrue(mock_get_backup_snap_name.called)
                 self.assertTrue(mock_get_backup_snaps.called)
                 self.assertEqual((snap_name, 0), rem)
+                self.assertNotEqual(threading.current_thread(),
+                                    thread_dict['thread'])
 
     @common_mocks
     @mock.patch('cinder.backup.drivers.ceph.VolumeMetadataBackup', spec=True)
@@ -970,12 +996,18 @@ class BackupCephTestCase(test.TestCase):
     def test_try_delete_base_image(self, mock_meta_backup):
         backup_name = self.service._get_backup_base_name(self.volume_id,
                                                          self.backup_id)
+        thread_dict = {}
+
+        def mock_side_effect(ioctx, base_name):
+            thread_dict['thread'] = threading.current_thread()
 
         self.mock_rbd.RBD.return_value.list.return_value = [backup_name]
-
+        self.mock_rbd.RBD.return_value.remove.side_effect = mock_side_effect
         with mock.patch.object(self.service, 'get_backup_snaps'):
             self.service.delete_backup(self.backup)
             self.assertTrue(self.mock_rbd.RBD.return_value.remove.called)
+            self.assertNotEqual(threading.current_thread(),
+                                thread_dict['thread'])
 
     @common_mocks
     def test_try_delete_base_image_busy(self):
@@ -997,13 +1029,6 @@ class BackupCephTestCase(test.TestCase):
         self.assertTrue(rbd.list.called)
         self.assertTrue(rbd.remove.called)
         self.assertIn(MockImageBusyException, RAISED_EXCEPTIONS)
-
-    @common_mocks
-    @mock.patch('cinder.backup.drivers.ceph.VolumeMetadataBackup', spec=True)
-    def test_delete(self, mock_meta_backup):
-        with mock.patch.object(self.service, '_try_delete_base_image'):
-            self.service.delete_backup(self.backup)
-            self.assertEqual([], RAISED_EXCEPTIONS)
 
     @common_mocks
     @mock.patch('cinder.backup.drivers.ceph.VolumeMetadataBackup', spec=True)
@@ -1067,6 +1092,7 @@ class BackupCephTestCase(test.TestCase):
         with mock.patch.object(self.service, '_rbd_image_exists') as \
                 mock_rbd_image_exists:
             mock_rbd_image_exists.return_value = (True, backup_base)
+
             with mock.patch.object(self.service, '_get_restore_point') as \
                     mock_get_restore_point:
                 mock_get_restore_point.return_value = None
@@ -1343,11 +1369,21 @@ class BackupCephTestCase(test.TestCase):
     @common_mocks
     def test__snap_exists(self, snapshots, snap_exist):
         client = mock.Mock()
+        thread_dict = {}
+
         with mock.patch.object(self.service.rbd.Image(),
                                'list_snaps') as snaps:
             snaps.return_value = snapshots
+
+            def mock_side_effect():
+                thread_dict['thread'] = threading.current_thread()
+                return snaps.return_value
+
+            snaps.side_effect = mock_side_effect
             exist = self.service._snap_exists(None, 'fake', client)
             self.assertEqual(snap_exist, exist)
+            self.assertNotEqual(thread_dict['thread'],
+                                threading.current_thread())
 
 
 def common_meta_backup_mocks(f):
@@ -1384,10 +1420,17 @@ class VolumeMetadataBackupTestCase(test.TestCase):
 
     @common_meta_backup_mocks
     def test_exists(self):
+        thread_dict = {}
+
+        def mock_side_effect():
+            thread_dict['thread'] = threading.current_thread()
+
         # True
+        self.mock_rados.Object.return_value.stat.side_effect = mock_side_effect
         self.assertTrue(self.mb.exists)
         self.assertTrue(self.mock_rados.Object.return_value.stat.called)
         self.mock_rados.Object.return_value.reset_mock()
+        self.assertNotEqual(thread_dict['thread'], threading.current_thread())
 
         # False
         self.mock_rados.Object.return_value.stat.side_effect = (
@@ -1400,6 +1443,7 @@ class VolumeMetadataBackupTestCase(test.TestCase):
     def test_set(self):
         obj_data = []
         called = []
+        thread_dict = {}
 
         def mock_read(*args):
             called.append('read')
@@ -1409,6 +1453,7 @@ class VolumeMetadataBackupTestCase(test.TestCase):
         def _mock_write(data):
             obj_data.append(data)
             called.append('write')
+            thread_dict['thread'] = threading.current_thread()
 
         self.mb.get = mock.Mock()
         self.mb.get.side_effect = mock_read
@@ -1424,13 +1469,18 @@ class VolumeMetadataBackupTestCase(test.TestCase):
             self.mb._exists.return_value = True
 
         # use the unmocked set() method.
-        self.assertRaises(exception.VolumeMetadataBackupExists, self.mb.set,
-                          {'doo': 'dah'})
+        self.assertRaises(exception.VolumeMetadataBackupExists,
+                          self.mb.set, {'doo': 'dah'})
 
         # check the meta obj state has not changed.
         self.assertEqual({'foo': 'bar'}, self.mb.get())
 
         self.assertEqual(['write', 'read', 'read'], called)
+
+        self.mb._exists.return_value = False
+        self.mb.set({'doo': 'dah'})
+        self.assertNotEqual(thread_dict['thread'],
+                            threading.current_thread)
 
     @common_meta_backup_mocks
     def test_get(self):
@@ -1443,12 +1493,19 @@ class VolumeMetadataBackupTestCase(test.TestCase):
 
     @common_meta_backup_mocks
     def remove_if_exists(self):
+        thread_dict = {}
+
+        def mock_side_effect():
+            thread_dict['thread'] = threading.current_thread()
+
         with mock.patch.object(self.mock_rados.Object, 'remove') as \
                 mock_remove:
             mock_remove.side_effect = self.mock_rados.ObjectNotFound
             self.mb.remove_if_exists()
             self.assertEqual([MockObjectNotFoundException], RAISED_EXCEPTIONS)
 
-            self.mock_rados.Object.remove.side_effect = None
+            self.mock_rados.Object.remove.side_effect = mock_side_effect
             self.mb.remove_if_exists()
             self.assertEqual([], RAISED_EXCEPTIONS)
+            self.assertNotEqual(thread_dict['thread'],
+                                threading.current_thread)
