@@ -15,7 +15,7 @@
 #    under the License.
 
 """
-Helpers for cgroup related routines.
+Helpers for path related routines.
 """
 
 import os
@@ -37,3 +37,11 @@ def removefile(path):
     if not os.path.exists(path):
         raise exception.FileNotFound(file_path=path)
     os.unlink(path)
+
+
+@cinder.privsep.sys_admin_pctxt.entrypoint
+def touch(path):
+    if os.path.exists(path):
+        os.utime(path, None)
+    else:
+        open(path, 'a').close()
