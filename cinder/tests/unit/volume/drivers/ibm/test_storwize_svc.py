@@ -3038,6 +3038,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         if self.USESIM:
             self.iscsi_driver = StorwizeSVCISCSIFakeDriver(
                 configuration=conf.Configuration([], conf.SHARED_CONF_GROUP))
+            self.host_site = {'site1': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
             self._def_flags = {'san_ip': 'hostname',
                                'san_login': 'user',
                                'san_password': 'pass',
@@ -3045,7 +3046,8 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                                'storwize_svc_flashcopy_timeout': 20,
                                'storwize_svc_flashcopy_rate': 49,
                                'storwize_svc_multipath_enabled': False,
-                               'storwize_svc_allow_tenant_qos': True}
+                               'storwize_svc_allow_tenant_qos': True,
+                               'storwize_preferred_host_site': self.host_site}
             wwpns = [
                 six.text_type(random.randint(0, 9999999999999999)).zfill(16),
                 six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
@@ -3210,73 +3212,37 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                      'wwpns': ['ff00000000000000', 'ff00000000000001'],
                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
 
-        # host_site is None
-        volume0_iSCSI = self._create_volume()
-        vol_type_iSCSI_0 = volume_types.create(self.ctxt, 'iSCSI0', None)
-        volume0_iSCSI['volume_type_id'] = vol_type_iSCSI_0['id']
-        self.iscsi_driver.initialize_connection(volume0_iSCSI, connector)
-
-        # host_site is site1
+        volume_iSCSI_1 = self._create_volume()
         volume_iSCSI = self._create_volume()
         extra_spec = {'drivers:volume_topology': 'hyperswap',
-                      'peer_pool': 'openstack1',
-                      'host_site': 'site1'}
+                      'peer_pool': 'openstack1'}
         vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
         volume_iSCSI['volume_type_id'] = vol_type_iSCSI['id']
+        volume_iSCSI_2 = self._create_volume()
+        volume_iSCSI_2['volume_type_id'] = vol_type_iSCSI['id']
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
-
-        # host_site is site2, different with site1.
-        volume1_iSCSI = self._create_volume()
-        extra_spec_1 = {'drivers:volume_topology': 'hyperswap',
-                        'peer_pool': 'openstack1',
-                        'host_site': 'site2'}
-        vol_type_iSCSI_1 = volume_types.create(self.ctxt, 'iSCSI1',
-                                               extra_spec_1)
-        volume1_iSCSI['volume_type_id'] = vol_type_iSCSI_1['id']
-        self.assertRaises(exception.VolumeDriverException,
-                          self.iscsi_driver.initialize_connection,
-                          volume1_iSCSI,
-                          connector)
-
-        # host_site is None.
-        volume2_iSCSI = self._create_volume()
-        vol_type_iSCSI_2 = volume_types.create(self.ctxt, 'iSCSI2', None)
-        volume2_iSCSI['volume_type_id'] = vol_type_iSCSI_2['id']
-        self.iscsi_driver.initialize_connection(volume2_iSCSI, connector)
-
-        # create new host with host_site, the host site should be update
-        connector2 = {'host': 'STORWIZE-SVC-HOST',
-                      'wwnns': ['30000090fa17311e', '30000090fa17311f'],
-                      'wwpns': ['ffff000000000000', 'ffff000000000001'],
-                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1bbb'}
-        # attach hyperswap volume without host_site
-        volume3_iSCSI = self._create_volume()
-        extra_spec_3 = {'drivers:volume_topology': 'hyperswap',
-                        'peer_pool': 'openstack1'}
-        vol_type_iSCSI_3 = volume_types.create(self.ctxt, 'iSCSI3',
-                                               extra_spec_3)
-        volume3_iSCSI['volume_type_id'] = vol_type_iSCSI_3['id']
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                               'is_volume_hyperswap') as hyperswap:
-            hyperswap.return_value = True
-            self.assertRaises(exception.VolumeDriverException,
-                              self.iscsi_driver.initialize_connection,
-                              volume3_iSCSI,
-                              connector2)
+                               'is_volume_hyperswap') as is_volume_hyperswap:
+            is_volume_hyperswap.return_value = True
+            self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
+            host_name = self.iscsi_driver._helpers.get_host_from_connector(
+                connector, iscsi=True)
+            host_info = self.iscsi_driver._helpers.ssh.lshost(host=host_name)
+            self.assertEqual('site1', host_info[0]['site_name'])
+            self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
+        self.iscsi_driver.initialize_connection(volume_iSCSI_1, connector)
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'is_volume_hyperswap') as is_volume_hyperswap:
+            is_volume_hyperswap.return_value = True
+            self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
 
-        # attach hyperswap volume with host_site
-        volume4_iSCSI = self._create_volume()
-        extra_spec_4 = {'drivers:volume_topology': 'hyperswap',
-                        'peer_pool': 'openstack1',
-                        'host_site': 'site2'}
-        vol_type_iSCSI_4 = volume_types.create(self.ctxt, 'iSCSI4',
-                                               extra_spec_4)
-        volume4_iSCSI['volume_type_id'] = vol_type_iSCSI_4['id']
-        self.iscsi_driver.initialize_connection(volume4_iSCSI, connector2)
-        host_name = self.iscsi_driver._helpers.get_host_from_connector(
-            connector2, iscsi=True)
-        host_info = self.iscsi_driver._helpers.ssh.lshost(host=host_name)
-        self.assertEqual('site2', host_info[0]['site_name'])
+            host_site = {'site1': 'iqn.1993-08.org.debian:01:eac5ccc1aaa',
+                         'site2': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+            self._set_flag('storwize_preferred_host_site', host_site)
+            self.assertRaises(exception.InvalidConfigurationValue,
+                              self.iscsi_driver.initialize_connection,
+                              volume_iSCSI_2,
+                              connector)
 
     @mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                        '_do_terminate_connection')
@@ -4066,73 +4032,60 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
     def test_storwize_initialize_fc_connection_with_host_site(self):
         connector = {'host': 'storwize-svc-host',
                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],
-                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'wwpns': ['ffff000000000000', 'ffff000000000001'],
                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
-
-        # host_site is None
-        volume0_fc = self._create_volume()
-        vol_type_fc_0 = volume_types.create(self.ctxt, 'FC0', None)
-        volume0_fc['volume_type_id'] = vol_type_fc_0['id']
-        self.fc_driver.initialize_connection(volume0_fc, connector)
-
-        # host_site is site1
+        # attach hyperswap volume without host_site
         volume_fc = self._create_volume()
         extra_spec = {'drivers:volume_topology': 'hyperswap',
-                      'peer_pool': 'openstack1',
-                      'host_site': 'site1'}
+                      'peer_pool': 'openstack1'}
         vol_type_fc = volume_types.create(self.ctxt, 'FC', extra_spec)
         volume_fc['volume_type_id'] = vol_type_fc['id']
-        self.fc_driver.initialize_connection(volume_fc, connector)
-        host_name = self.fc_driver._helpers.get_host_from_connector(
-            connector, iscsi=True)
-        host_info = self.fc_driver._helpers.ssh.lshost(host=host_name)
-        self.assertEqual('site1', host_info[0]['site_name'])
-
-        # host_site is site2, different with site1.
-        volume1_fc = self._create_volume()
-        extra_spec_1 = {'drivers:volume_topology': 'hyperswap',
-                        'peer_pool': 'openstack1',
-                        'host_site': 'site2'}
-        vol_type_fc_1 = volume_types.create(self.ctxt, 'FC1', extra_spec_1)
-        volume1_fc['volume_type_id'] = vol_type_fc_1['id']
-        self.assertRaises(exception.VolumeDriverException,
-                          self.fc_driver.initialize_connection,
-                          volume1_fc,
-                          connector)
-
-        # host_site is None.
-        volume2_fc = self._create_volume()
-        vol_type_fc_2 = volume_types.create(self.ctxt, 'FC2', None)
-        volume2_fc['volume_type_id'] = vol_type_fc_2['id']
-        self.fc_driver.initialize_connection(volume2_fc, connector)
-
-        # create new host with host_site
-        connector2 = {'host': 'STORWIZE-SVC-HOST',
-                      'wwnns': ['30000090fa17311e', '30000090fa17311f'],
-                      'wwpns': ['ffff000000000000', 'ffff000000000001'],
-                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1bbb'}
-        # attach hyperswap volume without host_site
-        volume3_fc = self._create_volume()
-        extra_spec_3 = {'drivers:volume_topology': 'hyperswap',
-                        'peer_pool': 'openstack1'}
-        vol_type_fc_3 = volume_types.create(self.ctxt, 'FC3', extra_spec_3)
-        volume3_fc['volume_type_id'] = vol_type_fc_3['id']
+        volume_fc_2 = self._create_volume()
+        volume_fc_2['volume_type_id'] = vol_type_fc['id']
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'is_volume_hyperswap') as is_volume_hyperswap:
             is_volume_hyperswap.return_value = True
             self.assertRaises(exception.VolumeDriverException,
                               self.fc_driver.initialize_connection,
-                              volume3_fc,
-                              connector2)
+                              volume_fc,
+                              connector)
+            # the wwpns of 1 host config to 2 different sites
+            host_site = {'site1': 'ffff000000000000',
+                         'site2': 'ffff000000000001'}
+            self.fc_driver.configuration.set_override(
+                'storwize_preferred_host_site', host_site)
+            self.assertRaises(exception.InvalidConfigurationValue,
+                              self.fc_driver.initialize_connection,
+                              volume_fc,
+                              connector)
+            # All the wwpns of this host are not configured.
+            host_site_2 = {'site1': 'ff00000000000000',
+                           'site1': 'ff00000000000001'}
+            self.fc_driver.configuration.set_override(
+                'storwize_preferred_host_site', host_site_2)
+            self.assertRaises(exception.VolumeDriverException,
+                              self.fc_driver.initialize_connection,
+                              volume_fc,
+                              connector)
 
-        # attach hyperswap volume with host_site
-        volume4_fc = self._create_volume()
-        extra_spec_4 = {'drivers:volume_topology': 'hyperswap',
-                        'peer_pool': 'openstack1',
-                        'host_site': 'site2'}
-        vol_type_fc_4 = volume_types.create(self.ctxt, 'FC4', extra_spec_4)
-        volume4_fc['volume_type_id'] = vol_type_fc_4['id']
-        self.fc_driver.initialize_connection(volume4_fc, connector2)
+            host_site_3 = {'site1': 'ffff000000000000',
+                           'site1': 'ffff000000000001'}
+            self.fc_driver.configuration.set_override(
+                'storwize_preferred_host_site', host_site_3)
+            self.fc_driver.initialize_connection(volume_fc, connector)
+            host_name = self.fc_driver._helpers.get_host_from_connector(
+                connector, iscsi=True)
+            host_info = self.fc_driver._helpers.ssh.lshost(host=host_name)
+            self.assertEqual('site1', host_info[0]['site_name'])
+
+            host_site_4 = {'site2': 'ffff000000000000',
+                           'site2': 'ffff000000000001'}
+            self.fc_driver.configuration.set_override(
+                'storwize_preferred_host_site', host_site_4)
+            self.assertRaises(exception.InvalidConfigurationValue,
+                              self.fc_driver.initialize_connection,
+                              volume_fc_2,
+                              connector)
 
     @mock.patch.object(storwize_svc_fc.StorwizeSVCFCDriver,
                        '_do_terminate_connection')
@@ -4838,8 +4791,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     def _create_hyperswap_type(self, type_name):
         spec = {'drivers:volume_topology': 'hyperswap',
-                'peer_pool': 'hyperswap2',
-                'host_site': 'site1'}
+                'peer_pool': 'hyperswap2'}
         hyper_type = self._create_volume_type(spec, type_name)
         return hyper_type
 
@@ -4964,7 +4916,6 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                'mirror_pool': None,
                'volume_topology': None,
                'peer_pool': None,
-               'host_site': None,
                'cycle_period_seconds': 300,
                }
         return opt

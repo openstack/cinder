@@ -131,9 +131,14 @@ storwize_svc_opts = [
                default=None,
                help='Specifies the name of the peer pool for hyperswap '
                     'volume, the peer pool must exist on the other site.'),
-    cfg.StrOpt('storwize_preferred_host_site',
-               default=None,
-               help='Specifies the preferred host site name.'),
+    cfg.DictOpt('storwize_preferred_host_site',
+                default={},
+                help='Specifies the site information for host. '
+                     'One WWPN or multi WWPNs used in the host can be '
+                     'specified. For example: '
+                     'storwize_preferred_host_site=site1:wwpn1,'
+                     'site2:wwpn2&wwpn3 or '
+                     'storwize_preferred_host_site=site1:iqn1,site2:iqn2'),
     cfg.IntOpt('cycle_period_seconds',
                default=300,
                min=60, max=86400,
@@ -841,6 +846,10 @@ class StorwizeHelpers(object):
 
         site_iogrp = []
         pool_data = self.get_pool_attrs(pool)
+        if pool_data is None:
+            msg = (_('Failed getting details for pool %s.') % pool)
+            LOG.error(msg)
+            raise exception.InvalidConfigurationValue(message=msg)
         if 'site_id' in pool_data and pool_data['site_id']:
             for node in state['storage_nodes'].values():
                 if pool_data['site_id'] == node['site_id']:
@@ -1269,7 +1278,6 @@ class StorwizeHelpers(object):
                'mirror_pool': config.storwize_svc_mirror_pool,
                'volume_topology': None,
                'peer_pool': config.storwize_peer_pool,
-               'host_site': config.storwize_preferred_host_site,
                'cycle_period_seconds': config.cycle_period_seconds}
         return opt
 
@@ -5537,3 +5545,47 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                           "from rccg. Exception: %(exception)s.",
                           {'vol': volume.name, 'exception': err})
         return model_update, added_vols, removed_vols
+
+    def _get_volume_host_site_from_conf(self, volume, connector, iscsi=False):
+        host_site = self.configuration.safe_get('storwize_preferred_host_site')
+        select_site = None
+        if not host_site:
+            LOG.debug('There is no host_site configured for volume %s.',
+                      volume.name)
+            return select_site
+        if iscsi:
+            for site, iqn in host_site.items():
+                if connector['initiator'].lower() in iqn.lower():
+                    if select_site is None:
+                        select_site = site
+                    elif select_site != site:
+                        msg = _('Configured the host IQN in both sites.')
+                        LOG.error(msg)
+                        raise exception.InvalidConfigurationValue(message=msg)
+        else:
+            for wwpn in connector['wwpns']:
+                for site, wwpn_list in host_site.items():
+                    if wwpn.lower() in wwpn_list.lower():
+                        if select_site is None:
+                            select_site = site
+                        elif select_site != site:
+                            msg = _('Configured the host wwpns not in the'
+                                    ' same site.')
+                            LOG.error(msg)
+                            raise exception.InvalidConfigurationValue(
+                                message=msg)
+        return select_site
+
+    def _update_host_site_for_hyperswap_volume(self, host_name, host_site):
+        host_info = self._helpers.ssh.lshost(host=host_name)
+        if not host_info[0]['site_name'] and host_site:
+            self._helpers.update_host(host_name, host_site)
+        elif host_info[0]['site_name']:
+            ref_host_site = host_info[0]['site_name']
+            if host_site and host_site != ref_host_site:
+                msg = (_('The existing host site is %(ref_host_site)s,'
+                         ' but the new host site is %(host_site)s.') %
+                       {'ref_host_site': ref_host_site,
+                        'host_site': host_site})
+                LOG.error(msg)
+                raise exception.InvalidConfigurationValue(message=msg)
