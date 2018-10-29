@@ -38,6 +38,8 @@ class Action(object):
     COPY_IMAGE_TO_VOLUME = ('005', _('copy image to volume'))
     UNMANAGE_VOLUME = ('006', _('unmanage volume'))
     EXTEND_VOLUME = ('007', _('extend volume'))
+    CREATE_VOLUME_FROM_BACKEND = ('008',
+                                  _('create volume from backend storage'))
 
     ALL = (SCHEDULE_ALLOCATE_VOLUME,
            ATTACH_VOLUME,
@@ -45,7 +47,8 @@ class Action(object):
            UPDATE_ATTACHMENT,
            COPY_IMAGE_TO_VOLUME,
            UNMANAGE_VOLUME,
-           EXTEND_VOLUME
+           EXTEND_VOLUME,
+           CREATE_VOLUME_FROM_BACKEND
            )
 
 
@@ -79,6 +82,9 @@ class Detail(object):
     SIGNATURE_VERIFICATION_FAILED = (
         '011',
         _("Image signature verification failed."))
+    DRIVER_FAILED_CREATE = (
+        '012',
+        _('Driver failed to create the volume.'))
 
     ALL = (UNKNOWN_ERROR,
            DRIVER_NOT_INITIALIZED,
@@ -90,7 +96,8 @@ class Detail(object):
            UNMANAGE_ENC_NOT_SUPPORTED,
            NOTIFY_COMPUTE_SERVICE_FAILED,
            DRIVER_FAILED_EXTEND,
-           SIGNATURE_VERIFICATION_FAILED)
+           SIGNATURE_VERIFICATION_FAILED,
+           DRIVER_FAILED_CREATE)
 
     # Exception and detail mappings
     EXCEPTION_DETAIL_MAPPINGS = {
