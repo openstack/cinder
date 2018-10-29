@@ -758,20 +758,22 @@ class VolumeApiTest(test.TestCase):
         else:
             self.assertNotIn('provider_id', res_dict['volume'])
 
-    def _fake_create_volume(self):
+    def _fake_create_volume(self, size=1):
         vol = {
             'display_name': 'fake_volume1',
-            'status': 'available'
+            'status': 'available',
+            'size': size
         }
         volume = objects.Volume(context=self.ctxt, **vol)
         volume.create()
         return volume
 
-    def _fake_create_snapshot(self, volume_id):
+    def _fake_create_snapshot(self, volume_id, volume_size=1):
         snap = {
             'display_name': 'fake_snapshot1',
             'status': 'available',
-            'volume_id': volume_id
+            'volume_id': volume_id,
+            'volume_size': volume_size
         }
         snapshot = objects.Snapshot(context=self.ctxt, **snap)
         snapshot.create()
@@ -841,6 +843,24 @@ class VolumeApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPConflict, self.controller.revert,
                           req, fake_volume['id'], {'revert': {'snapshot_id':
                                                    fake_snapshot['id']}})
+
+    @mock.patch.object(objects.Volume, 'get_latest_snapshot')
+    @mock.patch.object(volume_api.API, 'get_volume')
+    def test_volume_revert_with_not_equal_size(self, mock_volume,
+                                               mock_latest):
+        fake_volume = self._fake_create_volume(size=2)
+        fake_snapshot = self._fake_create_snapshot(fake_volume['id'],
+                                                   volume_size=1)
+        mock_volume.return_value = fake_volume
+        mock_latest.return_value = fake_snapshot
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s/revert'
+                                      % fake_volume['id'])
+        req.headers = mv.get_mv_header(mv.VOLUME_REVERT)
+        req.api_version_request = mv.get_api_version(
+            mv.VOLUME_REVERT)
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.revert,
+                          req, fake_volume['id'],
+                          {'revert': {'snapshot_id': fake_snapshot['id']}})
 
     def test_view_get_attachments(self):
         fake_volume = self._fake_create_volume()
