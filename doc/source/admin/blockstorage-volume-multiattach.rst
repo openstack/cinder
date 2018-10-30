@@ -85,7 +85,7 @@ with the flag is DEPRECATED:
 
 .. code-block:: console
 
-   $ cinder create <volume_size> --name <volume_name> --allow-multiattch
+   $ cinder create <volume_size> --name <volume_name> --allow-multiattach
 
 RO / RW caveats (the secondary RW attachment issue)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
