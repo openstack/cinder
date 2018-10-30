@@ -980,8 +980,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                              "if so, may be resolved by retrying the delete "
                              "after 30 seconds has elapsed."))
                     LOG.warning(msg)
-                    # Now raise this so that volume stays available so that we
-                    # delete can be retried.
+                    # Now raise this so that the volume stays available and the
+                    # deletion can be retried.
                     raise exception.VolumeIsBusy(msg, volume_name=volume_name)
                 except self.rbd.ImageNotFound:
                     LOG.info("RBD volume %s not found, allowing delete "
