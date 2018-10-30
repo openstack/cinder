@@ -521,4 +521,4 @@ The following are the Huawei driver specific options that may be set in
 .. config-table::
    :config-target: Huawei
 
-   cinder.volume.drivers.huawei.huawei_driver
+   cinder.volume.drivers.huawei.common
