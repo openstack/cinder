@@ -101,33 +101,33 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - migration_status: migration_status
+   - migration_status: migration_status_req
    - attachments: attachments
-   - links: links_3
+   - links: links_vol
    - availability_zone: availability_zone
    - os-vol-host-attr:host: os-vol-host-attr:host
    - encrypted: encrypted
    - updated_at: updated_at
    - replication_status: replication_status
    - snapshot_id: snapshot_id
-   - id: id_5
+   - id: id_vol
    - size: size
    - user_id: user_id
    - os-vol-tenant-attr:tenant_id: os-vol-tenant-attr:tenant_id
    - os-vol-mig-status-attr:migstat: os-vol-mig-status-attr:migstat
-   - metadata: metadata_1
-   - status: status_3
+   - metadata: metadata_vol_obj
+   - status: status_vol
    - volume_image_metadata: volume_image_metadata
-   - description: description_9
+   - description: description_vol_req
    - multiattach: multiattach_resp
    - source_volid: source_volid
-   - consistencygroup_id: consistencygroup_id
+   - consistencygroup_id: consistencygroup_id_required
    - os-vol-mig-status-attr:name_id: os-vol-mig-status-attr:name_id
-   - name: name_13
+   - name: name_vol
    - bootable: bootable_response
    - created_at: created_at
    - volumes: volumes
-   - volume_type: volume_type_6
+   - volume_type: volume_type_vol
    - count: count
 
 
@@ -195,15 +195,15 @@ Request
    - size: size
    - availability_zone: availability_zone
    - source_volid: source_volid
-   - description: description_5
+   - description: description_vol
    - multiattach: multiattach_req
    - snapshot_id: snapshot_id
-   - backup_id: backup_id_1
+   - backup_id: backup_id
    - name: volume_name_optional
    - imageRef: imageRef
-   - volume_type: volume_type_2
-   - metadata: metadata_10
-   - consistencygroup_id: consistencygroup_id
+   - volume_type: volume_type_detail
+   - metadata: metadata_vol
+   - consistencygroup_id: consistencygroup_id_required
    - OS-SCH-HNT:scheduler_hints: OS-SCH-HNT:scheduler_hints
 
 Request Example
@@ -219,28 +219,28 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - migration_status: migration_status
+   - migration_status: migration_status_req
    - attachments: attachments
-   - links: links_3
+   - links: links_vol
    - availability_zone: availability_zone
    - encrypted: encrypted
    - updated_at: updated_at
    - replication_status: replication_status
    - snapshot_id: snapshot_id
-   - id: id_5
+   - id: id_vol
    - size: size
    - user_id: user_id
-   - metadata: metadata_1
-   - status: status_3
-   - description: description_9
+   - metadata: metadata_vol_obj
+   - status: status_vol
+   - description: description_vol_req
    - multiattach: multiattach_resp
    - source_volid: source_volid
    - volume: volume
-   - consistencygroup_id: consistencygroup_id
-   - name: name_13
+   - consistencygroup_id: consistencygroup_id_required
+   - name: name_vol
    - bootable: bootable_response
    - created_at: created_at
-   - volume_type: volume_type_6
+   - volume_type: volume_type_vol
 
 Response Example
 ----------------
@@ -291,9 +291,9 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - volumes: volumes
-   - id: id_5
-   - links: links_3
-   - name: name_13
+   - id: id_vol
+   - links: links_vol
+   - name: name_vol
    - count: count
 
 
@@ -340,33 +340,33 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - migration_status: migration_status
+   - migration_status: migration_status_req
    - attachments: attachments
-   - links: links_3
+   - links: links_vol
    - availability_zone: availability_zone
    - os-vol-host-attr:host: os-vol-host-attr:host
    - encrypted: encrypted
    - updated_at: updated_at
    - replication_status: replication_status
    - snapshot_id: snapshot_id
-   - id: id_5
+   - id: id_vol
    - size: size
    - user_id: user_id
    - os-vol-tenant-attr:tenant_id: os-vol-tenant-attr:tenant_id
    - os-vol-mig-status-attr:migstat: os-vol-mig-status-attr:migstat
-   - metadata: metadata_1
-   - status: status_3
+   - metadata: metadata_vol_obj
+   - status: status_vol
    - volume_image_metadata: volume_image_metadata
-   - description: description_9
+   - description: description_vol_req
    - multiattach: multiattach_resp
    - source_volid: source_volid
    - volume: volume
-   - consistencygroup_id: consistencygroup_id
+   - consistencygroup_id: consistencygroup_id_required
    - os-vol-mig-status-attr:name_id: os-vol-mig-status-attr:name_id
-   - name: name_13
+   - name: name_vol
    - bootable: bootable_response
    - created_at: created_at
-   - volume_type: volume_type_6
+   - volume_type: volume_type_vol
    - service_uuid: service_uuid
    - shared_targets: shared_targets
 
@@ -403,9 +403,9 @@ Request
    - project_id: project_id_path
    - volume_id: volume_id_path
    - volume: volume
-   - description: description_5
+   - description: description_vol
    - name: volume_name_optional
-   - metadata: metadata_2
+   - metadata: metadata_vol_assoc
 
 Request Example
 ---------------
@@ -420,28 +420,28 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - migration_status: migration_status
+   - migration_status: migration_status_req
    - attachments: attachments
-   - links: links_3
+   - links: links_vol
    - availability_zone: availability_zone
    - encrypted: encrypted
    - updated_at: updated_at
    - replication_status: replication_status
    - snapshot_id: snapshot_id
-   - id: id_5
+   - id: id_vol
    - size: size
    - user_id: user_id
-   - metadata: metadata_1
-   - status: status_3
-   - description: description_9
+   - metadata: metadata_vol_obj
+   - status: status_vol
+   - description: description_vol_req
    - multiattach: multiattach_resp
    - source_volid: source_volid
    - volume: volume
-   - consistencygroup_id: consistencygroup_id
-   - name: name_13
+   - consistencygroup_id: consistencygroup_id_required
+   - name: name_vol
    - bootable: bootable_response
    - created_at: created_at
-   - volume_type: volume_type_6
+   - volume_type: volume_type_vol
 
 
 Response Example
@@ -500,7 +500,7 @@ Request
    - project_id: project_id_path
    - volume_id: volume_id_path
    - cascade: cascade
-   - force: force_5
+   - force: force_vol_del
 
 
 Create metadata for volume
@@ -526,7 +526,7 @@ Request
 
    - project_id: project_id_path
    - volume_id: volume_id_path
-   - metadata: metadata_3
+   - metadata: metadata_vol_assoc_req
 
 Request Example
 ---------------
@@ -541,7 +541,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_3
+   - metadata: metadata_vol_assoc_req
 
 
 Response Example
@@ -581,7 +581,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_3
+   - metadata: metadata_vol_assoc_req
 
 
 
@@ -615,7 +615,7 @@ Request
 
    - project_id: project_id_path
    - volume_id: volume_id_path
-   - metadata: metadata_3
+   - metadata: metadata_vol_assoc_req
 
 Request Example
 ---------------
@@ -630,7 +630,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_3
+   - metadata: metadata_vol_assoc_req
 
 
 
@@ -663,7 +663,7 @@ Request
 
    - project_id: project_id_path
    - volume_id: volume_id_path
-   - key: key_2
+   - key: key_view
 
 
 Response Parameters
@@ -705,7 +705,7 @@ Request
 
    - project_id: project_id_path
    - volume_id: volume_id_path
-   - key: key_1
+   - key: key_path
 
 
 Update a volume's metadata for a specific key
@@ -731,7 +731,7 @@ Request
 
    - project_id: project_id_path
    - volume_id: volume_id_path
-   - key: key_3
+   - key: key_update
    - meta: meta
 
 Request Example

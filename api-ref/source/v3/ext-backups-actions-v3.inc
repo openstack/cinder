@@ -37,7 +37,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - backup_id: backup_id
+   - backup_id: backup_id_required
    - os-force_delete: os-force_delete
 
 Request Example
@@ -75,9 +75,9 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - backup_id: backup_id
+   - backup_id: backup_id_required
    - os-reset_status: os-reset_status
-   - status: status_10
+   - status: status_backup_action
 
 Request Example
 ---------------

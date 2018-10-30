@@ -39,7 +39,7 @@ Request
 
    - project_id: project_id_path
    - volume_type_id: volume_type_id
-   - volume_type: volume_type_1
+   - volume_type: volume_type
    - name: name_volume_type_optional
    - description: description_volume_type_optional
    - is_public: is_public_volume_type_optional
@@ -56,7 +56,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type: volume_type_1
+   - volume_type: volume_type
    - is_public: is_public_volume_type_required
    - extra_specs: extra_specs_volume_type_optional
    - description: description_volume_type_required
@@ -176,7 +176,7 @@ Request
 
    - project_id: project_id_path
    - volume_type_id: volume_type_id
-   - key: key_4
+   - key: key_extra_spec
 
 
 Response Example
@@ -208,7 +208,7 @@ Request
 
    - project_id: project_id_path
    - volume_type_id: volume_type_id
-   - key: key_4
+   - key: key_extra_spec
 
 Request Example
 ---------------
@@ -246,7 +246,7 @@ Request
 
    - project_id: project_id_path
    - volume_type_id: volume_type_id
-   - key: key_4
+   - key: key_extra_spec
 
 
 Show volume type detail
@@ -277,7 +277,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type: volume_type_1
+   - volume_type: volume_type
    - is_public: is_public_volume_type_required
    - extra_specs: extra_specs_volume_type_optional
    - description: description_volume_type_required
@@ -321,7 +321,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type: volume_type_1
+   - volume_type: volume_type
    - is_public: is_public_volume_type_required
    - extra_specs: extra_specs_volume_type_optional
    - description: description_volume_type_required
@@ -429,7 +429,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - volume_type: volume_type_1
+   - volume_type: volume_type
    - name: name_volume_type_required
    - os-volume-type-access:is_public: is_public_volume_type_optional
    - description: description_volume_type_optional
@@ -447,7 +447,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type: volume_type_1
+   - volume_type: volume_type
    - is_public: is_public_volume_type_required
    - extra_specs: extra_specs_volume_type_optional
    - description: description_volume_type_required
@@ -531,7 +531,7 @@ Request
 
    - project_id: project_id_path
    - volume_type_id: volume_type_id
-   - key: key_5
+   - key: key_encrypt_spec
 
 Response Example
 ----------------

@@ -101,8 +101,8 @@ Request
    - project_id: project_id_path
    - volume_id: volume_id_path
    - os-reset_status: os-reset_status
-   - status: status_3
-   - migration_status: migration_status_1
+   - status: status_vol
+   - migration_status: migration_status
    - attach_status: attach_status
 
 Request Example
@@ -144,7 +144,7 @@ Request
    - project_id: project_id_path
    - volume_id: volume_id_path
    - revert: revert
-   - snapshot_id: snapshot_id_4
+   - snapshot_id: snapshot_id_revert
 
 Request Example
 ---------------
@@ -176,7 +176,7 @@ Request
    - project_id: project_id_path
    - volume_id: volume_id_path
    - os-set_image_metadata: os-set_image_metadata
-   - metadata: metadata_5
+   - metadata: metadata_image
 
 Request Example
 ---------------
@@ -254,7 +254,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_5
+   - metadata: metadata_image
 
 Response Example
 ----------------
@@ -587,7 +587,7 @@ Request
    - project_id: project_id_path
    - volume_id: volume_id_path
    - os-set_bootable: os-set_bootable
-   - bootable: bootable
+   - bootable: bootable_required
 
 Request Example
 ---------------
@@ -620,10 +620,10 @@ Request
    - volume_id: volume_id_path
    - os-volume_upload_image: os-volume_upload_image
    - image_name: image_name
-   - force: force_4
+   - force: force_upload_vol
    - disk_format: disk_format
    - container_format: container_format
-   - visibility: visibility_1
+   - visibility: visibility_min
    - protected: protected
 
 Request Example
@@ -638,18 +638,18 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - os-volume_upload_image: os-volume_upload_image
-   - status: status_3
+   - status: status_vol
    - image_name: image_name
    - disk_format: disk_format
    - container_format: container_format
-   - visibility: visibility_1
+   - visibility: visibility_min
    - protected: protected
    - updated_at: updated_at
    - image_id: image_id
-   - display_description: description_9
-   - id: id_5
+   - display_description: description_vol_req
+   - id: id_vol
    - size: size
-   - volume_type: volume_type_6
+   - volume_type: volume_type_vol
 
 
 Response Example

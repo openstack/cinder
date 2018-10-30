@@ -28,7 +28,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - cgsnapshot_id: cgsnapshot_id_1
+   - cgsnapshot_id: cgsnapshot_id_path
 
 
 Show consistency group snapshot detail
@@ -52,7 +52,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - cgsnapshot_id: cgsnapshot_id_1
+   - cgsnapshot_id: cgsnapshot_id_path
 
 
 Response Parameters
@@ -64,9 +64,9 @@ Response Parameters
    - status: status
    - description: description_cg_snapshot_true
    - created_at: created_at
-   - consistencygroup_id: consistencygroup_id
+   - consistencygroup_id: consistencygroup_id_required
    - id: id
-   - name: name_2
+   - name: name_cgsnap
 
 Response Example
 ----------------
@@ -107,9 +107,9 @@ Response Parameters
    - status: status
    - description: description_cg_snapshot_true
    - created_at: created_at
-   - consistencygroup_id: consistencygroup_id
+   - consistencygroup_id: consistencygroup_id_required
    - id: id
-   - name: name_2
+   - name: name_cgsnap
 
 Response Example
 ----------------
@@ -149,7 +149,7 @@ Response Parameters
 
    - cgsnapshots: cgsnapshots
    - id: id
-   - name: name_2
+   - name: name_cgsnap
 
 
 
@@ -183,8 +183,8 @@ Request
 
    - project_id: project_id_path
    - cgsnapshot: cgsnapshot
-   - name: name_5
-   - consistencygroup_id: consistencygroup_id
+   - name: name_snap
+   - consistencygroup_id: consistencygroup_id_required
    - description: description_cg_snapshot_false
 
 Request Example
@@ -201,6 +201,6 @@ Response Parameters
    - status: status
    - description: description_cg_snapshot_true
    - created_at: created_at
-   - consistencygroup_id: consistencygroup_id
+   - consistencygroup_id: consistencygroup_id_required
    - id: id
-   - name: name_2
+   - name: name_cgsnap

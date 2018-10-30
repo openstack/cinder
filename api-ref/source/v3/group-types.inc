@@ -35,9 +35,9 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_type_id: group_type_id_1
+   - group_type_id: group_type_id_path
    - group_type: group_type
-   - name: name_16
+   - name: name_group
    - description: description_group_type_optional
    - is_public: is_public_group_type_optional
 
@@ -54,11 +54,11 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - group_type: group_type
-   - id: group_type_id_2
+   - id: group_type_id
    - is_public: is_public_group_type_required
    - group_specs: group_specs
    - description: description_group_type_required
-   - name: name_16
+   - name: name_group_type
 
 Response Example
 ----------------
@@ -91,7 +91,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_type_id: group_type_id_1
+   - group_type_id: group_type_id_path
 
 
 Response Parameters
@@ -100,8 +100,8 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - group_type: group_type
-   - id: group_type_id_2
-   - name: name_16
+   - id: group_type_id
+   - name: name_group_type
    - is_public: is_public_group_type_required
    - group_specs: group_specs
    - description: description_group_type_required
@@ -147,8 +147,8 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - group_type: group_type
-   - id: group_type_id_2
-   - name: name_16
+   - id: group_type_id
+   - name: name_group_type
    - is_public: is_public_group_type_required
    - group_specs: group_specs
    - description: description_group_type_required
@@ -187,7 +187,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - group_type_id: group_type_id_1
+   - group_type_id: group_type_id_path
    - project_id: project_id_path
 
 
@@ -224,9 +224,9 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - group_types: group_types
-   - id: group_type_id_2
+   - id: group_type_id
    - group_specs: group_specs
-   - name: name_16
+   - name: name_group_type
    - is_public: is_public_group_type_required
    - description: description_group_type_required
 
@@ -266,7 +266,7 @@ Request
 
    - project_id: project_id_path
    - group_type: group_type
-   - name: name_16
+   - name: name_group_type
    - description: description_group_type_optional
    - is_public: is_public_group_type_optional
    - group_specs: group_specs
@@ -284,11 +284,11 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - group_type: group_type
-   - id: group_type_id_2
+   - id: group_type_id
    - is_public: is_public_group_type_required
    - group_specs: group_specs
    - description: description_group_type_required
-   - name: name_16
+   - name: name_group_type
 
 
 Response Example

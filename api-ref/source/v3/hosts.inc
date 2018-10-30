@@ -44,9 +44,9 @@ Response Parameters
    - hosts: hosts
    - service-status: service_status
    - service: host_service
-   - zone: availability_zone_3
+   - zone: availability_zone_required
    - service-state: service_state
-   - host_name: host_name_1
+   - host_name: host_name_backend
    - last-update: updated_at
 
 Response Example
@@ -97,8 +97,8 @@ Response
   - volume_count: total_count
   - total_volume_gb: totalGigabytesUsed
   - total_snapshot_gb: totalSnapGigabytesUsed
-  - project: project_id_2
-  - host: host_name_1
+  - project: project_id_host
+  - host: host_name_backend
   - snapshot_count: totalSnapshotsUsed
 
 Response Example

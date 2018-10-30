@@ -30,7 +30,7 @@ Request
    - project_id: project_id_path
    - snapshot_id: snapshot_id_path
    - os-reset_status: os-reset_status
-   - status: status_2
+   - status: status_snap
 
 Request Example
 ---------------
@@ -63,7 +63,7 @@ Request
    - project_id: project_id_path
    - snapshot_id: snapshot_id_path
    - os-update_snapshot_status: os-update_snapshot_status
-   - status: status_2
+   - status: status_snap
    - progress: snapshot_progress
 
 Request Example

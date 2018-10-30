@@ -34,7 +34,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_snapshot_id: group_snapshot_id
+   - group_snapshot_id: group_snapshot_id_path
 
 
 Show group snapshot details
@@ -64,7 +64,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_snapshot_id: group_snapshot_id
+   - group_snapshot_id: group_snapshot_id_path
 
 
 Response Parameters
@@ -74,12 +74,12 @@ Response Parameters
 
    - group_snapshot: group_snapshot
    - created_at: created_at
-   - group_id: source_group_id
-   - id: group_snapshot_id_1
-   - name: name_19
-   - status: status_7
-   - description: description_16
-   - group_type_id: group_type_id_2
+   - group_id: source_group_id_req
+   - id: group_snapshot_id_req
+   - name: name_group_snap_req
+   - status: status_group_snap
+   - description: description_group_snap_req
+   - group_type_id: group_type_id
 
 Response Example
 ----------------
@@ -128,13 +128,13 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - group_snapshots: group_snapshots
-   - id: group_snapshot_id_1
-   - name: name_19
-   - status: status_7
-   - description: description_16
+   - id: group_snapshot_id_req
+   - name: name_group_snap_req
+   - status: status_group_snap
+   - description: description_group_snap_req
    - created_at: created_at
-   - group_id: group_id_1
-   - group_type_id: group_type_id_2
+   - group_id: group_id
+   - group_type_id: group_type_id
 
 Response Example
 ----------------
@@ -183,8 +183,8 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - group_snapshots: group_snapshots
-   - id: group_snapshot_id_1
-   - name: name_19
+   - id: group_snapshot_id_req
+   - name: name_group_snap_req
 
 
 Response Example
@@ -221,9 +221,9 @@ Request
 
    - project_id: project_id_path
    - group_snapshot: group_snapshot
-   - name: name_18
-   - description: description_14
-   - group_id: group_id_1
+   - name: name_group_snap
+   - description: description_group_snap
+   - group_id: group_id
 
 Request Example
 ---------------
@@ -237,9 +237,9 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - group_snapshot: group_snapshot
-   - id: group_snapshot_id_1
-   - name: name_19
-   - group_type_id: group_type_id_2
+   - id: group_snapshot_id_req
+   - name: name_group_snap_req
+   - group_type_id: group_type_id
 
 Response Example
 ----------------
@@ -274,9 +274,9 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_snapshot_id: group_snapshot_id
+   - group_snapshot_id: group_snapshot_id_path
    - reset_status: reset_status
-   - status: status_7
+   - status: status_group_snap
 
 Request Example
 ---------------
