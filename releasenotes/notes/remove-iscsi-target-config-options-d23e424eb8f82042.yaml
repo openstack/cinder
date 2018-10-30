@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    The config options ``iscsi_ip_address``, ``iscsi_port``, ``target_helper``,
+    ``iscsi_target_prefix`` and ``iscsi_protocol`` were deprecated in the
+    Queens release and have now been removed. Deployments should now used the
+    more general ``target_ip_address``, ``target_port``, ``target_helper``,
+    ``target_prefix`` and ``target_protocol`` options.
