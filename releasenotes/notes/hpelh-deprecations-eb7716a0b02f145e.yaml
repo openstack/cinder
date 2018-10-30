@@ -1,0 +1,10 @@
+---
+upgrade:
+  - |
+    HPE LeftHand config options ``hplefthand_api_url``, ``hplefthand_username``,
+    ``hplefthand_password``, ``hplefthand_clustername``,
+    ``hplefthand_iscsi_chap_enabled``, and ``hplefthand_debug`` were deprecated
+    in the Mitaka release and have now been removed. The corresponding
+    ``hpelefthand_api_url``, ``hpelefthand_username``, ``hpelefthand_password``,
+    ``hpelefthand_clustername``, ``hpelefthand_iscsi_chap_enabled``, and
+    ``hpelefthand_debug`` should be used instead.
