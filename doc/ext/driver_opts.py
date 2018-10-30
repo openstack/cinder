@@ -21,7 +21,10 @@ from docutils import nodes
 from docutils.parsers import rst
 from docutils.parsers.rst import directives
 from docutils import statemachine as sm
+from sphinx.util import logging
 from oslo_config import cfg
+
+LOG = logging.getLogger(__name__)
 
 
 class ConfigTableDirective(rst.Directive):
@@ -106,7 +109,7 @@ class ConfigTableDirective(rst.Directive):
             if retval:
                 options.extend(retval)
             else:
-                app.info('[config-table] No options found in {}'.format(
+                LOG.info('[config-table] No options found in {}'.format(
                          module))
 
         # Get options sorted alphabetically but with deprecated options last
