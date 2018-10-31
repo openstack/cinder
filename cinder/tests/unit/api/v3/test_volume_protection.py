@@ -22,10 +22,35 @@ from cinder import context as cinder_context
 from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants
 from cinder.volume import api as volume_api
 
 
 class VolumeProtectionTests(test.TestCase):
+
+    def setUp(self):
+        super(VolumeProtectionTests, self).setUp()
+        self.project_id = fake_constants.PROJECT_ID
+        self.other_project_id = fake_constants.PROJECT2_ID
+        self.admin_context = cinder_context.RequestContext(
+            user_id=uuid.uuid4().hex, project_id=self.project_id,
+            is_admin=True
+        )
+        self.user_context = cinder_context.RequestContext(
+            user_id=uuid.uuid4().hex, project_id=self.project_id
+        )
+        self.other_user_context = cinder_context.RequestContext(
+            user_id=uuid.uuid4().hex, project_id=self.other_project_id
+        )
+
+    def _get_request_response(self, context, path, method):
+        request = webob.Request.blank(path)
+        request.content_type = 'application/json'
+        request.headers = mv.get_mv_header(mv.BASE_VERSION)
+        request.method = method
+        return request.get_response(
+            fakes.wsgi_app(fake_auth_context=context)
+        )
 
     def _create_fake_volume(self, context):
         vol = {
@@ -40,75 +65,49 @@ class VolumeProtectionTests(test.TestCase):
     @mock.patch.object(volume_api.API, 'get_volume')
     def test_admin_can_show_volumes(self, mock_volume):
         # Make sure administrators are authorized to list volumes
-        fake_project_id = uuid.uuid4().hex
-        admin_context = cinder_context.RequestContext(
-            user_id=uuid.uuid4().hex, project_id=fake_project_id,
-            is_admin=True
-        )
+        admin_context = self.admin_context
 
         volume = self._create_fake_volume(admin_context)
         mock_volume.return_value = volume
         path = '/v3/%(project_id)s/volumes/%(volume_id)s' % {
-            'project_id': fake_project_id, 'volume_id': volume.id
+            'project_id': admin_context.project_id, 'volume_id': volume.id
         }
-        request = webob.Request.blank(path)
-        request.content_type = 'application/json'
-        request.headers = mv.get_mv_header(mv.BASE_VERSION)
-        request.method = 'GET'
-        response = request.get_response(
-            fakes.wsgi_app(fake_auth_context=admin_context)
-        )
+
+        response = self._get_request_response(admin_context, path, 'GET')
+
         self.assertEqual(http_client.OK, response.status_int)
         self.assertEqual(response.json_body['volume']['id'], volume.id)
 
     @mock.patch.object(volume_api.API, 'get_volume')
     def test_owner_can_show_volumes(self, mock_volume):
         # Make sure owners are authorized to list their volumes
-        fake_project_id = uuid.uuid4().hex
-        user_context = cinder_context.RequestContext(
-            user_id=uuid.uuid4().hex, project_id=fake_project_id
-        )
+        user_context = self.user_context
 
         volume = self._create_fake_volume(user_context)
         mock_volume.return_value = volume
         path = '/v3/%(project_id)s/volumes/%(volume_id)s' % {
-            'project_id': fake_project_id, 'volume_id': volume.id
+            'project_id': user_context.project_id, 'volume_id': volume.id
         }
-        request = webob.Request.blank(path)
-        request.content_type = 'application/json'
-        request.headers = mv.get_mv_header(mv.BASE_VERSION)
-        request.method = 'GET'
-        response = request.get_response(
-            fakes.wsgi_app(fake_auth_context=user_context)
-        )
+
+        response = self._get_request_response(user_context, path, 'GET')
+
         self.assertEqual(http_client.OK, response.status_int)
         self.assertEqual(response.json_body['volume']['id'], volume.id)
 
     @mock.patch.object(volume_api.API, 'get_volume')
     def test_owner_cannot_show_volumes_for_others(self, mock_volume):
         # Make sure volumes are only exposed to their owners
-        owning_project_id = uuid.uuid4().hex
-        other_project_id = uuid.uuid4().hex
-        owner_context = cinder_context.RequestContext(
-            user_id=uuid.uuid4().hex, project_id=owning_project_id
-        )
-        non_owner_context = cinder_context.RequestContext(
-            user_id=uuid.uuid4().hex, project_id=other_project_id
-        )
+        owner_context = self.user_context
+        non_owner_context = self.other_user_context
 
         volume = self._create_fake_volume(owner_context)
         mock_volume.return_value = volume
 
         path = '/v3/%(project_id)s/volumes/%(volume_id)s' % {
-            'project_id': other_project_id, 'volume_id': volume.id
+            'project_id': non_owner_context.project_id, 'volume_id': volume.id
         }
-        request = webob.Request.blank(path)
-        request.content_type = 'application/json'
-        request.headers = mv.get_mv_header(mv.BASE_VERSION)
-        request.method = 'GET'
-        response = request.get_response(
-            fakes.wsgi_app(fake_auth_context=non_owner_context)
-        )
+
+        response = self._get_request_response(non_owner_context, path, 'GET')
         # NOTE(lbragstad): Technically, this user isn't supposed to see this
         # volume, because they didn't create it and it lives in a different
         # project. Does cinder return a 404 in cases like this? Or is a 403
