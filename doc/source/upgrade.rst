@@ -238,10 +238,17 @@ After maintenance window
   upgrade is performed.
 
 * Since Ocata, you also need to run ``cinder-manage db online_data_migrations``
-  command to make sure data migrations are applied. The tool let's you limit
-  the impact of the data migrations by using ``--max_number`` option to limit
-  number of migrations executed in one run. You need to complete all of the
-  migrations before starting upgrade to the next version (e.g. you need to
-  complete Ocata's data migrations before proceeding with upgrade to Pike; you
-  won't be able to execute Pike's DB schema migrations before completing
-  Ocata's data migrations).
+  command to make sure data migrations are applied. The tool lets you limit
+  the impact of the data migrations by using ``--max-count`` option to limit
+  number of migrations executed in one run. If this option is used, the
+  exit status will be 1 if any migrations were successful (even if others
+  generated errors, which could be due to dependencies between migrations).
+  The command should be rerun while the exit status is 1. If no further
+  migrations are possible, the exit status will be 2 if some migrations are
+  still generating errors, which requires intervention to resolve. The
+  command should be considered completed successfully only when the exit
+  status is 0. You need to complete all of the migrations before starting
+  upgrade to the next version (e.g. you need to complete Ocata's data
+  migrations before proceeding with upgrade to Pike; you won't be able to
+  execute Pike's DB schema migrations before completing Ocata's data
+  migrations).
