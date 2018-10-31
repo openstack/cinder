@@ -1815,7 +1815,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         the volume.
         """
 
-        if not backup.service.endswith('ceph') or backup.snapshot_id:
+        if not ('backup.drivers.ceph' in backup.service) or backup.snapshot_id:
             return super(RBDDriver, self).get_backup_device(context, backup)
 
         volume = objects.Volume.get_by_id(context, backup.volume_id)
