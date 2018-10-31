@@ -32,7 +32,7 @@ Here are existing policy entries for consistency groups:
 .. code-block:: json
 
    {
-   "consistencygroup:create": "group:nobody"
+   "consistencygroup:create": "group:nobody",
    "consistencygroup:delete": "group:nobody",
    "consistencygroup:update": "group:nobody",
    "consistencygroup:get": "group:nobody",
