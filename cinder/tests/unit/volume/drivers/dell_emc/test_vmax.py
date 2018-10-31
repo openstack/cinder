@@ -321,6 +321,11 @@ class VMAXCommonData(object):
         'SYMMETRIX+000195900551+OS-fakehost-IG')
     initiatorgroup_name = 'OS-fakehost-I-IG'
     initiatorgroup_creationclass = 'SE_InitiatorMaskingGroup'
+    initiator_group_instance = {
+        'CreationClassName': 'SE_InitiatorMaskingGroup',
+        'ElementName': 'OS-fakehost-I-IG',
+        'SystemName': 'SYMMETRIX+000197200056'
+    }
     iscsi_initiator = 'iqn.1993-08.org.debian'
     storageextent_creationclass = 'CIM_StorageExtent'
     initiator1 = 'iqn.1993-08.org.debian: 01: 1a2b3c4d5f6g'
@@ -386,7 +391,7 @@ class VMAXCommonData(object):
                       'SystemCreationClassName': u'Symm_StorageSystem'}
     provider_location = {'classname': 'Symm_StorageVolume',
                          'keybindings': keybindings,
-                         'version': '2.5.2'}
+                         'version': '2.5.3'}
     provider_location2 = {'classname': 'Symm_StorageVolume',
                           'keybindings': keybindings2}
     provider_location3 = {'classname': 'Symm_StorageVolume',
@@ -7880,6 +7885,45 @@ class VMAXMaskingTest(test.TestCase):
 
     def fake_gather_info(self):
         return
+
+    @mock.patch.object(
+        utils.VMAXUtils,
+        "get_short_protocol_type",
+        return_value='fc')
+    @mock.patch.object(
+        masking.VMAXMasking,
+        "get_initiator_group_from_masking_view",
+        return_value=VMAXCommonData.initiator_group_instance)
+    @mock.patch.object(
+        masking.VMAXMasking,
+        "_last_volume_delete_masking_view")
+    def test_delete_mv_ig_and_sg_fix_lock(
+            self, mock_last_vol, mock_ig, mock_protocol):
+        common = self.driver.common
+        conn = self.fake_ecom_connection()
+        masking = common.masking
+        masking.protocol = 'fc'
+        connector = self.data.connector
+        extra_specs = self.data.extra_specs
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        storageGroupInstanceName = self.data.storagegroups[0]
+
+        volume_instance_name = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volume_instance = conn.GetInstance(volume_instance_name)
+        mv_instance_name = {'CreationClassName': 'Symm_LunMaskingView',
+                            'ElementName': 'OS-fakehost-gold-I-MV'}
+        storageGroupName = self.data.storagegroupname
+        mv_count = 2
+        masking._delete_mv_ig_and_sg(
+            conn, controllerConfigService, mv_instance_name,
+            'OS-fakehost-gold-I-MV', storageGroupInstanceName,
+            storageGroupName, volume_instance, 'lastVol', extra_specs,
+            mv_count, connector)
+        # Check that it gets to the inner lock
+        common.utils.get_short_protocol_type.assert_called_once_with('fc')
 
     def test_get_v3_default_storage_group_instance_name(self):
         masking = self.driver.common.masking

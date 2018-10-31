@@ -2132,14 +2132,9 @@ class VMAXMasking(object):
             maskingViewName, extraSpecs)
         initiatorGroupInstance = conn.GetInstance(initiatorGroupInstanceName)
         if initiatorGroupInstance:
-            initiatorGroupName = initiatorGroupInstance['ElementName']
-
-            @coordination.synchronized('emc-ig-{initiatorGroupName}')
-            def inner_do_delete_initiator_group(initiatorGroupName):
-                self._last_volume_delete_initiator_group(
-                    conn, controllerConfigService,
-                    initiatorGroupInstanceName, extraSpecs, short_host_name)
-            inner_do_delete_initiator_group(initiatorGroupName)
+            self._last_volume_delete_initiator_group(
+                conn, controllerConfigService,
+                initiatorGroupInstanceName, extraSpecs, short_host_name)
         if not isV3:
             isTieringPolicySupported, tierPolicyServiceInstanceName = (
                 self._get_tiering_info(conn, storageSystemInstanceName,

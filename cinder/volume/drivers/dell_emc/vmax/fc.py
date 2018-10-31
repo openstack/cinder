@@ -79,9 +79,10 @@ class VMAXFCDriver(driver.FibreChannelDriver):
               - rename and restructure driver (bp vmax-rename-dell-emc)
         2.5.1 - backward compatibility fix (bug #1745183)
         2.5.2 - detaches fail when volume removed from backend (bug #1756368)
+        2.5.3 - removing deadlock scenario (bug #1800684)
     """
 
-    VERSION = "2.5.2"
+    VERSION = "2.5.3"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
