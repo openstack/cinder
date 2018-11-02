@@ -18,11 +18,11 @@ Internal implementation of request Body validating middleware.
 
 """
 
-import base64
 import re
 
 import jsonschema
 from jsonschema import exceptions as jsonschema_exc
+from oslo_serialization import base64
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
@@ -199,9 +199,7 @@ def _validate_base64_format(instance):
     try:
         if isinstance(instance, six.text_type):
             instance = instance.encode('utf-8')
-        base64.decodestring(instance)
-    except base64.binascii.Error:
-        return False
+        base64.decode_as_bytes(instance)
     except TypeError:
         # The name must be string type. If instance isn't string type, the
         # TypeError will be raised at here.
