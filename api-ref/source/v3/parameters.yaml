@@ -2766,6 +2766,13 @@ user_id:
   in: body
   required: true
   type: string
+user_id_backup:
+  description: |
+    The UUID of the project owner.
+  in: body
+  required: true
+  type: string
+  min_version: 3.56
 user_id_min:
   description: |
     The UUID of the user.

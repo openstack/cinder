@@ -151,6 +151,8 @@ ATTACHMENT_CREATE_MODE_ARG = '3.54'
 
 TRANSFER_WITH_SNAPSHOTS = '3.55'
 
+BACKUP_PROJECT_USER_ID = '3.56'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.

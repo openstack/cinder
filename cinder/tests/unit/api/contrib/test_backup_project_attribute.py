@@ -33,6 +33,7 @@ def fake_backup_get(*args, **kwargs):
     bak = {
         'id': fake.BACKUP_ID,
         'project_id': fake.PROJECT_ID,
+        'user_id': fake.USER_ID,
     }
     return fake_backup.fake_backup_obj(ctx, **bak)
 
@@ -101,3 +102,30 @@ class BackupProjectAttributeTest(test.TestCase):
         bak = self._send_backup_request(
             ctx, version=mv.get_prior_version(mv.BACKUP_PROJECT))
         self.assertNotIn('os-backup-project-attr:project_id', bak)
+
+    @ddt.data(True, False)
+    def test_get_backup_with_user_id(self, is_admin):
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, is_admin)
+        bak = self._send_backup_request(ctx,
+                                        version=mv.BACKUP_PROJECT_USER_ID)
+        if is_admin:
+            self.assertEqual(fake.USER_ID, bak['user_id'])
+        else:
+            self.assertNotIn('user_id', bak)
+
+    @ddt.data(True, False)
+    def test_list_detail_backups_with_user_id(self, is_admin):
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, is_admin)
+        baks = self._send_backup_request(ctx, detail=True,
+                                         version=mv.BACKUP_PROJECT_USER_ID)
+        if is_admin:
+            self.assertEqual(fake.USER_ID,
+                             baks[0]['user_id'])
+        else:
+            self.assertNotIn('user_id', baks[0])
+
+    def test_get_backup_user_id_before_microversion_v356(self):
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        bak = self._send_backup_request(
+            ctx, version=mv.get_prior_version(mv.BACKUP_PROJECT_USER_ID))
+        self.assertNotIn('user_id', bak)

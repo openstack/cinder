@@ -65,6 +65,11 @@ class BackupsController(backups_v2.BackupsController):
         key = "os-backup-project-attr:project_id"
         backup[key] = db_backup['project_id']
 
+    def _add_backup_user_attribute(self, req, backup):
+        db_backup = req.get_db_backup(backup['id'])
+        key = "user_id"
+        backup[key] = db_backup['user_id']
+
     def show(self, req, id):
         """Return data about the given backup."""
         LOG.debug('Show backup with id %s.', id)
@@ -79,6 +84,10 @@ class BackupsController(backups_v2.BackupsController):
         if req_version.matches(mv.BACKUP_PROJECT):
             if context.authorize(policy.BACKUP_ATTRIBUTES_POLICY, fatal=False):
                 self._add_backup_project_attribute(req, resp_backup['backup'])
+
+        if req_version.matches(mv.BACKUP_PROJECT_USER_ID):
+            if context.authorize(policy.BACKUP_ATTRIBUTES_POLICY, fatal=False):
+                self._add_backup_user_attribute(req, resp_backup['backup'])
         return resp_backup
 
     def detail(self, req):
@@ -90,6 +99,11 @@ class BackupsController(backups_v2.BackupsController):
             if context.authorize(policy.BACKUP_ATTRIBUTES_POLICY, fatal=False):
                 for bak in resp_backup['backups']:
                     self._add_backup_project_attribute(req, bak)
+
+        if req_version.matches(mv.BACKUP_PROJECT_USER_ID):
+            if context.authorize(policy.BACKUP_ATTRIBUTES_POLICY, fatal=False):
+                for bak in resp_backup['backups']:
+                    self._add_backup_user_attribute(req, bak)
         return resp_backup
 
     def _convert_sort_name(self, req_version, sort_keys):
