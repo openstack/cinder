@@ -34,11 +34,11 @@ This example creates a ``my-new-volume`` volume based on an image.
    .. code-block:: console
 
       $ openstack availability zone list
-      +------+-----------+
-      | Name |   Status  |
-      +------+-----------+
-      | nova | available |
-      +------+-----------+
+      +-----------+-------------+
+      | Zone Name | Zone Status |
+      +-----------+-------------+
+      | nova      | available   |
+      +-----------+-------------+
 
 #. Create a volume with 8 gibibytes (GiB) of space, and specify the
    availability zone and image:
@@ -80,7 +80,7 @@ This example creates a ``my-new-volume`` volume based on an image.
 
       $ openstack volume list
       +--------------------------------------+---------------+-----------+------+-------------+
-      | ID                                   | DisplayName   |  Status   | Size | Attached to |
+      | ID                                   | Name          |  Status   | Size | Attached to |
       +--------------------------------------+---------------+-----------+------+-------------+
       | bab4b0e0-ce3d-4d57-bf57-3c51319f5202 | my-new-volume | available | 8    |             |
       +--------------------------------------+---------------+-----------+------+-------------+
@@ -333,7 +333,7 @@ Delete a volume
 
       $ openstack volume list
       +----------------+-----------------+-----------+------+-------------+
-      |       ID       |   Display Name  |  Status   | Size | Attached to |
+      |       ID       |   Name          |  Status   | Size | Attached to |
       +----------------+-----------------+-----------+------+-------------+
       | 573e024d-52... |  my-new-volume  |  deleting |  8   |             |
       | bd7cf584-45... | my-bootable-vol | available |  8   |             |
@@ -346,7 +346,7 @@ Delete a volume
 
       $ openstack volume list
       +----------------+-----------------+-----------+------+-------------+
-      |       ID       |   Display Name  |  Status   | Size | Attached to |
+      |       ID       |   Name          |  Status   | Size | Attached to |
       +----------------+-----------------+-----------+------+-------------+
       | bd7cf584-45... | my-bootable-vol | available |  8   |             |
       +----------------+-----------------+-----------+------+-------------+
@@ -372,7 +372,7 @@ Resize a volume
 
       $ openstack volume list
       +----------------+-----------------+-----------+------+-------------+
-      |       ID       |   Display Name  |  Status   | Size | Attached to |
+      |       ID       |   Name          |  Status   | Size | Attached to |
       +----------------+-----------------+-----------+------+-------------+
       | 573e024d-52... |  my-new-volume  | available |  8   |             |
       | bd7cf584-45... | my-bootable-vol | available |  8   |             |
@@ -482,7 +482,7 @@ Create a volume transfer request
 
       $ openstack volume list
       +-----------------+-----------------+-----------+------+-------------+
-      |       ID        |   Display Name  |  Status   | Size | Attached to |
+      |       ID        |   Name          |  Status   | Size | Attached to |
       +-----------------+-----------------+-----------+------+-------------+
       | 72bfce9f-cac... |       None      |   error   |  1   |             |
       | a1cdace0-08e... |       None      | available |  1   |             |
@@ -604,7 +604,7 @@ Delete a volume transfer
 
       $ openstack volume list
       +-----------------+-----------------+-----------------+------+-------------+
-      |       ID        |   Display Name  |      Status     | Size | Attached to |
+      |       ID        |   Name          |      Status     | Size | Attached to |
       +-----------------+-----------------+-----------------+------+-------------+
       | 72bfce9f-cac... |       None      |      error      |  1   |             |
       | a1cdace0-08e... |       None      |awaiting-transfer|  1   |             |
@@ -651,12 +651,12 @@ Delete a volume transfer
    .. code-block:: console
 
       $ openstack volume list
-      +-----------------+-----------+--------------+------+-------------+----------+-------------+
-      |       ID        |   Status  | Display Name | Size | Volume Type | Bootable | Attached to |
-      +-----------------+-----------+--------------+------+-------------+----------+-------------+
-      | 72bfce9f-ca...  |   error   |     None     |  1   |     None    |  false   |             |
-      | a1cdace0-08...  | available |     None     |  1   |     None    |  false   |             |
-      +-----------------+-----------+--------------+------+-------------+----------+-------------+
+      +-----------------+-----------------+-----------------+------+-------------+
+      |       ID        |   Name          |      Status     | Size | Attached to |
+      +-----------------+-----------------+-----------------+------+-------------+
+      | 72bfce9f-cac... |       None      |      error      |  1   |             |
+      | a1cdace0-08e... |       None      |    available    |  1   |             |
+      +-----------------+-----------------+-----------------+------+-------------+
 
 Manage and unmanage a snapshot
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
