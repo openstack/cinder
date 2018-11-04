@@ -436,17 +436,17 @@ class StorwizeSSH(object):
         ssh_cmd = ['svcinfo', 'lspartnershipcandidate', '-delim', '!']
         return self.run_ssh_info(ssh_cmd, with_header=True)
 
-    def mkippartnership(self, ip_v4, bandwith=1000, backgroundcopyrate=50):
+    def mkippartnership(self, ip_v4, bandwidth=1000, backgroundcopyrate=50):
         ssh_cmd = ['svctask', 'mkippartnership', '-type', 'ipv4',
                    '-clusterip', ip_v4, '-linkbandwidthmbits',
-                   six.text_type(bandwith),
+                   six.text_type(bandwidth),
                    '-backgroundcopyrate', six.text_type(backgroundcopyrate)]
         return self.run_ssh_assert_no_output(ssh_cmd)
 
-    def mkfcpartnership(self, system_name, bandwith=1000,
+    def mkfcpartnership(self, system_name, bandwidth=1000,
                         backgroundcopyrate=50):
         ssh_cmd = ['svctask', 'mkfcpartnership', '-linkbandwidthmbits',
-                   six.text_type(bandwith),
+                   six.text_type(bandwidth),
                    '-backgroundcopyrate', six.text_type(backgroundcopyrate),
                    system_name]
         return self.run_ssh_assert_no_output(ssh_cmd)
@@ -2252,11 +2252,11 @@ class StorwizeHelpers(object):
                 return candidate
         return None
 
-    def mkippartnership(self, ip_v4, bandwith=1000, copyrate=50):
-        self.ssh.mkippartnership(ip_v4, bandwith, copyrate)
+    def mkippartnership(self, ip_v4, bandwidth=1000, copyrate=50):
+        self.ssh.mkippartnership(ip_v4, bandwidth, copyrate)
 
-    def mkfcpartnership(self, system_name, bandwith=1000, copyrate=50):
-        self.ssh.mkfcpartnership(system_name, bandwith, copyrate)
+    def mkfcpartnership(self, system_name, bandwidth=1000, copyrate=50):
+        self.ssh.mkfcpartnership(system_name, bandwidth, copyrate)
 
     def chpartnership(self, partnership_id):
         self.ssh.chpartnership(partnership_id)

@@ -2109,7 +2109,7 @@ port_speed!N/A
 
         if 'linkbandwidthmbits' not in kwargs:
             return self._errors['CMMVC5707E']
-        bandwith = kwargs['linkbandwidthmbits'].strip('\'\"')
+        bandwidth = kwargs['linkbandwidthmbits'].strip('\'\"')
 
         if 'backgroundcopyrate' not in kwargs:
             return self._errors['CMMVC5707E']
@@ -2130,7 +2130,7 @@ port_speed!N/A
         partner_info['cluster_ip'] = clusterip
         partner_info['event_log_sequence'] = ''
         partner_info['chap_secret'] = ''
-        partner_info['linkbandwidthmbits'] = bandwith
+        partner_info['linkbandwidthmbits'] = bandwidth
         partner_info['backgroundcopyrate'] = copyrate
         partner_info['partnership'] = 'fully_configured'
 
@@ -2144,7 +2144,7 @@ port_speed!N/A
 
         if 'linkbandwidthmbits' not in kwargs:
             return self._errors['CMMVC5707E']
-        bandwith = kwargs['linkbandwidthmbits'].strip('\'\"')
+        bandwidth = kwargs['linkbandwidthmbits'].strip('\'\"')
 
         if 'backgroundcopyrate' not in kwargs:
             return self._errors['CMMVC5707E']
@@ -2158,7 +2158,7 @@ port_speed!N/A
         partner_info['cluster_ip'] = ''
         partner_info['event_log_sequence'] = ''
         partner_info['chap_secret'] = ''
-        partner_info['linkbandwidthmbits'] = bandwith
+        partner_info['linkbandwidthmbits'] = bandwidth
         partner_info['backgroundcopyrate'] = copyrate
         partner_info['partnership'] = 'fully_configured'
         self._partnership_list[partner_info['id']] = partner_info
