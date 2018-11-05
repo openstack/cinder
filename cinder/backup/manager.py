@@ -521,11 +521,13 @@ class BackupManager(manager.ThreadPoolManager):
         if not backup:
             return True
 
-        # TODO(tommylikehu): We upgraded the 'driver_name' from module
-        # to class name, so we use 'in' here to match two namings,
-        # this can be replaced with equal sign during next
-        # release (Rocky).
-        if self.driver_name.startswith(backup):
+        # TODO(tommylikehu): We upgraded the 'driver_name' from module to
+        # class name, so we use 'startswith' here to match two namings,
+        # this can be replaced with equal sign during next release (Rocky).
+        # The 'driver_name' varies depending on the user settings, so a
+        # two-way judgment is required.
+        if self.driver_name.startswith(backup) or backup.startswith(
+                self.driver_name):
             return True
 
         # We support renaming of drivers, so check old names as well

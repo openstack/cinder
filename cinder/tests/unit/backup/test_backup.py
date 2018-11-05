@@ -1778,6 +1778,29 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(100, tpool._nthreads)
         self.assertListEqual([], tpool._threads)
 
+    def test_driver_name_startswith_backup_service_name(self):
+        service_name = 'cinder.tests.unit.backup.fake_service'
+        driver_name = 'cinder.tests.unit.backup.fake_service.FakeBackupService'
+        self.override_config('backup_driver', driver_name)
+        vol_id = self._create_volume_db_entry(status='available', size=1)
+        backup = self._create_backup_db_entry(status=fields.BackupStatus.ERROR,
+                                              volume_id=vol_id,
+                                              service=service_name)
+        result = self.backup_mgr._is_our_backup(backup)
+        self.assertTrue(result)
+
+    def test_backup_service_name_startswith_driver_name(self):
+        driver_name = 'cinder.tests.unit.backup.fake_service'
+        service_name = ('cinder.tests.unit.backup.fake_service.'
+                        'FakeBackupService')
+        self.override_config('backup_driver', driver_name)
+        vol_id = self._create_volume_db_entry(status='available', size=1)
+        backup = self._create_backup_db_entry(status=fields.BackupStatus.ERROR,
+                                              volume_id=vol_id,
+                                              service=service_name)
+        result = self.backup_mgr._is_our_backup(backup)
+        self.assertTrue(result)
+
 
 class BackupTestCaseWithVerify(BaseBackupTest):
     """Test Case for backups."""
