@@ -31,6 +31,7 @@ import os
 import re
 import tempfile
 
+from eventlet import tpool
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -299,7 +300,8 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
     with fileutils.remove_path_on_error(path):
         with open(path, "wb") as image_file:
             try:
-                image_service.download(context, image_id, image_file)
+                image_service.download(context, image_id,
+                                       tpool.Proxy(image_file))
             except IOError as e:
                 if e.errno == errno.ENOSPC:
                     params = {'path': os.path.dirname(path),
@@ -522,11 +524,13 @@ def upload_volume(context, image_service, image_meta, volume_path,
                   image_id, volume_format, image_meta['disk_format'])
         if os.name == 'nt' or os.access(volume_path, os.R_OK):
             with open(volume_path, 'rb') as image_file:
-                image_service.update(context, image_id, {}, image_file)
+                image_service.update(context, image_id, {},
+                                     tpool.Proxy(image_file))
         else:
             with utils.temporary_chown(volume_path):
                 with open(volume_path, 'rb') as image_file:
-                    image_service.update(context, image_id, {}, image_file)
+                    image_service.update(context, image_id, {},
+                                         tpool.Proxy(image_file))
         return
 
     with temporary_file() as tmp:
@@ -558,7 +562,8 @@ def upload_volume(context, image_service, image_meta, volume_path,
                 {'f1': out_format, 'f2': data.file_format})
 
         with open(tmp, 'rb') as image_file:
-            image_service.update(context, image_id, {}, image_file)
+            image_service.update(context, image_id, {},
+                                 tpool.Proxy(image_file))
 
 
 def check_virtual_size(virtual_size, volume_size, image_id):

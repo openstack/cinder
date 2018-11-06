@@ -300,9 +300,10 @@ class TestResizeImage(test.TestCase):
 
 
 class TestFetch(test.TestCase):
+    @mock.patch('eventlet.tpool.Proxy')
     @mock.patch('os.stat')
     @mock.patch('cinder.image.image_utils.fileutils')
-    def test_defaults(self, mock_fileutils, mock_stat):
+    def test_defaults(self, mock_fileutils, mock_stat, mock_proxy):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_id = mock.sentinel.image_id
@@ -317,8 +318,9 @@ class TestFetch(test.TestCase):
             output = image_utils.fetch(ctxt, image_service, image_id, path,
                                        _user_id, _project_id)
         self.assertIsNone(output)
+        mock_proxy.assert_called_once_with(mock_open.return_value)
         image_service.download.assert_called_once_with(ctxt, image_id,
-                                                       mock_open.return_value)
+                                                       mock_proxy.return_value)
         mock_open.assert_called_once_with(path, 'wb')
         mock_fileutils.remove_path_on_error.assert_called_once_with(path)
         (mock_fileutils.remove_path_on_error.return_value.__enter__
@@ -499,6 +501,7 @@ class TestTemporaryDir(test.TestCase):
 class TestUploadVolume(test.TestCase):
     @ddt.data((mock.sentinel.disk_format, mock.sentinel.disk_format),
               ('ploop', 'parallels'))
+    @mock.patch('eventlet.tpool.Proxy')
     @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('six.moves.builtins.open')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -506,7 +509,7 @@ class TestUploadVolume(test.TestCase):
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.os')
     def test_diff_format(self, image_format, mock_os, mock_temp, mock_convert,
-                         mock_info, mock_open, mock_conf):
+                         mock_info, mock_open, mock_conf, mock_proxy):
         input_format, output_format = image_format
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
@@ -530,10 +533,12 @@ class TestUploadVolume(test.TestCase):
         mock_info.assert_called_with(temp_file, run_as_root=True)
         self.assertEqual(2, mock_info.call_count)
         mock_open.assert_called_once_with(temp_file, 'rb')
-        image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {},
+        mock_proxy.assert_called_once_with(
             mock_open.return_value.__enter__.return_value)
+        image_service.update.assert_called_once_with(
+            ctxt, image_meta['id'], {}, mock_proxy.return_value)
 
+    @mock.patch('eventlet.tpool.Proxy')
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
     @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('six.moves.builtins.open')
@@ -542,7 +547,7 @@ class TestUploadVolume(test.TestCase):
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.os')
     def test_same_format(self, mock_os, mock_temp, mock_convert, mock_info,
-                         mock_open, mock_conf, mock_chown):
+                         mock_open, mock_conf, mock_chown, mock_proxy):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_meta = {'id': 'test_id',
@@ -559,10 +564,12 @@ class TestUploadVolume(test.TestCase):
         self.assertFalse(mock_info.called)
         mock_chown.assert_called_once_with(volume_path)
         mock_open.assert_called_once_with(volume_path, 'rb')
-        image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {},
+        mock_proxy.assert_called_once_with(
             mock_open.return_value.__enter__.return_value)
+        image_service.update.assert_called_once_with(
+            ctxt, image_meta['id'], {}, mock_proxy.return_value)
 
+    @mock.patch('eventlet.tpool.Proxy')
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
     @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('six.moves.builtins.open')
@@ -571,7 +578,8 @@ class TestUploadVolume(test.TestCase):
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.os')
     def test_same_format_on_nt(self, mock_os, mock_temp, mock_convert,
-                               mock_info, mock_open, mock_conf, mock_chown):
+                               mock_info, mock_open, mock_conf, mock_chown,
+                               mock_proxy):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_meta = {'id': 'test_id',
@@ -587,9 +595,10 @@ class TestUploadVolume(test.TestCase):
         self.assertFalse(mock_convert.called)
         self.assertFalse(mock_info.called)
         mock_open.assert_called_once_with(volume_path, 'rb')
-        image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {},
+        mock_proxy.assert_called_once_with(
             mock_open.return_value.__enter__.return_value)
+        image_service.update.assert_called_once_with(
+            ctxt, image_meta['id'], {}, mock_proxy.return_value)
 
     @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('six.moves.builtins.open')
