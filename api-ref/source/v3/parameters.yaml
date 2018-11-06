@@ -2792,6 +2792,12 @@ total_count:
   in: body
   required: true
   type: string
+total_count_int:
+  description: |
+    Total number of volumes.
+  in: body
+  required: true
+  type: integer
 total_size:
   description: |
     Total size of volumes in GB.
