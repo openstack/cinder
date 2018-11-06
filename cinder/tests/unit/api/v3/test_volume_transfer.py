@@ -35,6 +35,11 @@ import cinder.transfer
 class VolumeTransferAPITestCase(test.TestCase):
     """Test Case for transfers V3 API."""
 
+    microversion = mv.TRANSFER_WITH_SNAPSHOTS
+    expect_transfer_history = False
+    DETAIL_LEN = 6
+    SUMMARY_LEN = 4
+
     def setUp(self):
         super(VolumeTransferAPITestCase, self).setUp()
         self.volume_transfer_api = cinder.transfer.API()
@@ -73,13 +78,24 @@ class VolumeTransferAPITestCase(test.TestCase):
                         volume_id)
         return volume_id
 
+    def _check_history_in_res(self, transfer_dict):
+        tx_history_keys = ['source_project_id',
+                           'destination_project_id',
+                           'accepted']
+        if self.expect_transfer_history:
+            for key in tx_history_keys:
+                self.assertIn(key, transfer_dict)
+        else:
+            for key in tx_history_keys:
+                self.assertNotIn(key, transfer_dict)
+
     def test_show_transfer(self):
         volume_id = self._create_volume(size=5)
         transfer = self._create_transfer(volume_id)
         req = webob.Request.blank('/v3/%s/volume-transfers/%s' % (
             fake.PROJECT_ID, transfer['id']))
         req.method = 'GET'
-        req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
+        req.headers = mv.get_mv_header(self.microversion)
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
@@ -98,17 +114,17 @@ class VolumeTransferAPITestCase(test.TestCase):
         req = webob.Request.blank('/v3/%s/volume-transfers' %
                                   fake.PROJECT_ID)
         req.method = 'GET'
-        req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
+        req.headers = mv.get_mv_header(self.microversion)
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(http_client.OK, res.status_int)
-        self.assertEqual(4, len(res_dict['transfers'][0]))
+        self.assertEqual(self.SUMMARY_LEN, len(res_dict['transfers'][0]))
         self.assertEqual(transfer1['id'], res_dict['transfers'][0]['id'])
         self.assertEqual('test_transfer', res_dict['transfers'][0]['name'])
-        self.assertEqual(4, len(res_dict['transfers'][1]))
+        self.assertEqual(self.SUMMARY_LEN, len(res_dict['transfers'][1]))
         self.assertEqual(transfer2['id'], res_dict['transfers'][1]['id'])
         self.assertEqual('test_transfer', res_dict['transfers'][1]['name'])
 
@@ -121,7 +137,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         req = webob.Request.blank('/v3/%s/volume-transfers/detail' %
                                   fake.PROJECT_ID)
         req.method = 'GET'
-        req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
+        req.headers = mv.get_mv_header(self.microversion)
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
@@ -129,17 +145,19 @@ class VolumeTransferAPITestCase(test.TestCase):
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(http_client.OK, res.status_int)
-        self.assertEqual(6, len(res_dict['transfers'][0]))
+        self.assertEqual(self.DETAIL_LEN, len(res_dict['transfers'][0]))
         self.assertEqual('test_transfer',
                          res_dict['transfers'][0]['name'])
         self.assertEqual(transfer1['id'], res_dict['transfers'][0]['id'])
         self.assertEqual(volume_id_1, res_dict['transfers'][0]['volume_id'])
+        self._check_history_in_res(res_dict['transfers'][0])
 
-        self.assertEqual(6, len(res_dict['transfers'][1]))
+        self.assertEqual(self.DETAIL_LEN, len(res_dict['transfers'][1]))
         self.assertEqual('test_transfer',
                          res_dict['transfers'][1]['name'])
         self.assertEqual(transfer2['id'], res_dict['transfers'][1]['id'])
         self.assertEqual(volume_id_2, res_dict['transfers'][1]['volume_id'])
+        self._check_history_in_res(res_dict['transfers'][1])
 
     def test_list_transfers_detail_with_no_snapshots(self):
         volume_id_1 = self._create_volume(size=5)
@@ -150,7 +168,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         req = webob.Request.blank('/v3/%s/volume-transfers/detail' %
                                   fake.PROJECT_ID)
         req.method = 'GET'
-        req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
+        req.headers = mv.get_mv_header(self.microversion)
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
@@ -158,14 +176,14 @@ class VolumeTransferAPITestCase(test.TestCase):
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(http_client.OK, res.status_int)
-        self.assertEqual(6, len(res_dict['transfers'][0]))
+        self.assertEqual(self.DETAIL_LEN, len(res_dict['transfers'][0]))
         self.assertEqual('test_transfer',
                          res_dict['transfers'][0]['name'])
         self.assertEqual(transfer1['id'], res_dict['transfers'][0]['id'])
         self.assertEqual(volume_id_1, res_dict['transfers'][0]['volume_id'])
         self.assertEqual(False, res_dict['transfers'][0]['no_snapshots'])
 
-        self.assertEqual(6, len(res_dict['transfers'][1]))
+        self.assertEqual(self.DETAIL_LEN, len(res_dict['transfers'][1]))
         self.assertEqual('test_transfer',
                          res_dict['transfers'][1]['name'])
         self.assertEqual(transfer2['id'], res_dict['transfers'][1]['id'])
@@ -180,7 +198,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         req = webob.Request.blank('/v3/%s/volume-transfers' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
-        req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
+        req.headers = mv.get_mv_header(self.microversion)
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app(
@@ -194,6 +212,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertIn('created_at', res_dict['transfer'])
         self.assertIn('name', res_dict['transfer'])
         self.assertIn('volume_id', res_dict['transfer'])
+        self._check_history_in_res(res_dict['transfer'])
 
     def test_create_transfer_with_no_snapshots(self):
         volume_id = self._create_volume(status='available', size=5)
@@ -204,7 +223,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         req = webob.Request.blank('/v3/%s/volume-transfers' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
-        req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
+        req.headers = mv.get_mv_header(self.microversion)
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app(
@@ -219,6 +238,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertIn('name', res_dict['transfer'])
         self.assertIn('volume_id', res_dict['transfer'])
         self.assertIn('no_snapshots', res_dict['transfer'])
+        self._check_history_in_res(res_dict['transfer'])
 
     def test_delete_transfer_awaiting_transfer(self):
         volume_id = self._create_volume()
@@ -227,7 +247,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         req = webob.Request.blank('/v3/%s/volume-transfers/%s' % (
                                   fake.PROJECT_ID, transfer['id']))
         req.method = 'DELETE'
-        req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
+        req.headers = mv.get_mv_header(self.microversion)
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
@@ -261,7 +281,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         req = webob.Request.blank('/v3/%s/volume-transfers/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
         req.method = 'POST'
-        req.headers = mv.get_mv_header(mv.TRANSFER_WITH_SNAPSHOTS)
+        req.headers = mv.get_mv_header(self.microversion)
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app(
@@ -273,3 +293,10 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(volume_id, res_dict['transfer']['volume_id'])
         # cleanup
         svc.stop()
+
+
+class VolumeTransferAPITestCase357(VolumeTransferAPITestCase):
+
+    microversion = mv.TRANSFER_WITH_HISTORY
+    DETAIL_LEN = 9
+    expect_transfer_history = True

@@ -5,6 +5,9 @@
         "name": "first volume",
         "volume_id": "c86b9af4-151d-4ead-b62c-5fb967af0e37",
         "auth_key": "9266c59563c84664",
+        "source_project_id": "10f92548903841278443fcf3da935b22",
+        "destination_project_id": null,
+        "accepted": false,
         "links": [
             {
                 "href": "http://localhost/v3/firstproject/volumes/3",

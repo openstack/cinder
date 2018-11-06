@@ -18,6 +18,8 @@ from oslo_utils import timeutils
 
 from cinder import context
 from cinder import db
+from cinder.db.sqlalchemy import api as db_api
+from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import objects
 from cinder import quota
@@ -361,3 +363,28 @@ class VolumeTransferTestCase(test.TestCase):
         utils.create_snapshot(self.ctxt, volume.id, status='deleting')
         self.assertRaises(exception.InvalidSnapshot,
                           tx_api.create, self.ctxt, volume.id, 'Description')
+
+    @mock.patch('cinder.volume.utils.notify_about_volume_usage')
+    def test_transfer_accept_with_detail_records(self, mock_notify):
+        svc = self.start_service('volume', host='test_host')
+        self.addCleanup(svc.stop)
+        tx_api = transfer_api.API()
+        volume = utils.create_volume(self.ctxt, updated_at=self.updated_at)
+
+        transfer = tx_api.create(self.ctxt, volume.id, 'Description')
+        self.assertEqual(volume.project_id, transfer['source_project_id'])
+        self.assertIsNone(transfer['destination_project_id'])
+        self.assertFalse(transfer['accepted'])
+
+        # Get volume and snapshot quota before accept
+        self.ctxt.user_id = fake.USER2_ID
+        self.ctxt.project_id = fake.PROJECT2_ID
+
+        tx_api.accept(self.ctxt, transfer['id'], transfer['auth_key'])
+
+        xfer = db_api.model_query(self.ctxt, models.Transfer,
+                                  read_deleted='yes'
+                                  ).filter_by(id=transfer['id']).first()
+        self.assertEqual(volume.project_id, xfer['source_project_id'])
+        self.assertTrue(xfer['accepted'])
+        self.assertEqual(fake.PROJECT2_ID, xfer['destination_project_id'])

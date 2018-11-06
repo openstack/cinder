@@ -129,6 +129,8 @@ REST_API_VERSION_HISTORY = """
     * 3.55 - Support transfer volume with snapshots
     * 3.56 - Add ``user_id`` attribute to response body of list backup with
              detail and show backup detail APIs.
+    * 3.57 - Add 'source_project_id', 'destination_project_id', 'accepted' to
+             transfer.
 """
 
 # The minimum and maximum versions of the API supported
@@ -136,7 +138,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.56"
+_MAX_API_VERSION = "3.57"
 _LEGACY_API_VERSION2 = "2.0"
 UPDATED = "2018-07-17T00:00:00Z"
 

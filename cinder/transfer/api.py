@@ -150,7 +150,8 @@ class API(base.Base):
                         'salt': salt,
                         'crypt_hash': crypt_hash,
                         'expires_at': None,
-                        'no_snapshots': no_snapshots}
+                        'no_snapshots': no_snapshots,
+                        'source_project_id': volume_ref['project_id']}
 
         try:
             transfer = self.db.transfer_create(context, transfer_rec)
@@ -164,7 +165,10 @@ class API(base.Base):
                 'display_name': transfer['display_name'],
                 'auth_key': auth_key,
                 'created_at': transfer['created_at'],
-                'no_snapshots': transfer['no_snapshots']}
+                'no_snapshots': transfer['no_snapshots'],
+                'source_project_id': transfer['source_project_id'],
+                'destination_project_id': transfer['destination_project_id'],
+                'accepted': transfer['accepted']}
 
     def _handle_snapshot_quota(self, context, snapshots, volume_type_id,
                                donor_id):
