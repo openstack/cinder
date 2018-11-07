@@ -642,7 +642,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                     attachment['instance_uuid'],
                     attachment['attached_host'],
                     attachment['mountpoint'],
-                    'rw'
+                    attachment.get('attach_mode', 'rw'),
                 )
                 self.assertIsNotNone(attachments)
                 self.assertEqual(attached_host,
