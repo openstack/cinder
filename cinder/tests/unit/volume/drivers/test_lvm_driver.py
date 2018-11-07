@@ -25,6 +25,7 @@ from cinder.objects import fields
 from cinder.tests import fake_driver
 from cinder.tests.unit.brick import fake_lvm
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
 from cinder.tests.unit.volume import test_driver
 from cinder.volume import configuration as conf
@@ -1006,3 +1007,59 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
         connector = {'ip': '10.0.0.2', 'host': 'fakehost'}
         self.assertRaises(exception.InvalidConnectorException,
                           iscsi_driver.validate_connector, connector)
+
+    def test_multiattach_terminate_connection(self):
+        # Ensure that target_driver.terminate_connection is only called when a
+        # single active volume attachment remains per host for each volume.
+
+        host1_connector = {'ip': '10.0.0.2',
+                           'host': 'fakehost1',
+                           'initiator': 'iqn.2012-07.org.fake:01'}
+
+        host2_connector = {'ip': '10.0.0.3',
+                           'host': 'fakehost2',
+                           'initiator': 'iqn.2012-07.org.fake:02'}
+
+        host1_attachment1 = fake_volume.fake_volume_attachment_obj(
+            self.context)
+        host1_attachment1.connector = host1_connector
+
+        host1_attachment2 = fake_volume.fake_volume_attachment_obj(
+            self.context)
+        host1_attachment2.connector = host1_connector
+
+        host2_attachment = fake_volume.fake_volume_attachment_obj(self.context)
+        host2_attachment.connector = host2_connector
+
+        # Create a multiattach volume object with two active attachments on
+        # host1 and another single attachment on host2.
+        vol = fake_volume.fake_volume_obj(self.context)
+        vol.multiattach = True
+        vol.volume_attachment.objects.append(host1_attachment1)
+        vol.volume_attachment.objects.append(host1_attachment2)
+        vol.volume_attachment.objects.append(host2_attachment)
+
+        self.configuration = conf.Configuration(None)
+        vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes', False, None,
+                                       'default')
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
+                                         db=db, vg_obj=vg_obj)
+
+        with mock.patch.object(lvm_driver.target_driver,
+                               'terminate_connection') as mock_term_conn:
+
+            # Verify that terminate_connection is not called against host1 when
+            # there are multiple active attachments against that host.
+            self.assertTrue(lvm_driver.terminate_connection(vol,
+                                                            host1_connector))
+            mock_term_conn.assert_not_called()
+
+            # Verify that terminate_connection is called against either host
+            # when only one active attachment per host is present.
+            vol.volume_attachment.objects.remove(host1_attachment1)
+            self.assertTrue(lvm_driver.terminate_connection(vol,
+                                                            host1_connector))
+            self.assertTrue(lvm_driver.terminate_connection(vol,
+                                                            host2_connector))
+            mock_term_conn.assert_has_calls([mock.call(vol, host1_connector),
+                                             mock.call(vol, host2_connector)])
