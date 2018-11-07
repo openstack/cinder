@@ -2338,7 +2338,7 @@ class VolumeManager(manager.CleanableManager,
                                      attachment.instance_uuid,
                                      attachment.attached_host,
                                      attachment.mountpoint,
-                                     'rw')
+                                     attachment.attach_mode or 'rw')
                 # At this point we now have done almost all of our swapping and
                 # state-changes.  The target volume is now marked back to
                 # "in-use" the destination/worker volume is now in deleting
