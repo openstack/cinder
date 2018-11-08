@@ -311,6 +311,11 @@ Response Parameters
    - links: links_1
    - name: name_1
 
+Response Example
+----------------
+
+.. literalinclude:: ./samples/backup-create-response.json
+   :language: javascript
 
 Update a backup
 ~~~~~~~~~~~~~~~
