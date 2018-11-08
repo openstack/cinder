@@ -31,8 +31,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_type_id: group_type_id_1
-   - group_specs: group_specs_2
+   - group_type_id: group_type_id_path
+   - group_specs: group_specs_req
 
 Request Example
 ---------------
@@ -47,7 +47,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - group_specs: group_specs_2
+   - group_specs: group_specs_req
 
 
 Response Example
@@ -84,7 +84,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_type_id: group_type_id_1
+   - group_type_id: group_type_id_path
 
 
 Response Parameters
@@ -92,7 +92,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - group_specs: group_specs_2
+   - group_specs: group_specs_req
 
 
 Response Example
@@ -129,7 +129,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_type_id: group_type_id_1
+   - group_type_id: group_type_id_path
    - spec_id: spec_id
 
 
@@ -174,7 +174,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_type_id: group_type_id_1
+   - group_type_id: group_type_id_path
    - spec_id: spec_id
    - spec: spec_value
 
@@ -225,5 +225,5 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_type_id: group_type_id_1
+   - group_type_id: group_type_id_path
    - spec_id: spec_id

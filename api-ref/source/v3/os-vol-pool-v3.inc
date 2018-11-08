@@ -43,7 +43,7 @@ Response Parameters
    - pools: pools
    - updated: updated
    - QoS_support: QoS_support
-   - name: name_20
+   - name: name_backend_pool
    - total_capacity_gb: total_capacity
    - volume_backend_name: volume_backend_name
    - capabilities: capabilities

@@ -44,16 +44,16 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
   - services: services
-  - binary: binary
-  - disabled_reason: disabled_reason_body
-  - host: host_name_body
-  - state: service_state_1
+  - binary: binary_required
+  - disabled_reason: disabled_reason_body_req
+  - host: host_name_body_req
+  - state: service_state_up_down
   - status: service_status
   - frozen: frozen
   - updated_at: updated
-  - zone: availability_zone_3
-  - cluster: cluster
-  - replication_status: replication_status_1
+  - zone: availability_zone_required
+  - cluster: cluster_cvol
+  - replication_status: replication_status_cvol
   - active_backend_id: active_backend_id
   - backend_state: backend_state
 
@@ -92,8 +92,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - host: host_name_body
-   - binary: binary
+   - host: host_name_body_req
+   - binary: binary_required
 
 Request Example
 ---------------
@@ -106,11 +106,11 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-  - disabled: disabled_1
+  - disabled: disabled_required
   - status: service_status
-  - host: host_name_body
+  - host: host_name_body_req
   - service: service_key
-  - binary: binary
+  - binary: binary_required
 
 Response Example
 ----------------
@@ -148,9 +148,9 @@ Request
 .. rest_parameters:: parameters.yaml
 
   - project_id: project_id_path
-  - binary: binary
-  - host: host_name_body
-  - disabled_reason: disabled_reason_body_1
+  - binary: binary_required
+  - host: host_name_body_req
+  - disabled_reason: disabled_reason_body
 
 Request Example
 ---------------
@@ -163,12 +163,12 @@ Response
 
 .. rest_parameters:: parameters.yaml
 
-  - disabled: disabled_1
+  - disabled: disabled_required
   - status: service_status
-  - host: host_name_body
+  - host: host_name_body_req
   - service: service_key
-  - binary: binary
-  - disabled_reason: disabled_reason_body
+  - binary: binary_required
+  - disabled_reason: disabled_reason_body_req
 
 Response Example
 ----------------
@@ -205,8 +205,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - binary: binary
-   - host: host_name_body
+   - binary: binary_required
+   - host: host_name_body_req
 
 Request Example
 ---------------
@@ -219,12 +219,12 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-  - disabled: disabled_1
+  - disabled: disabled_required
   - status: service_status
-  - host: host_name_body
+  - host: host_name_body_req
   - service: service_key
-  - binary: binary
-  - disabled_reason: disabled_reason_body
+  - binary: binary_required
+  - disabled_reason: disabled_reason_body_req
 
 Response Example
 ----------------
@@ -260,8 +260,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - binary: binary_1
-   - server: host_name_body_1
+   - binary: binary
+   - server: host_name_body
    - prefix: prefix
 
 Request Example
@@ -276,8 +276,8 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
   - log_levels: log_levels
-  - binary: binary
-  - host: host_name_body
+  - binary: binary_required
+  - host: host_name_body_req
   - levels: levels
 
 Response Example
@@ -314,10 +314,10 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - binary: binary_1
-   - server: host_name_body_1
+   - binary: binary
+   - server: host_name_body
    - prefix: prefix
-   - levels: levels_1
+   - levels: levels_set
 
 Request Example
 ---------------
@@ -353,7 +353,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - host: host_name_body
+   - host: host_name_body_req
 
 Request Example
 ---------------
@@ -389,7 +389,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - host: host_name_body
+   - host: host_name_body_req
 
 Request Example
 ---------------
@@ -427,9 +427,9 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - host: host_name_body
+   - host: host_name_body_req
    - backend_id: backend_id
-   - cluster: cluster
+   - cluster: cluster_cvol
 
 Request Example
 ---------------

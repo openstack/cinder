@@ -33,7 +33,7 @@ Response Parameters
 
    - status: version_status
    - updated: version_updated
-   - links: links_6
+   - links: links_res
    - min_version: version_min
    - version: version_max
    - media-types: media_types

@@ -62,7 +62,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - attachment_id: attachment_id_1
+   - attachment_id: attachment_id_path
 
 
 Show attachment details
@@ -93,7 +93,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - attachment_id: attachment_id_1
+   - attachment_id: attachment_id_path
 
 
 Response Parameters
@@ -101,14 +101,14 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_9
+   - status: status_attachment
    - detached_at: detached_at
    - connection_info: connection_info
    - attached_at: attached_at
-   - attach_mode: attach_mode
-   - instance: instance_uuid_1
-   - volume_id: volume_id_7
-   - id: attachment_id_2
+   - attach_mode: attach_mode_required
+   - instance: instance_uuid_req
+   - volume_id: volume_id_attachment
+   - id: attachment_id_required
 
 Response Example
 ----------------
@@ -156,14 +156,14 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_9
+   - status: status_attachment
    - detached_at: detached_at
    - connection_info: connection_info
    - attached_at: attached_at
-   - attach_mode: attach_mode
-   - instance: instance_uuid_1
-   - volume_id: volume_id_7
-   - id: attachment_id_2
+   - attach_mode: attach_mode_required
+   - instance: instance_uuid_req
+   - volume_id: volume_id_attachment
+   - id: attachment_id_required
 
 Response Example
 ----------------
@@ -211,10 +211,10 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_9
-   - instance: instance_uuid_1
-   - volume_id: volume_id_7
-   - id: attachment_id_2
+   - status: status_attachment
+   - instance: instance_uuid_req
+   - volume_id: volume_id_attachment
+   - id: attachment_id_required
 
 
 Response Example
@@ -253,10 +253,10 @@ Request
 
    - project_id: project_id_path
    - attachment: attachment
-   - instance_uuid: instance_uuid_1
+   - instance_uuid: instance_uuid_req
    - connector: connector
-   - volume_uuid: volume_id_7
-   - mode: attach_mode_1
+   - volume_uuid: volume_id_attachment
+   - mode: attach_mode
 
 Request Example
 ---------------
@@ -270,14 +270,14 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - attachment: attachment
-   - status: status_9
+   - status: status_attachment
    - detached_at: detached_at
    - connection_info: connection_info
    - attached_at: attached_at
-   - attach_mode: attach_mode
-   - instance: instance_uuid_1
-   - volume_id: volume_id_7
-   - id: attachment_id_2
+   - attach_mode: attach_mode_required
+   - instance: instance_uuid_req
+   - volume_id: volume_id_attachment
+   - id: attachment_id_required
 
 Response Example
 ----------------
@@ -314,9 +314,9 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - attachment_id: attachment_id_1
+   - attachment_id: attachment_id_path
    - attachement: attachment
-   - connector: connector_1
+   - connector: connector_required
 
 Request Example
 ---------------
@@ -330,14 +330,14 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - attachment: attachment
-   - status: status_9
+   - status: status_attachment
    - detached_at: detached_at
    - connection_info: connection_info
    - attached_at: attached_at
-   - attach_mode: attach_mode
-   - instance: instance_uuid_1
-   - volume_id: volume_id_7
-   - id: attachment_id_2
+   - attach_mode: attach_mode_required
+   - instance: instance_uuid_req
+   - volume_id: volume_id_attachment
+   - id: attachment_id_required
 
 Response Example
 ----------------
@@ -374,7 +374,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - attachment_id: attachment_id_1
+   - attachment_id: attachment_id_path
 
 Request Example
 ---------------

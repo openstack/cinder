@@ -34,7 +34,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_id: group_id
+   - group_id: group_id_path
 
 Request Example
 ---------------
@@ -83,7 +83,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_id: group_id
+   - group_id: group_id_path
 
 Request Example
 ---------------
@@ -116,7 +116,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_id: group_id
+   - group_id: group_id_path
 
 Request Example
 ---------------
@@ -149,7 +149,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - group_id: group_id
+   - group_id: group_id_path
    - allow_attached_volume: allow_attached_volume
    - secondary_backend_id: backend_id_target
 

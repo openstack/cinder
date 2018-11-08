@@ -74,13 +74,13 @@ Response Parameters
 
    - message: user_message
    - request_id: request_id
-   - links: links_5
+   - links: links_message
    - message_level: message_level
    - event_id: event_id
    - created_at: created_at
    - guaranteed_until: guaranteed_until
    - resource_uuid: resource_uuid
-   - id: id_8
+   - id: id_message
    - resource_type: resource_type
    - user_message: user_message
 
@@ -130,13 +130,13 @@ Response Parameters
 
    - messages: user_messages
    - request_id: request_id
-   - links: links_5
+   - links: links_message
    - message_level: message_level
    - event_id: event_id
    - created_at: created_at
    - guaranteed_until: guaranteed_until
    - resource_uuid: resource_uuid
-   - id: id_8
+   - id: id_message
    - resource_type: resource_type
    - user_message: user_message
 

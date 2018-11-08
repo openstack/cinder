@@ -35,9 +35,9 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - pool_name: pool_name
-   - description: description_10
+   - description: description_cap
    - volume_backend_name: volume_backend_name
-   - namespace: namespace_1
+   - namespace: namespace_storage
    - visibility: visibility
    - driver_version: driver_version
    - vendor_name: vendor_name

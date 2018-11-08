@@ -45,7 +45,7 @@ Response Parameters
    - limits: limits
    - rate: rate
    - absolute: absolute
-   - totalSnapshotsUsed: totalSnapshotsUsed_1
+   - totalSnapshotsUsed: totalSnapshotsUsed_int
    - maxTotalBackups: maxTotalBackups
    - maxTotalVolumeGigabytes: maxTotalVolumeGigabytes
    - maxTotalSnapshots: maxTotalSnapshots

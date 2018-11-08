@@ -80,10 +80,10 @@ Request
 
    - project_id: project_id_path
    - consistencygroup: consistencygroup
-   - description: description_11
+   - description: description_consis
    - availability_zone: availability_zone
-   - volume_types: volume_types_2
-   - name: name_15
+   - volume_types: volume_types_commas
+   - name: name_consis
 
 Request Example
 ---------------
@@ -97,13 +97,13 @@ Response
 .. rest_parameters:: parameters.yaml
 
    - consistencygroup: consistencygroup
-   - status: status_1
-   - description: description_6
+   - status: status_consis
+   - description: description_cg
    - availability_zone: availability_zone
    - created_at: created_at
    - volume_types: volume_types
-   - name: name_15
-   - id: consistencygroup_id_1
+   - name: name_consis
+   - id: consistencygroup_id
 
 Response Example
 ----------------
@@ -131,15 +131,15 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - consistencygroup_id: consistencygroup_id_2
+   - consistencygroup_id: consistencygroup_id_path
 
 Response Parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_1
-   - description: description_6
+   - status: status_consis
+   - description: description_cg
    - availability_zone: availability_zone
    - created_at: created_at
    - volume_types: volume_types
@@ -176,9 +176,9 @@ Request
 
    - project_id: project_id_path
    - consistencygroup-from-src: consistencygroup-from-src
-   - status: status_1
+   - status: status_consis
    - user_id: user_id
-   - description: description_11
+   - description: description_consis
    - cgsnapshot_id: cgsnapshot_id
    - source_cgid: source_cgid
    - project_id: project_id
@@ -212,7 +212,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - consistencygroup_id: consistencygroup_id_2
+   - consistencygroup_id: consistencygroup_id_path
    - consistencygroup: consistencygroup
    - force: force
 
@@ -257,8 +257,8 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - consistencygroups: consistencygroups
-   - status: status_1
-   - description: description_6
+   - status: status_consis
+   - description: description_cg
    - availability_zone: availability_zone
    - created_at: created_at
    - volume_types: volume_types
@@ -294,10 +294,10 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - consistencygroup_id: consistencygroup_id_2
+   - consistencygroup_id: consistencygroup_id_path
    - consistencygroup: consistencygroup
    - remove_volumes: remove_volumes
-   - description: description_11
+   - description: description_consis
    - add_volumes: add_volumes
    - name: name
 

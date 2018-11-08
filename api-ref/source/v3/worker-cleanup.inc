@@ -30,7 +30,7 @@ Request
    - cluster_name: cluster_mutex
    - service_id: service_id
    - host: host_service
-   - binary: binary
+   - binary: binary_required
    - is-up: is_up
    - disabled: disabled
    - resource-id: resource_id
@@ -50,7 +50,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - host: host_service
-   - binary: binary
+   - binary: binary_required
    - id: service_id
    - cluster_name: cluster_mutex
 

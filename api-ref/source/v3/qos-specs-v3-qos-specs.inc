@@ -202,9 +202,9 @@ Response Parameters
    - qos_specs: qos_specs
    - specs: specs
    - consumer: consumer
-   - name: name_4
-   - id: id_3
-   - links: links_2
+   - name: name_qos_spec
+   - id: id_qos_spec
+   - links: links_qos
 
 
 Response Example
@@ -281,7 +281,7 @@ Request
 
    - project_id: project_id_path
    - qos_id: qos_id
-   - force: force_3
+   - force: force_del_qos
 
 
 Create a QoS specification
@@ -309,7 +309,7 @@ Request
 
    - project_id: project_id_path
    - qos_specs: qos_specs
-   - name: name_4
+   - name: name_qos_spec
 
 Request Example
 ---------------
@@ -324,9 +324,9 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - qos_specs: qos_specs
-   - name: name_4
-   - links: links_2
-   - id: id_3
+   - name: name_qos_spec
+   - links: links_qos
+   - id: id_qos_spec
    - consumer: consumer
    - specs: specs
 
@@ -377,8 +377,8 @@ Response Parameters
    - qos_specs: qos_specs
    - specs: specs
    - consumer: consumer
-   - id: id_3
-   - name: name_4
+   - id: id_qos_spec
+   - name: name_qos_spec
 
 
 Response Example

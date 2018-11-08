@@ -35,9 +35,9 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - resource_filters: resource_filters_1
+   - resource_filters: resource_filters_coll
    - filters: resource_filters
-   - resource: resource_1
+   - resource: resource_fil
 
 Response Example
 ----------------
