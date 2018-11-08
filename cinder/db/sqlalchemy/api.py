@@ -4226,7 +4226,7 @@ def _volume_type_access_query(context, session=None):
 
 def _group_type_access_query(context, session=None):
     return model_query(context, models.GroupTypeProjects, session=session,
-                       read_deleted="int_no")
+                       read_deleted="no")
 
 
 @require_admin_context
