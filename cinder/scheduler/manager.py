@@ -104,7 +104,10 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         ctxt = context.get_admin_context()
         self.request_service_capabilities(ctxt)
 
-        eventlet.sleep(CONF.periodic_interval)
+        for __ in range(CONF.periodic_interval):
+            if self.driver.is_first_receive():
+                break
+            eventlet.sleep(1)
         self._startup_delay = False
 
     def reset(self):

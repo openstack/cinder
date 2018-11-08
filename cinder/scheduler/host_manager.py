@@ -509,6 +509,10 @@ class HostManager(object):
                       {'service_name': service_name, 'host': host})
             return
 
+        # Determine whether HostManager has just completed initialization, and
+        # has not received the rpc message returned by volume.
+        just_init = self._is_just_initialized()
+
         # TODO(geguileo): In P - Remove the next line since we receive the
         # timestamp
         timestamp = timestamp or timeutils.utcnow()
@@ -550,6 +554,8 @@ class HostManager(object):
                    'cluster': cluster_msg})
 
         self._no_capabilities_backends.discard(backend)
+        if just_init:
+            self._update_backend_state_map(cinder_context.get_admin_context())
 
     def notify_service_capabilities(self, service_name, backend, capabilities,
                                     timestamp):
@@ -583,6 +589,14 @@ class HostManager(object):
 
     def has_all_capabilities(self):
         return len(self._no_capabilities_backends) == 0
+
+    def _is_just_initialized(self):
+        return not self.service_states_last_update
+
+    def first_receive_capabilities(self):
+        return (not self._is_just_initialized() and
+                len(set(self.backend_state_map)) > 0 and
+                len(self._no_capabilities_backends) == 0)
 
     def _update_backend_state_map(self, context):
 

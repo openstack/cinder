@@ -111,12 +111,16 @@ class HostManagerTestCase(test.TestCase):
         self.assertEqual(expected, mock_func.call_args_list)
         self.assertEqual(set(self.fake_backends), set(result))
 
+    @mock.patch(
+        'cinder.scheduler.host_manager.HostManager._is_just_initialized')
     @mock.patch('cinder.scheduler.host_manager.HostManager._get_updated_pools')
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_update_service_capabilities(self, _mock_utcnow,
-                                         _mock_get_updated_pools):
+                                         _mock_get_updated_pools,
+                                         _mock_is_just_initialized):
         service_states = self.host_manager.service_states
         self.assertDictEqual({}, service_states)
+        _mock_is_just_initialized.return_value = False
         _mock_utcnow.side_effect = [31338, 31339]
 
         _mock_get_updated_pools.return_value = []
@@ -157,13 +161,17 @@ class HostManagerTestCase(test.TestCase):
         self.assertDictEqual(expected, service_states)
 
     @mock.patch(
+        'cinder.scheduler.host_manager.HostManager._is_just_initialized')
+    @mock.patch(
         'cinder.scheduler.host_manager.HostManager.get_usage_and_notify')
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_update_and_notify_service_capabilities_case1(
             self, _mock_utcnow,
-            _mock_get_usage_and_notify):
+            _mock_get_usage_and_notify,
+            _mock_is_just_initialized):
 
         _mock_utcnow.side_effect = [31337, 31338, 31339]
+        _mock_is_just_initialized.return_value = False
         service_name = 'volume'
 
         capab1 = {'pools': [{
@@ -208,13 +216,17 @@ class HostManagerTestCase(test.TestCase):
                              self.host_manager_1.service_states['host1'])
 
     @mock.patch(
+        'cinder.scheduler.host_manager.HostManager._is_just_initialized')
+    @mock.patch(
         'cinder.scheduler.host_manager.HostManager.get_usage_and_notify')
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_update_and_notify_service_capabilities_case2(
             self, _mock_utcnow,
-            _mock_get_usage_and_notify):
+            _mock_get_usage_and_notify,
+            _mock_is_just_initialized):
 
         _mock_utcnow.side_effect = [31340, 31341, 31342]
+        _mock_is_just_initialized.return_value = False
 
         service_name = 'volume'
 
@@ -545,6 +557,71 @@ class HostManagerTestCase(test.TestCase):
                                                       host3_volume_capabs,
                                                       None, timestamp)
         self.assertTrue(self.host_manager.has_all_capabilities())
+
+    @mock.patch('cinder.objects.service.Service.is_up',
+                new_callable=mock.PropertyMock)
+    @mock.patch('cinder.db.service_get_all')
+    def test_first_receive_capabilities_case1(self, _mock_service_get_all,
+                                              _mock_service_is_up):
+        # No volume service startup
+        self.assertFalse(self.host_manager.first_receive_capabilities())
+        services = [
+            dict(id=1, host='host1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='06acda71-b3b4-4f1b-8d87-db5c47e7ebd2', )
+        ]
+        _mock_service_get_all.return_value = services
+        _mock_service_is_up.return_value = True
+
+        timestamp = jsonutils.to_primitive(datetime.utcnow())
+        host1_volume_capabs = dict(free_capacity_gb=4321)
+
+        service_name = 'volume'
+        self.host_manager.update_service_capabilities(service_name, 'host1',
+                                                      host1_volume_capabs,
+                                                      None, timestamp)
+        self.assertTrue(self.host_manager.first_receive_capabilities())
+
+    @mock.patch('cinder.objects.service.Service.is_up',
+                new_callable=mock.PropertyMock)
+    @mock.patch('cinder.db.service_get_all')
+    def test_first_receive_capabilities_case2(self, _mock_service_get_all,
+                                              _mock_service_is_up):
+        _mock_service_is_up.return_value = True
+        services = [
+            dict(id=1, host='host1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='36ede0e2-1b3c-41b0-9cd3-66e1f56dc959'),
+            dict(id=2, host='host2', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='b124e8dc-bf5f-4923-802d-27153ac7fe56'),
+            dict(id=3, host='host3', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 uuid='4d0b1c5e-ce3c-424e-b2f4-a09a0f54d328'),
+        ]
+        _mock_service_get_all.return_value = services
+        # Create host_manager again to let db.service_get_all mock run
+        self.host_manager = host_manager.HostManager()
+        self.assertFalse(self.host_manager.first_receive_capabilities())
+
+        timestamp = jsonutils.to_primitive(datetime.utcnow())
+        host1_volume_capabs = dict(free_capacity_gb=4321)
+        host2_volume_capabs = dict(free_capacity_gb=5432)
+        host3_volume_capabs = dict(free_capacity_gb=6543)
+
+        service_name = 'volume'
+        self.host_manager.update_service_capabilities(service_name, 'host1',
+                                                      host1_volume_capabs,
+                                                      None, timestamp)
+        self.assertFalse(self.host_manager.first_receive_capabilities())
+        self.host_manager.update_service_capabilities(service_name, 'host2',
+                                                      host2_volume_capabs,
+                                                      None, timestamp)
+        self.assertFalse(self.host_manager.first_receive_capabilities())
+        self.host_manager.update_service_capabilities(service_name, 'host3',
+                                                      host3_volume_capabs,
+                                                      None, timestamp)
+        self.assertTrue(self.host_manager.first_receive_capabilities())
 
     @mock.patch('cinder.db.service_get_all')
     @mock.patch('cinder.objects.service.Service.is_up',
