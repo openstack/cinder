@@ -118,6 +118,38 @@ class VolumeProtectionTests(test.TestCase):
         # expected?
         self.assertEqual(http_client.NOT_FOUND, response.status_int)
 
+    def test_admin_can_get_all_volumes_detail(self):
+        # Make sure administrators are authorized to list volumes
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context)
+        path = '/v3/%(project_id)s/volumes/detail' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        response = self._get_request_response(admin_context, path, 'GET')
+
+        self.assertEqual(http_client.OK, response.status_int)
+        res_vol = response.json_body['volumes'][0]
+
+        self.assertEqual(volume.id, res_vol['id'])
+
+    def test_owner_can_get_all_volumes_detail(self):
+        # Make sure owners are authorized to list volumes
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context)
+        path = '/v3/%(project_id)s/volumes/detail' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        response = self._get_request_response(user_context, path, 'GET')
+
+        self.assertEqual(http_client.OK, response.status_int)
+        res_vol = response.json_body['volumes'][0]
+
+        self.assertEqual(volume.id, res_vol['id'])
+
     @mock.patch.object(volume_api.API, 'get_volume')
     def test_admin_can_force_delete_volumes(self, mock_volume):
         # Make sure administrators are authorized to force delete volumes
