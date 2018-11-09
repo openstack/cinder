@@ -75,9 +75,17 @@ Configure SAN fabric parameters under a section matching the name used in
 
     To define a fabric group for a switch which has Virtual Fabrics
     enabled, include the ``fc_virtual_fabric_id`` configuration option
-    and ``fc_southbound_protocol`` configuration option set to ``HTTP``
-    or ``HTTPS`` in the fabric group. Zoning on VF enabled fabric using
-    ``SSH`` southbound protocol is not supported.
+    and ``fc_southbound_protocol`` configuration option set to ``HTTP``,
+    ``HTTPS``, ``REST_HTTP`` or ``REST_HTTPS`` in the fabric group.
+    Zoning on VF enabled fabric using ``SSH`` southbound protocol is
+    not supported.
+
+.. note::
+
+    On switches running Fabric OS v8.2.1 or greater, the use of the
+    REST interface is recommended for southbound communication.  Set
+    the ``fc_southbound_protocol`` configuration option to ``REST_HTTP``
+    or ``REST_HTTPS`` in the fabric group.
 
 System requirements
 -------------------

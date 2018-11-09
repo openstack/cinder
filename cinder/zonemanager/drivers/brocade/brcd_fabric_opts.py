@@ -1,4 +1,4 @@
-#    (c) Copyright 2014 Brocade Communications Systems Inc.
+#    (c) Copyright 2019 Brocade, a Broadcom Company
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,8 +20,8 @@ from cinder.volume import configuration
 
 brcd_zone_opts = [
     cfg.StrOpt('fc_southbound_protocol',
-               default='HTTP',
-               choices=('SSH', 'HTTP', 'HTTPS'),
+               default='REST_HTTP',
+               choices=('SSH', 'HTTP', 'HTTPS', 'REST_HTTP', 'REST_HTTPS'),
                help='South bound connector for the fabric.'),
     cfg.StrOpt('fc_fabric_address',
                default='',
