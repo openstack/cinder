@@ -79,9 +79,19 @@ def update(context, id, name, description, is_public=None):
         if name:
             old_type_name = old_volume_type.get('name')
             if old_type_name != name:
-                QUOTAS.update_quota_resource(elevated,
-                                             old_type_name,
-                                             name)
+                old_description = old_volume_type.get('description')
+                old_public = old_volume_type.get('is_public')
+                try:
+                    QUOTAS.update_quota_resource(elevated,
+                                                 old_type_name,
+                                                 name)
+                # Rollback the updated information to the original
+                except db_exc.DBError:
+                    db.volume_type_update(elevated, id,
+                                          dict(name=old_type_name,
+                                               description=old_description,
+                                               is_public=old_public))
+                    raise
     except db_exc.DBError:
         LOG.exception('DB error:')
         raise exception.VolumeTypeUpdateFailed(id=id)
