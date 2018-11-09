@@ -1142,6 +1142,12 @@ group_id:
   in: body
   required: true
   type: string
+group_id_optional:
+  description: |
+    The ID of the group.
+  in: body
+  required: false
+  type: string
 group_name:
   description: |
     The group name.
@@ -2050,21 +2056,21 @@ os-vol-host-attr:host:
     Current back-end of the volume.
     Host format is ``host@backend#pool``.
   in: body
-  required: true
+  required: false
   type: string
 os-vol-mig-status-attr:migstat:
   description: |
     The status of this volume migration (None means
     that a migration is not currently in progress).
   in: body
-  required: true
+  required: false
   type: string
 os-vol-mig-status-attr:name_id:
   description: |
     The volume ID that this volume name on the back-
     end is based on.
   in: body
-  required: true
+  required: false
   type: string
 os-vol-tenant-attr:tenant_id:
   description: |
@@ -2427,6 +2433,7 @@ service_uuid:
   in: body
   required: true
   type: string
+  min_version: 3.48
 services:
   description: |
     A list of service objects.
@@ -2440,6 +2447,7 @@ shared_targets:
   in: body
   required: true
   type: boolean
+  min_version: 3.48
 size:
   description: |
     The size of the volume, in gibibytes (GiB).

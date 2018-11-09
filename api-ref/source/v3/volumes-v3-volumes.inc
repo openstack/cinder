@@ -101,7 +101,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - migration_status: migration_status_req
+   - migration_status: migration_status
    - attachments: attachments
    - links: links_vol
    - availability_zone: availability_zone
@@ -128,6 +128,7 @@ Response Parameters
    - created_at: created_at
    - volumes: volumes
    - volume_type: volume_type_vol
+   - group_id: group_id_optional
    - volumes_links: links_vol_optional
    - count: count
 
@@ -242,6 +243,7 @@ Response Parameters
    - bootable: bootable_response
    - created_at: created_at
    - volume_type: volume_type_vol
+   - group_id: group_id_optional
 
 Response Example
 ----------------
