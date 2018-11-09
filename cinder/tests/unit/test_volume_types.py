@@ -19,6 +19,7 @@ import mock
 import time
 
 from oslo_config import cfg
+from oslo_db import exception as db_exc
 from oslo_utils import uuidutils
 
 from cinder import context
@@ -141,6 +142,30 @@ class VolumeTypeTestCase(test.TestCase):
         mock_update_quota.assert_called_once_with(self.ctxt,
                                                   self.vol_type1_name,
                                                   new_type_name)
+        volume_types.destroy(self.ctxt, type_ref.id)
+
+    @mock.patch('cinder.quota.VolumeTypeQuotaEngine.'
+                'update_quota_resource')
+    def test_update_volume_type_name_with_db_error(self, mock_update_quota):
+        type_ref = volume_types.create(self.ctxt,
+                                       self.vol_type1_name,
+                                       self.vol_type1_specs,
+                                       description=self.vol_type1_description)
+        mock_update_quota.side_effect = db_exc.DBError
+        new_type_name = self.vol_type1_name + '_updated'
+        description = 'new_test'
+        is_public = False
+        self.assertRaises(exception.VolumeTypeUpdateFailed,
+                          volume_types.update, self.ctxt, type_ref.id,
+                          new_type_name, description, is_public)
+        mock_update_quota.assert_called_once_with(self.ctxt,
+                                                  self.vol_type1_name,
+                                                  new_type_name)
+        new = volume_types.get_volume_type_by_name(self.ctxt,
+                                                   self.vol_type1_name)
+        self.assertEqual(self.vol_type1_name, new.get('name'))
+        self.assertEqual(self.vol_type1_description, new.get('description'))
+        self.assertTrue(new.get('is_public'))
         volume_types.destroy(self.ctxt, type_ref.id)
 
     def test_volume_type_create_then_destroy_with_non_admin(self):
