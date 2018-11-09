@@ -16,6 +16,7 @@ import mock
 import taskflow.engines
 
 from cinder import context
+from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_constants as fakes
 from cinder.tests.unit import fake_volume
@@ -126,6 +127,54 @@ class ManageVolumeFlowTestCase(test.TestCase):
         mock_error_out.assert_called_once_with(volume_ref,
                                                reason='Volume manage failed.',
                                                status='error_managing')
+
+    def test_prepare_for_quota_reservation_with_wrong_volume(self):
+        """Test the class PrepareForQuotaReservationTas with wrong vol."""
+        mock_db = mock.MagicMock()
+        mock_driver = mock.MagicMock()
+        wrong_volume = mock.MagicMock()
+        mock_manage_existing_ref = mock.MagicMock()
+        mock_except = exception.CinderException
+
+        mock_driver.manage_existing_get_size.side_effect = mock_except
+        task = manager.PrepareForQuotaReservationTask(mock_db, mock_driver)
+        self.assertRaises(exception.CinderException,
+                          task.execute,
+                          self.ctxt,
+                          wrong_volume,
+                          mock_manage_existing_ref)
+
+    def test_manage_existing_task(self):
+        """Test the class ManageExistingTask."""
+        mock_db = mock.MagicMock()
+        mock_driver = mock.MagicMock()
+        mock_volume = mock.MagicMock()
+        mock_manage_existing_ref = mock.MagicMock()
+        mock_size = mock.MagicMock()
+
+        task = manager.ManageExistingTask(mock_db, mock_driver)
+        rv = task.execute(self.ctxt, mock_volume, mock_manage_existing_ref,
+                          mock_size)
+
+        expected_output = {'volume': mock_volume}
+        self.assertDictEqual(rv, expected_output)
+
+    def test_manage_existing_task_with_wrong_volume(self):
+        """Test the class ManageExistingTask with wrong volume."""
+        mock_db = mock.MagicMock()
+        mock_driver = mock.MagicMock()
+        mock_volume = mock.MagicMock()
+        mock_volume.update.side_effect = exception.CinderException
+        mock_manage_existing_ref = mock.MagicMock()
+        mock_size = mock.MagicMock()
+
+        task = manager.ManageExistingTask(mock_db, mock_driver)
+        self.assertRaises(exception.CinderException,
+                          task.execute,
+                          self.ctxt,
+                          mock_volume,
+                          mock_manage_existing_ref,
+                          mock_size)
 
     def test_get_flow(self):
         mock_volume_flow = mock.Mock()
