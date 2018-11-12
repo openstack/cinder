@@ -2,8 +2,6 @@
     "admin_api": "is_admin:True",
     "admin_or_owner":  "is_admin:True or project_id:%(project_id)s",
 
-    "volume:create": "",
-    "volume:create_from_image": "",
     "volume:get_volume_metadata": "",
     "volume:get_volume_image_metadata": "",
     "volume:create_volume_metadata": "",
