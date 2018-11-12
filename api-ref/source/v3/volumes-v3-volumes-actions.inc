@@ -241,7 +241,7 @@ Request
 
    - project_id: project_id_path
    - volume_id: volume_id_path
-   - os-vol-image-meta: os-show_image_metadata
+   - os-show_image_metadata: os-show_image_metadata
 
 Request Example
 ---------------
