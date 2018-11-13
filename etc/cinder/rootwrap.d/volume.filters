@@ -104,6 +104,7 @@ qemu-img_convert: CommandFilter, qemu-img, root
 
 # cinder/volume/nfs.py
 stat: CommandFilter, stat, root
+mount: CommandFilter, mount, root
 df: CommandFilter, df, root
 du: CommandFilter, du, root
 truncate: CommandFilter, truncate, root
