@@ -303,3 +303,92 @@ class VolumeProtectionTests(test.TestCase):
                                               body=body)
 
         self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get')
+    def test_admin_can_update_volumes(self, mock_volume):
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"volume": {"name": "update_name"}}
+        response = self._get_request_response(admin_context, path, 'PUT',
+                                              body=body)
+        self.assertEqual(http_client.OK, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get')
+    def test_owner_can_update_volumes(self, mock_volume):
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"volume": {"name": "update_name"}}
+        response = self._get_request_response(user_context, path, 'PUT',
+                                              body=body)
+        self.assertEqual(http_client.OK, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get')
+    def test_owner_cannot_update_volumes_for_others(self, mock_volume):
+        owner_context = self.user_context
+        non_owner_context = self.other_user_context
+
+        volume = self._create_fake_volume(owner_context)
+        mock_volume.return_value = volume
+
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s' % {
+            'project_id': non_owner_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"volume": {"name": "update_name"}}
+        response = self._get_request_response(non_owner_context, path, 'PUT',
+                                              body=body)
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get')
+    def test_owner_can_delete_volumes(self, mock_volume):
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        response = self._get_request_response(user_context, path, 'DELETE')
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get')
+    def test_admin_can_delete_volumes(self, mock_volume):
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        response = self._get_request_response(admin_context, path, 'DELETE')
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get')
+    def test_owner_cannot_delete_volumes_for_others(self, mock_volume):
+        owner_context = self.user_context
+        non_owner_context = self.other_user_context
+
+        volume = self._create_fake_volume(owner_context)
+        mock_volume.return_value = volume
+
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s' % {
+            'project_id': non_owner_context.project_id, 'volume_id': volume.id
+        }
+
+        response = self._get_request_response(non_owner_context, path,
+                                              'DELETE')
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)

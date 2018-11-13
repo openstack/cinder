@@ -7,8 +7,6 @@
     "volume:create_volume_metadata": "",
     "volume:delete_volume_metadata": "",
     "volume:update_volume_metadata": "",
-    "volume:delete": "",
-    "volume:update": "",
     "volume:attach": "",
     "volume:detach": "",
     "volume:reserve_volume": "",
