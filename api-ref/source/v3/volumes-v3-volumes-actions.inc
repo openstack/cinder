@@ -821,7 +821,7 @@ Request
    - project_id: project_id_path
    - volume_id: volume_id_path
    - os-terminate_connection: os-terminate_connection
-   - connector: connector
+   - connector: connector_required
 
 Request Example
 ---------------
@@ -844,7 +844,7 @@ Response codes
 
 .. rest_status_code:: success ../status.yaml
 
-   - 202
+   - 200
 
 
 Request
@@ -855,7 +855,7 @@ Request
    - project_id: project_id_path
    - volume_id: volume_id_path
    - os-initialize_connection: os-initialize_connection
-   - connector: connector
+   - connector: connector_required
 
 Request Example
 ---------------
