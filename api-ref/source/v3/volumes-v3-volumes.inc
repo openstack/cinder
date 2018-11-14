@@ -759,7 +759,8 @@ Get volumes summary
 
 .. rest_method::  GET /v3/{project_id}/volumes/summary
 
-Display volumes summary with total number of volumes and total size in GB
+Display volumes summary with total number of volumes and total size in GB.
+Available since API microversion 3.12.
 
 
 Response codes
