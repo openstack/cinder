@@ -589,7 +589,7 @@ Request
    - volume_type_id: volume_type_id
    - encryption: encryption
    - key_size: key_size
-   - provider: provider
+   - provider: provider_req
    - control_location: control_location
    - cipher: cipher
 
@@ -645,7 +645,7 @@ Request
    - encryption_id: encryption_id
    - encryption: encryption
    - key_size: key_size
-   - provider: provider_optional
+   - provider: provider_req_optional
    - control_location: control_location
    - cipher: cipher
 
