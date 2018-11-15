@@ -100,7 +100,9 @@ def fake_max_volume_metadata():
 
 def get_volume(*args, **kwargs):
     vol = {'name': 'fake',
-           'metadata': {}}
+           'metadata': {},
+           'project_id': fake.PROJECT_ID
+           }
     return fake_volume.fake_volume_obj(args[0], **vol)
 
 
@@ -136,7 +138,7 @@ class VolumeMetaDataTest(test.TestCase):
                "availability_zone": "zone1:host1",
                "metadata": {}}
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
         self.volume_controller.create(req, body=body)
 
     def test_index(self):
