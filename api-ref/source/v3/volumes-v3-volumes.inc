@@ -516,7 +516,7 @@ Response codes
 
 .. rest_status_code:: success ../status.yaml
 
-   - 202
+   - 200
 
 
 Request
@@ -785,7 +785,7 @@ Response Parameters
 
    - volume-summary: volume-summary
    - total_size: total_size
-   - total_count: total_count
+   - total_count: total_count_int
    - metadata: summary_metadata
 
 
