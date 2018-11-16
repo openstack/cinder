@@ -2145,15 +2145,33 @@ protected:
   required: false
   type: boolean
   min_version: 3.1
-provider:
+provider:  # required response parameter (get/create)
   description: |
     The class that provides encryption support.
   in: body
   required: true
   type: string
-provider_optional:
+provider_optional:  # optional response parameter (update)
   description: |
     The class that provides encryption support.
+  in: body
+  required: false
+  type: string
+provider_req:  # required request parameter (create)
+  description: |
+    The class that provides encryption support. Choices are:
+
+    * luks - relies on Linux Unified Key Setup (recommended)
+    * plain - relies on dm-crypt
+  in: body
+  required: true
+  type: string
+provider_req_optional:  # optional request parameter (update)
+  description: |
+    The class that provides encryption support. Choices are:
+
+    * luks - relies on Linux Unified Key Setup (recommended)
+    * plain - relies on dm-crypt
   in: body
   required: false
   type: string
