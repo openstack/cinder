@@ -136,7 +136,7 @@ def wait_until(condition, timeout=None, interval=common.INTERVAL_5_SEC,
             test_value = False
             with excutils.save_and_reraise_exception(
                     reraise=reraise_arbiter(ex)):
-                LOG.debug('Exception raised when executing %(condition_name)s'
+                LOG.debug('Exception raised when executing %(condition_name)s '
                           'in wait_until. Message: %(msg)s',
                           {'condition_name': condition.__name__,
                            'msg': ex.message})
@@ -169,7 +169,7 @@ def validate_storage_migration(volume, target_host, src_serial, src_protocol):
         return False
     if serial_number != src_serial:
         LOG.debug('Skip storage-assisted migration because '
-                  'target and source backend are not managing'
+                  'target and source backend are not managing '
                   'the same array.')
         return False
     if (target_host['capabilities']['storage_protocol'] != src_protocol

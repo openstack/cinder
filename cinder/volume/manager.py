@@ -1437,7 +1437,7 @@ class VolumeManager(manager.CleanableManager,
             image_volume = objects.Volume(context=ctx, **new_vol_values)
             image_volume.create()
         except Exception as ex:
-            LOG.exception('Create clone_image_volume: %(volume_id)s'
+            LOG.exception('Create clone_image_volume: %(volume_id)s '
                           'for image %(image_id)s, '
                           'failed (Exception: %(except)s)',
                           {'volume_id': volume.id,

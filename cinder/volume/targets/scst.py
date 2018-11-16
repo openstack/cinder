@@ -310,7 +310,7 @@ class SCSTAdm(iscsi.ISCSITarget):
             self.show_target(iscsi_target, iqn)
 
         except Exception:
-            LOG.error("Skipping remove_export. No iscsi_target is"
+            LOG.error("Skipping remove_export. No iscsi_target is "
                       "presently exported for volume: %s", volume['id'])
             return
         vol = self.db.volume_get(context, volume['id'])

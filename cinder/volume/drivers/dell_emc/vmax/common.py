@@ -3493,7 +3493,7 @@ class VMAXCommon(object):
                     extra_specs[utils.WORKLOAD], extra_specs,
                     do_disable_compression, is_re=True, rep_mode=rep_mode))
         except Exception as e:
-            exception_message = (_("Failed to get or create replication"
+            exception_message = (_("Failed to get or create replication "
                                    "group. Exception received: %(e)s")
                                  % {'e': six.text_type(e)})
             LOG.exception(exception_message)
@@ -4579,7 +4579,7 @@ class VMAXCommon(object):
             LOG.info("Reverted the volume to snapshot successfully")
         except Exception as e:
             exception_message = (_(
-                "Failed to revert the volume to the snapshot"
+                "Failed to revert the volume to the snapshot. "
                 "Exception received was %(e)s") % {'e': six.text_type(e)})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(

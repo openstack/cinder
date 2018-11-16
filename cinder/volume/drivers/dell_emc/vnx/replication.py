@@ -245,7 +245,7 @@ class ReplicationAdapter(object):
                     group.replication_status ==
                     fields.ReplicationStatus.ENABLED):
                 # Group is on the primary VNX, failover is needed.
-                LOG.info('%(group_id)s will be failed over to secondary'
+                LOG.info('%(group_id)s will be failed over to secondary '
                          '%(secondary_backend_id)s.',
                          {'group_id': group.id,
                           'secondary_backend_id': secondary_backend_id})
@@ -254,7 +254,7 @@ class ReplicationAdapter(object):
                     group.replication_status ==
                     fields.ReplicationStatus.FAILED_OVER):
                 # Group is on the secondary VNX, failover is needed.
-                LOG.info('%(group_id)s will be failed over to primary'
+                LOG.info('%(group_id)s will be failed over to primary '
                          '%(secondary_backend_id)s.',
                          {'group_id': group.id,
                           'secondary_backend_id': secondary_backend_id})

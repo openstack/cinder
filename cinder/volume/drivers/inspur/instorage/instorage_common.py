@@ -951,7 +951,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                         self._state, opts)):
                 msg = (_("Failed to manage existing volume due to "
                          "I/O group mismatch. The I/O group of the "
-                         "volume to be managed is %(vdisk_iogrp)s. I/O group"
+                         "volume to be managed is %(vdisk_iogrp)s. I/O group "
                          "of the chosen type is %(opt_iogrp)s.") %
                        {'vdisk_iogrp': vdisk['IO_group_name'],
                         'opt_iogrp': opts['iogrp']})
@@ -1360,7 +1360,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                           {'master': volume.name, 'aux': tgt_volume})
                 continue
             LOG.debug('_failover_replica_volumes: vol=%(vol)s, master_vol='
-                      '%(master_vol)s, aux_vol=%(aux_vol)s, state=%(state)s'
+                      '%(master_vol)s, aux_vol=%(aux_vol)s, state=%(state)s, '
                       'primary=%(primary)s',
                       {'vol': volume.name,
                        'master_vol': rep_info['master_vdisk_name'],
@@ -1455,7 +1455,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         def _replica_vol_ready():
             rep_info = self._assistant.get_relationship_info(volume)
             if not rep_info:
-                msg = (_('_wait_replica_vol_ready: no rc-releationship'
+                msg = (_('_wait_replica_vol_ready: no rc-releationship '
                          'is established for volume:%(volume)s. Please '
                          're-establish the rc-relationship and '
                          'synchronize the volumes on backend storage.'),
@@ -2525,7 +2525,7 @@ class InStorageAssistant(object):
             greenthread.sleep(self.WAIT_TIME)
 
         if not mapping_ready:
-            msg = (_('Mapping %(id)s prepare failed to complete within the'
+            msg = (_('Mapping %(id)s prepare failed to complete within the '
                      'allotted %(to)d seconds timeout. Terminating.')
                    % {'id': lc_map_id,
                       'to': timeout})
@@ -2752,8 +2752,8 @@ class InStorageAssistant(object):
                                        config, opts, full_copy=False,
                                        pool=None):
         """Create a LocalCopy mapping and add to consistent group."""
-        LOG.debug('Enter: create_localcopy_to_consistgrp: create LocalCopy'
-                  ' from source %(source)s to target %(target)s'
+        LOG.debug('Enter: create_localcopy_to_consistgrp: create LocalCopy '
+                  'from source %(source)s to target %(target)s. '
                   'Then add the localcopy to %(cg)s.',
                   {'source': source, 'target': target, 'cg': consistgrp})
 

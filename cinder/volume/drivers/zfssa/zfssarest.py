@@ -234,7 +234,7 @@ class ZFSSAApi(object):
                                'pool: %(pool)s '
                                'Project: %(proj)s '
                                'volume: %(vol)s '
-                               'for target: %(tgt)s and pool: %(tgt_pool)s'
+                               'for target: %(tgt)s and pool: %(tgt_pool)s. '
                                'Return code: %(ret.status)d '
                                'Message: %(ret.data)s .')
                              % {'pool': host_pool,

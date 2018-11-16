@@ -1143,7 +1143,7 @@ class VMAXRest(object):
                 host_lun_id = int(host_lun_id, 16)
             except Exception as e:
                 LOG.error("Unable to retrieve connection information "
-                          "for volume %(vol)s in masking view %(mv)s"
+                          "for volume %(vol)s in masking view %(mv)s. "
                           "Exception received: %(e)s.",
                           {'vol': device_id, 'mv': maskingview,
                            'e': e})
