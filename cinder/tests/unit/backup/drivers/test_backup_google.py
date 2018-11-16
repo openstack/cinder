@@ -177,6 +177,12 @@ class GoogleBackupDriverTestCase(test.TestCase):
         for _i in range(0, 64):
             self.volume_file.write(os.urandom(units.Ki))
             self.size_volume_file += 1024
+        # Note(yikun): It mocks out the backup notifier to avoid to leak
+        # notifications into other test.
+        notify_patcher = mock.patch(
+            'cinder.volume.utils.notify_about_backup_usage')
+        notify_patcher.start()
+        self.addCleanup(notify_patcher.stop)
 
     @gcs_client
     def test_backup(self):
