@@ -17,8 +17,10 @@
 
 import mock
 from oslo_config import cfg
+from oslo_utils import importutils
 
 from cinder import context
+from cinder import exception
 from cinder import objects
 from cinder.tests.unit import utils as tests_utils
 from cinder.tests.unit import volume as base
@@ -281,3 +283,30 @@ class VolumeInitHostTestCase(base.BaseVolumeTestCase):
         mock_add_threadpool.assert_called_once_with(
             mock_migrate_fixed_key,
             volumes=mock_get_my_volumes())
+
+    @mock.patch('time.sleep')
+    def test_init_host_retry(self, mock_sleep):
+        kwargs = {'service_id': 2}
+        self.volume = importutils.import_object(CONF.volume_manager)
+        self.volume.driver.do_setup = mock.MagicMock()
+        self.volume.driver.do_setup.side_effect = [
+            exception.CinderException("Test driver error."),
+            exception.InvalidConfigurationValue('Test config error.'),
+            ImportError]
+
+        self.volume.init_host(added_to_cluster=False, **kwargs)
+
+        self.assertEqual(4, self.volume.driver.do_setup.call_count)
+        self.assertFalse(self.volume.is_working())
+
+    @mock.patch('time.sleep')
+    def test_init_host_retry_once(self, mock_sleep):
+        kwargs = {'service_id': 2}
+        self.volume = importutils.import_object(CONF.volume_manager)
+        self.volume.driver.do_setup = mock.MagicMock()
+        self.volume.driver.do_setup.side_effect = [ImportError, None]
+
+        self.volume.init_host(added_to_cluster=False, **kwargs)
+
+        self.assertEqual(2, self.volume.driver.do_setup.call_count)
+        self.assertTrue(self.volume.is_working())

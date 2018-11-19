@@ -124,6 +124,11 @@ volume_manager_opts = [
     cfg.StrOpt('zoning_mode',
                help="FC Zoning mode configured, only 'fabric' is "
                     "supported now."),
+    cfg.IntOpt('reinit_driver_count',
+               default=3,
+               help='Maximum times to reintialize the driver '
+                    'if volume initialization fails. The interval of retry is '
+                    'exponentially backoff, and will be 1s, 2s, 4s etc.'),
 ]
 
 volume_backend_opts = [
@@ -409,7 +414,6 @@ class VolumeManager(manager.CleanableManager,
 
     def init_host(self, added_to_cluster=None, **kwargs):
         """Perform any required initialization."""
-        ctxt = context.get_admin_context()
         if not self.driver.supported:
             utils.log_unsupported_driver_warning(self.driver)
 
@@ -421,6 +425,20 @@ class VolumeManager(manager.CleanableManager,
                           resource={'type': 'driver',
                                     'id': self.__class__.__name__})
                 return
+
+        self._init_host(added_to_cluster, **kwargs)
+
+        if not self.driver.initialized:
+            reinit_count = 0
+            while reinit_count < CONF.reinit_driver_count:
+                time.sleep(2 ** reinit_count)
+                self._init_host(added_to_cluster, **kwargs)
+                if self.driver.initialized:
+                    return
+                reinit_count += 1
+
+    def _init_host(self, added_to_cluster=None, **kwargs):
+        ctxt = context.get_admin_context()
 
         # If we have just added this host to a cluster we have to include all
         # our resources in that cluster.

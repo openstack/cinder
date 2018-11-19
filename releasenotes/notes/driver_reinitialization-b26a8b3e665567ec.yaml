@@ -1,0 +1,6 @@
+---
+features:
+  - Added a new config ``reinit_driver_count`` in volume driver, which
+    indicates the maximum retry limit for driver re-initialization when
+    it fails to initialize a volume driver. Its default value is 3. The
+    interval of retry is exponentially backoff, and will be 1s, 2s, 4s etc.
