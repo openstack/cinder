@@ -1,0 +1,5 @@
+---
+issues:
+  - |
+    Multiattach support is disabled for the LVM driver when using the LIO iSCSI
+    target.  This functionality will be fixed in a later release.

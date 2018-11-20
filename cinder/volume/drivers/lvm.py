@@ -258,6 +258,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # This includes volumes and snapshots.
         total_volumes = len(self.vg.get_volumes())
 
+        supports_multiattach = True
+        if self.configuration.target_helper == 'lioadm':
+            supports_multiattach = False
+
         # Skip enabled_pools setting, treat the whole backend as one pool
         # XXX FIXME if multipool support is added to LVM driver.
         single_pool = {}
@@ -276,7 +280,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             total_volumes=total_volumes,
             filter_function=self.get_filter_function(),
             goodness_function=self.get_goodness_function(),
-            multiattach=True,
+            multiattach=supports_multiattach,
             backend_state='up'
         ))
         data["pools"].append(single_pool)
