@@ -236,7 +236,23 @@ def _convert_image(prefix, source, dest, out_format,
                                 passphrase_file=passphrase_file)
 
     start_time = timeutils.utcnow()
-    utils.execute(*cmd, run_as_root=run_as_root)
+
+    # If there is not enough space on the conversion partition, include
+    # the partitions's name in the error message.
+    try:
+        utils.execute(*cmd, run_as_root=run_as_root)
+    except processutils.ProcessExecutionError as ex:
+        if "No space left" in ex.stderr and CONF.image_conversion_dir in dest:
+            conversion_dir = CONF.image_conversion_dir
+            while not os.path.ismount(conversion_dir):
+                conversion_dir = os.path.dirname(conversion_dir)
+
+            message = _("Insufficient free space on %(location)s for image"
+                        "conversion.") % {'location': conversion_dir}
+            LOG.error(message)
+
+        raise
+
     duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
 
     # NOTE(jdg): use a default of 1, mostly for unit test, but in
