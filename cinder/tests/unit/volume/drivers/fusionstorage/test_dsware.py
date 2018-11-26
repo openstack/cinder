@@ -1,4 +1,4 @@
-# Copyright (c) 2013 - 2016 Huawei Technologies Co., Ltd.
+# Copyright (c) 2018 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -12,774 +12,467 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Unit Tests for Huawei FusionStorage drivers.
-"""
+import ddt
+import json
 
 import mock
-from oslo_config import cfg
-from oslo_service import loopingcall
+import uuid
 
-from cinder import context
 from cinder import exception
-from cinder.image import image_utils
+from cinder import objects
 from cinder import test
-from cinder.tests.unit import fake_constants
-from cinder.tests.unit import fake_snapshot
-from cinder.tests.unit import fake_volume
-from cinder.volume import configuration as conf
+from cinder.volume import configuration as config
 from cinder.volume.drivers.fusionstorage import dsware
-from cinder.volume.drivers.fusionstorage import fspythonapi
-
-
-test_volume = {'name': 'test_vol1',
-               'size': 4,
-               'volume_metadata': '',
-               'host': 'host01@dsware',
-               'instance_uuid': None,
-               'provider_id': '127.0.0.1',
-               'id': fake_constants.VOLUME_ID}
-
-test_src_volume = {'name': 'test_vol2',
-                   'size': 4,
-                   'status': 'available'}
-
-test_snapshot = {
-    'name': 'test_snapshot1',
-    'volume_id': fake_constants.VOLUME_ID,
-    'volume_size': '4'}
+from cinder.volume.drivers.fusionstorage import fs_client
+from cinder.volume.drivers.fusionstorage import fs_conf
+from cinder.volume import utils as volume_utils
 
 
 class FakeDSWAREDriver(dsware.DSWAREDriver):
     def __init__(self):
-        configuration = conf.Configuration(
-            [
-                cfg.StrOpt('fake'),
-            ],
-            None
-        )
-        super(FakeDSWAREDriver, self).__init__(configuration=configuration)
-        self.dsware_client = fspythonapi.FSPythonApi()
-        self.manage_ip = '127.0.0.1'
-        self.pool_type = '1'
+        self.configuration = config.Configuration(None)
+        self.conf = fs_conf.FusionStorageConf(self.configuration, "cinder@fs")
+        self.client = None
 
 
-class DSwareDriverTestCase(test.TestCase):
+@ddt.ddt
+class TestDSWAREDriver(test.TestCase):
+
     def setUp(self):
-        super(DSwareDriverTestCase, self).setUp()
-        self.driver = FakeDSWAREDriver()
-        self.context = context.get_admin_context()
-        self.volume = fake_volume.fake_volume_obj(context=self.context,
-                                                  **test_volume)
-        self.scr_volume = fake_volume.fake_volume_obj(context=self.context,
-                                                      **test_src_volume)
-        self.snapshot = fake_snapshot.fake_snapshot_obj(context=self.context,
-                                                        **test_snapshot)
-
-    def test_private_get_dsware_manage_ip(self):
-        retval = self.driver._get_dsware_manage_ip(self.volume)
-        self.assertEqual('127.0.0.1', retval)
-
-        test_volume_fail_dict = {'name': 'test_vol',
-                                 'size': 4,
-                                 'volume_metadata': '',
-                                 'host': 'host01@dsware',
-                                 'provider_id': None}
-        test_volume_fail = fake_volume.fake_volume_obj(context=self.context,
-                                                       **test_volume_fail_dict)
-        self.assertRaises(exception.CinderException,
-                          self.driver._get_dsware_manage_ip,
-                          test_volume_fail)
-
-    def test_private_get_poolid_from_host(self):
-        retval = self.driver._get_poolid_from_host(
-            'abc@fusionstorage_sas2copy#0')
-        self.assertEqual('0', retval)
-
-        retval = self.driver._get_poolid_from_host(
-            'abc@fusionstorage_sas2copy@0')
-        self.assertEqual(self.driver.pool_type, retval)
-
-        retval = self.driver._get_poolid_from_host(None)
-        self.assertEqual(self.driver.pool_type, retval)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'create_volume')
-    @mock.patch.object(fspythonapi.FSPythonApi, 'query_dsware_version')
-    @mock.patch.object(dsware.DSWAREDriver, '_get_poolid_from_host')
-    def test_private_create_volume_old_version(self, mock_get_poolid,
-                                               mock_query_dsware,
-                                               mock_create_volume):
-        # query_dsware_version return 1, old version
-        mock_query_dsware.return_value = 1
-        mock_create_volume.return_value = 0
-        self.driver._create_volume(self.volume.name,
-                                   self.volume.size,
-                                   True,
-                                   'abc@fusionstorage_sas2copy')
-        mock_create_volume.assert_called_with(self.volume.name, 0,
-                                              self.volume.size, 1)
-
-        self.driver._create_volume(self.volume.name,
-                                   self.volume.size,
-                                   False,
-                                   'abc@fusionstorage_sas2copy')
-        mock_create_volume.assert_called_with(self.volume.name, 0,
-                                              self.volume.size, 0)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'create_volume')
-    @mock.patch.object(fspythonapi.FSPythonApi, 'query_dsware_version')
-    @mock.patch.object(dsware.DSWAREDriver, '_get_poolid_from_host')
-    def test_private_create_volume_new_version(self, mock_get_poolid,
-                                               mock_query_dsware,
-                                               mock_create_volume):
-        # query_dsware_version return 0, new version
-        mock_query_dsware.return_value = 0
-        mock_get_poolid.return_value = 0
-        mock_create_volume.return_value = 0
-        self.driver._create_volume(self.volume.name,
-                                   self.volume.size,
-                                   True,
-                                   'abcE@fusionstorage_sas2copy#0')
-        mock_create_volume.assert_called_with(self.volume.name, 0,
-                                              self.volume.size, 1)
-
-        self.driver._create_volume(self.volume.name,
-                                   self.volume.size,
-                                   False,
-                                   'abc@fusionstorage_sas2copy#0')
-        mock_create_volume.assert_called_with(self.volume.name, 0,
-                                              self.volume.size, 0)
-
-        mock_query_dsware.return_value = 0
-        mock_get_poolid.return_value = 1
-        mock_create_volume.return_value = 0
-        self.driver._create_volume(self.volume.name,
-                                   self.volume.size,
-                                   True,
-                                   'abc@fusionstorage_sas2copy#1')
-        mock_create_volume.assert_called_with(self.volume.name, 1,
-                                              self.volume.size, 1)
-
-        self.driver._create_volume(self.volume.name,
-                                   self.volume.size,
-                                   False,
-                                   'abc@fusionstorage_sas2copy#1')
-        mock_create_volume.assert_called_with(self.volume.name, 1,
-                                              self.volume.size, 0)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'create_volume')
-    @mock.patch.object(fspythonapi.FSPythonApi, 'query_dsware_version')
-    @mock.patch.object(dsware.DSWAREDriver, '_get_poolid_from_host')
-    def test_private_create_volume_query_version_fail(self, mock_get_poolid,
-                                                      mock_query_dsware,
-                                                      mock_create_volume):
-        # query_dsware_version return 500015, query dsware version failed!
-        mock_query_dsware.return_value = 500015
-        self.assertRaises(exception.CinderException,
-                          self.driver._create_volume,
-                          self.volume.name,
-                          self.volume.size,
-                          True,
-                          'abc@fusionstorage_sas2copy#0')
-        self.assertRaises(exception.CinderException,
-                          self.driver._create_volume,
-                          self.volume.name,
-                          self.volume.size,
-                          False,
-                          'abc@fusionstorage_sas2copy#0')
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'create_volume')
-    @mock.patch.object(fspythonapi.FSPythonApi, 'query_dsware_version')
-    @mock.patch.object(dsware.DSWAREDriver, '_get_poolid_from_host')
-    def test_private_create_volume_fail(self, mock_get_poolid,
-                                        mock_query_dsware,
-                                        mock_create_volume):
-        mock_query_dsware.return_value = 1
-        # create_volume return 1, create volume failed
-        mock_create_volume.return_value = 1
-        self.assertRaises(exception.CinderException,
-                          self.driver._create_volume,
-                          self.volume.name,
-                          self.volume.size,
-                          True,
-                          'abc@fusionstorage_sas2copy#0')
-        self.assertRaises(exception.CinderException,
-                          self.driver._create_volume,
-                          self.volume.name,
-                          self.volume.size,
-                          False,
-                          'abc@fusionstorage_sas2copy#0')
-
-    @mock.patch.object(dsware.DSWAREDriver, '_create_volume')
-    @mock.patch.object(fspythonapi.FSPythonApi, 'get_manage_ip')
-    def test_create_volume(self, mock_get_manage_ip, mock_create_volume):
-        # success
-        mock_get_manage_ip.return_value = self.driver.manage_ip
-        retval = self.driver.create_volume(self.volume)
-        self.assertEqual({"provider_id": self.driver.manage_ip},
-                         retval)
-
-        # failure
-        mock_create_volume.side_effect = exception.CinderException(
-            'DSWARE Create Volume failed!')
-
-        self.assertRaises(exception.CinderException,
-                          self.driver.create_volume,
-                          self.volume)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'create_volume_from_snap')
-    def test_private_create_volume_from_snap(self, mock_create_volume):
-        mock_create_volume.side_effect = [0, 1]
-        self.driver._create_volume_from_snap(self.volume.name,
-                                             self.volume.size,
-                                             self.snapshot.name)
-        # failure
-        self.assertRaises(exception.CinderException,
-                          self.driver._create_volume_from_snap,
-                          self.volume.name, self.volume.size,
-                          self.snapshot.name)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'extend_volume')
-    def test_extend_volume(self, mock_extend_volume):
-        mock_extend_volume.return_value = 0
-        self.driver.extend_volume(self.volume, 5)
-
-        mock_extend_volume.return_value = 0
-        self.assertRaises(exception.CinderException,
-                          self.driver.extend_volume,
-                          self.volume,
-                          3)
-
-        mock_extend_volume.return_value = 1
-        self.assertRaises(exception.CinderException,
-                          self.driver.extend_volume,
-                          self.volume,
-                          5)
-
-    @mock.patch.object(dsware.DSWAREDriver, '_create_volume_from_snap')
-    @mock.patch.object(fspythonapi.FSPythonApi, 'get_manage_ip')
-    def test_create_volume_from_snap(self, mock_manage_ip, mock_create_vol):
-        # success
-        mock_manage_ip.return_value = self.driver.manage_ip
-        retval = self.driver.create_volume_from_snapshot(self.volume,
-                                                         self.snapshot)
-        self.assertEqual({"provider_id": self.driver.manage_ip},
-                         retval)
-
-        # failure
-        mock_create_vol.side_effect = exception.CinderException(
-            'DSWARE:create volume from snap failed')
-        self.assertRaises(exception.CinderException,
-                          self.driver.create_volume_from_snapshot,
-                          self.volume, self.snapshot)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'create_volume_from_volume')
-    @mock.patch.object(fspythonapi.FSPythonApi, 'get_manage_ip')
-    @mock.patch.object(dsware.DSWAREDriver,
-                       '_wait_for_create_cloned_volume_finish_timer')
-    def test_create_cloned_volume(self, mock_wait_finish,
-                                  mock_get_manage_ip, mock_create_volume):
-        # success
-        mock_create_volume.return_value = None
-        mock_get_manage_ip.return_value = self.driver.manage_ip
-        mock_wait_finish.return_value = True
-        retval = self.driver.create_cloned_volume(self.volume, self.scr_volume)
-        self.assertEqual({"provider_id": "127.0.0.1"}, retval)
-
-        # failure:create exception
-        mock_create_volume.return_value = 500015
-        self.assertRaises(exception.CinderException,
-                          self.driver.create_cloned_volume,
-                          self.volume, self.scr_volume)
-        # failure:wait exception
-        mock_create_volume.return_value = None
-        mock_wait_finish.return_value = False
-        self.assertRaises(exception.CinderException,
-                          self.driver.create_cloned_volume,
-                          self.volume, self.scr_volume)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'query_volume')
-    def test_private_check_create_cloned_volume_finish(self,
-                                                       mock_query_volume):
-        query_result_done = {'result': 0, 'vol_name': 'vol1',
-                             'father_name': 'vol1_father', 'status': '0',
-                             'vol_size': '1024', 'real_size': '1024',
-                             'pool_id': 'pool1', 'create_time': '01/01/2015'}
-
-        query_result_doing = {'result': 0, 'vol_name': 'vol1',
-                              'father_name': 'vol1_father', 'status': '6',
-                              'vol_size': '1024', 'real_size': '1024',
-                              'pool_id': 'pool1', 'create_time': '01/01/2015'}
-
-        mock_query_volume.side_effect = [
-            query_result_done, query_result_doing, query_result_doing]
-
-        # success
-        self.assertRaises(loopingcall.LoopingCallDone,
-                          self.driver._check_create_cloned_volume_finish,
-                          self.volume.name)
-
-        # in the process of creating volume
-        self.driver.count = self.driver.configuration.clone_volume_timeout - 1
-        self.driver._check_create_cloned_volume_finish(self.volume.name)
-        self.assertEqual(self.driver.configuration.clone_volume_timeout,
-                         self.driver.count)
-
-        # timeout
-        self.driver.count = self.driver.configuration.clone_volume_timeout
-        self.assertRaises(loopingcall.LoopingCallDone,
-                          self.driver._check_create_cloned_volume_finish,
-                          self.volume.name)
-
-    @mock.patch.object(dsware.DSWAREDriver,
-                       '_check_create_cloned_volume_finish')
-    def test_private_wait_for_create_cloned_volume_finish_timer(self,
-                                                                mock_check):
-        mock_check.side_effect = [loopingcall.LoopingCallDone(retvalue=True),
-                                  loopingcall.LoopingCallDone(retvalue=False)]
-        retval = self.driver._wait_for_create_cloned_volume_finish_timer(
-            self.volume.name)
-        self.assertTrue(retval)
-
-        retval = self.driver._wait_for_create_cloned_volume_finish_timer(
-            self.volume.name)
-        self.assertFalse(retval)
-
-    def test_private_analyse_output(self):
-        out = 'ret_code=10\nret_desc=test\ndev_addr=/sda\n'
-        retval = self.driver._analyse_output(out)
-        self.assertEqual({'dev_addr': '/sda',
-                          'ret_desc': 'test', 'ret_code': '10'},
-                         retval)
-
-        out = 'abcdefg'
-        retval = self.driver._analyse_output(out)
-        self.assertEqual({}, retval)
-
-    def test_private_attach_volume(self):
-        success = ['ret_code=0\nret_desc=success\ndev_addr=/dev/sdb\n', '']
-        failure = ['ret_code=50510011\nret_desc=failed\ndev_addr=/dev/sdb\n',
-                   '']
-        mock_execute = self.mock_object(self.driver, '_execute')
-        mock_execute.side_effect = [success, failure]
-        # attached successful
-        retval = self.driver._attach_volume(self.volume.name,
-                                            self.driver.manage_ip)
-        self.assertEqual({'dev_addr': '/dev/sdb',
-                          'ret_desc': 'success', 'ret_code': '0'},
-                         retval)
-        # attached failure
-        retval = self.driver._attach_volume(self.volume.name,
-                                            self.driver.manage_ip)
-        self.assertEqual({'dev_addr': '/dev/sdb',
-                          'ret_desc': 'failed', 'ret_code': '50510011'},
-                         retval)
-
-    def test_private_detach_volume(self):
-        success = ['ret_code=0\nret_desc=success\ndev_addr=/dev/sdb\n', '']
-        failure = ['ret_code=50510011\nret_desc=failed\ndev_addr=/dev/sdb\n',
-                   '']
-        mock_execute = self.mock_object(self.driver, '_execute')
-        mock_execute.side_effect = [success, failure]
-        # detached successful
-        retval = self.driver._detach_volume(self.volume.name,
-                                            self.driver.manage_ip)
-        self.assertEqual({'dev_addr': '/dev/sdb',
-                          'ret_desc': 'success', 'ret_code': '0'},
-                         retval)
-        # detached failure
-        retval = self.driver._detach_volume(self.volume.name,
-                                            self.driver.manage_ip)
-        self.assertEqual({'dev_addr': '/dev/sdb',
-                          'ret_desc': 'failed',
-                          'ret_code': '50510011'},
-                         retval)
-
-    def test_private_query_volume_attach(self):
-        success = ['ret_code=0\nret_desc=success\ndev_addr=/dev/sdb\n', '']
-        failure = ['ret_code=50510011\nret_desc=failed\ndev_addr=/dev/sdb\n',
-                   '']
-        mock_execute = self.mock_object(self.driver, '_execute')
-        mock_execute.side_effect = [success, failure]
-        # query successful
-        retval = self.driver._query_volume_attach(self.volume.name,
-                                                  self.driver.manage_ip)
-        self.assertEqual({'dev_addr': '/dev/sdb',
-                          'ret_desc': 'success',
-                          'ret_code': '0'},
-                         retval)
-        # query failure
-        retval = self.driver._query_volume_attach(self.volume.name,
-                                                  self.driver.manage_ip)
-        self.assertEqual({'dev_addr': '/dev/sdb',
-                          'ret_desc': 'failed',
-                          'ret_code': '50510011'},
-                         retval)
-
-    @mock.patch.object(dsware.DSWAREDriver, '_get_dsware_manage_ip')
-    @mock.patch.object(dsware.DSWAREDriver, '_attach_volume')
-    @mock.patch.object(image_utils, 'fetch_to_raw')
-    @mock.patch.object(dsware.DSWAREDriver, '_detach_volume')
-    def test_copy_image_to_volume(self, mock_detach, mock_fetch,
-                                  mock_attach, mock_get_manage_ip):
-        success = {'ret_code': '0',
-                   'ret_desc': 'success',
-                   'dev_addr': '/dev/sdb'}
-        failure = {'ret_code': '50510011',
-                   'ret_desc': 'failed',
-                   'dev_addr': '/dev/sdb'}
-        context = ''
-        image_service = ''
-        image_id = ''
-        mock_get_manage_ip.return_value = '127.0.0.1'
-        mock_attach.side_effect = [success, failure, success]
-        mock_detach.side_effect = [success, failure, failure]
-
-        # success
-        self.driver.copy_image_to_volume(context, self.volume, image_service,
-                                         image_id)
-
-        # failure - attach failure
-        self.assertRaises(exception.CinderException,
-                          self.driver.copy_image_to_volume,
-                          context, self.volume, image_service, image_id)
-
-        # failure - detach failure
-        self.assertRaises(exception.CinderException,
-                          self.driver.copy_image_to_volume,
-                          context, self.volume, image_service, image_id)
-
-    @mock.patch.object(dsware.DSWAREDriver, '_get_dsware_manage_ip')
-    @mock.patch.object(dsware.DSWAREDriver, '_attach_volume')
-    @mock.patch.object(dsware.DSWAREDriver, '_query_volume_attach')
-    @mock.patch.object(image_utils, 'upload_volume')
-    @mock.patch.object(dsware.DSWAREDriver, '_detach_volume')
-    def test_copy_volume_to_image_success(self, mock_detach, mock_upload,
-                                          mock_query, mock_attach,
-                                          mock_get_manage_ip):
-        success = {'ret_code': '0',
-                   'ret_desc': 'success',
-                   'dev_addr': '/dev/sdb'}
-        already_attached = {'ret_code': '50151401',
-                            'ret_desc': 'already_attached',
-                            'dev_addr': '/dev/sdb'}
-        context = ''
-        image_service = ''
-        image_meta = ''
-
-        mock_get_manage_ip.return_value = '127.0.0.1'
-        mock_attach.return_value = success
-        mock_detach.return_value = success
-        self.driver.copy_volume_to_image(context, self.volume, image_service,
-                                         image_meta)
-        mock_upload.assert_called_with('', '', '', '/dev/sdb')
-
-        mock_attach.return_value = already_attached
-        mock_query.return_value = success
-        mock_detach.return_value = success
-        self.driver.copy_volume_to_image(context, self.volume, image_service,
-                                         image_meta)
-        mock_upload.assert_called_with('', '', '', '/dev/sdb')
-
-    @mock.patch.object(dsware.DSWAREDriver, '_get_dsware_manage_ip')
-    @mock.patch.object(dsware.DSWAREDriver, '_attach_volume')
-    @mock.patch.object(dsware.DSWAREDriver, '_query_volume_attach')
-    @mock.patch.object(image_utils, 'upload_volume')
-    @mock.patch.object(dsware.DSWAREDriver, '_detach_volume')
-    def test_copy_volume_to_image_attach_fail(self, mock_detach, mock_upload,
-                                              mock_query, mock_attach,
-                                              mock_get_manage_ip):
-        failure = {'ret_code': '50510011',
-                   'ret_desc': 'failed',
-                   'dev_addr': '/dev/sdb'}
-        context = ''
-        image_service = ''
-        image_meta = ''
-
-        mock_get_manage_ip.return_value = '127.0.0.1'
-        mock_attach.return_value = failure
-        self.assertRaises(exception.CinderException,
-                          self.driver.copy_volume_to_image,
-                          context, self.volume, image_service, image_meta)
-        mock_attach.return_value = None
-        self.assertRaises(exception.CinderException,
-                          self.driver.copy_volume_to_image,
-                          context, self.volume, image_service, image_meta)
-
-    @mock.patch.object(dsware.DSWAREDriver, '_get_dsware_manage_ip')
-    @mock.patch.object(dsware.DSWAREDriver, '_attach_volume')
-    @mock.patch.object(dsware.DSWAREDriver, '_query_volume_attach')
-    @mock.patch.object(image_utils, 'upload_volume')
-    @mock.patch.object(dsware.DSWAREDriver, '_detach_volume')
-    def test_copy_volume_to_image_query_attach_fail(self, mock_detach,
-                                                    mock_upload, mock_query,
-                                                    mock_attach,
-                                                    mock_get_manage_ip):
-        already_attached = {'ret_code': '50151401',
-                            'ret_desc': 'already_attached',
-                            'dev_addr': '/dev/sdb'}
-        failure = {'ret_code': '50510011',
-                   'ret_desc': 'failed',
-                   'dev_addr': '/dev/sdb'}
-        context = ''
-        image_service = ''
-        image_meta = ''
-
-        mock_get_manage_ip.return_value = '127.0.0.1'
-        mock_attach.return_value = already_attached
-        mock_query.return_value = failure
-        self.assertRaises(exception.CinderException,
-                          self.driver.copy_volume_to_image,
-                          context, self.volume, image_service, image_meta)
-
-        mock_query.return_value = None
-        self.assertRaises(exception.CinderException,
-                          self.driver.copy_volume_to_image,
-                          context, self.volume, image_service, image_meta)
-
-    @mock.patch.object(dsware.DSWAREDriver, '_get_dsware_manage_ip')
-    @mock.patch.object(dsware.DSWAREDriver, '_attach_volume')
-    @mock.patch.object(dsware.DSWAREDriver, '_query_volume_attach')
-    @mock.patch.object(image_utils, 'upload_volume')
-    @mock.patch.object(dsware.DSWAREDriver, '_detach_volume')
-    def test_copy_volume_to_image_upload_fail(self, mock_detach, mock_upload,
-                                              mock_query, mock_attach,
-                                              mock_get_manage_ip):
-        success = {'ret_code': '0',
-                   'ret_desc': 'success',
-                   'dev_addr': '/dev/sdb'}
-        already_attached = {'ret_code': '50151401',
-                            'ret_desc': 'already_attached',
-                            'dev_addr': '/dev/sdb'}
-        context = ''
-        image_service = ''
-        image_meta = ''
-
-        mock_get_manage_ip.return_value = '127.0.0.1'
-        mock_attach.return_value = already_attached
-        mock_query.return_value = success
-        mock_upload.side_effect = exception.CinderException(
-            'upload_volume error')
-        self.assertRaises(exception.CinderException,
-                          self.driver.copy_volume_to_image,
-                          context, self.volume, image_service, image_meta)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'query_volume')
-    def test_private_get_volume(self, mock_query):
-        result_success = {'result': 0}
-        result_not_exist = {'result': "50150005\n"}
-        result_exception = {'result': "50510006\n"}
-
-        mock_query.side_effect = [
-            result_success, result_not_exist, result_exception]
-
-        retval = self.driver._get_volume(self.volume.name)
-        self.assertTrue(retval)
-
-        retval = self.driver._get_volume(self.volume.name)
-        self.assertFalse(retval)
-
-        self.assertRaises(exception.CinderException,
-                          self.driver._get_volume,
-                          self.volume.name)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'delete_volume')
-    def test_private_delete_volume(self, mock_delete):
-        result_success = 0
-        result_not_exist = '50150005\n'
-        result_being_deleted = '50151002\n'
-        result_exception = '51050006\n'
-
-        mock_delete.side_effect = [result_success, result_not_exist,
-                                   result_being_deleted, result_exception]
-
-        retval = self.driver._delete_volume(self.volume.name)
-        self.assertTrue(retval)
-
-        retval = self.driver._delete_volume(self.volume.name)
-        self.assertTrue(retval)
-
-        retval = self.driver._delete_volume(self.volume.name)
-        self.assertTrue(retval)
-
-        self.assertRaises(exception.CinderException,
-                          self.driver._delete_volume, self.volume.name)
-
-    @mock.patch.object(dsware.DSWAREDriver, '_get_volume')
-    @mock.patch.object(dsware.DSWAREDriver, '_delete_volume')
-    def test_delete_volume(self, mock_delete, mock_get):
-        mock_get.return_value = False
-        retval = self.driver.delete_volume(self.volume)
-        self.assertTrue(retval)
-
-        mock_get.return_value = True
-        mock_delete.return_value = True
-        retval = self.driver.delete_volume(self.volume)
-        self.assertTrue(retval)
-
-        mock_get.return_value = True
-        mock_delete.side_effect = exception.CinderException(
-            'delete volume exception')
-        self.assertRaises(exception.CinderException,
-                          self.driver.delete_volume,
-                          self.volume)
-
-        mock_get.side_effect = exception.CinderException(
-            'get volume exception')
-        self.assertRaises(exception.CinderException,
-                          self.driver.delete_volume,
-                          self.volume)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'query_snap')
-    def test_private_get_snapshot(self, mock_query):
-        result_success = {'result': 0}
-        result_not_found = {'result': "50150006\n"}
-        result_exception = {'result': "51050007\n"}
-        mock_query.side_effect = [result_success, result_not_found,
-                                  result_exception]
-
-        retval = self.driver._get_snapshot(self.snapshot.name)
-        self.assertTrue(retval)
-
-        retval = self.driver._get_snapshot(self.snapshot.name)
-        self.assertFalse(retval)
-
-        self.assertRaises(exception.CinderException,
-                          self.driver._get_snapshot,
-                          self.snapshot.name)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'create_snapshot')
-    def test_private_create_snapshot(self, mock_create):
-        mock_create.side_effect = [0, 1]
-
-        self.driver._create_snapshot(self.snapshot.name,
-                                     self.volume.name)
-
-        self.assertRaises(exception.CinderException,
-                          self.driver._create_snapshot,
-                          self.snapshot.name, self.volume.name)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'delete_snapshot')
-    def test_private_delete_snapshot(self, mock_delete):
-        mock_delete.side_effect = [0, 1]
-
-        self.driver._delete_snapshot(self.snapshot.name)
-
-        self.assertRaises(exception.CinderException,
-                          self.driver._delete_snapshot, self.snapshot.name)
-
-    @mock.patch.object(dsware.DSWAREDriver, '_get_volume')
-    @mock.patch.object(dsware.DSWAREDriver, '_create_snapshot')
-    def test_create_snapshot(self, mock_create, mock_get):
-        mock_get.return_value = True
-        self.driver.create_snapshot(self.snapshot)
-
-        mock_create.side_effect = exception.CinderException(
-            'create snapshot failed')
-        self.assertRaises(exception.CinderException,
-                          self.driver.create_snapshot, self.snapshot)
-
-        mock_get.side_effect = [
-            False, exception.CinderException('get volume failed')]
-        self.assertRaises(exception.CinderException,
-                          self.driver.create_snapshot,
-                          self.snapshot)
-        self.assertRaises(exception.CinderException,
-                          self.driver.create_snapshot,
-                          self.snapshot)
-
-    @mock.patch.object(dsware.DSWAREDriver, '_get_snapshot')
-    @mock.patch.object(dsware.DSWAREDriver, '_delete_snapshot')
-    def test_delete_snapshot(self, mock_delete, mock_get):
-        mock_get.side_effect = [True, False, exception.CinderException, True]
-        self.driver.delete_snapshot(self.snapshot)
-        self.driver.delete_snapshot(self.snapshot)
-
-        self.assertRaises(exception.CinderException,
-                          self.driver.delete_snapshot,
-                          self.snapshot)
-        mock_delete.side_effect = exception.CinderException(
-            'delete snapshot exception')
-        self.assertRaises(exception.CinderException,
-                          self.driver.delete_snapshot,
-                          self.snapshot)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'query_pool_info')
-    def test_private_update_single_pool_info_status(self, mock_query):
-        pool_info = {'result': 0,
-                     'pool_id': 10,
-                     'total_capacity': 10240,
-                     'used_capacity': 5120,
-                     'alloc_capacity': 7168}
-        pool_info_none = {'result': 1}
-
-        mock_query.side_effect = [pool_info, pool_info_none]
-
-        self.driver._update_single_pool_info_status()
-        self.assertEqual({'total_capacity_gb': 10.0,
-                          'free_capacity_gb': 5.0,
-                          'volume_backend_name': None,
-                          'vendor_name': 'Open Source',
-                          'driver_version': '1.0',
-                          'storage_protocol': 'dsware',
-                          'reserved_percentage': 0,
-                          'QoS_support': False},
-                         self.driver._stats)
-
-        self.driver._update_single_pool_info_status()
-        self.assertIsNone(self.driver._stats)
-
-    @mock.patch.object(fspythonapi.FSPythonApi, 'query_pool_type')
-    def test_private_update_multi_pool_of_same_type_status(self, mock_query):
-        query_result = (0, [{'result': 0,
-                             'pool_id': '0',
-                             'total_capacity': '10240',
-                             'used_capacity': '5120',
-                             'alloc_capacity': '7168'}])
-        query_result_none = (0, [])
-
-        mock_query.side_effect = [query_result, query_result_none]
-
-        self.driver._update_multi_pool_of_same_type_status()
-        self.assertEqual({'volume_backend_name': None,
-                          'vendor_name': 'Open Source',
-                          'driver_version': '1.0',
-                          'storage_protocol': 'dsware',
-                          'pools': [{'pool_name': '0',
-                                     'total_capacity_gb': 10.0,
-                                     'allocated_capacity_gb': 5.0,
-                                     'free_capacity_gb': 5.0,
-                                     'QoS_support': False,
-                                     'reserved_percentage': 0}]},
-                         self.driver._stats)
-
-        self.driver._update_multi_pool_of_same_type_status()
-        self.assertIsNone(self.driver._stats)
-
-    def test_private_calculate_pool_info(self):
-        pool_sets = [{'pool_id': 0,
-                      'total_capacity': 10240,
-                      'used_capacity': 5120,
-                      'QoS_support': False,
-                      'reserved_percentage': 0}]
-        retval = self.driver._calculate_pool_info(pool_sets)
-        self.assertEqual([{'pool_name': 0,
-                           'total_capacity_gb': 10.0,
-                           'allocated_capacity_gb': 5.0,
-                           'free_capacity_gb': 5.0,
-                           'QoS_support': False,
-                           'reserved_percentage': 0}],
-                         retval)
-
-    @mock.patch.object(dsware.DSWAREDriver, '_update_single_pool_info_status')
-    @mock.patch.object(dsware.DSWAREDriver,
-                       '_update_multi_pool_of_same_type_status')
-    @mock.patch.object(fspythonapi.FSPythonApi, 'query_dsware_version')
-    def test_get_volume_stats(self, mock_query, mock_type, mock_info):
-        mock_query.return_value = 1
-
-        self.driver.get_volume_stats(False)
-        mock_query.assert_not_called()
-
-        self.driver.get_volume_stats(True)
-        mock_query.assert_called_once_with()
+        super(TestDSWAREDriver, self).setUp()
+        self.fake_driver = FakeDSWAREDriver()
+        self.client = fs_client.RestCommon(None, None, None)
+
+    def tearDown(self):
+        super(TestDSWAREDriver, self).tearDown()
+
+    @mock.patch.object(fs_client.RestCommon, 'login')
+    def test_do_setup(self, mock_login):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        update_mocker = self.mock_object(
+            self.fake_driver.conf, 'update_config_value')
+        self.fake_driver.configuration.san_address = 'https://fake_rest_site'
+        self.fake_driver.configuration.san_user = 'fake_san_user'
+        self.fake_driver.configuration.san_password = 'fake_san_password'
+
+        self.fake_driver.do_setup('context')
+        update_mocker.assert_called_once_with()
+        mock_login.assert_called_once_with()
+
+    @mock.patch.object(fs_client.RestCommon, 'query_pool_info')
+    def test_check_for_setup_error(self, mock_query_pool_info):
+        self.fake_driver.configuration.pools_name = ['fake_pool_name']
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        result1 = [{'poolName': 'fake_pool_name'},
+                   {'poolName': 'fake_pool_name1'}]
+        result2 = [{'poolName': 'fake_pool_name1'},
+                   {'poolName': 'fake_pool_name2'}]
+
+        mock_query_pool_info.return_value = result1
+        retval = self.fake_driver.check_for_setup_error()
+        self.assertIsNone(retval)
+
+        mock_query_pool_info.return_value = result2
+        try:
+            self.fake_driver.check_for_setup_error()
+        except Exception as e:
+            self.assertEqual(exception.InvalidInput, type(e))
+
+    @mock.patch.object(fs_client.RestCommon, 'query_pool_info')
+    def test__update_pool_stats(self, mock_query_pool_info):
+        self.fake_driver.configuration.pools_name = ['fake_pool_name']
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        result = [{'poolName': 'fake_pool_name',
+                   'totalCapacity': 2048, 'usedCapacity': 1024},
+                  {'poolName': 'fake_pool_name1',
+                   'totalCapacity': 2048, 'usedCapacity': 1024}]
+
+        mock_query_pool_info.return_value = result
+        retval = self.fake_driver._update_pool_stats()
+        self.assertDictEqual(
+            {"volume_backend_name": 'FakeDSWAREDriver',
+             "driver_version": "2.0.9",
+             "QoS_support": False,
+             "thin_provisioning_support": False,
+             "vendor_name": "Huawei",
+             "pools":
+                 [{"pool_name": 'fake_pool_name', "total_capacity_gb": 2,
+                   "free_capacity_gb": 1}]}, retval)
+        mock_query_pool_info.assert_called_once_with()
+
+    @mock.patch.object(fs_client.RestCommon, 'keep_alive')
+    @mock.patch.object(dsware.DSWAREDriver, '_update_pool_stats')
+    def test_get_volume_stats(self, mock__update_pool_stats, mock_keep_alive):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        result = {"success"}
+        mock__update_pool_stats.return_value = result
+        retval = self.fake_driver.get_volume_stats()
+        self.assertEqual(result, retval)
+        mock_keep_alive.assert_called_once_with()
+
+    @mock.patch.object(fs_client.RestCommon, 'query_volume_by_name')
+    def test__check_volume_exist(self, mock_query_volume_by_name):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(_name_id=uuid.uuid4())
+        result1 = {'volName': 'fake_name'}
+        result2 = None
+
+        mock_query_volume_by_name.return_value = result1
+        retval = self.fake_driver._check_volume_exist(volume)
+        self.assertEqual(retval, result1)
+
+        mock_query_volume_by_name.return_value = result2
+        retval = self.fake_driver._check_volume_exist(volume)
+        self.assertIsNone(retval)
+
+    @mock.patch.object(volume_utils, 'extract_host')
+    @mock.patch.object(fs_client.RestCommon, 'query_pool_info')
+    def test__get_pool_id(self, mock_query_pool_info, mock_extract_host):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(host='host')
+        pool_name1 = 'fake_pool_name1'
+        pool_name2 = 'fake_pool_name2'
+        pool_info = [{'poolName': 'fake_pool_name', 'poolId': 'fake_id'},
+                     {'poolName': 'fake_pool_name1', 'poolId': 'fake_id1'}]
+
+        mock_query_pool_info.return_value = pool_info
+        mock_extract_host.return_value = pool_name1
+        retval = self.fake_driver._get_pool_id(volume)
+        self.assertEqual('fake_id1', retval)
+
+        mock_extract_host.return_value = pool_name2
+        try:
+            self.fake_driver._get_pool_id(volume)
+        except Exception as e:
+            self.assertEqual(exception.InvalidInput, type(e))
+
+    def test__get_vol_name(self):
+        volume1 = objects.Volume(_name_id=uuid.uuid4())
+        volume1.update(
+            {"provider_location": json.dumps({"name": "fake_name"})})
+        volume2 = objects.Volume(_name_id=uuid.uuid4())
+
+        retval = self.fake_driver._get_vol_name(volume1)
+        self.assertEqual("fake_name", retval)
+
+        retval = self.fake_driver._get_vol_name(volume2)
+        self.assertEqual(volume2.name, retval)
+
+    @mock.patch.object(fs_client.RestCommon, 'create_volume')
+    @mock.patch.object(dsware.DSWAREDriver, '_get_pool_id')
+    def test_create_volume(self, mock__get_pool_id, mock_create_volume):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(_name_id=uuid.uuid4(), size=1)
+        mock__get_pool_id.return_value = 'fake_poolID'
+        mock_create_volume.return_value = {'result': 0}
+
+        retval = self.fake_driver.create_volume(volume)
+        self.assertIsNone(retval)
+
+    @mock.patch.object(dsware.DSWAREDriver, '_check_volume_exist')
+    @mock.patch.object(fs_client.RestCommon, 'delete_volume')
+    def test_delete_volume(self, mock_delete_volume, mock__check_volume_exist):
+        result = True
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(_name_id=uuid.uuid4())
+        mock_delete_volume.return_value = {'result': 0}
+
+        mock__check_volume_exist.return_value = result
+        retval = self.fake_driver.delete_volume(volume)
+        self.assertIsNone(retval)
+
+        mock__check_volume_exist.return_value = False
+        retval = self.fake_driver.delete_volume(volume)
+        self.assertIsNone(retval)
+
+    @mock.patch.object(dsware.DSWAREDriver, '_check_volume_exist')
+    @mock.patch.object(fs_client.RestCommon, 'expand_volume')
+    def test_extend_volume(self, mock_expand_volume, mock__check_volume_exist):
+        result1 = True
+        result2 = False
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(_name_id=uuid.uuid4(), size=2)
+        mock_expand_volume.return_value = {
+            'volName': 'fake_name', 'size': 'new_size'}
+
+        mock__check_volume_exist.return_value = result1
+        retval = self.fake_driver.extend_volume(volume=volume, new_size=3)
+        self.assertIsNone(retval)
+
+        mock__check_volume_exist.return_value = result2
+        try:
+            self.fake_driver.extend_volume(volume=volume, new_size=3)
+        except Exception as e:
+            self.assertEqual(exception.VolumeBackendAPIException, type(e))
+
+    @mock.patch.object(dsware.DSWAREDriver, '_check_volume_exist')
+    @mock.patch.object(dsware.DSWAREDriver, '_check_snapshot_exist')
+    @mock.patch.object(fs_client.RestCommon, 'create_volume_from_snapshot')
+    def test_create_volume_from_snapshot(
+            self, mock_create_volume_from_snapshot,
+            mock_check_snapshot_exist, mock_check_volume_exist):
+        result1 = True
+        result2 = False
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(_name_id=uuid.uuid4())
+        snapshot = objects.Snapshot(
+            id=uuid.uuid4(), volume_size=2, volume=volume)
+
+        volume1 = objects.Volume(_name_id=uuid.uuid4(), size=2)
+        volume2 = objects.Volume(_name_id=uuid.uuid4(), size=1)
+        mock_create_volume_from_snapshot.return_value = {'result': 0}
+
+        mock_check_volume_exist.return_value = result2
+        mock_check_snapshot_exist.return_value = result1
+        retval = self.fake_driver.create_volume_from_snapshot(
+            volume1, snapshot)
+        self.assertIsNone(retval)
+
+        mock_check_volume_exist.return_value = result1
+        try:
+            self.fake_driver.create_volume_from_snapshot(volume1, snapshot)
+        except Exception as e:
+            self.assertEqual(exception.VolumeBackendAPIException, type(e))
+
+        mock_check_volume_exist.return_value = result2
+        mock_check_snapshot_exist.return_value = result2
+        try:
+            self.fake_driver.create_volume_from_snapshot(volume1, snapshot)
+        except Exception as e:
+            self.assertEqual(exception.VolumeBackendAPIException, type(e))
+
+        mock_check_volume_exist.return_value = result2
+        mock_check_snapshot_exist.return_value = result1
+        try:
+            self.fake_driver.create_volume_from_snapshot(volume2, snapshot)
+        except Exception as e:
+            self.assertEqual(exception.VolumeBackendAPIException, type(e))
+
+    @mock.patch.object(dsware.DSWAREDriver, '_check_volume_exist')
+    @mock.patch.object(fs_client.RestCommon, 'create_volume_from_volume')
+    def test_cloned_volume(
+            self, mock_create_volume_from_volume, mock__check_volume_exist):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(_name_id=uuid.uuid4(), size=1)
+        src_volume = objects.Volume(_name_id=uuid.uuid4())
+        result1 = True
+        result2 = False
+
+        mock__check_volume_exist.return_value = result1
+        retval = self.fake_driver.create_cloned_volume(volume, src_volume)
+        self.assertIsNone(retval)
+        mock_create_volume_from_volume.assert_called_once_with(
+            vol_name=volume.name, vol_size=volume.size * 1024,
+            src_vol_name=src_volume.name)
+
+        mock__check_volume_exist.return_value = result2
+        try:
+            self.fake_driver.create_cloned_volume(volume, src_volume)
+        except Exception as e:
+            self.assertEqual(exception.VolumeBackendAPIException, type(e))
+
+    def test__get_snapshot_name(self):
+        snapshot1 = objects.Snapshot(id=uuid.uuid4())
+        snapshot1.update(
+            {"provider_location": json.dumps({"name": "fake_name"})})
+        snapshot2 = objects.Snapshot(id=uuid.uuid4())
+
+        retval = self.fake_driver._get_snapshot_name(snapshot1)
+        self.assertEqual("fake_name", retval)
+
+        retval = self.fake_driver._get_snapshot_name(snapshot2)
+        self.assertEqual(snapshot2.name, retval)
+
+    @mock.patch.object(fs_client.RestCommon, 'query_snapshot_by_name')
+    @mock.patch.object(dsware.DSWAREDriver, '_get_pool_id')
+    def test__check_snapshot_exist(
+            self, mock_get_pool_id, mock_query_snapshot_by_name):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(_name_id=uuid.uuid4())
+        snapshot = objects.Snapshot(id=uuid.uuid4())
+        result1 = {'name': 'fake_name', 'totalNum': 1}
+        result2 = {'name': 'fake_name', 'totalNum': 0}
+        mock_get_pool_id.return_value = "fake_pool_id"
+
+        mock_query_snapshot_by_name.return_value = result1
+        retval = self.fake_driver._check_snapshot_exist(volume, snapshot)
+        self.assertEqual({'name': 'fake_name', 'totalNum': 1}, retval)
+
+        mock_query_snapshot_by_name.return_value = result2
+        retval = self.fake_driver._check_snapshot_exist(volume, snapshot)
+        self.assertIsNone(retval)
+
+    @mock.patch.object(fs_client.RestCommon, 'create_snapshot')
+    def test_create_snapshot(self, mock_create_snapshot):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(_name_id=uuid.uuid4())
+        snapshot = objects.Snapshot(id=uuid.uuid4(),
+                                    volume_id=uuid.uuid4(), volume=volume)
+
+        retval = self.fake_driver.create_snapshot(snapshot)
+        self.assertIsNone(retval)
+        mock_create_snapshot.assert_called_once_with(
+            snapshot_name=snapshot.name, vol_name=volume.name)
+
+    @mock.patch.object(dsware.DSWAREDriver, '_check_snapshot_exist')
+    @mock.patch.object(fs_client.RestCommon, 'delete_snapshot')
+    def test_delete_snapshot(self, mock_delete_snapshot,
+                             mock_check_snapshot_exist):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(id=uuid.uuid4())
+        snapshot = objects.Snapshot(id=uuid.uuid4(), volume=volume)
+        result = True
+        mock_delete_snapshot.return_valume = {'result': 0}
+
+        mock_check_snapshot_exist.return_value = result
+        retval = self.fake_driver.delete_snapshot(snapshot)
+        self.assertIsNone(retval)
+
+        mock_check_snapshot_exist.return_value = False
+        retval = self.fake_driver.delete_snapshot(snapshot)
+        self.assertIsNone(retval)
+
+    def test__get_manager_ip(self):
+        context = {'host': 'host1'}
+        host1 = {'host1': '1.1.1.1'}
+        host2 = {'host2': '1.1.1.1'}
+
+        self.fake_driver.configuration.manager_ips = host1
+        retval = self.fake_driver._get_manager_ip(context)
+        self.assertEqual('1.1.1.1', retval)
+
+        self.fake_driver.configuration.manager_ips = host2
+        try:
+            self.fake_driver._get_manager_ip(context)
+        except Exception as e:
+            self.assertEqual(exception.VolumeBackendAPIException, type(e))
+
+    @mock.patch.object(dsware.DSWAREDriver, '_check_volume_exist')
+    @mock.patch.object(dsware.DSWAREDriver, '_get_manager_ip')
+    @mock.patch.object(fs_client.RestCommon, 'attach_volume')
+    def test__attach_volume(self, mock_attach_volume,
+                            mock__get_manager_ip, mock__check_volume_exist):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(_name_id=uuid.uuid4())
+        attach_result1 = {volume.name: [{'devName': 'fake_path'}]}
+        attach_result2 = {volume.name: [{'devName': ''}]}
+        result1 = True
+        result2 = False
+        mock__get_manager_ip.return_value = 'fake_ip'
+
+        mock__check_volume_exist.return_value = result1
+        mock_attach_volume.return_value = attach_result1
+        retval, vol = self.fake_driver._attach_volume(
+            "context", volume, "properties")
+        self.assertEqual(
+            ({'device': {'path': b'fake_path'}}, volume), (retval, vol))
+        mock__get_manager_ip.assert_called_once_with("properties")
+        mock__check_volume_exist.assert_called_once_with(volume)
+        mock_attach_volume.assert_called_once_with(volume.name, 'fake_ip')
+
+        mock__check_volume_exist.return_value = result2
+        try:
+            self.fake_driver._attach_volume("context", volume, "properties")
+        except Exception as e:
+            self.assertEqual(exception.VolumeBackendAPIException, type(e))
+
+        mock__check_volume_exist.return_value = result1
+        mock_attach_volume.return_value = attach_result2
+        try:
+            self.fake_driver._attach_volume("context", volume, "properties")
+        except Exception as e:
+            self.assertEqual(exception.VolumeBackendAPIException, type(e))
+
+    @mock.patch.object(dsware.DSWAREDriver, '_check_volume_exist')
+    @mock.patch.object(dsware.DSWAREDriver, '_get_manager_ip')
+    @mock.patch.object(fs_client.RestCommon, 'detach_volume')
+    def test__detach_volume(self, mock_detach_volume,
+                            mock__get_manager_ip, mock__check_volume_exist):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(_name_id=uuid.uuid4())
+        result1 = True
+        result2 = False
+
+        mock__get_manager_ip.return_value = 'fake_ip'
+        mock_detach_volume.return_value = {'result': 0}
+
+        mock__check_volume_exist.return_value = result1
+        retval = self.fake_driver._detach_volume(
+            'context', 'attach_info', volume, 'properties')
+        self.assertIsNone(retval)
+
+        mock__check_volume_exist.return_value = result2
+        retval = self.fake_driver._detach_volume(
+            'context', 'attach_info', volume, 'properties')
+        self.assertIsNone(retval)
+
+    @mock.patch.object(dsware.DSWAREDriver, '_check_volume_exist')
+    @mock.patch.object(dsware.DSWAREDriver, '_get_manager_ip')
+    @mock.patch.object(fs_client.RestCommon, 'attach_volume')
+    @mock.patch.object(fs_client.RestCommon, 'query_volume_by_name')
+    def test_initialize_connection(self, mock_query_volume_by_name,
+                                   mock_attach_volume,
+                                   mock__get_manager_ip,
+                                   mock__check_volume_exist):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(_name_id=uuid.uuid4())
+        attach_result = {volume.name: [{'devName': 'fake_path'}]}
+
+        result1 = True
+        result2 = False
+        mock__get_manager_ip.return_value = 'fake_ip'
+        mock_query_volume_by_name.return_value = {'wwn': 'fake_wwn',
+                                                  'volName': 'fake_name'}
+        mock_attach_volume.return_value = attach_result
+
+        mock__check_volume_exist.return_value = result1
+        retval = self.fake_driver.initialize_connection(volume, 'connector')
+        self.assertDictEqual(
+            {'driver_volume_type': 'local',
+             'data': {'device_path': '/dev/disk/by-id/wwn-0xfake_wwn'}},
+            retval)
+
+        mock__check_volume_exist.return_value = result2
+        try:
+            self.fake_driver.initialize_connection(volume, 'connector')
+        except Exception as e:
+            self.assertEqual(exception.VolumeBackendAPIException, type(e))
+
+    @mock.patch.object(dsware.DSWAREDriver, '_check_volume_exist')
+    @mock.patch.object(dsware.DSWAREDriver, '_get_manager_ip')
+    @mock.patch.object(fs_client.RestCommon, 'detach_volume')
+    def test_terminate_connection(self, mock_detach_volume,
+                                  mock__get_manager_ip,
+                                  mock__check_volume_exist):
+        self.fake_driver.client = fs_client.RestCommon(
+            'https://fake_rest_site', 'user', 'password')
+        volume = objects.Volume(_name_id=uuid.uuid4())
+        result1 = True
+        result2 = False
+        mock__get_manager_ip.return_value = 'fake_ip'
+
+        mock__check_volume_exist.return_value = result1
+        retval = self.fake_driver.terminate_connection(volume, 'connector')
+        self.assertIsNone(retval)
+        mock_detach_volume.assert_called_once_with(volume.name, 'fake_ip')
+
+        mock__check_volume_exist.return_value = result2
+        retval = self.fake_driver.terminate_connection('volume', 'connector')
+        self.assertIsNone(retval)

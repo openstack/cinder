@@ -252,6 +252,7 @@ def list_opts():
                 cinder_volume_driver.nvmet_opts,
                 cinder_volume_drivers_datacore_driver.datacore_opts,
                 cinder_volume_drivers_datacore_iscsi.datacore_iscsi_opts,
+                cinder_volume_drivers_fusionstorage_dsware.volume_opts,
                 cinder_volume_drivers_inspur_as13000_as13000driver.
                 inspur_as13000_opts,
                 cinder_volume_drivers_inspur_instorage_instoragecommon.
@@ -295,7 +296,6 @@ def list_opts():
                 cinder_volume_drivers_drbdmanagedrv.drbd_opts,
                 cinder_volume_drivers_fujitsu_eternusdxcommon.
                 FJ_ETERNUS_DX_OPT_opts,
-                cinder_volume_drivers_fusionstorage_dsware.volume_opts,
                 cinder_volume_drivers_hpe_hpe3parcommon.hpe3par_opts,
                 cinder_volume_drivers_hpe_hpelefthandiscsi.hpelefthand_opts,
                 cinder_volume_drivers_huawei_common.huawei_opts,
