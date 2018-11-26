@@ -88,6 +88,8 @@ from cinder.volume import utils as vutils
 
 CONF = cfg.CONF
 
+LOG = logging.getLogger(__name__)
+
 RPC_VERSIONS = {
     'cinder-scheduler': scheduler_rpcapi.SchedulerAPI.RPC_API_VERSION,
     'cinder-volume': volume_rpcapi.VolumeAPI.RPC_API_VERSION,
@@ -341,34 +343,32 @@ class DbCommands(object):
 
     def _run_migration(self, ctxt, max_count):
         ran = 0
+        exceptions = False
         migrations = {}
         for migration_meth in self.online_migrations:
             count = max_count - ran
             try:
                 found, done = migration_meth(ctxt, count)
             except Exception:
-                print(_("Error attempting to run %(method)s") %
-                      {'method': migration_meth.__name__})
+                msg = (_("Error attempting to run %(method)s") %
+                       {'method': migration_meth.__name__})
+                print(msg)
+                LOG.exception(msg)
+                exceptions = True
                 found = done = 0
 
             name = migration_meth.__name__
-            remaining = found - done
             if found:
                 print(_('%(found)i rows matched query %(meth)s, %(done)i '
-                        'migrated, %(remaining)i remaining') % {'found': found,
-                                                                'meth': name,
-                                                                'done': done,
-                                                                'remaining':
-                                                                remaining})
-            migrations.setdefault(name, (0, 0, 0))
-            migrations[name] = (migrations[name][0] + found,
-                                migrations[name][1] + done,
-                                migrations[name][2] + remaining)
+                        'migrated') % {'found': found,
+                                       'meth': name,
+                                       'done': done})
+            migrations[name] = found, done
             if max_count is not None:
                 ran += done
                 if ran >= max_count:
                     break
-        return migrations
+        return migrations, exceptions
 
     @args('--max_count', metavar='<number>', dest='max_count', type=int,
           help='Maximum number of objects to consider.')
@@ -385,20 +385,19 @@ class DbCommands(object):
             max_count = 50
             print(_('Running batches of %i until complete.') % max_count)
 
-        # FIXME(jdg): So this is annoying and confusing,
-        # we iterate through in batches until there are no
-        # more updates, that's AWESOME!! BUT we only print
-        # out a table reporting found/done AFTER the loop
-        # here, so that means the response the user sees is
-        # always a table of "needed 0" and "completed 0".
-        # So it's an indication of "all done" but it seems like
-        # some feedback as we go would be nice to have here.
         ran = None
+        exceptions = False
         migration_info = {}
         while ran is None or ran != 0:
-            migrations = self._run_migration(ctxt, max_count)
-            migration_info.update(migrations)
-            ran = sum([done for found, done, remaining in migrations.values()])
+            migrations, exceptions = self._run_migration(ctxt, max_count)
+            ran = 0
+            for name in migrations:
+                migration_info.setdefault(name, (0, 0))
+                migration_info[name] = (
+                    max(migration_info[name][0], migrations[name][0]),
+                    migration_info[name][1] + migrations[name][1],
+                )
+                ran += migrations[name][1]
             if not unlimited:
                 break
         headers = ["{}".format(_('Migration')),
@@ -409,6 +408,18 @@ class DbCommands(object):
             info = migration_info[name]
             t.add_row([name, info[0], info[1]])
         print(t)
+
+        # NOTE(imacdonn): In the "unlimited" case, the loop above will only
+        # terminate when all possible migrations have been effected. If we're
+        # still getting exceptions, there's a problem that requires
+        # intervention. In the max-count case, exceptions are only considered
+        # fatal if no work was done by any other migrations ("not ran"),
+        # because otherwise work may still remain to be done, and that work
+        # may resolve dependencies for the failing migrations.
+        if exceptions and (unlimited or not ran):
+            print(_("Some migrations failed unexpectedly. Check log for "
+                    "details."))
+            sys.exit(2)
 
         sys.exit(1 if ran else 0)
 
