@@ -2189,80 +2189,66 @@ class TestVolumeSharedTargetsOnlineMigration(test.TestCase):
         self.patch('cinder.objects.Service.get_minimum_rpc_version',
                    side_effect=_get_minimum_rpc_version_mock)
 
-    @mock.patch('cinder.objects.Service.get_minimum_obj_version',
-                return_value='1.8')
-    def test_shared_targets_migrations(self, mock_version):
-        """Ensure we can update the column."""
         ctxt = context.get_admin_context()
-        sqlalchemy_api.volume_create(
-            ctxt,
-            {'host': 'host1@lvm-driver1#lvm-driver1',
-             'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'})
+        # default value in db for shared_targets on a volume
+        # is True, so don't need to set it here explicitly
+        for i in range(3):
+            sqlalchemy_api.volume_create(
+                ctxt,
+                {'host': 'host1@lvm-driver1#lvm-driver1',
+                 'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'})
 
-        # Create another one correct setting
-        sqlalchemy_api.volume_create(
-            ctxt,
-            {'host': 'host1@lvm-driver1#lvm-driver1',
-             'shared_targets': False,
-             'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'})
-
-        # Need a service to query
         values = {
             'host': 'host1@lvm-driver1',
             'binary': constants.VOLUME_BINARY,
             'topic': constants.VOLUME_TOPIC,
             'uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'}
         utils.create_service(ctxt, values)
+        self.ctxt = ctxt
 
+    @mock.patch('cinder.objects.Service.get_minimum_obj_version',
+                return_value='1.8')
+    def test_shared_targets_migrations(self, mock_version):
+        """Ensure we can update the column."""
         # Run the migration and verify that we updated 1 entry
         with mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities',
-                        return_value={'shared_targets': False}):
+                        return_value={'connection_protocol': 'iSCSI',
+                                      'shared_targets': False}):
             total, updated = (
                 cinder_manage.shared_targets_online_data_migration(
-                    ctxt, 10))
-            self.assertEqual(1, total)
-            self.assertEqual(1, updated)
+                    self.ctxt, 10))
+            self.assertEqual(3, total)
+            self.assertEqual(3, updated)
+
+    @mock.patch('cinder.objects.Service.get_minimum_obj_version',
+                return_value='1.8')
+    def test_shared_targets_migrations_non_iscsi(self, mock_version):
+        """Ensure we can update the column."""
+        # Run the migration and verify that we updated 1 entry
+        with mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities',
+                        return_value={'connection_protocol': 'RBD'}):
+            total, updated = (
+                cinder_manage.shared_targets_online_data_migration(
+                    self.ctxt, 10))
+            self.assertEqual(3, total)
+            self.assertEqual(3, updated)
 
     @mock.patch('cinder.objects.Service.get_minimum_obj_version',
                 return_value='1.8')
     def test_shared_targets_migrations_with_limit(self, mock_version):
         """Ensure we update in batches."""
-        ctxt = context.get_admin_context()
-        # default value in db for shared_targets on a volume
-        # is True, so don't need to set it here explicitly
-        sqlalchemy_api.volume_create(
-            ctxt,
-            {'host': 'host1@lvm-driver1#lvm-driver1',
-             'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'})
-
-        sqlalchemy_api.volume_create(
-            ctxt,
-            {'host': 'host1@lvm-driver1#lvm-driver1',
-             'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'})
-
-        sqlalchemy_api.volume_create(
-            ctxt,
-            {'host': 'host1@lvm-driver1#lvm-driver1',
-             'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'})
-
-        values = {
-            'host': 'host1@lvm-driver1',
-            'binary': constants.VOLUME_BINARY,
-            'topic': constants.VOLUME_TOPIC,
-            'uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'}
-        utils.create_service(ctxt, values)
-
         # Run the migration and verify that we updated 1 entry
         with mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities',
-                        return_value={'shared_targets': False}):
+                        return_value={'connection_protocol': 'iSCSI',
+                                      'shared_targets': False}):
             total, updated = (
                 cinder_manage.shared_targets_online_data_migration(
-                    ctxt, 2))
+                    self.ctxt, 2))
             self.assertEqual(3, total)
             self.assertEqual(2, updated)
 
             total, updated = (
                 cinder_manage.shared_targets_online_data_migration(
-                    ctxt, 2))
+                    self.ctxt, 2))
             self.assertEqual(1, total)
             self.assertEqual(1, updated)
