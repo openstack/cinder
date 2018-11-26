@@ -100,6 +100,7 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
     def _get_sample_path(cls, name, dirname, suffix='', api_version=None):
         parts = [dirname]
         parts.append('samples')
+        parts.append(cls.sample_dir)
         if api_version:
             parts.append('v' + api_version)
         parts.append(name + ".json" + suffix)
@@ -400,6 +401,8 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
         text = r'(\\"|[^"])*'
         isotime_re = '\d{4}-[0,1]\d-[0-3]\dT\d{2}:\d{2}:\d{2}Z'
         strtime_re = '\d{4}-[0,1]\d-[0-3]\dT\d{2}:\d{2}:\d{2}\.\d{6}'
+        extension_update = (
+            '\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}')
         strtime_url_re = ('\d{4}-[0,1]\d-[0-3]\d'
                           '\+\d{2}\%3A\d{2}\%3A\d{2}\.\d{6}')
 
@@ -415,7 +418,7 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
                     '-[0-9a-f]{4}-[0-9a-f]{12}',
             'request_id': 'req-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}'
                           '-[0-9a-f]{4}-[0-9a-f]{12}',
-            'host': self._get_host(),
+            'host': 'https?://[0-9]+(?:\.[0-9]+){3}:[0-9]+',
             'host_name': r'\w+',
             'glance_host': self._get_glance_host(),
             'os-vol-host-attr:host': self.volume.host,
@@ -426,7 +429,8 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
             'volume_endpoint': self._get_volume_endpoint(),
             'versioned_volume_endpoint': self._get_versioned_volume_endpoint(),
             'name': text,
-            'description': text
+            'description': text,
+            'extension_update': extension_update
         }
 
     def _get_volume_endpoint(self):

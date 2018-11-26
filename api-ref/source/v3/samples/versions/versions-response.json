@@ -1,0 +1,52 @@
+{
+    "versions": [
+        {
+            "id": "v2.0",
+            "links": [
+                {
+                    "href": "https://docs.openstack.org/",
+                    "rel": "describedby",
+                    "type": "text/html"
+                },
+                {
+                    "href": "http://127.0.0.1:45697/v2/",
+                    "rel": "self"
+                }
+            ],
+            "media-types": [
+                {
+                    "base": "application/json",
+                    "type": "application/vnd.openstack.volume+json;version=2"
+                }
+            ],
+            "min_version": "",
+            "status": "DEPRECATED",
+            "updated": "2017-02-25T12:00:00Z",
+            "version": ""
+        },
+        {
+            "id": "v3.0",
+            "links": [
+                {
+                    "href": "https://docs.openstack.org/",
+                    "rel": "describedby",
+                    "type": "text/html"
+                },
+                {
+                    "href": "http://127.0.0.1:45697/v3/",
+                    "rel": "self"
+                }
+            ],
+            "media-types": [
+                {
+                    "base": "application/json",
+                    "type": "application/vnd.openstack.volume+json;version=3"
+                }
+            ],
+            "min_version": "3.0",
+            "status": "CURRENT",
+            "updated": "2018-07-17T00:00:00Z",
+            "version": "3.56"
+        }
+    ]
+}

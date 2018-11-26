@@ -42,7 +42,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/version-show-response.json
+.. literalinclude:: ./samples/versions/version-show-response.json
    :language: javascript
 
 

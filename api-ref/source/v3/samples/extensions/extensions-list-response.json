@@ -1,0 +1,221 @@
+{
+    "extensions": [
+        {
+            "alias": "os-hosts",
+            "description": "Admin-only host administration.",
+            "links": [],
+            "name": "Hosts",
+            "updated": "2011-06-29T00:00:00+00:00"
+        },
+        {
+            "alias": "os-vol-tenant-attr",
+            "description": "Expose the internal project_id as an attribute of a volume.",
+            "links": [],
+            "name": "VolumeTenantAttribute",
+            "updated": "2011-11-03T00:00:00+00:00"
+        },
+        {
+            "alias": "os-quota-sets",
+            "description": "Quota management support.",
+            "links": [],
+            "name": "Quotas",
+            "updated": "2011-08-08T00:00:00+00:00"
+        },
+        {
+            "alias": "os-availability-zone",
+            "description": "Describe Availability Zones.",
+            "links": [],
+            "name": "AvailabilityZones",
+            "updated": "2013-06-27T00:00:00+00:00"
+        },
+        {
+            "alias": "os-volume-encryption-metadata",
+            "description": "Volume encryption metadata retrieval support.",
+            "links": [],
+            "name": "VolumeEncryptionMetadata",
+            "updated": "2013-07-10T00:00:00+00:00"
+        },
+        {
+            "alias": "backups",
+            "description": "Backups support.",
+            "links": [],
+            "name": "Backups",
+            "updated": "2012-12-12T00:00:00+00:00"
+        },
+        {
+            "alias": "os-snapshot-actions",
+            "description": "Enable snapshot manager actions.",
+            "links": [],
+            "name": "SnapshotActions",
+            "updated": "2013-07-16T00:00:00+00:00"
+        },
+        {
+            "alias": "os-volume-actions",
+            "description": "Enable volume actions.",
+            "links": [],
+            "name": "VolumeActions",
+            "updated": "2012-05-31T00:00:00+00:00"
+        },
+        {
+            "alias": "os-snapshot-manage",
+            "description": "Allows existing backend storage to be 'managed' by Cinder.",
+            "links": [],
+            "name": "SnapshotManage",
+            "updated": "2014-12-31T00:00:00+00:00"
+        },
+        {
+            "alias": "os-volume-unmanage",
+            "description": "Enable volume unmanage operation.",
+            "links": [],
+            "name": "VolumeUnmanage",
+            "updated": "2012-05-31T00:00:00+00:00"
+        },
+        {
+            "alias": "consistencygroups",
+            "description": "consistency groups support.",
+            "links": [],
+            "name": "Consistencygroups",
+            "updated": "2014-08-18T00:00:00+00:00"
+        },
+        {
+            "alias": "os-vol-host-attr",
+            "description": "Expose host as an attribute of a volume.",
+            "links": [],
+            "name": "VolumeHostAttribute",
+            "updated": "2011-11-03T00:00:00+00:00"
+        },
+        {
+            "alias": "encryption",
+            "description": "Encryption support for volume types.",
+            "links": [],
+            "name": "VolumeTypeEncryption",
+            "updated": "2013-07-01T00:00:00+00:00"
+        },
+        {
+            "alias": "os-vol-image-meta",
+            "description": "Show image metadata associated with the volume.",
+            "links": [],
+            "name": "VolumeImageMetadata",
+            "updated": "2012-12-07T00:00:00+00:00"
+        },
+        {
+            "alias": "os-types-manage",
+            "description": "Types manage support.",
+            "links": [],
+            "name": "TypesManage",
+            "updated": "2011-08-24T00:00:00+00:00"
+        },
+        {
+            "alias": "capabilities",
+            "description": "Capabilities support.",
+            "links": [],
+            "name": "Capabilities",
+            "updated": "2015-08-31T00:00:00+00:00"
+        },
+        {
+            "alias": "cgsnapshots",
+            "description": "cgsnapshots support.",
+            "links": [],
+            "name": "Cgsnapshots",
+            "updated": "2014-08-18T00:00:00+00:00"
+        },
+        {
+            "alias": "os-types-extra-specs",
+            "description": "Type extra specs support.",
+            "links": [],
+            "name": "TypesExtraSpecs",
+            "updated": "2011-08-24T00:00:00+00:00"
+        },
+        {
+            "alias": "os-used-limits",
+            "description": "Provide data on limited resources that are being used.",
+            "links": [],
+            "name": "UsedLimits",
+            "updated": "2013-10-03T00:00:00+00:00"
+        },
+        {
+            "alias": "os-vol-mig-status-attr",
+            "description": "Expose migration_status as an attribute of a volume.",
+            "links": [],
+            "name": "VolumeMigStatusAttribute",
+            "updated": "2013-08-08T00:00:00+00:00"
+        },
+        {
+            "alias": "os-volume-type-access",
+            "description": "Volume type access support.",
+            "links": [],
+            "name": "VolumeTypeAccess",
+            "updated": "2014-06-26T00:00:00Z"
+        },
+        {
+            "alias": "os-extended-services",
+            "description": "Extended services support.",
+            "links": [],
+            "name": "ExtendedServices",
+            "updated": "2014-01-10T00:00:00-00:00"
+        },
+        {
+            "alias": "os-extended-snapshot-attributes",
+            "description": "Extended SnapshotAttributes support.",
+            "links": [],
+            "name": "ExtendedSnapshotAttributes",
+            "updated": "2012-06-19T00:00:00+00:00"
+        },
+        {
+            "alias": "os-snapshot-unmanage",
+            "description": "Enable volume unmanage operation.",
+            "links": [],
+            "name": "SnapshotUnmanage",
+            "updated": "2014-12-31T00:00:00+00:00"
+        },
+        {
+            "alias": "qos-specs",
+            "description": "QoS specs support.",
+            "links": [],
+            "name": "Qos_specs_manage",
+            "updated": "2013-08-02T00:00:00+00:00"
+        },
+        {
+            "alias": "os-quota-class-sets",
+            "description": "Quota classes management support.",
+            "links": [],
+            "name": "QuotaClasses",
+            "updated": "2012-03-12T00:00:00+00:00"
+        },
+        {
+            "alias": "os-volume-transfer",
+            "description": "Volume transfer management support.",
+            "links": [],
+            "name": "VolumeTransfer",
+            "updated": "2013-05-29T00:00:00+00:00"
+        },
+        {
+            "alias": "os-volume-manage",
+            "description": "Allows existing backend storage to be 'managed' by Cinder.",
+            "links": [],
+            "name": "VolumeManage",
+            "updated": "2014-02-10T00:00:00+00:00"
+        },
+        {
+            "alias": "os-admin-actions",
+            "description": "Enable admin actions.",
+            "links": [],
+            "name": "AdminActions",
+            "updated": "2012-08-25T00:00:00+00:00"
+        },
+        {
+            "alias": "os-services",
+            "description": "Services support.",
+            "links": [],
+            "name": "Services",
+            "updated": "2012-10-28T00:00:00-00:00"
+        },
+        {
+            "alias": "scheduler-stats",
+            "description": "Scheduler stats support.",
+            "links": [],
+            "name": "Scheduler_stats",
+            "updated": "2014-09-07T00:00:00+00:00"
+        }
+    ]
+}

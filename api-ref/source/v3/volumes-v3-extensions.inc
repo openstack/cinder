@@ -51,7 +51,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/extensions-list-response.json
+.. literalinclude:: ./samples/extensions/extensions-list-response.json
    :language: javascript
 
 

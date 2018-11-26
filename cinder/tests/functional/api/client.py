@@ -124,11 +124,16 @@ class TestOpenStackClient(object):
         self.project_id = new_project_id
         self._authenticate(True)
 
-    def api_request(self, relative_uri, check_response_status=None, **kwargs):
+    def api_request(self, relative_uri, check_response_status=None,
+                    strip_version=False, **kwargs):
         auth_result = self._authenticate()
 
         # NOTE(justinsb): httplib 'helpfully' converts headers to lower case
         base_uri = auth_result['x-server-management-url']
+
+        if strip_version:
+            # cut out version number and tenant_id
+            base_uri = '/'.join(base_uri.split('/', 3)[:-1])
 
         full_uri = '%s/%s' % (base_uri, relative_uri)
 
