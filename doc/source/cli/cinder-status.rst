@@ -16,7 +16,7 @@ Synopsis
 
 ::
 
-  cinder-status <category> <action> [<args>]
+  cinder-status <category> <command> [<args>]
 
 Description
 ===========
