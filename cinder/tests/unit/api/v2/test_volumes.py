@@ -1675,8 +1675,9 @@ class VolumeApiTest(test.TestCase):
             sort_keys=['display_name'], filters={}, offset=0)
 
     def test_get_volume_filter_options_using_config(self):
-        filter_list = ['name', 'status', 'metadata', 'bootable',
-                       'availability_zone']
-        self.override_config('query_volume_filters', filter_list)
+        filter_list = ["name", "status", "metadata", "bootable",
+                       "migration_status", "availability_zone", "group_id"]
+        self.override_config('resource_query_filters_file',
+                             {'volume': filter_list})
         self.assertEqual(filter_list,
                          self.controller._get_volume_filter_options())
