@@ -1087,6 +1087,19 @@ class VolumeImageActionsTest(test.TestCase):
             mock_extend.assert_called_with(req.environ['cinder.context'],
                                            vol, 2, attached=False)
 
+    def test_extend_volume_no_exist(self):
+        vol_id = fake.WILL_NOT_BE_FOUND_ID
+
+        body = {'os-extend': {'new_size': 5}}
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+                                      (fake.PROJECT_ID, vol_id))
+
+        self.assertRaises(exception.VolumeNotFound,
+                          self.controller._extend,
+                          req,
+                          vol_id,
+                          body=body)
+
     def test_copy_volume_to_image_notimagename(self):
         id = fake.VOLUME2_ID
         vol = {"container_format": 'bare',
