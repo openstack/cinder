@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Dell Inc. or its subsidiaries.
+# Copyright (c) 2017-2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -21,7 +21,7 @@ from oslo_service import loopingcall
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
-from cinder.volume.drivers.dell_emc.vmax import utils
+from cinder.volume.drivers.dell_emc.powermax import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -30,13 +30,13 @@ UNLINK_INTERVAL = 15
 UNLINK_RETRIES = 30
 
 
-class VMAXProvision(object):
-    """Provisioning Class for Dell EMC VMAX volume drivers.
+class PowerMaxProvision(object):
+    """Provisioning Class for Dell EMC PowerMax volume drivers.
 
-    It supports VMAX arrays.
+    It supports VMAX 3, All Flash and PowerMax arrays.
     """
     def __init__(self, rest):
-        self.utils = utils.VMAXUtils()
+        self.utils = utils.PowerMaxUtils()
         self.rest = rest
 
     def create_storage_group(
@@ -392,7 +392,7 @@ class VMAXProvision(object):
             _extend_replicated_volume(rdf_group)
         else:
             self.rest.extend_volume(array, device_id, new_size, extra_specs)
-            LOG.debug("Extend VMAX volume took: %(delta)s H:MM:SS.",
+            LOG.debug("Extend PowerMax/VMAX volume took: %(delta)s H:MM:SS.",
                       {'delta': self.utils.get_time_delta(start_time,
                                                           time.time())})
 

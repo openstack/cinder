@@ -1,16 +1,24 @@
-==================================
-Dell EMC VMAX iSCSI and FC drivers
-==================================
+======================================
+Dell EMC POWERMAX iSCSI and FC drivers
+======================================
 
-The Dell EMC VMAX drivers, ``VMAXISCSIDriver`` and ``VMAXFCDriver``, support
-the use of Dell EMC VMAX storage arrays with the Cinder Block Storage project.
-They both provide equivalent functions and differ only in support for their
-respective host attachment methods.
+The Dell EMC PowerMax drivers, ``PowerMaxISCSIDriver`` and ``PowerMaxFCDriver``,
+support the use of Dell EMC PowerMax and VMAX storage arrays with the Cinder
+Block Storage project. They both provide equivalent functions and differ only
+in support for their respective host attachment methods.
 
-The drivers perform volume operations by communicating with the back-end VMAX
-storage management software. They use the Requests HTTP library to communicate
-with a Unisphere for VMAX instance, using a RESTAPI interface in the backend
-to perform VMAX storage operations.
+The drivers perform volume operations by communicating with the back-end
+PowerMax storage management software. They use the Requests HTTP library to
+communicate with a Unisphere for PowerMax instance, using a RESTAPI interface
+in the backend to perform PowerMax and VMAX storage operations.
+
+.. note::
+
+   While ``PowerMax`` will be used throughout this document, it will be used
+   to collectively categorize the following supported arrays, PowerMax 2000,
+   8000, VMAX All Flash 250F, 450F, 850F and 950F and VMAX Hybrid. Please note
+   That we will no longer be supporting the VMAX Hybrid in the ``T`` release
+   of OpenStack.
 
 .. note::
 
@@ -20,17 +28,18 @@ to perform VMAX storage operations.
    leveraged workload i.e. DSS, DSS_REP, OLTP and OLTP_REP, attaching and
    detaching will no longer work and the volume type will be unusable.
    Refrain from upgrading to PowerMax OS 5978 or greater on an All Flash
-   until a fix is merged. Please contact your Dell EMC VMAX customer support
-   representative if in any doubt.
+   until a fix is merged. Please contact your Dell EMC PowerMax customer
+   support representative if in any doubt.
 
 System requirements and licensing
 =================================
 
-The Dell EMC VMAX Cinder driver supports the VMAX-3 hybrid series, VMAX
-All-Flash series and the PowerMax arrays.
+The Dell EMC PowerMax Cinder driver supports the VMAX-3 hybrid series, VMAX
+All-Flash series and the PowerMax arrays. Please note we will be no longer
+supporting the VMAX hybrid series in the ``T`` release of OpenStack.
 
 The array operating system software, Solutions Enabler 9.0.x series, and
-Unisphere for PowerMax 9.0.x series are required to run Dell EMC VMAX
+Unisphere for PowerMax 9.0.x series are required to run Dell EMC PowerMax
 Cinder driver.
 
 Download Solutions Enabler and Unisphere from the Dell EMC's support web site
@@ -38,8 +47,8 @@ Download Solutions Enabler and Unisphere from the Dell EMC's support web site
 and Configuration Guide`` and ``Dell EMC Unisphere for PowerMax Installation
 Guide`` at ``support.emc.com``.
 
-Required VMAX software suites for OpenStack
--------------------------------------------
+Required PowerMax software suites for OpenStack
+-----------------------------------------------
 
 There are five Dell EMC Software Suites sold with the VMAX Hybrid arrays:
 
@@ -49,17 +58,17 @@ There are five Dell EMC Software Suites sold with the VMAX Hybrid arrays:
 - Remote Replication Suite
 - Total Productivity Pack
 
-The Dell EMC VMAX Cinder driver requires the Advanced Suite and the Local
+The Dell EMC PowerMax Cinder driver requires the Advanced Suite and the Local
 Replication Suite or the Total Productivity Pack (it includes the Advanced
 Suite and the Local Replication Suite) for the VMAX Hybrid.
 
-Using VMAX Remote Replication functionality will also require the Remote
+Using PowerMax Remote Replication functionality will also require the Remote
 Replication Suite.
 
 For full functionality including SRDF for the VMAX All Flash, the FX package,
 or the F package plus the SRDF ``a la carte`` add on is required.
 
-The storage system also requires a Unisphere for VMAX (SMC) eLicence.
+The storage system also requires a Unisphere for PowerMax (SMC) eLicence.
 
 Each are licensed separately. For further details on how to get the
 relevant license(s), reference eLicensing Support below.
@@ -68,7 +77,7 @@ relevant license(s), reference eLicensing Support below.
 eLicensing support
 ------------------
 
-To activate your entitlements and obtain your VMAX license files, visit the
+To activate your entitlements and obtain your PowerMax license files, visit the
 Service Center on `<https://support.emc.com>`_, as directed on your License
 Authorization Code (LAC) letter emailed to you.
 
@@ -92,7 +101,7 @@ Authorization Code (LAC) letter emailed to you.
 Supported operations
 ====================
 
-VMAX drivers support these operations:
+PowerMax drivers support these operations:
 
 -  Create, list, delete, attach, and detach volumes
 -  Create, list, and delete volume snapshots
@@ -112,7 +121,7 @@ VMAX drivers support these operations:
 -  Manage and unmanage volumes and snapshots
 -  List Manageable Volumes/Snapshots
 
-VMAX drivers also support the following features:
+PowerMax drivers also support the following features:
 
 -  Dynamic masking view creation
 -  Dynamic determination of the target iSCSI IP address
@@ -137,15 +146,15 @@ VMAX drivers also support the following features:
    compressed.
 
 
-VMAX naming conventions
-=======================
+PowerMax naming conventions
+===========================
 
 Masking view names
 ------------------
 
-Masking views are dynamically created by the VMAX FC and iSCSI drivers using
-the following naming conventions. ``[protocol]`` is either ``I`` for volumes
-attached over iSCSI or ``F`` for volumes attached over Fiber Channel.
+Masking views are dynamically created by the PowerMax FC and iSCSI drivers
+using the following naming conventions. ``[protocol]`` is either ``I`` for
+volumes attached over iSCSI or ``F`` for volumes attached over Fiber Channel.
 
 .. code-block:: text
 
@@ -154,11 +163,11 @@ attached over iSCSI or ``F`` for volumes attached over Fiber Channel.
 Initiator group names
 ---------------------
 
-For each host that is attached to VMAX volumes using the drivers, an initiator
-group is created or re-used (per attachment type). All initiators of the
-appropriate type known for that host are included in the group. At each new
-attach volume operation, the VMAX driver retrieves the initiators (either
-WWNNs or IQNs) from OpenStack and adds or updates the contents of the
+For each host that is attached to PowerMax volumes using the drivers, an
+initiator group is created or re-used (per attachment type). All initiators
+of the appropriate type known for that host are included in the group. At
+each new attach volume operation, the PowerMax driver retrieves the initiators
+(either WWNNs or IQNs) from OpenStack and adds or updates the contents of the
 Initiator Group as required. Names are of the following format. ``[protocol]``
 is either ``I`` for volumes attached over iSCSI or ``F`` for volumes attached
 over Fiber Channel.
@@ -169,13 +178,13 @@ over Fiber Channel.
 
 .. note::
 
-   Hosts attaching to OpenStack managed VMAX storage cannot also attach to
-   storage on the same VMAX that are not managed by OpenStack.
+   Hosts attaching to OpenStack managed PowerMax storage cannot also attach to
+   storage on the same PowerMax that are not managed by OpenStack.
 
 FA port groups
 --------------
 
-VMAX array FA ports to be used in a new masking view are retrieved from the
+PowerMax array FA ports to be used in a new masking view are retrieved from the
 port group provided as the extra spec on the volume type, or chosen from the
 list provided in the Dell EMC configuration file.
 
@@ -187,7 +196,7 @@ storage group (if it exists) or a new storage group is created and the volume
 is then added. Storage groups contain volumes created from a pool, attached
 to a single host, over a single connection type (iSCSI or FC). ``[protocol]``
 is either ``I`` for volumes attached over iSCSI or ``F`` for volumes attached
-over Fiber Channel. VMAX Cinder driver utilizes cascaded storage groups -
+over Fiber Channel. PowerMax Cinder driver utilizes cascaded storage groups -
 a ``parent`` storage group which is associated with the masking view, which
 contains ``child`` storage groups for each configured
 SRP/slo/workload/compression-enabled or disabled/replication-enabled or
@@ -218,8 +227,8 @@ Child storage groups:
    is NONE
 
 
-VMAX Driver Integration
-=======================
+PowerMax Driver Integration
+===========================
 
 1. Prerequisites
 ----------------
@@ -237,7 +246,7 @@ VMAX Driver Integration
 
    .. note::
 
-      You must discover storage arrays before you can use the VMAX drivers.
+      You must discover storage arrays before you can use the PowerMax drivers.
       Follow instructions in ```Dell EMC Solutions Enabler 9.0.x Installation
       and Configuration Guide`` on ``support.emc.com`` for more details.
 
@@ -247,26 +256,26 @@ VMAX Driver Integration
    - i.e., on the same server running Solutions Enabler; on a server
    connected to the Solutions Enabler server; or using the eManagement
    container application (containing Solutions Enabler and Unisphere for
-   VMAX). See ``Dell EMC Solutions Enabler 9.0.x Installation and Configuration
+   PowerMax). See ``Dell EMC Solutions Enabler 9.0.x Installation and Configuration
    Guide`` at ``support.emc.com``.
 
 
-2. FC Zoning with VMAX
-----------------------
+2. FC Zoning with PowerMax
+--------------------------
 
 Zone Manager is required when there is a fabric between the host and array.
 This is necessary for larger configurations where pre-zoning would be too
 complex and open-zoning would raise security concerns.
 
-3. iSCSI with VMAX
-------------------
+3. iSCSI with PowerMax
+----------------------
 
 -  Make sure the ``iscsi-initiator-utils`` package is installed on all Compute
    nodes.
 
 .. note::
 
-   You can only ping the VMAX iSCSI target ports when there is a valid masking
+   You can only ping the PowerMax iSCSI target ports when there is a valid masking
    view. An attach operation creates this masking view.
 
 
@@ -274,13 +283,13 @@ complex and open-zoning would raise security concerns.
 -----------------------------------------
 
     .. config-table::
-       :config-target: VMAX
+       :config-target: PowerMax
 
-       cinder.volume.drivers.dell_emc.vmax.common
+       cinder.volume.drivers.dell_emc.powermax.common
 
    .. note::
 
-      For security and backend uniformity, the use of the XML file for VMAX
+      For security and backend uniformity, the use of the XML file for PowerMax
       backend configuration was deprecated in Queens and removed entirely
       in Rocky.
 
@@ -293,11 +302,11 @@ complex and open-zoning would raise security concerns.
 
    .. note::
 
-      VMAX ``PortGroups`` must be pre-configured to expose volumes managed
+      PowerMax ``PortGroups`` must be pre-configured to expose volumes managed
       by the array. Port groups can be supplied in the ``cinder.conf``, or
       can be specified as an extra spec ``storagetype:portgroupname`` on a
       volume type. The latter gives the user more control. When a dynamic
-      masking view is created by the VMAX driver, if there is no port group
+      masking view is created by the PowerMax driver, if there is no port group
       specified as an extra specification, the port group is chosen randomly
       from the PortGroup list, to evenly distribute load across the set of
       groups provided.
@@ -310,13 +319,13 @@ complex and open-zoning would raise security concerns.
       Workload is NONE for PowerMax and any All Flash with PowerMax OS
       (5978) or greater.
 
-      +-----------------+------------------------+---------+----------+
-      |  VMAX parameter | cinder.conf parameter  | Default | Required |
-      +=================+========================+=========+==========+
-      |  ServiceLevel   | vmax_service_level     | None    | No       |
-      +-----------------+------------------------+---------+----------+
-      |  Workload       | vmax_workload          | None    | No       |
-      +-----------------+------------------------+---------+----------+
+      +--------------------+------------------------+---------+----------+
+      | PowerMAX parameter | cinder.conf parameter  | Default | Required |
+      +====================+========================+=========+==========+
+      |  ServiceLevel      | vmax_service_level     | None    | No       |
+      +--------------------+------------------------+---------+----------+
+      |  Workload          | vmax_workload          | None    | No       |
+      +--------------------+------------------------+---------+----------+
 
    Configure Block Storage in cinder.conf
 
@@ -327,8 +336,8 @@ complex and open-zoning would raise security concerns.
       enabled_backends = CONF_GROUP_ISCSI, CONF_GROUP_FC
 
       [CONF_GROUP_ISCSI]
-      volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
-      volume_backend_name = VMAX_ISCSI
+      volume_driver = cinder.volume.drivers.dell_emc.powermax.iscsi.PowerMaxISCSIDriver
+      volume_backend_name = POWERMAX_ISCSI
       vmax_port_groups = [OS-ISCSI-PG]
       san_ip = 10.10.10.10
       san_login = my_username
@@ -338,8 +347,8 @@ complex and open-zoning would raise security concerns.
 
 
       [CONF_GROUP_FC]
-      volume_driver = cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver
-      volume_backend_name = VMAX_FC
+      volume_driver = cinder.volume.drivers.dell_emc.powermax.fc.PowerMaxFCDriver
+      volume_backend_name = POWERMAX_FC
       vmax_port_groups = [OS-FC-PG]
       san_ip = 10.10.10.10
       san_login = my_username
@@ -369,8 +378,8 @@ complex and open-zoning would raise security concerns.
    Where ``my_unisphere_host`` is the hostname of the unisphere instance and
    ``my_unisphere_host.pem`` is the name of the .pem file.
 
-#. Add this path to ``cinder.conf`` under the VMAX backend stanza and set SSL
-   verify to True
+#. Add this path to ``cinder.conf`` under the PowerMax backend stanza and set
+   SSL verify to True
 
    .. code-block:: console
 
@@ -401,8 +410,8 @@ complex and open-zoning would raise security concerns.
 
       # export REQUESTS_CA_BUNDLE = /etc/ssl/certs/ca-certificates.crt
 
-#. OPTIONAL: Set cert verification to ``true`` under the VMAX backend stanza in
-   ``cinder.conf``:
+#. OPTIONAL: Set cert verification to ``true`` under the PowerMax backend
+   stanza in ``cinder.conf``:
 
    .. code-block:: console
 
@@ -440,24 +449,24 @@ complex and open-zoning would raise security concerns.
 
    .. code-block:: console
 
-      $ openstack volume type create VMAX_ISCSI_SILVER_OLTP
+      $ openstack volume type create POWERMAX_ISCSI_SILVER_OLTP
       $ openstack volume type set --property volume_backend_name=ISCSI_backend \
                                   --property pool_name=Silver+OLTP+SRP_1+000123456789 \
                                   --property storagetype:portgroupname=OS-PG2 \
-                                  VMAX_ISCSI_SILVER_OLTP
-      $ openstack volume type create VMAX_FC_DIAMOND_DSS
+                                  POWERMAX_ISCSI_SILVER_OLTP
+      $ openstack volume type create POWERMAX_FC_DIAMOND_DSS
       $ openstack volume type set --property volume_backend_name=FC_backend \
                                   --property pool_name=Diamond+DSS+SRP_1+000123456789 \
                                   --property storagetype:portgroupname=OS-PG1 \
-                                  VMAX_FC_DIAMOND_DSS
+                                  POWERMAX_FC_DIAMOND_DSS
 
 
    By issuing these commands, the Block Storage volume type
-   ``VMAX_ISCSI_SILVER_OLTP`` is associated with the ``ISCSI_backend``, a Silver
-   Service Level, and an OLTP workload.
+   ``POWERMAX_ISCSI_SILVER_OLTP`` is associated with the ``ISCSI_backend``,
+   a Silver Service Level, and an OLTP workload.
 
-   The type ``VMAX_FC_DIAMOND_DSS`` is associated with the ``FC_backend``, a
-   Diamond Service Level, and a DSS workload.
+   The type ``POWERMAX_FC_DIAMOND_DSS`` is associated with the ``FC_backend``,
+   a Diamond Service Level, and a DSS workload.
 
    The ``ServiceLevel`` manages the underlying storage to provide expected
    performance. Setting the ``ServiceLevel`` to ``None`` means that non-FAST
@@ -502,13 +511,13 @@ should be increased so calls will not timeout prematurely.
 In the example below, the driver checks every 3 seconds for the status of the
 job. It will continue checking for 200 retries before it times out.
 
-Add the following lines to the VMAX backend in the cinder.conf:
+Add the following lines to the PowerMax backend in the cinder.conf:
 
 .. code-block:: console
 
    [CONF_GROUP_ISCSI]
-   volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
-   volume_backend_name = VMAX_ISCSI
+   volume_driver = cinder.volume.drivers.dell_emc.powermax.iscsi.PowerMaxISCSIDriver
+   volume_backend_name = POWERMAX_ISCSI
    vmax_port_groups = [OS-ISCSI-PG]
    san_ip = 10.10.10.10
    san_login = my_username
@@ -522,15 +531,16 @@ Add the following lines to the VMAX backend in the cinder.conf:
 ------------------------------
 
 This supports one way initiator CHAP authentication functionality into the
-VMAX backend. With CHAP one-way authentication, the storage array challenges
-the host during the initial link negotiation process and expects to receive
-a valid credential and CHAP secret in response. When challenged, the host
-transmits a CHAP credential and CHAP secret to the storage array. The storage
-array looks for this credential and CHAP secret which stored in the host
-initiator's initiator group (IG) information in the ACLX database. Once a
-positive authentication occurs, the storage array sends an acceptance message
-to the host. However, if the storage array fails to find any record of the
-credential/secret pair, it sends a rejection message, and the link is closed.
+PowerMax backend. With CHAP one-way authentication, the storage array
+challenges the host during the initial link negotiation process and expects
+to receive a valid credential and CHAP secret in response. When challenged,
+the host transmits a CHAP credential and CHAP secret to the storage array.
+The storagearray looks for this credential and CHAP secret which stored in
+the host initiator's initiator group (IG) information in the ACLX database.
+Once a positive authentication occurs, the storage array sends an acceptance
+message to the host. However, if the storage array fails to find any record
+of the credential/secret pair, it sends a rejection message, and the link is
+closed.
 
 Assumptions, Restrictions and Pre-Requisites
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -559,7 +569,7 @@ Assumptions, Restrictions and Pre-Requisites
 Settings and Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#. Set the configuration in the VMAX backend group in cinder.conf using the
+#. Set the configuration in the PowerMax backend group in cinder.conf using the
    following parameters and restart cinder.
 
    +-----------------------+-------------------------+-------------------+
@@ -574,9 +584,9 @@ Settings and Configuration
 
    .. code-block:: ini
 
-      [VMAX_ISCSI]
-      volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
-      volume_backend_name = VMAX_ISCSI
+      [POWERMAX_ISCSI]
+      volume_driver = cinder.volume.drivers.dell_emc.powermax.iscsi.PowerMaxISCSIDriver
+      volume_backend_name = POWERMAX_ISCSI
       san_ip = 10.10.10.10
       san_login = my_u4v_username
       san_password = my_u4v_password
@@ -645,21 +655,22 @@ limits the following:
 
 QoS enforcement in Cinder is done either at the hypervisor (front end),
 the storage subsystem (back end), or both. This section focuses on QoS
-limits that are enforced by either the VMAX backend and the hypervisor
-front end interchangeably or just back end (Vendor Specific). The VMAX driver
-offers support for Total bytes/sec limit in throughput and Total IOPS/sec
-limit of IOPS.
+limits that are enforced by either the PowerMax backend and the hypervisor
+front end interchangeably or just back end (Vendor Specific). The PowerMax
+driver offers support for Total bytes/sec limit in throughput and Total
+IOPS/sec limit of IOPS.
 
-The VMAX driver supports the following attributes that are front end/back end
-agnostic
+The PowerMax driver supports the following attributes that are front
+end/back end agnostic
 
 - total_iops_sec - Maximum IOPs (in I/Os per second). Valid values range from
   100 IO/Sec to 100,000 IO/sec.
 - total_bytes_sec - Maximum bandwidth (throughput) in bytes per second. Valid
   values range from 1048576 bytes (1MB) to 104857600000 bytes (100, 000MB)
 
-The VMAX driver offers the following attribute that is vendor specific to the
-VMAX and dependent on the total_iops_sec and/or total_bytes_sec being set.
+The PowerMax driver offers the following attribute that is vendor specific to
+the PowerMax and dependent on the total_iops_sec and/or total_bytes_sec being
+set.
 
 - Dynamic Distribution - Enables/Disables dynamic distribution of host I/O
   limits. Possible values are:
@@ -676,7 +687,7 @@ VMAX and dependent on the total_iops_sec and/or total_bytes_sec being set.
 USE CASE 1 - Default values
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Prerequisites - VMAX
+Prerequisites - PowerMax
 
 - Host I/O Limit (MB/Sec) -     No Limit
 - Host I/O Limit (IO/Sec) -     No Limit
@@ -716,7 +727,7 @@ Prerequisites - VMAX
 
       $ openstack volume create --size 1 --type my_volume_type my_volume
 
-**Outcome - VMAX (storage group)**
+**Outcome - PowerMax (storage group)**
 
 - Host I/O Limit (MB/Sec) -     100
 - Host I/O Limit (IO/Sec) -     500
@@ -730,7 +741,7 @@ above.
 USE CASE 2 - Preset limits
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Prerequisites - VMAX
+Prerequisites - PowerMax
 
 - Host I/O Limit (MB/Sec) -     2000
 - Host I/O Limit (IO/Sec) -     2000
@@ -777,7 +788,7 @@ Prerequisites - VMAX
 
       $ openstack server add volume my_volume my_instance
 
-**Outcome - VMAX (storage group)**
+**Outcome - PowerMax (storage group)**
 
 - Host I/O Limit (MB/Sec) -     100
 - Host I/O Limit (IO/Sec) -     500
@@ -854,7 +865,7 @@ The output of the command contains the xml below. It is found between the
 USE CASE 3 - Preset limits
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Prerequisites - VMAX
+Prerequisites - PowerMax
 
 - Host I/O Limit (MB/Sec) -     100
 - Host I/O Limit (IO/Sec) -     500
@@ -894,7 +905,7 @@ Prerequisites - VMAX
 
       $ openstack volume create --size 1 --type my_volume_type my_volume
 
-**Outcome - VMAX (storage group)**
+**Outcome - PowerMax (storage group)**
 
 - Host I/O Limit (MB/Sec) -     100
 - Host I/O Limit (IO/Sec) -     500
@@ -908,7 +919,7 @@ Volume is created against volume type and QOS is enforced with the parameters ab
 USE CASE 4 - Default values
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Prerequisites - VMAX
+Prerequisites - PowerMax
 
 - Host I/O Limit (MB/Sec) -     No Limit
 - Host I/O Limit (IO/Sec) -     No Limit
@@ -943,7 +954,7 @@ Prerequisites - VMAX
 
       $ openstack volume create --size 1 --type my_volume_type my_volume
 
-**Outcome - VMAX (storage group)**
+**Outcome - PowerMax (storage group)**
 
 - Host I/O Limit (MB/Sec) -     No Limit
 - Host I/O Limit (IO/Sec) -     No Limit
@@ -996,7 +1007,7 @@ performance. Log in as a privileged user and make the following changes to
 .. code-block:: vim
 
    devices {
-   # Device attributed for EMC VMAX
+   # Device attributed for EMC PowerMax
        device {
                vendor "EMC"
                product "SYMMETRIX"
@@ -1053,7 +1064,7 @@ On Compute (Nova) node, add the following flag in the ``[libvirt]`` section of
    volume_use_multipath = True
 
 On Cinder controller node, iSCSI MPIO can be set globally in the
-[DEFAULT] section or set individually in the VMAX backend stanza in
+[DEFAULT] section or set individually in the PowerMax backend stanza in
 :file:`/etc/cinder/cinder.conf`:
 
 .. code-block:: ini
@@ -1065,8 +1076,8 @@ Restart ``nova-compute`` and ``cinder-volume`` services after the change.
 Verify you have multiple initiators available on the compute node for I/O
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#. Create a 3GB VMAX volume.
-#. Create an instance from image out of native LVM storage or from VMAX
+#. Create a 3GB PowerMax volume.
+#. Create an instance from image out of native LVM storage or from PowerMax
    storage, for example, from a bootable volume
 #. Attach the 3GB volume to the new instance:
 
@@ -1111,7 +1122,7 @@ uncompressed.
 Use case 1 - Compression disabled create, attach, detach, and delete volume
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#. Create a new volume type called ``VMAX_COMPRESSION_DISABLED``.
+#. Create a new volume type called ``POWERMAX_COMPRESSION_DISABLED``.
 #. Set an extra spec ``volume_backend_name``.
 #. Set a new extra spec ``storagetype:disablecompression = True``.
 #. Create a new volume.
@@ -1134,12 +1145,12 @@ Use case 2 - Retype from compression disabled to compression enabled
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #. Repeat steps 1-4 of Use case 1.
-#. Create a new volume type. For example ``VMAX_COMPRESSION_ENABLED``.
+#. Create a new volume type. For example ``POWERMAX_COMPRESSION_ENABLED``.
 #. Set extra spec ``volume_backend_name`` as before.
 #. Set the new extra spec's compression as
    ``storagetype:disablecompression = False`` or DO NOT set this extra spec.
-#. Retype from volume type ``VMAX_COMPRESSION_DISABLED`` to
-   ``VMAX_COMPRESSION_ENABLED``.
+#. Retype from volume type ``POWERMAX_COMPRESSION_DISABLED`` to
+   ``POWERMAX_COMPRESSION_ENABLED``.
 #. Check in Unisphere or symcli to see if the volume exists in storage group
    ``OS-<srp>-<servicelevel>-<workload>-SG``, and compression is enabled on
    that storage group.
@@ -1173,22 +1184,22 @@ of live migration are:
   read-only devices such as CD-ROMs and Configuration Drive (config_drive).
 
 - Volume-backed live migration. Instances are backed by volumes rather than
-  ephemeral disk.  For VMAX volume-backed live migration, shared storage
+  ephemeral disk.  For PowerMax volume-backed live migration, shared storage
   is required.
 
-The VMAX driver supports shared volume-backed live migration.
+The PowerMax driver supports shared volume-backed live migration.
 
 Architecture
 ~~~~~~~~~~~~
 
-In VMAX, A volume cannot belong to two or more FAST storage groups at the
+In PowerMax, A volume cannot belong to two or more FAST storage groups at the
 same time. To get around this limitation we leverage both cascaded storage
 groups and a temporary non FAST storage group.
 
 A volume can remain 'live' if moved between masking views that have the same
 initiator group and port groups which preserves the host path.
 
-During live migration, the following steps are performed by the VMAX plugin
+During live migration, the following steps are performed by the PowerMax driver
 on the volume:
 
 #. Within the originating masking view, the volume is moved from the FAST
@@ -1345,7 +1356,7 @@ nodes. The following were also used in live migration.
 14. Multi-attach support
 ------------------------
 
-VMAX cinder driver supports the ability to attach a volume to multiple
+PowerMax cinder driver supports the ability to attach a volume to multiple
 hosts/servers simultaneously. Please see
 https://docs.openstack.org/cinder/latest/admin/blockstorage-volume-multiattach.html
 for configuration information.
@@ -1353,7 +1364,7 @@ for configuration information.
 Multi-attach Architecture
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In VMAX, a volume cannot belong to two or more FAST storage groups at the same
+In PowerMax, a volume cannot belong to two or more FAST storage groups at the same
 time. This can cause issues when we are attaching a volume to multiple
 instances on different hosts. To get around this limitation, we leverage both
 cascaded storage groups and non-FAST storage groups (i.e. a storage group with
@@ -1411,7 +1422,7 @@ https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-encr
 16. Volume metadata in logs
 ---------------------------
 
-If debug is enabled in the default section of the cinder.conf, VMAX Cinder
+If debug is enabled in the default section of the cinder.conf, PowerMax Cinder
 driver will log additional volume information in the Cinder volume log,
 on each successful operation.  The facilitates bridging the gap between
 OpenStack and the Array by tracing and describing the volume from a VMAX/
@@ -1456,8 +1467,8 @@ Configure the source and target arrays
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #. Configure an SRDF group between the chosen source and target
-   arrays for the VMAX Cinder driver to use. The source array must correspond
-   with the 'vmax_array' entry in the cinder.conf.
+   arrays for the PowerMax Cinder driver to use. The source array must
+   correspond with the 'vmax_array' entry in the cinder.conf.
 #. Select both the director and the ports for the SRDF emulation to use on
    both sides. Bear in mind that network topology is important when choosing
    director endpoints. Supported modes are `Synchronous`, `Asynchronous`,
@@ -1486,7 +1497,7 @@ Configure the source and target arrays
       https://www.emc.com/collateral/technical-documentation/h14556-vmax3-srdf-metro-overview-and-best-practices-tech-note.pdf
 
 #. Enable replication in ``/etc/cinder/cinder.conf``.
-   To enable the replication functionality in VMAX Cinder driver, it is
+   To enable the replication functionality in PowerMax Cinder driver, it is
    necessary to create a replication volume-type. The corresponding
    back-end stanza in the ``cinder.conf`` for this volume-type must then
    include a ``replication_device`` parameter. This parameter defines a
@@ -1495,16 +1506,16 @@ Configure the source and target arrays
 
    .. code-block:: console
 
-      enabled_backends = VMAX_FC_REPLICATION
-      [VMAX_FC_REPLICATION]
-      volume_driver = cinder.volume.drivers.dell_emc.vmax_fc.VMAXFCDriver
+      enabled_backends = POWERMAX_FC_REPLICATION
+      [POWERMAX_FC_REPLICATION]
+      volume_driver = cinder.volume.drivers.dell_emc.powermax.fc.PowerMaxFCDriver
       san_ip = 10.10.10.10
       san_login = my_u4v_username
       san_password = my_u4v_password
       vmax_srp = SRP_1
       vmax_array = 000123456789
       vmax_port_groups = [OS-FC-PG]
-      volume_backend_name = VMAX_FC_REPLICATION
+      volume_backend_name = POWERMAX_FC_REPLICATION
       replication_device = target_device_id:000197811111,
                            remote_port_group:os-failover-pg,
                            remote_pool:SRP_1,
@@ -1520,11 +1531,11 @@ Configure the source and target arrays
          (separated by commas) in cinder.conf.  They are displayed on separated lines
          above for readiblity.
 
-   * ``target_device_id`` is a unique VMAX array serial number of the target
-     array. For full failover functionality, the source and target VMAX arrays
+   * ``target_device_id`` is a unique PowerMax array serial number of the target
+     array. For full failover functionality, the source and target PowerMax arrays
      must be discovered and managed by the same U4V server.
 
-   * ``remote_port_group`` is the name of a VMAX port group that has been
+   * ``remote_port_group`` is the name of a PowerMax port group that has been
      pre-configured to expose volumes managed by this backend in the event
      of a failover. Make sure that this portgroup contains either all FC or
      all iSCSI port groups (for a given back end), as appropriate for the
@@ -1532,8 +1543,8 @@ Configure the source and target arrays
 
    * ``remote_pool`` is the unique pool name for the given target array.
 
-   * ``rdf_group_label`` is the name of a VMAX SRDF group that has been pre-configured
-     between the source and target arrays.
+   * ``rdf_group_label`` is the name of a PowerMax SRDF group that has been
+     pre-configured between the source and target arrays.
 
    * ``allow_extend`` is a flag for allowing the extension of replicated volumes.
      To extend a volume in an SRDF relationship, this relationship must first be
@@ -1570,21 +1581,21 @@ Configure the source and target arrays
       configured), no service level will be applied.
 
    .. note::
-      The VMAX Cinder drivers can support a single replication target per
+      The PowerMax Cinder drivers can support a single replication target per
       back-end, that is we do not support Concurrent SRDF or Cascaded SRDF.
       Ensure there is only a single ``replication_device`` entry per
       back-end stanza.
 
 #. Create a ``replication-enabled`` volume type. Once the
-   ``replication_device`` parameter has been entered in the VMAX
+   ``replication_device`` parameter has been entered in the PowerMax
    backend entry in the ``cinder.conf``, a corresponding volume type
    needs to be created ``replication_enabled`` property set. See
-   above ``Setup VMAX drivers`` for details.
+   above ``Setup PowerMax drivers`` for details.
 
    .. code-block:: console
 
       # openstack volume type set --property replication_enabled="<is> True" \
-                            VMAX_FC_REPLICATION
+                            POWERMAX_FC_REPLICATION
 
 
 Volume replication interoperability with other features
@@ -1594,7 +1605,7 @@ Most features are supported, except for the following:
 
 * Replication Group operations are available for volumes in Synchronous mode only.
 
-* Storage-assisted retype operations on replication-enabled VMAX volumes
+* Storage-assisted retype operations on replication-enabled PowerMax volumes
   (moving from a non-replicated type to a replicated-type and vice-versa.
   Moving to another service level/workload combination, for example) are
   not supported.
@@ -1629,14 +1640,14 @@ host command to failover to the configured target:
 
 .. code-block:: console
 
-   # cinder failover-host cinder_host@VMAX_FC_REPLICATION
+   # cinder failover-host cinder_host@POWERMAX_FC_REPLICATION
 
 If the primary array becomes available again, you can initiate a failback
 using the same command and specifying ``--backend_id default``:
 
 .. code-block:: console
 
-   # cinder failover-host cinder_host@VMAX_FC_REPLICATION --backend_id default
+   # cinder failover-host cinder_host@POWERMAX_FC_REPLICATION --backend_id default
 
 .. note::
 
@@ -1682,7 +1693,7 @@ Volume retype -  storage assisted volume migration
 --------------------------------------------------
 
 Volume retype with storage assisted migration is supported now for
-VMAX3 arrays. Cinder requires that for storage assisted migration, a
+PowerMax arrays. Cinder requires that for storage assisted migration, a
 volume cannot be retyped across backends. For using storage assisted volume
 retype, follow these steps:
 
@@ -1690,7 +1701,7 @@ retype, follow these steps:
    another, use volume retype with the migration-policy to on-demand. The
    target volume type should have the same volume_backend_name configured and
    should have the desired pool_name to which you are trying to retype to
-   (please refer to ``Setup VMAX Drivers`` for details).
+   (please refer to ``Setup PowerMax Drivers`` for details).
 
    .. code-block:: console
 
@@ -1711,7 +1722,7 @@ Generic volume group support
 
 Generic volume group operations are performed through the CLI using API
 version 3.1x of the Cinder API. Generic volume groups are multi-purpose
-groups which can be used for various features. The VMAX plugin supports
+groups which can be used for various features. The PowerMax driver supports
 consistent group snapshots and replication groups. Consistent group
 snapshots allows the user to take group snapshots which
 are consistent based on the group specs. Replication groups allow for/
@@ -1735,14 +1746,14 @@ while creating the group.
 .. code-block:: console
 
    # openstack volume type set --property replication_enabled="<is> True" /
-                           VMAX_REPLICATION
+                           POWERMAX_REPLICATION
 
 If this key is not set on the group-spec or volume type, then the generic
-volume group will be created/managed by Cinder (not the VMAX plugin).
+volume group will be created/managed by Cinder (not the PowerMax driver).
 
 .. note::
 
-   The consistent group snapshot should not be confused with the VMAX
+   The consistent group snapshot should not be confused with the PowerMax
    consistency group which is an SRDF construct.
 
 Replication groups
@@ -1766,7 +1777,7 @@ without failing over the entire host. See below for usage.
 Storage Group Names
 ~~~~~~~~~~~~~~~~~~~
 
-Storage groups are created on the VMAX as a result of creation of generic
+Storage groups are created on the PowerMax as a result of creation of generic
 volume groups. These storage groups follow a different naming convention
 and are of the following format depending upon whether the groups have a
 name.
@@ -1955,7 +1966,7 @@ the same format:
  +----------------+-------------------------------------------------------------+
  |  SRP           | The Storage Resource Pool configured for use by the backend |
  +----------------+-------------------------------------------------------------+
- |  array_id      | The VMAX serial number (12 digit numerical)                 |
+ |  array_id      | The PowerMax serial number (12 digit numerical)             |
  +----------------+-------------------------------------------------------------+
 
 
@@ -1979,18 +1990,18 @@ Command Example:
 
 .. code-block:: console
 
-   $ cinder manage --name vmax_managed_volume --volume-type VMAX_ISCSI_DIAMOND \
-     --availability-zone nova demo@VMAX_ISCSI_DIAMOND#Diamond+SRP_1+111111111111 031D8
+   $ cinder manage --name vmax_managed_volume --volume-type POWERMAX_ISCSI_DIAMOND \
+     --availability-zone nova demo@POWERMAX_ISCSI_DIAMOND#Diamond+SRP_1+111111111111 031D8
 
 After the above command has been run, the volume will be available for use in
-the same way as any other OpenStack VMAX volume.
+the same way as any other OpenStack PowerMax volume.
 
 .. note::
 
    An unmanaged volume with a prefix of 'OS-' in its identifier name cannot be
    managed into OpenStack, as this is a reserved keyword for managed volumes.
    If the identifier name has this prefix, an exception will be thrown by the
-   VMAX driver on a manage operation.
+   PowerMax driver on a manage operation.
 
 
 Managing Volumes with Replication Enabled
@@ -1999,19 +2010,19 @@ Managing Volumes with Replication Enabled
 Whilst it is not possible to manage volumes into OpenStack that are part of a
 SRDF relationship, it is possible to manage a volume into OpenStack and
 enable replication at the same time. This is done by having a replication
-enabled VMAX volume type (for more information see section Volume Replication)
-during the manage volume process you specify the replication volume type as
-the chosen volume type. Once managed, replication will be enabled for that
-volume.
+enabled PowerMax volume type (for more information see section Volume
+Replication) during the manage volume process you specify the replication
+volume type as the chosen volume type. Once managed, replication will be
+enabled for that volume.
 
 
 Unmanage Volume
 ~~~~~~~~~~~~~~~
 
 Unmanaging a volume is not the same as deleting a volume. When a volume is
-deleted from OpenStack, it is also deleted from the VMAX at the same time.
+deleted from OpenStack, it is also deleted from the PowerMax at the same time.
 Unmanaging a volume is the process whereby a volume is removed from OpenStack
-but it remains for further use on the VMAX. The volume can also be managed
+but it remains for further use on the PowerMax. The volume can also be managed
 back into OpenStack at a later date using the process discussed in the
 previous section. Unmanaging volume is carried out using the Cinder
 unmanage CLI command:
@@ -2037,7 +2048,7 @@ the volume is no longer managed by OpenStack.
 Manage/Unmanage Snapshots
 -------------------------
 
-Users can manage VMAX SnapVX snapshots into OpenStack if the source volume
+Users can manage PowerMax SnapVX snapshots into OpenStack if the source volume
 already exists in Cinder. Similarly, users will be able to unmanage OpenStack
 snapshots to remove them from Cinder but keep them on the storage backend.
 
@@ -2046,7 +2057,7 @@ Set-up, restrictions and requirements:
 #. No additional settings or configuration is required to support this
    functionality.
 
-#. Manage/Unmanage snapshots requires SnapVX functionality support on VMAX.
+#. Manage/Unmanage snapshots requires SnapVX functionality support on PowerMax.
 
 #. Manage/Unmanage Snapshots in OpenStack Cinder is only supported at present
    through Cinder CLI commands.
@@ -2056,7 +2067,7 @@ Set-up, restrictions and requirements:
 Manage SnapVX Snapshot
 ~~~~~~~~~~~~~~~~~~~~~~
 
-It is possible to manage VMAX SnapVX snapshots into OpenStack, where the
+It is possible to manage PowerMax SnapVX snapshots into OpenStack, where the
 source volume from which the snapshot is taken already exists in, and is
 managed by OpenStack Cinder. The source volume may have been created in
 OpenStack Cinder, or it may have been managed in to OpenStack Cinder also.
@@ -2083,7 +2094,7 @@ Requirements/Restrictions:
 
 Command Structure:
 
-#. Identify your SnapVX snapshot for management on the VMAX, note the name.
+#. Identify your SnapVX snapshot for management on the PowerMax, note the name.
 
 #. Ensure the source volume is already managed into OpenStack Cinder, note
    the device ID.
@@ -2104,7 +2115,7 @@ Positional arguments:
 
 - <volume name/id> - Source OpenStack volume name
 
-- <identifier> - Name of existing snapshot on VMAX backend
+- <identifier> - Name of existing snapshot on PowerMax backend
 
 Optional arguments:
 
@@ -2121,7 +2132,7 @@ Example:
 
    $ cinder snapshot-manage --name SnapshotManaged \
                             --description "Managed Queens Feb18" \
-                            0021A VMAXSnapshot
+                            0021A PowerMaxSnapshot
 
 Where:
 
@@ -2132,13 +2143,14 @@ Where:
 
 - The source volume device ID is ``0021A``.
 
-- The name of the SnapVX snapshot on the VMAX backend is ``VMAXSnapshot``.
+- The name of the SnapVX snapshot on the PowerMax backend is
+  ``PowerMaxSnapshot``.
 
 Outcome:
 
 After the process of managing the Snapshot has completed, the SnapVX snapshot
-on the VMAX backend will be prefixed by the letters ``OS-``, leaving the
-snapshot in this example named ``OS-VMAXSnapshot``. The associated snapshot
+on the PowerMax backend will be prefixed by the letters ``OS-``, leaving the
+snapshot in this example named ``OS-PowerMaxSnapshot``. The associated snapshot
 managed by Cinder will be present for use under the name ``SnapshotManaged``.
 
 
@@ -2148,8 +2160,8 @@ Unmanage Cinder Snapshot
 Unmanaging a snapshot in Cinder is the process whereby the snapshot is removed
 from and no longer managed by Cinder, but it still exists on the storage
 backend. Unmanaging a SnapVX snapshot in OpenStack Cinder follows this
-behaviour, whereby after unmanaging a VMAX SnapVX snapshot from Cinder, the
-snapshot is removed from OpenStack but is still present for use on the VMAX
+behaviour, whereby after unmanaging a PowerMax SnapVX snapshot from Cinder, the
+snapshot is removed from OpenStack but is still present for use on the PowerMax
 backend.
 
 Requirements/Restrictions:
@@ -2181,9 +2193,9 @@ Where:
 - The SnapVX snapshot name in OpenStack Cinder is SnapshotManaged.
 
 After the process of unmanaging the SnapVX snapshot in Cinder, the snapshot on
-the VMAX backend will have the ``OS-`` prefix removed to indicate it is no
+the PowerMax backend will have the ``OS-`` prefix removed to indicate it is no
 longer OpenStack managed. In the example above, the snapshot after unmanaging
-from OpenStack will be named ``VMAXSnapshot`` on the storage backend.
+from OpenStack will be named ``PowerMaxSnapshot`` on the storage backend.
 
 List manageable volumes and snapshots
 -------------------------------------
@@ -2195,7 +2207,7 @@ Volumes that can be managed by and imported into Openstack.
 
 List manageable volume is filtered by:
 
-- Volume size should be 1026MB or greater (1GB VMAX Cinder Vol = 1026 MB)
+- Volume size should be 1026MB or greater (1GB PowerMax Cinder Vol = 1026 MB)
 - Volume size should be a whole integer GB capacity
 - Volume should not be a part of masking view.
 - Volume status should be ``Ready``

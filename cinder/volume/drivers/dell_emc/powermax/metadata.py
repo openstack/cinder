@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Dell Inc. or its subsidiaries.
+# Copyright (c) 2017-2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -24,7 +24,7 @@ from oslo_log import log as logging
 from cinder.objects import volume
 from cinder import version
 
-from cinder.volume.drivers.dell_emc.vmax import utils
+from cinder.volume.drivers.dell_emc.powermax import utils
 LOG = logging.getLogger(__name__)
 CLEANUP_LIST = ['masking_view', 'child_storage_group', 'parent_storage_group',
                 'initiator_group', 'port_group', 'storage_group']
@@ -46,8 +46,8 @@ def debug_required(func):
     return func_wrapper
 
 
-class VMAXVolumeMetadata(object):
-    """Gathers VMAX specific volume information.
+class PowerMaxVolumeMetadata(object):
+    """Gathers PowerMax/VMAX specific volume information.
 
     Also gathers Unisphere, Microcode OS/distribution and python versions.
     """
@@ -55,7 +55,7 @@ class VMAXVolumeMetadata(object):
     def __init__(self, rest, version, is_debug):
         self.version_dict = {}
         self.rest = rest
-        self.utils = utils.VMAXUtils()
+        self.utils = utils.PowerMaxUtils()
         self.volume_trace_list = []
         self.is_debug = is_debug
         self.vmax_driver_version = version
@@ -137,7 +137,7 @@ class VMAXVolumeMetadata(object):
         self._update_info_from_version_info()
 
     def _update_vmax_info(self, serial_number):
-        """Update VMAX info.
+        """Update PowerMax/VMAX info.
 
         :param serial_number: the serial number of the array
         """
@@ -583,7 +583,7 @@ class VMAXVolumeMetadata(object):
 
         :param volume: volume object
         :param rep_info_dict: information gathered from replication
-        :param device_id: the VMAX device id
+        :param device_id: the PowerMax/VMAX device id
         :param extra_specs: the extra specs
         """
         operation = "manage_existing_volume"
@@ -632,11 +632,11 @@ class VMAXVolumeMetadata(object):
 
         :param volume_id: volume identifier
         :param volume_size: volume size
-        :param device_id: the VMAX device id
-        :param array: the VMAX serialnumber
-        :param srp: VMAX SRP
+        :param device_id: the PowerMax/VMAX device id
+        :param array: the PowerMax/VMAX serialnumber
+        :param srp: PowerMax/VMAX SRP
         :param target_slo: volume name
-        :param target_workload: the VMAX device id
+        :param target_workload: the PowerMax/VMAX device id
         :param is_rep_enabled: replication enabled flag
         :param rep_mode: replication mode
         :param is_compression_disabled: compression disabled flag

@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Dell Inc. or its subsidiaries.
+# Copyright (c) 2017-2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -12,26 +12,23 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-ISCSI Drivers for Dell EMC VMAX arrays based on REST.
 
-"""
+import ast
+
 from oslo_log import log as logging
-from oslo_utils import strutils
-import six
 
-from cinder import exception
-from cinder.i18n import _
 from cinder import interface
-from cinder.volume.drivers.dell_emc.vmax import common
+from cinder.volume import driver
+from cinder.volume.drivers.dell_emc.powermax import common
 from cinder.volume.drivers.san import san
+from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
 
 @interface.volumedriver
-class VMAXISCSIDriver(san.SanISCSIDriver):
-    """ISCSI Drivers for VMAX using Rest.
+class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
+    """FC Drivers for PowerMax using REST.
 
     Version history:
 
@@ -72,8 +69,6 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
               - SnapVX licensing checks for VMAX3 (bug #1587017)
               - VMAX oversubscription Support (blueprint vmax-oversubscription)
               - QoS support (blueprint vmax-qos)
-              - VMAX2/VMAX3 iscsi multipath support (iscsi only)
-              https://blueprints.launchpad.net/cinder/+spec/vmax-iscsi-multipath
         2.5.0 - Attach and detach snapshot (blueprint vmax-attach-snapshot)
               - MVs and SGs not reflecting correct protocol (bug #1640222)
               - Storage assisted volume migration via retype
@@ -103,34 +98,35 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
               - Fix for SSL verification/cert application (bug #1772924)
               - Log VMAX metadata of a volume (bp vmax-metadata)
               - Fix for get-pools command (bug #1784856)
-        3.3.0 - Fix for initiator retrieval and short hostname unmapping
+        4.0.0 - Fix for initiator retrieval and short hostname unmapping
                 (bugs #1783855 #1783867)
               - Fix for HyperMax OS Upgrade Bug (bug #1790141)
               - Support for failover to secondary Unisphere
                 (bp/vmax-unisphere-failover)
+              - Rebrand from VMAX to PowerMax(bp/vmax-powermax-rebrand)
     """
 
-    VERSION = "3.3.0"
+    VERSION = "4.0.0"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
 
     def __init__(self, *args, **kwargs):
 
-        super(VMAXISCSIDriver, self).__init__(*args, **kwargs)
+        super(PowerMaxFCDriver, self).__init__(*args, **kwargs)
         self.active_backend_id = kwargs.get('active_backend_id', None)
-        self.common = (
-            common.VMAXCommon(
-                'iSCSI',
-                self.VERSION,
-                configuration=self.configuration,
-                active_backend_id=self.active_backend_id))
+        self.common = common.PowerMaxCommon(
+            'FC',
+            self.VERSION,
+            configuration=self.configuration,
+            active_backend_id=self.active_backend_id)
+        self.zonemanager_lookup_service = fczm_utils.create_lookup_service()
 
     def check_for_setup_error(self):
         pass
 
     def create_volume(self, volume):
-        """Creates a VMAX volume.
+        """Creates a PowerMax/VMAX volume.
 
         :param volume: the cinder volume object
         :returns: provider location dict
@@ -157,7 +153,7 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         return self.common.create_cloned_volume(volume, src_vref)
 
     def delete_volume(self, volume):
-        """Deletes a VMAX volume.
+        """Deletes a PowerMax/VMAX volume.
 
         :param volume: the cinder volume object
         """
@@ -178,7 +174,6 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         :param snapshot: the cinder snapshot object
         """
         src_volume = snapshot.volume
-
         self.common.delete_snapshot(snapshot, src_volume)
 
     def ensure_export(self, context, volume):
@@ -218,156 +213,239 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
-        The iscsi driver returns a driver_volume_type of 'iscsi'.
-        the format of the driver data is defined in smis_get_iscsi_properties.
-        Example return value:
+        Assign any created volume to a compute node/host so that it can be
+        used from that host.
 
-        .. code-block:: default
+        The  driver returns a driver_volume_type of 'fibre_channel'.
+        The target_wwn can be a single entry or a list of wwns that
+        correspond to the list of remote wwn(s) that will export the volume.
+        Example return values:
+
+        .. code-block:: json
 
             {
-                'driver_volume_type': 'iscsi',
+                'driver_volume_type': 'fibre_channel'
                 'data': {
                     'target_discovered': True,
-                    'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
-                    'target_portal': '127.0.0.0.1:3260',
-                    'volume_id': '12345678-1234-4321-1234-123456789012'
+                    'target_lun': 1,
+                    'target_wwn': '1234567890123',
                 }
             }
 
-        Example return value (multipath is enabled):
-
-        .. code-block:: default
+            or
 
             {
-                'driver_volume_type': 'iscsi',
+                'driver_volume_type': 'fibre_channel'
                 'data': {
                     'target_discovered': True,
-                    'target_iqns': ['iqn.2010-10.org.openstack:volume-00001',
-                                    'iqn.2010-10.org.openstack:volume-00002'],
-                    'target_portals': ['127.0.0.1:3260', '127.0.1.1:3260'],
-                    'target_luns': [1, 1]
+                    'target_lun': 1,
+                    'target_wwn': ['1234567890123', '0987654321321'],
                 }
             }
 
         :param volume: the cinder volume object
         :param connector: the connector object
-        :returns: dict -- the iscsi dict
+        :returns: dict -- the target_wwns and initiator_target_map
         """
         device_info = self.common.initialize_connection(
             volume, connector)
         if device_info:
-            return self.get_iscsi_dict(device_info, volume)
+            conn_info = self.populate_data(device_info, volume, connector)
+            fczm_utils.add_fc_zone(conn_info)
+            return conn_info
         else:
             return {}
 
-    def get_iscsi_dict(self, device_info, volume):
-        """Populate iscsi dict to pass to nova.
+    def populate_data(self, device_info, volume, connector):
+        """Populate data dict.
 
-        :param device_info: device info dict
-        :param volume: volume object
-        :returns: iscsi dict
+        Add relevant data to data dict, target_lun, target_wwn and
+        initiator_target_map.
+        :param device_info: device_info
+        :param volume: the volume object
+        :param connector: the connector object
+        :returns: dict -- the target_wwns and initiator_target_map
         """
-        metro_ip_iqn, metro_host_lun = None, None
-        try:
-            ip_and_iqn = device_info['ip_and_iqn']
-            is_multipath = device_info['is_multipath']
-            host_lun_id = device_info['hostlunid']
-        except KeyError as e:
-            exception_message = (_("Cannot get iSCSI ipaddresses, multipath "
-                                   "flag, or hostlunid. Exception is %(e)s.")
-                                 % {'e': six.text_type(e)})
-            raise exception.VolumeBackendAPIException(
-                message=exception_message)
+        device_number = device_info['hostlunid']
+        target_wwns, init_targ_map = self._build_initiator_target_map(
+            volume, connector)
 
-        if device_info.get('metro_ip_and_iqn'):
-            LOG.debug("Volume is Metro device...")
-            metro_ip_iqn = device_info['metro_ip_and_iqn']
-            metro_host_lun = device_info['metro_hostlunid']
+        data = {'driver_volume_type': 'fibre_channel',
+                'data': {'target_lun': device_number,
+                         'target_discovered': True,
+                         'target_wwn': target_wwns,
+                         'initiator_target_map': init_targ_map}}
 
-        iscsi_properties = self.vmax_get_iscsi_properties(
-            volume, ip_and_iqn, is_multipath, host_lun_id,
-            metro_ip_iqn, metro_host_lun)
+        LOG.debug("Return FC data for zone addition: %(data)s.",
+                  {'data': data})
 
-        LOG.info("iSCSI properties are: %(props)s",
-                 {'props': strutils.mask_dict_password(iscsi_properties)})
-        return {'driver_volume_type': 'iscsi',
-                'data': iscsi_properties}
-
-    def vmax_get_iscsi_properties(self, volume, ip_and_iqn,
-                                  is_multipath, host_lun_id,
-                                  metro_ip_iqn, metro_host_lun):
-        """Gets iscsi configuration.
-
-        We ideally get saved information in the volume entity, but fall back
-        to discovery if need be. Discovery may be completely removed in future
-        The properties are:
-        :target_discovered:    boolean indicating whether discovery was used
-        :target_iqn:    the IQN of the iSCSI target
-        :target_portal:    the portal of the iSCSI target
-        :target_lun:    the lun of the iSCSI target
-        :volume_id:    the UUID of the volume
-        :auth_method:, :auth_username:, :auth_password:
-        the authentication details. Right now, either auth_method is not
-        present meaning no authentication, or auth_method == `CHAP`
-        meaning use CHAP with the specified credentials.
-
-        :param volume: the cinder volume object
-        :param ip_and_iqn: list of ip and iqn dicts
-        :param is_multipath: flag for multipath
-        :param host_lun_id: the host lun id of the device
-        :param metro_ip_iqn: metro remote device ip and iqn, if applicable
-        :param metro_host_lun: metro remote host lun, if applicable
-        :returns: properties
-        """
-        properties = {}
-        populate_plurals = False
-        if len(ip_and_iqn) > 1 and is_multipath:
-            populate_plurals = True
-        elif len(ip_and_iqn) == 1 and is_multipath and metro_ip_iqn:
-            populate_plurals = True
-        if populate_plurals:
-            properties['target_portals'] = ([t['ip'] + ":3260" for t in
-                                             ip_and_iqn])
-            properties['target_iqns'] = ([t['iqn'].split(",")[0] for t in
-                                          ip_and_iqn])
-            properties['target_luns'] = [host_lun_id] * len(ip_and_iqn)
-        if metro_ip_iqn:
-            LOG.info("Volume %(vol)s is metro-enabled - "
-                     "adding additional attachment information",
-                     {'vol': volume.name})
-            properties['target_portals'].extend(([t['ip'] + ":3260" for t in
-                                                 metro_ip_iqn]))
-            properties['target_iqns'].extend(([t['iqn'].split(",")[0] for t in
-                                              metro_ip_iqn]))
-            properties['target_luns'].extend(
-                [metro_host_lun] * len(metro_ip_iqn))
-        properties['target_discovered'] = True
-        properties['target_iqn'] = ip_and_iqn[0]['iqn'].split(",")[0]
-        properties['target_portal'] = ip_and_iqn[0]['ip'] + ":3260"
-        properties['target_lun'] = host_lun_id
-        properties['volume_id'] = volume.id
-
-        LOG.info("ISCSI properties: %(properties)s.",
-                 {'properties': properties})
-        LOG.info("ISCSI volume is: %(volume)s.", {'volume': volume})
-
-        if self.configuration.safe_get('use_chap_auth'):
-            LOG.info("Chap authentication enabled.")
-            properties['auth_method'] = 'CHAP'
-            properties['auth_username'] = self.configuration.safe_get(
-                'chap_username')
-            properties['auth_password'] = self.configuration.safe_get(
-                'chap_password')
-
-        return properties
+        return data
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector.
 
+        Return empty data if other volumes are in the same zone.
+        The FibreChannel ZoneManager doesn't remove zones
+        if there isn't an initiator_target_map in the
+        return of terminate_connection.
+
         :param volume: the volume object
         :param connector: the connector object
+        :returns: dict -- the target_wwns and initiator_target_map if the
+            zone is to be removed, otherwise empty
         """
-        self.common.terminate_connection(volume, connector)
+        data = {'driver_volume_type': 'fibre_channel', 'data': {}}
+        zoning_mappings = {}
+        if connector:
+            zoning_mappings = self._get_zoning_mappings(volume, connector)
+
+        if zoning_mappings:
+            self.common.terminate_connection(volume, connector)
+            data = self._cleanup_zones(zoning_mappings)
+        fczm_utils.remove_fc_zone(data)
+        return data
+
+    def _get_zoning_mappings(self, volume, connector):
+        """Get zoning mappings by building up initiator/target map.
+
+        :param volume: the volume object
+        :param connector: the connector object
+        :returns: dict -- the target_wwns and initiator_target_map if the
+            zone is to be removed, otherwise empty
+        """
+        loc = volume.provider_location
+        name = ast.literal_eval(loc)
+        host = self.common.utils.get_host_short_name(connector['host'])
+        zoning_mappings = {}
+        try:
+            array = name['array']
+            device_id = name['device_id']
+        except KeyError:
+            array = name['keybindings']['SystemName'].split('+')[1].strip('-')
+            device_id = name['keybindings']['DeviceID']
+        LOG.debug("Start FC detach process for volume: %(volume)s.",
+                  {'volume': volume.name})
+
+        masking_views, is_metro = (
+            self.common.get_masking_views_from_volume(
+                array, volume, device_id, host))
+        if masking_views:
+            portgroup = (
+                self.common.get_port_group_from_masking_view(
+                    array, masking_views[0]))
+            initiator_group = (
+                self.common.get_initiator_group_from_masking_view(
+                    array, masking_views[0]))
+
+            LOG.debug("Found port group: %(portGroup)s "
+                      "in masking view %(maskingView)s.",
+                      {'portGroup': portgroup,
+                       'maskingView': masking_views[0]})
+            # Map must be populated before the terminate_connection
+            target_wwns, init_targ_map = self._build_initiator_target_map(
+                volume, connector)
+            zoning_mappings = {'port_group': portgroup,
+                               'initiator_group': initiator_group,
+                               'target_wwns': target_wwns,
+                               'init_targ_map': init_targ_map,
+                               'array': array}
+        if is_metro:
+            rep_data = volume.replication_driver_data
+            name = ast.literal_eval(rep_data)
+            try:
+                metro_array = name['array']
+                metro_device_id = name['device_id']
+            except KeyError:
+                LOG.error("Cannot get remote Metro device information "
+                          "for zone cleanup. Attempting terminate "
+                          "connection...")
+            else:
+                masking_views, __ = (
+                    self.common.get_masking_views_from_volume(
+                        metro_array, volume, metro_device_id, host))
+                if masking_views:
+                    metro_portgroup = (
+                        self.common.get_port_group_from_masking_view(
+                            metro_array, masking_views[0]))
+                    metro_ig = (
+                        self.common.get_initiator_group_from_masking_view(
+                            metro_array, masking_views[0]))
+                    zoning_mappings.update(
+                        {'metro_port_group': metro_portgroup,
+                         'metro_ig': metro_ig, 'metro_array': metro_array})
+        if not masking_views:
+            LOG.warning("Volume %(volume)s is not in any masking view.",
+                        {'volume': volume.name})
+        return zoning_mappings
+
+    def _cleanup_zones(self, zoning_mappings):
+        """Cleanup zones after terminate connection.
+
+        :param zoning_mappings: zoning mapping dict
+        :returns: data - dict
+        """
+        data = {'driver_volume_type': 'fibre_channel', 'data': {}}
+        try:
+            LOG.debug("Looking for masking views still associated with "
+                      "Port Group %s.", zoning_mappings['port_group'])
+            masking_views = self.common.get_common_masking_views(
+                zoning_mappings['array'], zoning_mappings['port_group'],
+                zoning_mappings['initiator_group'])
+        except (KeyError, ValueError, TypeError):
+            masking_views = []
+
+        if masking_views:
+            LOG.debug("Found %(numViews)d MaskingViews.",
+                      {'numViews': len(masking_views)})
+        else:  # no masking views found
+            # Check if there any Metro masking views
+            if zoning_mappings.get('metro_array'):
+                masking_views = self.common.get_common_masking_views(
+                    zoning_mappings['metro_array'],
+                    zoning_mappings['metro_port_group'],
+                    zoning_mappings['metro_ig'])
+            if not masking_views:
+                LOG.debug("No MaskingViews were found. Deleting zone.")
+                data = {'driver_volume_type': 'fibre_channel',
+                        'data': {'target_wwn': zoning_mappings['target_wwns'],
+                                 'initiator_target_map':
+                                     zoning_mappings['init_targ_map']}}
+
+                LOG.debug("Return FC data for zone removal: %(data)s.",
+                          {'data': data})
+
+        return data
+
+    def _build_initiator_target_map(self, volume, connector):
+        """Build the target_wwns and the initiator target map.
+
+        :param volume: the cinder volume object
+        :param connector: the connector object
+        :returns: target_wwns -- list, init_targ_map -- dict
+        """
+        target_wwns, init_targ_map = [], {}
+        initiator_wwns = connector['wwpns']
+        fc_targets, metro_fc_targets = (
+            self.common.get_target_wwns_from_masking_view(
+                volume, connector))
+
+        if self.zonemanager_lookup_service:
+            fc_targets.extend(metro_fc_targets)
+            mapping = (
+                self.zonemanager_lookup_service.
+                get_device_mapping_from_network(initiator_wwns, fc_targets))
+            for entry in mapping:
+                map_d = mapping[entry]
+                target_wwns.extend(map_d['target_port_wwn_list'])
+                for initiator in map_d['initiator_port_wwn_list']:
+                    init_targ_map[initiator] = map_d['target_port_wwn_list']
+        else:  # No lookup service, pre-zoned case.
+            target_wwns = fc_targets
+            fc_targets.extend(metro_fc_targets)
+            for initiator in initiator_wwns:
+                init_targ_map[initiator] = fc_targets
+
+        return list(set(target_wwns)), init_targ_map
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
@@ -392,20 +470,23 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         """Retrieve stats info from volume group."""
         LOG.debug("Updating volume stats")
         data = self.common.update_volume_stats()
-        data['storage_protocol'] = 'iSCSI'
+        data['storage_protocol'] = 'FC'
         data['driver_version'] = self.VERSION
         self._stats = data
 
     def manage_existing(self, volume, external_ref):
-        """Manages an existing VMAX Volume (import to Cinder).
+        """Manages an existing PowerMax/VMAX Volume (import to Cinder).
 
         Renames the Volume to match the expected name for the volume.
         Also need to consider things like QoS, Emulation, account/tenant.
+        :param volume: the volume object
+        :param external_ref: the reference for the PowerMax/VMAX volume
+        :returns: model_update
         """
         return self.common.manage_existing(volume, external_ref)
 
     def manage_existing_get_size(self, volume, external_ref):
-        """Return size of an existing VMAX volume to manage_existing.
+        """Return size of an existing PowerMax/VMAX volume to manage_existing.
 
         :param self: reference to class
         :param volume: the volume object including the volume_type_id
@@ -415,20 +496,20 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         return self.common.manage_existing_get_size(volume, external_ref)
 
     def unmanage(self, volume):
-        """Export VMAX volume from Cinder.
+        """Export PowerMax/VMAX volume from Cinder.
 
         Leave the volume intact on the backend array.
         """
         return self.common.unmanage(volume)
 
     def manage_existing_snapshot(self, snapshot, existing_ref):
-        """Manage an existing VMAX Snapshot (import to Cinder).
+        """Manage an existing PowerMax/VMAX Snapshot (import to Cinder).
 
         Renames the Snapshot to prefix it with OS- to indicate
         it is managed by Cinder.
 
         :param snapshot: the snapshot object
-        :param existing_ref: the snapshot name on the backend VMAX
+        :param existing_ref: the snapshot name on the backend PowerMax/VMAX
         :returns: model_update
         """
         return self.common.manage_existing_snapshot(snapshot, existing_ref)
@@ -437,15 +518,15 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         """Return the size of the source volume for manage-existing-snapshot.
 
         :param snapshot: the snapshot object
-        :param existing_ref: the snapshot name on the backend VMAX
+        :param existing_ref: the snapshot name on the backend PowerMax/VMAX
         :returns: size of the source volume in GB
         """
         return self.common.manage_existing_snapshot_get_size(snapshot)
 
     def unmanage_snapshot(self, snapshot):
-        """Export VMAX Snapshot from Cinder.
+        """Export PowerMax/VMAX Snapshot from Cinder.
 
-        Leaves the snapshot intact on the backend VMAX.
+        Leaves the snapshot intact on the backend PowerMax/VMAX.
 
         :param snapshot: the snapshot object
         """
@@ -534,7 +615,7 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         """Creates a group snapshot.
 
         :param context: the context
-        :param group_snapshot: the group snapshot
+        :param group_snapshot: the grouop snapshot
         :param snapshots: snapshots list
         """
         return self.common.create_group_snapshot(context,
@@ -552,7 +633,7 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
 
     def update_group(self, context, group,
                      add_volumes=None, remove_volumes=None):
-        """Updates LUNs in group.
+        """Updates LUNs in generic volume group.
 
         :param context: the context
         :param group: the group object
@@ -568,7 +649,7 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
         """Creates the volume group from source.
 
         :param context: the context
-        :param group: the consistency group object to be created
+        :param group: the group object to be created
         :param volumes: volumes in the group
         :param group_snapshot: the source volume group snapshot
         :param snapshots: snapshots of the source volumes

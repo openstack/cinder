@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Dell Inc. or its subsidiaries.
+# Copyright (c) 2017-2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -31,7 +31,7 @@ from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.utils import retry
-from cinder.volume.drivers.dell_emc.vmax import utils
+from cinder.volume.drivers.dell_emc.powermax import utils
 
 requests.packages.urllib3.disable_warnings(urllib_exp.InsecureRequestWarning)
 
@@ -60,11 +60,11 @@ SUCCEEDED = 'succeeded'
 CREATE_VOL_STRING = "Creating new Volumes"
 
 
-class VMAXRest(object):
-    """Rest class based on Unisphere for VMAX Rest API."""
+class PowerMaxRest(object):
+    """Rest class based on Unisphere for PowerMax Rest API."""
 
     def __init__(self):
-        self.utils = utils.VMAXUtils()
+        self.utils = utils.PowerMaxUtils()
         self.session = None
         self.base_uri = None
         self.user = None
@@ -169,14 +169,15 @@ class VMAXRest(object):
             self.set_rest_credentials(self.u4p_failover_targets[0])
             self.u4p_failover_targets.pop(0)
             if self.u4p_in_failover:
-                LOG.warning("VMAX driver still in u4p failover mode. A "
+                LOG.warning("PowerMax driver still in u4p failover mode. A "
                             "periodic check will be made to see if primary "
                             "Unisphere comes back online for seamless "
                             "restoration.")
             else:
-                LOG.warning("VMAX driver set to u4p failover mode. A periodic "
-                            "check will be made to see if primary Unisphere "
-                            "comes back online for seamless restoration.")
+                LOG.warning("PowerMax driver set to u4p failover mode. A "
+                            "periodic check will be made to see if primary "
+                            "Unisphere comes back online for seamless "
+                            "restoration.")
             self.u4p_in_failover = True
         else:
             msg = _("A connection could not be established with the "
@@ -639,10 +640,10 @@ class VMAXRest(object):
         return workload_setting
 
     def get_vmax_model(self, array):
-        """Get the VMAX model.
+        """Get the PowerMax/VMAX model.
 
         :param array: the array serial number
-        :return: the VMAX model
+        :return: the PowerMax/VMAX model
         """
         vmax_version = ''
         system_uri = ("/%(version)s/system/symmetrix/%(array)s" % {
@@ -1120,7 +1121,7 @@ class VMAXRest(object):
                           job, extra_specs)
 
     def get_volume(self, array, device_id):
-        """Get a VMAX volume from array.
+        """Get a PowerMax/VMAX volume from array.
 
         :param array: the array serial number
         :param device_id: the volume device id
@@ -1161,7 +1162,7 @@ class VMAXRest(object):
         return volume_dict
 
     def get_volume_list(self, array, params):
-        """Get a filtered list of VMAX volumes from array.
+        """Get a filtered list of PowerMax/VMAX volumes from array.
 
         Filter parameters are required as the unfiltered volume list could be
         very large and could affect performance if called often.
@@ -1205,7 +1206,7 @@ class VMAXRest(object):
                                     payload, resource_name=device_id)
 
     def extend_volume(self, array, device_id, new_size, extra_specs):
-        """Extend a VMAX volume.
+        """Extend a PowerMax/VMAX volume.
 
         :param array: the array serial number
         :param device_id: volume device id
@@ -1344,7 +1345,7 @@ class VMAXRest(object):
         return device_id
 
     def find_volume_identifier(self, array, device_id):
-        """Get the volume identifier of a VMAX volume.
+        """Get the volume identifier of a PowerMax/VMAX volume.
 
         :param array: array serial number
         :param device_id: the device id

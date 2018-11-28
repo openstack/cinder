@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Dell Inc. or its subsidiaries.
+# Copyright (c) 2017-2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -24,24 +24,24 @@ import six
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
-from cinder.volume.drivers.dell_emc.vmax import provision
-from cinder.volume.drivers.dell_emc.vmax import utils
+from cinder.volume.drivers.dell_emc.powermax import provision
+from cinder.volume.drivers.dell_emc.powermax import utils
 from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
 
-class VMAXMasking(object):
-    """Masking class for Dell EMC VMAX.
+class PowerMaxMasking(object):
+    """Masking class for Dell EMC PowerMax.
 
     Masking code to dynamically create a masking view.
-    It supports VMAX arrays.
+    It supports VMAX 3, All Flash and PowerMax arrays.
     """
     def __init__(self, prtcl, rest):
         self.protocol = prtcl
-        self.utils = utils.VMAXUtils()
+        self.utils = utils.PowerMaxUtils()
         self.rest = rest
-        self.provision = provision.VMAXProvision(self.rest)
+        self.provision = provision.PowerMaxProvision(self.rest)
 
     def setup_masking_view(
             self, serial_number, volume, masking_view_dict, extra_specs):
@@ -877,8 +877,8 @@ class VMAXMasking(object):
         contains the correct initiators.  If it does not contain the correct
         initiators then we delete the initiator group from the masking view,
         re-create it with the correct initiators and add it to the masking view
-        NOTE:  VMAX does not support ModifyMaskingView so we must first
-               delete the masking view and recreate it.
+        NOTE:  PowerMax/VMAX does not support ModifyMaskingView so we must
+               first delete the masking view and recreate it.
         :param serial_number: the array serial number
         :param maskingview_name: name of the masking view
         :param maskingview_dict: the masking view dict
@@ -1551,8 +1551,8 @@ class VMAXMasking(object):
             self, serial_number, initiatorgroup_name, host):
         """Delete the initiator group.
 
-        Delete the Initiator group if it has been created by the VMAX driver,
-        and if there are no masking views associated with it.
+        Delete the Initiator group if it has been created by the PowerMax
+        driver, and if there are no masking views associated with it.
         :param serial_number: the array serial number
         :param initiatorgroup_name: initiator group name
         :param host: the short name of the host
@@ -1591,8 +1591,8 @@ class VMAXMasking(object):
                                  'nmv': len(maskingview_names)})
             else:
                 LOG.warning("Initiator group %(ig_name)s was "
-                            "not created by the VMAX driver so will "
-                            "not be deleted by the VMAX driver.",
+                            "not created by the PowerMax driver so will "
+                            "not be deleted by the PowerMax driver.",
                             {'ig_name': initiatorgroup_name})
         else:
             LOG.warning("Cannot get host name from connector object - "

@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Dell Inc. or its subsidiaries.
+# Copyright (c) 2017-2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -39,14 +39,14 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as test_utils
 from cinder import version as openstack_version
-from cinder.volume.drivers.dell_emc.vmax import common
-from cinder.volume.drivers.dell_emc.vmax import fc
-from cinder.volume.drivers.dell_emc.vmax import iscsi
-from cinder.volume.drivers.dell_emc.vmax import masking
-from cinder.volume.drivers.dell_emc.vmax import metadata
-from cinder.volume.drivers.dell_emc.vmax import provision
-from cinder.volume.drivers.dell_emc.vmax import rest
-from cinder.volume.drivers.dell_emc.vmax import utils
+from cinder.volume.drivers.dell_emc.powermax import common
+from cinder.volume.drivers.dell_emc.powermax import fc
+from cinder.volume.drivers.dell_emc.powermax import iscsi
+from cinder.volume.drivers.dell_emc.powermax import masking
+from cinder.volume.drivers.dell_emc.powermax import metadata
+from cinder.volume.drivers.dell_emc.powermax import provision
+from cinder.volume.drivers.dell_emc.powermax import rest
+from cinder.volume.drivers.dell_emc.powermax import utils
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
@@ -55,7 +55,7 @@ from cinder.zonemanager import utils as fczm_utils
 CINDER_EMC_CONFIG_DIR = '/etc/cinder/'
 
 
-class VMAXCommonData(object):
+class PowerMaxCommonData(object):
     # array info
     array = '000197800123'
     uni_array = u'000197800123'
@@ -1024,7 +1024,7 @@ class VMAXCommonData(object):
 
 class FakeLookupService(object):
     def get_device_mapping_from_network(self, initiator_wwns, target_wwns):
-        return VMAXCommonData.device_map
+        return PowerMaxCommonData.device_map
 
 
 class FakeResponse(object):
@@ -1052,7 +1052,7 @@ class FakeResponse(object):
 class FakeRequestsSession(object):
 
     def __init__(self, *args, **kwargs):
-        self.data = VMAXCommonData()
+        self.data = PowerMaxCommonData()
 
     def request(self, method, url, params=None, data=None):
         return_object = ''
@@ -1334,18 +1334,18 @@ class FakeConfiguration(object):
 
 
 @ddt
-class VMAXUtilsTest(test.TestCase):
+class PowerMaxUtilsTest(test.TestCase):
     def setUp(self):
-        self.data = VMAXCommonData()
+        self.data = PowerMaxCommonData()
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
-        super(VMAXUtilsTest, self).setUp()
+        super(PowerMaxUtilsTest, self).setUp()
         configuration = FakeConfiguration(
             None, 'UtilsTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
             san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
-        rest.VMAXRest._establish_rest_session = mock.Mock(
+        rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
-        driver = iscsi.VMAXISCSIDriver(configuration=configuration)
+        driver = iscsi.PowerMaxISCSIDriver(configuration=configuration)
         self.driver = driver
         self.common = self.driver.common
         self.utils = self.common.utils
@@ -1799,19 +1799,19 @@ class VMAXUtilsTest(test.TestCase):
                 self.utils.is_snapshot_manageable(volume))
 
 
-class VMAXRestTest(test.TestCase):
+class PowerMaxRestTest(test.TestCase):
     def setUp(self):
-        self.data = VMAXCommonData()
+        self.data = PowerMaxCommonData()
 
-        super(VMAXRestTest, self).setUp()
+        super(PowerMaxRestTest, self).setUp()
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
         configuration = FakeConfiguration(
             None, 'RestTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
             san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
-        rest.VMAXRest._establish_rest_session = mock.Mock(
+        rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
-        driver = fc.VMAXFCDriver(configuration=configuration)
+        driver = fc.PowerMaxFCDriver(configuration=configuration)
         self.driver = driver
         self.common = self.driver.common
         self.rest = self.common.rest
@@ -3042,8 +3042,8 @@ class VMAXRestTest(test.TestCase):
             sg_value, qos_extra_spec, input_prop_dict)
         self.assertEqual(input_prop_dict, ret_prop_dict)
 
-    @mock.patch.object(rest.VMAXRest, 'modify_storage_group',
-                       return_value=(202, VMAXCommonData.job_list[0]))
+    @mock.patch.object(rest.PowerMaxRest, 'modify_storage_group',
+                       return_value=(202, PowerMaxCommonData.job_list[0]))
     def test_set_storagegroup_srp(self, mock_mod):
         self.rest.set_storagegroup_srp(
             self.data.array, self.data.test_vol_grp_name,
@@ -3133,7 +3133,7 @@ class VMAXRestTest(test.TestCase):
             self.data.device_id2, self.data.remote_array, extra_specs)
         self.assertEqual(ref_dict, rdf_dict)
 
-    @mock.patch.object(rest.VMAXRest, 'get_rdf_group',
+    @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group',
                        side_effect=[{'numDevices': 0}, {'numDevices': 0},
                                     {'numDevices': 1}])
     def test_get_metro_payload_info(self, mock_rdfg):
@@ -3189,7 +3189,7 @@ class VMAXRestTest(test.TestCase):
                 failover_payload, resource_name=resource_name,
                 private='/private')
 
-    @mock.patch.object(rest.VMAXRest, 'delete_resource')
+    @mock.patch.object(rest.PowerMaxRest, 'delete_resource')
     def test_delete_rdf_pair(self, mock_del):
         self.rest.delete_rdf_pair(
             self.data.array, self.data.device_id, self.data.rdf_group_no)
@@ -3267,7 +3267,7 @@ class VMAXRestTest(test.TestCase):
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=test_utils.ZeroIntervalLoopingCall)
-    @mock.patch.object(rest.VMAXRest, 'are_vols_rdf_paired',
+    @mock.patch.object(rest.PowerMaxRest, 'are_vols_rdf_paired',
                        side_effect=[('', '', 'syncinprog'),
                                     ('', '', 'consistent'),
                                     exception.CinderException])
@@ -3283,7 +3283,7 @@ class VMAXRestTest(test.TestCase):
                           self.data.device_id, self.data.device_id2,
                           self.data.extra_specs)
 
-    @mock.patch.object(rest.VMAXRest, 'modify_resource',
+    @mock.patch.object(rest.PowerMaxRest, 'modify_resource',
                        return_value=('200', 'JobComplete'))
     def test_modify_volume_snap_rename(self, mock_modify):
         array = self.data.array
@@ -3313,16 +3313,16 @@ class VMAXRestTest(test.TestCase):
         response = []
         with mock.patch.object(
                 self.rest, 'get_resource', return_value=
-                VMAXCommonData.private_vol_rest_response_none):
+                PowerMaxCommonData.private_vol_rest_response_none):
             vol_list = self.rest.get_private_volume_list(array_id)
             self.assertEqual(response, vol_list)
 
     @mock.patch.object(
-        rest.VMAXRest, 'get_iterator_page_list', return_value=
-        VMAXCommonData.private_vol_rest_response_iterator_second['result'])
+        rest.PowerMaxRest, 'get_iterator_page_list', return_value=
+        PowerMaxCommonData.private_vol_rest_response_iterator_second['result'])
     @mock.patch.object(
-        rest.VMAXRest, 'get_resource', return_value=
-        deepcopy(VMAXCommonData.private_vol_rest_response_iterator_first))
+        rest.PowerMaxRest, 'get_resource', return_value=
+        deepcopy(PowerMaxCommonData.private_vol_rest_response_iterator_first))
     def test_get_private_volume_list_iterator(self, mock_get_resource,
                                               mock_iterator):
         array_id = self.data.array
@@ -3376,8 +3376,8 @@ class VMAXRestTest(test.TestCase):
                          self.rest.base_uri)
 
     @mock.patch.object(
-        rest.VMAXRest, 'get_iterator_page_list', return_value=
-        VMAXCommonData.private_vol_rest_response_iterator_second['result'])
+        rest.PowerMaxRest, 'get_iterator_page_list', return_value=
+        PowerMaxCommonData.private_vol_rest_response_iterator_second['result'])
     def test_list_pagination(self, mock_iter):
         result_list = self.rest.list_pagination(
             deepcopy(self.data.private_vol_rest_response_iterator_first))
@@ -3422,30 +3422,29 @@ class VMAXRestTest(test.TestCase):
                           self.rest._handle_u4p_failover)
 
 
-class VMAXProvisionTest(test.TestCase):
+class PowerMaxProvisionTest(test.TestCase):
     def setUp(self):
-        self.data = VMAXCommonData()
-
-        super(VMAXProvisionTest, self).setUp()
+        self.data = PowerMaxCommonData()
+        super(PowerMaxProvisionTest, self).setUp()
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
         configuration = FakeConfiguration(
             None, 'ProvisionTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
             san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
-        rest.VMAXRest._establish_rest_session = mock.Mock(
+        rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
-        driver = iscsi.VMAXISCSIDriver(configuration=configuration)
+        driver = iscsi.PowerMaxISCSIDriver(configuration=configuration)
         self.driver = driver
         self.common = self.driver.common
         self.provision = self.common.provision
         self.utils = self.common.utils
         self.rest = self.common.rest
 
-    @mock.patch.object(rest.VMAXRest, 'create_storage_group',
-                       return_value=VMAXCommonData.storagegroup_name_f)
-    @mock.patch.object(rest.VMAXRest, 'get_storage_group',
+    @mock.patch.object(rest.PowerMaxRest, 'create_storage_group',
+                       return_value=PowerMaxCommonData.storagegroup_name_f)
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
                        side_effect=[
-                           VMAXCommonData.storagegroup_name_f, None])
+                           PowerMaxCommonData.storagegroup_name_f, None])
     def test_create_storage_group(self, mock_get_sg, mock_create):
         array = self.data.array
         storagegroup_name = self.data.storagegroup_name_f
@@ -3749,9 +3748,9 @@ class VMAXProvisionTest(test.TestCase):
                     self.data.array, self.data.defaultstoragegroup_name))
             self.assertEqual(ref_settings3, sg_slo_settings3)
 
-    @mock.patch.object(rest.VMAXRest, 'wait_for_rdf_consistent_state')
-    @mock.patch.object(rest.VMAXRest, 'delete_rdf_pair')
-    @mock.patch.object(rest.VMAXRest, 'modify_rdf_device_pair')
+    @mock.patch.object(rest.PowerMaxRest, 'wait_for_rdf_consistent_state')
+    @mock.patch.object(rest.PowerMaxRest, 'delete_rdf_pair')
+    @mock.patch.object(rest.PowerMaxRest, 'modify_rdf_device_pair')
     def test_break_rdf_relationship(self, mock_mod, mock_del, mock_wait):
         array = self.data.array
         device_id = self.data.device_id
@@ -3781,8 +3780,9 @@ class VMAXProvisionTest(test.TestCase):
             rdf_group_name, rep_extra_specs, "SyncInProg")
         mock_wait.assert_called_once()
 
-    @mock.patch.object(provision.VMAXProvision, 'disable_group_replication')
-    @mock.patch.object(provision.VMAXProvision, 'delete_rdf_pair')
+    @mock.patch.object(provision.PowerMaxProvision,
+                       'disable_group_replication')
+    @mock.patch.object(provision.PowerMaxProvision, 'delete_rdf_pair')
     def test_break_metro_rdf_pair(self, mock_del, mock_disable):
         self.provision.break_metro_rdf_pair(
             self.data.array, self.data.device_id, self.data.device_id2,
@@ -3799,7 +3799,7 @@ class VMAXProvisionTest(test.TestCase):
                 self.data.rdf_group_no, self.data.device_id2, extra_specs)
             mock_del_rdf.assert_called_once()
 
-    @mock.patch.object(rest.VMAXRest, 'get_storage_group',
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
                        return_value=None)
     def test_create_volume_group_success(self, mock_get_sg):
         array = self.data.array
@@ -3855,9 +3855,9 @@ class VMAXProvisionTest(test.TestCase):
                 target_group_name, snap_name,
                 extra_specs, deleteSnapshot)
 
-    @mock.patch.object(rest.VMAXRest, 'get_storage_group',
-                       side_effect=[None, VMAXCommonData.sg_details[1]])
-    @mock.patch.object(provision.VMAXProvision, 'create_volume_group')
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       side_effect=[None, PowerMaxCommonData.sg_details[1]])
+    @mock.patch.object(provision.PowerMaxProvision, 'create_volume_group')
     def test_get_or_create_volume_group(self, mock_create, mock_sg):
         for x in range(0, 2):
             self.provision.get_or_create_volume_group(
@@ -3865,8 +3865,8 @@ class VMAXProvisionTest(test.TestCase):
         self.assertEqual(2, mock_sg.call_count)
         self.assertEqual(1, mock_create.call_count)
 
-    @mock.patch.object(rest.VMAXRest, 'create_resource',
-                       return_value=(202, VMAXCommonData.job_list[0]))
+    @mock.patch.object(rest.PowerMaxRest, 'create_resource',
+                       return_value=(202, PowerMaxCommonData.job_list[0]))
     def test_replicate_group(self, mock_create):
         self.rest.replicate_group(
             self.data.array, self.data.test_rep_group,
@@ -3909,8 +3909,8 @@ class VMAXProvisionTest(test.TestCase):
                 self.data.array, self.data.test_vol_grp_name,
                 self.data.rdf_group_no, 'Failback', self.data.extra_specs)
 
-    @mock.patch.object(rest.VMAXRest, 'modify_storagegroup_rdf')
-    @mock.patch.object(rest.VMAXRest, 'delete_storagegroup_rdf')
+    @mock.patch.object(rest.PowerMaxRest, 'modify_storagegroup_rdf')
+    @mock.patch.object(rest.PowerMaxRest, 'delete_storagegroup_rdf')
     def test_delete_group_replication(self, mock_mod, mock_del):
         self.provision.delete_group_replication(
             self.data.array, self.data.test_vol_grp_name,
@@ -3919,11 +3919,11 @@ class VMAXProvisionTest(test.TestCase):
         mock_del.assert_called_once()
 
     @mock.patch.object(
-        rest.VMAXRest, 'get_snap_linked_device_list',
-        side_effect=[[{'targetDevice': VMAXCommonData.device_id2}],
-                     [{'targetDevice': VMAXCommonData.device_id2},
-                      {'targetDevice': VMAXCommonData.device_id3}]])
-    @mock.patch.object(provision.VMAXProvision, '_unlink_volume')
+        rest.PowerMaxRest, 'get_snap_linked_device_list',
+        side_effect=[[{'targetDevice': PowerMaxCommonData.device_id2}],
+                     [{'targetDevice': PowerMaxCommonData.device_id2},
+                      {'targetDevice': PowerMaxCommonData.device_id3}]])
+    @mock.patch.object(provision.PowerMaxProvision, '_unlink_volume')
     def test_delete_volume_snap_check_for_links(self, mock_unlink, mock_tgts):
         self.provision.delete_volume_snap_check_for_links(
             self.data.array, self.data.test_snapshot_snap_name,
@@ -3931,7 +3931,7 @@ class VMAXProvisionTest(test.TestCase):
         mock_unlink.assert_called_once_with(
             self.data.array, "", "", self.data.test_snapshot_snap_name,
             self.data.extra_specs, list_volume_pairs=[
-                (self.data.device_id, VMAXCommonData.device_id2)],
+                (self.data.device_id, PowerMaxCommonData.device_id2)],
             generation=0)
         mock_unlink.reset_mock()
         self.provision.delete_volume_snap_check_for_links(
@@ -3940,20 +3940,20 @@ class VMAXProvisionTest(test.TestCase):
         self.assertEqual(2, mock_unlink.call_count)
 
 
-class VMAXCommonTest(test.TestCase):
+class PowerMaxCommonTest(test.TestCase):
     def setUp(self):
-        self.data = VMAXCommonData()
+        self.data = PowerMaxCommonData()
 
-        super(VMAXCommonTest, self).setUp()
+        super(PowerMaxCommonTest, self).setUp()
         self.mock_object(volume_utils, 'get_max_over_subscription_ratio',
                          return_value=1.0)
         configuration = FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
             san_api_port=8443, vmax_port_groups=[self.data.port_group_name_f])
-        rest.VMAXRest._establish_rest_session = mock.Mock(
+        rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
-        driver = fc.VMAXFCDriver(configuration=configuration)
+        driver = fc.PowerMaxFCDriver(configuration=configuration)
         self.driver = driver
         self.common = self.driver.common
         self.masking = self.common.masking
@@ -3963,25 +3963,26 @@ class VMAXCommonTest(test.TestCase):
         self.utils.get_volumetype_extra_specs = (
             mock.Mock(return_value=self.data.vol_type_extra_specs))
 
-    @mock.patch.object(rest.VMAXRest,
+    @mock.patch.object(rest.PowerMaxRest,
                        'set_rest_credentials')
-    @mock.patch.object(common.VMAXCommon,
+    @mock.patch.object(common.PowerMaxCommon,
                        '_get_slo_workload_combinations',
                        return_value=[])
-    @mock.patch.object(common.VMAXCommon,
+    @mock.patch.object(common.PowerMaxCommon,
                        'get_attributes_from_cinder_config',
                        return_value=[])
     def test_gather_info_no_opts(self, mock_parse, mock_combo, mock_rest):
         configuration = FakeConfiguration(None, 'config_group', None, None)
-        fc.VMAXFCDriver(configuration=configuration)
+        fc.PowerMaxFCDriver(configuration=configuration)
 
-    @mock.patch.object(rest.VMAXRest, 'is_next_gen_array',
+    @mock.patch.object(rest.PowerMaxRest, 'is_next_gen_array',
                        return_value=True)
-    @mock.patch.object(rest.VMAXRest, 'set_rest_credentials')
-    @mock.patch.object(common.VMAXCommon, '_get_slo_workload_combinations',
+    @mock.patch.object(rest.PowerMaxRest, 'set_rest_credentials')
+    @mock.patch.object(common.PowerMaxCommon, '_get_slo_workload_combinations',
                        return_value=[])
-    @mock.patch.object(common.VMAXCommon, 'get_attributes_from_cinder_config',
-                       return_value=VMAXCommonData.array_info_wl)
+    @mock.patch.object(common.PowerMaxCommon,
+                       'get_attributes_from_cinder_config',
+                       return_value=PowerMaxCommonData.array_info_wl)
     def test_gather_info_next_gen(self, mock_parse, mock_combo, mock_rest,
                                   mock_nextgen):
         self.common._gather_info()
@@ -3993,23 +3994,25 @@ class VMAXCommonTest(test.TestCase):
             array_info)
         self.assertTrue(len(finalarrayinfolist) > 1)
 
-    @mock.patch.object(rest.VMAXRest, 'get_vmax_model',
-                       return_value=VMAXCommonData.vmax_model_details['model'])
-    @mock.patch.object(rest.VMAXRest, 'get_slo_list',
-                       return_value=VMAXCommonData.vmax_slo_details['sloId'])
+    @mock.patch.object(rest.PowerMaxRest, 'get_vmax_model',
+                       return_value=(
+                           PowerMaxCommonData.vmax_model_details['model']))
+    @mock.patch.object(rest.PowerMaxRest, 'get_slo_list',
+                       return_value=(
+                           PowerMaxCommonData.vmax_slo_details['sloId']))
     def test_get_slo_workload_combinations_vmax(self, mck_slo, mck_model):
         array_info = self.common.get_attributes_from_cinder_config()
         finalarrayinfolist = self.common._get_slo_workload_combinations(
             array_info)
         self.assertTrue(len(finalarrayinfolist) > 1)
 
-    @mock.patch.object(rest.VMAXRest, 'get_vmax_model',
-                       return_value=VMAXCommonData.powermax_model_details[
+    @mock.patch.object(rest.PowerMaxRest, 'get_vmax_model',
+                       return_value=PowerMaxCommonData.powermax_model_details[
                            'model'])
-    @mock.patch.object(rest.VMAXRest, 'get_workload_settings',
+    @mock.patch.object(rest.PowerMaxRest, 'get_workload_settings',
                        return_value=[])
-    @mock.patch.object(rest.VMAXRest, 'get_slo_list',
-                       return_value=VMAXCommonData.powermax_slo_details[
+    @mock.patch.object(rest.PowerMaxRest, 'get_slo_list',
+                       return_value=PowerMaxCommonData.powermax_slo_details[
                            'sloId'])
     def test_get_slo_workload_combinations_next_gen(self, mck_slo, mck_wl,
                                                     mck_model):
@@ -4018,13 +4021,13 @@ class VMAXCommonTest(test.TestCase):
             self.data.array_info_no_wl)
         self.assertTrue(len(finalarrayinfolist) == 14)
 
-    @mock.patch.object(rest.VMAXRest, 'get_vmax_model',
-                       return_value=VMAXCommonData.vmax_model_details[
+    @mock.patch.object(rest.PowerMaxRest, 'get_vmax_model',
+                       return_value=PowerMaxCommonData.vmax_model_details[
                            'model'])
-    @mock.patch.object(rest.VMAXRest, 'get_workload_settings',
+    @mock.patch.object(rest.PowerMaxRest, 'get_workload_settings',
                        return_value=[])
-    @mock.patch.object(rest.VMAXRest, 'get_slo_list',
-                       return_value=VMAXCommonData.powermax_slo_details[
+    @mock.patch.object(rest.PowerMaxRest, 'get_slo_list',
+                       return_value=PowerMaxCommonData.powermax_slo_details[
                            'sloId'])
     def test_get_slo_workload_combinations_next_gen_vmax(
             self, mck_slo, mck_wl, mck_model):
@@ -4115,9 +4118,9 @@ class VMAXCommonTest(test.TestCase):
                                         self.data.test_legacy_vol)
             mock_del.assert_called_once_with(self.data.test_legacy_snapshot)
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        'return_volume_to_fast_managed_group')
-    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
     def test_remove_members(self, mock_rm, mock_return):
         array = self.data.array
         device_id = self.data.device_id
@@ -4130,9 +4133,9 @@ class VMAXCommonTest(test.TestCase):
             array, volume, device_id, volume_name,
             extra_specs, True, self.data.connector, async_grp=None)
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        'return_volume_to_fast_managed_group')
-    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
     def test_remove_members_multiattach_case(self, mock_rm, mock_return):
         array = self.data.array
         device_id = self.data.device_id
@@ -4159,7 +4162,7 @@ class VMAXCommonTest(test.TestCase):
                 array, volume, device_id, extra_specs,
                 connector, False, async_grp=None)
 
-    @mock.patch.object(common.VMAXCommon, '_remove_members')
+    @mock.patch.object(common.PowerMaxCommon, '_remove_members')
     def test_unmap_lun_attachments(self, mock_rm):
         volume1 = deepcopy(self.data.test_volume)
         volume1.volume_attachment.objects = [self.data.test_volume_attachment]
@@ -4239,10 +4242,10 @@ class VMAXCommonTest(test.TestCase):
                                                                  connector)
             self.assertEqual(ref_dict, device_info_dict)
 
-    @mock.patch.object(common.VMAXCommon, 'find_host_lun_id',
+    @mock.patch.object(common.PowerMaxCommon, 'find_host_lun_id',
                        return_value=({}, False))
-    @mock.patch.object(common.VMAXCommon, '_attach_volume',
-                       return_value=({}, VMAXCommonData.port_group_name_f))
+    @mock.patch.object(common.PowerMaxCommon, '_attach_volume',
+                       return_value=({}, PowerMaxCommonData.port_group_name_f))
     def test_initialize_connection_not_mapped(self, mock_attach, mock_id):
         volume = self.data.test_volume
         connector = self.data.connector
@@ -4257,12 +4260,12 @@ class VMAXCommonTest(test.TestCase):
         mock_attach.assert_called_once_with(
             volume, connector, extra_specs, masking_view_dict)
 
-    @mock.patch.object(rest.VMAXRest, 'is_next_gen_array',
+    @mock.patch.object(rest.PowerMaxRest, 'is_next_gen_array',
                        return_value=True)
-    @mock.patch.object(common.VMAXCommon, 'find_host_lun_id',
+    @mock.patch.object(common.PowerMaxCommon, 'find_host_lun_id',
                        return_value=({}, False))
-    @mock.patch.object(common.VMAXCommon, '_attach_volume',
-                       return_value=({}, VMAXCommonData.port_group_name_f))
+    @mock.patch.object(common.PowerMaxCommon, '_attach_volume',
+                       return_value=({}, PowerMaxCommonData.port_group_name_f))
     def test_initialize_connection_not_mapped_next_gen(self, mock_attach,
                                                        mock_id, mck_gen):
         volume = self.data.test_volume
@@ -4272,12 +4275,12 @@ class VMAXCommonTest(test.TestCase):
         self.assertEqual({}, device_info_dict)
 
     @mock.patch.object(
-        masking.VMAXMasking, 'pre_multiattach',
-        return_value=VMAXCommonData.masking_view_dict_multiattach)
-    @mock.patch.object(common.VMAXCommon, 'find_host_lun_id',
+        masking.PowerMaxMasking, 'pre_multiattach',
+        return_value=PowerMaxCommonData.masking_view_dict_multiattach)
+    @mock.patch.object(common.PowerMaxCommon, 'find_host_lun_id',
                        return_value=({}, True))
-    @mock.patch.object(common.VMAXCommon, '_attach_volume',
-                       return_value=({}, VMAXCommonData.port_group_name_f))
+    @mock.patch.object(common.PowerMaxCommon, '_attach_volume',
+                       return_value=({}, PowerMaxCommonData.port_group_name_f))
     def test_initialize_connection_multiattach_case(
             self, mock_attach, mock_id, mock_pre):
         volume = self.data.test_volume
@@ -4307,11 +4310,11 @@ class VMAXCommonTest(test.TestCase):
                 volume, connector, extra_specs, masking_view_dict)
         self.assertEqual(ref_dict, device_info_dict)
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        'check_if_rollback_action_for_masking_required')
-    @mock.patch.object(masking.VMAXMasking, 'setup_masking_view',
+    @mock.patch.object(masking.PowerMaxMasking, 'setup_masking_view',
                        return_value={})
-    @mock.patch.object(common.VMAXCommon, 'find_host_lun_id',
+    @mock.patch.object(common.PowerMaxCommon, 'find_host_lun_id',
                        return_value=({}, False))
     def test_attach_volume_failed(self, mock_lun, mock_setup, mock_rollback):
         volume = self.data.test_volume
@@ -4336,9 +4339,10 @@ class VMAXCommonTest(test.TestCase):
             self.common._unmap_lun.assert_called_once_with(
                 volume, connector)
 
-    @mock.patch.object(rest.VMAXRest, 'is_next_gen_array', return_value=True)
-    @mock.patch.object(common.VMAXCommon, '_sync_check')
-    @mock.patch.object(provision.VMAXProvision, 'extend_volume')
+    @mock.patch.object(rest.PowerMaxRest, 'is_next_gen_array',
+                       return_value=True)
+    @mock.patch.object(common.PowerMaxCommon, '_sync_check')
+    @mock.patch.object(provision.PowerMaxProvision, 'extend_volume')
     def test_extend_volume_success(self, mock_extend, mock_sync, mock_newgen):
         volume = self.data.test_volume
         array = self.data.array
@@ -4452,8 +4456,8 @@ class VMAXCommonTest(test.TestCase):
             self.assertEqual({}, maskedvols)
 
     @mock.patch.object(
-        common.VMAXCommon, '_get_masking_views_from_volume',
-        return_value=([], [VMAXCommonData.masking_view_name_f]))
+        common.PowerMaxCommon, '_get_masking_views_from_volume',
+        return_value=([], [PowerMaxCommonData.masking_view_name_f]))
     def test_find_host_lun_id_multiattach(self, mock_mask):
         volume = self.data.test_volume
         extra_specs = self.data.extra_specs
@@ -4461,8 +4465,8 @@ class VMAXCommonTest(test.TestCase):
             volume, 'HostX', extra_specs)
         self.assertTrue(is_multiattach)
 
-    @mock.patch.object(common.VMAXCommon, 'get_remote_target_device',
-                       return_value=VMAXCommonData.device_id2)
+    @mock.patch.object(common.PowerMaxCommon, 'get_remote_target_device',
+                       return_value=PowerMaxCommonData.device_id2)
     def test_find_host_lun_id_rep_extra_specs(self, mock_tgt):
         self.common.find_host_lun_id(
             self.data.test_volume, 'HostX',
@@ -4520,8 +4524,8 @@ class VMAXCommonTest(test.TestCase):
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.common._initial_setup, volume)
 
-    @mock.patch.object(common.VMAXCommon, 'get_remote_target_device',
-                       return_value=VMAXCommonData.device_id2)
+    @mock.patch.object(common.PowerMaxCommon, 'get_remote_target_device',
+                       return_value=PowerMaxCommonData.device_id2)
     def test_populate_masking_dict(self, mock_tgt):
         volume = self.data.test_volume
         connector = self.data.connector
@@ -4673,7 +4677,8 @@ class VMAXCommonTest(test.TestCase):
                               self.common._create_snapshot,
                               array, snapshot, source_device_id, extra_specs)
 
-    @mock.patch.object(masking.VMAXMasking, 'remove_vol_from_storage_group')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'remove_vol_from_storage_group')
     def test_delete_volume_from_srp(self, mock_rm):
         array = self.data.array
         device_id = self.data.device_id
@@ -4847,7 +4852,7 @@ class VMAXCommonTest(test.TestCase):
                 assert_called_once_with(
                     array, device_id, volume_name, extra_specs))
 
-    @mock.patch.object(utils.VMAXUtils, 'is_replication_enabled',
+    @mock.patch.object(utils.PowerMaxUtils, 'is_replication_enabled',
                        side_effect=[False, True])
     def test_remove_vol_and_cleanup_replication(self, mock_rep_enabled):
         array = self.data.array
@@ -4869,10 +4874,10 @@ class VMAXCommonTest(test.TestCase):
                 mock_clean.assert_called_once_with(
                     volume, volume_name, device_id, extra_specs)
 
-    @mock.patch.object(utils.VMAXUtils, 'is_volume_failed_over',
+    @mock.patch.object(utils.PowerMaxUtils, 'is_volume_failed_over',
                        side_effect=[True, False])
-    @mock.patch.object(common.VMAXCommon, '_get_replication_extra_specs',
-                       return_value=VMAXCommonData.rep_extra_specs)
+    @mock.patch.object(common.PowerMaxCommon, '_get_replication_extra_specs',
+                       return_value=PowerMaxCommonData.rep_extra_specs)
     def test_get_target_wwns_from_masking_view(self, mock_rep_specs, mock_fo):
         ref_wwns = [self.data.wwnn1]
         for x in range(0, 2):
@@ -4889,11 +4894,11 @@ class VMAXCommonTest(test.TestCase):
                 self.data.extra_specs)
             self.assertEqual([], target_wwns)
 
-    @mock.patch.object(common.VMAXCommon, '_get_replication_extra_specs',
-                       return_value=VMAXCommonData.rep_extra_specs)
-    @mock.patch.object(common.VMAXCommon, 'get_remote_target_device',
-                       return_value=(VMAXCommonData.device_id2,))
-    @mock.patch.object(utils.VMAXUtils, 'is_metro_device',
+    @mock.patch.object(common.PowerMaxCommon, '_get_replication_extra_specs',
+                       return_value=PowerMaxCommonData.rep_extra_specs)
+    @mock.patch.object(common.PowerMaxCommon, 'get_remote_target_device',
+                       return_value=(PowerMaxCommonData.device_id2,))
+    @mock.patch.object(utils.PowerMaxUtils, 'is_metro_device',
                        side_effect=[False, True])
     def test_get_target_wwns(self, mock_metro, mock_tgt, mock_specs):
         __, metro_wwns = self.common.get_target_wwns_from_masking_view(
@@ -5005,7 +5010,7 @@ class VMAXCommonTest(test.TestCase):
                 self.common._cleanup_target.assert_not_called()
 
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         'remove_and_reset_members')
     def test_cleanup_target_sync_present(self, mock_remove):
         array = self.data.array
@@ -5048,10 +5053,10 @@ class VMAXCommonTest(test.TestCase):
                     extra_specs)
 
     @mock.patch.object(
-        provision.VMAXProvision,
+        provision.PowerMaxProvision,
         'delete_volume_snap')
     @mock.patch.object(
-        provision.VMAXProvision,
+        provision.PowerMaxProvision,
         'break_replication_relationship')
     def test_sync_check_temp_snap(self, mock_break, mock_delete):
         array = self.data.array
@@ -5086,10 +5091,10 @@ class VMAXCommonTest(test.TestCase):
                     array, snap_name2, device_id, restored=False, generation=0)
 
     @mock.patch.object(
-        provision.VMAXProvision,
+        provision.PowerMaxProvision,
         'delete_volume_snap')
     @mock.patch.object(
-        provision.VMAXProvision,
+        provision.PowerMaxProvision,
         'break_replication_relationship')
     def test_sync_check_not_temp_snap(self, mock_break, mock_delete):
         array = self.data.array
@@ -5110,7 +5115,7 @@ class VMAXCommonTest(test.TestCase):
             mock_delete.assert_not_called()
 
     @mock.patch.object(
-        provision.VMAXProvision,
+        provision.PowerMaxProvision,
         'break_replication_relationship')
     def test_sync_check_no_sessions(self, mock_break):
         array = self.data.array
@@ -5124,10 +5129,10 @@ class VMAXCommonTest(test.TestCase):
             mock_break.assert_not_called()
 
     @mock.patch.object(
-        provision.VMAXProvision,
+        provision.PowerMaxProvision,
         'delete_volume_snap')
     @mock.patch.object(
-        provision.VMAXProvision,
+        provision.PowerMaxProvision,
         'break_replication_relationship')
     def test_clone_check_cinder_snap(self, mock_break, mock_delete):
         array = self.data.array
@@ -5152,10 +5157,10 @@ class VMAXCommonTest(test.TestCase):
                 array, target, device_id, snap_name, extra_specs, 0)
 
     @mock.patch.object(
-        provision.VMAXProvision,
+        provision.PowerMaxProvision,
         'delete_volume_snap')
     @mock.patch.object(
-        provision.VMAXProvision,
+        provision.PowerMaxProvision,
         'break_replication_relationship')
     def test_clone_check_temp_snap(self, mock_break, mock_delete):
         array = self.data.array
@@ -5186,7 +5191,7 @@ class VMAXCommonTest(test.TestCase):
                 mock_delete.asset_not_called()
 
     @mock.patch.object(
-        provision.VMAXProvision,
+        provision.PowerMaxProvision,
         'break_replication_relationship')
     def test_clone_check_no_sessions(self, mock_break):
         array = self.data.array
@@ -5209,10 +5214,10 @@ class VMAXCommonTest(test.TestCase):
             self.assertEqual(ref_update, model_update)
 
     @mock.patch.object(
-        rest.VMAXRest, 'get_masking_views_from_storage_group',
+        rest.PowerMaxRest, 'get_masking_views_from_storage_group',
         return_value=None)
     @mock.patch.object(
-        rest.VMAXRest, 'is_vol_in_rep_session',
+        rest.PowerMaxRest, 'is_vol_in_rep_session',
         return_value=(False, False, None))
     def test_check_lun_valid_for_cinder_management(self, mock_rep, mock_mv):
         external_ref = {u'source-name': u'00003'}
@@ -5223,10 +5228,10 @@ class VMAXCommonTest(test.TestCase):
         self.assertIsNone(source_sg)
 
     @mock.patch.object(
-        rest.VMAXRest, 'get_masking_views_from_storage_group',
+        rest.PowerMaxRest, 'get_masking_views_from_storage_group',
         return_value=None)
     @mock.patch.object(
-        rest.VMAXRest, 'is_vol_in_rep_session',
+        rest.PowerMaxRest, 'is_vol_in_rep_session',
         return_value=(False, False, None))
     def test_check_lun_valid_for_cinder_management_multiple_sg_exception(
             self, mock_rep, mock_mv):
@@ -5238,19 +5243,20 @@ class VMAXCommonTest(test.TestCase):
             self.data.test_volume.id, external_ref)
 
     @mock.patch.object(
-        rest.VMAXRest, 'get_volume',
+        rest.PowerMaxRest, 'get_volume',
         side_effect=[
             None,
-            VMAXCommonData.volume_details[2],
-            VMAXCommonData.volume_details[2],
-            VMAXCommonData.volume_details[1]])
+            PowerMaxCommonData.volume_details[2],
+            PowerMaxCommonData.volume_details[2],
+            PowerMaxCommonData.volume_details[1]])
     @mock.patch.object(
-        rest.VMAXRest, 'get_masking_views_from_storage_group',
-        side_effect=[VMAXCommonData.sg_details[1]['maskingview'],
+        rest.PowerMaxRest, 'get_masking_views_from_storage_group',
+        side_effect=[PowerMaxCommonData.sg_details[1]['maskingview'],
                      None])
-    @mock.patch.object(rest.VMAXRest, 'get_storage_groups_from_volume',
-                       return_value=[VMAXCommonData.defaultstoragegroup_name])
-    @mock.patch.object(rest.VMAXRest, 'is_vol_in_rep_session',
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_groups_from_volume',
+                       return_value=(
+                           [PowerMaxCommonData.defaultstoragegroup_name]))
+    @mock.patch.object(rest.PowerMaxRest, 'is_vol_in_rep_session',
                        side_effect=[(True, False, []), (False, False, None)])
     def test_check_lun_valid_for_cinder_management_exception(
             self, mock_rep, mock_sg, mock_mvs, mock_get_vol):
@@ -5280,7 +5286,7 @@ class VMAXCommonTest(test.TestCase):
                               self.common.manage_existing_get_size,
                               self.data.test_volume, external_ref)
 
-    @mock.patch.object(common.VMAXCommon,
+    @mock.patch.object(common.PowerMaxCommon,
                        '_remove_vol_and_cleanup_replication')
     def test_unmanage_success(self, mock_rm):
         volume = self.data.test_volume
@@ -5307,7 +5313,7 @@ class VMAXCommonTest(test.TestCase):
                 self.common.unmanage(volume)
                 self.rest.rename_volume.assert_not_called()
 
-    @mock.patch.object(common.VMAXCommon,
+    @mock.patch.object(common.PowerMaxCommon,
                        '_slo_workload_migration')
     def test_retype(self, mock_migrate):
         device_id = self.data.device_id
@@ -5390,7 +5396,7 @@ class VMAXCommonTest(test.TestCase):
                     extra_specs[utils.SRP], self.data.slo,
                     self.data.workload, volume_name, new_type, extra_specs)
 
-    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
     def test_migrate_volume_success(self, mock_remove):
         with mock.patch.object(self.rest, 'is_volume_in_storagegroup',
                                return_value=True):
@@ -5422,7 +5428,7 @@ class VMAXCommonTest(test.TestCase):
                 self.assertTrue(migrate_status)
                 mock_remove.assert_not_called()
 
-    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
     def test_migrate_volume_failed_get_new_sg_failed(self, mock_remove):
         device_id = self.data.device_id
         volume_name = self.data.test_volume.name
@@ -5606,7 +5612,7 @@ class VMAXCommonTest(test.TestCase):
         model_update = self.common.create_group(None, self.data.test_group_1)
         self.assertEqual(ref_model_update, model_update)
 
-    @mock.patch.object(provision.VMAXProvision, 'create_volume_group',
+    @mock.patch.object(provision.PowerMaxProvision, 'create_volume_group',
                        side_effect=exception.CinderException)
     @mock.patch.object(volume_utils, 'is_group_a_type', return_value=False)
     def test_create_group_exception(self, mock_type, mock_create):
@@ -5668,7 +5674,7 @@ class VMAXCommonTest(test.TestCase):
                                                         remove_vols)
         self.assertEqual(ref_model_update, model_update)
 
-    @mock.patch.object(common.VMAXCommon, '_find_volume_group',
+    @mock.patch.object(common.PowerMaxCommon, '_find_volume_group',
                        return_value=None)
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=True)
@@ -5676,7 +5682,7 @@ class VMAXCommonTest(test.TestCase):
         self.assertRaises(exception.GroupNotFound, self.common.update_group,
                           self.data.test_group_1, [], [])
 
-    @mock.patch.object(common.VMAXCommon, '_find_volume_group',
+    @mock.patch.object(common.PowerMaxCommon, '_find_volume_group',
                        side_effect=exception.VolumeBackendAPIException)
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=True)
@@ -5735,9 +5741,9 @@ class VMAXCommonTest(test.TestCase):
         self.assertEqual(ref_model_update, model_update)
 
     @mock.patch.object(
-        common.VMAXCommon, '_get_clone_vol_info',
-        return_value=(VMAXCommonData.device_id,
-                      VMAXCommonData.extra_specs, 1, 'tgt_vol'))
+        common.PowerMaxCommon, '_get_clone_vol_info',
+        return_value=(PowerMaxCommonData.device_id,
+                      PowerMaxCommonData.extra_specs, 1, 'tgt_vol'))
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=True)
     @mock.patch.object(volume_utils, 'is_group_a_type',
@@ -5752,9 +5758,9 @@ class VMAXCommonTest(test.TestCase):
         self.assertEqual(ref_model_update, model_update)
 
     @mock.patch.object(
-        common.VMAXCommon, '_remove_vol_and_cleanup_replication')
+        common.PowerMaxCommon, '_remove_vol_and_cleanup_replication')
     @mock.patch.object(
-        masking.VMAXMasking, 'remove_volumes_from_storage_group')
+        masking.PowerMaxMasking, 'remove_volumes_from_storage_group')
     def test_rollback_create_group_from_src(
             self, mock_rm, mock_clean):
         rollback_dict = {
@@ -5887,7 +5893,7 @@ class VMAXCommonTest(test.TestCase):
         conf_returned = self.common.get_attributes_from_cinder_config()
         self.assertFalse(conf_returned['SSLVerify'])
 
-    @mock.patch.object(rest.VMAXRest,
+    @mock.patch.object(rest.PowerMaxRest,
                        'get_size_of_device_on_array',
                        return_value=2.0)
     def test_manage_snapshot_get_size_success(self, mock_get_size):
@@ -5895,7 +5901,7 @@ class VMAXCommonTest(test.TestCase):
             self.data.test_snapshot)
         self.assertEqual(2, size)
 
-    @mock.patch.object(rest.VMAXRest, 'get_volume_snap',
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snap',
                        return_value={'snap_name': 'snap_name'})
     def test_manage_snapshot_success(self, mock_snap):
         snapshot = self.data.test_snapshot_manage
@@ -5920,7 +5926,7 @@ class VMAXCommonTest(test.TestCase):
                           self.common.manage_existing_snapshot,
                           snapshot, existing_ref)
 
-    @mock.patch.object(utils.VMAXUtils,
+    @mock.patch.object(utils.PowerMaxUtils,
                        'is_volume_failed_over',
                        return_value=True)
     def test_manage_snapshot_fail_vol_failed_over(self, mock_failed):
@@ -5930,7 +5936,8 @@ class VMAXCommonTest(test.TestCase):
                           self.common.manage_existing_snapshot,
                           snapshot, existing_ref)
 
-    @mock.patch.object(rest.VMAXRest, 'get_volume_snap', return_value=False)
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snap',
+                       return_value=False)
     def test_manage_snapshot_fail_vol_not_snap_src(self, mock_snap):
         snapshot = self.data.test_snapshot_manage
         existing_ref = {u'source-name': u'test_snap'}
@@ -5938,7 +5945,7 @@ class VMAXCommonTest(test.TestCase):
                           self.common.manage_existing_snapshot,
                           snapshot, existing_ref)
 
-    @mock.patch.object(utils.VMAXUtils, 'modify_snapshot_prefix',
+    @mock.patch.object(utils.PowerMaxUtils, 'modify_snapshot_prefix',
                        side_effect=exception.VolumeBackendAPIException)
     def test_manage_snapshot_fail_add_prefix(self, mock_mod):
         snapshot = self.data.test_snapshot_manage
@@ -5947,20 +5954,20 @@ class VMAXCommonTest(test.TestCase):
                           self.common.manage_existing_snapshot,
                           snapshot, existing_ref)
 
-    @mock.patch.object(common.VMAXCommon, '_sync_check')
-    @mock.patch.object(rest.VMAXRest, 'modify_volume_snap')
+    @mock.patch.object(common.PowerMaxCommon, '_sync_check')
+    @mock.patch.object(rest.PowerMaxRest, 'modify_volume_snap')
     def test_unmanage_snapshot_success(self, mock_mod, mock_sync):
         self.common.unmanage_snapshot(self.data.test_snapshot_manage)
         mock_mod.assert_called_once()
 
     @mock.patch.object(
-        utils.VMAXUtils, 'is_volume_failed_over', return_value=True)
+        utils.PowerMaxUtils, 'is_volume_failed_over', return_value=True)
     def test_unmanage_snapshot_fail_failover(self, mock_failed):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.common.unmanage_snapshot,
                           self.data.test_snapshot_manage)
 
-    @mock.patch.object(rest.VMAXRest,
+    @mock.patch.object(rest.PowerMaxRest,
                        'modify_volume_snap',
                        side_effect=exception.VolumeBackendAPIException)
     def test_unmanage_snapshot_fail_rename(self, mock_snap):
@@ -5968,10 +5975,10 @@ class VMAXCommonTest(test.TestCase):
                           self.common.unmanage_snapshot,
                           self.data.test_snapshot_manage)
 
-    @mock.patch.object(provision.VMAXProvision, 'is_restore_complete',
+    @mock.patch.object(provision.PowerMaxProvision, 'is_restore_complete',
                        return_value=True)
-    @mock.patch.object(common.VMAXCommon, '_sync_check')
-    @mock.patch.object(provision.VMAXProvision,
+    @mock.patch.object(common.PowerMaxCommon, '_sync_check')
+    @mock.patch.object(provision.PowerMaxProvision,
                        'revert_volume_snapshot')
     def test_revert_to_snapshot(self, mock_revert, mock_sync, mock_complete):
         volume = self.data.test_volume
@@ -5986,7 +5993,7 @@ class VMAXCommonTest(test.TestCase):
         mock_revert.assert_called_once_with(
             array, device_id, snap_name, extra_specs)
 
-    @mock.patch.object(utils.VMAXUtils, 'is_replication_enabled',
+    @mock.patch.object(utils.PowerMaxUtils, 'is_replication_enabled',
                        return_value=True)
     def test_revert_to_snapshot_replicated(self, mock_rep):
         volume = self.data.test_volume
@@ -6181,29 +6188,29 @@ class VMAXCommonTest(test.TestCase):
             self.common.update_volume_stats()
             self.common.retest_primary_u4p.assert_not_called()
 
-    @mock.patch.object(rest.VMAXRest, 'request',
+    @mock.patch.object(rest.PowerMaxRest, 'request',
                        return_value=[200, None])
-    @mock.patch.object(common.VMAXCommon,
+    @mock.patch.object(common.PowerMaxCommon,
                        'get_attributes_from_cinder_config',
-                       return_value=VMAXCommonData.u4p_failover_target[0])
+                       return_value=PowerMaxCommonData.u4p_failover_target[0])
     def test_retest_primary_u4p(self, mock_primary_u4p, mock_request):
         self.common.retest_primary_u4p()
         self.assertFalse(self.rest.u4p_in_failover)
 
 
-class VMAXFCTest(test.TestCase):
+class PowerMaxFCTest(test.TestCase):
     def setUp(self):
-        self.data = VMAXCommonData()
+        self.data = PowerMaxCommonData()
 
-        super(VMAXFCTest, self).setUp()
+        super(PowerMaxFCTest, self).setUp()
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
         self.configuration = FakeConfiguration(
             None, 'FCTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
             san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
-        rest.VMAXRest._establish_rest_session = mock.Mock(
+        rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
-        driver = fc.VMAXFCDriver(configuration=self.configuration)
+        driver = fc.PowerMaxFCDriver(configuration=self.configuration)
         self.driver = driver
         self.common = self.driver.common
         self.masking = self.common.masking
@@ -6312,8 +6319,8 @@ class VMAXFCTest(test.TestCase):
             self.assertEqual({}, zoning_mappings)
 
     @mock.patch.object(
-        common.VMAXCommon, 'get_masking_views_from_volume',
-        return_value=([VMAXCommonData.masking_view_name_f], True))
+        common.PowerMaxCommon, 'get_masking_views_from_volume',
+        return_value=([PowerMaxCommonData.masking_view_name_f], True))
     def test_get_zoning_mappings_metro(self, mock_mv):
         ref_mappings = self.data.zoning_mappings_metro
         zoning_mappings = self.driver._get_zoning_mappings(
@@ -6342,7 +6349,7 @@ class VMAXFCTest(test.TestCase):
                           '123456789054321': ['123450987654321']}
         with mock.patch.object(fczm_utils, 'create_lookup_service',
                                return_value=FakeLookupService()):
-            driver = fc.VMAXFCDriver(configuration=self.configuration)
+            driver = fc.PowerMaxFCDriver(configuration=self.configuration)
             with mock.patch.object(driver.common,
                                    'get_target_wwns_from_masking_view',
                                    return_value=(self.data.target_wwns, [])):
@@ -6449,18 +6456,18 @@ class VMAXFCTest(test.TestCase):
             mock_fo.assert_called_once()
 
 
-class VMAXISCSITest(test.TestCase):
+class PowerMaxISCSITest(test.TestCase):
     def setUp(self):
-        self.data = VMAXCommonData()
+        self.data = PowerMaxCommonData()
 
-        super(VMAXISCSITest, self).setUp()
+        super(PowerMaxISCSITest, self).setUp()
         configuration = FakeConfiguration(
             None, 'ISCSITests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
             san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
-        rest.VMAXRest._establish_rest_session = mock.Mock(
+        rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
-        driver = iscsi.VMAXISCSIDriver(configuration=configuration)
+        driver = iscsi.PowerMaxISCSIDriver(configuration=configuration)
         self.driver = driver
         self.common = self.driver.common
         self.masking = self.common.masking
@@ -6756,24 +6763,24 @@ class VMAXISCSITest(test.TestCase):
             mock_fo.assert_called_once()
 
 
-class VMAXMaskingTest(test.TestCase):
+class PowerMaxMaskingTest(test.TestCase):
     def setUp(self):
-        self.data = VMAXCommonData()
+        self.data = PowerMaxCommonData()
 
-        super(VMAXMaskingTest, self).setUp()
+        super(PowerMaxMaskingTest, self).setUp()
 
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
         configuration = mock.Mock()
         configuration.safe_get.return_value = 'MaskingTests'
         configuration.config_group = 'MaskingTests'
-        self._gather_info = common.VMAXCommon._gather_info
-        common.VMAXCommon._get_u4p_failover_info = mock.Mock()
-        common.VMAXCommon._gather_info = mock.Mock()
-        rest.VMAXRest._establish_rest_session = mock.Mock(
+        self._gather_info = common.PowerMaxCommon._gather_info
+        common.PowerMaxCommon._get_u4p_failover_info = mock.Mock()
+        common.PowerMaxCommon._gather_info = mock.Mock()
+        rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
-        driver = common.VMAXCommon(
+        driver = common.PowerMaxCommon(
             'iSCSI', self.data.version, configuration=configuration)
-        driver_fc = common.VMAXCommon(
+        driver_fc = common.PowerMaxCommon(
             'FC', self.data.version, configuration=configuration)
         self.driver = driver
         self.driver_fc = driver_fc
@@ -6788,11 +6795,11 @@ class VMAXMaskingTest(test.TestCase):
         self.volume_name = self.data.volume_details[0]['volume_identifier']
 
     def tearDown(self):
-        super(VMAXMaskingTest, self).tearDown()
-        common.VMAXCommon._gather_info = self._gather_info
+        super(PowerMaxMaskingTest, self).tearDown()
+        common.PowerMaxCommon._gather_info = self._gather_info
 
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         'get_or_create_masking_view_and_map_lun')
     def test_setup_masking_view(self, mock_get_or_create_mv):
         self.driver.masking.setup_masking_view(
@@ -6801,21 +6808,21 @@ class VMAXMaskingTest(test.TestCase):
         mock_get_or_create_mv.assert_called_once()
 
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_check_adding_volume_to_storage_group')
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_move_vol_from_default_sg',
         return_value=None)
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_get_or_create_masking_view',
         side_effect=[None, "Error in masking view retrieval",
                      exception.VolumeBackendAPIException])
     @mock.patch.object(
-        rest.VMAXRest,
+        rest.PowerMaxRest,
         'get_element_from_masking_view',
-        side_effect=[VMAXCommonData.port_group_name_i,
+        side_effect=[PowerMaxCommonData.port_group_name_i,
                      Exception('Exception')])
     def test_get_or_create_masking_view_and_map_lun(
             self, mock_masking_view_element, mock_masking, mock_move,
@@ -6841,15 +6848,15 @@ class VMAXMaskingTest(test.TestCase):
             self.maskingviewdict, self.extra_specs)
 
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_check_adding_volume_to_storage_group',
         return_value=None)
     @mock.patch.object(
-        rest.VMAXRest,
+        rest.PowerMaxRest,
         'move_volume_between_storage_groups',
         side_effect=[None, exception.VolumeBackendAPIException(data='')])
     @mock.patch.object(
-        rest.VMAXRest,
+        rest.PowerMaxRest,
         'is_volume_in_storagegroup',
         side_effect=[True, False, True])
     def test_move_vol_from_default_sg(
@@ -6869,11 +6876,11 @@ class VMAXMaskingTest(test.TestCase):
             self.data.storagegroup_name_i, self.extra_specs)
         self.assertIsNotNone(msg)
 
-    @mock.patch.object(rest.VMAXRest, 'remove_child_sg_from_parent_sg')
-    @mock.patch.object(masking.VMAXMasking, 'get_parent_sg_from_child',
-                       side_effect=[None, VMAXCommonData.parent_sg_f])
+    @mock.patch.object(rest.PowerMaxRest, 'remove_child_sg_from_parent_sg')
+    @mock.patch.object(masking.PowerMaxMasking, 'get_parent_sg_from_child',
+                       side_effect=[None, PowerMaxCommonData.parent_sg_f])
     @mock.patch.object(
-        rest.VMAXRest, 'get_num_vols_in_sg', side_effect=[2, 1, 1])
+        rest.PowerMaxRest, 'get_num_vols_in_sg', side_effect=[2, 1, 1])
     def test_move_volume_between_storage_groups(
             self, mock_num, mock_parent, mock_rm):
         for x in range(0, 3):
@@ -6884,17 +6891,17 @@ class VMAXMaskingTest(test.TestCase):
         mock_rm.assert_called_once()
 
     @mock.patch.object(
-        rest.VMAXRest,
+        rest.PowerMaxRest,
         'get_masking_view',
-        side_effect=[VMAXCommonData.maskingview,
-                     VMAXCommonData.maskingview, None])
+        side_effect=[PowerMaxCommonData.maskingview,
+                     PowerMaxCommonData.maskingview, None])
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_validate_existing_masking_view',
-        side_effect=[(VMAXCommonData.maskingview[1]['storageGroupId'],
+        side_effect=[(PowerMaxCommonData.maskingview[1]['storageGroupId'],
                       None), (None, "Error Message")])
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_create_new_masking_view',
         return_value=None)
     def test_get_or_create_masking_view(
@@ -6907,27 +6914,27 @@ class VMAXMaskingTest(test.TestCase):
         mock_create_mv.assert_called_once()
 
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_get_or_create_storage_group',
         side_effect=["Storage group not found", None,
                      "Storage group not found", None, None, None,
                      None, None, None, None, None])
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_check_port_group',
         side_effect=[(None, "Port group error"), (None, None), (None, None),
                      (None, None)])
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_get_or_create_initiator_group',
         side_effect=[(None, "Initiator group error"), (None, None),
                      (None, None)])
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_move_vol_from_default_sg',
         side_effect=["Storage group error", None])
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         'create_masking_view',
         return_value=None)
     def test_create_new_masking_view(
@@ -6941,23 +6948,23 @@ class VMAXMaskingTest(test.TestCase):
         mock_create_mv.assert_called_once()
 
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_check_existing_storage_group',
-        side_effect=[(VMAXCommonData.storagegroup_name_i, None),
-                     (VMAXCommonData.storagegroup_name_i, None),
+        side_effect=[(PowerMaxCommonData.storagegroup_name_i, None),
+                     (PowerMaxCommonData.storagegroup_name_i, None),
                      (None, "Error Checking existing storage group")])
     @mock.patch.object(
-        rest.VMAXRest,
+        rest.PowerMaxRest,
         'get_element_from_masking_view',
-        return_value=VMAXCommonData.port_group_name_i)
+        return_value=PowerMaxCommonData.port_group_name_i)
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_check_port_group',
         side_effect=[(None, None), (None, "Error checking pg")])
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_check_existing_initiator_group',
-        return_value=(VMAXCommonData.initiatorgroup_name_i, None))
+        return_value=(PowerMaxCommonData.initiatorgroup_name_i, None))
     def test_validate_existing_masking_view(
             self, mock_check_ig, mock_check_pg, mock_get_mv_element,
             mock_check_sg):
@@ -6973,13 +6980,13 @@ class VMAXMaskingTest(test.TestCase):
         mock_check_ig.assert_called_once()
 
     @mock.patch.object(
-        rest.VMAXRest,
+        rest.PowerMaxRest,
         'get_storage_group',
-        side_effect=[VMAXCommonData.storagegroup_name_i, None, None])
+        side_effect=[PowerMaxCommonData.storagegroup_name_i, None, None])
     @mock.patch.object(
-        provision.VMAXProvision,
+        provision.PowerMaxProvision,
         'create_storage_group',
-        side_effect=[VMAXCommonData.storagegroup_name_i, None])
+        side_effect=[PowerMaxCommonData.storagegroup_name_i, None])
     def test_get_or_create_storage_group(self, mock_sg, mock_get_sg):
         for x in range(0, 2):
             self.driver.masking._get_or_create_storage_group(
@@ -6992,23 +6999,23 @@ class VMAXMaskingTest(test.TestCase):
         self.assertEqual(2, mock_sg.call_count)
 
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_move_vol_from_default_sg',
         return_value=None)
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_get_or_create_storage_group',
         return_value=None)
     @mock.patch.object(
-        rest.VMAXRest,
+        rest.PowerMaxRest,
         'get_element_from_masking_view',
-        return_value=VMAXCommonData.parent_sg_i)
+        return_value=PowerMaxCommonData.parent_sg_i)
     @mock.patch.object(
-        rest.VMAXRest,
+        rest.PowerMaxRest,
         'is_child_sg_in_parent_sg',
         side_effect=[True, False])
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_check_add_child_sg_to_parent_sg',
         return_value=None)
     def test_check_existing_storage_group_success(
@@ -7018,8 +7025,8 @@ class VMAXMaskingTest(test.TestCase):
         masking_view_dict['extra_specs'] = self.data.extra_specs
         with mock.patch.object(self.driver.rest, 'get_storage_group',
                                side_effect=[
-                                   VMAXCommonData.parent_sg_i,
-                                   VMAXCommonData.storagegroup_name_i]):
+                                   PowerMaxCommonData.parent_sg_i,
+                                   PowerMaxCommonData.storagegroup_name_i]):
             _, msg = (
                 self.driver.masking._check_existing_storage_group(
                     self.data.array, self.maskingviewdict['maskingview_name'],
@@ -7028,7 +7035,7 @@ class VMAXMaskingTest(test.TestCase):
             mock_create_sg.assert_not_called()
         with mock.patch.object(self.driver.rest, 'get_storage_group',
                                side_effect=[
-                                   VMAXCommonData.parent_sg_i, None]):
+                                   PowerMaxCommonData.parent_sg_i, None]):
             _, msg = (
                 self.driver.masking._check_existing_storage_group(
                     self.data.array, self.maskingviewdict['maskingview_name'],
@@ -7036,27 +7043,27 @@ class VMAXMaskingTest(test.TestCase):
             self.assertIsNone(msg)
             mock_create_sg.assert_called_once_with(
                 self.data.array, masking_view_dict,
-                VMAXCommonData.storagegroup_name_f,
+                PowerMaxCommonData.storagegroup_name_f,
                 self.data.extra_specs)
 
     @mock.patch.object(
-        masking.VMAXMasking,
+        masking.PowerMaxMasking,
         '_move_vol_from_default_sg',
         side_effect=[None, "Error Message"])
     @mock.patch.object(
-        rest.VMAXRest,
+        rest.PowerMaxRest,
         'is_child_sg_in_parent_sg',
         side_effect=[True, False, False])
     @mock.patch.object(
-        rest.VMAXRest,
+        rest.PowerMaxRest,
         'get_element_from_masking_view',
-        return_value=VMAXCommonData.parent_sg_i)
+        return_value=PowerMaxCommonData.parent_sg_i)
     @mock.patch.object(
-        rest.VMAXRest,
+        rest.PowerMaxRest,
         'get_storage_group',
-        side_effect=[None, VMAXCommonData.parent_sg_i, None,
-                     VMAXCommonData.parent_sg_i, None,
-                     VMAXCommonData.parent_sg_i, None])
+        side_effect=[None, PowerMaxCommonData.parent_sg_i, None,
+                     PowerMaxCommonData.parent_sg_i, None,
+                     PowerMaxCommonData.parent_sg_i, None])
     def test_check_existing_storage_group_failed(
             self, mock_get_sg, mock_get_mv_element, mock_child, mock_move):
         masking_view_dict = deepcopy(self.data.masking_view_dict)
@@ -7070,8 +7077,9 @@ class VMAXMaskingTest(test.TestCase):
         self.assertEqual(7, mock_get_sg.call_count)
         self.assertEqual(1, mock_move.call_count)
 
-    @mock.patch.object(rest.VMAXRest, 'get_portgroup',
-                       side_effect=[VMAXCommonData.port_group_name_i, None])
+    @mock.patch.object(rest.PowerMaxRest, 'get_portgroup',
+                       side_effect=(
+                           [PowerMaxCommonData.port_group_name_i, None]))
     def test_check_port_group(
             self, mock_get_pg):
         for x in range(0, 2):
@@ -7081,11 +7089,12 @@ class VMAXMaskingTest(test.TestCase):
         self.assertEqual(2, mock_get_pg.call_count)
 
     @mock.patch.object(
-        masking.VMAXMasking, '_find_initiator_group',
-        side_effect=[VMAXCommonData.initiatorgroup_name_i, None, None])
-    @mock.patch.object(masking.VMAXMasking, '_create_initiator_group',
-                       side_effect=[VMAXCommonData.initiatorgroup_name_i, None]
-                       )
+        masking.PowerMaxMasking, '_find_initiator_group',
+        side_effect=[PowerMaxCommonData.initiatorgroup_name_i, None, None])
+    @mock.patch.object(masking.PowerMaxMasking, '_create_initiator_group',
+                       side_effect=(
+                           [PowerMaxCommonData.initiatorgroup_name_i,
+                            None]))
     def test_get_or_create_initiator_group(self, mock_create_ig, mock_find_ig):
         self.driver.masking._get_or_create_initiator_group(
             self.data.array, self.data.initiatorgroup_name_i,
@@ -7104,8 +7113,8 @@ class VMAXMaskingTest(test.TestCase):
 
     def test_check_existing_initiator_group(self):
         with mock.patch.object(
-                rest.VMAXRest, 'get_element_from_masking_view',
-                return_value=VMAXCommonData.inititiatorgroup):
+                rest.PowerMaxRest, 'get_element_from_masking_view',
+                return_value=PowerMaxCommonData.inititiatorgroup):
             ig_from_mv, msg = (
                 self.driver.masking._check_existing_initiator_group(
                     self.data.array, self.maskingviewdict['maskingview_name'],
@@ -7115,9 +7124,9 @@ class VMAXMaskingTest(test.TestCase):
 
     def test_check_adding_volume_to_storage_group(self):
         with mock.patch.object(
-                masking.VMAXMasking, '_create_initiator_group'):
+                masking.PowerMaxMasking, '_create_initiator_group'):
             with mock.patch.object(
-                rest.VMAXRest, 'is_volume_in_storagegroup',
+                rest.PowerMaxRest, 'is_volume_in_storagegroup',
                     side_effect=[True, False]):
                 msg = (
                     self.driver.masking._check_adding_volume_to_storage_group(
@@ -7133,17 +7142,17 @@ class VMAXMaskingTest(test.TestCase):
                         self.maskingviewdict[utils.VOL_NAME],
                         self.maskingviewdict[utils.EXTRA_SPECS]))
 
-    @mock.patch.object(rest.VMAXRest, 'add_vol_to_sg')
+    @mock.patch.object(rest.PowerMaxRest, 'add_vol_to_sg')
     def test_add_volume_to_storage_group(self, mock_add_volume):
         self.driver.masking.add_volume_to_storage_group(
             self.data.array, self.device_id, self.data.storagegroup_name_i,
             self.volume_name, self.extra_specs)
         mock_add_volume.assert_called_once()
 
-    @mock.patch.object(rest.VMAXRest, 'remove_vol_from_sg')
+    @mock.patch.object(rest.PowerMaxRest, 'remove_vol_from_sg')
     def test_remove_vol_from_storage_group(self, mock_remove_volume):
         with mock.patch.object(
-                rest.VMAXRest, 'is_volume_in_storagegroup',
+                rest.PowerMaxRest, 'is_volume_in_storagegroup',
                 side_effect=[False, True]):
             self.driver.masking.remove_vol_from_storage_group(
                 self.data.array, self.device_id, self.data.storagegroup_name_i,
@@ -7174,10 +7183,10 @@ class VMAXMaskingTest(test.TestCase):
 
     def test_find_initiator_group_found(self):
         with mock.patch.object(
-                rest.VMAXRest, 'get_initiator_list',
+                rest.PowerMaxRest, 'get_initiator_list',
                 return_value=self.data.initiator_list[2]['initiatorId']):
             with mock.patch.object(
-                    rest.VMAXRest, 'get_initiator_group_from_initiator',
+                    rest.PowerMaxRest, 'get_initiator_group_from_initiator',
                     return_value=self.data.initiator_list):
                 found_init_group_nam = (
                     self.driver.masking._find_initiator_group(
@@ -7187,10 +7196,10 @@ class VMAXMaskingTest(test.TestCase):
 
     def test_find_initiator_group_not_found(self):
         with mock.patch.object(
-                rest.VMAXRest, 'get_initiator_list',
+                rest.PowerMaxRest, 'get_initiator_list',
                 return_value=self.data.initiator_list[2]['initiatorId']):
             with mock.patch.object(
-                    rest.VMAXRest, 'get_initiator_group_from_initiator',
+                    rest.PowerMaxRest, 'get_initiator_group_from_initiator',
                     return_value=None):
                 found_init_group_nam = (
                     self.driver.masking._find_initiator_group(
@@ -7198,7 +7207,7 @@ class VMAXMaskingTest(test.TestCase):
                 self.assertIsNone(found_init_group_nam)
 
     def test_create_masking_view(self):
-        with mock.patch.object(rest.VMAXRest, 'create_masking_view',
+        with mock.patch.object(rest.PowerMaxRest, 'create_masking_view',
                                side_effect=[None, Exception]):
             error_message = self.driver.masking.create_masking_view(
                 self.data.array, self.maskingviewdict['maskingview_name'],
@@ -7211,12 +7220,12 @@ class VMAXMaskingTest(test.TestCase):
                 self.data.initiatorgroup_name_i, self.extra_specs)
             self.assertIsNotNone(error_message)
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        '_return_volume_to_fast_managed_group')
-    @mock.patch.object(masking.VMAXMasking, '_check_ig_rollback')
+    @mock.patch.object(masking.PowerMaxMasking, '_check_ig_rollback')
     def test_check_if_rollback_action_for_masking_required(
             self, mock_check_ig, mock_return):
-        with mock.patch.object(rest.VMAXRest,
+        with mock.patch.object(rest.PowerMaxRest,
                                'get_storage_groups_from_volume',
                                side_effect=[
                                    exception.VolumeBackendAPIException,
@@ -7228,7 +7237,7 @@ class VMAXMaskingTest(test.TestCase):
                 self.mask.check_if_rollback_action_for_masking_required,
                 self.data.array, self.data.test_volume,
                 self.device_id, self.maskingviewdict)
-            with mock.patch.object(masking.VMAXMasking,
+            with mock.patch.object(masking.PowerMaxMasking,
                                    'remove_and_reset_members'):
                 self.maskingviewdict[
                     'default_sg_name'] = self.data.defaultstoragegroup_name
@@ -7241,11 +7250,11 @@ class VMAXMaskingTest(test.TestCase):
                     self.device_id, self.data.masking_view_dict_multiattach)
                 mock_return.assert_called_once()
 
-    @mock.patch.object(rest.VMAXRest, 'delete_masking_view')
-    @mock.patch.object(rest.VMAXRest, 'delete_initiator_group')
-    @mock.patch.object(rest.VMAXRest, 'get_initiator_group')
-    @mock.patch.object(masking.VMAXMasking, '_find_initiator_group',
-                       return_value=VMAXCommonData.initiatorgroup_name_i)
+    @mock.patch.object(rest.PowerMaxRest, 'delete_masking_view')
+    @mock.patch.object(rest.PowerMaxRest, 'delete_initiator_group')
+    @mock.patch.object(rest.PowerMaxRest, 'get_initiator_group')
+    @mock.patch.object(masking.PowerMaxMasking, '_find_initiator_group',
+                       return_value=PowerMaxCommonData.initiatorgroup_name_i)
     def test_verify_initiator_group_from_masking_view(
             self, mock_find_ig, mock_get_ig, mock_delete_ig, mock_delete_mv):
         self.mask._verify_initiator_group_from_masking_view(
@@ -7262,12 +7271,12 @@ class VMAXMaskingTest(test.TestCase):
             self.extra_specs)
         mock_get_ig.assert_called()
 
-    @mock.patch.object(rest.VMAXRest, 'delete_masking_view')
-    @mock.patch.object(rest.VMAXRest, 'delete_initiator_group')
-    @mock.patch.object(rest.VMAXRest, 'get_initiator_group',
+    @mock.patch.object(rest.PowerMaxRest, 'delete_masking_view')
+    @mock.patch.object(rest.PowerMaxRest, 'delete_initiator_group')
+    @mock.patch.object(rest.PowerMaxRest, 'get_initiator_group',
                        return_value=True)
-    @mock.patch.object(masking.VMAXMasking, '_find_initiator_group',
-                       return_value=VMAXCommonData.initiatorgroup_name_i)
+    @mock.patch.object(masking.PowerMaxMasking, '_find_initiator_group',
+                       return_value=PowerMaxCommonData.initiatorgroup_name_i)
     def test_verify_initiator_group_from_masking_view2(
             self, mock_find_ig, mock_get_ig, mock_delete_ig, mock_delete_mv):
         mock_delete_mv.side_effect = [None, Exception]
@@ -7286,7 +7295,7 @@ class VMAXMaskingTest(test.TestCase):
         self.assertEqual(self.data.initiatorgroup_name_i,
                          found_ig_from_connector)
 
-    @mock.patch.object(rest.VMAXRest, 'create_initiator_group')
+    @mock.patch.object(rest.PowerMaxRest, 'create_initiator_group')
     def test_create_initiator_group(self, mock_create_ig):
         initiator_names = self.mask.find_initiator_names(self.data.connector)
         ret_init_group_name = self.mask._create_initiator_group(
@@ -7294,10 +7303,11 @@ class VMAXMaskingTest(test.TestCase):
             self.extra_specs)
         self.assertEqual(self.data.initiatorgroup_name_i, ret_init_group_name)
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        '_last_volume_delete_initiator_group')
     def test_check_ig_rollback(self, mock_last_volume):
-        with mock.patch.object(masking.VMAXMasking, '_find_initiator_group',
+        with mock.patch.object(masking.PowerMaxMasking,
+                               '_find_initiator_group',
                                side_effect=[
                                    None, 'FAKE-I-IG',
                                    self.data.initiatorgroup_name_i]):
@@ -7311,20 +7321,20 @@ class VMAXMaskingTest(test.TestCase):
                 self.data.connector)
             mock_last_volume.assert_called()
 
-    @mock.patch.object(masking.VMAXMasking, '_cleanup_deletion')
+    @mock.patch.object(masking.PowerMaxMasking, '_cleanup_deletion')
     def test_remove_and_reset_members(self, mock_cleanup):
         self.mask.remove_and_reset_members(
             self.data.array, self.device_id, self.data.test_volume,
             self.volume_name, self.extra_specs, reset=False)
         mock_cleanup.assert_called_once()
 
-    @mock.patch.object(rest.VMAXRest, 'get_storage_groups_from_volume',
-                       side_effect=[[VMAXCommonData.storagegroup_name_i],
-                                    [VMAXCommonData.storagegroup_name_i],
-                                    [VMAXCommonData.storagegroup_name_i,
-                                     VMAXCommonData.storagegroup_name_f]])
-    @mock.patch.object(masking.VMAXMasking, 'remove_volume_from_sg')
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_groups_from_volume',
+                       side_effect=[[PowerMaxCommonData.storagegroup_name_i],
+                                    [PowerMaxCommonData.storagegroup_name_i],
+                                    [PowerMaxCommonData.storagegroup_name_i,
+                                     PowerMaxCommonData.storagegroup_name_f]])
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_volume_from_sg')
+    @mock.patch.object(masking.PowerMaxMasking,
                        'add_volume_to_default_storage_group')
     def test_cleanup_deletion(self, mock_add, mock_remove_vol, mock_get_sg):
         self.mask._cleanup_deletion(
@@ -7343,14 +7353,14 @@ class VMAXMaskingTest(test.TestCase):
             self.data.array, self.device_id,
             self.volume_name, self.extra_specs, volume=self.data.test_volume)
 
-    @mock.patch.object(masking.VMAXMasking, '_last_vol_in_sg')
-    @mock.patch.object(masking.VMAXMasking, '_multiple_vols_in_sg')
+    @mock.patch.object(masking.PowerMaxMasking, '_last_vol_in_sg')
+    @mock.patch.object(masking.PowerMaxMasking, '_multiple_vols_in_sg')
     def test_remove_volume_from_sg(self, mock_multiple_vols, mock_last_vol):
         with mock.patch.object(
-                rest.VMAXRest, 'get_masking_views_from_storage_group',
+                rest.PowerMaxRest, 'get_masking_views_from_storage_group',
                 return_value=None):
             with mock.patch.object(
-                rest.VMAXRest, 'get_num_vols_in_sg',
+                rest.PowerMaxRest, 'get_num_vols_in_sg',
                     side_effect=[2, 1]):
                 self.mask.remove_volume_from_sg(
                     self.data.array, self.device_id, self.volume_name,
@@ -7361,17 +7371,17 @@ class VMAXMaskingTest(test.TestCase):
                     self.data.defaultstoragegroup_name, self.extra_specs)
                 mock_last_vol.assert_called()
 
-    @mock.patch.object(masking.VMAXMasking, '_last_vol_in_sg')
-    @mock.patch.object(masking.VMAXMasking, '_multiple_vols_in_sg')
+    @mock.patch.object(masking.PowerMaxMasking, '_last_vol_in_sg')
+    @mock.patch.object(masking.PowerMaxMasking, '_multiple_vols_in_sg')
     def test_remove_volume_from_sg_2(self, mock_multiple_vols, mock_last_vol):
         with mock.patch.object(
-                rest.VMAXRest, 'is_volume_in_storagegroup',
+                rest.PowerMaxRest, 'is_volume_in_storagegroup',
                 return_value=True):
             with mock.patch.object(
-                    rest.VMAXRest, 'get_masking_views_from_storage_group',
+                    rest.PowerMaxRest, 'get_masking_views_from_storage_group',
                     return_value=[self.data.masking_view_name_i]):
                 with mock.patch.object(
-                    rest.VMAXRest, 'get_num_vols_in_sg',
+                    rest.PowerMaxRest, 'get_num_vols_in_sg',
                         side_effect=[2, 1]):
                     self.mask.remove_volume_from_sg(
                         self.data.array, self.device_id, self.volume_name,
@@ -7382,14 +7392,14 @@ class VMAXMaskingTest(test.TestCase):
                         self.data.storagegroup_name_i, self.extra_specs)
                     mock_last_vol.assert_called()
 
-    @mock.patch.object(masking.VMAXMasking, '_last_vol_masking_views',
+    @mock.patch.object(masking.PowerMaxMasking, '_last_vol_masking_views',
                        return_value=True)
-    @mock.patch.object(masking.VMAXMasking, '_last_vol_no_masking_views',
+    @mock.patch.object(masking.PowerMaxMasking, '_last_vol_no_masking_views',
                        return_value=True)
     def test_last_vol_in_sg(self, mock_no_mv, mock_mv):
         mv_list = [self.data.masking_view_name_i,
                    self.data.masking_view_name_f]
-        with mock.patch.object(rest.VMAXRest,
+        with mock.patch.object(rest.PowerMaxRest,
                                'get_masking_views_from_storage_group',
                                side_effect=[mv_list, []]):
             for x in range(0, 2):
@@ -7400,12 +7410,14 @@ class VMAXMaskingTest(test.TestCase):
             self.assertEqual(1, mock_mv.call_count)
             self.assertEqual(1, mock_no_mv.call_count)
 
-    @mock.patch.object(masking.VMAXMasking, '_remove_last_vol_and_delete_sg')
-    @mock.patch.object(masking.VMAXMasking, '_delete_cascaded_storage_groups')
-    @mock.patch.object(rest.VMAXRest, 'get_num_vols_in_sg',
+    @mock.patch.object(masking.PowerMaxMasking,
+                       '_remove_last_vol_and_delete_sg')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       '_delete_cascaded_storage_groups')
+    @mock.patch.object(rest.PowerMaxRest, 'get_num_vols_in_sg',
                        side_effect=[1, 3])
-    @mock.patch.object(rest.VMAXRest, 'delete_storage_group')
-    @mock.patch.object(masking.VMAXMasking, 'get_parent_sg_from_child',
+    @mock.patch.object(rest.PowerMaxRest, 'delete_storage_group')
+    @mock.patch.object(masking.PowerMaxMasking, 'get_parent_sg_from_child',
                        side_effect=[None, 'parent_sg_name', 'parent_sg_name'])
     def test_last_vol_no_masking_views(
             self, mock_get_parent, mock_delete, mock_num_vols,
@@ -7419,9 +7431,10 @@ class VMAXMaskingTest(test.TestCase):
         self.assertEqual(1, mock_delete_casc.call_count)
         self.assertEqual(1, mock_remove.call_count)
 
-    @mock.patch.object(masking.VMAXMasking, '_remove_last_vol_and_delete_sg')
-    @mock.patch.object(masking.VMAXMasking, '_delete_mv_ig_and_sg')
-    @mock.patch.object(masking.VMAXMasking, '_get_num_vols_from_mv',
+    @mock.patch.object(masking.PowerMaxMasking,
+                       '_remove_last_vol_and_delete_sg')
+    @mock.patch.object(masking.PowerMaxMasking, '_delete_mv_ig_and_sg')
+    @mock.patch.object(masking.PowerMaxMasking, '_get_num_vols_from_mv',
                        side_effect=[(1, 'parent_name'), (3, 'parent_name')])
     def test_last_vol_masking_views(
             self, mock_num_vols, mock_delete_all, mock_remove):
@@ -7434,10 +7447,11 @@ class VMAXMaskingTest(test.TestCase):
         self.assertEqual(1, mock_delete_all.call_count)
         self.assertEqual(1, mock_remove.call_count)
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        'add_volume_to_default_storage_group')
-    @mock.patch.object(rest.VMAXRest, 'get_num_vols_in_sg')
-    @mock.patch.object(masking.VMAXMasking, 'remove_vol_from_storage_group')
+    @mock.patch.object(rest.PowerMaxRest, 'get_num_vols_in_sg')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'remove_vol_from_storage_group')
     def test_multiple_vols_in_sg(self, mock_remove_vol, mock_get_volumes,
                                  mock_add):
         self.mask._multiple_vols_in_sg(
@@ -7449,11 +7463,13 @@ class VMAXMaskingTest(test.TestCase):
             self.volume_name, self.extra_specs, True)
         mock_add.assert_called_once()
 
-    @mock.patch.object(rest.VMAXRest, 'get_element_from_masking_view')
-    @mock.patch.object(masking.VMAXMasking, '_last_volume_delete_masking_view')
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(rest.PowerMaxRest, 'get_element_from_masking_view')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       '_last_volume_delete_masking_view')
+    @mock.patch.object(masking.PowerMaxMasking,
                        '_last_volume_delete_initiator_group')
-    @mock.patch.object(masking.VMAXMasking, '_delete_cascaded_storage_groups')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       '_delete_cascaded_storage_groups')
     def test_delete_mv_ig_and_sg(self, mock_delete_sg, mock_delete_ig,
                                  mock_delete_mv, mock_get_element):
         self.mask._delete_mv_ig_and_sg(
@@ -7463,17 +7479,18 @@ class VMAXMaskingTest(test.TestCase):
             self.data.connector, True, self.data.extra_specs)
         mock_delete_sg.assert_called_once()
 
-    @mock.patch.object(rest.VMAXRest, 'delete_masking_view')
+    @mock.patch.object(rest.PowerMaxRest, 'delete_masking_view')
     def test_last_volume_delete_masking_view(self, mock_delete_mv):
         self.mask._last_volume_delete_masking_view(
             self.data.array, self.data.masking_view_name_i)
         mock_delete_mv.assert_called_once()
 
-    @mock.patch.object(masking.VMAXMasking, 'return_volume_to_volume_group')
-    @mock.patch.object(rest.VMAXRest, 'move_volume_between_storage_groups')
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'return_volume_to_volume_group')
+    @mock.patch.object(rest.PowerMaxRest, 'move_volume_between_storage_groups')
+    @mock.patch.object(masking.PowerMaxMasking,
                        'get_or_create_default_storage_group')
-    @mock.patch.object(masking.VMAXMasking, 'add_volume_to_storage_group')
+    @mock.patch.object(masking.PowerMaxMasking, 'add_volume_to_storage_group')
     def test_add_volume_to_default_storage_group(
             self, mock_add_sg, mock_get_sg, mock_move, mock_return):
         self.mask.add_volume_to_default_storage_group(
@@ -7492,7 +7509,7 @@ class VMAXMaskingTest(test.TestCase):
         mock_return.assert_called_once()
 
     def test_add_volume_to_default_storage_group_next_gen(self):
-        with mock.patch.object(rest.VMAXRest, 'is_next_gen_array',
+        with mock.patch.object(rest.PowerMaxRest, 'is_next_gen_array',
                                return_value=True):
             with mock.patch.object(
                     self.mask, 'get_or_create_default_storage_group'):
@@ -7505,20 +7522,20 @@ class VMAXMaskingTest(test.TestCase):
                                              'NONE', self.extra_specs, False,
                                              False, None))
 
-    @mock.patch.object(provision.VMAXProvision, 'create_storage_group')
+    @mock.patch.object(provision.PowerMaxProvision, 'create_storage_group')
     def test_get_or_create_default_storage_group(self, mock_create_sg):
         with mock.patch.object(
-                rest.VMAXRest, 'get_vmax_default_storage_group',
+                rest.PowerMaxRest, 'get_vmax_default_storage_group',
                 return_value=(None, self.data.storagegroup_name_i)):
             storage_group_name = self.mask.get_or_create_default_storage_group(
                 self.data.array, self.data.srp, self.data.slo,
                 self.data.workload, self.extra_specs)
             self.assertEqual(self.data.storagegroup_name_i, storage_group_name)
         with mock.patch.object(
-                rest.VMAXRest, 'get_vmax_default_storage_group',
+                rest.PowerMaxRest, 'get_vmax_default_storage_group',
                 return_value=("test_sg", self.data.storagegroup_name_i)):
             with mock.patch.object(
-                rest.VMAXRest, 'get_masking_views_from_storage_group',
+                rest.PowerMaxRest, 'get_masking_views_from_storage_group',
                     return_value=self.data.masking_view_name_i):
                 self.assertRaises(
                     exception.VolumeBackendAPIException,
@@ -7526,11 +7543,12 @@ class VMAXMaskingTest(test.TestCase):
                     self.data.array, self.data.srp, self.data.slo,
                     self.data.workload, self.extra_specs)
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        'add_volume_to_default_storage_group')
-    @mock.patch.object(rest.VMAXRest, 'remove_child_sg_from_parent_sg')
-    @mock.patch.object(rest.VMAXRest, 'delete_storage_group')
-    @mock.patch.object(masking.VMAXMasking, 'remove_vol_from_storage_group')
+    @mock.patch.object(rest.PowerMaxRest, 'remove_child_sg_from_parent_sg')
+    @mock.patch.object(rest.PowerMaxRest, 'delete_storage_group')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'remove_vol_from_storage_group')
     def test_remove_last_vol_and_delete_sg(self, mock_vol_sg,
                                            mock_delete_sg, mock_rm, mock_add):
         self.mask._remove_last_vol_and_delete_sg(
@@ -7545,7 +7563,7 @@ class VMAXMaskingTest(test.TestCase):
         self.assertEqual(1, mock_rm.call_count)
         self.assertEqual(1, mock_add.call_count)
 
-    @mock.patch.object(rest.VMAXRest, 'delete_initiator_group')
+    @mock.patch.object(rest.PowerMaxRest, 'delete_initiator_group')
     def test_last_volume_delete_initiator_group(self, mock_delete_ig):
         self.mask._last_volume_delete_initiator_group(
             self.data.array, self.data.initiatorgroup_name_f, 'Wrong_Host')
@@ -7555,7 +7573,7 @@ class VMAXMaskingTest(test.TestCase):
         mock_delete_ig.assert_not_called()
         mv_list = [self.data.masking_view_name_i,
                    self.data.masking_view_name_f]
-        with mock.patch.object(rest.VMAXRest,
+        with mock.patch.object(rest.PowerMaxRest,
                                'get_masking_views_by_initiator_group',
                                side_effect=[mv_list, []]):
             self.mask._last_volume_delete_initiator_group(
@@ -7589,8 +7607,8 @@ class VMAXMaskingTest(test.TestCase):
         mv_dict = deepcopy(self.data.masking_view_dict)
         mv_dict['initiator_check'] = True
         with mock.patch.object(
-                rest.VMAXRest, 'get_element_from_masking_view',
-                return_value=VMAXCommonData.initiatorgroup_name_f):
+                rest.PowerMaxRest, 'get_element_from_masking_view',
+                return_value=PowerMaxCommonData.initiatorgroup_name_f):
             with mock.patch.object(
                     self.mask, '_verify_initiator_group_from_masking_view',
                     return_value=(True, self.data.initiatorgroup_name_f)):
@@ -7605,10 +7623,10 @@ class VMAXMaskingTest(test.TestCase):
                         self.data.storagegroup_name_f,
                         self.data.port_group_name_f, self.data.extra_specs))
 
-    @mock.patch.object(masking.VMAXMasking, 'add_child_sg_to_parent_sg',
+    @mock.patch.object(masking.PowerMaxMasking, 'add_child_sg_to_parent_sg',
                        side_effect=[
                            None, exception.VolumeBackendAPIException])
-    @mock.patch.object(rest.VMAXRest, 'is_child_sg_in_parent_sg',
+    @mock.patch.object(rest.PowerMaxRest, 'is_child_sg_in_parent_sg',
                        side_effect=[True, False, False])
     def test_check_add_child_sg_to_parent_sg(self, mock_is_child, mock_add):
         for x in range(0, 3):
@@ -7617,8 +7635,8 @@ class VMAXMaskingTest(test.TestCase):
                 self.data.parent_sg_i, self.data.extra_specs)
         self.assertIsNotNone(message)
 
-    @mock.patch.object(rest.VMAXRest, 'add_child_sg_to_parent_sg')
-    @mock.patch.object(rest.VMAXRest, 'is_child_sg_in_parent_sg',
+    @mock.patch.object(rest.PowerMaxRest, 'add_child_sg_to_parent_sg')
+    @mock.patch.object(rest.PowerMaxRest, 'is_child_sg_in_parent_sg',
                        side_effect=[True, False])
     def test_add_child_sg_to_parent_sg(self, mock_is_child, mock_add):
         for x in range(0, 2):
@@ -7637,18 +7655,18 @@ class VMAXMaskingTest(test.TestCase):
                 self.data.array, self.data.storagegroup_name_f)
             self.assertEqual(self.data.parent_sg_f, sg_name2)
 
-    @mock.patch.object(rest.VMAXRest, 'get_element_from_masking_view',
+    @mock.patch.object(rest.PowerMaxRest, 'get_element_from_masking_view',
                        return_value='parent_sg')
-    @mock.patch.object(rest.VMAXRest, 'get_num_vols_in_sg',
+    @mock.patch.object(rest.PowerMaxRest, 'get_num_vols_in_sg',
                        return_value=2)
     def test_get_num_vols_from_mv(self, mock_num, mock_element):
         num_vols, sg = self.mask._get_num_vols_from_mv(
             self.data.array, self.data.masking_view_name_f)
         self.assertEqual(2, num_vols)
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        'add_volume_to_default_storage_group')
-    @mock.patch.object(rest.VMAXRest, 'delete_storage_group')
+    @mock.patch.object(rest.PowerMaxRest, 'delete_storage_group')
     def test_delete_cascaded(self, mock_delete, mock_add):
         self.mask._delete_cascaded_storage_groups(
             self.data.array, self.data.masking_view_name_f,
@@ -7665,7 +7683,7 @@ class VMAXMaskingTest(test.TestCase):
         self.assertEqual(1, mock_delete.call_count)
         mock_add.assert_called_once()
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        'add_volumes_to_storage_group')
     def test_add_remote_vols_to_volume_group(self, mock_add):
         self.mask.add_remote_vols_to_volume_group(
@@ -7673,8 +7691,9 @@ class VMAXMaskingTest(test.TestCase):
             self.data.rep_extra_specs)
         mock_add.assert_called_once()
 
-    @mock.patch.object(masking.VMAXMasking, 'add_remote_vols_to_volume_group')
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'add_remote_vols_to_volume_group')
+    @mock.patch.object(masking.PowerMaxMasking,
                        '_check_adding_volume_to_storage_group')
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=True)
@@ -7691,7 +7710,7 @@ class VMAXMaskingTest(test.TestCase):
                 self.data.test_volume.name, self.data.extra_specs)
         mock_add.assert_called_once()
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        '_return_volume_to_fast_managed_group')
     def test_pre_multiattach(self, mock_return):
         mv_dict = self.mask.pre_multiattach(
@@ -7711,18 +7730,18 @@ class VMAXMaskingTest(test.TestCase):
             mock_return.assert_called_once()
 
     def test_pre_multiattach_next_gen(self):
-        with mock.patch.object(utils.VMAXUtils, 'truncate_string',
+        with mock.patch.object(utils.PowerMaxUtils, 'truncate_string',
                                return_value='DiamondDSS'):
             self.mask.pre_multiattach(
                 self.data.array, self.data.device_id,
                 self.data.masking_view_dict_multiattach, self.data.extra_specs)
-            utils.VMAXUtils.truncate_string.assert_called_once_with(
+            utils.PowerMaxUtils.truncate_string.assert_called_once_with(
                 'DiamondDSS', 10)
 
-    @mock.patch.object(rest.VMAXRest, 'get_storage_group_list',
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_list',
                        side_effect=[{'storageGroupId': [
-                           VMAXCommonData.no_slo_sg_name]}, {}])
-    @mock.patch.object(masking.VMAXMasking,
+                           PowerMaxCommonData.no_slo_sg_name]}, {}])
+    @mock.patch.object(masking.PowerMaxMasking,
                        '_return_volume_to_fast_managed_group')
     def test_check_return_volume_to_fast_managed_group(
             self, mock_return, mock_sg):
@@ -7735,13 +7754,14 @@ class VMAXMaskingTest(test.TestCase):
             self.data.array, self.data.device_id, no_slo_specs)
         mock_return.assert_called_once()
 
-    @mock.patch.object(masking.VMAXMasking, '_move_vol_from_default_sg')
-    @mock.patch.object(masking.VMAXMasking, '_clean_up_child_storage_group')
-    @mock.patch.object(masking.VMAXMasking, 'add_child_sg_to_parent_sg')
-    @mock.patch.object(masking.VMAXMasking, '_get_or_create_storage_group')
-    @mock.patch.object(rest.VMAXRest, 'get_storage_groups_from_volume',
-                       side_effect=[[VMAXCommonData.no_slo_sg_name],
-                                    [VMAXCommonData.storagegroup_name_f]])
+    @mock.patch.object(masking.PowerMaxMasking, '_move_vol_from_default_sg')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       '_clean_up_child_storage_group')
+    @mock.patch.object(masking.PowerMaxMasking, 'add_child_sg_to_parent_sg')
+    @mock.patch.object(masking.PowerMaxMasking, '_get_or_create_storage_group')
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_groups_from_volume',
+                       side_effect=[[PowerMaxCommonData.no_slo_sg_name],
+                                    [PowerMaxCommonData.storagegroup_name_f]])
     def test_return_volume_to_fast_managed_group(
             self, mock_sg, mock_get, mock_add, mock_clean, mock_move):
         for x in range(0, 2):
@@ -7752,13 +7772,13 @@ class VMAXMaskingTest(test.TestCase):
         mock_get.assert_called_once()
         mock_clean.assert_called_once()
 
-    @mock.patch.object(rest.VMAXRest, 'delete_storage_group')
-    @mock.patch.object(rest.VMAXRest, 'remove_child_sg_from_parent_sg')
-    @mock.patch.object(rest.VMAXRest, 'is_child_sg_in_parent_sg',
+    @mock.patch.object(rest.PowerMaxRest, 'delete_storage_group')
+    @mock.patch.object(rest.PowerMaxRest, 'remove_child_sg_from_parent_sg')
+    @mock.patch.object(rest.PowerMaxRest, 'is_child_sg_in_parent_sg',
                        side_effect=[False, True])
-    @mock.patch.object(rest.VMAXRest, 'get_num_vols_in_sg',
+    @mock.patch.object(rest.PowerMaxRest, 'get_num_vols_in_sg',
                        side_effect=[2, 0, 0])
-    @mock.patch.object(rest.VMAXRest, 'get_storage_group', side_effect=[
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group', side_effect=[
         None, 'child_sg', 'child_sg', 'child_sg'])
     def test_clean_up_child_storage_group(
             self, mock_sg, mock_num, mock_child, mock_rm, mock_del):
@@ -7785,11 +7805,11 @@ class VMAXMaskingTest(test.TestCase):
         self.assertEqual(2, mock_del.call_count)
 
 
-class VMAXCommonReplicationTest(test.TestCase):
+class PowerMaxCommonReplicationTest(test.TestCase):
     def setUp(self):
-        self.data = VMAXCommonData()
+        self.data = PowerMaxCommonData()
 
-        super(VMAXCommonReplicationTest, self).setUp()
+        super(PowerMaxCommonReplicationTest, self).setUp()
         self.replication_device = {
             'target_device_id': self.data.remote_array,
             'remote_port_group': self.data.port_group_name_f,
@@ -7804,16 +7824,16 @@ class VMAXCommonReplicationTest(test.TestCase):
             san_password='smc', san_api_port=8443,
             vmax_port_groups=[self.data.port_group_name_f],
             replication_device=self.replication_device)
-        rest.VMAXRest._establish_rest_session = mock.Mock(
+        rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
-        driver = fc.VMAXFCDriver(configuration=configuration)
+        driver = fc.PowerMaxFCDriver(configuration=configuration)
         iscsi_config = FakeConfiguration(
             None, 'CommonReplicationTests', 1, 1, san_ip='1.1.1.1',
             san_login='smc', vmax_array=self.data.array, vmax_srp='SRP_1',
             san_password='smc', san_api_port=8443,
             vmax_port_groups=[self.data.port_group_name_i],
             replication_device=self.replication_device)
-        iscsi_driver = iscsi.VMAXISCSIDriver(configuration=iscsi_config)
+        iscsi_driver = iscsi.PowerMaxISCSIDriver(configuration=iscsi_config)
         self.iscsi_common = iscsi_driver.common
         self.driver = driver
         self.common = self.driver.common
@@ -7840,7 +7860,8 @@ class VMAXCommonReplicationTest(test.TestCase):
             san_password='smc', san_api_port=8443,
             vmax_port_groups=[self.data.port_group_name_f],
             replication_device=self.async_rep_device)
-        self.async_driver = fc.VMAXFCDriver(configuration=async_configuration)
+        self.async_driver = fc.PowerMaxFCDriver(
+            configuration=async_configuration)
         self.metro_rep_device = {
             'target_device_id': self.data.remote_array,
             'remote_port_group': self.data.port_group_name_f,
@@ -7853,7 +7874,8 @@ class VMAXCommonReplicationTest(test.TestCase):
             san_password='smc', san_api_port=8443,
             vmax_port_groups=[self.data.port_group_name_f],
             replication_device=self.metro_rep_device)
-        self.metro_driver = fc.VMAXFCDriver(configuration=metro_configuration)
+        self.metro_driver = fc.PowerMaxFCDriver(
+            configuration=metro_configuration)
 
     def test_get_replication_info(self):
         self.common._get_replication_info()
@@ -7862,16 +7884,16 @@ class VMAXCommonReplicationTest(test.TestCase):
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=False)
     @mock.patch.object(objects.Group, 'get_by_id',
-                       return_value=VMAXCommonData.test_rep_group)
+                       return_value=PowerMaxCommonData.test_rep_group)
     @mock.patch.object(volume_utils, 'is_group_a_type', return_value=True)
-    @mock.patch.object(utils.VMAXUtils, 'check_replication_matched',
+    @mock.patch.object(utils.PowerMaxUtils, 'check_replication_matched',
                        return_value=True)
-    @mock.patch.object(masking.VMAXMasking, 'add_volume_to_storage_group')
+    @mock.patch.object(masking.PowerMaxMasking, 'add_volume_to_storage_group')
     @mock.patch.object(
-        common.VMAXCommon, '_replicate_volume',
+        common.PowerMaxCommon, '_replicate_volume',
         return_value=({
             'replication_driver_data':
-                VMAXCommonData.test_volume.replication_driver_data}, {}))
+                PowerMaxCommonData.test_volume.replication_driver_data}, {}))
     def test_create_replicated_volume(self, mock_rep, mock_add, mock_match,
                                       mock_check, mock_get, mock_cg):
         extra_specs = deepcopy(self.extra_specs)
@@ -7940,11 +7962,11 @@ class VMAXCommonReplicationTest(test.TestCase):
                     self.data.array, self.data.test_volume, "1",
                     volume_dict, self.extra_specs)
 
-    @mock.patch.object(common.VMAXCommon, '_remove_members')
-    @mock.patch.object(common.VMAXCommon,
+    @mock.patch.object(common.PowerMaxCommon, '_remove_members')
+    @mock.patch.object(common.PowerMaxCommon,
                        '_get_replication_extra_specs',
-                       return_value=VMAXCommonData.rep_extra_specs)
-    @mock.patch.object(utils.VMAXUtils, 'is_volume_failed_over',
+                       return_value=PowerMaxCommonData.rep_extra_specs)
+    @mock.patch.object(utils.PowerMaxUtils, 'is_volume_failed_over',
                        return_value=True)
     def test_unmap_lun_volume_failed_over(self, mock_fo, mock_es, mock_rm):
         extra_specs = deepcopy(self.extra_specs)
@@ -7954,23 +7976,24 @@ class VMAXCommonReplicationTest(test.TestCase):
         self.common._unmap_lun(self.data.test_volume, self.data.connector)
         mock_es.assert_called_once_with(extra_specs, rep_config)
 
-    @mock.patch.object(common.VMAXCommon, '_remove_members')
-    @mock.patch.object(common.VMAXCommon,
+    @mock.patch.object(common.PowerMaxCommon, '_remove_members')
+    @mock.patch.object(common.PowerMaxCommon,
                        '_get_replication_extra_specs',
-                       return_value=VMAXCommonData.rep_extra_specs)
-    @mock.patch.object(utils.VMAXUtils, 'is_metro_device', return_value=True)
+                       return_value=PowerMaxCommonData.rep_extra_specs)
+    @mock.patch.object(utils.PowerMaxUtils, 'is_metro_device',
+                       return_value=True)
     def test_unmap_lun_metro(self, mock_md, mock_es, mock_rm):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         self.common._unmap_lun(self.data.test_volume, self.data.connector)
         self.assertEqual(2, mock_rm.call_count)
 
-    @mock.patch.object(utils.VMAXUtils, 'is_volume_failed_over',
+    @mock.patch.object(utils.PowerMaxUtils, 'is_volume_failed_over',
                        return_value=True)
     def test_initialize_connection_vol_failed_over(self, mock_fo):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
-        rep_extra_specs = deepcopy(VMAXCommonData.rep_extra_specs)
+        rep_extra_specs = deepcopy(PowerMaxCommonData.rep_extra_specs)
         rep_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         rep_config = self.utils.get_replication_config(
             [self.replication_device])
@@ -7980,7 +8003,8 @@ class VMAXCommonReplicationTest(test.TestCase):
                 self.data.test_volume, self.data.connector)
             mock_es.assert_called_once_with(extra_specs, rep_config)
 
-    @mock.patch.object(utils.VMAXUtils, 'is_metro_device', return_value=True)
+    @mock.patch.object(utils.PowerMaxUtils, 'is_metro_device',
+                       return_value=True)
     def test_initialize_connection_vol_metro(self, mock_md):
         metro_connector = deepcopy(self.data.connector)
         metro_connector['multipath'] = True
@@ -7993,12 +8017,13 @@ class VMAXCommonReplicationTest(test.TestCase):
                     'metro_hostlunid': 3}
         self.assertEqual(ref_dict, info_dict)
 
-    @mock.patch.object(rest.VMAXRest, 'get_iscsi_ip_address_and_iqn',
-                       return_value=([VMAXCommonData.ip],
-                                     VMAXCommonData.initiator))
-    @mock.patch.object(common.VMAXCommon, '_get_replication_extra_specs',
-                       return_value=VMAXCommonData.rep_extra_specs)
-    @mock.patch.object(utils.VMAXUtils, 'is_metro_device', return_value=True)
+    @mock.patch.object(rest.PowerMaxRest, 'get_iscsi_ip_address_and_iqn',
+                       return_value=([PowerMaxCommonData.ip],
+                                     PowerMaxCommonData.initiator))
+    @mock.patch.object(common.PowerMaxCommon, '_get_replication_extra_specs',
+                       return_value=PowerMaxCommonData.rep_extra_specs)
+    @mock.patch.object(utils.PowerMaxUtils, 'is_metro_device',
+                       return_value=True)
     def test_initialize_connection_vol_metro_iscsi(self, mock_md, mock_es,
                                                    mock_ip):
         metro_connector = deepcopy(self.data.connector)
@@ -8017,17 +8042,18 @@ class VMAXCommonReplicationTest(test.TestCase):
                                           'iqn': self.data.initiator}]}
         self.assertEqual(ref_dict, info_dict)
 
-    @mock.patch.object(utils.VMAXUtils, 'is_metro_device', return_value=True)
+    @mock.patch.object(utils.PowerMaxUtils, 'is_metro_device',
+                       return_value=True)
     def test_initialize_connection_no_multipath_iscsi(self, mock_md):
         info_dict = self.iscsi_common.initialize_connection(
             self.data.test_volume, self.data.connector)
         self.assertIsNone(info_dict)
 
     @mock.patch.object(
-        masking.VMAXMasking, 'pre_multiattach',
-        return_value=VMAXCommonData.masking_view_dict_multiattach)
+        masking.PowerMaxMasking, 'pre_multiattach',
+        return_value=PowerMaxCommonData.masking_view_dict_multiattach)
     def test_attach_metro_volume(self, mock_pre):
-        rep_extra_specs = deepcopy(VMAXCommonData.rep_extra_specs)
+        rep_extra_specs = deepcopy(PowerMaxCommonData.rep_extra_specs)
         rep_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         hostlunid, remote_port_group = self.common._attach_metro_volume(
             self.data.test_volume, self.data.connector, False,
@@ -8039,10 +8065,10 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.data.extra_specs, rep_extra_specs)
         mock_pre.assert_called_once()
 
-    @mock.patch.object(rest.VMAXRest, 'is_vol_in_rep_session',
+    @mock.patch.object(rest.PowerMaxRest, 'is_vol_in_rep_session',
                        return_value=(False, False, None))
-    @mock.patch.object(common.VMAXCommon, 'extend_volume_is_replicated')
-    @mock.patch.object(common.VMAXCommon, '_sync_check')
+    @mock.patch.object(common.PowerMaxCommon, 'extend_volume_is_replicated')
+    @mock.patch.object(common.PowerMaxCommon, '_sync_check')
     def test_extend_volume_rep_enabled(self, mock_sync, mock_ex_re,
                                        mock_is_re):
         extra_specs = deepcopy(self.extra_specs)
@@ -8067,7 +8093,7 @@ class VMAXCommonReplicationTest(test.TestCase):
         self.assertEqual('OS-HostX-SRP_1-DiamondDSS-OS-fibre-PG-RE',
                          masking_dict[utils.SG_NAME])
 
-    @mock.patch.object(common.VMAXCommon,
+    @mock.patch.object(common.PowerMaxCommon,
                        '_replicate_volume',
                        return_value=({}, {}))
     def test_manage_existing_is_replicated(self, mock_rep):
@@ -8086,7 +8112,7 @@ class VMAXCommonReplicationTest(test.TestCase):
                 self.data.test_volume, volume_name, provider_location,
                 extra_specs, delete_src=False)
 
-    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
     def test_setup_volume_replication(self, mock_rm):
         rep_status, rep_data, __ = self.common.setup_volume_replication(
             self.data.array, self.data.test_volume, self.data.device_id,
@@ -8095,8 +8121,8 @@ class VMAXCommonReplicationTest(test.TestCase):
         self.assertEqual({'array': self.data.remote_array,
                           'device_id': self.data.device_id}, rep_data)
 
-    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
-    @mock.patch.object(common.VMAXCommon, '_create_volume')
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
+    @mock.patch.object(common.PowerMaxCommon, '_create_volume')
     def test_setup_volume_replication_target(self, mock_create, mock_rm):
         rep_status, rep_data, __ = self.common.setup_volume_replication(
             self.data.array, self.data.test_volume, self.data.device_id,
@@ -8106,7 +8132,7 @@ class VMAXCommonReplicationTest(test.TestCase):
                           'device_id': self.data.device_id2}, rep_data)
         mock_create.assert_not_called()
 
-    @mock.patch.object(common.VMAXCommon, '_cleanup_remote_target')
+    @mock.patch.object(common.PowerMaxCommon, '_cleanup_remote_target')
     def test_cleanup_lun_replication_success(self, mock_clean):
         rep_extra_specs = deepcopy(self.data.rep_extra_specs)
         rep_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
@@ -8128,7 +8154,7 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.data.device_id2, self.data.rdf_group_no, "1",
             rep_extra_specs)
 
-    @mock.patch.object(common.VMAXCommon, '_cleanup_remote_target')
+    @mock.patch.object(common.PowerMaxCommon, '_cleanup_remote_target')
     def test_cleanup_lun_replication_no_target(self, mock_clean):
         with mock.patch.object(self.common, 'get_remote_target_device',
                                return_value=(None, '', '', '', '')):
@@ -8138,9 +8164,9 @@ class VMAXCommonReplicationTest(test.TestCase):
             mock_clean.assert_not_called()
 
     @mock.patch.object(
-        common.VMAXCommon, 'get_remote_target_device',
-        return_value=(VMAXCommonData.device_id2, '', '', '', ''))
-    @mock.patch.object(common.VMAXCommon,
+        common.PowerMaxCommon, 'get_remote_target_device',
+        return_value=(PowerMaxCommonData.device_id2, '', '', '', ''))
+    @mock.patch.object(common.PowerMaxCommon,
                        '_add_volume_to_async_rdf_managed_grp')
     def test_cleanup_lun_replication_exception(self, mock_add, mock_tgt):
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -8156,10 +8182,11 @@ class VMAXCommonReplicationTest(test.TestCase):
                           extra_specs)
         mock_add.assert_called_once()
 
-    @mock.patch.object(common.VMAXCommon, '_cleanup_metro_target')
-    @mock.patch.object(masking.VMAXMasking, 'remove_vol_from_storage_group')
-    @mock.patch.object(common.VMAXCommon, '_delete_from_srp')
-    @mock.patch.object(provision.VMAXProvision, 'break_rdf_relationship')
+    @mock.patch.object(common.PowerMaxCommon, '_cleanup_metro_target')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'remove_vol_from_storage_group')
+    @mock.patch.object(common.PowerMaxCommon, '_delete_from_srp')
+    @mock.patch.object(provision.PowerMaxProvision, 'break_rdf_relationship')
     def test_cleanup_remote_target(self, mock_break, mock_del,
                                    mock_rm, mock_clean_metro):
         with mock.patch.object(self.rest, 'are_vols_rdf_paired',
@@ -8199,8 +8226,8 @@ class VMAXCommonReplicationTest(test.TestCase):
                           self.data.device_id, self.data.device_id2,
                           self.data.rdf_group_name, "vol1", extra_specs)
 
-    @mock.patch.object(provision.VMAXProvision, 'enable_group_replication')
-    @mock.patch.object(rest.VMAXRest, 'get_num_vols_in_sg',
+    @mock.patch.object(provision.PowerMaxProvision, 'enable_group_replication')
+    @mock.patch.object(rest.PowerMaxRest, 'get_num_vols_in_sg',
                        side_effect=[2, 0])
     def test_cleanup_metro_target(self, mock_vols, mock_enable):
         # allow delete is True
@@ -8218,10 +8245,11 @@ class VMAXCommonReplicationTest(test.TestCase):
                           self.data.device_id2,
                           self.data.rdf_group_no, specs)
 
-    @mock.patch.object(common.VMAXCommon,
+    @mock.patch.object(common.PowerMaxCommon,
                        '_remove_vol_and_cleanup_replication')
-    @mock.patch.object(masking.VMAXMasking, 'remove_vol_from_storage_group')
-    @mock.patch.object(common.VMAXCommon, '_delete_from_srp')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'remove_vol_from_storage_group')
+    @mock.patch.object(common.PowerMaxCommon, '_delete_from_srp')
     def test_cleanup_replication_source(self, mock_del, mock_rm, mock_clean):
         self.common._cleanup_replication_source(
             self.data.array, self.data.test_volume, "vol1",
@@ -8248,7 +8276,7 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.common.failover_host(volumes)
             mock_fo.assert_called_once()
 
-    @mock.patch.object(common.VMAXCommon, 'failover_replication',
+    @mock.patch.object(common.PowerMaxCommon, 'failover_replication',
                        return_value=({}, {}))
     def test_failover_host_groups(self, mock_fg):
         volumes = [self.data.test_volume_group_member]
@@ -8281,10 +8309,10 @@ class VMAXCommonReplicationTest(test.TestCase):
                     self.data.device_id))
             self.assertIsNone(target_device4)
 
-    @mock.patch.object(common.VMAXCommon, 'setup_volume_replication')
-    @mock.patch.object(provision.VMAXProvision, 'extend_volume')
-    @mock.patch.object(provision.VMAXProvision, 'break_rdf_relationship')
-    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
+    @mock.patch.object(common.PowerMaxCommon, 'setup_volume_replication')
+    @mock.patch.object(provision.PowerMaxProvision, 'extend_volume')
+    @mock.patch.object(provision.PowerMaxProvision, 'break_rdf_relationship')
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
     def test_extend_volume_is_replicated(self, mock_remove,
                                          mock_break, mock_extend, mock_setup):
         self.common.extend_volume_is_replicated(
@@ -8316,8 +8344,9 @@ class VMAXCommonReplicationTest(test.TestCase):
                               self.data.device_id, 'vol1', '1',
                               self.data.extra_specs_rep_enabled)
 
-    @mock.patch.object(common.VMAXCommon, 'add_volume_to_replication_group')
-    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
+    @mock.patch.object(common.PowerMaxCommon,
+                       'add_volume_to_replication_group')
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
     def test_enable_rdf(self, mock_remove, mock_add):
         rep_config = self.utils.get_replication_config(
             [self.replication_device])
@@ -8328,8 +8357,9 @@ class VMAXCommonReplicationTest(test.TestCase):
         self.assertEqual(2, mock_remove.call_count)
         self.assertEqual(2, mock_add.call_count)
 
-    @mock.patch.object(masking.VMAXMasking, 'remove_vol_from_storage_group')
-    @mock.patch.object(common.VMAXCommon, '_cleanup_remote_target')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'remove_vol_from_storage_group')
+    @mock.patch.object(common.PowerMaxCommon, '_cleanup_remote_target')
     def test_enable_rdf_exception(self, mock_cleanup, mock_rm):
         rep_config = self.utils.get_replication_config(
             [self.replication_device])
@@ -8346,7 +8376,7 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.extra_specs)
         self.assertEqual(self.data.default_sg_re_enabled, sg_name)
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        'get_or_create_default_storage_group',
                        side_effect=exception.VolumeBackendAPIException)
     def test_add_volume_to_replication_group_exception(self, mock_get):
@@ -8509,28 +8539,29 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.assertEqual(fields.ReplicationStatus.ERROR,
                              model_update['replication_status'])
 
-    @mock.patch.object(provision.VMAXProvision, 'failover_group')
+    @mock.patch.object(provision.PowerMaxProvision, 'failover_group')
     def test_failover_replication_metro(self, mock_fo):
         volumes = [self.data.test_volume]
         _, vol_model_updates = self.common._failover_replication(
             volumes, group, None, host=True, is_metro=True)
         mock_fo.assert_not_called()
 
-    @mock.patch.object(utils.VMAXUtils, 'get_volume_group_utils',
-                       return_value=(VMAXCommonData.array, {}))
-    @mock.patch.object(common.VMAXCommon, '_cleanup_group_replication')
+    @mock.patch.object(utils.PowerMaxUtils, 'get_volume_group_utils',
+                       return_value=(PowerMaxCommonData.array, {}))
+    @mock.patch.object(common.PowerMaxCommon, '_cleanup_group_replication')
     @mock.patch.object(volume_utils, 'is_group_a_type', return_value=True)
     def test_delete_replication_group(self, mock_check,
                                       mock_cleanup, mock_utils):
         self.common._delete_group(self.data.test_rep_group, [])
         mock_cleanup.assert_called_once()
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        'remove_volumes_from_storage_group')
-    @mock.patch.object(utils.VMAXUtils, 'check_rep_status_enabled')
-    @mock.patch.object(common.VMAXCommon,
+    @mock.patch.object(utils.PowerMaxUtils, 'check_rep_status_enabled')
+    @mock.patch.object(common.PowerMaxCommon,
                        '_remove_remote_vols_from_volume_group')
-    @mock.patch.object(masking.VMAXMasking, 'add_remote_vols_to_volume_group')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'add_remote_vols_to_volume_group')
     @mock.patch.object(volume_utils, 'is_group_a_type', return_value=True)
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=True)
@@ -8544,7 +8575,7 @@ class VMAXCommonReplicationTest(test.TestCase):
         mock_add.assert_called_once()
         mock_remove.assert_called_once()
 
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking,
                        'remove_volumes_from_storage_group')
     def test_remove_remote_vols_from_volume_group(self, mock_rm):
         self.common._remove_remote_vols_from_volume_group(
@@ -8552,8 +8583,8 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.data.test_rep_group, self.data.rep_extra_specs)
         mock_rm.assert_called_once()
 
-    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
-    @mock.patch.object(masking.VMAXMasking,
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
+    @mock.patch.object(masking.PowerMaxMasking,
                        'remove_volumes_from_storage_group')
     def test_cleanup_group_replication(self, mock_rm, mock_rm_reset):
         self.common._cleanup_group_replication(
@@ -8561,7 +8592,7 @@ class VMAXCommonReplicationTest(test.TestCase):
             [self.data.device_id], self.extra_specs)
         mock_rm.assert_called_once()
 
-    @mock.patch.object(masking.VMAXMasking, 'add_volume_to_storage_group')
+    @mock.patch.object(masking.PowerMaxMasking, 'add_volume_to_storage_group')
     def test_add_volume_to_async_group(self, mock_add):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs['rep_mode'] = utils.REP_ASYNC
@@ -8579,9 +8610,9 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.data.failed_resource, self.data.device_id, 'name',
             self.data.remote_array, self.data.device_id2, extra_specs)
 
-    @mock.patch.object(common.VMAXCommon,
+    @mock.patch.object(common.PowerMaxCommon,
                        '_add_volume_to_async_rdf_managed_grp')
-    @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
     def test_setup_volume_replication_async(self, mock_rm, mock_add):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs['rep_mode'] = utils.REP_ASYNC
@@ -8594,27 +8625,29 @@ class VMAXCommonReplicationTest(test.TestCase):
                           'device_id': self.data.device_id}, rep_data)
         mock_add.assert_called_once()
 
-    @mock.patch.object(common.VMAXCommon, '_failover_replication',
+    @mock.patch.object(common.PowerMaxCommon, '_failover_replication',
                        return_value=({}, {}))
     def test_failover_host_async(self, mock_fg):
         volumes = [self.data.test_volume]
         extra_specs = deepcopy(self.extra_specs)
         extra_specs['rep_mode'] = utils.REP_ASYNC
-        with mock.patch.object(common.VMAXCommon, '_initial_setup',
+        with mock.patch.object(common.PowerMaxCommon, '_initial_setup',
                                return_value=extra_specs):
             self.async_driver.common.failover_host(volumes, None, [])
         mock_fg.assert_called_once()
 
-    @mock.patch.object(common.VMAXCommon, '_retype_volume', return_value=True)
-    @mock.patch.object(masking.VMAXMasking, 'remove_vol_from_storage_group')
-    @mock.patch.object(common.VMAXCommon, '_retype_remote_volume',
+    @mock.patch.object(common.PowerMaxCommon, '_retype_volume',
                        return_value=True)
-    @mock.patch.object(common.VMAXCommon, 'setup_volume_replication',
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'remove_vol_from_storage_group')
+    @mock.patch.object(common.PowerMaxCommon, '_retype_remote_volume',
+                       return_value=True)
+    @mock.patch.object(common.PowerMaxCommon, 'setup_volume_replication',
                        return_value=(
-                           '', VMAXCommonData.provider_location2, ''))
-    @mock.patch.object(common.VMAXCommon,
+                           '', PowerMaxCommonData.provider_location2, ''))
+    @mock.patch.object(common.PowerMaxCommon,
                        '_remove_vol_and_cleanup_replication')
-    @mock.patch.object(utils.VMAXUtils, 'is_replication_enabled',
+    @mock.patch.object(utils.PowerMaxUtils, 'is_replication_enabled',
                        side_effect=[False, True, True, False, True, True])
     def test_migrate_volume_replication(self, mock_re, mock_rm_rep,
                                         mock_setup, mock_retype,
@@ -8631,13 +8664,15 @@ class VMAXCommonReplicationTest(test.TestCase):
         mock_retype.assert_called_once()
 
     @mock.patch.object(
-        common.VMAXCommon, '_get_replication_extra_specs',
-        return_value=VMAXCommonData.extra_specs_rep_enabled)
+        common.PowerMaxCommon, '_get_replication_extra_specs',
+        return_value=PowerMaxCommonData.extra_specs_rep_enabled)
     @mock.patch.object(
-        rest.VMAXRest, 'get_storage_groups_from_volume',
+        rest.PowerMaxRest, 'get_storage_groups_from_volume',
         side_effect=[
-            VMAXCommonData.storagegroup_list, ['OS-SRP_1-Diamond-DSS-RE-SG']])
-    @mock.patch.object(common.VMAXCommon, '_retype_volume', return_value=True)
+            PowerMaxCommonData.storagegroup_list,
+            ['OS-SRP_1-Diamond-DSS-RE-SG']])
+    @mock.patch.object(common.PowerMaxCommon, '_retype_volume',
+                       return_value=True)
     def test_retype_volume_replication(self, mock_retype, mock_sg, mock_es):
         for x in range(0, 2):
             self.common._retype_remote_volume(
@@ -8647,16 +8682,17 @@ class VMAXCommonReplicationTest(test.TestCase):
         mock_retype.assert_called_once()
 
 
-class VMAXVolumeMetadataNoDebugTest(test.TestCase):
+class PowerMaxVolumeMetadataNoDebugTest(test.TestCase):
     def setUp(self):
-        self.data = VMAXCommonData()
+        self.data = PowerMaxCommonData()
 
-        super(VMAXVolumeMetadataNoDebugTest, self).setUp()
+        super(PowerMaxVolumeMetadataNoDebugTest, self).setUp()
         is_debug = False
-        self.volume_metadata = metadata.VMAXVolumeMetadata(
-            rest.VMAXRest, '3.1', is_debug)
+        self.volume_metadata = metadata.PowerMaxVolumeMetadata(
+            rest.PowerMaxRest, '3.1', is_debug)
 
-    @mock.patch.object(metadata.VMAXVolumeMetadata, '_fill_volume_trace_dict',
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
+                       '_fill_volume_trace_dict',
                        return_value={})
     def test_gather_volume_info(self, mock_fvtd):
         self.volume_metadata.gather_volume_info(
@@ -8664,25 +8700,26 @@ class VMAXVolumeMetadataNoDebugTest(test.TestCase):
         mock_fvtd.assert_not_called()
 
 
-class VMAXVolumeMetadataDebugTest(test.TestCase):
+class PowerMaxVolumeMetadataDebugTest(test.TestCase):
     def setUp(self):
-        self.data = VMAXCommonData()
+        self.data = PowerMaxCommonData()
 
-        super(VMAXVolumeMetadataDebugTest, self).setUp()
+        super(PowerMaxVolumeMetadataDebugTest, self).setUp()
         is_debug = True
-        self.volume_metadata = metadata.VMAXVolumeMetadata(
-            rest.VMAXRest, '3.1', is_debug)
+        self.volume_metadata = metadata.PowerMaxVolumeMetadata(
+            rest.PowerMaxRest, '3.1', is_debug)
         self.utils = self.volume_metadata.utils
         self.rest = self.volume_metadata.rest
 
-    @mock.patch.object(metadata.VMAXVolumeMetadata, '_fill_volume_trace_dict',
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
+                       '_fill_volume_trace_dict',
                        return_value={})
     def test_gather_volume_info(self, mock_fvtd):
         self.volume_metadata.gather_volume_info(
             self.data.volume_id, 'create', False, volume_size=1)
         mock_fvtd.assert_called_once()
 
-    @mock.patch.object(metadata.VMAXVolumeMetadata,
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
                        'update_volume_info_metadata',
                        return_value={})
     def test_capture_attach_info(self, mock_uvim):
@@ -8692,7 +8729,7 @@ class VMAXVolumeMetadataDebugTest(test.TestCase):
             False, False)
         mock_uvim.assert_called_once()
 
-    @mock.patch.object(metadata.VMAXVolumeMetadata,
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
                        'update_volume_info_metadata',
                        return_value={})
     def test_capture_create_volume(self, mock_uvim):
@@ -8701,14 +8738,14 @@ class VMAXVolumeMetadataDebugTest(test.TestCase):
             "test_group_id", self.data.extra_specs, {}, 'create', None)
         mock_uvim.assert_called_once()
 
-    @mock.patch.object(metadata.VMAXVolumeMetadata,
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
                        'update_volume_info_metadata',
                        return_value={})
     def test_capture_delete_info(self, mock_uvim):
         self.volume_metadata.capture_delete_info(self.data.test_volume)
         mock_uvim.assert_called_once()
 
-    @mock.patch.object(metadata.VMAXVolumeMetadata,
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
                        'update_volume_info_metadata',
                        return_value={})
     def test_capture_manage_existing(self, mock_uvim):
@@ -8717,7 +8754,7 @@ class VMAXVolumeMetadataDebugTest(test.TestCase):
             self.data.extra_specs)
         mock_uvim.assert_called_once()
 
-    @mock.patch.object(metadata.VMAXVolumeMetadata,
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
                        'update_volume_info_metadata',
                        return_value={})
     def test_capture_failover_volume(self, mock_uvim):
@@ -8729,7 +8766,7 @@ class VMAXVolumeMetadataDebugTest(test.TestCase):
             fields.ReplicationStatus.FAILED_OVER, utils.REP_SYNC)
         mock_uvim.assert_called_once()
 
-    @mock.patch.object(metadata.VMAXVolumeMetadata,
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
                        'update_volume_info_metadata',
                        return_value={})
     def test_capture_modify_group(self, mock_uvim):
@@ -8738,7 +8775,7 @@ class VMAXVolumeMetadataDebugTest(test.TestCase):
             [], self.data.array)
         mock_uvim.assert_called_once()
 
-    @mock.patch.object(metadata.VMAXVolumeMetadata,
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
                        'update_volume_info_metadata',
                        return_value={})
     def test_capture_extend_info(self, mock_uvim):
@@ -8747,7 +8784,7 @@ class VMAXVolumeMetadataDebugTest(test.TestCase):
             self.data.extra_specs, self.data.array)
         mock_uvim.assert_called_once()
 
-    @mock.patch.object(metadata.VMAXVolumeMetadata,
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
                        'update_volume_info_metadata',
                        return_value={})
     def test_capture_detach_info(self, mock_uvim):
@@ -8756,7 +8793,7 @@ class VMAXVolumeMetadataDebugTest(test.TestCase):
             None, None)
         mock_uvim.assert_called_once()
 
-    @mock.patch.object(metadata.VMAXVolumeMetadata,
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
                        'update_volume_info_metadata',
                        return_value={})
     def test_capture_snapshot_info(self, mock_uvim):
@@ -8765,7 +8802,7 @@ class VMAXVolumeMetadataDebugTest(test.TestCase):
             'ss-test-vol')
         mock_uvim.assert_called_once()
 
-    @mock.patch.object(metadata.VMAXVolumeMetadata,
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
                        'update_volume_info_metadata',
                        return_value={})
     def test_capture_retype_info(self, mock_uvim):
@@ -8817,7 +8854,7 @@ class VMAXVolumeMetadataDebugTest(test.TestCase):
             sg_list=sg_list)
         self.assertEqual(result_dict, volume_metadata)
 
-    @mock.patch.object(utils.VMAXUtils, 'merge_dicts',
+    @mock.patch.object(utils.PowerMaxUtils, 'merge_dicts',
                        return_value={})
     def test_consolidate_volume_trace_list(self, mock_m2d):
         self.volume_metadata.volume_trace_list = [self.data.data_dict]
@@ -8860,20 +8897,20 @@ class VMAXVolumeMetadataDebugTest(test.TestCase):
         self.assertEqual('OS-fibre-PG', result_dict['port_group'])
 
     @mock.patch.object(platform, 'platform',
-                       return_value=VMAXCommonData.platform)
+                       return_value=PowerMaxCommonData.platform)
     @mock.patch.object(platform, 'python_version',
-                       return_value=VMAXCommonData.python_version)
+                       return_value=PowerMaxCommonData.python_version)
     @mock.patch.object(openstack_version.version_info, 'version_string',
-                       return_value=VMAXCommonData.openstack_version)
+                       return_value=PowerMaxCommonData.openstack_version)
     @mock.patch.object(openstack_version.version_info, 'release_string',
-                       return_value=VMAXCommonData.openstack_release)
-    @mock.patch.object(rest.VMAXRest, 'get_unisphere_version',
+                       return_value=PowerMaxCommonData.openstack_release)
+    @mock.patch.object(rest.PowerMaxRest, 'get_unisphere_version',
                        return_value={
-                           'version': VMAXCommonData.unisphere_version})
-    @mock.patch.object(rest.VMAXRest, 'get_array_serial',
+                           'version': PowerMaxCommonData.unisphere_version})
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_serial',
                        return_value={
-                           'ucode': VMAXCommonData.vmax_firmware_version,
-                           'model': VMAXCommonData.vmax_model})
+                           'ucode': PowerMaxCommonData.vmax_firmware_version,
+                           'model': PowerMaxCommonData.vmax_model})
     def test_gather_version_info(
             self, mock_vi, mock_ur, mock_or, mock_ov, mock_pv, mock_p):
         self.volume_metadata.gather_version_info(self.data.array)
