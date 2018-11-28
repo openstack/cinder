@@ -20,7 +20,7 @@ word ``volume``::
   OpenStack-API-Version: volume 3.0
 
 If a user makes a request without specifying a version, they will get
-the ``DEFAULT_API_VERSION`` as defined in
+the ``_MIN_API_VERSION`` as defined in
 ``cinder/api/openstack/api_version_request.py``. This value is currently ``3.0``
 and is expected to remain so for quite a long time.
 
