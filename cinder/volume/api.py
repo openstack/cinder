@@ -2125,6 +2125,15 @@ class API(base.Base):
         """Create an attachment record for the specified volume."""
         ctxt.authorize(attachment_policy.CREATE_POLICY, target_obj=volume_ref)
         connection_info = {}
+        if "error" in volume_ref.status:
+            msg = ('Volume attachments can not be created if the volume '
+                   'is in an error state. '
+                   'The Volume %(volume_id)s currently has a status of: '
+                   '%(volume_status)s ') % {
+                       'volume_id': volume_ref.id,
+                       'volume_status': volume_ref.status}
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
         attachment_ref = self._attachment_reserve(ctxt,
                                                   volume_ref,
                                                   instance_uuid)
@@ -2169,6 +2178,14 @@ class API(base.Base):
         ctxt.authorize(attachment_policy.UPDATE_POLICY,
                        target_obj=attachment_ref)
         volume_ref = objects.Volume.get_by_id(ctxt, attachment_ref.volume_id)
+        if "error" in volume_ref.status:
+            msg = ('Volume attachments can not be updated if the volume '
+                   'is in an error state. The Volume %(volume_id)s '
+                   'currently has a status of: %(volume_status)s ') % {
+                       'volume_id': volume_ref.id,
+                       'volume_status': volume_ref.status}
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
         connection_info = (
             self.volume_rpcapi.attachment_update(ctxt,
                                                  volume_ref,
