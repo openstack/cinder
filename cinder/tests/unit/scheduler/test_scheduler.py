@@ -121,7 +121,8 @@ class SchedulerManagerTestCase(test.TestCase):
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-volume': '1.3'})
     @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-volume': '1.4',
-                                                 'cinder-scheduler': '1.4'})
+                                                 'cinder-scheduler': '1.4',
+                                                 'cinder-backup': '1.5'})
     def test_reset(self, get_min_obj, get_min_rpc):
         mgr = self.manager_cls()
 

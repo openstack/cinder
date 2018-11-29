@@ -69,6 +69,7 @@ def _launch_backup_process(launcher, num_process):
     try:
         server = service.Service.create(binary='cinder-backup',
                                         coordination=True,
+                                        service_name='backup',
                                         process_number=num_process)
     except Exception:
         LOG.exception('Backup service %s failed to start.', CONF.host)

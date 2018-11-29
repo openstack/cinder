@@ -109,10 +109,12 @@ class TestCinderBackupCmd(test.TestCase):
 
         c1 = mock.call(binary=constants.BACKUP_BINARY,
                        coordination=True,
-                       process_number=1)
+                       process_number=1,
+                       service_name='backup')
         c2 = mock.call(binary=constants.BACKUP_BINARY,
                        coordination=True,
-                       process_number=2)
+                       process_number=2,
+                       service_name='backup')
         service_create.assert_has_calls([c1, c2])
 
         launcher = get_launcher.return_value
