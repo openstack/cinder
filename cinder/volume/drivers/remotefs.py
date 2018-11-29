@@ -789,7 +789,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         # NFS snapshots
         #  It needs to run as root for volumes attached to instances, but
         #  does not when in secure mode.
-        self._execute('qemu-img', 'commit', path,
+        self._execute('qemu-img', 'commit', '-d', path,
                       run_as_root=self._execute_as_root)
         self._delete(path)
 
