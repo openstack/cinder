@@ -280,3 +280,37 @@ class AttachmentManagerTestCase(test.TestCase):
         self.assertEqual('ro', aref.attach_mode)
         self.assertEqual(vref.id, aref.volume_id)
         self.assertEqual({}, aref.connection_info)
+
+    def test_attachment_create_volume_in_error_state(self):
+        """Test attachment_create volume in error state."""
+        volume_params = {'status': 'available'}
+
+        vref = tests_utils.create_volume(self.context, **volume_params)
+        vref.status = "error"
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume_api.attachment_create,
+                          self.context,
+                          vref,
+                          fake.UUID2)
+
+    def test_attachment_update_volume_in_error_state(self):
+        """Test attachment_update volumem in error state."""
+        volume_params = {'status': 'available'}
+
+        vref = tests_utils.create_volume(self.context, **volume_params)
+        aref = self.volume_api.attachment_create(self.context,
+                                                 vref,
+                                                 fake.UUID2)
+        self.assertEqual(fake.UUID2, aref.instance_uuid)
+        self.assertIsNone(aref.attach_time)
+        self.assertEqual('reserved', aref.attach_status)
+        self.assertEqual(vref.id, aref.volume_id)
+        self.assertEqual({}, aref.connection_info)
+        vref.status = 'error'
+        vref.save()
+        connector = {'fake': 'connector'}
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume_api.attachment_update,
+                          self.context,
+                          aref,
+                          connector)
