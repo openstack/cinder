@@ -559,7 +559,7 @@ class VolumeOpsTestCase(test.TestCase):
         cf = self.session.vim.client.factory
         cf.create.side_effect = lambda *args: mock.Mock()
 
-        size_kb = units.Ki
+        size_kb = volumeops.MIN_VIRTUAL_DISK_SIZE_KB
         controller_key = 200
         disk_type = 'thick'
         profile_id = mock.sentinel.profile_id
@@ -597,7 +597,8 @@ class VolumeOpsTestCase(test.TestCase):
 
         factory.create.side_effect = None
         self.assertEqual(1, len(ret))
-        self.assertEqual(units.Ki, ret[0].device.capacityInKB)
+        expected_size = volumeops.MIN_VIRTUAL_DISK_SIZE_KB
+        self.assertEqual(expected_size, ret[0].device.capacityInKB)
         self.assertEqual(200, ret[0].device.controllerKey)
         expected = [mock.call.create('ns0:VirtualDeviceConfigSpec'),
                     mock.call.create('ns0:VirtualDisk'),
@@ -608,7 +609,7 @@ class VolumeOpsTestCase(test.TestCase):
         factory = self.session.vim.client.factory
         factory.create.side_effect = lambda *args: mock.Mock()
 
-        size_kb = 2 * units.Ki
+        size_kb = 8 * units.Ki
         disk_type = 'thin'
         adapter_type = 'lsiLogicsas'
         profile_id = mock.sentinel.profile_id

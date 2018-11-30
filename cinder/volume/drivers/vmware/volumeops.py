@@ -34,6 +34,7 @@ LINKED_CLONE_TYPE = 'linked'
 FULL_CLONE_TYPE = 'full'
 
 BACKING_UUID_KEY = 'instanceUuid'
+MIN_VIRTUAL_DISK_SIZE_KB = 4 * units.Ki
 
 
 def split_datastore_path(datastore_path):
@@ -659,8 +660,9 @@ class VMwareVolumeOps(object):
         cf = self._session.vim.client.factory
 
         disk_device = cf.create('ns0:VirtualDisk')
-        # disk size should be at least 1024KB
-        disk_device.capacityInKB = max(units.Ki, int(size_kb))
+        # disk size should be at least 4MB for VASA provider
+        min_size_kb = MIN_VIRTUAL_DISK_SIZE_KB
+        disk_device.capacityInKB = max(min_size_kb, int(size_kb))
         if controller_key < 0:
             disk_device.key = controller_key - 1
         else:
