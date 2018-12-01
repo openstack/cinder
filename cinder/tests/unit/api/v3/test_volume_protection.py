@@ -15,6 +15,7 @@ import uuid
 import webob
 
 import mock
+from oslo_serialization import jsonutils
 from six.moves import http_client
 
 from cinder.api import microversions as mv
@@ -43,11 +44,14 @@ class VolumeProtectionTests(test.TestCase):
             user_id=uuid.uuid4().hex, project_id=self.other_project_id
         )
 
-    def _get_request_response(self, context, path, method):
+    def _get_request_response(self, context, path, method, body=None):
         request = webob.Request.blank(path)
         request.content_type = 'application/json'
         request.headers = mv.get_mv_header(mv.BASE_VERSION)
         request.method = method
+        if body:
+            request.headers["content-type"] = "application/json"
+            request.body = jsonutils.dump_as_bytes(body)
         return request.get_response(
             fakes.wsgi_app(fake_auth_context=context)
         )
@@ -113,3 +117,35 @@ class VolumeProtectionTests(test.TestCase):
         # project. Does cinder return a 404 in cases like this? Or is a 403
         # expected?
         self.assertEqual(http_client.NOT_FOUND, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get_volume')
+    def test_admin_can_force_delete_volumes(self, mock_volume):
+        # Make sure administrators are authorized to force delete volumes
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+        body = {"os-force_delete": {}}
+        response = self._get_request_response(admin_context, path, 'POST',
+                                              body=body)
+
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get_volume')
+    def test_nonadmin_cannot_force_delete_volumes(self, mock_volume):
+        # Make sure volumes only can be force deleted by admin
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+        body = {"os-force_delete": {}}
+        response = self._get_request_response(user_context, path, 'POST',
+                                              body=body)
+
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
