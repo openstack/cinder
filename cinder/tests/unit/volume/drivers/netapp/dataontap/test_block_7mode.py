@@ -484,12 +484,12 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
                           self.library._check_volume_type_for_lun,
                           na_fakes.VOLUME, {}, {}, na_fakes.EXTRA_SPECS)
 
-    def test_get_preferred_target_from_list(self):
+    def test_get_targets_from_list(self):
 
-        result = self.library._get_preferred_target_from_list(
+        result = self.library._get_targets_from_list(
             fake.ISCSI_TARGET_DETAILS_LIST)
 
-        self.assertEqual(fake.ISCSI_TARGET_DETAILS_LIST[0], result)
+        self.assertEqual(fake.ISCSI_TARGET_DETAILS_LIST, result)
 
     def test_mark_qos_policy_group_for_deletion(self):
         result = self.library._mark_qos_policy_group_for_deletion(

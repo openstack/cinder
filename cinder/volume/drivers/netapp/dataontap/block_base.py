@@ -839,13 +839,12 @@ class NetAppBlockStorageLibrary(object):
                   "initiator %(initiator_name)s",
                   {'name': name, 'initiator_name': initiator_name})
 
-        preferred_target = self._get_preferred_target_from_list(
-            target_list)
-        if preferred_target is None:
+        targets = self._get_targets_from_list(target_list)
+        if not targets:
             msg = _('Failed to get target portal for the LUN %s')
             raise exception.VolumeBackendAPIException(data=msg % name)
-        (address, port) = (preferred_target['address'],
-                           preferred_target['port'])
+        addresses = [target['address'] for target in targets]
+        ports = [target['port'] for target in targets]
 
         iqn = self.zapi_client.get_iscsi_service_details()
         if not iqn:
@@ -853,8 +852,8 @@ class NetAppBlockStorageLibrary(object):
             raise exception.VolumeBackendAPIException(data=msg % name)
 
         properties = na_utils.get_iscsi_connection_properties(lun_id, volume,
-                                                              iqn, address,
-                                                              port)
+                                                              iqn, addresses,
+                                                              ports)
 
         if self.configuration.use_chap_auth:
             chap_username, chap_password = self._configure_chap(initiator_name)
@@ -881,18 +880,13 @@ class NetAppBlockStorageLibrary(object):
         properties['data']['discovery_auth_username'] = username
         properties['data']['discovery_auth_password'] = password
 
-    def _get_preferred_target_from_list(self, target_details_list,
-                                        filter=None):
-        preferred_target = None
-        for target in target_details_list:
-            if filter and target['address'] not in filter:
-                continue
-            if target.get('interface-enabled', 'true') == 'true':
-                preferred_target = target
-                break
-        if preferred_target is None and len(target_details_list) > 0:
-            preferred_target = target_details_list[0]
-        return preferred_target
+    def _get_targets_from_list(self, target_details_list, filter=None):
+        targets = [target for target in target_details_list
+                   if (not filter or target['address'] in filter) and
+                   target.get('interface-enabled', 'true') == 'true']
+        if not targets and len(target_details_list) > 0:
+            targets = target_details_list
+        return targets
 
     def terminate_connection_iscsi(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance.
