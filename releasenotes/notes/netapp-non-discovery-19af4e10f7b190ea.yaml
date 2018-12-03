@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp iSCSI drivers no longer use the discovery mechanism for multipathing
+    and they always return all target/portals when attaching a volume.  Thanks
+    to this, volumes will be successfully attached even if the target/portal
+    selected as primary is down, this will be the case for both, multipath and
+    single path connections.
