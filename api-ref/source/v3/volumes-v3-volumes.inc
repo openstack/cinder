@@ -137,7 +137,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volumes-list-detailed-response.json
+.. literalinclude:: ./samples/volumes/volumes-list-detailed-response.json
    :language: javascript
 
 
@@ -211,7 +211,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-create-request.json
+.. literalinclude:: ./samples/volumes/volume-create-request.json
    :language: javascript
 
 
@@ -248,7 +248,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-create-response.json
+.. literalinclude:: ./samples/volumes/volume-create-response.json
    :language: javascript
 
 
@@ -305,7 +305,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volumes-list-response.json
+.. literalinclude:: ./samples/volumes/volumes-list-response.json
    :language: javascript
 
 
@@ -378,7 +378,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-show-response.json
+.. literalinclude:: ./samples/volumes/volume-show-response.json
    :language: javascript
 
 
@@ -414,7 +414,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-update-request.json
+.. literalinclude:: ./samples/volumes/volume-update-request.json
    :language: javascript
 
 
@@ -451,7 +451,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-update-response.json
+.. literalinclude:: ./samples/volumes/volume-update-response.json
    :language: javascript
 
 
@@ -535,7 +535,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-metadata-create-request.json
+.. literalinclude:: ./samples/volumes/volume-metadata-create-request.json
    :language: javascript
 
 
@@ -551,7 +551,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-metadata-create-response.json
+.. literalinclude:: ./samples/volumes/volume-metadata-create-response.json
    :language: javascript
 
 
@@ -592,7 +592,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-metadata-show-response.json
+.. literalinclude:: ./samples/volumes/volume-metadata-show-response.json
    :language: javascript
 
 
@@ -624,7 +624,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-metadata-update-request.json
+.. literalinclude:: ./samples/volumes/volume-metadata-update-request.json
    :language: javascript
 
 
@@ -641,7 +641,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-metadata-update-response.json
+.. literalinclude:: ./samples/volumes/volume-metadata-update-response.json
    :language: javascript
 
 
@@ -682,7 +682,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-metadata-show-key-response.json
+.. literalinclude:: ./samples/volumes/volume-metadata-show-key-response.json
    :language: javascript
 
 
@@ -741,7 +741,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-metadata-update-key-request.json
+.. literalinclude:: ./samples/volumes/volume-metadata-update-key-request.json
    :language: javascript
 
 Response Parameters
@@ -754,7 +754,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-metadata-update-key-response.json
+.. literalinclude:: ./samples/volumes/volume-metadata-update-key-response.json
    :language: javascript
 
 

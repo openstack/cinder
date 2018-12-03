@@ -41,7 +41,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-type-access-add-request.json
+.. literalinclude:: ./samples/volume_type/volume-type-access-add-request.json
    :language: javascript
 
 
@@ -115,5 +115,5 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-type-access-list-response.json
+.. literalinclude:: ./samples/volume_type/volume-type-access-list-response.json
    :language: javascript

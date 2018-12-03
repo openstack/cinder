@@ -1,0 +1,9 @@
+{
+    "volume": {
+        "name": "vol-003",
+        "description": "This is yet, another volume.",
+        "metadata": {
+            "name": "metadata0"
+        }
+    }
+}
