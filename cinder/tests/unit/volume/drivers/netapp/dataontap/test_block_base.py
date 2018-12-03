@@ -685,8 +685,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.zapi_client.get_iscsi_target_details.return_value = (
             target_details_list)
         self.mock_object(block_base.NetAppBlockStorageLibrary,
-                         '_get_preferred_target_from_list',
-                         return_value=target_details_list[1])
+                         '_get_targets_from_list',
+                         return_value=target_details_list)
         self.zapi_client.get_iscsi_service_details.return_value = (
             fake.ISCSI_SERVICE_IQN)
         self.mock_object(na_utils,
@@ -722,7 +722,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             fake.ISCSI_VOLUME['name'], [fake.ISCSI_CONNECTOR['initiator']],
             'iscsi', None)
         self.zapi_client.get_iscsi_target_details.assert_called_once_with()
-        block_base.NetAppBlockStorageLibrary._get_preferred_target_from_list\
+        block_base.NetAppBlockStorageLibrary._get_targets_from_list\
                                             .assert_called_once_with(
                                                 target_details_list)
         self.zapi_client.get_iscsi_service_details.assert_called_once_with()
@@ -734,7 +734,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                          return_value=fake.ISCSI_LUN['lun_id'])
         self.zapi_client.get_iscsi_target_details.return_value = None
         self.mock_object(block_base.NetAppBlockStorageLibrary,
-                         '_get_preferred_target_from_list')
+                         '_get_targets_from_list')
         self.mock_object(na_utils,
                          'get_iscsi_connection_properties',
                          return_value=fake.ISCSI_CONNECTION_PROPERTIES)
@@ -745,7 +745,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(
             0, block_base.NetAppBlockStorageLibrary
-                         ._get_preferred_target_from_list.call_count)
+                         ._get_targets_from_list.call_count)
         self.assertEqual(
             0, self.zapi_client.get_iscsi_service_details.call_count)
         self.assertEqual(
@@ -758,7 +758,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                          return_value=fake.ISCSI_LUN['lun_id'])
         self.zapi_client.get_iscsi_target_details.return_value = None
         self.mock_object(block_base.NetAppBlockStorageLibrary,
-                         '_get_preferred_target_from_list',
+                         '_get_targets_from_list',
                          return_value=None)
         self.mock_object(na_utils, 'get_iscsi_connection_properties')
 
@@ -780,8 +780,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.zapi_client.get_iscsi_target_details.return_value = (
             target_details_list)
         self.mock_object(block_base.NetAppBlockStorageLibrary,
-                         '_get_preferred_target_from_list',
-                         return_value=target_details_list[1])
+                         '_get_targets_from_list',
+                         return_value=target_details_list)
         self.zapi_client.get_iscsi_service_details.return_value = None
         self.mock_object(na_utils, 'get_iscsi_connection_properties')
 
@@ -794,53 +794,49 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             fake.ISCSI_VOLUME['name'], [fake.ISCSI_CONNECTOR['initiator']],
             'iscsi', None)
         self.zapi_client.get_iscsi_target_details.assert_called_once_with()
-        block_base.NetAppBlockStorageLibrary._get_preferred_target_from_list\
+        block_base.NetAppBlockStorageLibrary._get_targets_from_list\
                   .assert_called_once_with(target_details_list)
 
     def test_get_target_details_list(self):
         target_details_list = fake.ISCSI_TARGET_DETAILS_LIST
 
-        result = self.library._get_preferred_target_from_list(
-            target_details_list)
+        result = self.library._get_targets_from_list(target_details_list)
 
-        self.assertEqual(target_details_list[0], result)
+        self.assertEqual(target_details_list, result)
 
     def test_get_preferred_target_from_empty_list(self):
         target_details_list = []
 
-        result = self.library._get_preferred_target_from_list(
-            target_details_list)
+        result = self.library._get_targets_from_list(target_details_list)
 
-        self.assertIsNone(result)
+        self.assertFalse(bool(result))
 
-    def test_get_preferred_target_from_list_with_one_interface_disabled(self):
+    def test_get_targets_from_list_with_one_interface_disabled(self):
         target_details_list = copy.deepcopy(fake.ISCSI_TARGET_DETAILS_LIST)
         target_details_list[0]['interface-enabled'] = 'false'
 
-        result = self.library._get_preferred_target_from_list(
-            target_details_list)
+        result = self.library._get_targets_from_list(target_details_list)
 
-        self.assertEqual(target_details_list[1], result)
+        self.assertEqual(target_details_list[1:], result)
 
-    def test_get_preferred_target_from_list_with_all_interfaces_disabled(self):
+    def test_get_targets_from_list_with_all_interfaces_disabled(self):
         target_details_list = copy.deepcopy(fake.ISCSI_TARGET_DETAILS_LIST)
         for target in target_details_list:
             target['interface-enabled'] = 'false'
 
-        result = self.library._get_preferred_target_from_list(
-            target_details_list)
+        result = self.library._get_targets_from_list(target_details_list)
 
-        self.assertEqual(target_details_list[0], result)
+        self.assertEqual(target_details_list, result)
 
-    def test_get_preferred_target_from_list_with_filter(self):
+    def test_get_targets_from_list_with_filter(self):
         target_details_list = fake.ISCSI_TARGET_DETAILS_LIST
         filter = [target_detail['address']
                   for target_detail in target_details_list[1:]]
 
-        result = self.library._get_preferred_target_from_list(
-            target_details_list, filter)
+        result = self.library._get_targets_from_list(target_details_list,
+                                                     filter)
 
-        self.assertEqual(target_details_list[1], result)
+        self.assertEqual(target_details_list[1:], result)
 
     @mock.patch.object(na_utils, 'check_flags', mock.Mock())
     @mock.patch.object(block_base, 'LOG', mock.Mock())

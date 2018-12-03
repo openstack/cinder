@@ -23,8 +23,10 @@ import cinder.volume.drivers.netapp.options as na_opts
 ISCSI_FAKE_LUN_ID = 1
 
 ISCSI_FAKE_IQN = 'iqn.1993-08.org.debian:01:10'
+ISCSI_FAKE_IQN2 = 'iqn.1993-08.org.debian:01:11'
 
 ISCSI_FAKE_ADDRESS_IPV4 = '10.63.165.216'
+ISCSI_FAKE_ADDRESS2_IPV4 = '10.63.165.217'
 ISCSI_FAKE_ADDRESS_IPV6 = 'fe80::72a4:a152:aad9:30d9'
 
 ISCSI_FAKE_PORT = '2232'
@@ -37,6 +39,18 @@ ISCSI_FAKE_TARGET['port'] = ISCSI_FAKE_PORT
 
 ISCSI_FAKE_VOLUME = {'id': 'fake_id', 'provider_auth': 'None stack password'}
 ISCSI_FAKE_VOLUME_NO_AUTH = {'id': 'fake_id', 'provider_auth': ''}
+
+ISCSI_MP_TARGET_INFO_DICT = {'target_discovered': False,
+                             'target_portal': '10.63.165.216:2232',
+                             'target_portals': ['10.63.165.216:2232',
+                                                '10.63.165.217:2232'],
+                             'target_iqn': ISCSI_FAKE_IQN,
+                             'target_iqns': [ISCSI_FAKE_IQN, ISCSI_FAKE_IQN2],
+                             'target_lun': ISCSI_FAKE_LUN_ID,
+                             'target_luns': [ISCSI_FAKE_LUN_ID] * 2,
+                             'volume_id': ISCSI_FAKE_VOLUME['id'],
+                             'auth_method': 'None', 'auth_username': 'stack',
+                             'auth_password': 'password'}
 
 FC_ISCSI_TARGET_INFO_DICT = {'target_discovered': False,
                              'target_portal': '10.63.165.216:2232',
