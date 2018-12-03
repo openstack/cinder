@@ -44,3 +44,6 @@ infi.dtypes.iqn # PSF
 
 # Storpool
 storpool # Apache-2.0
+
+# RSD Driver
+rsd-lib # Apache-2.0

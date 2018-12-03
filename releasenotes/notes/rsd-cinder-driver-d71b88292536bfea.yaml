@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added a new Cinder driver for RackScale Design NVMe-oF storage solution.
