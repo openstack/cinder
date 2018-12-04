@@ -369,7 +369,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         """Swift driver does not use any extra metadata."""
         return None
 
-    def check_for_setup_errors(self):
+    def check_for_setup_error(self):
         # Here we are trying to connect to swift backend service
         # without any additional parameters.
         # At the moment of execution we don't have any user data
