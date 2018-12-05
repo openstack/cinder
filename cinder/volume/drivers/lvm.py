@@ -258,10 +258,6 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # This includes volumes and snapshots.
         total_volumes = len(self.vg.get_volumes())
 
-        supports_multiattach = True
-        if self.configuration.target_helper == 'lioadm':
-            supports_multiattach = False
-
         # Skip enabled_pools setting, treat the whole backend as one pool
         # XXX FIXME if multipool support is added to LVM driver.
         single_pool = {}
@@ -280,7 +276,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             total_volumes=total_volumes,
             filter_function=self.get_filter_function(),
             goodness_function=self.get_goodness_function(),
-            multiattach=supports_multiattach,
+            multiattach=True,
             backend_state='up'
         ))
         data["pools"].append(single_pool)
@@ -859,13 +855,17 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # we need to do here is check if there is more than one attachment for
         # the volume, if there is; let the caller know that they should NOT
         # remove the export.
-        has_shared_connections = False
-        if len(volume.volume_attachment) > 1:
-            has_shared_connections = True
-
         # NOTE(jdg): For the TGT driver this is a noop, for LIO this removes
         # the initiator IQN from the targets access list, so we're good
+        # NOTE(lyarwood): Given the above note we should only call
+        # terminate_connection for the target lioadm driver when there is only
+        # one attachment left for the host specified by the connector to
+        # remove, otherwise the ACL will be removed prematurely while other
+        # attachments on the same host are still accessing the volume.
+        attachments = volume.volume_attachment
+        if volume.multiattach:
+            if sum(1 for a in attachments if a.connector == connector) > 1:
+                return True
 
-        self.target_driver.terminate_connection(volume, connector,
-                                                **kwargs)
-        return has_shared_connections
+        self.target_driver.terminate_connection(volume, connector, **kwargs)
+        return len(attachments) > 1
