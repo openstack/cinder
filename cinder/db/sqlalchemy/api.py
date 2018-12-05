@@ -4147,6 +4147,11 @@ def volume_type_destroy(context, id):
             update({'deleted': True,
                     'deleted_at': utcnow,
                     'updated_at': literal_column('updated_at')})
+        model_query(context, models.Encryption, session=session).\
+            filter_by(volume_type_id=id).\
+            update({'deleted': True,
+                    'deleted_at': utcnow,
+                    'updated_at': literal_column('updated_at')})
         model_query(context, models.VolumeTypeProjects, session=session,
                     read_deleted="int_no").filter_by(
             volume_type_id=id).soft_delete(synchronize_session=False)
