@@ -28,7 +28,8 @@ from cinder import policies
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
-policy_opts.set_defaults(cfg.CONF, 'policy.yaml')
+DEFAULT_POLICY_FILENAME = 'policy.yaml'
+policy_opts.set_defaults(cfg.CONF, DEFAULT_POLICY_FILENAME)
 
 _ENFORCER = None
 
