@@ -1,0 +1,48 @@
+---
+upgrade:
+  - |
+    Beginning with Cinder version 12.0.0, as part of the Queens release
+    "policies  in code" community effort, Cinder has had the ability to run
+    without a policy file because sensible default values are specified in
+    the code.  Customizing the policies in effect at your site, however,
+    still requires a policy file.  The default location of this file has been
+    ``/etc/cinder/policy.json`` (although the documentation has indicated
+    otherwise).  With this release, the default location of this file is
+    changed to ``/etc/cinder/policy.yaml``.
+
+    Some points to keep in mind:
+
+    - The policy file to be used may be specified in the
+      ``/etc/cinder/cinder.conf`` file in the ``[oslo_policy]``
+      section as the value of the ``policy_file`` configuration option.
+      That way there's no question what file is being used.
+
+    - To find out what policies are available and what their default
+      values are, you can generate a sample policy file.  To do this,
+      you must have a local copy of the Cinder source code repository.
+      From the top level directory, run the command::
+
+          tox -e genpolicy
+
+      This will generate a file named ``policy.yaml`` in the ``etc/cinder``
+      directory of your checked-out Cinder repository.
+
+    - The sample file is YAML (because unlike JSON, YAML allows comments).
+      If you prefer, you may use a JSON policy file.
+
+    - Beginning with Cinder 12.0.0, you only need to specify policies in
+      your policy file that you want to **differ** from the default values.
+      Unspecified policies will use the default values *defined in the code*.
+      Given that a default value *must* be specified *in the code* when a
+      new policy is introduced, the ``default`` policy, which was formerly
+      used as a catch-all for policy targets that were not defined elsewhere
+      in the policy file, has no effect.  We mention this because an old
+      upgrade strategy was to use the policy file from the previous release
+      with ``"default": "role:admin"`` (or ``"default": "!"``) so that newly
+      introduced actions would be blocked from end users until the operator
+      had time to assess the implications of exposing these actions.  This
+      strategy no longer works.  Hopefully this isn't a problem because
+      we're defining sensible defaults in the code.  It would be a good
+      idea, however, to generate the sample policy file with each release
+      (see instructions above) to verify this for yourself.
+
