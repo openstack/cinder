@@ -29,12 +29,12 @@ System requirements and licensing
 The Dell EMC VMAX Cinder driver supports the VMAX-3 hybrid series, VMAX
 All-Flash series and the PowerMax arrays.
 
-The array operating system software, Solutions Enabler 9.0.0.0 or later, and
-Unisphere for PowerMax 9.0.0.6 or later are required to run Dell EMC VMAX
+The array operating system software, Solutions Enabler 9.0.x series, and
+Unisphere for PowerMax 9.0.x series are required to run Dell EMC VMAX
 Cinder driver.
 
 Download Solutions Enabler and Unisphere from the Dell EMC's support web site
-(login is required). See the ``Dell EMC Solutions Enabler 9.0 Installation
+(login is required). See the ``Dell EMC Solutions Enabler 9.0.x Installation
 and Configuration Guide`` and ``Dell EMC Unisphere for PowerMax Installation
 Guide`` at ``support.emc.com``.
 
@@ -232,13 +232,13 @@ VMAX Driver Integration
    Appliance (a VMware ESX server VM). Additionally, starting with HYPERMAX
    OS Q3 2015, you can manage VMAX3 arrays using the Embedded Management
    (eManagement) container application. See the ``Dell EMC Solutions Enabler
-   9.0 Installation and Configuration Guide`` on ``support.emc.com`` for
+   9.0.x Installation and Configuration Guide`` on ``support.emc.com`` for
    more details.
 
    .. note::
 
       You must discover storage arrays before you can use the VMAX drivers.
-      Follow instructions in ```Dell EMC Solutions Enabler 9.0 Installation
+      Follow instructions in ```Dell EMC Solutions Enabler 9.0.x Installation
       and Configuration Guide`` on ``support.emc.com`` for more details.
 
 #. Download Unisphere from ``support.emc.com`` and install it.
@@ -247,7 +247,7 @@ VMAX Driver Integration
    - i.e., on the same server running Solutions Enabler; on a server
    connected to the Solutions Enabler server; or using the eManagement
    container application (containing Solutions Enabler and Unisphere for
-   VMAX). See ``Dell EMC Solutions Enabler 9.0 Installation and Configuration
+   VMAX). See ``Dell EMC Solutions Enabler 9.0.x Installation and Configuration
    Guide`` at ``support.emc.com``.
 
 
