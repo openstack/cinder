@@ -329,7 +329,7 @@ Response codes
 
 .. rest_status_code:: success ../status.yaml
 
-   - 202
+   - 200
 
 .. rest_status_code:: error ../status.yaml
 
@@ -362,6 +362,7 @@ Response Parameters
    - id: id_backup
    - links: links_backup
    - name: name_backup
+   - metadata: metadata_backup
 
 Response Example
 ----------------
