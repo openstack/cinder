@@ -968,7 +968,7 @@ def clone_encryption_key(context, key_manager, encryption_key_id):
     return clone_key_id
 
 
-def is_replicated_str(str):
+def is_boolean_str(str):
     spec = (str or '').split()
     return (len(spec) == 2 and
             spec[0] == '<is>' and strutils.bool_from_string(spec[1]))
@@ -976,12 +976,12 @@ def is_replicated_str(str):
 
 def is_replicated_spec(extra_specs):
     return (extra_specs and
-            is_replicated_str(extra_specs.get('replication_enabled')))
+            is_boolean_str(extra_specs.get('replication_enabled')))
 
 
 def is_multiattach_spec(extra_specs):
     return (extra_specs and
-            is_replicated_str(extra_specs.get('multiattach')))
+            is_boolean_str(extra_specs.get('multiattach')))
 
 
 def group_get_by_id(group_id):

@@ -2839,7 +2839,7 @@ class VolumeManager(manager.CleanableManager,
         replication_diff = diff_specs.get('replication_enabled')
 
         if replication_diff:
-            is_replicated = vol_utils.is_replicated_str(replication_diff[1])
+            is_replicated = vol_utils.is_boolean_str(replication_diff[1])
             if is_replicated:
                 replication_status = fields.ReplicationStatus.ENABLED
             else:
