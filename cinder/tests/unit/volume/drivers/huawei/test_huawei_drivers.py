@@ -5622,6 +5622,42 @@ class HuaweiConfTestCase(test.TestCase):
             self.assertRaises(expect_result,
                               self.huawei_conf._lun_type, xml_root)
 
+    @ddt.data(
+        [{
+            'backend_id': "default",
+            'san_address': 'https://192.0.2.69:8088/deviceManager/rest/',
+            'san_user': 'admin',
+            'san_password': '123456',
+            'storage_pool': 'OpenStack_Pool',
+            'iscsi_info': """{Name:iqn.1993-08.debian:01:ec2bff7acxxx;
+                                      TargetIP:1.1.1.1;
+                                      CHAPinfo:mm-user@storage;
+                                      ALUA:1;
+                                      TargetPortGroup:portgroup-test}"""
+        }]
+    )
+    def test_get_replication_devices(self, config):
+        self.mock_object(self.conf,
+                         'safe_get',
+                         mock.Mock(return_value=config)
+                         )
+
+        replication_devices = self.huawei_conf.get_replication_devices()
+        expected = [
+            {'backend_id': 'default',
+             'iscsi_default_target_ip': [],
+             'iscsi_info': [{'ALUA': '1',
+                             'CHAPinfo': 'mm-user@storage',
+                             'Name': 'iqn.1993-08.debian:01:ec2bff7acxxx',
+                             'TargetIP': '1.1.1.1',
+                             'TargetPortGroup': 'portgroup-test'}],
+             'san_address': ['https://192.0.2.69:8088/deviceManager/rest/'],
+             'san_password': '123456',
+             'san_user': 'admin',
+             'storage_pools': ['OpenStack_Pool']}]
+
+        self.assertEqual(expected, replication_devices)
+
 
 @ddt.ddt
 class HuaweiRestClientTestCase(test.TestCase):
