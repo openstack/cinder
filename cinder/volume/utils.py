@@ -31,7 +31,6 @@ from castellan import key_manager as castellan_key_manager
 import eventlet
 from eventlet import tpool
 from keystoneauth1 import loading as ks_loading
-from os_brick import encryptors
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -1051,28 +1050,6 @@ def make_initiator_target_all2all_map(initiator_wwpns, target_wwpns):
             i_t_map[i_wwpn].append(t_wwpn)
 
     return i_t_map
-
-
-def check_encryption_provider(db, volume, context):
-    """Check that this is a LUKS encryption provider.
-
-    :returns: encryption dict
-    """
-
-    encryption = db.volume_encryption_metadata_get(context, volume.id)
-    provider = encryption['provider']
-    if provider in encryptors.LEGACY_PROVIDER_CLASS_TO_FORMAT_MAP:
-        provider = encryptors.LEGACY_PROVIDER_CLASS_TO_FORMAT_MAP[provider]
-    if provider != encryptors.LUKS:
-        message = _("Provider %s not supported.") % provider
-        raise exception.VolumeDriverException(message=message)
-
-    if 'cipher' not in encryption or 'key_size' not in encryption:
-        msg = _('encryption spec must contain "cipher" and '
-                '"key_size"')
-        raise exception.VolumeDriverException(message=msg)
-
-    return encryption
 
 
 def check_image_metadata(image_meta, vol_size):
