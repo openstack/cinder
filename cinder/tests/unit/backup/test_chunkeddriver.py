@@ -432,7 +432,7 @@ class ChunkedDriverTestCase(test.TestCase):
         self.assertEqual(50, obj_meta.get('backup_percent', 0))
         self.assertTrue(mock_notify.called)
 
-    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
     def test_backup(self, mock_notify):
         volume_file = mock.Mock()
         volume_file.tell.side_effect = [0, len(TEST_DATA)]
@@ -441,8 +441,8 @@ class ChunkedDriverTestCase(test.TestCase):
         with mock.patch.object(self.driver, 'get_object_writer',
                                return_value=obj_writer):
             self.driver.backup(self.backup, volume_file)
-
-        mock_notify.assert_called()
+        self.assert_notify_called(mock_notify,
+                                  (['INFO', 'backup.createprogress'],))
 
     def test_backup_invalid_size(self):
         self.driver.chunk_size_bytes = 999
