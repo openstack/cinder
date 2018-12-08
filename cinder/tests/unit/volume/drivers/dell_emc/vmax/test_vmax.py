@@ -2418,11 +2418,17 @@ class VMAXRestTest(test.TestCase):
             init_list = self.rest.get_initiator_list(array)
             self.assertIsNotNone(init_list)
 
-    def test_get_initiator_list_none(self):
+    def test_get_initiator_list_empty(self):
         array = self.data.array
         with mock.patch.object(self.rest, 'get_resource', return_value={}):
             init_list = self.rest.get_initiator_list(array)
             self.assertEqual([], init_list)
+
+    def test_get_initiator_list_none(self):
+        array = self.data.array
+        with mock.patch.object(self.rest, 'get_resource', return_value=None):
+            init_list = self.rest.get_initiator_list(array)
+            self.assertIsNotNone(init_list)
 
     def test_get_initiator_group_from_initiator(self):
         initiator = self.data.wwpn1

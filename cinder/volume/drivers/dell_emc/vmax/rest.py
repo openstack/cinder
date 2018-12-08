@@ -1335,7 +1335,7 @@ class VMAXRest(object):
                                       params=params, version=version)
         try:
             init_list = init_dict['initiatorId']
-        except KeyError:
+        except (KeyError, TypeError):
             init_list = []
         return init_list
 
