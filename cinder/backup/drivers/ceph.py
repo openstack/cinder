@@ -169,9 +169,9 @@ class CephBackupDriver(driver.BackupDriver):
     Backups may be stored in their own pool or even cluster. Store location is
     defined by the Ceph conf file and service config options supplied.
 
-    Only if the incremental option is specified and the source volume is itself
-    an RBD volume, the backup will be performed using incremental differential
-    backups which *should* give a performance gain.
+    If the source volume is itself an RBD volume, the backup will be performed
+    using incremental differential backups which *should* give a performance
+    gain.
     """
 
     def __init__(self, context, db=None, execute=None):
@@ -910,9 +910,8 @@ class CephBackupDriver(driver.BackupDriver):
     def backup(self, backup, volume_file, backup_metadata=True):
         """Backup volume and metadata (if available) to Ceph object store.
 
-        If the source volume is an RBD and we use the `incremental`
-        option we will attempt to do an incremental/differential backup,
-        otherwise a full copy is performed.
+        If the source volume is an RBD we will attempt to do an
+        incremental/differential backup, otherwise a full copy is performed.
         If this fails we will attempt to fall back to full copy.
         """
         volume = self.db.volume_get(self.context, backup.volume_id)
@@ -927,13 +926,13 @@ class CephBackupDriver(driver.BackupDriver):
         volume_file.seek(0)
         length = self._get_volume_size_gb(volume)
 
-        if backup.parent_id and self._file_is_rbd(volume_file):
+        do_full_backup = False
+        if self._file_is_rbd(volume_file):
             # If volume an RBD, attempt incremental backup.
             LOG.debug("Volume file is RBD: attempting incremental backup.")
             try:
                 updates = self._backup_rbd(backup, volume_file,
                                            volume.name, length)
-                do_full_backup = False
             except exception.BackupRBDOperationFailed:
                 LOG.debug("Forcing full backup of volume %s.", volume.id)
                 do_full_backup = True
