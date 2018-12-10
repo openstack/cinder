@@ -88,12 +88,12 @@ class NFSBackupDriver(posix.PosixBackupDriver):
         current_mode = utils.get_file_mode(mount_path)
 
         if group_id != current_group_id:
-            cmd = ['chgrp', group_id, mount_path]
+            cmd = ['chgrp', '-R', group_id, mount_path]
             self._execute(*cmd, root_helper=self._root_helper,
                           run_as_root=True)
 
         if not (current_mode & stat.S_IWGRP):
-            cmd = ['chmod', 'g+w', mount_path]
+            cmd = ['chmod', '-R', 'g+w', mount_path]
             self._execute(*cmd, root_helper=self._root_helper,
                           run_as_root=True)
 
