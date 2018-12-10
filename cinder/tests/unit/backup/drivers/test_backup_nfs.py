@@ -119,6 +119,7 @@ class BackupNFSShareTestCase(test.TestCase):
         if file_gid != FAKE_EGID:
             mock_execute_calls.append(
                 mock.call('chgrp',
+                          '-R',
                           FAKE_EGID,
                           path,
                           root_helper=driver._root_helper,
@@ -127,6 +128,7 @@ class BackupNFSShareTestCase(test.TestCase):
         if not (file_mode & stat.S_IWGRP):
             mock_execute_calls.append(
                 mock.call('chmod',
+                          '-R',
                           'g+w',
                           path,
                           root_helper=driver._root_helper,
