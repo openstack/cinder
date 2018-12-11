@@ -105,6 +105,7 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
               - Fix for get-pools command (bug #1784856)
         3.3.0 - Fix for initiator retrieval and short hostname unmapping
                 (bugs #1783855 #1783867)
+              - Fix for HyperMax OS Upgrade Bug (bug #1790141)
     """
 
     VERSION = "3.3.0"
