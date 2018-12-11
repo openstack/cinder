@@ -631,7 +631,7 @@ class QuotaUsage(BASE, CinderBase):
     id = Column(Integer, primary_key=True)
 
     project_id = Column(String(255), index=True)
-    resource = Column(String(255), index=True)
+    resource = Column(String(300), index=True)
 
     in_use = Column(Integer)
     reserved = Column(Integer)

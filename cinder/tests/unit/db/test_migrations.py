@@ -115,6 +115,12 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
             # NOTE : 104 modifies size of messages.project_id to 255.
             # This should be safe for the same reason as migration 87.
             104,
+            # NOTE(brinzhang): 127 changes size of quota_usage.resource
+            # to 300. This should be safe for the 'quota_usage' db table,
+            # because of the 255 is the length limit of volume_type_name,
+            # it should be add the additional prefix before volume_type_name,
+            # which we of course allow *this* size to 300.
+            127,
         ]
 
         if version not in exceptions:
@@ -408,6 +414,13 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
     def _check_123(self, engine, data):
         volume_transfer = db_utils.get_table(engine, 'transfers')
         self.assertIn('no_snapshots', volume_transfer.c)
+
+    def _check_127(self, engine, data):
+        quota_usage_resource = db_utils.get_table(engine, 'quota_usages')
+        self.assertIn('resource', quota_usage_resource.c)
+        self.assertIsInstance(quota_usage_resource.c.resource.type,
+                              self.VARCHAR_TYPE)
+        self.assertEqual(300, quota_usage_resource.c.resource.type.length)
 
     def test_walk_versions(self):
         self.walk_versions(False, False)
