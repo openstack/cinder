@@ -1336,13 +1336,43 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
     def clone_image(self, context, volume, image_location,
                     image_meta, image_service):
+        image_id = image_meta['id']
+        LOG.debug("Clone glance image: %s to create new volume.", image_id)
+
+        VMwareVcVmdkDriver._validate_disk_format(image_meta['disk_format'])
+
+        self._validate_container_format(image_id, image_meta)
+
         properties = image_meta['properties']
         if (properties
             and 'vmware_disktype' in properties
             and properties['vmware_disktype'] ==
                 ImageDiskType.STREAM_OPTIMIZED):
-            self.copy_image_to_volume(context, volume, image_service,
-                                      image_meta['id'])
+
+            image_adapter_type = self._get_adapter_type(volume)
+            if 'vmware_adaptertype' in properties:
+                image_adapter_type = properties['vmware_adaptertype']
+
+            try:
+                    volumeops.VirtualDiskAdapterType.validate(image_adapter_type)
+
+                    self._fetch_stream_optimized_image(context, volume,
+                                                       image_service, image_id,
+                                                       image_meta['size'],
+                                                       image_adapter_type)
+            except (exceptions.VimException,
+                    exceptions.VMwareDriverException):
+                with excutils.save_and_reraise_exception():
+                    LOG.exception("Error occurred while cloning image: %(id)s "
+                                  "to volume: %(vol)s.",
+                                  {'id': image_id, 'vol': volume['name']})
+
+            LOG.debug("Volume: %(id)s cloned from image: %(image_id)s.",
+                      {'id': volume['id'],
+                       'image_id': image_id})
+
+            self._extend_backing_disk_if_required(volume)
+
             return None, True
 
         return None, False
@@ -1366,13 +1396,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         metadata = image_service.show(context, image_id)
         VMwareVcVmdkDriver._validate_disk_format(metadata['disk_format'])
 
-        # Validate container format; only 'bare' and 'ova' are supported.
-        container_format = metadata.get('container_format')
-        if (container_format and container_format not in ['bare', 'ova']):
-            msg = _("Container format: %s is unsupported, only 'bare' and "
-                    "'ova' are supported.") % container_format
-            LOG.error(msg)
-            raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
+        self._validate_container_format(image_id, metadata)
 
         # Get the disk type, adapter type and size of vmdk image
         image_disk_type = ImageDiskType.PREALLOCATED
@@ -1410,6 +1434,18 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                   {'id': volume['id'],
                    'image_id': image_id})
 
+        self._extend_backing_disk_if_required(volume)
+
+    def _validate_container_format(self, image_id, metadata):
+        # Validate container format; only 'bare' and 'ova' are supported.
+        container_format = metadata.get('container_format')
+        if (container_format and container_format not in ['bare', 'ova']):
+            msg = _("Container format: %s is unsupported, only 'bare' and "
+                    "'ova' are supported.") % container_format
+            LOG.error(msg)
+            raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
+
+    def _extend_backing_disk_if_required(self, volume):
         # If the user-specified volume size is greater than backing's
         # current disk size, we should extend the disk.
         volume_size = volume['size'] * units.Gi
