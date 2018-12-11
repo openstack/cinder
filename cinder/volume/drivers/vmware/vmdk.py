@@ -1334,6 +1334,19 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         self.volumeops.extend_virtual_disk(new_size_in_gb, root_vmdk_path,
                                            datacenter)
 
+    def clone_image(self, context, volume, image_location,
+                    image_meta, image_service):
+        properties = image_meta['properties']
+        if (properties
+            and 'vmware_disktype' in properties
+            and properties['vmware_disktype'] ==
+                ImageDiskType.STREAM_OPTIMIZED):
+            self.copy_image_to_volume(context, volume, image_service,
+                                      image_meta['id'])
+            return None, True
+
+        return None, False
+
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Creates volume from image.
 
