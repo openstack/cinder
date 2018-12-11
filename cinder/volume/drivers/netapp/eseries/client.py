@@ -28,7 +28,6 @@ import uuid
 
 from oslo_log import log as logging
 import requests
-from simplejson import scanner
 import six
 from six.moves import urllib
 
@@ -287,7 +286,7 @@ class RestClient(WebserviceClient):
                 res_dict = res.json() if res.text else None
             # This should only occur if we expected JSON, but were sent
             # something else
-            except scanner.JSONDecodeError:
+            except ValueError:
                 res_dict = None
 
             if cinder_utils.TRACE_API:

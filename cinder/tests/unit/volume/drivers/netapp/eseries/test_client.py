@@ -16,20 +16,18 @@
 #    under the License.
 
 import copy
+import json
 
 import ddt
-import json
 import mock
-from simplejson import scanner
 from six.moves import http_client
 
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.eseries import fakes as \
     eseries_fake
-from cinder.volume.drivers.netapp.eseries import exception as es_exception
-
 from cinder.volume.drivers.netapp.eseries import client
+from cinder.volume.drivers.netapp.eseries import exception as es_exception
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -1146,7 +1144,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
     def test_invoke_bad_content_type(self):
         """Tests the invoke behavior with a non-JSON response"""
         fake_response = mock.Mock()
-        fake_response.json = mock.Mock(side_effect=scanner.JSONDecodeError(
+        fake_response.json = mock.Mock(side_effect=ValueError(
             '', '{}', 1))
         fake_response.status_code = http_client.FAILED_DEPENDENCY
         fake_response.text = "Fake Response"
