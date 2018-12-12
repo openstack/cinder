@@ -32,7 +32,6 @@ from cinder.volume.drivers.netapp import utils as na_utils
 LOG = logging.getLogger(__name__)
 
 DATAONTAP_PATH = 'cinder.volume.drivers.netapp.dataontap'
-ESERIES_PATH = 'cinder.volume.drivers.netapp.eseries'
 
 # Add new drivers here, no other code changes required.
 NETAPP_UNIFIED_DRIVER_REGISTRY = {
@@ -41,11 +40,6 @@ NETAPP_UNIFIED_DRIVER_REGISTRY = {
         'iscsi': DATAONTAP_PATH + '.iscsi_cmode.NetAppCmodeISCSIDriver',
         'nfs': DATAONTAP_PATH + '.nfs_cmode.NetAppCmodeNfsDriver',
         'fc': DATAONTAP_PATH + '.fc_cmode.NetAppCmodeFibreChannelDriver'
-    },
-    'eseries':
-    {
-        'iscsi': ESERIES_PATH + '.iscsi_driver.NetAppEseriesISCSIDriver',
-        'fc': ESERIES_PATH + '.fc_driver.NetAppEseriesFibreChannelDriver'
     }}
 
 

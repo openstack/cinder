@@ -3,8 +3,8 @@ NetApp unified driver
 =====================
 
 The NetApp unified driver is a Block Storage driver that supports
-multiple storage families and protocols. A storage family corresponds to
-storage systems built on either clustered Data ONTAP or E-Series. The
+multiple storage families and protocols. Currently, the only storage
+family supported by this driver is the clustered Data ONTAP. The
 storage protocol refers to the protocol used to initiate data storage and
 access operations on those storage systems like iSCSI and NFS. The NetApp
 unified driver can be configured to provision and manage OpenStack volumes
@@ -27,8 +27,8 @@ that can support new storage families and protocols.
 
    In releases prior to Juno, the NetApp unified driver contained some
    scheduling logic that determined which NetApp storage container
-   (namely, a FlexVol volume for Data ONTAP, or a dynamic disk pool for
-   E-Series) that a new Block Storage volume would be placed into.
+   (namely, a FlexVol volume for Data ONTAP) that a new Block Storage
+   volume would be placed into.
 
    With the introduction of pools, all scheduling logic is performed
    completely within the Block Storage scheduler, as each
@@ -248,106 +248,3 @@ Define Block Storage volume types by using the :command:`openstack volume
 type set` command.
 
 .. include:: ../../tables/manual/cinder-netapp_cdot_extraspecs.inc
-
-
-NetApp E-Series storage family
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The NetApp E-Series storage family represents a configuration group which
-provides OpenStack compute instances access to E-Series storage systems. At
-present it can be configured in Block Storage to work with the iSCSI
-storage protocol.
-
-NetApp iSCSI configuration for E-Series
----------------------------------------
-
-The NetApp iSCSI configuration for E-Series is an interface from OpenStack to
-E-Series storage systems. It provisions and manages the SAN block storage
-entity, which is a NetApp LUN which can be accessed using the iSCSI protocol.
-
-The iSCSI configuration for E-Series is an interface from Block
-Storage to the E-Series proxy instance and as such requires the deployment of
-the proxy instance in order to achieve the desired functionality. The driver
-uses REST APIs to interact with the E-Series proxy instance, which in turn
-interacts directly with the E-Series controllers.
-
-The use of multipath and DM-MP are required when using the Block
-Storage driver for E-Series. In order for Block Storage and OpenStack
-Compute to take advantage of multiple paths, the following configuration
-options must be correctly configured:
-
-- The ``use_multipath_for_image_xfer`` option should be set to ``True`` in the
-  ``cinder.conf`` file within the driver-specific stanza (for example,
-  ``[myDriver]``).
-
-- The ``volume_use_multipath`` option should be set to ``True`` in the
-  ``nova.conf`` file within the ``[libvirt]`` stanza.
-  In versions prior to Newton, the option was called ``iscsi_use_multipath``.
-
-**Configuration options**
-
-Configure the volume driver, storage family, and storage protocol to the
-NetApp unified driver, E-Series, and iSCSI respectively by setting the
-``volume_driver``, ``netapp_storage_family`` and
-``netapp_storage_protocol`` options in the ``cinder.conf`` file as follows:
-
-.. code-block:: ini
-
-   volume_driver = cinder.volume.drivers.netapp.common.NetAppDriver
-   netapp_storage_family = eseries
-   netapp_storage_protocol = iscsi
-   netapp_server_hostname = myhostname
-   netapp_server_port = 80
-   netapp_login = username
-   netapp_password = password
-   netapp_controller_ips = 1.2.3.4,5.6.7.8
-   netapp_sa_password = arrayPassword
-   netapp_storage_pools = pool1,pool2
-   use_multipath_for_image_xfer = True
-
-.. note::
-
-   To use the E-Series driver, you must override the default value of
-   ``netapp_storage_family`` with ``eseries``.
-
-   To use the iSCSI protocol, you must override the default value of
-   ``netapp_storage_protocol`` with ``iscsi``.
-
-.. include:: ../../tables/cinder-netapp_eseries_iscsi.inc
-
-.. tip::
-
-   For more information on these options and other deployment and
-   operational scenarios, visit the `NetApp OpenStack website
-   <http://netapp.io/openstack/>`_.
-
-NetApp-supported extra specs for E-Series
------------------------------------------
-
-Extra specs enable vendors to specify extra filter criteria.
-The Block Storage scheduler uses the specs when the scheduler determines
-which volume node should fulfill a volume provisioning request.
-When you use the NetApp unified driver with an E-Series storage system,
-you can leverage extra specs with Block Storage volume types to ensure
-that Block Storage volumes are created on storage back ends that have
-certain properties. An example of this is when you configure thin
-provisioning for a storage back end.
-
-Extra specs are associated with Block Storage volume types.
-When users request volumes of a particular volume type, the volumes are
-created on storage back ends that meet the list of requirements.
-An example of this is the back ends that have the available space or
-extra specs. Use the specs in the following table to configure volumes.
-Define Block Storage volume types by using the :command:`openstack volume
-type set` command.
-
-.. list-table:: Description of extra specs options for NetApp Unified Driver with E-Series
-   :header-rows: 1
-
-   * - Extra spec
-     - Type
-     - Description
-   * - ``netapp_thin_provisioned``
-     - Boolean
-     - Limit the candidate volume list to only the ones that support thin
-       provisioning on the storage controller.

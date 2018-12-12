@@ -33,7 +33,7 @@ Drivers currently supporting consistency groups are in the following:
 
 - Liberty: Dell Storage Center, EMC XtremIO, HPE 3Par and LeftHand
 
-- Mitaka: EMC ScaleIO, NetApp Data ONTAP and E-Series, SolidFire
+- Mitaka: EMC ScaleIO, NetApp Data ONTAP, SolidFire
 
 - Newton: CoprHD, FalconStor, Huawei
 
