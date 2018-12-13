@@ -741,13 +741,13 @@ class VolumeCastTask(flow_utils.CinderTask):
             # to choose a proper pool whose backend is same as CG's backend.
             cgroup = objects.ConsistencyGroup.get_by_id(context, cgroup_id)
             request_spec['resource_backend'] = vol_utils.extract_host(
-                cgroup.host)
+                cgroup.resource_backend)
         elif group_id:
             # If group_id exists, we should cast volume to the scheduler
             # to choose a proper pool whose backend is same as group's backend.
             group = objects.Group.get_by_id(context, group_id)
             request_spec['resource_backend'] = vol_utils.extract_host(
-                group.host)
+                group.resource_backend)
         elif snapshot_id and CONF.snapshot_same_host:
             # NOTE(Rongze Zhu): A simple solution for bug 1008866.
             #
@@ -759,10 +759,11 @@ class VolumeCastTask(flow_utils.CinderTask):
             # before creating volume, we schedule this request to scheduler
             # service with the desired backend information.
             snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
-            request_spec['resource_backend'] = snapshot.volume.host
+            request_spec['resource_backend'] = snapshot.volume.resource_backend
         elif source_volid:
             source_volume_ref = objects.Volume.get_by_id(context, source_volid)
-            request_spec['resource_backend'] = source_volume_ref.host
+            request_spec['resource_backend'] = (
+                source_volume_ref.resource_backend)
 
         self.scheduler_rpcapi.create_volume(
             context,

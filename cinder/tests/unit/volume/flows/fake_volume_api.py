@@ -13,7 +13,7 @@
 
 class FakeVolumeAPI(object):
     def __init__(self, expected_spec, test_inst):
-        self.expected_spec = expected_spec
+        self.expected_spec = expected_spec.copy()
         self.test_inst = test_inst
 
     def create_volume(self, ctxt, volume, host,
@@ -31,7 +31,7 @@ class FakeVolumeAPI(object):
 
 class FakeSchedulerRpcAPI(object):
     def __init__(self, expected_spec, test_inst):
-        self.expected_spec = expected_spec
+        self.expected_spec = expected_spec.copy()
         self.test_inst = test_inst
 
     def create_volume(self, ctxt, volume, snapshot_id=None, image_id=None,

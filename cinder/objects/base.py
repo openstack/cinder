@@ -528,6 +528,9 @@ class ClusteredObject(object):
                     'storage backends.')
             raise exception.InvalidInput(reason=msg)
 
+    # The object's resource backend depends on whether it's clustered.
+    resource_backend = service_topic_queue
+
 
 class CinderObjectSerializer(base.VersionedObjectSerializer):
     OBJ_BASE_CLASS = CinderObject
