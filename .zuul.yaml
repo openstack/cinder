@@ -15,7 +15,21 @@
         - cinder-tempest-dsvm-lvm-lio-barbican
         - cinder-tox-bandit-baseline:
             voting: false
-        - nova-multiattach
+        - nova-multiattach:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
         - openstack-tox-functional-py35:
             irrelevant-files:
               - ^.*\.rst$
@@ -161,9 +175,68 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
+        - tempest-full:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - tempest-full-py3:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - grenade-py3:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
     gate:
       jobs:
-        - nova-multiattach
+        - nova-multiattach:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
         - openstack-tox-functional-py35:
             irrelevant-files:
               - ^.*\.rst$
@@ -190,6 +263,51 @@
               - ^tools/.*$
               - ^tox.ini$
         - neutron-grenade:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - tempest-full:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - tempest-full-py3:
+            irrelevant-files:
+              - ^(test-|)requirements.txt$
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/hacking/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^tox.ini$
+        - grenade-py3:
             irrelevant-files:
               - ^(test-|)requirements.txt$
               - ^.*\.rst$
