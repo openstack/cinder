@@ -123,7 +123,11 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
         :param volume: The volume to delete.
         """
-        self._delete_fcd(volume.provider_location)
+        if not volume.provider_location:
+            LOG.warning("FCD provider location is empty for volume %s",
+                        volume.id)
+        else:
+            self._delete_fcd(volume.provider_location)
 
     def initialize_connection(self, volume, connector, initiator_data=None):
         """Allow connection to connector and return connection info.
