@@ -22,6 +22,7 @@ import os
 import re
 
 from os_brick import executor
+from oslo_concurrency import lockutils
 from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -125,6 +126,19 @@ class LVM(executor.Executor):
             self.vg_thin_pool = pool_name
             self.activate_lv(self.vg_thin_pool)
         self.pv_list = self.get_all_physical_volumes(root_helper, vg_name)
+
+    @lockutils.synchronized('cinder-lvm-exec', external=True)
+    def _execute(self, *args, **kwargs):
+        """Wrap _execute() with a lock.
+
+        We want to make sure we are only doing one LVM operation at a time
+        to avoid contention with the LVM locking system as well as other
+        potential places where doing these operations in parallel has shown
+        to cause spurious lockups and hangs. So, we wrap
+        Executor._execute() with this synchronized decorator to ensure
+        serialization.
+        """
+        return super(LVM, self)._execute(*args, **kwargs)
 
     def _vg_exists(self):
         """Simple check to see if VG exists.
