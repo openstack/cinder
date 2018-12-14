@@ -17,6 +17,7 @@ import time
 
 from oslo_log import log as logging
 from oslo_service import loopingcall
+from oslo_utils import units
 
 from cinder import coordination
 from cinder import exception
@@ -422,14 +423,16 @@ class PowerMaxProvision(object):
                       {'srpName': srp, 'array': array})
             return 0, 0, 0, 0, False
         try:
-            total_capacity_gb = srp_details['total_usable_cap_gb']
+            srp_capacity = srp_details['srp_capacity']
+            total_capacity_gb = srp_capacity['usable_total_tb'] * units.Ki
             try:
-                used_capacity_gb = srp_details['total_used_cap_gb']
+                used_capacity_gb = srp_capacity['usable_used_tb'] * units.Ki
                 remaining_capacity_gb = float(
                     total_capacity_gb - used_capacity_gb)
             except KeyError:
-                remaining_capacity_gb = srp_details['fba_free_capacity']
-            subscribed_capacity_gb = srp_details['total_subscribed_cap_gb']
+                LOG.error("Unable to retrieve remaining_capacity_gb.")
+            subscribed_capacity_gb = (
+                srp_capacity['subscribed_total_tb'] * units.Ki)
             array_reserve_percent = srp_details['reserved_cap_percent']
         except KeyError:
             pass
