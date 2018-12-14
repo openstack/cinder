@@ -728,7 +728,7 @@ class GlanceMetadataNotFound(NotFound):
 
 
 class ImageDownloadFailed(CinderException):
-    _msg_fmt = _("Failed to download image %(image_href)s, reason: %(reason)s")
+    message = _("Failed to download image %(image_href)s, reason: %(reason)s")
 
 
 class ExportFailure(Invalid):
