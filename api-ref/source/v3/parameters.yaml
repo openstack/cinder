@@ -2928,10 +2928,10 @@ volume_type:
   type: object
 volume_type_access:
   description: |
-    The object contains volume type to be accessed by project.
+    List of objects containing volume type to be accessed by project.
   in: body
   required: true
-  type: object
+  type: array
 volume_type_detail:
   description: |
     The volume type (either name or ID). To create an environment with
