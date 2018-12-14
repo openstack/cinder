@@ -5,7 +5,7 @@
             "extra_specs": {
                 "capabilities": "gpu"
             },
-            "id": "6685584b-1eac-4da6-b5c3-555430cf68ff",
+            "id": "%(uuid)s",
             "is_public": true,
             "name": "vol-type-001",
             "os-volume-type-access:is_public": true,
@@ -16,7 +16,7 @@
             "extra_specs": {
                 "capabilities": "gpu"
             },
-            "id": "6685584b-1eac-4da6-b5c3-555430cf68ff",
+            "id": "%(uuid)s",
             "is_public": true,
             "name": "vol-type-002",
             "os-volume-type-access:is_public": true,

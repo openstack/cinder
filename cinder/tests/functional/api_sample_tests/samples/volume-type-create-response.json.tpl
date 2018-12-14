@@ -6,7 +6,7 @@
         },
         "os-volume-type-access:is_public": true,
         "is_public": true,
-        "id": "6d0ff92a-0007-4780-9ece-acfe5876966a",
+        "id": "%(uuid)s",
         "description": "volume type 0001"
     }
 }
