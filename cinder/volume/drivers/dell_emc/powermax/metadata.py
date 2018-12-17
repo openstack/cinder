@@ -58,12 +58,12 @@ class PowerMaxVolumeMetadata(object):
         self.utils = utils.PowerMaxUtils()
         self.volume_trace_list = []
         self.is_debug = is_debug
-        self.vmax_driver_version = version
+        self.powermax_driver_version = version
 
     def _update_platform(self):
         """Update the platform."""
         try:
-            self.version_dict['platform'] = platform.platform()
+            self.version_dict['openstack_platform'] = platform.platform()
         except Exception as ex:
             LOG.warning("Unable to determine the platform. "
                         "Exception is %s.", ex)
@@ -102,14 +102,6 @@ class PowerMaxVolumeMetadata(object):
         """
         return version.version_info.version
 
-    @staticmethod
-    def _get_version_info_release():
-        """Gets the release.
-
-        :returns: string -- release
-        """
-        return version.version_info.release
-
     def _update_info_from_version_info(self):
         """Update class variables from version info."""
         try:
@@ -118,13 +110,6 @@ class PowerMaxVolumeMetadata(object):
                 self.version_dict['openstack_version'] = ver
         except Exception as ex:
             LOG.warning("Unable to get version info. "
-                        "Exception is %s.", ex)
-        try:
-            rel = self._get_version_info_release()
-            if rel:
-                self.version_dict['openstack_release'] = rel
-        except Exception as ex:
-            LOG.warning("Unable to get release info. "
                         "Exception is %s.", ex)
 
     def _update_openstack_info(self):
@@ -136,20 +121,22 @@ class PowerMaxVolumeMetadata(object):
         # Some distributions override with more meaningful information
         self._update_info_from_version_info()
 
-    def _update_vmax_info(self, serial_number):
+    def _update_array_info(self, serial_number):
         """Update PowerMax/VMAX info.
 
         :param serial_number: the serial number of the array
         """
-        vmax_u4v_version_dict = (
+        u4p_version_dict = (
             self.rest.get_unisphere_version())
-        self.version_dict['unisphere_version'] = (
-            vmax_u4v_version_dict['version'])
+        self.version_dict['unisphere_for_powermax_version'] = (
+            u4p_version_dict['version'])
         self.version_dict['serial_number'] = serial_number
-        vmax_info_dict = self.rest.get_array_serial(serial_number)
-        self.version_dict['vmax_firmware_version'] = vmax_info_dict['ucode']
-        self.version_dict['vmax_model'] = vmax_info_dict['model']
-        self.version_dict['vmax_driver_version'] = self.vmax_driver_version
+        array_info_dict = self.rest.get_array_serial(serial_number)
+        self.version_dict['storage_firmware_version'] = (
+            array_info_dict['ucode'])
+        self.version_dict['storage_model'] = array_info_dict['model']
+        self.version_dict['powermax_cinder_driver_version'] = (
+            self.powermax_driver_version)
 
     @debug_required
     def gather_version_info(self, serial_number):
@@ -160,7 +147,7 @@ class PowerMaxVolumeMetadata(object):
         """
         try:
             self._update_openstack_info()
-            self._update_vmax_info(serial_number)
+            self._update_array_info(serial_number)
             self.print_pretty_table(self.version_dict)
         except Exception as ex:
             LOG.warning("Unable to gather version info. "
@@ -169,11 +156,11 @@ class PowerMaxVolumeMetadata(object):
 
     @debug_required
     def gather_volume_info(
-            self, volume_id, operation, append, **kwargs):
+            self, volume_id, successful_operation, append, **kwargs):
         """Gather volume information.
 
         :param volume_id: the unique volume id key
-        :param operation: the operation e.g "create"
+        :param successful_operation: the operation e.g "create"
         :param append: append flag
         :param kwargs: variable length argument list
         :returns: datadict
@@ -183,7 +170,7 @@ class PowerMaxVolumeMetadata(object):
         datadict = {}
         try:
             volume_trace_dict = self._fill_volume_trace_dict(
-                volume_id, operation, append, **kwargs)
+                volume_id, successful_operation, append, **kwargs)
             volume_trace_dict['volume_updated_time'] = (
                 datetime.datetime.fromtimestamp(
                     int(time.time())).strftime('%Y-%m-%d %H:%M:%S'))
@@ -204,11 +191,11 @@ class PowerMaxVolumeMetadata(object):
         return datadict
 
     def _fill_volume_trace_dict(
-            self, volume_id, operation, append, **kwargs):
+            self, volume_id, successful_operation, append, **kwargs):
         """Populates a dictionary with key value pairs
 
         :param volume_id: the unique volume id key
-        :param operation: the operation e.g "create"
+        :param successful_operation: the operation e.g "create"
         :param append: append flag
         :param kwargs: variable length argument list
         :returns: my_volume_trace_dict
@@ -309,18 +296,18 @@ class PowerMaxVolumeMetadata(object):
         initiator_group, port_group = None, None
 
         if is_multiattach:
-            operation = 'multi_attach'
+            successful_operation = 'multi_attach'
             mv_list = masking_view_dict['mv_list']
             sg_list = masking_view_dict['sg_list']
         else:
-            operation = 'attach'
+            successful_operation = 'attach'
             child_storage_group = masking_view_dict[utils.SG_NAME]
             parent_storage_group = masking_view_dict[utils.PARENT_SG_NAME]
             initiator_group = masking_view_dict[utils.IG_NAME]
             port_group = masking_view_dict[utils.PORTGROUPNAME]
 
         datadict = self.gather_volume_info(
-            volume.id, operation, False,
+            volume.id, successful_operation, False,
             serial_number=extra_specs[utils.ARRAY],
             service_level=extra_specs[utils.SLO],
             workload=extra_specs[utils.WORKLOAD], srp=extra_specs[utils.SRP],
@@ -394,23 +381,23 @@ class PowerMaxVolumeMetadata(object):
 
     @debug_required
     def capture_snapshot_info(
-            self, source, extra_specs, operation, last_ss_name):
+            self, source, extra_specs, successful_operation, last_ss_name):
         """Captures snapshot info in volume metadata
 
         :param source: the source volume object
         :param extra_specs: extra specifications
-        :param operation: snapshot operation
+        :param successful_operation: snapshot operation
         :param last_ss_name: the last snapshot name
         """
         if isinstance(source, volume.Volume):
-            if 'create' in operation:
+            if 'create' in successful_operation:
                 snapshot_count = six.text_type(len(source.snapshots))
             else:
                 snapshot_count = six.text_type(len(source.snapshots) - 1)
             default_sg = (
                 self.utils.derive_default_sg_from_extra_specs(extra_specs))
             datadict = self.gather_volume_info(
-                source.id, operation, False,
+                source.id, successful_operation, False,
                 volume_size=source.size,
                 default_sg_name=default_sg,
                 serial_number=extra_specs[utils.ARRAY],
@@ -459,7 +446,7 @@ class PowerMaxVolumeMetadata(object):
     @debug_required
     def capture_create_volume(
             self, device_id, volume, group_name, group_id, extra_specs,
-            rep_info_dict, operation, source_snapshot_id):
+            rep_info_dict, successful_operation, source_snapshot_id):
         """Captures create volume info in volume metadata
 
         :param device_id: device id
@@ -468,7 +455,7 @@ class PowerMaxVolumeMetadata(object):
         :param group_id: group id
         :param extra_specs: additional info
         :param rep_info_dict: information gathered from replication
-        :param operation: the type of create operation
+        :param successful_operation: the type of create operation
         :param source_snapshot_id: the source snapshot id
         :returns: volume_metadata dict
         """
@@ -490,7 +477,7 @@ class PowerMaxVolumeMetadata(object):
         default_sg = self.utils.derive_default_sg_from_extra_specs(
             extra_specs, rep_mode)
         datadict = self.gather_volume_info(
-            volume.id, operation, True, volume_size=volume.size,
+            volume.id, successful_operation, True, volume_size=volume.size,
             device_id=device_id,
             default_sg_name=default_sg,
             serial_number=extra_specs[utils.ARRAY],
@@ -517,23 +504,17 @@ class PowerMaxVolumeMetadata(object):
 
     @debug_required
     def gather_replication_info(
-            self, rdf_group_no=None,
-            target_name=None, remote_array=None,
-            target_device_id=None, replication_status=None,
-            rep_mode=None, rdf_group_label=None):
+            self, volume_id, successful_operation, append, **kwargs):
         """Gathers replication information
 
-        :param rdf_group_no: RDF group number
-        :param target_name: target volume name
-        :param remote_array: remote array serialnumber
-        :param target_device_id: target device id
-        :param replication_status: replication status
-        :param rep_mode: replication mode, sync, async, metro
-        :param rdf_group_label: rdf group label
+        :param volume_id: volume id
+        :param successful_operation: the successful operation type
+        :param append: boolean
+        :param **kwargs: variable length of arguments
         :returns: rep_dict
         """
-        param_dict = locals()
-        return self._fill_volume_trace_dict(param_dict)
+        return self._fill_volume_trace_dict(
+            volume_id, successful_operation, append, **kwargs)
 
     @debug_required
     def capture_failover_volume(
@@ -586,7 +567,7 @@ class PowerMaxVolumeMetadata(object):
         :param device_id: the PowerMax/VMAX device id
         :param extra_specs: the extra specs
         """
-        operation = "manage_existing_volume"
+        successful_operation = "manage_existing_volume"
         rdf_group_no, target_name, remote_array, target_device_id = (
             None, None, None, None)
         rep_mode, replication_status, rdf_group_label = (
@@ -603,7 +584,7 @@ class PowerMaxVolumeMetadata(object):
         default_sg = self.utils.derive_default_sg_from_extra_specs(
             extra_specs, rep_mode)
         datadict = self.gather_volume_info(
-            volume.id, operation, True, volume_size=volume.size,
+            volume.id, successful_operation, True, volume_size=volume.size,
             device_id=device_id,
             default_sg_name=default_sg,
             serial_number=extra_specs[utils.ARRAY],
@@ -641,9 +622,9 @@ class PowerMaxVolumeMetadata(object):
         :param rep_mode: replication mode
         :param is_compression_disabled: compression disabled flag
         """
-        operation = "retype"
+        successful_operation = "retype"
         datadict = self.gather_volume_info(
-            volume.id, operation, False, volume_size=volume.size,
+            volume.id, successful_operation, False, volume_size=volume.size,
             device_id=device_id,
             target_sg_name=target_sg_name,
             serial_number=array,
