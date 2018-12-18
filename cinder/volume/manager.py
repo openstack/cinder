@@ -1620,7 +1620,7 @@ class VolumeManager(manager.CleanableManager,
                     option_per_gb = '%s_per_gb' % option
                     option_per_gb_min = '%s_per_gb_min' % option
                     if option_per_gb in specs:
-                        minimum_value = specs.pop(option_per_gb_min, 0)
+                        minimum_value = int(specs.pop(option_per_gb_min, 0))
                         value = int(specs[option_per_gb]) * volume_size
                         specs[option] = max(minimum_value, value)
                         specs.pop(option_per_gb)
