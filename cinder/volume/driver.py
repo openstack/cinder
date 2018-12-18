@@ -82,7 +82,7 @@ volume_opts = [
     cfg.IntOpt('volume_clear_size',
                default=0,
                max=1024,
-               help='Size in MiB to wipe at start of old volumes. 1024 MiB'
+               help='Size in MiB to wipe at start of old volumes. 1024 MiB '
                     'at max. 0 => all'),
     cfg.StrOpt('volume_clear_ionice',
                help='The flag to pass to ionice to alter the i/o priority '
@@ -284,7 +284,7 @@ volume_opts = [
 iser_opts = [
     cfg.IntOpt('num_iser_scan_tries',
                default=3,
-               help='The maximum number of times to rescan iSER target'
+               help='The maximum number of times to rescan iSER target '
                     'to find volume'),
     cfg.StrOpt('iser_target_prefix',
                default='iqn.2010-10.org.openstack:',

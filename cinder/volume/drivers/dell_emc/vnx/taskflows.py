@@ -332,7 +332,7 @@ class ExtendSMPTask(task.Task):
                 LOG.warning('Not extending the SMP: %s, because its base lun '
                             'is not thin.', smp_name)
         else:
-            LOG.info('Not extending the SMP: %(smp)s, size: %(size)s, because'
+            LOG.info('Not extending the SMP: %(smp)s, size: %(size)s, because '
                      'the new size: %(new_size)s is smaller.',
                      {'smp': smp_name, 'size': smp.total_capacity_gb,
                       'new_size': lun_size})

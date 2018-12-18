@@ -682,7 +682,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
                                    if lss_pair[0] not in source_lss_used]
             self._assert(available_lss_pairs,
                          "All LSSs reserved for CG have been used out, "
-                         "please reserve more LSS for CG if there are still"
+                         "please reserve more LSS for CG if there are still "
                          "some empty LSSs left.")
         else:
             available_lss_pairs = set()

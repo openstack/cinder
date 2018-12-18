@@ -1864,7 +1864,7 @@ class StorwizeHelpers(object):
             elif mapping_attrs['status'] == 'stopped':
                 self.ssh.prestartfcconsistgrp(fc_consistgrp)
             elif mapping_attrs['status'] != 'preparing':
-                msg = (_('Unexpected mapping status %(status)s for mapping'
+                msg = (_('Unexpected mapping status %(status)s for mapping '
                          '%(id)s. Attributes: %(attr)s.') %
                        {'status': mapping_attrs['status'],
                         'id': fc_consistgrp,
@@ -1976,7 +1976,7 @@ class StorwizeHelpers(object):
                                        pool=None):
         """Create a FlashCopy mapping and add to consistent group."""
         LOG.debug('Enter: create_flashcopy_to_consistgrp: create FlashCopy'
-                  ' from source %(source)s to target %(target)s'
+                  ' from source %(source)s to target %(target)s. '
                   'Then add the flashcopy to %(cg)s.',
                   {'source': source, 'target': target, 'cg': consistgrp})
 
@@ -2469,7 +2469,7 @@ class StorwizeHelpers(object):
         topology is hyperswap.
         """
         if state['code_level'] < (7, 6, 0, 0):
-            LOG.debug('Hyperswap failure as the storage'
+            LOG.debug('Hyperswap failure as the storage '
                       'code_level is %(code_level)s, below '
                       'the required 7.6.0.0.',
                       {'code_level': state['code_level']})
@@ -3511,7 +3511,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                           {'master': volume['name'], 'aux': tgt_volume})
                 continue
             LOG.debug('_failover_replica_volumes: vol=%(vol)s, master_vol='
-                      '%(master_vol)s, aux_vol=%(aux_vol)s, state=%(state)s'
+                      '%(master_vol)s, aux_vol=%(aux_vol)s, state=%(state)s, '
                       'primary=%(primary)s',
                       {'vol': volume['name'],
                        'master_vol': rep_info['master_vdisk_name'],
@@ -3657,7 +3657,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         def _replica_vol_ready():
             rep_info = self._helpers.get_relationship_info(volume)
             if not rep_info:
-                msg = (_('_wait_replica_vol_ready: no rc-releationship'
+                msg = (_('_wait_replica_vol_ready: no rc-releationship '
                          'is established for volume:%(volume)s. Please '
                          're-establish the rc-relationship and '
                          'synchronize the volumes on backend storage.'),
@@ -4235,7 +4235,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             rccg = self._helpers.get_rccg(rccg_name)
             if not rccg:
                 msg = (_('_replica_grp_ready: no group %(rccg)s exists on the '
-                         'backend. Please re-create the rccg and synchronize'
+                         'backend. Please re-create the rccg and synchronize '
                          'the volumes on backend storage.'),
                        {'rccg': rccg_name})
                 LOG.error(msg)

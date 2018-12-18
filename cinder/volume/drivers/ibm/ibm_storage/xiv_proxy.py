@@ -1668,7 +1668,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         src_vref_size = float(src_vref['size'])
         volume_size = float(volume['size'])
         if volume_size < src_vref_size:
-            error = (_("New volume size (%(vol_size)s GB) cannot be less"
+            error = (_("New volume size (%(vol_size)s GB) cannot be less "
                        "than the source volume size (%(src_size)s GB)..")
                      % {'vol_size': volume_size, 'src_size': src_vref_size})
             LOG.error(error)

@@ -3577,11 +3577,11 @@ class SCApi(object):
 
             r = self.client.post('StorageCenter/ScLiveVolume', payload, True)
             if self._check_result(r):
-                LOG.info('create_live_volume: Live Volume created from'
+                LOG.info('create_live_volume: Live Volume created from '
                          '%(svol)s to %(ssn)s',
                          {'svol': self._get_id(scvolume), 'ssn': remotessn})
                 return self._get_json(r)
-        LOG.error('create_live_volume: Failed to create Live Volume from'
+        LOG.error('create_live_volume: Failed to create Live Volume from '
                   '%(svol)s to %(ssn)s',
                   {'svol': self._get_id(scvolume), 'ssn': remotessn})
         return None

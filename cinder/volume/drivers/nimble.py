@@ -359,7 +359,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
         if refresh:
             group_info = self.APIExecutor.get_group_info()
             if 'usage_valid' not in group_info:
-                raise NimbleDriverException(_('SpaceInfo returned by'
+                raise NimbleDriverException(_('SpaceInfo returned by '
                                               'array is invalid'))
             total_capacity = (group_info['usable_capacity_bytes'] /
                               float(units.Gi))
@@ -1467,7 +1467,7 @@ class NimbleRestAPIExecutor(object):
         filter = {"name": initiator_group_name}
         r = self.get_query(api, filter)
         if not r.json()['data']:
-            raise NimbleAPIException(_("Unable to retrieve information for"
+            raise NimbleAPIException(_("Unable to retrieve information for "
                                        "initiator group : %s") %
                                      initiator_group_name)
         return r.json()['data'][0]['id']
@@ -1544,7 +1544,7 @@ class NimbleRestAPIExecutor(object):
                 self.remove_acl(volume, acl_record['initiator_group_name'])
 
     def remove_acl(self, volume, initiator_group_name):
-        LOG.info("removing ACL from volume=%(vol)s"
+        LOG.info("removing ACL from volume=%(vol)s "
                  "and %(igroup)s",
                  {"vol": volume['name'],
                   "igroup": initiator_group_name})

@@ -114,7 +114,7 @@ NEXENTA_ISCSI_OPTS = [
                help='Nexenta target portal groups'),
     cfg.StrOpt('nexenta_iscsi_target_portals',
                default='',
-               help='Comma separated list of portals for NexentaStor5, in'
+               help='Comma separated list of portals for NexentaStor5, in '
                     'format of IP1:port1,IP2:port2. Port is optional, '
                     'default=3260. Example: 10.10.10.1:3267,10.10.1.2'),
     cfg.StrOpt('nexenta_iscsi_target_host_group',

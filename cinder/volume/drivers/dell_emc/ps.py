@@ -412,7 +412,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
     def do_setup(self, context):
         """Disable cli confirmation and tune output format."""
         try:
-            msg = _("The Dell PS driver is moving to maintenance mode"
+            msg = _("The Dell PS driver is moving to maintenance mode "
                     "in the S release and will be removed in T release.")
             versionutils.report_deprecated_feature(LOG, msg)
 
