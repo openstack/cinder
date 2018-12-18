@@ -183,11 +183,7 @@ class TestGroup(test_objects.BaseObjectsTestCase):
     def test_is_replicated_true(self, mock_get_specs):
         mock_get_specs.return_value = '<is> True'
         group = objects.Group(self.context, group_type_id=fake.GROUP_TYPE_ID)
-        # NOTE(xyang): Changed the following from self.assertTrue(
-        # group.is_replicated) to self.assertEqual(True, group.is_replicated)
-        # to address a review comment. This way this test will still pass
-        # even if is_replicated is a method and not a property.
-        self.assertTrue(True, group.is_replicated)
+        self.assertTrue(group.is_replicated)
 
     @ddt.data('<is> False', None, 'notASpecValueWeCareAbout')
     def test_is_replicated_false(self, spec_value):
