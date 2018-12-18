@@ -29,6 +29,11 @@ System requirements and licensing
 The Dell EMC VMAX Cinder driver supports the VMAX-3 hybrid series, VMAX
 All-Flash series and the PowerMax arrays.
 
+.. note::
+
+   We will no longer support the VMAX-3 hybrid series from the OpenStack
+   ``T`` release onward.
+
 The array operating system software, Solutions Enabler 9.0.x series, and
 Unisphere for PowerMax 9.0.x series are required to run Dell EMC VMAX
 Cinder driver.
