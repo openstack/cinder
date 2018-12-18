@@ -405,20 +405,6 @@ class BrickLvmTestCase(test.TestCase):
 
             self.vg.activate_lv('my-lv')
 
-    @mock.patch('oslo_concurrency.lockutils.lock')
-    def test_activate_lv_execute_with_lock(self, mock_lock):
-        with mock.patch('os_brick.executor.Executor._execute') as mock_ex:
-            self.vg.activate_lv('my-lv')
-            mock_ex.assert_called()
-
-        # NOTE(danms): This is a little icky because it assumes internal
-        # behavior of oslo_concurrency, but we need to make sure that
-        # the decorator (which has already run here) is wrapping our
-        # _execute() method. It calls lock() on __enter__, so we use that
-        # here to validate that we are synchronized.
-        mock_lock.assert_called()
-        mock_lock.return_value.__enter__.assert_called_once_with()
-
     def test_get_mirrored_available_capacity(self):
         self.assertEqual(2.0, self.vg.vg_mirror_free_space(1))
 
