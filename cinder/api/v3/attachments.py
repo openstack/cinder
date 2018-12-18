@@ -28,6 +28,7 @@ from cinder.objects import fields
 from cinder.policies import attachments as attachment_policy
 from cinder import utils
 from cinder.volume import api as volume_api
+from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -286,6 +287,8 @@ class AttachmentsController(wsgi.Controller):
         attachment_ref.save()
         volume_ref.update({'status': 'in-use', 'attach_status': 'attached'})
         volume_ref.save()
+        volume_utils.notify_about_volume_usage(context, volume_ref,
+                                               "attach.end")
 
 
 def create_resource(ext_mgr):
