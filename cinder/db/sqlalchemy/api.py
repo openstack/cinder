@@ -6473,7 +6473,8 @@ def purge_deleted_rows(context, age_in_days):
                 if six.text_type(table) == "quality_of_service_specs":
                     session.query(models.QualityOfServiceSpecs).filter(
                         and_(models.QualityOfServiceSpecs.specs_id.isnot(
-                            None), models.QualityOfServiceSpecs.deleted,
+                            None),
+                            models.QualityOfServiceSpecs.deleted == True,
                             models.QualityOfServiceSpecs.deleted_at <
                             deleted_age)).delete()
                 result = session.execute(
