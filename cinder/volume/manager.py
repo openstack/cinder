@@ -1009,7 +1009,7 @@ class VolumeManager(manager.CleanableManager,
                 if not s_res:
                     msg_args = {"id": snapshot.id,
                                 "status":
-                                    fields.SnapshotStatus.ERROR}
+                                    fields.SnapshotStatus.AVAILABLE}
                     msg += ("Failed to reset snapshot %(id)s "
                             "status to %(status)s." % msg_args)
                 LOG.exception(msg, msg_args)
