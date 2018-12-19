@@ -99,6 +99,42 @@ class VolumeProtectionTests(test.TestCase):
         self.assertEqual(response.json_body['volume']['id'], volume.id)
 
     @mock.patch.object(volume_api.API, 'get_volume')
+    def test_admin_can_show_tenant_id_in_volume(self, mock_volume):
+        # Make sure administrators are authorized to show tenant_id
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        response = self._get_request_response(admin_context, path, 'GET')
+
+        self.assertEqual(http_client.OK, response.status_int)
+        res_vol = response.json_body['volume']
+        self.assertEqual(admin_context.project_id,
+                         res_vol['os-vol-tenant-attr:tenant_id'])
+
+    @mock.patch.object(volume_api.API, 'get_volume')
+    def test_owner_can_show_tenant_id_in_volume(self, mock_volume):
+        # Make sure owners are authorized to show tenant_id in volume
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        response = self._get_request_response(user_context, path, 'GET')
+
+        self.assertEqual(http_client.OK, response.status_int)
+        res_vol = response.json_body['volume']
+        self.assertEqual(user_context.project_id,
+                         res_vol['os-vol-tenant-attr:tenant_id'])
+
+    @mock.patch.object(volume_api.API, 'get_volume')
     def test_owner_cannot_show_volumes_for_others(self, mock_volume):
         # Make sure volumes are only exposed to their owners
         owner_context = self.user_context
@@ -149,6 +185,40 @@ class VolumeProtectionTests(test.TestCase):
         res_vol = response.json_body['volumes'][0]
 
         self.assertEqual(volume.id, res_vol['id'])
+
+    def test_admin_can_show_tenant_id_in_volume_detail(self):
+        # Make sure admins are authorized to show tenant_id in volume detail
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context)
+        path = '/v3/%(project_id)s/volumes/detail' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        response = self._get_request_response(admin_context, path, 'GET')
+
+        self.assertEqual(http_client.OK, response.status_int)
+        res_vol = response.json_body['volumes'][0]
+        # Make sure owners are authorized to show tenant_id
+        self.assertEqual(admin_context.project_id,
+                         res_vol['os-vol-tenant-attr:tenant_id'])
+
+    def test_owner_can_show_tenant_id_in_volume_detail(self):
+        # Make sure owners are authorized to show tenant_id in volume detail
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context)
+        path = '/v3/%(project_id)s/volumes/detail' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        response = self._get_request_response(user_context, path, 'GET')
+
+        self.assertEqual(http_client.OK, response.status_int)
+        res_vol = response.json_body['volumes'][0]
+        # Make sure owners are authorized to show tenant_id
+        self.assertEqual(user_context.project_id,
+                         res_vol['os-vol-tenant-attr:tenant_id'])
 
     @mock.patch.object(volume_api.API, 'get_volume')
     def test_admin_can_force_delete_volumes(self, mock_volume):

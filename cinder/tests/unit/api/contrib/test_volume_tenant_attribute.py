@@ -14,11 +14,14 @@
 
 import uuid
 
+from oslo_policy import policy as oslo_policy
 from oslo_serialization import jsonutils
 import webob
 
 from cinder import context
 from cinder import objects
+from cinder.policies.volumes import TENANT_ATTRIBUTE_POLICY
+from cinder import policy
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -57,8 +60,13 @@ class VolumeTenantAttributeTest(test.TestCase):
         self.mock_object(volume.api.API, 'get', fake_volume_get)
         self.mock_object(volume.api.API, 'get_all', fake_volume_get_all)
         self.UUID = uuid.uuid4()
+        policy.reset()
+        policy.init()
+        self.addCleanup(policy.reset)
 
-    def test_get_volume_allowed(self):
+    def test_get_volume_includes_tenant_id(self):
+        allow_all = {TENANT_ATTRIBUTE_POLICY: oslo_policy._checks.TrueCheck()}
+        policy._ENFORCER.set_rules(allow_all, overwrite=False)
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         req = webob.Request.blank('/v2/%s/volumes/%s' % (
             fake.PROJECT_ID, self.UUID))
@@ -67,19 +75,26 @@ class VolumeTenantAttributeTest(test.TestCase):
         res = req.get_response(app())
         vol = jsonutils.loads(res.body)['volume']
         self.assertEqual(PROJECT_ID, vol['os-vol-tenant-attr:tenant_id'])
+        self.assertIn('os-vol-tenant-attr:tenant_id', vol)
 
-    def test_get_volume_unallowed(self):
-        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+    def test_get_volume_excludes_tenant_id(self):
+        allow_none = {TENANT_ATTRIBUTE_POLICY:
+                      oslo_policy._checks.FalseCheck()}
+        policy._ENFORCER.set_rules(allow_none, overwrite=False)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         req = webob.Request.blank('/v2/%s/volumes/%s' % (
             fake.PROJECT_ID, self.UUID))
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = jsonutils.loads(res.body)['volume']
+        self.assertEqual(fake.VOLUME_ID, vol['id'])
         self.assertNotIn('os-vol-tenant-attr:tenant_id', vol)
 
-    def test_list_detail_volumes_allowed(self):
-        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+    def test_list_detail_volumes_includes_tenant_id(self):
+        allow_all = {TENANT_ATTRIBUTE_POLICY: oslo_policy._checks.TrueCheck()}
+        policy._ENFORCER.set_rules(allow_all, overwrite=False)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
         req = webob.Request.blank('/v2/%s/volumes/detail' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
@@ -87,20 +102,39 @@ class VolumeTenantAttributeTest(test.TestCase):
         vol = jsonutils.loads(res.body)['volumes']
         self.assertEqual(PROJECT_ID, vol[0]['os-vol-tenant-attr:tenant_id'])
 
-    def test_list_detail_volumes_unallowed(self):
+    def test_list_detail_volumes_excludes_tenant_id(self):
+        allow_none = {TENANT_ATTRIBUTE_POLICY:
+                      oslo_policy._checks.FalseCheck()}
+        policy._ENFORCER.set_rules(allow_none, overwrite=False)
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
         req = webob.Request.blank('/v2/%s/volumes/detail' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = jsonutils.loads(res.body)['volumes']
+        self.assertEqual(fake.VOLUME_ID, vol[0]['id'])
         self.assertNotIn('os-vol-tenant-attr:tenant_id', vol[0])
 
-    def test_list_simple_volumes_no_tenant_id(self):
+    def test_list_simple_volumes_never_has_tenant_id(self):
+        allow_all = {TENANT_ATTRIBUTE_POLICY: oslo_policy._checks.TrueCheck()}
+        policy._ENFORCER.set_rules(allow_all, overwrite=False)
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         req = webob.Request.blank('/v2/%s/volumes' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = jsonutils.loads(res.body)['volumes']
+        self.assertEqual(fake.VOLUME_ID, vol[0]['id'])
+        self.assertNotIn('os-vol-tenant-attr:tenant_id', vol[0])
+
+        allow_none = {TENANT_ATTRIBUTE_POLICY:
+                      oslo_policy._checks.FalseCheck()}
+        policy._ENFORCER.set_rules(allow_none, overwrite=False)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req = webob.Request.blank('/v2/%s/volumes' % fake.PROJECT_ID)
+        req.method = 'GET'
+        req.environ['cinder.context'] = ctx
+        res = req.get_response(app())
+        vol = jsonutils.loads(res.body)['volumes']
+        self.assertEqual(fake.VOLUME_ID, vol[0]['id'])
         self.assertNotIn('os-vol-tenant-attr:tenant_id', vol[0])
