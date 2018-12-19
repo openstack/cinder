@@ -1,0 +1,7 @@
+---
+other:
+  - |
+    This PowerMax driver now puts the unmanaged "orphan" volume in a storage
+    group called OS-Unmanaged. It is not possible to query a volume's
+    associated snapvx snapshots using the PowerMax management software, unless
+    it belongs to a storage group.

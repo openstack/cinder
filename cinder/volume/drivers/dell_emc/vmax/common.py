@@ -2189,6 +2189,24 @@ class VMAXCommon(object):
             # Rename the volume to volumeId, thus remove the 'OS-' prefix.
             self.rest.rename_volume(
                 extra_specs[utils.ARRAY], device_id, volume_id)
+            # First check/create the unmanaged sg
+            # Don't fail if we fail to create the SG
+            try:
+                self.provision.create_storage_group(
+                    extra_specs[utils.ARRAY], utils.UNMANAGED_SG,
+                    extra_specs[utils.SRP], None,
+                    None, extra_specs=extra_specs)
+            except Exception as e:
+                msg = ("Exception creating %(sg)s. "
+                       "Exception received was %(e)s."
+                       % {'sg': utils.UNMANAGED_SG,
+                          'e': six.text_type(e)})
+                LOG.warning(msg)
+                return
+            # Try to add the volume
+            self.masking._check_adding_volume_to_storage_group(
+                extra_specs[utils.ARRAY], device_id, utils.UNMANAGED_SG,
+                volume_id, extra_specs)
 
     def manage_existing_snapshot(self, snapshot, existing_ref):
         """Manage an existing VMAX Snapshot (import to Cinder).

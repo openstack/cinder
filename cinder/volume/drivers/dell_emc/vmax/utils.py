@@ -81,6 +81,9 @@ OTHER_PARENT_SG = 'other_parent_sg_name'
 FAST_SG = 'fast_managed_sg'
 NO_SLO_SG = 'no_slo_sg'
 
+# SG for unmanaged volumes
+UNMANAGED_SG = 'OS-Unmanaged'
+
 # Cinder.conf vmax configuration
 VMAX_SERVER_IP = 'san_ip'
 VMAX_USER_NAME = 'san_login'
