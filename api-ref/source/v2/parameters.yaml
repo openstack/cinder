@@ -874,6 +874,12 @@ links_5:
   in: body
   required: true
   type: array
+links_vol_optional:
+  description: |
+    The volume links.
+  in: body
+  required: false
+  type: array
 location:
   description: |
     Full URL to a service or server.

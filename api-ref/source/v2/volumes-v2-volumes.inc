@@ -119,6 +119,7 @@ Response Parameters
    - created_at: created_at
    - volumes: volumes
    - volume_type: volume_type
+   - volumes_links: links_vol_optional
 
 
 
@@ -274,6 +275,7 @@ Response Parameters
    - id: id
    - links: links
    - name: name
+   - volumes_links: links_vol_optional
 
 
 
