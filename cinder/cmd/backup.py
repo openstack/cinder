@@ -69,7 +69,7 @@ def _launch_backup_process(launcher, num_process):
     try:
         server = service.Service.create(binary='cinder-backup',
                                         coordination=True,
-                                        process_number=num_process + 1)
+                                        process_number=num_process)
     except Exception:
         LOG.exception('Backup service %s failed to start.', CONF.host)
         sys.exit(1)
@@ -97,18 +97,10 @@ def main():
     global LOG
     LOG = logging.getLogger(__name__)
 
-    if CONF.backup_workers > 1:
-        LOG.info('Backup running with %s processes.', CONF.backup_workers)
-        launcher = service.get_launcher()
+    LOG.info('Backup running with %s processes.', CONF.backup_workers)
+    launcher = service.get_launcher()
 
-        for i in range(CONF.backup_workers):
-            _launch_backup_process(launcher, i)
+    for i in range(1, CONF.backup_workers + 1):
+        _launch_backup_process(launcher, i)
 
-        launcher.wait()
-    else:
-        LOG.info('Backup running in single process mode.')
-        server = service.Service.create(binary='cinder-backup',
-                                        coordination=True,
-                                        process_number=1)
-        service.serve(server)
-        service.wait()
+    launcher.wait()
