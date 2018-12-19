@@ -20,10 +20,24 @@ The Cinder driver supports the VMAX-3 series and VMAX All-Flash arrays.
 Solutions Enabler 8.4.0.7 or later, and Unisphere for VMAX 8.4.0.15 or later
 are required.
 
+.. note::
+
+   Unisphere for PowerMax 9.0 or higher cannot be supported on Pike due to
+   the new architecture changes around ``Workload`` deprecation. Only
+   Unisphere for VMAX 8.4.x is supported on Pike.
+
 You can download Solutions Enabler and Unisphere from the Dell EMC's support
 web site (login is required). See the ``Solutions Enabler 8.4.0 Installation
 and Configuration Guide`` and ``Unisphere for VMAX 8.4.0 Installation Guide``
 at ``support.emc.com``.
+
+.. note::
+
+   Although VMAX AFA can be upgraded to the PowerMax OS (5978), we cannot
+   support this configuration as both ``Solutions Enabler 9.0`` and
+   ``Unisphere for PowerMax 9.0`` are required. These releases brought
+   about the deprecation of ``Workload``, so if legacy ``Volume Types``
+   leveraged ``Workload`` they will no longer work.
 
 Required VMAX software suites for OpenStack
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
