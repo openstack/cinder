@@ -21,7 +21,18 @@ def upgrade(migrate_engine):
     prefix such as 'volumes_' or 'gigabytes_' to volume_type_name it
     will exceed the db length limit.
     """
+    # On MariaDB, max length varies depending on the version and the InnoDB
+    # page size [1], so it is possible to have error 1071 ('Specified key was
+    # too long; max key length is 767 bytes").  Since this migration is to
+    # resolve a corner case, deployments with those DB versions won't be
+    # covered.
+    # [1]: https://mariadb.com/kb/en/library/innodb-limitations/#page-sizes
+    hide_failure = migrate_engine.name.startswith('mysql')
     meta = MetaData(bind=migrate_engine)
 
     quota_usages = Table('quota_usages', meta, autoload=True)
-    quota_usages.c.resource.alter(type=String(300))
+    try:
+        quota_usages.c.resource.alter(type=String(300))
+    except Exception:
+        if not hide_failure:
+            raise
