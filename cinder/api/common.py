@@ -39,19 +39,7 @@ api_common_opts = [
     cfg.StrOpt('resource_query_filters_file',
                default='/etc/cinder/resource_filters.json',
                help="Json file indicating user visible filter "
-                    "parameters for list queries.",
-               deprecated_name='query_volume_filters'),
-    cfg.ListOpt('query_volume_filters',
-                default=['name', 'status', 'metadata',
-                         'availability_zone',
-                         'bootable', 'group_id'],
-                deprecated_for_removal=True,
-                help="Volume filter options which "
-                     "non-admin user could use to "
-                     "query volumes. Default values "
-                     "are: ['name', 'status', "
-                     "'metadata', 'availability_zone' ,"
-                     "'bootable', 'group_id']")
+                    "parameters for list queries."),
 ]
 
 CONF = cfg.CONF

@@ -5,10 +5,8 @@ Generalized filters
 Background
 ----------
 
-Cinder introduced generalized resource filters since Pike, it has the
-same purpose as ``query_volume_filters`` option, but it's more convenient
-and can be applied to more cinder resources, administrator can control the
-allowed filter keys for **non-admin** user by editing the filter
+Cinder introduced generalized resource filters since Pike. Administrator can
+control the allowed filter keys for **non-admin** user by editing the filter
 configuration file. Also since this feature, cinder will raise
 ``400 BadRequest`` if any invalid query filter is specified.
 

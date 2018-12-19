@@ -68,7 +68,8 @@ class VolumeApiTest(test.TestCase):
             req.headers = mv.get_mv_header(mv.BASE_VERSION)
             req.environ['cinder.context'].is_admin = True
 
-            self.override_config('query_volume_filters', 'bootable')
+            self.override_config('resource_query_filters_file',
+                                 {'volume': ['bootable']})
             self.controller.index(req)
             filters = req.params.copy()
 
@@ -86,7 +87,8 @@ class VolumeApiTest(test.TestCase):
             req.api_version_request = mv.get_api_version(
                 mv.VOLUME_LIST_BOOTABLE)
 
-            self.override_config('query_volume_filters', 'bootable')
+            self.override_config('resource_query_filters_file',
+                                 {'volume': ['bootable']})
             self.controller.index(req)
             filters = req.params.copy()
 

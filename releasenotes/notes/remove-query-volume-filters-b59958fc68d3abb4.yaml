@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    Deprecated config option `query_volume_filters` is removed now. Please,
+    use config file described in resource_query_filters_file to configure
+    allowed volume filters.
