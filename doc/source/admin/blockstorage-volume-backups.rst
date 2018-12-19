@@ -32,12 +32,6 @@ flag is False by default.
 
 .. note::
 
-   The ``incremental`` and ``force`` flags are only available since block
-   storage API v2. You have to specify ``[--os-volume-api-version 2]`` in the
-   ``cinder`` command-line interface to use this parameter.
-
-.. note::
-
    The ``force`` flag is new in OpenStack Liberty.
 
 The incremental backup is based on a parent backup which is an existing
