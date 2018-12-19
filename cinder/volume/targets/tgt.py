@@ -19,6 +19,7 @@ from oslo_log import log as logging
 from oslo_utils import fileutils
 
 from cinder import exception
+import cinder.privsep.targets.tgt
 from cinder import utils
 from cinder.volume.targets import iscsi
 
@@ -45,7 +46,7 @@ class TgtAdm(iscsi.ISCSITarget):
                   """)
 
     def _get_target(self, iqn):
-        (out, err) = utils.execute('tgt-admin', '--show', run_as_root=True)
+        (out, err) = cinder.privsep.targets.tgt.tgtadmin_show()
         lines = out.split('\n')
         for line in lines:
             if iqn in line:
@@ -60,7 +61,7 @@ class TgtAdm(iscsi.ISCSITarget):
         capture = False
         target_info = []
 
-        (out, err) = utils.execute('tgt-admin', '--show', run_as_root=True)
+        (out, err) = cinder.privsep.targets.tgt.tgtadmin_show()
         lines = out.split('\n')
 
         for line in lines:
@@ -88,11 +89,7 @@ class TgtAdm(iscsi.ISCSITarget):
 
         (out, err) = (None, None)
         try:
-            (out, err) = utils.execute('tgtadm', '--lld', 'iscsi',
-                                       '--op', 'new', '--mode',
-                                       'logicalunit', '--tid',
-                                       tid, '--lun', '1', '-b',
-                                       path, run_as_root=True)
+            (out, err) = cinder.privsep.targets.tgt.tgtadm_create(tid, path)
         except putils.ProcessExecutionError as e:
             LOG.error("Failed recovery attempt to create "
                       "iscsi backing lun for Volume "
@@ -112,12 +109,7 @@ class TgtAdm(iscsi.ISCSITarget):
 
     @utils.retry(putils.ProcessExecutionError)
     def _do_tgt_update(self, name, force=False):
-        args = ['tgt-admin', '--update', name]
-        if force:
-            # Note: force may fail if there is active IO, but retry decorator
-            # should allow it to succeed on second attempt
-            args.append('-f')
-        (out, err) = utils.execute(*args, run_as_root=True)
+        (out, err) = cinder.privsep.targets.tgt.tgtadmin_update(name, force)
         LOG.debug("StdOut from tgt-admin --update: %s", out)
         LOG.debug("StdErr from tgt-admin --update: %s", err)
 
@@ -131,14 +123,7 @@ class TgtAdm(iscsi.ISCSITarget):
         # NOTE(jdg): Remove this when we get to the bottom of bug: #1398078
         # for now, since we intermittently hit target already exists we're
         # adding some debug info to try and pinpoint what's going on
-        (out, err) = utils.execute('tgtadm',
-                                   '--lld',
-                                   'iscsi',
-                                   '--op',
-                                   'show',
-                                   '--mode',
-                                   'target',
-                                   run_as_root=True)
+        (out, err) = cinder.privsep.targets.tgt.tgtadm_show()
         LOG.debug("Targets prior to update: %s", out)
         fileutils.ensure_tree(self.volumes_dir)
 
@@ -206,14 +191,7 @@ class TgtAdm(iscsi.ISCSITarget):
         # Grab targets list for debug
         # Consider adding a check for lun 0 and 1 for tgtadm
         # before considering this as valid
-        (out, err) = utils.execute('tgtadm',
-                                   '--lld',
-                                   'iscsi',
-                                   '--op',
-                                   'show',
-                                   '--mode',
-                                   'target',
-                                   run_as_root=True)
+        cinder.privsep.targets.tgt.tgtadm_show()
         LOG.debug("Targets after update: %s", out)
 
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_id)
@@ -267,11 +245,7 @@ class TgtAdm(iscsi.ISCSITarget):
         try:
             # NOTE(vish): --force is a workaround for bug:
             #             https://bugs.launchpad.net/cinder/+bug/1159948
-            utils.execute('tgt-admin',
-                          '--force',
-                          '--delete',
-                          iqn,
-                          run_as_root=True)
+            cinder.privsep.targets.tgt.tgtadmin_delete(iqn, force=True)
         except putils.ProcessExecutionError as e:
             non_fatal_errors = ("can't find the target",
                                 "access control rule does not exist")
@@ -298,10 +272,7 @@ class TgtAdm(iscsi.ISCSITarget):
             try:
                 LOG.warning('Silent failure of target removal '
                             'detected, retry....')
-                utils.execute('tgt-admin',
-                              '--delete',
-                              iqn,
-                              run_as_root=True)
+                cinder.privsep.targets.tgt.tgtadmin_delete(iqn)
             except putils.ProcessExecutionError as e:
                 LOG.error("Failed to remove iscsi target for Volume "
                           "ID: %(vol_id)s: %(e)s",
