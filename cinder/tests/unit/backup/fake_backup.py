@@ -34,6 +34,10 @@ def fake_db_backup(**updates):
         'service': 'fake_service',
         'object_count': 5,
         'num_dependent_backups': 0,
+        'backup_metadata': [
+            {'key': 'key1', 'value': 'value1'},
+            {'key': 'key2', 'value': 'value2'}
+        ],
     }
 
     for name, field in objects.Backup.fields.items():
@@ -54,4 +58,5 @@ def fake_db_backup(**updates):
 
 def fake_backup_obj(context, **updates):
     return objects.Backup._from_db_object(context, objects.Backup(),
-                                          fake_db_backup(**updates))
+                                          fake_db_backup(**updates),
+                                          expected_attrs=['metadata'])

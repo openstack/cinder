@@ -441,3 +441,8 @@ Add ``mode`` argument to attachment-create.
 3.55 (Maximum in Rocky)
 -----------------------
 Support ability to transfer snapshots along with their parent volume.
+
+3.56
+----
+Add ``user_id`` attribute to response body of list backup with detail and show
+backup detail APIs.

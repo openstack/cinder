@@ -97,6 +97,7 @@ Response Parameters
    - os-backup-project-attr:project_id: os-backup-project-attr:project_id
    - count: count
    - metadata: metadata_backup
+   - user_id: user_id_backup
 
 Response Example
 ----------------
@@ -155,6 +156,7 @@ Response Parameters
    - snapshot_id: snapshot_id_source_vol
    - os-backup-project-attr:project_id: os-backup-project-attr:project_id
    - metadata: metadata_backup
+   - user_id: user_id_backup
 
 Response Example
 ----------------

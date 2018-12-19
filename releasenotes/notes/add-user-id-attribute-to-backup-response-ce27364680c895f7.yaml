@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add ``user_id`` attribute to response body of list backup with detail
+    and show backup detail APIs.
