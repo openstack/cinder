@@ -44,6 +44,7 @@ from cinder.i18n import _
 
 key_mgr_opts = [
     cfg.StrOpt('fixed_key',
+               secret=True,
                help='Fixed key returned by key manager, specified in hex',
                deprecated_group='keymgr'),
 ]
