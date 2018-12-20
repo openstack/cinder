@@ -469,6 +469,17 @@ class TestMysqlMigrations(test_fixtures.OpportunisticDBTestMixin,
         count = noninnodb.scalar()
         self.assertEqual(count, 0, "%d non InnoDB tables created" % count)
 
+    def _check_127(self, engine, data):
+        quota_usage_resource = db_utils.get_table(engine, 'quota_usages')
+        self.assertIn('resource', quota_usage_resource.c)
+        self.assertIsInstance(quota_usage_resource.c.resource.type,
+                              self.VARCHAR_TYPE)
+        # Depending on the MariaDB version, and the page size, we may not have
+        # been able to change quota_usage_resource to 300 chars, it could still
+        # be 255.
+        self.assertIn(quota_usage_resource.c.resource.type.length,
+                      (255, 300))
+
 
 class TestPostgresqlMigrations(test_fixtures.OpportunisticDBTestMixin,
                                MigrationsMixin,
