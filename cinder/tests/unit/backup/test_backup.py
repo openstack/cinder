@@ -38,6 +38,7 @@ from cinder.objects import fields
 from cinder import quota
 from cinder import test
 from cinder.tests import fake_driver
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils
 from cinder.volume import rpcapi as volume_rpcapi
@@ -2174,4 +2175,60 @@ class BackupAPITestCase(BaseBackupTest):
                           self.ctxt, 'fake_backup_url')
         mock_reserve.assert_called_with(
             self.ctxt, backups=1, backup_gigabytes=1)
+        mock_rollback.assert_called_with(self.ctxt, "fake_reservation")
+
+    @mock.patch('cinder.db.backup_get_all_by_volume')
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.create_backup')
+    @mock.patch.object(api.API, '_get_available_backup_service_host',
+                       return_value='fake_host')
+    @mock.patch.object(quota.QUOTAS, 'rollback')
+    @mock.patch.object(quota.QUOTAS, 'reserve')
+    def test_create_backup_failed_with_empty_backup_objects(
+            self, mock_reserve, mock_rollback, mock_get_service,
+            mock_create, mock_get_backups):
+        mock_get_backups.return_value = [v2_fakes.fake_backup('fake-1')]
+        backups = objects.BackupList.get_all_by_volume(self.ctxt,
+                                                       fake.VOLUME_ID)
+        backups.objects = []
+        is_incremental = True
+        self.ctxt.user_id = 'fake_user'
+        self.ctxt.project_id = 'fake_project'
+        mock_reserve.return_value = 'fake_reservation'
+
+        volume_id = self._create_volume_db_entry(status='available',
+                                                 host='testhost#rbd',
+                                                 size=1)
+        self.assertRaises(exception.InvalidBackup,
+                          self.api.create,
+                          self.ctxt,
+                          None, None,
+                          volume_id, None,
+                          incremental=is_incremental)
+        mock_rollback.assert_called_with(self.ctxt, "fake_reservation")
+
+    @mock.patch('cinder.db.backup_get_all_by_volume',
+                return_value=[v2_fakes.fake_backup('fake-1')])
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.create_backup')
+    @mock.patch.object(api.API, '_get_available_backup_service_host',
+                       return_value='fake_host')
+    @mock.patch.object(quota.QUOTAS, 'rollback')
+    @mock.patch.object(quota.QUOTAS, 'reserve')
+    def test_create_backup_failed_with_backup_status_not_available(
+            self, mock_reserve, mock_rollback, mock_get_service,
+            mock_createi, mock_get_backups):
+
+        is_incremental = True
+        self.ctxt.user_id = 'fake_user'
+        self.ctxt.project_id = 'fake_project'
+        mock_reserve.return_value = 'fake_reservation'
+
+        volume_id = self._create_volume_db_entry(status='available',
+                                                 host='testhost#rbd',
+                                                 size=1)
+        self.assertRaises(exception.InvalidBackup,
+                          self.api.create,
+                          self.ctxt,
+                          None, None,
+                          volume_id, None,
+                          incremental=is_incremental)
         mock_rollback.assert_called_with(self.ctxt, "fake_reservation")
