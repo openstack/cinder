@@ -150,9 +150,6 @@ find_maxdepth_inum: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxd
 #cinder/backup/services/tsm.py
 dsmc:CommandFilter,/usr/bin/dsmc,root
 
-# cinder/volume/drivers/hgst.py
-vgc-cluster: CommandFilter, vgc-cluster, root
-
 # cinder/volume/drivers/vzstorage.py
 pstorage-mount: CommandFilter, pstorage-mount, root
 pstorage: CommandFilter, pstorage, root
