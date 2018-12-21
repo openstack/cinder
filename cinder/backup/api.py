@@ -274,6 +274,7 @@ class API(base.Base):
                                          < snapshot['created_at']))
                     else datetime(1, 1, 1, 1, 1, 1, tzinfo=timezone('UTC')))
             else:
+                QUOTAS.rollback(context, reservations)
                 msg = _('No backups available to do an incremental backup.')
                 raise exception.InvalidBackup(reason=msg)
 
@@ -281,6 +282,7 @@ class API(base.Base):
         if latest_backup:
             parent_id = latest_backup.id
             if latest_backup['status'] != fields.BackupStatus.AVAILABLE:
+                QUOTAS.rollback(context, reservations)
                 msg = _('The parent backup must be available for '
                         'incremental backup.')
                 raise exception.InvalidBackup(reason=msg)
