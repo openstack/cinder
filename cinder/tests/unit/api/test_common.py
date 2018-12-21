@@ -412,7 +412,12 @@ class GeneralFiltersTest(test.TestCase):
                'is_admin': False,
                'result': {'fake_resource': []},
                'expected': None,
-               'resource': 'fake_resource'})
+               'resource': 'fake_resource'},
+              {'filters': {'is_public': True},
+               'is_admin': False,
+               'result': {'volume_type': []},
+               'expected': {'is_public': True},
+               'resource': 'volume_type'})
     @ddt.unpack
     @mock.patch('cinder.api.common.get_enabled_resource_filters')
     def test_reject_invalid_filters(self, mock_get, filters,

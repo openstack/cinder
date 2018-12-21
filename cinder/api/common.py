@@ -427,6 +427,9 @@ def reject_invalid_filters(context, filters, resource,
                     "%s~" % key in configured_filters):
                 invalid_filters.append(key)
     if invalid_filters:
+        if (resource == 'volume_type' and len(invalid_filters) == 1
+                and invalid_filters[0] == 'is_public'):
+            return
         raise webob.exc.HTTPBadRequest(
             explanation=_('Invalid filters %s are found in query '
                           'options.') % ','.join(invalid_filters))
