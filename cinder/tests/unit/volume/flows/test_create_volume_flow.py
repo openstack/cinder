@@ -1177,32 +1177,6 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                                                      image_meta=image_meta)
         mock_cleanup_cg.assert_called_once_with(volume)
 
-    @ddt.data(True, False)
-    def test__copy_image_to_volume(self, is_encrypted):
-        fake_db = mock.MagicMock()
-        fake_driver = mock.MagicMock()
-        fake_volume_manager = mock.MagicMock()
-        fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
-            fake_volume_manager, fake_db, fake_driver)
-        key = fakes.ENCRYPTION_KEY_ID if is_encrypted else None
-        volume = fake_volume.fake_volume_obj(
-            self.ctxt,
-            encryption_key_id=key)
-
-        fake_image_service = fake_image.FakeImageService()
-        image_id = fakes.IMAGE_ID
-        image_meta = {'id': image_id}
-        image_location = 'abc'
-
-        fake_manager._copy_image_to_volume(self.ctxt, volume, image_meta,
-                                           image_location, fake_image_service)
-        if is_encrypted:
-            fake_driver.copy_image_to_encrypted_volume.assert_called_once_with(
-                self.ctxt, volume, fake_image_service, image_id)
-        else:
-            fake_driver.copy_image_to_volume.assert_called_once_with(
-                self.ctxt, volume, fake_image_service, image_id)
-
     @ddt.data({'driver_error': True},
               {'driver_error': False})
     @mock.patch('cinder.backup.api.API.get_available_backup_service_host')

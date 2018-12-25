@@ -34,6 +34,7 @@ from keystoneauth1 import loading as ks_loading
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import units
@@ -1118,3 +1119,57 @@ def get_volume_image_metadata(image_id, image_meta):
     volume_metadata = dict(property_metadata)
     volume_metadata.update(base_metadata)
     return volume_metadata
+
+
+def copy_image_to_volume(driver, context, volume, image_meta, image_location,
+                         image_service):
+    """Downloads Glance image to the specified volume."""
+    image_id = image_meta['id']
+    LOG.debug("Attempting download of %(image_id)s (%(image_location)s)"
+              " to volume %(volume_id)s.",
+              {'image_id': image_id, 'volume_id': volume.id,
+               'image_location': image_location})
+    try:
+        image_encryption_key = image_meta.get('cinder_encryption_key_id')
+
+        if volume.encryption_key_id and image_encryption_key:
+            # If the image provided an encryption key, we have
+            # already cloned it to the volume's key in
+            # _get_encryption_key_id, so we can do a direct copy.
+            driver.copy_image_to_volume(
+                context, volume, image_service, image_id)
+        elif volume.encryption_key_id:
+            # Creating an encrypted volume from a normal, unencrypted,
+            # image.
+            driver.copy_image_to_encrypted_volume(
+                context, volume, image_service, image_id)
+        else:
+            driver.copy_image_to_volume(
+                context, volume, image_service, image_id)
+    except processutils.ProcessExecutionError as ex:
+        LOG.exception("Failed to copy image %(image_id)s to volume: "
+                      "%(volume_id)s",
+                      {'volume_id': volume.id, 'image_id': image_id})
+        raise exception.ImageCopyFailure(reason=ex.stderr)
+    except exception.ImageUnacceptable as ex:
+        LOG.exception("Failed to copy image to volume: %(volume_id)s",
+                      {'volume_id': volume.id})
+        raise exception.ImageUnacceptable(ex)
+    except exception.ImageTooBig as ex:
+        with excutils.save_and_reraise_exception():
+            LOG.exception("Failed to copy image %(image_id)s to volume: "
+                          "%(volume_id)s",
+                          {'volume_id': volume.id, 'image_id': image_id})
+    except Exception as ex:
+        LOG.exception("Failed to copy image %(image_id)s to "
+                      "volume: %(volume_id)s",
+                      {'volume_id': volume.id, 'image_id': image_id})
+        if not isinstance(ex, exception.ImageCopyFailure):
+            raise exception.ImageCopyFailure(reason=ex)
+        else:
+            raise
+
+    LOG.debug("Downloaded image %(image_id)s (%(image_location)s)"
+              " to volume %(volume_id)s successfully.",
+              {'image_id': image_id, 'volume_id': volume.id,
+               'image_location': image_location})

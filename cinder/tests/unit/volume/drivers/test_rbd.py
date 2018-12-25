@@ -42,7 +42,7 @@ from cinder.tests.unit import utils
 from cinder.tests.unit.volume import test_driver
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.rbd as driver
-from cinder.volume.flows.manager import create_volume
+from cinder.volume import utils as volume_utils
 
 
 # This is used to collect raised exceptions so that tests may check what was
@@ -2380,8 +2380,8 @@ class ManagedRBDTestCase(test_driver.BaseDriverTestCase):
             mock_clone_image.side_effect = _mock_clone_image
             with mock.patch.object(self.volume.driver, 'create_volume') as \
                     mock_create:
-                with mock.patch.object(create_volume.CreateVolumeFromSpecTask,
-                                       '_copy_image_to_volume') as mock_copy:
+                with mock.patch.object(volume_utils,
+                                       'copy_image_to_volume') as mock_copy:
                     self._create_volume_from_image('available', raw=True)
                     self.assertFalse(mock_copy.called)
 
@@ -2414,8 +2414,8 @@ class ManagedRBDTestCase(test_driver.BaseDriverTestCase):
             mock_clone_image.side_effect = _mock_clone_image
             with mock.patch.object(self.volume.driver, 'create_volume') as \
                     mock_create:
-                with mock.patch.object(create_volume.CreateVolumeFromSpecTask,
-                                       '_copy_image_to_volume') as mock_copy:
+                with mock.patch.object(volume_utils,
+                                       'copy_image_to_volume') as mock_copy:
                     self._create_volume_from_image('available', raw=False)
                     self.assertTrue(mock_copy.called)
 
@@ -2432,8 +2432,8 @@ class ManagedRBDTestCase(test_driver.BaseDriverTestCase):
                 mock_clone_image:
             mock_clone_image.side_effect = exception.CinderException
             with mock.patch.object(self.volume.driver, 'create_volume'):
-                with mock.patch.object(create_volume.CreateVolumeFromSpecTask,
-                                       '_copy_image_to_volume') as mock_copy:
+                with mock.patch.object(volume_utils,
+                                       'copy_image_to_volume') as mock_copy:
                     self._create_volume_from_image('error', raw=True,
                                                    clone_error=True)
                     self.assertFalse(mock_copy.called)
