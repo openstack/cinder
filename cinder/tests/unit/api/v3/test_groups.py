@@ -1419,3 +1419,55 @@ class GroupsAPITestCase(test.TestCase):
         self.assertIn('replication_targets', response)
         self.assertEqual('lvm_backend_1',
                          response['replication_targets'][0]['backend_id'])
+
+    def test_show_group_with_project_id(self):
+        # If the microversion >= 3.58 and "is_admin=True", "project_id" should
+        # be contained in the response body.
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s' %
+                                      (fake.PROJECT_ID, self.group1.id),
+                                      version=mv.GROUP_PROJECT_ID,
+                                      use_admin_context=True)
+        res_dict = self.controller.show(req, self.group1.id)
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual(fake.PROJECT_ID,
+                         res_dict['group']['project_id'])
+
+        # If the microversion < 3.58, "project_id" should not be
+        # contained in the response body.
+        req = fakes.HTTPRequest.blank(
+            '/v3/%s/groups/%s' %
+            (fake.PROJECT_ID, self.group1.id),
+            version=mv.get_prior_version(mv.GROUP_PROJECT_ID),
+            use_admin_context=True)
+        res_dict = self.controller.show(req, self.group1.id)
+        self.assertEqual(1, len(res_dict))
+        self.assertIsNone(res_dict['group'].get('project_id', None))
+
+    def test_list_groups_with_project_id(self):
+        self.group1.group_type_id = fake.GROUP_TYPE_ID
+        self.group1.save()
+
+        self.group2.group_type_id = fake.GROUP_TYPE2_ID
+        self.group2.save()
+
+        req = fakes.HTTPRequest.blank(('/v3/%s/groups/detail'
+                                       % self.ctxt.project_id),
+                                      version=mv.GROUP_PROJECT_ID,
+                                      use_admin_context=True)
+        res_dict = self.controller.detail(req)
+
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual(self.group1.project_id,
+                         res_dict['groups'][0]['project_id'])
+        self.assertEqual(self.group2.project_id,
+                         res_dict['groups'][1]['project_id'])
+
+    def test_show_group_without_project_id(self):
+        # If the microversion >= 3.58 and "is_admin=False", "project_id" should
+        # not be contained in the response body.
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s' %
+                                      (fake.PROJECT_ID, self.group3.id),
+                                      version=mv.GROUP_PROJECT_ID)
+        res_dict = self.controller.show(req, self.group1.id)
+        self.assertEqual(1, len(res_dict))
+        self.assertNotIn('project_id', res_dict['group'])

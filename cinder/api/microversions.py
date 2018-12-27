@@ -155,6 +155,8 @@ BACKUP_PROJECT_USER_ID = '3.56'
 
 TRANSFER_WITH_HISTORY = '3.57'
 
+GROUP_PROJECT_ID = '3.58'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.

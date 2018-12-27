@@ -2148,6 +2148,13 @@ project_id:
   in: body
   required: true
   type: string
+project_id_group:
+  description: |
+    The UUID of the volume group project.
+  in: body
+  required: true
+  type: string
+  min_version: 3.58
 project_id_host:
   description: |
     The Project ID which the host resource belongs to.
