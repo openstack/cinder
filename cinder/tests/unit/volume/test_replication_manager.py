@@ -72,7 +72,8 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
 
         self.manager.failover_host(self.context, new_backend)
         mock_getall.assert_called_once_with(self.context,
-                                            filters={'host': self.host})
+                                            filters={'host': self.host},
+                                            limit=None, offset=None)
         mock_failover.assert_called_once_with(self.context,
                                               [],
                                               secondary_id=new_backend,

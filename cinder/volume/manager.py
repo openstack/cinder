@@ -83,6 +83,7 @@ from cinder.volume.flows.manager import manage_existing_snapshot
 from cinder.volume import group_types
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as vol_utils
+from cinder.volume import volume_migration as volume_migration
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -129,6 +130,13 @@ volume_manager_opts = [
                help='Maximum times to reintialize the driver '
                     'if volume initialization fails. The interval of retry is '
                     'exponentially backoff, and will be 1s, 2s, 4s etc.'),
+    cfg.IntOpt('init_host_max_objects_retrieval',
+               default=0,
+               help='Max number of volumes and snapshots to be retrieved '
+                    'per batch during volume manager host initialization. '
+                    'Query results will be obtained in batches from the '
+                    'database and not in one shot to avoid extreme memory '
+                    'usage. Set 0 to turn off this functionality.'),
 ]
 
 volume_backend_opts = [
@@ -462,36 +470,83 @@ class VolumeManager(manager.CleanableManager,
         # Initialize backend capabilities list
         self.driver.init_capabilities()
 
-        volumes = self._get_my_volumes(ctxt)
-        snapshots = self._get_my_snapshots(ctxt)
-        self._sync_provider_info(ctxt, volumes, snapshots)
-        # FIXME volume count for exporting is wrong
-
+        # Zero stats
         self.stats['pools'] = {}
         self.stats.update({'allocated_capacity_gb': 0})
 
-        try:
-            for volume in volumes:
-                # available volume should also be counted into allocated
-                if volume['status'] in ['in-use', 'available']:
-                    # calculate allocated capacity for driver
-                    self._count_allocated_capacity(ctxt, volume)
+        # Batch retrieval volumes and snapshots
 
-                    try:
-                        if volume['status'] in ['in-use']:
-                            self.driver.ensure_export(ctxt, volume)
-                    except Exception:
-                        LOG.exception("Failed to re-export volume, "
-                                      "setting to ERROR.",
-                                      resource=volume)
-                        volume.conditional_update({'status': 'error'},
-                                                  {'status': 'in-use'})
-            # All other cleanups are processed by parent class CleanableManager
+        num_vols, num_snaps, max_objs_num, req_range = None, None, None, [0]
+        req_limit = CONF.init_host_max_objects_retrieval
+        use_batch_objects_retrieval = req_limit > 0
 
-        except Exception:
-            LOG.exception("Error during re-export on driver init.",
-                          resource=volume)
-            return
+        if use_batch_objects_retrieval:
+            # Get total number of volumes
+            num_vols, __, __ = self._get_my_volumes_summary(ctxt)
+            # Get total number of snapshots
+            num_snaps, __ = self._get_my_snapshots_summary(ctxt)
+            # Calculate highest number of the objects (volumes or snapshots)
+            max_objs_num = max(num_vols, num_snaps)
+            # Make batch request loop counter
+            req_range = range(0, max_objs_num, req_limit)
+
+        volumes_to_migrate = volume_migration.VolumeMigrationList()
+
+        for req_offset in req_range:
+
+            # Retrieve 'req_limit' number of objects starting from
+            # 'req_offset' position
+            volumes, snapshots = None, None
+            if use_batch_objects_retrieval:
+                if req_offset < num_vols:
+                    volumes = self._get_my_volumes(ctxt,
+                                                   limit=req_limit,
+                                                   offset=req_offset)
+                else:
+                    volumes = objects.VolumeList()
+                if req_offset < num_snaps:
+                    snapshots = self._get_my_snapshots(ctxt,
+                                                       limit=req_limit,
+                                                       offset=req_offset)
+                else:
+                    snapshots = objects.SnapshotList()
+            # or retrieve all volumes and snapshots per single request
+            else:
+                volumes = self._get_my_volumes(ctxt)
+                snapshots = self._get_my_snapshots(ctxt)
+
+            self._sync_provider_info(ctxt, volumes, snapshots)
+            # FIXME volume count for exporting is wrong
+
+            try:
+                for volume in volumes:
+                    # available volume should also be counted into allocated
+                    if volume['status'] in ['in-use', 'available']:
+                        # calculate allocated capacity for driver
+                        self._count_allocated_capacity(ctxt, volume)
+
+                        try:
+                            if volume['status'] in ['in-use']:
+                                self.driver.ensure_export(ctxt, volume)
+                        except Exception:
+                            LOG.exception("Failed to re-export volume, "
+                                          "setting to ERROR.",
+                                          resource=volume)
+                            volume.conditional_update({'status': 'error'},
+                                                      {'status': 'in-use'})
+                # All other cleanups are processed by parent class -
+                # CleanableManager
+
+            except Exception:
+                LOG.exception("Error during re-export on driver init.",
+                              resource=volume)
+                return
+
+            if len(volumes):
+                volumes_to_migrate.append(volumes, ctxt)
+
+            del volumes
+            del snapshots
 
         self.driver.set_throttle()
 
@@ -507,7 +562,7 @@ class VolumeManager(manager.CleanableManager,
         # Migrate any ConfKeyManager keys based on fixed_key to the currently
         # configured key manager.
         self._add_to_threadpool(key_migration.migrate_fixed_key,
-                                volumes=volumes)
+                                volumes=volumes_to_migrate)
 
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)
@@ -2923,15 +2978,27 @@ class VolumeManager(manager.CleanableManager,
             filters = {'host': self.host}
         return filters
 
-    def _get_my_resources(self, ctxt, ovo_class_list):
+    def _get_my_volumes_summary(self, ctxt):
         filters = self._get_cluster_or_host_filters()
-        return getattr(ovo_class_list, 'get_all')(ctxt, filters=filters)
+        return objects.VolumeList.get_volume_summary(ctxt, False, filters)
 
-    def _get_my_volumes(self, ctxt):
-        return self._get_my_resources(ctxt, objects.VolumeList)
+    def _get_my_snapshots_summary(self, ctxt):
+        filters = self._get_cluster_or_host_filters()
+        return objects.SnapshotList.get_snapshot_summary(ctxt, False, filters)
 
-    def _get_my_snapshots(self, ctxt):
-        return self._get_my_resources(ctxt, objects.SnapshotList)
+    def _get_my_resources(self, ctxt, ovo_class_list, limit=None, offset=None):
+        filters = self._get_cluster_or_host_filters()
+        return getattr(ovo_class_list, 'get_all')(ctxt, filters=filters,
+                                                  limit=limit,
+                                                  offset=offset)
+
+    def _get_my_volumes(self, ctxt, limit=None, offset=None):
+        return self._get_my_resources(ctxt, objects.VolumeList,
+                                      limit, offset)
+
+    def _get_my_snapshots(self, ctxt, limit=None, offset=None):
+        return self._get_my_resources(ctxt, objects.SnapshotList,
+                                      limit, offset)
 
     def get_manageable_volumes(self, ctxt, marker, limit, offset, sort_keys,
                                sort_dirs, want_objects=False):

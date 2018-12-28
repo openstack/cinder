@@ -26,6 +26,7 @@ from cinder.tests.unit import utils as tests_utils
 from cinder.tests.unit import volume as base
 from cinder.volume import driver
 from cinder.volume import utils as volutils
+from cinder.volume import volume_migration as volume_migration
 
 
 CONF = cfg.CONF
@@ -80,6 +81,14 @@ class VolumeInitHostTestCase(base.BaseVolumeTestCase):
         self.volume.delete_volume(self.context, vol2)
         self.volume.delete_volume(self.context, vol3)
         self.volume.delete_volume(self.context, vol4)
+
+    def test_init_host_count_allocated_capacity_batch_retrieval(self):
+        old_val = CONF.init_host_max_objects_retrieval
+        CONF.init_host_max_objects_retrieval = 1
+        try:
+            self.test_init_host_count_allocated_capacity()
+        finally:
+            CONF.init_host_max_objects_retrieval = old_val
 
     @mock.patch('cinder.manager.CleanableManager.init_host')
     def test_init_host_count_allocated_capacity_cluster(self, init_host_mock):
@@ -160,6 +169,14 @@ class VolumeInitHostTestCase(base.BaseVolumeTestCase):
         self.volume.delete_snapshot(self.context, snap1_obj)
         self.volume.delete_volume(self.context, vol0)
         self.volume.delete_volume(self.context, vol1)
+
+    def test_init_host_sync_provider_info_batch_retrieval(self):
+        old_val = CONF.init_host_max_objects_retrieval
+        CONF.init_host_max_objects_retrieval = 1
+        try:
+            self.test_init_host_sync_provider_info()
+        finally:
+            CONF.init_host_max_objects_retrieval = old_val
 
     @mock.patch.object(driver.BaseVD, "update_provider_info")
     def test_init_host_sync_provider_info_no_update(self, mock_update):
@@ -267,9 +284,11 @@ class VolumeInitHostTestCase(base.BaseVolumeTestCase):
         group_include_mock.assert_called_once_with(mock.ANY, cluster,
                                                    host=self.volume.host)
         vol_get_all_mock.assert_called_once_with(
-            mock.ANY, filters={'cluster_name': cluster})
+            mock.ANY, filters={'cluster_name': cluster},
+            limit=None, offset=None)
         snap_get_all_mock.assert_called_once_with(
-            mock.ANY, filters={'cluster_name': cluster})
+            mock.ANY, filters={'cluster_name': cluster},
+            limit=None, offset=None)
 
     @mock.patch('cinder.keymgr.migration.migrate_fixed_key')
     @mock.patch('cinder.volume.manager.VolumeManager._get_my_volumes')
@@ -280,9 +299,13 @@ class VolumeInitHostTestCase(base.BaseVolumeTestCase):
                                      mock_migrate_fixed_key):
 
         self.volume.init_host(service_id=self.service_id)
+
+        volumes = mock_get_my_volumes()
+        volumes_to_migrate = volume_migration.VolumeMigrationList()
+        volumes_to_migrate.append(volumes, self.context)
         mock_add_threadpool.assert_called_once_with(
             mock_migrate_fixed_key,
-            volumes=mock_get_my_volumes())
+            volumes=volumes_to_migrate)
 
     @mock.patch('time.sleep')
     def test_init_host_retry(self, mock_sleep):
