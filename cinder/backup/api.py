@@ -278,7 +278,10 @@ class API(base.Base):
                 raise exception.InvalidBackup(reason=msg)
 
         parent_id = None
+        parent = None
+
         if latest_backup:
+            parent = latest_backup
             parent_id = latest_backup.id
             if latest_backup['status'] != fields.BackupStatus.AVAILABLE:
                 msg = _('The parent backup must be available for '
@@ -313,6 +316,7 @@ class API(base.Base):
                 'availability_zone': availability_zone,
                 'snapshot_id': snapshot_id,
                 'data_timestamp': data_timestamp,
+                'parent': parent,
                 'metadata': metadata or {}
             }
             backup = objects.Backup(context=context, **kwargs)

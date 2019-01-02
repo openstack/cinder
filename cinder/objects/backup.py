@@ -40,7 +40,8 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     # Version 1.4: Add restore_volume_id
     # Version 1.5: Add metadata
     # Version 1.6: Add encryption_key_id
-    VERSION = '1.6'
+    # Version 1.7: Add parent
+    VERSION = '1.7'
 
     OPTIONAL_FIELDS = ('metadata',)
 
@@ -55,6 +56,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         'availability_zone': fields.StringField(nullable=True),
         'container': fields.StringField(nullable=True),
         'parent_id': fields.StringField(nullable=True),
+        'parent': fields.ObjectField('Backup', nullable=True),
         'status': c_fields.BackupStatusField(nullable=True),
         'fail_reason': fields.StringField(nullable=True),
         'size': fields.IntegerField(nullable=True),
@@ -110,8 +112,14 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
 
     def obj_make_compatible(self, primitive, target_version):
         """Make an object representation compatible with a target version."""
+        added_fields = (((1, 7), ('parent',)),)
+
         super(Backup, self).obj_make_compatible(primitive, target_version)
         target_version = versionutils.convert_version_to_tuple(target_version)
+        for version, remove_fields in added_fields:
+            if target_version < version:
+                for obj_field in remove_fields:
+                    primitive.pop(obj_field, None)
 
     @classmethod
     def _from_db_object(cls, context, backup, db_backup, expected_attrs=None):
@@ -174,6 +182,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
                 self.metadata = db.backup_metadata_update(self._context,
                                                           self.id, metadata,
                                                           True)
+            updates.pop('parent', None)
             db.backup_update(self._context, self.id, updates)
 
         self.obj_reset_changes()
