@@ -1359,6 +1359,29 @@ class LogTracingTestCase(test.TestCase):
         self.assertIn("'adminPass': '***'",
                       str(mock_log.debug.call_args_list[1]))
 
+    def test_utils_trace_method_with_password_in_formal_params(self):
+        mock_logging = self.mock_object(utils, 'logging')
+        mock_log = mock.Mock()
+        mock_log.isEnabledFor = lambda x: True
+        mock_logging.getLogger = mock.Mock(return_value=mock_log)
+
+        @utils.trace
+        def _trace_test_method(*args, **kwargs):
+            self.assertEqual('verybadpass',
+                             kwargs['test_args']['data']['password'])
+            pass
+
+        test_args = {
+            'data': {
+                'password': 'verybadpass'
+            }
+        }
+        _trace_test_method(self, test_args=test_args)
+
+        self.assertEqual(2, mock_log.debug.call_count)
+        self.assertIn("'password': '***'",
+                      str(mock_log.debug.call_args_list[0]))
+
     @ddt.data(
         {'total': 30.01, 'free': 28.01, 'provisioned': 2.0, 'max_ratio': 1.0,
          'thin_support': False, 'thick_support': True,
