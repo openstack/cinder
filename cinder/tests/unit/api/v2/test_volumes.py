@@ -16,8 +16,10 @@
 
 import datetime
 import iso8601
+import json
 
 import ddt
+import fixtures
 import mock
 from oslo_config import cfg
 import six
@@ -61,6 +63,8 @@ class VolumeApiTest(test.TestCase):
         self.controller = volumes.VolumeController(self.ext_mgr)
         self.maxDiff = None
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        # This will be cleaned up by the NestedTempfile fixture in base class
+        self.tmp_path = self.useFixture(fixtures.TempDir()).path
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
@@ -1677,7 +1681,16 @@ class VolumeApiTest(test.TestCase):
     def test_get_volume_filter_options_using_config(self):
         filter_list = ["name", "status", "metadata", "bootable",
                        "migration_status", "availability_zone", "group_id"]
-        self.override_config('resource_query_filters_file',
-                             {'volume': filter_list})
+        # Clear the filters collection to make sure the filters collection
+        # cache can be reloaded using tmp filter file.
+        common._FILTERS_COLLECTION = None
+        tmp_filter_file = self.tmp_path + '/resource_filters_tests.json'
+        self.override_config('resource_query_filters_file', tmp_filter_file)
+        with open(tmp_filter_file, 'w') as f:
+            f.write(json.dumps({"volume": filter_list}))
         self.assertEqual(filter_list,
                          self.controller._get_volume_filter_options())
+        # Reset the CONF.resource_query_filters_file and clear the filters
+        # collection to avoid leaking other cases, and it will be re-loaded
+        # from CONF.resource_query_filters_file in next call.
+        self._reset_filter_file()

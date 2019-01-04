@@ -14,13 +14,16 @@
 import datetime
 import ddt
 import iso8601
+import json
 
+import fixtures
 import mock
 from oslo_serialization import jsonutils
 from oslo_utils import strutils
 from six.moves import http_client
 import webob
 
+from cinder.api import common
 from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.v2.views.volumes import ViewBuilder
@@ -58,8 +61,13 @@ class VolumeApiTest(test.TestCase):
 
         self.flags(host='fake')
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        # This will be cleaned up by the NestedTempfile fixture in base class
+        self.tmp_path = self.useFixture(fixtures.TempDir()).path
 
     def test_check_volume_filters_called(self):
+        # Clear the filters collection to make sure the filters collection
+        # cache can be reloaded using tmp filter file.
+        common._FILTERS_COLLECTION = None
         with mock.patch.object(vol_get.API,
                                'check_volume_filters') as volume_get:
             req = fakes.HTTPRequest.blank('/v3/volumes?bootable=True')
@@ -68,15 +76,24 @@ class VolumeApiTest(test.TestCase):
             req.headers = mv.get_mv_header(mv.BASE_VERSION)
             req.environ['cinder.context'].is_admin = True
 
+            tmp_filter_file = self.tmp_path + '/resource_filters_tests.json'
             self.override_config('resource_query_filters_file',
-                                 {'volume': ['bootable']})
+                                 tmp_filter_file)
+            with open(tmp_filter_file, 'w') as f:
+                f.write(json.dumps({"volume": ['bootable']}))
             self.controller.index(req)
             filters = req.params.copy()
 
             volume_get.assert_called_with(filters, False)
+        # Reset the CONF.resource_query_filters_file and clear the filters
+        # collection to avoid leaking other cases, and it will be re-loaded
+        # from CONF.resource_query_filters_file in next call.
+        self._reset_filter_file()
 
     def test_check_volume_filters_strict_called(self):
-
+        # Clear the filters collection to make sure the filters collection
+        # cache can be reloaded using tmp filter file.
+        common._FILTERS_COLLECTION = None
         with mock.patch.object(vol_get.API,
                                'check_volume_filters') as volume_get:
             req = fakes.HTTPRequest.blank('/v3/volumes?bootable=True')
@@ -87,12 +104,19 @@ class VolumeApiTest(test.TestCase):
             req.api_version_request = mv.get_api_version(
                 mv.VOLUME_LIST_BOOTABLE)
 
+            tmp_filter_file = self.tmp_path + '/resource_filters_tests.json'
             self.override_config('resource_query_filters_file',
-                                 {'volume': ['bootable']})
+                                 tmp_filter_file)
+            with open(tmp_filter_file, 'w') as f:
+                f.write(json.dumps({"volume": ['bootable']}))
             self.controller.index(req)
             filters = req.params.copy()
 
             volume_get.assert_called_with(filters, True)
+        # Reset the CONF.resource_query_filters_file and clear the filters
+        # collection to avoid leaking other cases, and it will be re-loaded
+        # from CONF.resource_query_filters_file in next call.
+        self._reset_filter_file()
 
     def _create_volume_with_glance_metadata(self):
         vol1 = db.volume_create(self.ctxt, {'display_name': 'test1',

@@ -41,6 +41,7 @@ from oslo_utils import timeutils
 import six
 import testtools
 
+from cinder.api import common as api_common
 from cinder.common import config
 from cinder import context
 from cinder import coordination
@@ -140,6 +141,18 @@ class TestCase(testtools.TestCase):
         notifier = fake_notifier.get_fake_notifier(*args, **kwargs)
         notifier.notifications = self.notifier.notifications
         return notifier
+
+    def _reset_filter_file(self):
+        self.override_config('resource_query_filters_file',
+                             os.path.join(
+                                 os.path.abspath(
+                                     os.path.join(
+                                         os.path.dirname(__file__),
+                                         '..',
+                                     )
+                                 ),
+                                 self.RESOURCE_FILTER_PATH))
+        api_common._FILTERS_COLLECTION = None
 
     def setUp(self):
         """Run before each test method to initialize test environment."""
