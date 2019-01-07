@@ -39,8 +39,8 @@ Driver Configuration Reference
    drivers/dell-emc-vnx-driver
    drivers/dell-emc-vmax-driver
    drivers/dell-emc-vxflex-driver
+   drivers/dell-emc-xtremio-driver
    drivers/drbd-driver
-   drivers/emc-xtremio-driver
    drivers/fujitsu-eternus-dx-driver
    drivers/hpe-3par-driver
    drivers/hpe-lefthand-driver
