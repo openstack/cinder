@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    New Cinder volume driver for LINBIT LINSTOR resources.

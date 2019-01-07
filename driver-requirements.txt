@@ -27,6 +27,11 @@ pywbem>=0.7.0 # LGPLv2.1+
 # IBM XIV
 pyxcli>=1.1.5 # Apache-2.0
 
+# LINSTOR
+protobuf>=3.6.1 # BSD
+eventlet>=0.24.1 # MIT
+python-linstor>=0.6.2 # GPLv3
+
 # RBD
 rados # LGPLv2.1
 rbd # LGPLv2.1
