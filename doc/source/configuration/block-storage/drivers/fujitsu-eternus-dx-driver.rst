@@ -101,14 +101,14 @@ Configuration
 
    .. code-block:: ini
 
-      volume_driver = cinder.volume.drivers.fujitsu.eternus_dx_fc.FJDXFCDriver
+      volume_driver = cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_fc.FJDXFCDriver
       cinder_eternus_config_file = /etc/cinder/eternus_dx.xml
 
    iSCSI entries:
 
    .. code-block:: ini
 
-      volume_driver = cinder.volume.drivers.fujitsu.eternus_dx_iscsi.FJDXISCSIDriver
+      volume_driver = cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_iscsi.FJDXISCSIDriver
       cinder_eternus_config_file = /etc/cinder/eternus_dx.xml
 
    If there is no description about ``cinder_eternus_config_file``,
@@ -200,12 +200,12 @@ Configuration example
       enabled_backends = DXFC, DXISCSI
 
       [DXFC]
-      volume_driver = cinder.volume.drivers.fujitsu.eternus_dx_fc.FJDXFCDriver
+      volume_driver = cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_fc.FJDXFCDriver
       cinder_eternus_config_file = /etc/cinder/fc.xml
       volume_backend_name = FC
 
       [DXISCSI]
-      volume_driver = cinder.volume.drivers.fujitsu.eternus_dx_iscsi.FJDXISCSIDriver
+      volume_driver = cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_iscsi.FJDXISCSIDriver
       cinder_eternus_config_file = /etc/cinder/iscsi.xml
       volume_backend_name = ISCSI
 

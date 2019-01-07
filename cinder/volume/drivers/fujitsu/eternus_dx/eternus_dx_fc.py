@@ -24,7 +24,7 @@ import six
 
 from cinder import interface
 from cinder.volume import driver
-from cinder.volume.drivers.fujitsu import eternus_dx_common
+from cinder.volume.drivers.fujitsu.eternus_dx import eternus_dx_common
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)

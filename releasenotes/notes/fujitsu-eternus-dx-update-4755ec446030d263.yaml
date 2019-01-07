@@ -1,0 +1,8 @@
+---
+upgrade:
+  - The Fujitsu DX driver names have been updated to distinguish
+    them from other Fujitsu storage. The module path
+    ``cinder.volume.drivers.fujitsu`` should now be updated to
+    ``cinder.volume.drivers.fujitsu.eternus_dx`` in ``cinder.conf``.
+    Support for the previous driver naming will continue to work,
+    but will be removed in a future release.
