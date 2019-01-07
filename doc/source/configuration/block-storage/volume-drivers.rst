@@ -77,3 +77,4 @@ Driver Configuration Reference
    drivers/zadara-volume-driver
    drivers/zfssa-iscsi-driver
    drivers/zfssa-nfs-driver
+   drivers/hedvig-volume-driver
