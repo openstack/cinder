@@ -269,10 +269,16 @@ class CommonAdapter(object):
         :param volume: volume information
         """
         params = VolumeParams(self, volume)
+        log_params = {
+            'name': params.name,
+            'size': params.size,
+            'description': params.description,
+            'pool': params.pool,
+            'io_limit_policy': params.io_limit_policy}
 
         LOG.info('Create Volume: %(name)s, size: %(size)s, description: '
                  '%(description)s, pool: %(pool)s, io limit policy: '
-                 '%(io_limit_policy)s.', params)
+                 '%(io_limit_policy)s.', log_params)
 
         return self.makeup_model(
             self.client.create_lun(name=params.name,

@@ -66,9 +66,11 @@ class UnityDriver(driver.ManageableVD,
         2.0.4 - Fixes bug 1775518 to make sure driver succeed to initialize
                 even though the value of unity_io_ports and
                 unity_storage_pool_names are empty
+        2.0.5 - Update unity tests to use Unity test base.
+                Fixes logging issue of volume creation.
     """
 
-    VERSION = '02.00.04'
+    VERSION = '02.00.05'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
