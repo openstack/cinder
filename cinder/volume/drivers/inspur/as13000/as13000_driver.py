@@ -167,11 +167,11 @@ class RestAPIExecutor(object):
 class AS13000Driver(san.SanISCSIDriver):
     """Driver for Inspur AS13000 storage.
 
-    Version history:
-
     .. code-block:: none
 
-        1.0.0 - Initial driver
+      Version history:
+          1.0.0 - Initial driver
+
     """
 
     VENDOR = 'INSPUR'
@@ -331,9 +331,7 @@ class AS13000Driver(san.SanISCSIDriver):
         self._filling_volume(dest_name, dest_pool)
 
         # wait until the cloned volume has been filled
-        while True:
-            if self._wait_volume_filled(dest_name, dest_pool, 10, 5):
-                break
+        self._wait_volume_filled(dest_name, dest_pool)
 
         # unlock the original snapshot
         self._snapshot_lock_op('unlock', src_vol_name, snap_name, src_pool)
@@ -770,21 +768,18 @@ class AS13000Driver(san.SanISCSIDriver):
                                  params=params,
                                  request_type=request_type)
 
-    @utils.trace
-    def _wait_volume_filled(self, name, pool, attempts, interval):
+    @utils.retry(exception.VolumeDriverException, interval=5, retries=36)
+    def _wait_volume_filled(self, name, pool):
         """Wait until the volume is filled."""
-        try_num = 0
-        while try_num < attempts:
-            volumes = self._get_volumes(pool)
-            for vol in volumes:
-                if name == vol['name']:
-                    if vol['lvmType'] == 1:
-                        return True
-                    else:
-                        break
-            eventlet.sleep(interval)
-            try_num += 1
-        return False
+        volumes = self._get_volumes(pool)
+        for vol in volumes:
+            if name == vol['name']:
+                if vol['lvmType'] == 1:
+                    return
+                else:
+                    break
+        msg = (_('Volume %s is not filled.') % name)
+        raise exception.VolumeDriverException(msg)
 
     @utils.trace
     def _check_volume(self, volume):

@@ -473,7 +473,7 @@ class AS13000DriverTestCase(test.TestCase):
                                    mock.Mock())
         mock_wvf = self.mock_object(self.as13000_san,
                                     '_wait_volume_filled',
-                                    mock.Mock(side_effect=(False, True)))
+                                    mock.Mock())
         mock_ev = self.mock_object(self.as13000_san, 'extend_volume',
                                    mock.Mock())
 
@@ -485,11 +485,7 @@ class AS13000DriverTestCase(test.TestCase):
         ]
         mock_lock_op.assert_has_calls(lock_op_calls)
         mock_fv.assert_called_once_with('dest_volume', 'fake_pool')
-        wait_volume_filled_calls = [
-            mock.call('dest_volume', 'fake_pool', 10, 5),
-            mock.call('dest_volume', 'fake_pool', 10, 5),
-        ]
-        mock_wvf.assert_has_calls(wait_volume_filled_calls)
+        mock_wvf.assert_called_once_with('dest_volume', 'fake_pool')
 
         mock_eh.assert_called()
         mock_tnd.assert_called()
@@ -1207,25 +1203,28 @@ class AS13000DriverTestCase(test.TestCase):
                                           params=params,
                                           request_type='post')
 
-    @ddt.data(2, 3)
-    def test__wait_volume_filled(self, attempts):
-        mock_gv = self.mock_object(self.as13000_san, '_get_volumes',
-                                   mock.Mock(side_effect=(
-                                       [{'name': 'fake_v1', 'lvmType': 2}],
-                                       [{'name': 'fake_v1', 'lvmType': 2}],
-                                       [{'name': 'fake_v1', 'lvmType': 1}]
-                                   )))
-        mock_el = self.mock_object(eventlet, 'sleep',
-                                   mock.Mock(return_value=None))
+    def test__wait_volume_filled(self):
+        # Need to mock sleep as it is called by @utils.retry
+        self.mock_object(time, 'sleep')
 
-        ret = self.as13000_san._wait_volume_filled('fake_v1', 'fake_pool',
-                                                   attempts, 1)
-        if attempts == 2:
-            self.assertEqual(ret, False)
-        else:
-            self.assertEqual(ret, True)
+        expected = [{'name': 'fake_v1', 'lvmType': 1}]
+        mock_gv = self.mock_object(self.as13000_san, '_get_volumes',
+                                   mock.Mock(return_value=expected))
+        self.as13000_san._wait_volume_filled('fake_v1', 'fake_pool')
         mock_gv.assert_called_with('fake_pool')
-        mock_el.assert_called_with(1)
+
+    def test__wait_volume_filled_failed(self):
+        # Need to mock sleep as it is called by @utils.retry
+        self.mock_object(time, 'sleep')
+
+        expected = [{'name': 'fake_v1', 'lvmType': 2}]
+        mock_gv = self.mock_object(self.as13000_san, '_get_volumes',
+                                   mock.Mock(return_value=expected))
+        self.assertRaises(exception.VolumeDriverException,
+                          self.as13000_san._wait_volume_filled,
+                          'fake_v1',
+                          'fake_pool')
+        mock_gv.assert_called_with('fake_pool')
 
     def test__get_lun_list(self):
         target_name = 'fake_name'
