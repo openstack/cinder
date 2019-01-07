@@ -406,7 +406,7 @@ class RBDDriver(driver.CloneableImageVD,
                                         client=client.cluster,
                                         ioctx=client.ioctx) as v:
                         size = v.size()
-                except self.rbd.ImageNotFound:
+                except (self.rbd.ImageNotFound, self.rbd.OSError):
                     LOG.debug("Image %s is not found.", t)
                 else:
                     total_provisioned += size
