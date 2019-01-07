@@ -124,6 +124,7 @@ class VMAXCommon(object):
         self.failover = False
         self._get_replication_info()
         self._gather_info()
+        self.nextGen = False
 
     def _gather_info(self):
         """Gather the relevant information for update_volume_stats."""
@@ -133,6 +134,9 @@ class VMAXCommon(object):
             array_info = self.utils.parse_file_to_get_array_map(
                 self.pool_info['config_file'])
         self.rest.set_rest_credentials(array_info)
+        if array_info:
+            self.nextGen = self.rest.is_next_gen_array(
+                array_info['SerialNumber'])
         finalarrayinfolist = self._get_slo_workload_combinations(
             array_info)
         self.pool_info['arrays_info'] = finalarrayinfolist
@@ -209,29 +213,39 @@ class VMAXCommon(object):
                 array = self.active_backend_id
 
             slo_settings = self.rest.get_slo_list(array)
-            # Remove 'None' and 'Optimized from SL list, they cannot be mixed
-            # with workloads so will be added later again
             slo_list = [x for x in slo_settings
                         if x.lower() not in ['none', 'optimized']]
             workload_settings = self.rest.get_workload_settings(array)
-            workload_settings.append("None")
-            slo_workload_set = set()
+            workload_settings.append('None')
+            slo_workload_set = set(
+                ['%(slo)s:%(workload)s' % {'slo': slo,
+                                           'workload': workload}
+                 for slo in slo_list for workload in workload_settings])
+            slo_workload_set.add('None:None')
 
-            if self.rest.is_next_gen_array(array):
+            if self.nextGen:
+                LOG.warning("Workloads have been deprecated for arrays "
+                            "running PowerMax OS uCode level 5978 or higher. "
+                            "Any supplied workloads will be treated as None "
+                            "values. It is highly recommended to create a new "
+                            "volume type without a workload specified.")
                 for slo in slo_list:
                     slo_workload_set.add(slo)
                 slo_workload_set.add('None')
                 slo_workload_set.add('Optimized')
-            else:
-                slo_workload_set = set(
-                    ['%(slo)s:%(workload)s' % {'slo': slo,
-                                               'workload': workload}
-                     for slo in slo_list for workload in workload_settings])
-                slo_workload_set.add('None:None')
+                slo_workload_set.add('Optimized:None')
+                # If array is 5978 or greater and a VMAX AFA add legacy SL/WL
+                # combinations
+                if any(self.rest.get_vmax_model(array) in x for x in
+                       utils.VMAX_AFA_MODELS):
+                    slo_workload_set.add('Diamond:OLTP')
+                    slo_workload_set.add('Diamond:OLTP_REP')
+                    slo_workload_set.add('Diamond:DSS')
+                    slo_workload_set.add('Diamond:DSS_REP')
+                    slo_workload_set.add('Diamond:None')
 
             if not any(self.rest.get_vmax_model(array) in x for x in
-                       utils.VMAX_AFA_MODELS) and not \
-                    self.rest.is_next_gen_array(array):
+                       utils.VMAX_AFA_MODELS):
                 slo_workload_set.add('Optimized:None')
 
             finalarrayinfolist = []
@@ -589,6 +603,14 @@ class VMAXCommon(object):
             self.find_host_lun_id(volume, connector['host'], extra_specs))
         masking_view_dict = self._populate_masking_dict(
             volume, connector, extra_specs)
+
+        if self.rest.is_next_gen_array(extra_specs['array']):
+            masking_view_dict['workload'] = 'NONE'
+            temp_pool = masking_view_dict['storagegroup_name']
+            splitPool = temp_pool.split('+')
+            if len(splitPool) == 4:
+                splitPool[1] = 'NONE'
+            masking_view_dict['storagegroup_name'] = '+'.join(splitPool)
 
         if ('hostlunid' in device_info_dict and
                 device_info_dict['hostlunid'] is not None and
@@ -1284,7 +1306,8 @@ class VMAXCommon(object):
         short_pg_name = self.utils.get_pg_short_name(
             extra_specs[utils.PORTGROUPNAME])
         masking_view_dict[utils.SLO] = slo
-        masking_view_dict[utils.WORKLOAD] = workload
+        masking_view_dict[utils.WORKLOAD] = 'NONE' if self.nextGen else (
+            extra_specs[utils.WORKLOAD])
         masking_view_dict[utils.SRP] = unique_name
         masking_view_dict[utils.ARRAY] = extra_specs[utils.ARRAY]
         masking_view_dict[utils.PORTGROUPNAME] = (
@@ -1506,10 +1529,12 @@ class VMAXCommon(object):
         :raises: VolumeBackendAPIException:
         """
         array = extra_specs[utils.ARRAY]
+        self.nextGen = self.rest.is_next_gen_array(array)
+        if self.nextGen:
+            extra_specs[utils.WORKLOAD] = 'NONE'
         is_valid_slo, is_valid_workload = self.provision.verify_slo_workload(
             array, extra_specs[utils.SLO],
             extra_specs[utils.WORKLOAD], extra_specs[utils.SRP])
-
         if not is_valid_slo or not is_valid_workload:
             exception_message = (_(
                 "Either SLO: %(slo)s or workload %(workload)s is invalid. "
@@ -1605,12 +1630,16 @@ class VMAXCommon(object):
             slo_from_extra_spec = pool_details[0]
             workload_from_extra_spec = pool_details[1]
             # Check if legacy pool chosen
-            if workload_from_extra_spec == pool_record['srpName']:
+            if (workload_from_extra_spec == pool_record['srpName'] or
+                    self.nextGen):
                 workload_from_extra_spec = 'NONE'
 
         elif pool_record.get('ServiceLevel'):
             slo_from_extra_spec = pool_record['ServiceLevel']
             workload_from_extra_spec = pool_record.get('Workload', 'None')
+            # If workload is None in cinder.conf, convert to string
+            if not workload_from_extra_spec or self.nextGen:
+                workload_from_extra_spec = 'NONE'
             LOG.info("Pool_name is not present in the extra_specs "
                      "- using slo/ workload from xml file: %(slo)s/%(wl)s.",
                      {'slo': slo_from_extra_spec,
@@ -2411,6 +2440,10 @@ class VMAXCommon(object):
                 target_workload = 'NONE'
             else:
                 raise IndexError
+            if target_slo.lower() == 'none':
+                target_slo = None
+            if self.rest.is_next_gen_array(target_array_serial):
+                target_workload = 'NONE'
         except IndexError:
             LOG.error("Error parsing array, pool, SLO and workload.")
             return false_ret

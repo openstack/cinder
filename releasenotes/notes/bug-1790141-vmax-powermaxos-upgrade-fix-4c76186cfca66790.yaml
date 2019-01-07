@@ -1,0 +1,9 @@
+---
+fixes:
+  - PowerMax driver - Workload support was dropped in ucode 5978. If a
+    VMAX All Flash array is upgraded to 5978 or greater and existing
+    volume types leveraged workload e.g. DSS, DSS_REP, OLTP and OLTP_REP,
+    certain operations will no longer work and the volume type will be
+    unusable. This fix addresses these issues and fixes problems with
+    using old volume types with workloads included in the volume type
+    pool_name.

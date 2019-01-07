@@ -1433,6 +1433,8 @@ class VMAXMasking(object):
             extra_specs)
         rep_enabled = self.utils.is_replication_enabled(extra_specs)
         rep_mode = extra_specs.get(utils.REP_MODE, None)
+        if self.rest.is_next_gen_array(serial_number):
+            extra_specs[utils.WORKLOAD] = 'NONE'
         storagegroup_name = self.get_or_create_default_storage_group(
             serial_number, extra_specs[utils.SRP], extra_specs[utils.SLO],
             extra_specs[utils.WORKLOAD], extra_specs, do_disable_compression,
