@@ -1,8 +1,12 @@
-===========
-DRBD driver
-===========
+========================
+DRBD driver (Deprecated)
+========================
 
 The DRBD driver allows Cinder to use DRBDmanage instances.
+
+.. note::
+   The LINBIT DRBDManage volume driver is moving to maintenance mode in Stein
+   Release and will be removed in T Release.
 
 Configuration
 ~~~~~~~~~~~~~
