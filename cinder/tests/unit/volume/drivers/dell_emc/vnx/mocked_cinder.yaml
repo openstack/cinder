@@ -69,6 +69,11 @@ cg_snapshot: &cg_snapshot_base
       _uuid: cgsnapshot_id
     status: 'creating'
 
+connector: &connector_base
+  _properties:
+    host: host_1
+    initiator: ['iqn.2012-07.org.fake:01']
+    ip: 192.168.1.111
 
 ###########################################################
 # TestCommonAdapter, TestISCSIAdapter, TestFCAdapter
@@ -306,6 +311,13 @@ test_auto_register_initiator_no_white_list:
   volume: *volume_base
 
 test_auto_register_initiator_no_port_to_reg:
+  volume: *volume_base
+
+test_terminate_connection:
+  volume: *volume_base
+  connector: *connector_base
+
+test_terminate_connection_force_detach:
   volume: *volume_base
 
 test_remove_host_access:

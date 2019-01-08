@@ -1673,6 +1673,29 @@ test_build_provider_location:
     _properties:
       serial: 'vnx-serial'
 
+test_terminate_connection:
+  sg: &sg_terminate_connection
+    _properties:
+      existed: True
+  vnx:
+    _methods:
+      get_sg: *sg_terminate_connection
+
+test_terminate_connection_force_detach:
+  sg: &sg_terminate_connection_force_detach_1
+    _properties:
+      existed: True
+  sg: &sg_terminate_connection_force_detach_2
+    _properties:
+      existed: True
+  sgs: &sgs_terminate_connection_force_detach
+    _methods:
+      shadow_copy: [*sg_terminate_connection_force_detach_1,
+                    *sg_terminate_connection_force_detach_2]
+  vnx:
+    _methods:
+      get_sg: *sgs_terminate_connection_force_detach
+
 test_remove_host_access:
   sg: &sg_remove_host_access
     _properties:

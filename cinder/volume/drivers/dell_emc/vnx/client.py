@@ -599,3 +599,6 @@ class Client(object):
         lun = self.get_lun(name=lun_name)
         utils.update_res_without_poll(lun)
         return lun.pool_name
+
+    def filter_sg(self, attached_lun_id):
+        return self.vnx.get_sg().shadow_copy(attached_lun=attached_lun_id)
