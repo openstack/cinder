@@ -1,0 +1,3 @@
+---
+fixes:
+  - Cinder will now consume quota when importing new backup resource.
