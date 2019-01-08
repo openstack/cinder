@@ -32,9 +32,9 @@ import uuid
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import importutils
 from oslo_utils import units
-
 
 from cinder import exception
 from cinder.i18n import _
@@ -229,6 +229,11 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         super(DrbdManageBaseDriver, self).do_setup(context)
+
+        msg = _("The DRBD Manage driver is moving to maintenance mode"
+                "in the Stein release and will be removed in T release.")
+        versionutils.report_deprecated_feature(LOG, msg)
+
         self.dbus_connect()
 
     def check_for_setup_error(self):
