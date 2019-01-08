@@ -34,10 +34,10 @@ NETAPP_SIZE_MULTIPLIER_DEFAULT = 1.2
 netapp_proxy_opts = [
     cfg.StrOpt('netapp_storage_family',
                default='ontap_cluster',
-               choices=['ontap_cluster', 'eseries'],
+               choices=['ontap_cluster'],
                help=('The storage family type used on the storage system; '
-                     'valid values are ontap_cluster for using clustered '
-                     'Data ONTAP, or eseries for using E-Series.')),
+                     'the only valid value is ontap_cluster for using '
+                     'clustered Data ONTAP.')),
     cfg.StrOpt('netapp_storage_protocol',
                choices=['iscsi', 'fc', 'nfs'],
                help=('The storage protocol to be used on the data path with '
@@ -50,8 +50,7 @@ netapp_connection_opts = [
     cfg.IntOpt('netapp_server_port',
                help=('The TCP port to use for communication with the storage '
                      'system or proxy server. If not specified, Data ONTAP '
-                     'drivers will use 80 for HTTP and 443 for HTTPS; '
-                     'E-Series will use 8080 for HTTP and 8443 for HTTPS.')), ]
+                     'drivers will use 80 for HTTP and 443 for HTTPS.')), ]
 
 netapp_transport_opts = [
     cfg.StrOpt('netapp_transport_type',
@@ -115,35 +114,6 @@ netapp_img_cache_opts = [
                      'the value of this parameter, will be deleted from the '
                      'cache to create free space on the NFS share.')), ]
 
-netapp_eseries_opts = [
-    cfg.StrOpt('netapp_webservice_path',
-               default='/devmgr/v2',
-               help=('This option is used to specify the path to the E-Series '
-                     'proxy application on a proxy server. The value is '
-                     'combined with the value of the netapp_transport_type, '
-                     'netapp_server_hostname, and netapp_server_port options '
-                     'to create the URL used by the driver to connect to the '
-                     'proxy application.')),
-    cfg.StrOpt('netapp_controller_ips',
-               help=('This option is only utilized when the storage family '
-                     'is configured to eseries. This option is used to '
-                     'restrict provisioning to the specified controllers. '
-                     'Specify the value of this option to be a comma '
-                     'separated list of controller hostnames or IP addresses '
-                     'to be used for provisioning.')),
-    cfg.StrOpt('netapp_sa_password',
-               help=('Password for the NetApp E-Series storage array.'),
-               secret=True),
-    cfg.BoolOpt('netapp_enable_multiattach',
-                default=False,
-                help='This option specifies whether the driver should allow '
-                     'operations that require multiple attachments to a '
-                     'volume. An example would be live migration of servers '
-                     'that have volumes attached. When enabled, this backend '
-                     'is limited to 256 total volumes in order to '
-                     'guarantee volumes can be accessed by more than one '
-                     'host.'),
-]
 netapp_nfs_extra_opts = [
     cfg.StrOpt('netapp_copyoffload_tool_path',
                help=('This option specifies the path of the NetApp copy '
@@ -214,7 +184,6 @@ CONF.register_opts(netapp_basicauth_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_cluster_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_provisioning_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_img_cache_opts, group=conf.SHARED_CONF_GROUP)
-CONF.register_opts(netapp_eseries_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_nfs_extra_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_san_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_replication_opts, group=conf.SHARED_CONF_GROUP)

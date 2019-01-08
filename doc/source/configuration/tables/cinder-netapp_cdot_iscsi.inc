@@ -33,13 +33,13 @@
    * - ``netapp_server_hostname`` = ``None``
      - (String) The hostname (or IP address) for the storage system or proxy server.
    * - ``netapp_server_port`` = ``None``
-     - (Integer) The TCP port to use for communication with the storage system or proxy server. If not specified, Data ONTAP drivers will use 80 for HTTP and 443 for HTTPS; E-Series will use 8080 for HTTP and 8443 for HTTPS.
+     - (Integer) The TCP port to use for communication with the storage system or proxy server. If not specified, Data ONTAP drivers will use 80 for HTTP and 443 for HTTPS.
    * - ``netapp_size_multiplier`` = ``1.2``
      - (Floating point) The quantity to be multiplied by the requested volume size to ensure enough space is available on the virtual storage server (Vserver) to fulfill the volume creation request. Note: this option is deprecated and will be removed in favor of "reserved_percentage" in the Mitaka release.
    * - ``netapp_snapmirror_quiesce_timeout`` = ``3600``
      - (Integer) The maximum time in seconds to wait for existing SnapMirror transfers to complete before aborting during a failover.
    * - ``netapp_storage_family`` = ``ontap_cluster``
-     - (String) The storage family type used on the storage system; valid values are ontap_cluster for using clustered Data ONTAP, or eseries for using E-Series.
+     - (String) The storage family type used on the storage system; the only valid value is ontap_cluster for using clustered Data ONTAP.
    * - ``netapp_storage_protocol`` = ``None``
      - (String) The storage protocol to be used on the data path with the storage system.
    * - ``netapp_transport_type`` = ``http``

@@ -325,7 +325,6 @@ def list_opts():
                 cinder_volume_drivers_netapp_options.netapp_cluster_opts,
                 cinder_volume_drivers_netapp_options.netapp_provisioning_opts,
                 cinder_volume_drivers_netapp_options.netapp_img_cache_opts,
-                cinder_volume_drivers_netapp_options.netapp_eseries_opts,
                 cinder_volume_drivers_netapp_options.netapp_nfs_extra_opts,
                 cinder_volume_drivers_netapp_options.netapp_san_opts,
                 cinder_volume_drivers_netapp_options.netapp_replication_opts,

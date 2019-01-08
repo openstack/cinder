@@ -1,0 +1,5 @@
+---
+upgrade:
+  - Support for NetApp E-Series has been removed. The
+    NetApp Unified driver can now only be used with
+    NetApp Clustered Data ONTAP.
