@@ -14,13 +14,17 @@
 #    under the License.
 
 import json
+import sys
+import time
 
 from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import units
 import requests
 import requests.auth
+import requests.exceptions as r_exc
 import requests.packages.urllib3.exceptions as urllib_exp
+import requests.packages.urllib3.util.retry as requests_retry
 import six
 
 from cinder import coordination
@@ -47,6 +51,7 @@ STATUS_200 = 200
 STATUS_201 = 201
 STATUS_202 = 202
 STATUS_204 = 204
+SERVER_ERROR_STATUS_CODES = [408, 501, 502, 503, 504]
 # Job constants
 INCOMPLETE_LIST = ['created', 'unscheduled', 'scheduled', 'running',
                    'validating', 'validated']
@@ -66,6 +71,16 @@ class VMAXRest(object):
         self.passwd = None
         self.verify = None
         self.cert = None
+        # Failover Unisphere configuration
+        self.primary_u4p = None
+        self.u4p_failover_enabled = False
+        self.u4p_failover_autofailback = True
+        self.u4p_failover_targets = list()
+        self.u4p_failover_retries = 3
+        self.u4p_failover_timeout = 30
+        self.u4p_failover_backoff_factor = 1
+        self.u4p_in_failover = False
+        self.u4p_failover_lock = False
 
     def set_rest_credentials(self, array_info):
         """Given the array record set the rest server credentials.
@@ -82,72 +97,198 @@ class VMAXRest(object):
             'ip_port': ip_port})
         self.session = self._establish_rest_session()
 
+    def set_u4p_failover_config(self, failover_info):
+        """Set the environment failover Unisphere targets and configuration..
+
+        :param failover_info: failover target record
+        :return:
+        """
+        self.u4p_failover_enabled = True
+        self.primary_u4p = failover_info['u4p_primary']
+        self.u4p_failover_targets = failover_info['u4p_failover_targets']
+
+        if failover_info['u4p_failover_retries']:
+            self.u4p_failover_retries = failover_info['u4p_failover_retries']
+        if failover_info['u4p_failover_timeout']:
+            self.u4p_failover_timeout = failover_info['u4p_failover_timeout']
+        if failover_info['u4p_failover_backoff_factor']:
+            self.u4p_failover_backoff_factor = failover_info[
+                'u4p_failover_backoff_factor']
+        if failover_info['u4p_failover_autofailback']:
+            self.u4p_failover_autofailback = failover_info[
+                'u4p_failover_autofailback']
+
     def _establish_rest_session(self):
         """Establish the rest session.
 
         :returns: requests.session() -- session, the rest session
         """
+        LOG.info("Establishing REST session with %(base_uri)s",
+                 {'base_uri': self.base_uri})
+        if self.session:
+            self.session.close()
         session = requests.session()
         session.headers = {'content-type': 'application/json',
                            'accept': 'application/json',
                            'Application-Type': 'openstack'}
         session.auth = requests.auth.HTTPBasicAuth(self.user, self.passwd)
+
         if self.verify is not None:
             session.verify = self.verify
 
+        # SESSION FAILOVER CONFIGURATION
+        if self.u4p_failover_enabled:
+            timeout = self.u4p_failover_timeout
+
+            class MyHTTPAdapter(requests.adapters.HTTPAdapter):
+                def send(self, *args, **kwargs):
+                    kwargs['timeout'] = timeout
+                    return super(MyHTTPAdapter, self).send(*args, **kwargs)
+
+            retry = requests_retry.Retry(
+                total=self.u4p_failover_retries,
+                backoff_factor=self.u4p_failover_backoff_factor,
+                status_forcelist=SERVER_ERROR_STATUS_CODES)
+            adapter = MyHTTPAdapter(max_retries=retry)
+            session.mount('https://', adapter)
+            session.mount('http://', adapter)
+
         return session
 
-    def request(self, target_uri, method, params=None, request_object=None):
+    def _handle_u4p_failover(self):
+        """Handle the failover process to secondary instance of Unisphere.
+
+        :raises: VolumeBackendAPIException
+        """
+        if self.u4p_failover_targets:
+            LOG.error("Unisphere failure at %(prim)s, switching to next "
+                      "backup instance of Unisphere at %(sec)s", {
+                          'prim': self.base_uri,
+                          'sec': self.u4p_failover_targets[0][
+                              'RestServerIp']})
+            self.set_rest_credentials(self.u4p_failover_targets[0])
+            self.u4p_failover_targets.pop(0)
+            if self.u4p_in_failover:
+                LOG.warning("VMAX driver still in u4p failover mode. A "
+                            "periodic check will be made to see if primary "
+                            "Unisphere comes back online for seamless "
+                            "restoration.")
+            else:
+                LOG.warning("VMAX driver set to u4p failover mode. A periodic "
+                            "check will be made to see if primary Unisphere "
+                            "comes back online for seamless restoration.")
+            self.u4p_in_failover = True
+        else:
+            msg = _("A connection could not be established with the "
+                    "primary instance of Unisphere or any of the "
+                    "specified failover instances of Unisphere. Please "
+                    "check your local environment setup and restart "
+                    "Cinder Volume service to revert back to the primary "
+                    "Unisphere instance.")
+            self.u4p_failover_lock = False
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def request(self, target_uri, method, params=None, request_object=None,
+                u4p_check=False, retry=False):
         """Sends a request (GET, POST, PUT, DELETE) to the target api.
 
         :param target_uri: target uri (string)
         :param method: The method (GET, POST, PUT, or DELETE)
         :param params: Additional URL parameters
         :param request_object: request payload (dict)
+        :param u4p_check: if request is testing connection (boolean)
+        :param retry: if request is retry from prior failed request (boolean)
         :returns: server response object (dict)
-        :raises: VolumeBackendAPIException
+        :raises: VolumeBackendAPIException, Timeout, ConnectionError,
+                 HTTPError, SSLError
         """
-        message, status_code = None, None
+        while self.u4p_failover_lock and not retry:
+            LOG.warning("Unisphere failover lock in process, holding request "
+                        "until lock is released when Unisphere connection "
+                        "re-established.")
+            time.sleep(10)
+
+        url, message, status_code, response = None, None, None, None
         if not self.session:
             self.session = self._establish_rest_session()
-        url = ("%(self.base_uri)s%(target_uri)s" %
-               {'self.base_uri': self.base_uri,
-                'target_uri': target_uri})
+
         try:
+            url = ("%(self.base_uri)s%(target_uri)s" % {
+                'self.base_uri': self.base_uri,
+                'target_uri': target_uri})
+
             if request_object:
                 response = self.session.request(
                     method=method, url=url,
                     data=json.dumps(request_object, sort_keys=True,
                                     indent=4))
             elif params:
-                response = self.session.request(method=method, url=url,
-                                                params=params)
+                response = self.session.request(
+                    method=method, url=url, params=params)
             else:
-                response = self.session.request(method=method, url=url)
+                response = self.session.request(
+                    method=method, url=url)
+
             status_code = response.status_code
+            if retry and status_code and status_code in [STATUS_200,
+                                                         STATUS_201,
+                                                         STATUS_202,
+                                                         STATUS_204]:
+                self.u4p_failover_lock = False
+
             try:
                 message = response.json()
             except ValueError:
                 LOG.debug("No response received from API. Status code "
-                          "received is: %(status_code)s",
-                          {'status_code': status_code})
+                          "received is: %(status_code)s", {
+                              'status_code': status_code})
                 message = None
-            LOG.debug("%(method)s request to %(url)s has returned with "
-                      "a status code of: %(status_code)s.",
-                      {'method': method, 'url': url,
-                       'status_code': status_code})
 
-        except requests.Timeout:
-            LOG.error("The %(method)s request to URL %(url)s timed-out, "
-                      "but may have been successful. Please check the array.",
-                      {'method': method, 'url': url})
+            LOG.debug("%(method)s request to %(url)s has returned with "
+                      "a status code of: %(status_code)s.", {
+                          'method': method, 'url': url,
+                          'status_code': status_code})
+
+        except r_exc.SSLError as e:
+            msg = _("The connection to %(base_uri)s has encountered an "
+                    "SSL error. Please check your SSL config or supplied "
+                    "SSL cert in Cinder configuration. SSL Exception "
+                    "message: %(e)s")
+            raise r_exc.SSLError(msg, {'base_uri': self.base_uri, 'e': e})
+
+        except (r_exc.Timeout, r_exc.ConnectionError,
+                r_exc.HTTPError) as e:
+            if self.u4p_failover_enabled or u4p_check:
+                if not u4p_check:
+                    # Failover process
+                    LOG.warning("Running failover to backup instance "
+                                "of Unisphere")
+                    self.u4p_failover_lock = True
+                    self._handle_u4p_failover()
+                    # Failover complete, re-run failed operation
+                    LOG.info("Running request again to backup instance of "
+                             "Unisphere")
+                    status_code, message = self.request(
+                        target_uri, method, params, request_object, retry=True)
+            elif not self.u4p_failover_enabled:
+                exc_class, __, __ = sys.exc_info()
+                msg = _("The %(method)s to Unisphere server %(base)s has "
+                        "experienced a %(error)s error. Please check your "
+                        "Unisphere server connection/availability. "
+                        "Exception message: %(exc_msg)s")
+                raise exc_class(msg, {'method': method,
+                                      'base': self.base_uri,
+                                      'error': e.__class__.__name__,
+                                      'exc_msg': e})
+
         except Exception as e:
-            exception_message = (_("The %(method)s request to URL %(url)s "
-                                   "failed with exception %(e)s")
-                                 % {'method': method, 'url': url,
-                                    'e': six.text_type(e)})
-            LOG.exception(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
+            msg = _("The %(method)s request to URL %(url)s failed with "
+                    "exception %(e)s")
+            LOG.exception(msg, {'method': method, 'url': url,
+                                'e': six.text_type(e)})
+            raise exception.VolumeBackendAPIException(
+                data=(msg, {'method': method, 'url': url,
+                            'e': six.text_type(e)}))
 
         return status_code, message
 

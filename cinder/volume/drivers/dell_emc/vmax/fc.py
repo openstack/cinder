@@ -101,6 +101,8 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         3.3.0 - Fix for initiator retrieval and short hostname unmapping
                 (bugs #1783855 #1783867)
               - Fix for HyperMax OS Upgrade Bug (bug #1790141)
+              - Support for failover to secondary Unisphere
+                (bp/vmax-unisphere-failover)
     """
 
     VERSION = "3.3.0"
