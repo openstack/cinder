@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed a bug which could create volumes with invalid content in case of
+    unhandled errors from glance client
+    (Bug `#1799221 <https://bugs.launchpad.net/cinder/+bug/1799221>`_).
