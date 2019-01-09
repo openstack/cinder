@@ -41,10 +41,10 @@ storage cinder driver.
 #. In the ``cinder.conf`` configuration file under the ``[DEFAULT]``
    section, set the enabled_backends parameter.
 
-    .. code-block:: ini
+   .. code-block:: ini
 
-        [DEFAULT]
-        enabled_backends = AS13000-1
+       [DEFAULT]
+       enabled_backends = AS13000-1
 
 
 #. Add a backend group section for backend group specified
@@ -53,25 +53,25 @@ storage cinder driver.
 #. In the newly created backend group section, set the
    following configuration options:
 
-    .. code-block:: ini
+   .. code-block:: ini
 
-        [AS13000-1]
-        # The driver path
-        volume_driver = cinder.volume.drivers.inspur.as13000.as13000_driver.AS13000Driver
-        # Management IP of Inspur AS13000 storage array
-        san_ip = 10.0.0.10
-        # The Rest API port
-        san_api_port = 8088
-        # Management username of Inspur AS13000 storage array
-        san_login = root
-        # Management password of Inspur AS13000 storage array
-        san_password = passw0rd
-        # The Pool used to allocated volumes
-        as13000_ipsan_pools = Pool0
-        # The Meta Pool to use, should be a replication Pool
-        as13000_meta_pool = Pool_Rep
-        # Backend name
-        volume_backend_name = AS13000
+       [AS13000-1]
+       # The driver path
+       volume_driver = cinder.volume.drivers.inspur.as13000.as13000_driver.AS13000Driver
+       # Management IP of Inspur AS13000 storage array
+       san_ip = 10.0.0.10
+       # The Rest API port
+       san_api_port = 8088
+       # Management username of Inspur AS13000 storage array
+       san_login = root
+       # Management password of Inspur AS13000 storage array
+       san_password = passw0rd
+       # The Pool used to allocated volumes
+       as13000_ipsan_pools = Pool0
+       # The Meta Pool to use, should be a replication Pool
+       as13000_meta_pool = Pool_Rep
+       # Backend name
+       volume_backend_name = AS13000
 
 
 #. Save the changes to the ``/etc/cinder/cinder.conf`` file and
