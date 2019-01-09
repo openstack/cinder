@@ -1608,6 +1608,7 @@ def volume_attached(context, attachment_id, instance_uuid, host_name,
 
 @handle_db_data_error
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def volume_create(context, values):
     values['volume_metadata'] = _metadata_refs(values.get('metadata'),
                                                models.VolumeMetadata)
@@ -6826,6 +6827,7 @@ def _worker_set_updated_at_field(values):
     values['updated_at'] = updated_at
 
 
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def worker_create(context, **values):
     """Create a worker entry from optional arguments."""
     _worker_set_updated_at_field(values)
@@ -6862,6 +6864,7 @@ def _orm_worker_update(worker, values):
         setattr(worker, key, value)
 
 
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def worker_update(context, id, filters=None, orm_worker=None, **values):
     """Update a worker with given values."""
     filters = filters or {}
@@ -6880,6 +6883,7 @@ def worker_update(context, id, filters=None, orm_worker=None, **values):
     return result
 
 
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def worker_claim_for_cleanup(context, claimer_id, orm_worker):
     """Claim a worker entry for cleanup."""
     # We set updated_at value so we are sure we update the DB entry even if the
