@@ -231,6 +231,13 @@ class BackupNFSTestCase(test.TestCase):
         # Use dictionary to share data between threads
         self.thread_dict = {}
 
+        # Note(yikun): It mocks out the backup notifier to avoid to leak
+        # notifications into other test.
+        notify_patcher = mock.patch(
+            'cinder.volume.utils.notify_about_backup_usage')
+        notify_patcher.start()
+        self.addCleanup(notify_patcher.stop)
+
     def test_backup_uncompressed(self):
         volume_id = fake.VOLUME_ID
         self._create_backup_db_entry(volume_id=volume_id)
