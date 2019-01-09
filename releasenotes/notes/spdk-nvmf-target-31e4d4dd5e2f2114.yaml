@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    A new target, spdk-nvmeof, is added for the SPDK driver over RDMA.
+    It allows cinder to use SPDK target in order to create/delete
+    subsystems on attaching/detaching an SPDK volume to/from an
+    instance.
