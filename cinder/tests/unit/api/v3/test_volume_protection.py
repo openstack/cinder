@@ -24,6 +24,7 @@ from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants
+from cinder.tests.unit.image import fake as fake_image
 from cinder.volume import api as volume_api
 
 
@@ -35,14 +36,17 @@ class VolumeProtectionTests(test.TestCase):
         self.other_project_id = fake_constants.PROJECT2_ID
         self.admin_context = cinder_context.RequestContext(
             user_id=uuid.uuid4().hex, project_id=self.project_id,
-            is_admin=True
+            roles=['admin']
         )
         self.user_context = cinder_context.RequestContext(
-            user_id=uuid.uuid4().hex, project_id=self.project_id
+            user_id=uuid.uuid4().hex, project_id=self.project_id,
+            roles=['non-admin']
         )
         self.other_user_context = cinder_context.RequestContext(
-            user_id=uuid.uuid4().hex, project_id=self.other_project_id
+            user_id=uuid.uuid4().hex, project_id=self.other_project_id,
+            roles=['non-admin']
         )
+        fake_image.mock_image_service(self)
 
     def _get_request_response(self, context, path, method, body=None):
         request = webob.Request.blank(path)
@@ -251,3 +255,51 @@ class VolumeProtectionTests(test.TestCase):
                                               body=body)
 
         self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+    def test_nonadmin_user_can_create_volume(self):
+        user_context = self.user_context
+
+        path = '/v3/%(project_id)s/volumes' % {
+            'project_id': user_context.project_id
+        }
+        body = {"volume": {"size": 1}}
+        response = self._get_request_response(user_context, path, 'POST',
+                                              body=body)
+
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    def test_nonadmin_user_can_create_volume_from_image(self):
+        user_context = self.user_context
+
+        path = '/v3/%(project_id)s/volumes' % {
+            'project_id': user_context.project_id
+        }
+        body = {"volume": {"size": 1, "image_id": fake_constants.IMAGE_ID}}
+        response = self._get_request_response(user_context, path, 'POST',
+                                              body=body)
+
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    def test_admin_can_create_volume(self):
+        admin_context = self.admin_context
+
+        path = '/v3/%(project_id)s/volumes' % {
+            'project_id': admin_context.project_id
+        }
+        body = {"volume": {"size": 1}}
+        response = self._get_request_response(admin_context, path, 'POST',
+                                              body=body)
+
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    def test_admin_can_create_volume_from_image(self):
+        admin_context = self.admin_context
+
+        path = '/v3/%(project_id)s/volumes' % {
+            'project_id': admin_context.project_id
+        }
+        body = {"volume": {"size": 1, "image_id": fake_constants.IMAGE_ID}}
+        response = self._get_request_response(admin_context, path, 'POST',
+                                              body=body)
+
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
