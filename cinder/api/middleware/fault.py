@@ -60,7 +60,7 @@ class FaultWrapper(base_wsgi.Middleware):
             status = http_client.INTERNAL_SERVER_ERROR
 
         msg_dict = dict(url=req.url, status=status)
-        LOG.info("%(url)s returned with HTTP %(status)d", msg_dict)
+        LOG.info("%(url)s returned with HTTP %(status)s", msg_dict)
         outer = self.status_to_type(status)
         if headers:
             outer.headers = headers
