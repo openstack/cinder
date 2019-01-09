@@ -45,7 +45,8 @@
             "name": "test-volume-attachments",
             "bootable": "false",
             "created_at": "2015-11-29T03:01:44.000000",
-            "volume_type": "lvmdriver-1"
+            "volume_type": "lvmdriver-1",
+            "group_id": "8fbe5733-eb03-4c88-9ef9-f32b7d03a5e4"
         },
         {
             "migration_status": null,
@@ -92,7 +93,8 @@
             "name": "test-volume",
             "bootable": "true",
             "created_at": "2015-11-29T02:25:18.000000",
-            "volume_type": "lvmdriver-1"
+            "volume_type": "lvmdriver-1",
+            "group_id": "8fbe5733-eb03-4c88-9ef9-f32b7d03a5e4"
         }
     ],
     "volumes_links": [{

@@ -1322,21 +1322,21 @@ os-vol-host-attr:host:
     Current back-end of the volume.
     Host format is ``host@backend#pool``.
   in: body
-  required: true
+  required: false
   type: string
 os-vol-mig-status-attr:migstat:
   description: |
     The status of this volume migration (None means
     that a migration is not currently in progress).
   in: body
-  required: true
+  required: false
   type: string
 os-vol-mig-status-attr:name_id:
   description: |
     The volume ID that this volume name on the back-
     end is based on.
   in: body
-  required: true
+  required: false
   type: string
 os-vol-tenant-attr:tenant_id:
   description: |
