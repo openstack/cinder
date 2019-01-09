@@ -27,7 +27,7 @@ possible:
 +-----------------+---------------------------------------------+
 | restoring       | The backup is being restored to a volume.   |
 +-----------------+---------------------------------------------+
-| error_restoring | A backup restoration error occurred.        |
+| error_deleting  | An error occurred while deleting the backup.|
 +-----------------+---------------------------------------------+
 
 
