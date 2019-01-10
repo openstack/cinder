@@ -359,7 +359,7 @@ class GlanceImageService(object):
 
         if image_chunks is None:
             raise exception.ImageDownloadFailed(
-                image_href=context, reason=_('image contains no data.'))
+                image_href=image_id, reason=_('image contains no data.'))
 
         if not data:
             return image_chunks
