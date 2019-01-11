@@ -67,6 +67,12 @@ class BackupNFSShareTestCase(test.TestCase):
         super(BackupNFSShareTestCase, self).setUp()
         self.ctxt = context.get_admin_context()
         self.mock_object(nfs, 'LOG')
+        # Note(yikun): It mocks out the backup notifier to avoid to leak
+        # notifications into other test.
+        notify_patcher = mock.patch(
+            'cinder.volume.utils.notify_about_backup_usage')
+        notify_patcher.start()
+        self.addCleanup(notify_patcher.stop)
 
     def test_check_configuration_no_backup_share(self):
         self.override_config('backup_share', None)
