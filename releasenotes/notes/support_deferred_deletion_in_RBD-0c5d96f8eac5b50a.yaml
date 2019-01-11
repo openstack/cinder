@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add support for deferred deletion in the RBD volume driver.

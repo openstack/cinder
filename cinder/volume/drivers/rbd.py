@@ -15,6 +15,7 @@
 
 from __future__ import absolute_import
 import binascii
+import errno
 import json
 import math
 import os
@@ -26,6 +27,7 @@ from os_brick import encryptors
 from os_brick.initiator import linuxrbd
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import fileutils
@@ -112,6 +114,17 @@ RBD_OPTS = [
                      "Cinder core code for allocated_capacity_gb. This "
                      "reduces the load on the Ceph cluster as well as on the "
                      "volume service."),
+    cfg.BoolOpt('enable_deferred_deletion', default=False,
+                help='Enable deferred deletion. Upon deletion, volumes are '
+                     'tagged for deletion but will only be removed '
+                     'asynchronously at a later time.'),
+    cfg.IntOpt('deferred_deletion_delay', default=0,
+               help='Time delay in seconds before a volume is eligible '
+                    'for permanent removal after being tagged for deferred '
+                    'deletion.'),
+    cfg.IntOpt('deferred_deletion_purge_interval', default=60,
+               help='Number of seconds between runs of the periodic task'
+                    'to purge volumes tagged for deletion.'),
 ]
 
 CONF = cfg.CONF
@@ -281,6 +294,42 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             remote = self._active_config
         return (remote.get('name'), remote.get('conf'), remote.get('user'))
 
+    def _trash_purge(self):
+        LOG.info("Purging trash for backend '%s'", self._backend_name)
+        with RADOSClient(self) as client:
+            for vol in self.RBDProxy().trash_list(client.ioctx):
+                try:
+                    self.RBDProxy().trash_remove(client.ioctx, vol.get('id'))
+                    LOG.info("Deleted %s from trash for backend '%s'",
+                             vol.get('name'),
+                             self._backend_name)
+                except Exception as e:
+                    # NOTE(arne_wiebalck): trash_remove raises EPERM in case
+                    # the volume's deferral time has not expired yet, so we
+                    # want to explicitly handle this "normal" situation.
+                    # All other exceptions, e.g. ImageBusy, are not re-raised
+                    # so that the periodic purge retries on the next iteration
+                    # and leaves ERRORs in the logs in case the deletion fails
+                    # repeatedly.
+                    if e.errno == errno.EPERM:
+                        LOG.debug("%s has not expired yet on backend '%s'",
+                                  vol.get('name'),
+                                  self._backend_name)
+                    else:
+                        LOG.exception("Error deleting %s from trash "
+                                      "backend '%s'",
+                                      vol.get('name'),
+                                      self._backend_name)
+
+    def _start_periodic_tasks(self):
+        if self.configuration.enable_deferred_deletion:
+            LOG.info("Starting periodic trash purge for backend '%s'",
+                     self._backend_name)
+            deferred_deletion_ptask = loopingcall.FixedIntervalLoopingCall(
+                self._trash_purge)
+            deferred_deletion_ptask.start(
+                interval=self.configuration.deferred_deletion_purge_interval)
+
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
         if rados is None:
@@ -297,6 +346,18 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         # so no need to check for self.rados.Error here.
         with RADOSClient(self):
             pass
+
+        # NOTE(arne_wiebalck): If deferred deletion is enabled, check if the
+        # local Ceph client has support for the trash API.
+        if self.configuration.enable_deferred_deletion:
+            if not hasattr(self.RBDProxy(), 'trash_list'):
+                msg = _("Deferred deletion is enabled, but the local Ceph "
+                        "client has no support for the trash API. Support "
+                        "for this feature started with v12.2.0 Luminous.")
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        self._start_periodic_tasks()
 
     def RBDProxy(self):
         return tpool.Proxy(self.rbd.RBD())
@@ -939,7 +1000,14 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         # keep walking up the chain if it is itself a clone.
         if (not parent_has_snaps) and parent_name.endswith('.deleted'):
             LOG.debug("deleting parent %s", parent_name)
-            self.RBDProxy().remove(client.ioctx, parent_name)
+            if self.configuration.enable_deferred_deletion:
+                LOG.debug("moving volume %s to trash", parent_name)
+                delay = self.configuration.deferred_deletion_delay
+                self.RBDProxy().trash_move(client.ioctx,
+                                           parent_name,
+                                           delay)
+            else:
+                self.RBDProxy().remove(client.ioctx, parent_name)
 
             # Now move up to grandparent if there is one
             if g_parent:
@@ -989,7 +1057,14 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                          self.configuration.rados_connection_interval,
                          self.configuration.rados_connection_retries)
             def _try_remove_volume(client, volume_name):
-                self.RBDProxy().remove(client.ioctx, volume_name)
+                if self.configuration.enable_deferred_deletion:
+                    LOG.debug("moving volume %s to trash", volume_name)
+                    delay = self.configuration.deferred_deletion_delay
+                    self.RBDProxy().trash_move(client.ioctx,
+                                               volume_name,
+                                               delay)
+                else:
+                    self.RBDProxy().remove(client.ioctx, volume_name)
 
             if clone_snap is None:
                 LOG.debug("deleting rbd volume %s", volume_name)
