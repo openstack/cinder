@@ -280,8 +280,8 @@ Install and configure components
          auth_url = http://controller:5000
          memcached_servers = controller:11211
          auth_type = password
-         project_domain_id = default
-         user_domain_id = default
+         project_domain_name = default
+         user_domain_name = default
          project_name = service
          username = cinder
          password = CINDER_PASS
