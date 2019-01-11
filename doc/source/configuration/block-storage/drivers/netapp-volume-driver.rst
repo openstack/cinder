@@ -82,6 +82,9 @@ setting the ``volume_driver``, ``netapp_storage_family`` and
 
    To use the iSCSI protocol, you must override the default value of
    ``netapp_storage_protocol`` with ``iscsi``.
+   Note that this is not the same value that is reported by the driver
+   to the scheduler as `storage_protocol`, which is always
+   ``iSCSI`` (case sensitive).
 
 .. include:: ../../tables/cinder-netapp_cdot_iscsi.inc
 
