@@ -179,10 +179,22 @@ class VolumeStatus(BaseCinderEnum):
     MAINTENANCE = 'maintenance'
     RESTORING_BACKUP = 'restoring-backup'
     ERROR_RESTORING = 'error_restoring'
+    RESERVED = 'reserved'
+    AWAITING_TRANSFER = 'awaiting-transfer'
+    BACKING_UP = 'backing-up'
+    ERROR_BACKING_UP = 'error_backing-up'
+    ERROR_EXTENDING = 'error_extending'
+    DOWNLOADING = 'downloading'
+    UPLOADING = 'uploading'
+    RETYPING = 'retyping'
+    EXTENDING = 'extending'
 
     ALL = (CREATING, AVAILABLE, DELETING, ERROR, ERROR_DELETING,
            ERROR_MANAGING, MANAGING, ATTACHING, IN_USE, DETACHING,
-           MAINTENANCE, RESTORING_BACKUP, ERROR_RESTORING)
+           MAINTENANCE, RESTORING_BACKUP, ERROR_RESTORING,
+           RESERVED, AWAITING_TRANSFER, BACKING_UP,
+           ERROR_BACKING_UP, ERROR_EXTENDING, DOWNLOADING,
+           UPLOADING, RETYPING, EXTENDING)
 
 
 class VolumeStatusField(BaseEnumField):
