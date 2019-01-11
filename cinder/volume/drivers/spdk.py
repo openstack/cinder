@@ -37,7 +37,7 @@ class SPDKDriver(driver.VolumeDriver):
     VERSION = '1.0.0'
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "SPDK"
+    CI_WIKI_NAME = "Mellanox_CI"
 
     def __init__(self, *args, **kwargs):
         # Parent sets db, host, _execute and base config
