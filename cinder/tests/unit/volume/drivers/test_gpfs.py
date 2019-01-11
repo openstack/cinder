@@ -648,7 +648,8 @@ class GPFSDriverTestCase(test.TestCase):
         fake_fs_release = org_fake_fs_release
 
     @mock.patch('cinder.utils.execute')
-    def test_create_sparse_file(self, mock_exec):
+    @mock.patch('cinder.privsep.fs.truncate')
+    def test_create_sparse_file(self, mock_truncate, mock_exec):
         self.driver._create_sparse_file('', 100)
 
     @mock.patch('cinder.utils.execute')

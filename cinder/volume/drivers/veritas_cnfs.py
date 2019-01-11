@@ -21,6 +21,7 @@ from oslo_utils import excutils
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+import cinder.privsep.fs
 import cinder.privsep.path
 from cinder.volume.drivers import nfs
 
@@ -172,7 +173,7 @@ class VeritasCNFSDriver(nfs.NfsDriver):
     def extend_volume(self, volume, size):
         """Extend the volume to new size"""
         path = self.local_path(volume)
-        self._execute('truncate', '-s', '%sG' % size, path, run_as_root=True)
+        cinder.privsep.fs.truncate('%sG' % size, path)
         LOG.debug("VeritasNFSDriver: extend_volume volume_id = %s", volume.id)
 
     def _update_volume_stats(self):

@@ -162,8 +162,9 @@ class VeritasCNFSDriverTestCase(test.TestCase):
 
     @mock.patch.object(cnfs.VeritasCNFSDriver, '_do_clone_volume')
     @mock.patch.object(cnfs.VeritasCNFSDriver, 'local_path')
-    def test_create_volume_from_snapshot_greater_size(self, m_local_path,
-                                                      m_do_clone_volume):
+    @mock.patch('cinder.privsep.fs.truncate')
+    def test_create_volume_from_snapshot_greater_size(
+            self, mock_truncate, m_local_path, m_do_clone_volume):
         """test create volume from snapshot with greater volume size"""
         drv = self.driver
         volume = fake_volume.fake_volume_obj(self.context)

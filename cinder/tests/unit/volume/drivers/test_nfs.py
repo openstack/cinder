@@ -27,6 +27,7 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
+import cinder.privsep.fs as privsep
 from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
@@ -57,10 +58,10 @@ class RemoteFsDriverTestCase(test.TestCase):
         self._execute = mock_exc.start()
         self.addCleanup(mock_exc.stop)
 
-    def test_create_sparsed_file(self):
+    @mock.patch('cinder.privsep.fs.truncate')
+    def test_create_sparsed_file(self, mock_truncate):
         self._driver._create_sparsed_file('/path', 1)
-        self._execute.assert_called_once_with('truncate', '-s', '1G',
-                                              '/path', run_as_root=True)
+        mock_truncate.assert_called_with('1G', '/path')
 
     def test_create_regular_file(self):
         self._driver._create_regular_file('/path', 1)
@@ -1275,6 +1276,7 @@ class NfsDriverTestCase(test.TestCase):
         self.mock_object(drv, '_create_regular_file')
         self.mock_object(drv, '_set_rw_permissions')
         self.mock_object(drv, '_read_file')
+        self.mock_object(privsep, 'truncate')
 
         ret = drv.create_volume_from_snapshot(new_volume, fake_snap)
 

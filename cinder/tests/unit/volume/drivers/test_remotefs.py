@@ -50,8 +50,8 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         self._fake_volume_path = os.path.join(self._FAKE_MNT_POINT,
                                               self._fake_volume.name)
         self._fake_snapshot = fake_snapshot.fake_snapshot_obj(self.context)
-        self._fake_snapshot_path = (self._fake_volume_path + '.' +
-                                    self._fake_snapshot.id)
+        self._fake_snapshot_path = (self._fake_volume_path + '.'
+                                    + self._fake_snapshot.id)
         self._fake_snapshot.volume = self._fake_volume
 
     @ddt.data({'current_state': 'in-use',
@@ -718,7 +718,9 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
     @mock.patch('json.dump')
     @mock.patch('cinder.volume.drivers.remotefs.open')
     @mock.patch('os.path.exists')
+    @mock.patch('cinder.privsep.fs.truncate')
     def test_write_info_file(self,
+                             mock_truncate,
                              mock_os_path_exists,
                              mock_open,
                              mock_json_dump,
@@ -741,9 +743,8 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             self._driver._execute.assert_not_called()
             self._driver._set_rw_permissions.assert_not_called()
         else:
-            self._driver._execute.assert_called_once_with(
-                'truncate', "-s0", fake_info_path,
-                run_as_root=self._driver._execute_as_root)
+            mock_truncate.assert_called_once_with(
+                0, fake_info_path)
             self._driver._set_rw_permissions.assert_called_once_with(
                 fake_info_path)
 
@@ -868,8 +869,8 @@ class RevertToSnapshotMixinTestCase(test.TestCase):
         self._fake_volume_path = os.path.join(self._FAKE_MNT_POINT,
                                               self._fake_volume.name)
         self._fake_snapshot = fake_snapshot.fake_snapshot_obj(self.context)
-        self._fake_snapshot_path = (self._fake_volume_path + '.' +
-                                    self._fake_snapshot.id)
+        self._fake_snapshot_path = (self._fake_volume_path + '.'
+                                    + self._fake_snapshot.id)
         self._fake_snapshot_name = os.path.basename(
             self._fake_snapshot_path)
         self._fake_snapshot.volume = self._fake_volume
