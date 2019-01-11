@@ -19,7 +19,7 @@ CONF = cfg.CONF
 
 
 class VolumeTypesSampleJsonTest(api_samples_test_base.ApiSampleTestBase):
-    sample_dir = "volumes"
+    sample_dir = "volume_type"
 
     def setUp(self):
         super(VolumeTypesSampleJsonTest, self).setUp()

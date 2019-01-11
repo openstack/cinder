@@ -47,7 +47,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-type-update-request.json
+.. literalinclude:: ./samples/volume_type/volume-type-update-request.json
    :language: javascript
 
 
@@ -66,7 +66,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-type-show-response.json
+.. literalinclude:: ./samples/volume_type/volume-type-show-response.json
    :language: javascript
 
 
@@ -98,7 +98,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-type-extra-specs-create-update-request.json
+.. literalinclude:: ./samples/volume_type/volume-type-extra-specs-create-update-request.json
    :language: javascript
 
 
@@ -113,7 +113,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-type-extra-specs-create-update-response.json
+.. literalinclude:: ./samples/volume_type/volume-type-extra-specs-create-update-response.json
    :language: javascript
 
 
@@ -151,7 +151,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-type-all-extra-specs-show-response.json
+.. literalinclude:: ./samples/volume_type/volume-type-all-extra-specs-show-response.json
    :language: javascript
 
 
@@ -182,7 +182,7 @@ Request
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-type-specific-extra-specs-show-response.json
+.. literalinclude:: ./samples/volume_type/volume-type-specific-extra-specs-show-response.json
    :language: javascript
 
 
@@ -213,14 +213,14 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-type-specific-extra-specs-update-request.json
+.. literalinclude:: ./samples/volume_type/volume-type-specific-extra-specs-update-request.json
    :language: javascript
 
 
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-type-specific-extra-specs-update-response.json
+.. literalinclude:: ./samples/volume_type/volume-type-specific-extra-specs-update-response.json
    :language: javascript
 
 
@@ -290,7 +290,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-type-show-response.json
+.. literalinclude:: ./samples/volume_type/volume-type-show-response.json
    :language: javascript
 
 
@@ -331,7 +331,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-type-default-response.json
+.. literalinclude:: ./samples/volume_type/volume-type-default-response.json
    :language: javascript
 
 
@@ -404,7 +404,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-types-list-response.json
+.. literalinclude:: ./samples/volume_type/volume-types-list-response.json
    :language: javascript
 
 
@@ -438,7 +438,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-type-create-request.json
+.. literalinclude:: ./samples/volume_type/volume-type-create-request.json
    :language: javascript
 
 
@@ -458,7 +458,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-type-create-response.json
+.. literalinclude:: ./samples/volume_type/volume-type-create-response.json
    :language: javascript
 
 
@@ -505,7 +505,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/encryption-type-show-response.json
+.. literalinclude:: ./samples/volume_type/encryption-type-show-response.json
    :language: javascript
 
 
@@ -536,7 +536,7 @@ Request
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/encryption-type-specific-specs-show-response.json
+.. literalinclude:: ./samples/volume_type/encryption-type-specific-specs-show-response.json
    :language: javascript
 
 
@@ -596,7 +596,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/encryption-type-create-request.json
+.. literalinclude:: ./samples/volume_type/encryption-type-create-request.json
    :language: javascript
 
 
@@ -616,7 +616,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/encryption-type-create-response.json
+.. literalinclude:: ./samples/volume_type/encryption-type-create-response.json
    :language: javascript
 
 
@@ -652,7 +652,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/encryption-type-update-request.json
+.. literalinclude:: ./samples/volume_type/encryption-type-update-request.json
    :language: javascript
 
 
@@ -670,5 +670,5 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/encryption-type-update-response.json
+.. literalinclude:: ./samples/volume_type/encryption-type-update-response.json
    :language: javascript

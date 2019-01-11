@@ -1,8 +1,8 @@
 {
     "versions": [
         {
-            "status": "SUPPORTED",
-            "updated": "2014-06-28T12:20:21Z",
+            "status": "DEPRECATED",
+            "updated": "%(isotime)s",
             "links": [
                 {
                     "href": "https://docs.openstack.org/",
@@ -10,7 +10,7 @@
                     "rel": "describedby"
                 },
                 {
-                    "href": "http://10.0.2.15:8776/v2/",
+                    "href": "%(host)s/v2/",
                     "rel": "self"
                 }
             ],
@@ -26,7 +26,7 @@
         },
         {
             "status": "CURRENT",
-            "updated": "2016-02-08T12:20:21Z",
+            "updated": "%(isotime)s",
             "links": [
                 {
                     "href": "https://docs.openstack.org/",
@@ -34,12 +34,12 @@
                     "rel": "describedby"
                 },
                 {
-                    "href": "http://10.0.2.15:8776/v3/",
+                    "href": "%(host)s/v3/",
                     "rel": "self"
                 }
             ],
             "min_version": "3.0",
-            "version": "{Current_Max_Version}",
+            "version": "%(max_api_version)s",
             "media-types": [
                 {
                     "base": "application/json",
