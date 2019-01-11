@@ -27,6 +27,7 @@ class FakeRequest(object):
 
 
 URL_BASE = 'http://localhost/volume/'
+URL_BASE_NO_SLASH = 'http://localhost/volume'
 FAKE_HREF = URL_BASE + 'v1/'
 
 FAKE_VERSIONS = {
@@ -72,6 +73,10 @@ class ViewBuilderTestCase(test.TestCase):
         request = FakeRequest(URL_BASE)
         return versions.get_view_builder(request)
 
+    def _get_builder_no_slash(self):
+        request = FakeRequest(URL_BASE_NO_SLASH)
+        return versions.get_view_builder(request)
+
     def test_build_versions(self):
 
         self.mock_object(versions.ViewBuilder,
@@ -79,11 +84,14 @@ class ViewBuilderTestCase(test.TestCase):
                          return_value=FAKE_LINKS)
 
         result = self._get_builder().build_versions(FAKE_VERSIONS)
+        result_no_slash = self._get_builder_no_slash().build_versions(
+            FAKE_VERSIONS)
 
         expected = {'versions': list(FAKE_VERSIONS.values())}
         expected['versions'][0]['links'] = FAKE_LINKS
 
         self.assertEqual(expected, result)
+        self.assertEqual(expected, result_no_slash)
 
     def test_build_version(self):
 
@@ -92,11 +100,14 @@ class ViewBuilderTestCase(test.TestCase):
                          return_value=FAKE_LINKS)
 
         result = self._get_builder()._build_version(FAKE_VERSIONS['v1.0'])
+        result_no_slash = self._get_builder_no_slash()._build_version(
+            FAKE_VERSIONS['v1.0'])
 
         expected = copy.deepcopy(FAKE_VERSIONS['v1.0'])
         expected['links'] = FAKE_LINKS
 
         self.assertEqual(expected, result)
+        self.assertEqual(expected, result_no_slash)
 
     def test_build_links(self):
 
@@ -105,14 +116,19 @@ class ViewBuilderTestCase(test.TestCase):
                          return_value=FAKE_HREF)
 
         result = self._get_builder()._build_links(FAKE_VERSIONS['v1.0'])
+        result_no_slash = self._get_builder_no_slash()._build_links(
+            FAKE_VERSIONS['v1.0'])
 
         self.assertEqual(FAKE_LINKS, result)
+        self.assertEqual(FAKE_LINKS, result_no_slash)
 
     def test_generate_href_defaults(self):
 
         result = self._get_builder()._generate_href()
+        result_no_slash = self._get_builder_no_slash()._generate_href()
 
         self.assertEqual(URL_BASE + 'v3/', result)
+        self.assertEqual(URL_BASE + 'v3/', result_no_slash)
 
     @ddt.data(
         ('v2', None, URL_BASE + 'v2/'),
@@ -125,8 +141,11 @@ class ViewBuilderTestCase(test.TestCase):
 
         result = self._get_builder()._generate_href(version=version,
                                                     path=path)
+        result_no_slash = self._get_builder_no_slash()._generate_href(
+            version=version, path=path)
 
         self.assertEqual(expected, result)
+        self.assertEqual(expected, result_no_slash)
 
     @ddt.data(
         ('http://1.1.1.1/', 'http://1.1.1.1/'),
