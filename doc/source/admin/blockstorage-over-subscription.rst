@@ -27,8 +27,8 @@ This parameter also can be set as ``max_over_subscription_ratio=auto``. When
 using auto, Cinder will automatically calculate the
 ``max_over_subscription_ratio`` based on the provisioned capacity and the used
 space. This allows the creation of a larger number of volumes at the
-begginning of the pool's life, and start to restrict the creation as the free
-space approaces to 0 or the reserved limit.
+beginning of the pool's life, and start to restrict the creation as the free
+space approaches to 0 or the reserved limit.
 
 .. note::
 
@@ -42,7 +42,7 @@ space approaces to 0 or the reserved limit.
    ratio for each pool. The LVM driver does not support multiple pools.
 
    Setting this value to 'auto'. The values calculated by Cinder can
-   dinamically vary according to the pool's provisioned capacity and consumed
+   dynamically vary according to the pool's provisioned capacity and consumed
    space.
 
 The existing ``reserved_percentage`` flag is used to prevent over provisioning.
