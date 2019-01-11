@@ -1932,7 +1932,7 @@ OpenStack, the following prerequisites must be met:
 - The volume cannot be a snapvx target
 
 
-For a volume to exist in a Cinder managed pool, it must reside in in the same
+For a volume to exist in a Cinder managed pool, it must reside in the same
 Storage Resource Pool (SRP) as the backend which is configured for use in
 OpenStack. Specifying the pool correctly can be entered manually as it follows
 the same format:
