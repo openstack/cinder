@@ -626,12 +626,23 @@ class PowerMaxCommonData(object):
                             "storageGroupId": []}
 
     volume_list = [
-        {"resultList": {"result": [{"volumeId": device_id}]}},
+        {"id": '6b70de13-98c5-46b2-8f24-e4e96a8988fa',
+         "count": 2,
+         "maxPageSize": 1,
+         "resultList": {"result": [{"volumeId": device_id}],
+                        "from": 0, "to": 1}},
         {"resultList": {"result": [{"volumeId": device_id2}]}},
-        {"resultList": {"result": [{"volumeId": device_id},
-                                   {"volumeId": device_id2}]}}]
+        {"id": '6b70de13-98c5-46b2-8f24-e4e96a8988fa',
+         "count": 2,
+         "maxPageSize": 1,
+         "resultList": {"result": [{"volumeId": device_id},
+                                   {"volumeId": device_id2}],
+                        "from": 0, "to": 1}}]
 
     private_vol_details = {
+        "id": '6b70de13-98c5-46b2-8f24-e4e96a8988fa',
+        "count": 2,
+        "maxPageSize": 1,
         "resultList": {
             "result": [{
                 "timeFinderInfo": {
@@ -656,7 +667,8 @@ class PowerMaxCommonData(object):
                     {"SRDFStatus": "Ready",
                      "pairState": "Synchronized",
                      "remoteDeviceID": device_id2,
-                     "remoteSymmetrixID": remote_array}]}}]}}
+                     "remoteSymmetrixID": remote_array}]}}],
+            "from": 0, "to": 1}}
 
     # Service Levels / Workloads
     workloadtype = {"workloadId": ["OLTP", "OLTP_REP", "DSS", "DSS_REP"]}
@@ -3359,9 +3371,18 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_get_private_volume_list_pass(self):
         array_id = self.data.array
-        response = [{"volumeHeader": {
-            "capGB": 1.0, "capMB": 1026.0, "volumeId": "00001",
-            "status": "Ready", "configuration": "TDEV"}}]
+        response = {'count': 1,
+                    'expirationTime': 1521650650793,
+                    'id': 'f3aab01c-a5a8-4fb4-af2b-16ae1c46dc9e_0',
+                    'maxPageSize': 1000,
+                    'resultList': {'from': 1,
+                                   'result': [{"volumeHeader": {
+                                       "capGB": 1.0,
+                                       "capMB": 1026.0,
+                                       "volumeId": "00001",
+                                       "status": "Ready",
+                                       "configuration": "TDEV"}}],
+                                   'to': 1}}
 
         with mock.patch.object(
                 self.rest, 'get_resource',
@@ -3373,19 +3394,16 @@ class PowerMaxRestTest(test.TestCase):
         array_id = self.data.array
         response = []
         with mock.patch.object(
-                self.rest, 'get_resource', return_value=
-                PowerMaxCommonData.private_vol_rest_response_none):
+                self.rest, 'request', return_value=(
+                    200, PowerMaxCommonData.private_vol_rest_response_none)):
             vol_list = self.rest.get_private_volume_list(array_id)
             self.assertEqual(response, vol_list)
 
     @mock.patch.object(
-        rest.PowerMaxRest, 'get_iterator_page_list', return_value=
+        rest.PowerMaxRest, 'get_iterator_page_list',
+        return_value=
         PowerMaxCommonData.private_vol_rest_response_iterator_second['result'])
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_resource', return_value=
-        deepcopy(PowerMaxCommonData.private_vol_rest_response_iterator_first))
-    def test_get_private_volume_list_iterator(self, mock_get_resource,
-                                              mock_iterator):
+    def test_get_private_volume_list_iterator(self, mock_iterator):
         array_id = self.data.array
         response = [
             {"volumeHeader": {
@@ -3394,7 +3412,13 @@ class PowerMaxRestTest(test.TestCase):
             {"volumeHeader": {
                 "capGB": 1.0, "capMB": 1026.0, "volumeId": "00001",
                 "status": "Ready", "configuration": "TDEV"}}]
-        volume = self.rest.get_private_volume_list(array_id)
+        with mock.patch.object(
+                self.rest, 'request',
+                return_value=(
+                    200,
+                    deepcopy(
+                        self.data.private_vol_rest_response_iterator_first))):
+            volume = self.rest.get_private_volume_list(array_id)
         self.assertEqual(response, volume)
 
     def test_get_iterator_list(self):
@@ -4546,7 +4570,9 @@ class PowerMaxCommonTest(test.TestCase):
 
     @mock.patch.object(common.PowerMaxCommon, 'get_remote_target_device',
                        return_value=PowerMaxCommonData.device_id2)
-    def test_find_host_lun_id_rep_extra_specs(self, mock_tgt):
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume',
+                       return_value=PowerMaxCommonData.volume_details[0])
+    def test_find_host_lun_id_rep_extra_specs(self, mock_vol, mock_tgt):
         self.common.find_host_lun_id(
             self.data.test_volume, 'HostX',
             self.data.extra_specs, self.data.rep_extra_specs)
@@ -4786,8 +4812,10 @@ class PowerMaxCommonTest(test.TestCase):
         volume_size = self.data.test_volume.size
         extra_specs = self.data.extra_specs
         ref_dict = self.data.provider_location
-        volume_dict = self.common._create_volume(
-            volume_name, volume_size, extra_specs)
+        with mock.patch.object(self.rest, 'get_volume',
+                               return_value=self.data.volume_details[0]):
+            volume_dict = self.common._create_volume(
+                volume_name, volume_size, extra_specs)
         self.assertEqual(ref_dict, volume_dict)
 
     def test_create_volume_success_next_gen(self):

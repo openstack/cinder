@@ -946,10 +946,8 @@ class PowerMaxCommon(object):
         original_vol_size = volume.size
         volume_name = volume.name
         extra_specs = self._initial_setup(volume)
-        device_id = self._find_device_on_array(volume, extra_specs)
         array = extra_specs[utils.ARRAY]
-        # Check if volume is part of an on-going clone operation
-        self._sync_check(array, device_id, extra_specs)
+        device_id = self._find_device_on_array(volume, extra_specs)
         if device_id is None:
             exception_message = (_("Cannot find Volume: %(volume_name)s. "
                                    "Extend operation.  Exiting....")
@@ -957,6 +955,8 @@ class PowerMaxCommon(object):
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
+        # Check if volume is part of an on-going clone operation
+        self._sync_check(array, device_id, extra_specs)
         __, snapvx_src, __ = self.rest.is_vol_in_rep_session(array, device_id)
         if snapvx_src:
             if not self.rest.is_next_gen_array(array):
