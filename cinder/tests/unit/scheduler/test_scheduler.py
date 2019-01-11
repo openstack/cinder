@@ -31,6 +31,7 @@ from cinder import objects
 from cinder.scheduler import driver
 from cinder.scheduler import manager
 from cinder import test
+from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.scheduler import fakes as fake_scheduler
@@ -582,6 +583,42 @@ class SchedulerManagerTestCase(test.TestCase):
         self.assertEqual((services[:2], services[2:]), res)
         self.assertEqual(1, vol_clean_mock.call_count)
         self.assertEqual(1, sch_clean_mock.call_count)
+
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.create_backup')
+    @mock.patch('cinder.objects.backup.Backup.save')
+    @mock.patch('cinder.scheduler.driver.Scheduler.get_backup_host')
+    @mock.patch('cinder.db.volume_get')
+    def test_create_backup(self, mock_volume_get, mock_host, mock_save,
+                           mock_create):
+        volume = fake_volume.fake_db_volume()
+        mock_volume_get.return_value = volume
+        mock_host.return_value = 'cinder-backup'
+        backup = fake_backup.fake_backup_obj(self.context)
+
+        self.manager.create_backup(self.context, backup=backup)
+
+        mock_save.assert_called_once()
+        mock_host.assert_called_once_with(volume)
+        mock_volume_get.assert_called_once_with(self.context, backup.volume_id)
+        mock_create.assert_called_once_with(self.context, backup)
+
+    @mock.patch('cinder.volume.volume_utils.update_backup_error')
+    @mock.patch('cinder.scheduler.driver.Scheduler.get_backup_host')
+    @mock.patch('cinder.db.volume_get')
+    def test_create_backup_no_service(self, mock_volume_get, mock_host,
+                                      mock_error):
+        volume = fake_volume.fake_db_volume()
+        mock_volume_get.return_value = volume
+        mock_host.side_effect = exception.ServiceNotFound(
+            service_id='cinder-volume')
+        backup = fake_backup.fake_backup_obj(self.context)
+
+        self.manager.create_backup(self.context, backup=backup)
+
+        mock_host.assert_called_once_with(volume)
+        mock_volume_get.assert_called_once_with(self.context, backup.volume_id)
+        mock_error.assert_called_once_with(
+            backup, 'Service not found for creating backup.')
 
 
 class SchedulerTestCase(test.TestCase):

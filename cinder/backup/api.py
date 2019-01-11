@@ -40,8 +40,8 @@ from cinder.policies import backups as policy
 import cinder.policy
 from cinder import quota
 from cinder import quota_utils
+from cinder.scheduler import rpcapi as scheduler_rpcapi
 import cinder.volume
-from cinder.volume import volume_utils
 
 backup_opts = [
     cfg.BoolOpt('backup_use_same_host',
@@ -61,6 +61,7 @@ class API(base.Base):
 
     def __init__(self, db=None):
         self.backup_rpcapi = backup_rpcapi.BackupAPI()
+        self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
         self.volume_api = cinder.volume.API()
         super(API, self).__init__(db)
 
@@ -227,10 +228,6 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
 
         previous_status = volume['status']
-        volume_host = volume_utils.extract_host(volume.host, 'host')
-        availability_zone = availability_zone or volume.availability_zone
-        host = self._get_available_backup_service_host(volume_host,
-                                                       availability_zone)
 
         # Reserve a quota before setting volume status and backup status
         try:
@@ -313,8 +310,6 @@ class API(base.Base):
                 'container': container,
                 'parent_id': parent_id,
                 'size': volume['size'],
-                'host': host,
-                'availability_zone': availability_zone,
                 'snapshot_id': snapshot_id,
                 'data_timestamp': data_timestamp,
                 'parent': parent,
@@ -334,10 +329,7 @@ class API(base.Base):
                 finally:
                     QUOTAS.rollback(context, reservations)
 
-        # TODO(DuncanT): In future, when we have a generic local attach,
-        #                this can go via the scheduler, which enables
-        #                better load balancing and isolation of services
-        self.backup_rpcapi.create_backup(context, backup)
+        self.scheduler_rpcapi.create_backup(context, backup)
 
         return backup
 

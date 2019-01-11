@@ -576,3 +576,6 @@ class FilterScheduler(driver.Scheduler):
         backend_state = top_backend.obj
         LOG.debug("Choosing %s", backend_state.backend_id)
         return top_backend
+
+    def get_backup_host(self, volume, driver=None):
+        return self.host_manager.get_backup_host(volume, driver)
