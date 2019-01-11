@@ -83,9 +83,9 @@ class TestSCSTAdmDriver(tf.TargetDriverFixture):
             'iqn.2010-10.org.openstack:'
             'volume-ed2c2222-5fc0-11e4-aa15-123b93f75cba'))
 
-    @mock.patch.object(utils, 'execute')
-    def test_target_attribute(self, mock_execute):
-        mock_execute.return_value = (self.fake_iscsi_attribute_scan, None)
+    @mock.patch('cinder.privsep.targets.scst.run_scstadmin')
+    def test_target_attribute(self, mock_privsep):
+        mock_privsep.return_value = (self.fake_iscsi_attribute_scan, None)
         self.assertEqual(str(1), self.target._target_attribute(
             'iqn.2010-10.org.openstack:'
             'volume-ed2c2222-5fc0-11e4-aa15-123b93f75cba'))

@@ -15,7 +15,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _
-from cinder import utils
+import cinder.privsep.targets.scst
 from cinder.volume.targets import iscsi
 from cinder.volume import utils as vutils
 
@@ -37,7 +37,7 @@ class SCSTAdm(iscsi.ISCSITarget):
         self.remove_initiator_iqn = None
 
     def scst_execute(self, *args):
-        return utils.execute('scstadmin', *args, run_as_root=True)
+        return cinder.privsep.targets.scst.run_scstadmin(*args)
 
     def validate_connector(self, connector):
         # iSCSI drivers require the initiator information
