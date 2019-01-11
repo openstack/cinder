@@ -99,6 +99,24 @@ class ServiceManagerTestCase(test.TestCase):
         self.assertEqual({}, rpc.LAST_OBJ_VERSIONS)
         self.assertEqual({}, rpc.LAST_RPC_VERSIONS)
 
+    def test_start_refresh_serivce_id(self):
+        serv = service.Service('test',
+                               'test',
+                               'test',
+                               'cinder.tests.unit.test_service.FakeManager')
+        # records the original service id
+        serv_id = serv.service_id
+        self.assertEqual(serv.origin_service_id, service.Service.service_id)
+        # update service id to other value
+        service.Service.service_id = serv_id + 1
+        # make sure the class attr service_id have been changed
+        self.assertNotEqual(serv.origin_service_id,
+                            service.Service.service_id)
+        # call start method
+        serv.start()
+        # After start, the service id is refreshed to original service_id
+        self.assertEqual(serv_id, service.Service.service_id)
+
 
 class ServiceFlagsTestCase(test.TestCase):
     def test_service_enabled_on_create_based_on_flag(self):
