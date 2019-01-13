@@ -583,3 +583,16 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
                               self.volume.manage_existing_snapshot,
                               self.context,
                               snap)
+
+    def test_delete_snapshot_driver_not_initialized(self):
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        snapshot = tests_utils.create_snapshot(self.context, volume.id)
+
+        self.volume.driver._initialized = False
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.volume.delete_snapshot,
+                          self.context, snapshot)
+
+        snapshot.refresh()
+        self.assertEqual(fields.SnapshotStatus.ERROR_DELETING,
+                         snapshot.status)
