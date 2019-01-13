@@ -118,28 +118,36 @@ class RBDVolumeProxy(object):
     This handles connecting to rados and opening an ioctx automatically, and
     otherwise acts like a librbd Image object.
 
+    Also this may reuse an external connection (client and ioctx args), but
+    note, that caller will be responsible for opening/closing connection.
+    Also `pool`, `remote`, `timeout` args will be ignored in that case.
+
     The underlying librados client and ioctx can be accessed as the attributes
     'client' and 'ioctx'.
     """
     def __init__(self, driver, name, pool=None, snapshot=None,
-                 read_only=False, remote=None, timeout=None):
-        client, ioctx = driver._connect_to_rados(pool, remote, timeout)
+                 read_only=False, remote=None, timeout=None,
+                 client=None, ioctx=None):
+        self._close_conn = not (client and ioctx)
+        rados_client, rados_ioctx = driver._connect_to_rados(
+            pool, remote, timeout) if self._close_conn else (client, ioctx)
+
         if snapshot is not None:
             snapshot = utils.convert_str(snapshot)
-
         try:
-            self.volume = driver.rbd.Image(ioctx,
+            self.volume = driver.rbd.Image(rados_ioctx,
                                            utils.convert_str(name),
                                            snapshot=snapshot,
                                            read_only=read_only)
             self.volume = tpool.Proxy(self.volume)
         except driver.rbd.Error:
             LOG.exception("error opening rbd image %s", name)
-            driver._disconnect_from_rados(client, ioctx)
+            if self._close_conn:
+                driver._disconnect_from_rados(rados_client, rados_ioctx)
             raise
         self.driver = driver
-        self.client = client
-        self.ioctx = ioctx
+        self.client = rados_client
+        self.ioctx = rados_ioctx
 
     def __enter__(self):
         return self
@@ -148,7 +156,8 @@ class RBDVolumeProxy(object):
         try:
             self.volume.close()
         finally:
-            self.driver._disconnect_from_rados(self.client, self.ioctx)
+            if self._close_conn:
+                self.driver._disconnect_from_rados(self.client, self.ioctx)
 
     def __getattr__(self, attrib):
         return getattr(self.volume, attrib)
@@ -386,7 +395,9 @@ class RBDDriver(driver.CloneableImageVD,
         with RADOSClient(self) as client:
             for t in self.RBDProxy().list(client.ioctx):
                 try:
-                    with RBDVolumeProxy(self, t, read_only=True) as v:
+                    with RBDVolumeProxy(self, t, read_only=True,
+                                        client=client.cluster,
+                                        ioctx=client.ioctx) as v:
                         size = v.size()
                 except (self.rbd.ImageNotFound, self.rbd.OSError):
                     LOG.debug("Image %s is not found.", t)
