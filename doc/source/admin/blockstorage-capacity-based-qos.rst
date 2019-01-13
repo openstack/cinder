@@ -42,6 +42,10 @@ is very small and ends up with an unusable volume because of performance.
 * `write_bytes_sec_per_gb_min`
 * `total_bytes_sec_per_gb_min`
 
+Capacity based options might be used in conjunction with basic options,
+like `*_sec_max`, in order to set upper limits for volumes. This may be useful
+for large volumes, which may consume all storage performance.
+
 For example, in order to create a QoS with 30 IOPs total writes per GB and
 a throughput of 1MB per GB, you might use the Cinder client in the following
 way:

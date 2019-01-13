@@ -259,6 +259,7 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
                           'read_iops_sec_per_gb': 7700,
                           'total_iops_sec_per_gb_min': 900000,
                           'total_iops_sec_per_gb': 300000,
+                          'total_iops_sec_max': 15000000,
                           'read_bytes_sec_per_gb_min': 30,
                           'read_bytes_sec_per_gb': 10,
                           'write_bytes_sec_per_gb_min': 120,
@@ -326,6 +327,7 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
                           'read_iops_sec_per_gb': 7700,
                           'total_iops_sec_per_gb_min': 900000,
                           'total_iops_sec_per_gb': 300000,
+                          'total_iops_sec_max': 15000000,
                           'read_bytes_sec_per_gb_min': 30,
                           'read_bytes_sec_per_gb': 10,
                           'write_bytes_sec_per_gb_min': 120,
@@ -343,7 +345,7 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
             mock_get_target.return_value = None
             qos_specs_expected = {'write_iops_sec': 3000,
                                   'read_iops_sec': 770000,
-                                  'total_iops_sec': 30000000,
+                                  'total_iops_sec': 15000000,
                                   'read_bytes_sec': 1000,
                                   'write_bytes_sec': 4000,
                                   'total_bytes_sec': 104857600}
