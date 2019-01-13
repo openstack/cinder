@@ -17,6 +17,8 @@
 Implements operations on volumes residing on VMware datastores.
 """
 
+import json
+
 from oslo_log import log as logging
 from oslo_utils import units
 from oslo_vmware import exceptions
@@ -1888,6 +1890,58 @@ class VMwareVolumeOps(object):
                                         diskId=fcd_location.id(cf))
         self._session.wait_for_task(task)
 
+    def create_fcd_snapshot(self, fcd_location, description):
+        LOG.debug("Creating fcd snapshot for %s.", fcd_location)
+
+        vstorage_mgr = self._session.vim.service_content.vStorageObjectManager
+        cf = self._session.vim.client.factory
+        task = self._session.invoke_api(self._session.vim,
+                                        'VStorageObjectCreateSnapshot_Task',
+                                        vstorage_mgr,
+                                        id=fcd_location.id(cf),
+                                        datastore=fcd_location.ds_ref(),
+                                        description=description)
+        task_info = self._session.wait_for_task(task)
+        fcd_snap_loc = FcdSnapshotLocation(fcd_location, task_info.result.id)
+
+        LOG.debug("Created fcd snapshot: %s.", fcd_snap_loc)
+        return fcd_snap_loc
+
+    def delete_fcd_snapshot(self, fcd_snap_loc):
+        LOG.debug("Deleting fcd snapshot: %s.", fcd_snap_loc)
+
+        vstorage_mgr = self._session.vim.service_content.vStorageObjectManager
+        cf = self._session.vim.client.factory
+        task = self._session.invoke_api(
+            self._session.vim,
+            'DeleteSnapshot_Task',
+            vstorage_mgr,
+            id=fcd_snap_loc.fcd_loc.id(cf),
+            datastore=fcd_snap_loc.fcd_loc.ds_ref(),
+            snapshotId=fcd_snap_loc.id(cf))
+        self._session.wait_for_task(task)
+
+    def create_fcd_from_snapshot(self, fcd_snap_loc, name):
+        LOG.debug("Creating fcd with name: %(name)s from fcd snapshot: "
+                  "%(snap)s.", {'name': name, 'snap': fcd_snap_loc})
+
+        vstorage_mgr = self._session.vim.service_content.vStorageObjectManager
+        cf = self._session.vim.client.factory
+        task = self._session.invoke_api(
+            self._session.vim,
+            'CreateDiskFromSnapshot_Task',
+            vstorage_mgr,
+            id=fcd_snap_loc.fcd_loc.id(cf),
+            datastore=fcd_snap_loc.fcd_loc.ds_ref(),
+            snapshotId=fcd_snap_loc.id(cf),
+            name=name)
+        task_info = self._session.wait_for_task(task)
+        fcd_loc = FcdLocation.create(task_info.result.config.id,
+                                     fcd_snap_loc.fcd_loc.ds_ref())
+
+        LOG.debug("Created fcd: %s.", fcd_loc)
+        return fcd_loc
+
 
 class FcdLocation(object):
 
@@ -1914,6 +1968,35 @@ class FcdLocation(object):
     def from_provider_location(cls, provider_location):
         fcd_id, ds_ref_val = provider_location.split('@')
         return cls(fcd_id, ds_ref_val)
+
+    def __str__(self):
+        return self.provider_location()
+
+
+class FcdSnapshotLocation(object):
+
+    def __init__(self, fcd_location, snapshot_id):
+        self.fcd_loc = fcd_location
+        self.snap_id = snapshot_id
+
+    def provider_location(self):
+        loc = {"fcd_location": self.fcd_loc.provider_location(),
+               "fcd_snapshot_id": self.snap_id}
+        return json.dumps(loc)
+
+    def id(self, cf):
+        id_obj = cf.create('ns0:ID')
+        id_obj.id = self.snap_id
+        return id_obj
+
+    @classmethod
+    def from_provider_location(cls, provider_location):
+        try:
+            loc = json.loads(provider_location)
+            fcd_loc = FcdLocation.from_provider_location(loc['fcd_location'])
+            return cls(fcd_loc, loc['fcd_snapshot_id'])
+        except ValueError:
+            pass
 
     def __str__(self):
         return self.provider_location()

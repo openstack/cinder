@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    vSphere 6.7 added support for vStorageObject snapshots. The
+    VMwareVStorageObjectDriver is updated to use VStorageObject
+    snapshots for volume snapshots.
