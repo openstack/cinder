@@ -15,7 +15,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-10-12 20:06+0000\n"
+"POT-Creation-Date: 2019-01-11 16:51+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -686,14 +686,6 @@ msgstr "백업 레코드를 구문 분석할 수 없습니다. "
 msgid "Canceled backup %(back_id)s restore on volume %(vol_id)s"
 msgstr "취소된 백업 %(back_id)s(이)가 볼륨 %(vol_id)s에 복원됩니다."
 
-#, python-format
-msgid ""
-"Cannot attach already attached volume %s; multiattach is disabled via the "
-"'netapp_enable_multiattach' configuration option."
-msgstr ""
-"이미 연결된 볼륨 %s은(는) 연결할 수 없습니다. 다중 연결은 "
-"'netapp_enable_multiattach' 구성 옵션을 통해 사용 안함으로 설정됩니다. "
-
 msgid "Cannot change VF context in the session."
 msgstr "세션에서 VF 컨텍스트를 변경할 수 없습니다."
 
@@ -717,14 +709,6 @@ msgid ""
 "Cannot create image of disk format: %s. Only vmdk disk format is accepted."
 msgstr ""
 "디스크 형식 %s의 이미지를 작성할 수 없습니다. vmdk 디스크 형식만 허용됩니다. "
-
-#, python-format
-msgid ""
-"Cannot create more than %(req)s volumes on the ESeries array when "
-"'netapp_enable_multiattach' is set to true."
-msgstr ""
-"'netapp_enable_multiattach'가 true로 설정되면 ESeries 배열에서 %(req)s개를 초"
-"과하는 볼륨을 작성할 수 없습니다. "
 
 #, python-format
 msgid "Cannot create volume of size %s: not multiple of 8GB."
@@ -949,13 +933,6 @@ msgstr "컨테이너"
 msgid "Container size smaller than required file size."
 msgstr "컨테이너 크기가 필요한 파일 크기보다 작습니다."
 
-msgid "Content type not supported."
-msgstr "컨텐츠 유형이 지원되지 않습니다."
-
-#, python-format
-msgid "Controller IP '%(host)s' could not be resolved: %(e)s."
-msgstr "제어기 IP '%(host)s'을(를) 분석할 수 없음: %(e)s."
-
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "%(f1)s(으)로 변환되었지만 이제 형식이 %(f2)s임"
@@ -1145,14 +1122,6 @@ msgid ""
 "Creating and activating zone set failed: (Zone set=%(zoneset)s error="
 "%(err)s)."
 msgstr "구역 세트 작성 및 활성화에 실패: (구역 세트=%(zoneset)s 오류=%(err)s)."
-
-#, python-format
-msgid ""
-"Currently mapped host for volume %(vol)s is in unsupported host group with "
-"%(group)s."
-msgstr ""
-"볼륨 %(vol)s에 대해 현재 맵핑된 호스트가 %(group)s이(가) 포함된 지원되지 않"
-"는 호스트 그룹에 있습니다. "
 
 #, python-format
 msgid ""
@@ -1372,14 +1341,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"E-series proxy API version %(current_version)s does not support full set of "
-"SSC extra specs. The proxy version must be at at least %(min_version)s."
-msgstr ""
-"E-series 프록시 API 버전 %(current_version)s이(가) SSC 추가 스펙의 전체 세트"
-"를 지원하지 않습니다. 프록시 버전은 %(min_version)s 이상이어야 합니다. "
-
-#, python-format
-msgid ""
 "EMC VNX Cinder Driver CLI exception: %(cmd)s (Return Code: %(rc)s) (Output: "
 "%(out)s)."
 msgstr ""
@@ -1518,16 +1479,6 @@ msgid ""
 msgstr ""
 "%(lun)s 볼륨(크기: %(size)s)을 작성하는 중 오류 발생. 리턴 코드: "
 "%(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating replication action on: pool: %(pool)s Project: %(proj)s "
-"volume: %(vol)s for target: %(tgt)s and pool: %(tgt_pool)sReturn code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"대상: %(tgt)s 및 풀: %(tgt_pool)s에 대해 풀: %(pool)s 프로젝트: %(proj)s 볼"
-"륨: %(vol)s에서 복제 조치 작성 중 오류 발생, 리턴 코드: %(ret.status)d 메시"
-"지: %(ret.data)s."
 
 #, python-format
 msgid ""
@@ -2257,10 +2208,6 @@ msgid "Failed to get LUN target details for the LUN %s"
 msgstr "LUN %s에 대한 LUN 대상 세부사항을 가져오지 못함"
 
 #, python-format
-msgid "Failed to get LUN target details for the LUN %s."
-msgstr "LUN %s에 대한 LUN 대상 세부사항을 가져오지 못했습니다. "
-
-#, python-format
 msgid "Failed to get LUN target list for the LUN %s"
 msgstr "LUN %s에 대한 LUN 대상 목록을 가져오지 못함"
 
@@ -2377,15 +2324,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Failed to manage existing volume due to I/O group mismatch. The I/O group of "
-"the volume to be managed is %(vdisk_iogrp)s. I/O groupof the chosen type is "
-"%(opt_iogrp)s."
-msgstr ""
-"I/O 그룹 불일치로 인해 기존 볼륨을 관리하는 데 실패했습니다. 관리할 볼륨의 I/"
-"O 그룹은 %(vdisk_iogrp)s입니다 선택한 유형의  I/O 그룹은 %(opt_iogrp)s입니다."
-
-#, python-format
-msgid ""
 "Failed to manage existing volume due to the pool of the volume to be managed "
 "does not match the backend pool. Pool of the volume to be managed is "
 "%(vdisk_pool)s. Pool of the backend is %(backend_pool)s."
@@ -2432,10 +2370,6 @@ msgstr ""
 #, python-format
 msgid "Failed to manage volume %s."
 msgstr "볼륨 %s을(를) 관리하지 못했습니다. "
-
-#, python-format
-msgid "Failed to move LUN mapping.  Return code: %s"
-msgstr "LUN 맵핑 이동에 실패했습니다. 리턴 코드: %s"
 
 #, python-format
 msgid "Failed to move volume %s."
@@ -2542,10 +2476,6 @@ msgid ""
 msgstr ""
 "볼륨 %(vol_id)s 메타데이터 업데이트 실패함(제공된 %(src_type)s %(src_id)s 메"
 "타데이터 사용) "
-
-#, python-format
-msgid "Failure creating volume %s."
-msgstr "%s 볼륨을 작성하지 못했습니다."
 
 #, python-format
 msgid "Failure getting LUN info for %s."
@@ -3021,26 +2951,10 @@ msgid "Host field is missing."
 msgstr "호스트 필드가 누락됨"
 
 #, python-format
-msgid "Host group with name %s not found"
-msgstr "이름이 %s인 호스트 그룹을 찾을 수 없음"
-
-#, python-format
-msgid "Host group with ref %s not found"
-msgstr "ref %s을(를) 가진 호스트 그룹을 찾을 수 없음"
-
-#, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
 msgstr ""
 "호스트를 찾을 수 없습니다. %(host)s에서 %(service)s을(를) 제거하지 못했습니"
 "다. "
-
-#, python-format
-msgid "Host type %s not supported."
-msgstr "호스트 유형 %s이(가) 지원되지 않습니다."
-
-#, python-format
-msgid "Host with ports %(ports)s not found."
-msgstr "포트가 %(ports)s인 호스트를 찾을 수 없습니다. "
 
 msgid "Hypermetro and Replication can not be used in the same volume_type."
 msgstr "Hypermetro와 복제를 동일한 volume_type에서 사용할 수 없습니다."
@@ -3381,9 +3295,6 @@ msgstr "올바르지 않은 스토리지 풀 %s이(가) 지정되었습니다."
 msgid "Invalid storage pool is configured."
 msgstr "올바르지 않은 스토리지 풀이 구성되었습니다."
 
-msgid "Invalid transport type."
-msgstr "올바르지 않은 전송 유형입니다."
-
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "올바르지 않은 업데이트 설정: '%s'"
@@ -3456,9 +3367,6 @@ msgstr ""
 #, python-format
 msgid "Invalid wwpns format %(wwpns)s"
 msgstr "올바르지 않은 wwpn 형식 %(wwpns)s"
-
-msgid "Invoking web service failed."
-msgstr "웹 서비스 호출에 실패했습니다."
 
 msgid "Issue encountered waiting for job."
 msgstr "작업 대기 중에 문제가 발생했습니다."
@@ -3586,14 +3494,6 @@ msgstr "장애 복구된 볼륨에서 스냅샷 관리는 허용되지 않습니
 
 msgid "Map info is None due to array version not supporting hypermetro."
 msgstr "배열 버전이 hypermetro를 지원하지 않으므로 맵 정보가 없습니다."
-
-#, python-format
-msgid ""
-"Mapping %(id)s prepare failed to complete within theallotted %(to)d seconds "
-"timeout. Terminating."
-msgstr ""
-"%(id)s 맵핑 준비가 할당된 %(to)d초(제한시간) 내에 완료되지 못했습니다. 종료됩"
-"니다. "
 
 #, python-format
 msgid "Maximum number of backups allowed (%(allowed)d) exceeded"
@@ -3808,22 +3708,6 @@ msgstr "지정된 이름 %s의 요소가 없습니다."
 msgid "No file found with %s as backing file."
 msgstr "백업 파일로 %s을(를) 가진 파일을 찾을 수 없음 "
 
-#, python-format
-msgid ""
-"No free LUN IDs left. Maximum number of volumes that can be attached to host "
-"(%s) has been exceeded."
-msgstr ""
-"사용 가능한 LUN ID가 남아 있지 않습니다. 호스트에 연결할 수 있는 최대 볼륨 수"
-"(%s)가 초과되었습니다. "
-
-#, python-format
-msgid "No good iscsi portal found in supplied list for %s."
-msgstr "%s에 대한 제공된 목록에서 올바른 iscsi 포털을 찾을 수 없습니다."
-
-#, python-format
-msgid "No good iscsi portals found for %s."
-msgstr "%s에 대한 올바른 iscsi 포털을 찾을 수 없습니다."
-
 msgid "No iSCSI-enabled ports on target array."
 msgstr "대상 배열에 iSCSI 사용 포트가 없습니다. "
 
@@ -3869,10 +3753,6 @@ msgid "No snap found with %s as backing file."
 msgstr "백업 파일로 %s을(를) 가진 스냅샷을 찾을 수 없음 "
 
 #, python-format
-msgid "No snapshot image found in snapshot group %s."
-msgstr "스냅샷 그룹 %s에서 스냅샷 이미지를 찾을 수 없습니다. "
-
-#, python-format
 msgid "No snapshots found for volume %(volume_id)s."
 msgstr "%(volume_id)s 볼륨에 대한 스냅샷이 없습니다."
 
@@ -3890,14 +3770,6 @@ msgstr "백업 버전 %s 복원을 지원하지 않음"
 #, python-format
 msgid "No target id found for volume %(volume_id)s."
 msgstr "%(volume_id)s 볼륨에 대한 대상ID가 없습니다. "
-
-msgid ""
-"No unused LUN IDs are available on the host; multiattach is enabled which "
-"requires that all LUN IDs to be unique across the entire host group."
-msgstr ""
-"호스트에서 사용할 수 있는 사용하지 않은 LUN ID가 없습니다. 다중 연결이 사용으"
-"로 설정되며 이를 위해서는 모든 LUN ID가 전체 호스트 그룹에서 고유해야 합니"
-"다. "
 
 #, python-format
 msgid "No valid backend was found. %(reason)s"
@@ -3947,9 +3819,6 @@ msgstr "오브젝트 버전"
 
 msgid "Object is not a NetApp LUN."
 msgstr "오브젝트가 NetApp LUN이 아닙니다."
-
-msgid "One of the required inputs from host, port or scheme was not found."
-msgstr "호스트, 포트 또는 스키마에서 필요한 입력 중 하나를 찾을 수 없습니다."
 
 #, python-format
 msgid ""
@@ -4023,10 +3892,6 @@ msgstr "볼륨 호스트 필드에서 풀을 사용할 수 없습니다."
 msgid "Pool with name %(pool_name)s wasn't found in domain %(domain_id)s."
 msgstr ""
 "이름이 %(pool_name)s인 풀을 도메인 %(domain_id)s에서 찾을 수 없습니다. "
-
-#, python-format
-msgid "Pools %s does not exist"
-msgstr "Pools %s이(가) 존재하지 않음"
 
 #, python-format
 msgid "Programming error in Cinder: %(reason)s"
@@ -4166,9 +4031,6 @@ msgstr "참조는 관리되지 않은 스냅샷의 이름이어야 합니다."
 
 msgid "Reference must be the volume name of an unmanaged virtual volume."
 msgstr "참조는 관리되지 않는 가상 볼륨의 볼륨 이름이어야 합니다. "
-
-msgid "Reference must contain either source-name or source-id element."
-msgstr "참조에는 source-name 또는 source-id 요소가 포함되어야 합니다. "
 
 msgid "Reference must contain source-id or source-name element."
 msgstr "참조에는 source-id 또는 source-name 요소가 포함되어야 합니다. "
@@ -4312,17 +4174,6 @@ msgstr "자원을 찾을 수 없습니다. "
 msgid "Resource not ready."
 msgstr "자원이 준비되지 않았습니다. "
 
-#, python-format
-msgid "Response error - %s."
-msgstr "응답 오류 - %s."
-
-msgid "Response error - The storage-system is offline."
-msgstr "응답 오류 - 스토리지 시스템이 오프라인입니다."
-
-#, python-format
-msgid "Response error code - %s."
-msgstr "응답 오류 코드 - %s."
-
 msgid "RestURL is not configured."
 msgstr "RestURL이 구성되지 않았습니다."
 
@@ -4449,14 +4300,6 @@ msgid "Sets thin provisioning."
 msgstr "씬 프로비저닝을 설정합니다. "
 
 #, python-format
-msgid ""
-"Share at %(dir)s is not writable by the Cinder volume service. Snapshot "
-"operations will not be supported."
-msgstr ""
-"%(dir)s에서의 공유를 Cinder 볼륨 서비스에서 쓸 수 없습니다. 스냅샷 조작이 지"
-"원되지 않습니다."
-
-#, python-format
 msgid "Sheepdog I/O Error, command was: \"%s\"."
 msgstr "Sheepdog I/O 오류, 명령: \"%s\"."
 
@@ -4540,10 +4383,6 @@ msgid ""
 "Snapshot to be backed up must be available, but the current status is \"%s\"."
 msgstr "백업할 스냅샷이 사용 가능해야 하지만 현재 상태가 \"%s\"입니다. "
 
-#, python-format
-msgid "Snapshot with id of %s could not be found."
-msgstr "id가 %s인 스냅샷을 찾을 수 없습니다."
-
 msgid "SolidFire Cinder Driver exception"
 msgstr "SolidFire Cinder 드라이버 예외"
 
@@ -4558,21 +4397,6 @@ msgstr "소스 볼륨 디바이스 ID가 필요합니다. "
 
 msgid "Source volume not mid-migration."
 msgstr "소스 볼륨이 마이그레이션에 포함되지 않음 "
-
-msgid "SpaceInfo returned byarray is invalid"
-msgstr "배열에서 리턴한 SpaceInfo가 올바르지 않음"
-
-#, python-format
-msgid ""
-"Specified host to map to volume %(vol)s is in unsupported host group with "
-"%(group)s."
-msgstr ""
-"볼륨 %(vol)s에 맵핑할 지정된 호스트가 %(group)s이(가) 포함된 지원되지 않는 호"
-"스트 그룹에 있습니다. "
-
-#, python-format
-msgid "Specified snapshot group with id %s could not be found."
-msgstr "id가 %s인 지정된 스냅샷 그룹을 찾을 수 없습니다. "
 
 msgid "Specify a password or private_key"
 msgstr "비밀번호 또는 private_key 지정"
@@ -4617,9 +4441,6 @@ msgstr "스토리지 풀이 구성되지 않았습니다."
 msgid "Storage profile: %(storage_profile)s not found."
 msgstr "스토리지 프로파일: %(storage_profile)s을(를) 찾을 수 없습니다."
 
-msgid "Storage system id not set."
-msgstr "스토리지 시스템 ID가 설정되지 않았습니다."
-
 #, python-format
 msgid ""
 "Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
@@ -4635,14 +4456,6 @@ msgstr "쌍 전환 오류."
 
 msgid "Sync pair error."
 msgstr "쌍 동기화 오류."
-
-#, python-format
-msgid "System %(id)s found with bad password status - %(pass_status)s."
-msgstr "시스템 %(id)s에 잘못된 비밀번호 상태가 있음 - %(pass_status)s."
-
-#, python-format
-msgid "System %(id)s found with bad status - %(status)s."
-msgstr "%(id)s 시스템에 잘못된 상태가 있음 - %(status)s."
 
 msgid "System does not support compression."
 msgstr "시스템이 압축을 지원하지 않습니다. "
@@ -4794,14 +4607,6 @@ msgstr "지정된 vdisk가 호스트에 맵핑됩니다."
 
 #, python-format
 msgid ""
-"The storage array password for %s is incorrect, please update the configured "
-"password."
-msgstr ""
-"%s의 스토리지 배열 비밀번호가 올바르지 않습니다. 구성된 비밀번호를 업데이트하"
-"십시오."
-
-#, python-format
-msgid ""
 "The storage device does not support %(prot)s. Please configure the device to "
 "support %(prot)s or switch to a driver using a different protocol."
 msgstr ""
@@ -4840,9 +4645,6 @@ msgid ""
 msgstr ""
 "볼륨이 현재 3PAR에서 사용 중이므로 이번에는 삭제할 수 없습니다. 나중에 다시 "
 "시도할 수 있습니다."
-
-msgid "The volume label is required as input."
-msgstr "볼륨 레이블이 입력으로 필요합니다. "
 
 msgid "There are no valid ESX hosts."
 msgstr "올바른 ESX 호스트가 없습니다. "
@@ -5168,10 +4970,6 @@ msgid "Unable to rename volume %(existing)s to %(newname)s"
 msgstr "볼륨 %(existing)s의 이름을 %(newname)s(으)로 바꿀 수 없음"
 
 #, python-format
-msgid "Unable to retrieve snapshot group with id of %s."
-msgstr "id가 %s인 스냅샷 그룹을 검색할 수 없습니다."
-
-#, python-format
 msgid ""
 "Unable to retype %(specname)s, expected to receive current and requested "
 "%(spectype)s values. Value received: %(spec)s"
@@ -5225,13 +5023,6 @@ msgid ""
 msgstr ""
 "예상치 못한 CLI 응답: 헤더/행 불일치. 헤더: %(header)s, 행: %(row)s(이)어야 "
 "합니다."
-
-#, python-format
-msgid ""
-"Unexpected mapping status %(status)s for mapping%(id)s. Attributes: %(attr)s."
-msgstr ""
-"맵핑 %(id)s에 대해 예상치 않은 맵핑 상태 %(status)s이(가) 발생했습니다. 속"
-"성: %(attr)s."
 
 #, python-format
 msgid "Unexpected output. Expected [%(expected)s] but received [%(output)s]"
@@ -5456,10 +5247,6 @@ msgid "Virtual volume '%s' doesn't exist on array."
 msgstr "배열에 가상 볼륨 '%s'이(가) 없습니다."
 
 #, python-format
-msgid "Vol copy job for dest %s failed."
-msgstr "%s 대상에 대한 볼륨 복사 작업에 실패했습니다."
-
-#, python-format
 msgid "Volume %(deviceID)s not found."
 msgstr "볼륨 %(deviceID)s을(를) 찾을 수 없습니다. "
 
@@ -5498,17 +5285,6 @@ msgstr ""
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
 msgstr ""
 "%(volume_id)s 볼륨에 %(metadata_key)s 키를 갖는 메타데이터가 없습니다. "
-
-#, python-format
-msgid ""
-"Volume %(volume_id)s is currently mapped to unsupported host group %(group)s"
-msgstr ""
-"볼륨 %(volume_id)s이(가) 지원되지 않는 호스트 그룹 %(group)s에 현재 맵핑되어 "
-"있음"
-
-#, python-format
-msgid "Volume %(volume_id)s is not currently mapped to host %(host)s"
-msgstr "볼륨 %(volume_id)s이(가) 호스트 %(host)s에 현재 맵핑되어 있지 않음"
 
 #, python-format
 msgid "Volume %(volume_id)s is still attached, detach volume first."
@@ -5691,9 +5467,6 @@ msgstr "%(instance_id)s 인스턴스에 대한 볼륨을 찾을 수 없습니다
 
 msgid "Volume not found on configured storage backend."
 msgstr "구성된 스토리지 백엔드에서 볼륨을 찾을 수 없습니다. "
-
-msgid "Volume not found on configured storage pools."
-msgstr "구성된 스토리지 풀에서 볼륨을 찾을 수 없습니다. "
 
 msgid "Volume not found."
 msgstr "볼륨을 찾을 수 없습니다. "

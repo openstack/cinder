@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-10-12 20:06+0000\n"
+"POT-Creation-Date: 2019-01-11 16:51+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -518,14 +518,6 @@ msgid "Can't parse backup record."
 msgstr "Nelze zpracovat záznam zálohy."
 
 #, python-format
-msgid ""
-"Cannot attach already attached volume %s; multiattach is disabled via the "
-"'netapp_enable_multiattach' configuration option."
-msgstr ""
-"Nelze připojit již připojený svazek %s; vícenásobné připojení je zakázáno "
-"přes volbu nastavení 'netapp_enable_multiattach'."
-
-#, python-format
 msgid "Cannot create directory %s."
 msgstr "Nelze vytvořit adresář %s."
 
@@ -537,14 +529,6 @@ msgid ""
 "Cannot create image of disk format: %s. Only vmdk disk format is accepted."
 msgstr ""
 "Nelze vytvořit obraz formátu disku: %s. Je přijímán pouze formát disku vmdk."
-
-#, python-format
-msgid ""
-"Cannot create more than %(req)s volumes on the ESeries array when "
-"'netapp_enable_multiattach' is set to true."
-msgstr ""
-"Při nastavení 'netapp_enable_multiattach' na true nelze v poli ESeries "
-"vytvořit více jak %(req)s svazků."
 
 #, python-format
 msgid "Cannot create volume of size %s: not multiple of 8GB."
@@ -745,13 +729,6 @@ msgstr "Kontejner"
 msgid "Container size smaller than required file size."
 msgstr "Velikost kontejneru je menší než požadovaná velikost souboru."
 
-msgid "Content type not supported."
-msgstr "Typ obsahu není podporován."
-
-#, python-format
-msgid "Controller IP '%(host)s' could not be resolved: %(e)s."
-msgstr "IP kontroléru '%(host)s' nešlo zpracovat: %(e)s."
-
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "Převedeno na %(f1)s, ale formát je nyní %(f2)s"
@@ -897,14 +874,6 @@ msgid ""
 msgstr ""
 "Vytvoření a aktivování sady zóny selhalo: (Sada zóny=%(zoneset)s chyba="
 "%(err)s)."
-
-#, python-format
-msgid ""
-"Currently mapped host for volume %(vol)s is in unsupported host group with "
-"%(group)s."
-msgstr ""
-"Současný mapovaný hostitel svazku %(vol)s je v nepodporované skupině "
-"hostitele s %(group)s."
 
 msgid ""
 "DRBDmanage driver setup error: some required libraries (dbus, drbdmanage.*) "
@@ -1065,14 +1034,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"E-series proxy API version %(current_version)s does not support full set of "
-"SSC extra specs. The proxy version must be at at least %(min_version)s."
-msgstr ""
-"Verze API E-series proxy %(current_version)s nepodporuje úplnou sadu "
-"dodatečných specifikací SSC. Verze proxy musí být alespoň %(min_version)s."
-
-#, python-format
-msgid ""
 "EMC VNX Cinder Driver CLI exception: %(cmd)s (Return Code: %(rc)s) (Output: "
 "%(out)s)."
 msgstr ""
@@ -1205,16 +1166,6 @@ msgid ""
 "Message: %(ret.data)s."
 msgstr ""
 "Chyba při vytváření svazku: %(lun)s, velikost: %(size)s, návratový kód: "
-"%(ret.status)d, zpráva: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating replication action on: pool: %(pool)s Project: %(proj)s "
-"volume: %(vol)s for target: %(tgt)s and pool: %(tgt_pool)sReturn code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"Chyba při provádění replikace na: zásobu: %(pool)s, projekt %(proj)s, "
-"svazek: %(vol)s pro cíl %(tgt)s a zásobu: %(tgt_pool)s. Návratový kód: "
 "%(ret.status)d, zpráva: %(ret.data)s."
 
 #, python-format
@@ -1828,10 +1779,6 @@ msgid "Failed to get LUN target details for the LUN %s"
 msgstr "Nelze získat podrobnosti cíle LUN pro LUN %s"
 
 #, python-format
-msgid "Failed to get LUN target details for the LUN %s."
-msgstr "Nelze získat podrobnosti cílového LUN %s."
-
-#, python-format
 msgid "Failed to get LUN target list for the LUN %s"
 msgstr "Nelze získat seznam cílů LUN pro LUN %s"
 
@@ -1942,10 +1889,6 @@ msgid "Failed to manage volume %s."
 msgstr "Nelze spravovat svazek %s."
 
 #, python-format
-msgid "Failed to move LUN mapping.  Return code: %s"
-msgstr "Nelze přesunout mapování LUN. Návratový kód: %s"
-
-#, python-format
 msgid "Failed to move volume %s."
 msgstr "Nelze přesunout svazek %s."
 
@@ -2039,10 +1982,6 @@ msgid ""
 msgstr ""
 "Nelze aktualizovat popisná data svazku %(vol_id)s pomocí zadaných dat "
 "%(src_type)s %(src_id)s"
-
-#, python-format
-msgid "Failure creating volume %s."
-msgstr "Nelze vytvořit svazek %s."
 
 #, python-format
 msgid "Failure getting LUN info for %s."
@@ -2421,24 +2360,8 @@ msgid "Host %s has no FC initiators"
 msgstr "Hostitel %s nemá žádné zavaděče FC"
 
 #, python-format
-msgid "Host group with name %s not found"
-msgstr "Skupina hostitele s názvem %s nebyla nalezena"
-
-#, python-format
-msgid "Host group with ref %s not found"
-msgstr "Skupina hostitele mající odkaz %s nebyla nalezena"
-
-#, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
 msgstr "Hostitel nenalezen. Nelze odstranit %(service)s na %(host)s."
-
-#, python-format
-msgid "Host type %s not supported."
-msgstr "Hostitel typu %s není podporován."
-
-#, python-format
-msgid "Host with ports %(ports)s not found."
-msgstr "Hostitel s porty %(ports)s nenalezen."
 
 msgid "ID"
 msgstr "ID"
@@ -2723,9 +2646,6 @@ msgstr "Zažádáno o neplatnou zásobu úložiště %s. Přetypování selhalo.
 msgid "Invalid storage pool %s specificed."
 msgstr "Zadána neplatná zásoba úložiště %s."
 
-msgid "Invalid transport type."
-msgstr "Neplatný typ přenosu."
-
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "Neplatné nastavení aktualizace: '%s'"
@@ -2795,9 +2715,6 @@ msgstr ""
 #, python-format
 msgid "Invalid wwpns format %(wwpns)s"
 msgstr "Neplatný formát wwpns %(wwpns)s"
-
-msgid "Invoking web service failed."
-msgstr "Vyvolání internetové služby selhalo."
 
 msgid "Issue encountered waiting for job."
 msgstr "Při čekání na úkol se vyskytl problém."
@@ -2908,14 +2825,6 @@ msgstr "Správa existujícího svazku není zavedena."
 
 msgid "Manage existing volume requires 'source-id'."
 msgstr "Správa existujícího svazku vyžaduje 'source-id'."
-
-#, python-format
-msgid ""
-"Mapping %(id)s prepare failed to complete within theallotted %(to)d seconds "
-"timeout. Terminating."
-msgstr ""
-"Připravení mapování %(id)s nemohlo být dokončeno v rámci přiděleného "
-"časového limitu %(to)d vteřin. Ukončování."
 
 #, python-format
 msgid "Maximum number of backups allowed (%(allowed)d) exceeded"
@@ -3089,22 +2998,6 @@ msgstr "Žádný prvek podle zadaného názvu %s."
 msgid "No file found with %s as backing file."
 msgstr "V  %s nenalezen žádný záložní soubor."
 
-#, python-format
-msgid ""
-"No free LUN IDs left. Maximum number of volumes that can be attached to host "
-"(%s) has been exceeded."
-msgstr ""
-"Žádné další volné ID LUN. Byl překročen maximální počet svazků, které lze "
-"připojit k hostiteli (%s)."
-
-#, python-format
-msgid "No good iscsi portal found in supplied list for %s."
-msgstr "Pro %s nebyly v zadaném seznamu nalezeny žádné vhodné portály iscsi."
-
-#, python-format
-msgid "No good iscsi portals found for %s."
-msgstr "Pro %s nenalezeny žádné vhodné portály iscsi."
-
 msgid "No iSCSI-enabled ports on target array."
 msgstr "V cílovém poli není žádný port umožňující iSCSI."
 
@@ -3148,10 +3041,6 @@ msgid "No snap found with %s as backing file."
 msgstr "Nenalezen žádný snímek kde %s je záložní soubor."
 
 #, python-format
-msgid "No snapshot image found in snapshot group %s."
-msgstr "Obraz snímku nebyl nalezen ve skupině snímku %s."
-
-#, python-format
 msgid "No such QoS spec %(specs_id)s."
 msgstr "Žádné takové specifikace QoS: %(specs_id)s."
 
@@ -3165,13 +3054,6 @@ msgstr "Pro obnovení zálohy verze %s není žádná podpora"
 #, python-format
 msgid "No target id found for volume %(volume_id)s."
 msgstr "Nenalezeno žádné cílové id ve svazku %(volume_id)s."
-
-msgid ""
-"No unused LUN IDs are available on the host; multiattach is enabled which "
-"requires that all LUN IDs to be unique across the entire host group."
-msgstr ""
-"Hostitel nemá k dispozici nepoužité ID LUN; vícenásobné připojení je "
-"povoleno, což vyžaduje jedinečné ID LUN napříč celou skupinou hostitele."
 
 #, python-format
 msgid ""
@@ -3212,10 +3094,6 @@ msgstr "Počet objektů"
 
 msgid "Object is not a NetApp LUN."
 msgstr "Objekt není NetApp LUN."
-
-msgid "One of the required inputs from host, port or scheme was not found."
-msgstr ""
-"Jeden z požadovaných vstupů od hostitele, portu, nebo schématu nebyl nalezen."
 
 #, python-format
 msgid ""
@@ -3287,10 +3165,6 @@ msgstr "Zásoba není dostupná v polích hostitele svazku."
 #, python-format
 msgid "Pool with name %(pool_name)s wasn't found in domain %(domain_id)s."
 msgstr "Zásoba s názvem %(pool_name)s nebyla nalezena v doméně %(domain_id)s."
-
-#, python-format
-msgid "Pools %s does not exist"
-msgstr "Zásoby %s neexistují"
 
 msgid "Project ID"
 msgstr "ID projektu"
@@ -3398,9 +3272,6 @@ msgstr "Odkaz musí být pro nespravovaný virtuální svazek."
 msgid "Reference must be the volume name of an unmanaged virtual volume."
 msgstr "Odkaz musí být název nespravovaného virtuálního svazku."
 
-msgid "Reference must contain either source-name or source-id element."
-msgstr "Odkaz musí obsahovat buď prvek source-name nebo source-id."
-
 msgid "Reference must contain source-id or source-name key."
 msgstr "Odkaz musí obsahovat zdrojové id, nebo klíč mající názem zdroje."
 
@@ -3506,17 +3377,6 @@ msgid "Resource not ready."
 msgstr "Zdroj není připraven."
 
 #, python-format
-msgid "Response error - %s."
-msgstr "Chyba odpovědi - %s."
-
-msgid "Response error - The storage-system is offline."
-msgstr "Chyba v odpovědi - Systém úložiště je mimo provoz."
-
-#, python-format
-msgid "Response error code - %s."
-msgstr "Chybový kód odpovědi - %s."
-
-#, python-format
 msgid ""
 "Restore backup aborted, expected volume status %(expected_status)s but got "
 "%(actual_status)s."
@@ -3600,14 +3460,6 @@ msgid "Sets thin provisioning."
 msgstr "Nastaví mělké poskytování."
 
 #, python-format
-msgid ""
-"Share at %(dir)s is not writable by the Cinder volume service. Snapshot "
-"operations will not be supported."
-msgstr ""
-"Do sdílení v %(dir)s nemůže služba svazků Cinder zapisovat. Operace se "
-"snímky nebudou podporovány."
-
-#, python-format
 msgid "Sheepdog I/O Error, command was: \"%s\"."
 msgstr "Chyba vstupu/výstupu Sheepdog, příkaz byl: \"%s\"."
 
@@ -3684,17 +3536,6 @@ msgstr "ID zařízení zdrojového svazku je vyžadováno."
 msgid "Source volume not mid-migration."
 msgstr "Zdrojový svazek není uprostřed přesunu."
 
-msgid "SpaceInfo returned byarray is invalid"
-msgstr "Byarray vrácený od Spaceinfo je neplatný"
-
-#, python-format
-msgid ""
-"Specified host to map to volume %(vol)s is in unsupported host group with "
-"%(group)s."
-msgstr ""
-"Zadaný hostitel pro namapování ke svazku %(vol)s je v nepodporované skupině "
-"hostitele s %(group)s."
-
 msgid "Specify a password or private_key"
 msgstr "Zadejte heslo nebo soukromý klíč"
 
@@ -3724,17 +3565,6 @@ msgstr "Druhy úložiště %s nejsou podporovány."
 #, python-format
 msgid "Storage profile: %(storage_profile)s not found."
 msgstr "Profil úložiště: %(storage_profile)s nenalezen."
-
-msgid "Storage system id not set."
-msgstr "ID úložného systému nebylo nastaveno."
-
-#, python-format
-msgid "System %(id)s found with bad password status - %(pass_status)s."
-msgstr "Systém %(id)s nalezen se stavem špatného hesla - %(pass_status)s."
-
-#, python-format
-msgid "System %(id)s found with bad status - %(status)s."
-msgstr "Byl nalezen systém %(id)s se špatným stavem - %(status)s."
 
 msgid "System does not support compression."
 msgstr "Systém nepodporuje kompresi."
@@ -3848,13 +3678,6 @@ msgstr "Zadaný virtuální disk je mapován k hostiteli."
 
 #, python-format
 msgid ""
-"The storage array password for %s is incorrect, please update the configured "
-"password."
-msgstr ""
-"Heslo pole úložiště pro %s není správné, prosím aktualizujte nastavené heslo."
-
-#, python-format
-msgid ""
 "The type of metadata: %(metadata_type)s for volume/snapshot %(id)s is "
 "invalid."
 msgstr ""
@@ -3884,9 +3707,6 @@ msgid ""
 msgstr ""
 "Svazek je v současnosti zaneprázdněn v 3PAR a nemůže být nyní smazán. Prosím "
 "zkuste to znovu později."
-
-msgid "The volume label is required as input."
-msgstr "Jmenovka svazku je vyžadována jako vstup."
 
 msgid "There are no valid ESX hosts."
 msgstr "Žádní platní hostitelé ESX."
@@ -4191,11 +4011,6 @@ msgstr ""
 "Neočekávaná odpověď rozhraní příkazového řádku: neshoda hlavičky/řádku. "
 "Hlavička: %(header)s, řádek: %(row)s."
 
-#, python-format
-msgid ""
-"Unexpected mapping status %(status)s for mapping%(id)s. Attributes: %(attr)s."
-msgstr "Neočekávaný stav mapování %(status)s pro %(id)s. Vlastnosti: %(attr)s."
-
 msgid "Unexpected response from Nimble API"
 msgstr "Neočekávaná odpověď od Nimble API"
 
@@ -4359,10 +4174,6 @@ msgid "Virtual volume '%s' doesn't exist on array."
 msgstr "Virtuální svazek '%s' neexistuje v poli."
 
 #, python-format
-msgid "Vol copy job for dest %s failed."
-msgstr "Úkol kopírování svazku do cíle %s selhal."
-
-#, python-format
 msgid "Volume %(deviceID)s not found."
 msgstr "Svazek %(deviceID)s nenalezen."
 
@@ -4397,17 +4208,6 @@ msgstr ""
 #, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
 msgstr "Svazek %(volume_id)s nemá žádná metadata s klíčem %(metadata_key)s."
-
-#, python-format
-msgid ""
-"Volume %(volume_id)s is currently mapped to unsupported host group %(group)s"
-msgstr ""
-"Svazek %(volume_id)s je v současnosti mapován k nepodporované skupině "
-"hostitele %(group)s"
-
-#, python-format
-msgid "Volume %(volume_id)s is not currently mapped to host %(host)s"
-msgstr "Svazek %(volume_id)s není v současnosti mapován k hostiteli %(host)s"
 
 #, python-format
 msgid "Volume %(volume_id)s is still attached, detach volume first."
@@ -4557,9 +4357,6 @@ msgstr "Svazek není nalezen v instanci %(instance_id)s."
 
 msgid "Volume not found on configured storage backend."
 msgstr "Svazek nebyl nalezen na nastavené podpůrné vrstvě úložiště."
-
-msgid "Volume not found on configured storage pools."
-msgstr "Svazek nebyl nalezen v nastavených zásobách úložiště."
 
 msgid "Volume not found."
 msgstr "Svazek nenalezen."

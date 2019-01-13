@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2018-10-12 20:06+0000\n"
+"POT-Creation-Date: 2019-01-11 16:51+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -721,14 +721,6 @@ msgstr ""
 "无法将卷 %(volume_id)s 添加至组 %(group_id)s，因为该组不支持卷类型 "
 "%(volume_type)s。"
 
-#, python-format
-msgid ""
-"Cannot attach already attached volume %s; multiattach is disabled via the "
-"'netapp_enable_multiattach' configuration option."
-msgstr ""
-"无法连接已经连接的卷 %s；通过“netapp_enable_multiattach”配置选项禁用了多个连"
-"接。"
-
 msgid "Cannot change VF context in the session."
 msgstr "无法更改会话中的 VF 上下文。"
 
@@ -769,14 +761,6 @@ msgstr "无法创建名称为 %(name)s 且规格为 %(group_specs)s 的组类型
 msgid ""
 "Cannot create image of disk format: %s. Only vmdk disk format is accepted."
 msgstr "无法创建磁盘格式为 %s 映像。仅接受 vmdk 磁盘格式。"
-
-#, python-format
-msgid ""
-"Cannot create more than %(req)s volumes on the ESeries array when "
-"'netapp_enable_multiattach' is set to true."
-msgstr ""
-"当“netapp_enable_multiattach”设置为 true 时，无法在 ESeries 阵列上创建多个 "
-"%(req)s 卷。"
 
 #, python-format
 msgid "Cannot create volume of size %s: not multiple of 8GB."
@@ -1028,13 +1012,6 @@ msgstr "容器"
 msgid "Container size smaller than required file size."
 msgstr "容器大小小于所需文件大小。"
 
-msgid "Content type not supported."
-msgstr "不支持内容类型。"
-
-#, python-format
-msgid "Controller IP '%(host)s' could not be resolved: %(e)s."
-msgstr "未能解析控制器 IP“%(host)s”：%(e)s。"
-
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "已转换为 %(f1)s，但现在格式为 %(f2)s"
@@ -1233,12 +1210,6 @@ msgid ""
 "Creating and activating zone set failed: (Zone set=%(zoneset)s error="
 "%(err)s)."
 msgstr "创建并激活区域集失败（区域集为 %(zoneset)s，发生的错误为 %(err)s）。"
-
-#, python-format
-msgid ""
-"Currently mapped host for volume %(vol)s is in unsupported host group with "
-"%(group)s."
-msgstr "卷 %(vol)s 的当前已映射的主机位于具有 %(group)s 的不受支持的主机组中。"
 
 #, python-format
 msgid ""
@@ -1456,14 +1427,6 @@ msgstr "驱动程序已成功将所导入的备份数据解码，但是缺少字
 
 #, python-format
 msgid ""
-"E-series proxy API version %(current_version)s does not support full set of "
-"SSC extra specs. The proxy version must be at at least %(min_version)s."
-msgstr ""
-"E-series 代理 API 版本 %(current_version)s 不支持完整的一组 SSC 额外规范。代"
-"理版本必须至少为 %(min_version)s。"
-
-#, python-format
-msgid ""
 "EMC VNX Cinder Driver CLI exception: %(cmd)s (Return Code: %(rc)s) (Output: "
 "%(out)s)."
 msgstr ""
@@ -1597,15 +1560,6 @@ msgid ""
 msgstr ""
 "创建大小为 %(size)s 的卷 %(lun)s 时出错。返回码：%(ret.status)d消息："
 "%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating replication action on: pool: %(pool)s Project: %(proj)s "
-"volume: %(vol)s for target: %(tgt)s and pool: %(tgt_pool)sReturn code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"对于目标 %(tgt)s 和池 %(tgt_pool)s，在池 %(pool)s、项目 %(proj)s 和卷 "
-"%(vol)s 上创建复制操作时出错。返回码：%(ret.status)d 消息：%(ret.data)s。"
 
 #, python-format
 msgid ""
@@ -2330,10 +2284,6 @@ msgid "Failed to get LUN target details for the LUN %s"
 msgstr "未能获取 LUN %s 的 LUN 目标详细信息"
 
 #, python-format
-msgid "Failed to get LUN target details for the LUN %s."
-msgstr "未能获取 LUN %s 的 LUN 目标详细信息。"
-
-#, python-format
 msgid "Failed to get LUN target list for the LUN %s"
 msgstr "未能获取 LUN %s 的 LUN 目标列表"
 
@@ -2442,15 +2392,6 @@ msgstr "未能管理现有卷 %(name)s，因为已报告的大小 %(size)s 不�
 
 #, python-format
 msgid ""
-"Failed to manage existing volume due to I/O group mismatch. The I/O group of "
-"the volume to be managed is %(vdisk_iogrp)s. I/O groupof the chosen type is "
-"%(opt_iogrp)s."
-msgstr ""
-"无法管理现有卷，因为 I/O 组不匹配。要管理的卷的 I/O 组为 %(vdisk_iogrp)s。所"
-"选类型的 I/O 组为 %(opt_iogrp)s。"
-
-#, python-format
-msgid ""
 "Failed to manage existing volume due to the pool of the volume to be managed "
 "does not match the backend pool. Pool of the volume to be managed is "
 "%(vdisk_pool)s. Pool of the backend is %(backend_pool)s."
@@ -2486,10 +2427,6 @@ msgstr "无法管理现有卷，要管理的卷为薄卷，但所选卷类型为
 #, python-format
 msgid "Failed to manage volume %s."
 msgstr "未能管理卷 %s。"
-
-#, python-format
-msgid "Failed to move LUN mapping.  Return code: %s"
-msgstr "未能移动 LUN 映射。返回码：%s"
 
 #, python-format
 msgid "Failed to move volume %s."
@@ -2597,10 +2534,6 @@ msgid ""
 "Failed updating volume %(vol_id)s metadata using the provided %(src_type)s "
 "%(src_id)s metadata"
 msgstr "未能使用提供的 %(src_type)s %(src_id)s 元数据更新卷 %(vol_id)s 元数据"
-
-#, python-format
-msgid "Failure creating volume %s."
-msgstr "创建卷 %s 时发生故障。"
 
 #, python-format
 msgid "Failure getting LUN info for %s."
@@ -3124,24 +3057,8 @@ msgid "Host %s has no FC initiators"
 msgstr "主机 %s 没有 FC 启动程序"
 
 #, python-format
-msgid "Host group with name %s not found"
-msgstr "找不到名称为 %s 的主机组"
-
-#, python-format
-msgid "Host group with ref %s not found"
-msgstr "找不到具有 ref %s 的主机组"
-
-#, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
 msgstr "找不到主机。未能在 %(host)s 上移除 %(service)s。"
-
-#, python-format
-msgid "Host type %s not supported."
-msgstr "不支持主机类型 %s。"
-
-#, python-format
-msgid "Host with ports %(ports)s not found."
-msgstr "找不到具有端口 %(ports)s 的主机。"
 
 msgid "Hosts"
 msgstr "主机"
@@ -3476,9 +3393,6 @@ msgstr "指定的存储池 %s 无效。"
 msgid "Invalid storage pool is configured."
 msgstr "配置了无效存储池。"
 
-msgid "Invalid transport type."
-msgstr "无效传输类型。"
-
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "无效的更新设置：'%s'"
@@ -3553,9 +3467,6 @@ msgstr "提供的以下 volume_type 无效：%s（所请求类型必须被该组
 #, python-format
 msgid "Invalid wwpns format %(wwpns)s"
 msgstr "无效 WWPN 格式 %(wwpns)s"
-
-msgid "Invoking web service failed."
-msgstr "调用 Web Service 失败。"
 
 msgid "Issue encountered waiting for job."
 msgstr "等待作业时遇到问题。"
@@ -3690,12 +3601,6 @@ msgstr "不允许管理到达已故障转移的卷的快照。"
 
 msgid "Map info is None due to array version not supporting hypermetro."
 msgstr "无映射信息，因为阵列版本不支持 hypermetro。"
-
-#, python-format
-msgid ""
-"Mapping %(id)s prepare failed to complete within theallotted %(to)d seconds "
-"timeout. Terminating."
-msgstr "映射 %(id)s 准备未能在已分配的 %(to)d 秒超时内完成。正在终止。"
 
 msgid "Max read iops setting for volume qos, use 0 for unlimited"
 msgstr "为卷的qos设置最大读iops，0表示无限制。"
@@ -3927,20 +3832,6 @@ msgid "No file found with %s as backing file."
 msgstr "在将 %s 作为支持文件的情况下，找不到任何文件。"
 
 #, python-format
-msgid ""
-"No free LUN IDs left. Maximum number of volumes that can be attached to host "
-"(%s) has been exceeded."
-msgstr "未剩余可用 LUN 标识。已超过可以连接至主机的最大卷数 (%s)。"
-
-#, python-format
-msgid "No good iscsi portal found in supplied list for %s."
-msgstr "对于 %s，在所提供列表中，找不到任何有用的 iSCSI 门户网站。"
-
-#, python-format
-msgid "No good iscsi portals found for %s."
-msgstr "对于 %s，找不到任何有用的 iSCSI 门户网站。"
-
-#, python-format
 msgid "No group snapshot with id %s"
 msgstr "不存在任何具有标识 %s 的组快照"
 
@@ -3988,10 +3879,6 @@ msgstr ""
 msgid "No snap found with %s as backing file."
 msgstr "在将 %s 作为支持文件的情况下，找不到任何 snap。"
 
-#, python-format
-msgid "No snapshot image found in snapshot group %s."
-msgstr "在快照组 %s 中，找不到快照映像。"
-
 msgid ""
 "No storage could be allocated for this volume request. You may be able to "
 "try another size or volume type."
@@ -4011,13 +3898,6 @@ msgstr "不支持复原备份版本 %s"
 #, python-format
 msgid "No target id found for volume %(volume_id)s."
 msgstr "没有为卷 %(volume_id)s 找到目标id。"
-
-msgid ""
-"No unused LUN IDs are available on the host; multiattach is enabled which "
-"requires that all LUN IDs to be unique across the entire host group."
-msgstr ""
-"主机中没有可用的未使用 LUN 标识；已启用多个连接，这要求所有 LUN 标识在整个主"
-"机组中唯一。"
 
 #, python-format
 msgid "No vdisk with the UID specified by ref %s."
@@ -4066,9 +3946,6 @@ msgstr "对象版本"
 
 msgid "Object is not a NetApp LUN."
 msgstr "对象不是 NetApp LUN。"
-
-msgid "One of the required inputs from host, port or scheme was not found."
-msgstr "找不到来自主机、端口或方案的必需输入之一。"
 
 #, python-format
 msgid ""
@@ -4137,10 +4014,6 @@ msgstr "在卷主机字段中，未提供池。"
 #, python-format
 msgid "Pool with name %(pool_name)s wasn't found in domain %(domain_id)s."
 msgstr "在域 %(domain_id)s 中找不到名称为 %(pool_name)s 的池。"
-
-#, python-format
-msgid "Pools %s does not exist"
-msgstr "池 %s 不存在"
 
 #, python-format
 msgid "Programming error in Cinder: %(reason)s"
@@ -4279,9 +4152,6 @@ msgstr "引用必须是非受管快照的名称。"
 msgid "Reference must be the volume name of an unmanaged virtual volume."
 msgstr "引用必须是非受管虚拟卷的卷名称。"
 
-msgid "Reference must contain either source-name or source-id element."
-msgstr "引用必须包含 source-name 或 source-id 元素。"
-
 msgid "Reference must contain source-id or source-name element."
 msgstr "引用必须包含 source-id 或 source-name 元素。"
 
@@ -4413,17 +4283,6 @@ msgstr "资源没有找到。"
 
 msgid "Resource not ready."
 msgstr "资源未就绪。"
-
-#, python-format
-msgid "Response error - %s."
-msgstr "响应错误 - %s。"
-
-msgid "Response error - The storage-system is offline."
-msgstr "响应错误 - 存储器系统已脱机。"
-
-#, python-format
-msgid "Response error code - %s."
-msgstr "响应错误代码 - %s。"
 
 msgid "RestURL is not configured."
 msgstr "未配置 RestURL。"
@@ -4561,12 +4420,6 @@ msgstr ""
 "和 nas_share_path 设置。"
 
 #, python-format
-msgid ""
-"Share at %(dir)s is not writable by the Cinder volume service. Snapshot "
-"operations will not be supported."
-msgstr "对于 Cinder 卷服务，%(dir)s 处的共享项不可写。快照操作将不受支持。"
-
-#, python-format
 msgid "Sheepdog I/O Error, command was: \"%s\"."
 msgstr "Sheepdog I/O 错误，命令为：\"%s\"。"
 
@@ -4643,10 +4496,6 @@ msgid ""
 "Snapshot to be backed up must be available, but the current status is \"%s\"."
 msgstr "要备份的快照必须可用，但当前状态为“%s”。"
 
-#, python-format
-msgid "Snapshot with id of %s could not be found."
-msgstr "找不到标识为 %s 的快照。"
-
 msgid "SolidFire Cinder Driver exception"
 msgstr "发生“SolidFire Cinder 驱动程序”异常"
 
@@ -4675,20 +4524,6 @@ msgstr "需要源卷设备标识。"
 
 msgid "Source volume not mid-migration."
 msgstr "源卷未在迁移中。"
-
-msgid "SpaceInfo returned byarray is invalid"
-msgstr "阵列返回的 SpaceInfo 无效"
-
-#, python-format
-msgid ""
-"Specified host to map to volume %(vol)s is in unsupported host group with "
-"%(group)s."
-msgstr ""
-"要映射至卷 %(vol)s 的所指定主机位于具有 %(group)s 的不受支持的主机组中。"
-
-#, python-format
-msgid "Specified snapshot group with id %s could not be found."
-msgstr "找不到标识为 %s 的指定快照组。"
 
 msgid "Specifies IP pool to use for volume"
 msgstr "为使用卷指定IP池。"
@@ -4744,9 +4579,6 @@ msgstr "未配置存储池。"
 msgid "Storage profile: %(storage_profile)s not found."
 msgstr "找不到存储器概要文件 %(storage_profile)s。"
 
-msgid "Storage system id not set."
-msgstr "未设置存储系统标识。"
-
 #, python-format
 msgid ""
 "Successfully renamed %(num_vols)s volumes and %(num_cgs)s consistency groups "
@@ -4772,14 +4604,6 @@ msgstr "同步对时出错。"
 #, python-format
 msgid "Synology driver authentication failed: %(reason)s."
 msgstr "Synology驱动认证失败:%(reason)s。"
-
-#, python-format
-msgid "System %(id)s found with bad password status - %(pass_status)s."
-msgstr "发现系统 %(id)s 的密码状态无效 - %(pass_status)s。"
-
-#, python-format
-msgid "System %(id)s found with bad status - %(status)s."
-msgstr "找到具有以下不正确状态的系统 %(id)s：%(status)s。"
 
 msgid "System does not support compression."
 msgstr "系统不支持压缩。"
@@ -4936,12 +4760,6 @@ msgstr "指定的 vdisk 已映射到主机。"
 
 #, python-format
 msgid ""
-"The storage array password for %s is incorrect, please update the configured "
-"password."
-msgstr "%s 的存储阵列密码不正确，请更新所配置密码。"
-
-#, python-format
-msgid ""
 "The storage device does not support %(prot)s. Please configure the device to "
 "support %(prot)s or switch to a driver using a different protocol."
 msgstr ""
@@ -4976,9 +4794,6 @@ msgid ""
 "The volume is currently busy on the 3PAR and cannot be deleted at this time. "
 "You can try again later."
 msgstr "该卷当前在 3PAR 上繁忙，此时无法删除。可稍后重试。"
-
-msgid "The volume label is required as input."
-msgstr "需要卷标作为输入。"
 
 msgid "There are no valid ESX hosts."
 msgstr "不存在有效的 ESX 主机。"
@@ -5299,10 +5114,6 @@ msgid "Unable to rename volume %(existing)s to %(newname)s"
 msgstr "无法将卷 %(existing)s 重命名为 %(newname)s"
 
 #, python-format
-msgid "Unable to retrieve snapshot group with id of %s."
-msgstr "无法检索标识为 %s 的快照组。"
-
-#, python-format
 msgid ""
 "Unable to retype %(specname)s, expected to receive current and requested "
 "%(spectype)s values. Value received: %(spec)s"
@@ -5349,11 +5160,6 @@ msgid ""
 "Unexpected CLI response: header/row mismatch. header: %(header)s, row: "
 "%(row)s."
 msgstr "出现意外 CLI 响应：头/行不匹配。头：%(header)s，行：%(row)s。"
-
-#, python-format
-msgid ""
-"Unexpected mapping status %(status)s for mapping%(id)s. Attributes: %(attr)s."
-msgstr "映射 %(id)s 的意外映射状态 %(status)s。属性：%(attr)s。"
 
 #, python-format
 msgid "Unexpected output. Expected [%(expected)s] but received [%(output)s]"
@@ -5579,10 +5385,6 @@ msgid "Virtual volume '%s' doesn't exist on array."
 msgstr "虚拟卷“%s”在阵列上不存在。"
 
 #, python-format
-msgid "Vol copy job for dest %s failed."
-msgstr "针对目标 %s 的卷复制作业失败。"
-
-#, python-format
 msgid "Volume %(deviceID)s not found."
 msgstr "找不到卷 %(deviceID)s。"
 
@@ -5635,15 +5437,6 @@ msgstr "卷 %(volume_id)s 没有任何具有键 %(metadata_key)s 的元数据。
 #, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
 msgstr "卷 %(volume_id)s 没有含键 %(metadata_key)s 的元数据。"
-
-#, python-format
-msgid ""
-"Volume %(volume_id)s is currently mapped to unsupported host group %(group)s"
-msgstr "卷 %(volume_id)s 当前已映射至不受支持的主机组 %(group)s"
-
-#, python-format
-msgid "Volume %(volume_id)s is not currently mapped to host %(host)s"
-msgstr "卷 %(volume_id)s 当前未映射至主机 %(host)s"
 
 #, python-format
 msgid "Volume %(volume_id)s is still attached, detach volume first."
@@ -5824,9 +5617,6 @@ msgstr "没有为实例 %(instance_id)s 找到卷。"
 
 msgid "Volume not found on configured storage backend."
 msgstr "在已配置的存储器后端上找不到卷。"
-
-msgid "Volume not found on configured storage pools."
-msgstr "在已配置的存储池上找不到卷。"
 
 msgid "Volume not found."
 msgstr "找不到卷。"
