@@ -422,6 +422,12 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
                               self.VARCHAR_TYPE)
         self.assertEqual(300, quota_usage_resource.c.resource.type.length)
 
+    def _check_128(self, engine, data):
+        volume_transfer = db_utils.get_table(engine, 'transfers')
+        self.assertIn('source_project_id', volume_transfer.c)
+        self.assertIn('destination_project_id', volume_transfer.c)
+        self.assertIn('accepted', volume_transfer.c)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
         self.assert_each_foreign_key_is_part_of_an_index()
