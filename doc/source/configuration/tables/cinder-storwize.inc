@@ -28,6 +28,12 @@
      - (String) Filename of private key to use for SSH authentication
    * - ``san_ssh_port`` = ``22``
      - (Port number) SSH port to use with SAN
+   * - ``ssh_conn_timeout`` = ``30``
+     - (Integer) SSH connection timeout in seconds
+   * - ``ssh_min_pool_conn`` = ``1``
+     - (Integer) Minimum ssh connections in the pool
+   * - ``ssh_max_pool_conn`` = ``5``
+     - (Integer) Maximum ssh connections in the pool
    * - ``storwize_san_secondary_ip`` = ``None``
      - (String) Specifies secondary management IP or hostname to be used if san_ip is invalid or becomes inaccessible.
    * - ``storwize_svc_allow_tenant_qos`` = ``False``
@@ -62,3 +68,11 @@
      - (Integer) Storage system threshold for volume capacity warnings (percentage)
    * - ``storwize_svc_volpool_name`` = ``volpool``
      - (List) Comma separated list of storage system storage pools for volumes.
+   * - ``storwize_svc_mirror_pool`` = ``None``
+     - (String) Specifies the name of the pool in which mirrored copy is stored. Example: "pool2"
+   * - ``storwize_peer_pool`` = ``None``
+     - (String) Specifies the name of the peer pool for hyperswap volume, the peer pool must exist on the other site.
+   * - ``storwize_preferred_host_site`` = ``{}``
+     - (Dictionary) Specifies the site information for host. One WWPN or multi WWPNs used in the host can be specified. For example: storwize_preferred_host_site=site1:wwpn1,site2:wwpn2&wwpn3 or storwize_preferred_host_site=site1:iqn1,site2:iqn2
+   * - ``cycle_period_seconds`` = ``300``
+     - (Integer) This defines an optional cycle period that applies to Global Mirror relationships with a cycling mode of multi. A Global Mirror relationship using the multi cycling_mode performs a complete cycle at most once each period. The default is 300 seconds, and the valid seconds are 60-86400.
