@@ -600,7 +600,7 @@ class LinstorBaseDriverTestCase(test.TestCase):
         m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
 
         val = self.driver._get_rsc_path(VOLUME_NAMES['linstor'])
-        expected = '/dev/vg-35/f1_00000'
+        expected = '/dev/drbd1000'
         self.assertEqual(expected, val)
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_list')
@@ -608,7 +608,7 @@ class LinstorBaseDriverTestCase(test.TestCase):
         m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
 
         val = self.driver._get_local_path(CINDER_VOLUME)
-        expected = '/dev/vg-35/f1_00000'
+        expected = '/dev/drbd1000'
         self.assertEqual(expected, val)
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_dfn_list')
