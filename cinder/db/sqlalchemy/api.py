@@ -2222,11 +2222,15 @@ def volume_get_all(context, marker=None, limit=None, sort_keys=None,
 
 
 @require_context
-def get_volume_summary(context, project_only):
+def get_volume_summary(context, project_only, filters=None):
     """Retrieves all volumes summary.
 
     :param context: context to query under
     :param project_only: limit summary to project volumes
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see _process_volume_filters
+                    function for more information
     :returns: volume summary
     """
     if not (project_only or is_admin_context(context)):
@@ -2235,6 +2239,9 @@ def get_volume_summary(context, project_only):
                         func.sum(models.Volume.size), read_deleted="no")
     if project_only:
         query = query.filter_by(project_id=context.project_id)
+
+    if filters:
+        query = _process_volume_filters(query, filters)
 
     if query is None:
         return []
@@ -3355,6 +3362,40 @@ def snapshot_update(context, snapshot_id, values):
     result = query.filter_by(id=snapshot_id).update(values)
     if not result:
         raise exception.SnapshotNotFound(snapshot_id=snapshot_id)
+
+
+@require_context
+def get_snapshot_summary(context, project_only, filters=None):
+    """Retrieves all snapshots summary.
+
+    :param context: context to query under
+    :param project_only: limit summary to snapshots
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see _process_snaps_filters
+                    function for more information
+    :returns: snapshots summary
+    """
+
+    if not (project_only or is_admin_context(context)):
+        raise exception.AdminRequired()
+
+    query = model_query(context, func.count(models.Snapshot.id),
+                        func.sum(models.Snapshot.volume_size),
+                        read_deleted="no")
+
+    if project_only:
+        query = query.filter_by(project_id=context.project_id)
+
+    if filters:
+        query = _process_snaps_filters(query, filters)
+
+    if query is None:
+        return []
+
+    result = query.first()
+
+    return result[0] or 0, result[1] or 0
 
 
 ####################

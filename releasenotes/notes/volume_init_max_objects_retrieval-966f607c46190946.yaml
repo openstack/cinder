@@ -1,0 +1,9 @@
+---
+upgrade:
+  - Volume Manager now uses the configuration option
+    ``init_host_max_objects`` retrieval to set max number of
+    volumes and snapshots to be retrieved per batch during
+    volume manager host initialization. Query results will
+    be obtained in batches from the database and not in one
+    shot to avoid extreme memory usage.
+    Default value is 0 and disables this functionality.

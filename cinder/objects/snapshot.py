@@ -360,3 +360,8 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
         expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)
+
+    @classmethod
+    def get_snapshot_summary(cls, context, project_only, filters=None):
+        summary = db.get_snapshot_summary(context, project_only, filters)
+        return summary

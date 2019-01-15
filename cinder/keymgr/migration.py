@@ -27,6 +27,7 @@ from keystoneauth1 import session as ks_session
 from cinder import context
 from cinder import coordination
 from cinder import objects
+from cinder.volume import volume_migration as volume_migration
 
 LOG = logging.getLogger(__name__)
 
@@ -145,7 +146,8 @@ class KeyMigrator(object):
         item.encryption_key_id = encryption_key_id
         item.save()
 
-        if isinstance(item, objects.volume.Volume):
+        allowTypes = (volume_migration.VolumeMigration, objects.volume.Volume)
+        if isinstance(item, allowTypes):
             snapshots = objects.snapshot.SnapshotList.get_all_for_volume(
                 self.admin_context,
                 item.id)

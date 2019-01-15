@@ -320,9 +320,9 @@ def volume_get_all_by_project(context, project_id, marker, limit,
                                           offset=offset)
 
 
-def get_volume_summary(context, project_only):
+def get_volume_summary(context, project_only, filters=None):
     """Get volume summary."""
-    return IMPL.get_volume_summary(context, project_only)
+    return IMPL.get_volume_summary(context, project_only, filters)
 
 
 def volume_update(context, volume_id, values):
@@ -526,6 +526,11 @@ def snapshot_get_all_active_by_window(context, begin, end=None,
     """
     return IMPL.snapshot_get_all_active_by_window(context, begin, end,
                                                   project_id)
+
+
+def get_snapshot_summary(context, project_only, filters=None):
+    """Get snapshot summary."""
+    return IMPL.get_snapshot_summary(context, project_only, filters)
 
 
 ####################
