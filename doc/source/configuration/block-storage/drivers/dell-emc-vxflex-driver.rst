@@ -234,7 +234,7 @@ VxFlex OS Protection Domain and Storage Pool
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When multiple storage pools are specified in the Cinder configuration,
-users can specify which pool should be utilized by adding the ``pool``
+users can specify which pool should be utilized by adding the ``pool_name``
 Extra Spec to the volume type extra-specs and setting the value to the
 requested protection_domain:storage_pool.
 
@@ -242,7 +242,7 @@ requested protection_domain:storage_pool.
 
    $ openstack volume type create sio_type_1
    $ openstack volume type set --property volume_backend_name=scaleio sio_type_1
-   $ openstack volume type set --property pool=Domain2:Pool2 sio_type_1
+   $ openstack volume type set --property pool_name=Domain2:Pool2 sio_type_1
 
 VxFlex OS thin provisioning support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
