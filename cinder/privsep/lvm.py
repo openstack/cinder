@@ -24,3 +24,9 @@ import cinder.privsep
 @cinder.privsep.sys_admin_pctxt.entrypoint
 def udevadm_settle():
     processutils.execute('udevadm', 'settle')
+
+
+@cinder.privsep.sys_admin_pctxt.entrypoint
+def lvrename(vg_name, lv_name, new_name):
+    processutils.execute(
+        'lvrename', vg_name, lv_name, new_name)
