@@ -371,7 +371,7 @@ class LinstorBaseDriver(driver.VolumeDriver):
             if rsc['name'] == rsc_name and rsc['nodeName'] == self.host_name:
                 for volume in rsc['vlms']:
                     if volume['vlmNr'] == 0:
-                        return volume['backingDisk']
+                        return volume['devicePath']
 
     def _get_local_path(self, volume):
         try:
