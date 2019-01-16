@@ -3082,6 +3082,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           manager._append_volume_stats, {'pools': 'bad_data'})
 
     def test_default_tpool_size(self):
+        self.skipTest("Bug 1811663")
         """Test we can set custom tpool size."""
         eventlet.tpool._nthreads = 10
         self.assertListEqual([], eventlet.tpool._threads)
@@ -3092,6 +3093,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertListEqual([], eventlet.tpool._threads)
 
     def test_tpool_size(self):
+        self.skipTest("Bug 1811663")
         """Test we can set custom tpool size."""
         self.assertNotEqual(100, eventlet.tpool._nthreads)
         self.assertListEqual([], eventlet.tpool._threads)
