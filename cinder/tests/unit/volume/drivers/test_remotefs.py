@@ -711,15 +711,19 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         mock_local_vol_dir.assert_called_once_with(self._fake_volume)
         mock_qemu_img_info.assert_called_once_with(self._fake_snapshot_path)
 
-    @ddt.data(False, True)
+    @ddt.data({},
+              {'info_file_exists': True},
+              {'os_name': 'nt'})
+    @ddt.unpack
     @mock.patch('json.dump')
     @mock.patch('cinder.volume.drivers.remotefs.open')
     @mock.patch('os.path.exists')
     def test_write_info_file(self,
-                             info_file_exists,
                              mock_os_path_exists,
                              mock_open,
-                             mock_json_dump):
+                             mock_json_dump,
+                             info_file_exists=False,
+                             os_name='posix'):
 
         mock_os_path_exists.return_value = info_file_exists
         fake_info_path = '/path/to/info'
@@ -733,7 +737,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         mock_json_dump.assert_called_once_with(
             fake_snapshot_info, mock.ANY, indent=1, sort_keys=True)
 
-        if info_file_exists:
+        if info_file_exists or os.name == 'nt':
             self._driver._execute.assert_not_called()
             self._driver._set_rw_permissions.assert_not_called()
         else:
