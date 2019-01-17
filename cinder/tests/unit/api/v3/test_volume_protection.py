@@ -48,10 +48,11 @@ class VolumeProtectionTests(test.TestCase):
         )
         fake_image.mock_image_service(self)
 
-    def _get_request_response(self, context, path, method, body=None):
+    def _get_request_response(self, context, path, method, body=None,
+                              microversion=mv.BASE_VERSION):
         request = webob.Request.blank(path)
         request.content_type = 'application/json'
-        request.headers = mv.get_mv_header(mv.BASE_VERSION)
+        request.headers = mv.get_mv_header(microversion)
         request.method = method
         if body:
             request.headers["content-type"] = "application/json"
@@ -61,7 +62,7 @@ class VolumeProtectionTests(test.TestCase):
         )
 
     def _create_fake_volume(self, context, status=None, attach_status=None,
-                            metadata=None):
+                            metadata=None, admin_metadata=None):
         vol = {
             'display_name': 'fake_volume1',
             'status': 'available',
@@ -73,9 +74,23 @@ class VolumeProtectionTests(test.TestCase):
             vol['attach_status'] = attach_status
         if metadata:
             vol['metadata'] = metadata
+        if admin_metadata:
+            vol['admin_metadata'] = admin_metadata
         volume = objects.Volume(context=context, **vol)
         volume.create()
         return volume
+
+    def _create_fake_type(self, context):
+        vol_type = {
+            'name': 'fake_volume1',
+            'extra_specs': {},
+            'is_public': True,
+            'projects': [],
+            'description': 'A fake volume type'
+        }
+        volume_type = objects.VolumeType(context=context, **vol_type)
+        volume_type.create()
+        return volume_type
 
     @mock.patch.object(volume_api.API, 'get_volume')
     def test_admin_can_show_volumes(self, mock_volume):
@@ -829,4 +844,186 @@ class VolumeProtectionTests(test.TestCase):
         }
         response = self._get_request_response(non_owner_context, path,
                                               'DELETE')
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+    def test_admin_can_extend_volume(self):
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-extend": {"new_size": "2"}}
+        response = self._get_request_response(admin_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    def test_owner_can_extend_volume(self):
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-extend": {"new_size": "2"}}
+        response = self._get_request_response(user_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get')
+    def test_owner_cannot_extend_volume_for_others(self, mock_volume):
+        user_context = self.user_context
+        non_owner_context = self.other_user_context
+
+        volume = self._create_fake_volume(user_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': non_owner_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-extend": {"new_size": "2"}}
+        response = self._get_request_response(non_owner_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+    def test_admin_can_extend_attached_volume(self):
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-extend": {"new_size": "2"}}
+        response = self._get_request_response(
+            admin_context, path, 'POST', body=body,
+            microversion=mv.VOLUME_EXTEND_INUSE)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    def test_owner_can_extend_attached_volume(self):
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-extend": {"new_size": "2"}}
+        response = self._get_request_response(
+            user_context, path, 'POST', body=body,
+            microversion=mv.VOLUME_EXTEND_INUSE)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get')
+    def test_owner_cannot_extend_attached_volume_for_others(self, mock_volume):
+        user_context = self.user_context
+        non_owner_context = self.other_user_context
+
+        volume = self._create_fake_volume(user_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': non_owner_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-extend": {"new_size": "2"}}
+        response = self._get_request_response(
+            non_owner_context, path, 'POST', body=body,
+            microversion=mv.VOLUME_EXTEND_INUSE)
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+    def test_admin_can_retype_volume(self):
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context)
+        vol_type = self._create_fake_type(admin_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-retype": {"new_type": "%s" % vol_type.name,
+                              "migration_policy": "never"}}
+        response = self._get_request_response(
+            admin_context, path, 'POST', body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    def test_owner_can_retype_volume(self):
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context)
+        vol_type = self._create_fake_type(user_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-retype": {"new_type": "%s" % vol_type.name,
+                              "migration_policy": "never"}}
+        response = self._get_request_response(
+            user_context, path, 'POST', body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get')
+    def test_owner_cannot_retype_volume_for_others(self, mock_volume):
+        user_context = self.user_context
+        non_owner_context = self.other_user_context
+
+        volume = self._create_fake_volume(user_context)
+        mock_volume.return_value = volume
+        vol_type = self._create_fake_type(user_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': non_owner_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-retype": {"new_type": "%s" % vol_type.name,
+                              "migration_policy": "never"}}
+        response = self._get_request_response(
+            non_owner_context, path, 'POST', body=body)
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+    def test_admin_can_update_readonly(self):
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(
+            admin_context, admin_metadata={"readonly": "False"})
+
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-update_readonly_flag": {"readonly": "True"}}
+        response = self._get_request_response(
+            admin_context, path, 'POST', body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    def test_owner_can_update_readonly(self):
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(
+            user_context, admin_metadata={"readonly": "False"})
+
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-update_readonly_flag": {"readonly": "True"}}
+        response = self._get_request_response(
+            user_context, path, 'POST', body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get')
+    def test_owner_cannot_update_readonly_for_others(self, mock_volume):
+        user_context = self.user_context
+        non_owner_context = self.other_user_context
+
+        volume = self._create_fake_volume(
+            user_context, admin_metadata={"readonly": "False"})
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': non_owner_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-update_readonly_flag": {"readonly": "True"}}
+        response = self._get_request_response(
+            non_owner_context, path, 'POST', body=body)
         self.assertEqual(http_client.FORBIDDEN, response.status_int)
