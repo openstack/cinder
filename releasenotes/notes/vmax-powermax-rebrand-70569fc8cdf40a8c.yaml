@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    PowerMax driver - 'PowerMax' is to replace 'VMAX' in release notes,
+    online documentation, directory structure and driver name.

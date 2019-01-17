@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Dell Inc. or its subsidiaries.
+# Copyright (c) 2017-2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -31,11 +31,11 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
 from cinder.volume import configuration
-from cinder.volume.drivers.dell_emc.vmax import masking
-from cinder.volume.drivers.dell_emc.vmax import metadata as volume_metadata
-from cinder.volume.drivers.dell_emc.vmax import provision
-from cinder.volume.drivers.dell_emc.vmax import rest
-from cinder.volume.drivers.dell_emc.vmax import utils
+from cinder.volume.drivers.dell_emc.powermax import masking
+from cinder.volume.drivers.dell_emc.powermax import metadata as volume_metadata
+from cinder.volume.drivers.dell_emc.powermax import provision
+from cinder.volume.drivers.dell_emc.powermax import rest
+from cinder.volume.drivers.dell_emc.powermax import utils
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 LOG = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ FAILOVER_ERROR = fields.ReplicationStatus.FAILOVER_ERROR
 REPLICATION_ERROR = fields.ReplicationStatus.ERROR
 
 
-vmax_opts = [
+powermax_opts = [
     cfg.IntOpt('interval',
                default=3,
                help='Use this value to specify '
@@ -64,10 +64,9 @@ vmax_opts = [
                     'number of retries.'),
     cfg.IntOpt(utils.VMAX_SNAPVX_UNLINK_LIMIT,
                default=3,
-               help='Use this value to specify '
-                    'the maximum number of unlinks '
-                    'for the temporary snapshots '
-                    'before a clone operation.'),
+               help='DEPRECATED: vmax_snapvc_unlink_limit.',
+               deprecated_for_removal=True,
+               deprecated_reason='Replaced by powermax_snapvx_unlink_limit.'),
     cfg.BoolOpt('initiator_check',
                 default=False,
                 help='Use this value to enable '
@@ -81,21 +80,25 @@ vmax_opts = [
                 default=8443,
                 help='REST server port number.'),
     cfg.StrOpt(utils.VMAX_ARRAY,
-               help='Serial number of the array to connect to.'),
+               help='DEPRECATED: vmax_array.',
+               deprecated_for_removal=True,
+               deprecated_reason='Replaced by powermax_array.'),
     cfg.StrOpt(utils.VMAX_SRP,
-               help='Storage resource pool on array to use for '
-                    'provisioning.'),
+               help='DEPRECATED: vmax_srp.',
+               deprecated_for_removal=True,
+               deprecated_reason='Replaced by powermax_srp.'),
     cfg.StrOpt(utils.VMAX_SERVICE_LEVEL,
-               help='Service level to use for provisioning storage. '
-                    'Setting this as an extra spec in pool_name '
-                    'is preferable.'),
+               help='DEPRECATED: vmax_service_level.',
+               deprecated_for_removal=True,
+               deprecated_reason='Replaced by powermax_service_level.'),
     cfg.StrOpt(utils.VMAX_WORKLOAD,
                help='Workload, setting this as an extra spec in '
                     'pool_name is preferable.'),
     cfg.ListOpt(utils.VMAX_PORT_GROUPS,
                 bounds=True,
-                help='List of port groups containing frontend ports '
-                     'configured prior for server connection.'),
+                help='DEPRECATED: vmax_port_groups.',
+                deprecated_for_removal=True,
+                deprecated_reason='Replaced by powermax_port_groups.'),
     cfg.IntOpt(utils.U4P_FAILOVER_TIMEOUT,
                default=20.0,
                help='How long to wait for the server to send data before '
@@ -120,17 +123,37 @@ vmax_opts = [
                      'connection is re-established.'),
     cfg.MultiOpt(utils.U4P_FAILOVER_TARGETS,
                  item_type=types.Dict(),
-                 help='Dictionary of Unisphere failover target info.')]
+                 help='Dictionary of Unisphere failover target info.'),
+    cfg.IntOpt(utils.POWERMAX_SNAPVX_UNLINK_LIMIT,
+               default=3,
+               help='Use this value to specify '
+                    'the maximum number of unlinks '
+                    'for the temporary snapshots '
+                    'before a clone operation.'),
+    cfg.StrOpt(utils.POWERMAX_ARRAY,
+               help='Serial number of the array to connect to.'),
+    cfg.StrOpt(utils.POWERMAX_SRP,
+               help='Storage resource pool on array to use for '
+                    'provisioning.'),
+    cfg.StrOpt(utils.POWERMAX_SERVICE_LEVEL,
+               help='Service level to use for provisioning storage. '
+                    'Setting this as an extra spec in pool_name '
+                    'is preferable.'),
+    cfg.ListOpt(utils.POWERMAX_PORT_GROUPS,
+                bounds=True,
+                help='List of port groups containing frontend ports '
+                     'configured prior for server connection.')]
 
-CONF.register_opts(vmax_opts, group=configuration.SHARED_CONF_GROUP)
+
+CONF.register_opts(powermax_opts, group=configuration.SHARED_CONF_GROUP)
 
 
-class VMAXCommon(object):
-    """Common class for Rest based VMAX volume drivers.
+class PowerMaxCommon(object):
+    """Common class for Rest based PowerMax volume drivers.
 
-    This common class is for Dell EMC VMAX volume drivers
+    This common class is for Dell EMC PowerMax volume drivers
     based on UniSphere Rest API.
-    It supports VMAX 3 and VMAX All Flash arrays.
+    It supports VMAX 3 and VMAX All Flash and PowerMax arrays.
 
     """
     pool_info = {'backend_name': None,
@@ -145,13 +168,13 @@ class VMAXCommon(object):
 
         self.protocol = prtcl
         self.configuration = configuration
-        self.configuration.append_config_values(vmax_opts)
-        self.rest = rest.VMAXRest()
-        self.utils = utils.VMAXUtils()
-        self.masking = masking.VMAXMasking(prtcl, self.rest)
-        self.provision = provision.VMAXProvision(self.rest)
+        self.configuration.append_config_values(powermax_opts)
+        self.rest = rest.PowerMaxRest()
+        self.utils = utils.PowerMaxUtils()
+        self.masking = masking.PowerMaxMasking(prtcl, self.rest)
+        self.provision = provision.PowerMaxProvision(self.rest)
         self.version = version
-        self.volume_metadata = volume_metadata.VMAXVolumeMetadata(
+        self.volume_metadata = volume_metadata.PowerMaxVolumeMetadata(
             self.rest, version, LOG.isEnabledFor(logging.DEBUG))
         # replication
         self.replication_enabled = False
@@ -186,8 +209,9 @@ class VMAXCommon(object):
         """Get relevent details from configuration file."""
         self.interval = self.configuration.safe_get('interval')
         self.retries = self.configuration.safe_get('retries')
-        self.snapvx_unlink_limit = self.configuration.safe_get(
-            utils.VMAX_SNAPVX_UNLINK_LIMIT)
+        self.snapvx_unlink_limit = self._get_unlink_configuration_value(
+            utils.VMAX_SNAPVX_UNLINK_LIMIT,
+            utils.POWERMAX_SNAPVX_UNLINK_LIMIT)
         self.pool_info['backend_name'] = (
             self.configuration.safe_get('volume_backend_name'))
         mosr = volume_utils.get_max_over_subscription_ratio(
@@ -247,13 +271,13 @@ class VMAXCommon(object):
             LOG.warning("There has been no failover instances of Unisphere "
                         "configured for this instance of Cinder. If your "
                         "primary instance of Unisphere goes down then your "
-                        "VMAX will be inaccessible until the Unisphere REST "
-                        "API is responsive again.")
+                        "PowerMax/VMAX will be inaccessible until the "
+                        "Unisphere REST API is responsive again.")
 
     def retest_primary_u4p(self):
         """Retest connection to the primary instance of Unisphere."""
         primary_array_info = self.get_attributes_from_cinder_config()
-        temp_conn = rest.VMAXRest()
+        temp_conn = rest.PowerMaxRest()
         temp_conn.set_rest_credentials(primary_array_info)
         LOG.debug(
             "Running connection check to primary instance of Unisphere "
@@ -310,8 +334,8 @@ class VMAXCommon(object):
                           {'rep_config': self.rep_config})
         elif self.rep_devices and len(self.rep_devices) > 1:
             LOG.error("More than one replication target is configured. "
-                      "Dell EMC VMAX only suppports a single replication "
-                      "target. Replication will not be enabled.")
+                      "Dell EMC PowerMax/VMAX only suppports a single "
+                      "replication target. Replication will not be enabled.")
 
     def _get_slo_workload_combinations(self, array_info):
         """Method to query the array for SLO and Workloads.
@@ -383,7 +407,7 @@ class VMAXCommon(object):
         return finalarrayinfolist
 
     def create_volume(self, volume):
-        """Creates a EMC(VMAX) volume from a storage group.
+        """Creates a EMC(PowerMax/VMAX) volume from a storage group.
 
         :param volume: volume object
         :returns:  model_update - dict
@@ -548,7 +572,7 @@ class VMAXCommon(object):
                      replication_driver_data)}, rep_info_dict)
 
     def delete_volume(self, volume):
-        """Deletes a EMC(VMAX) volume.
+        """Deletes a EMC(PowerMax/VMAX) volume.
 
         :param volume: volume object
         """
@@ -617,7 +641,7 @@ class VMAXCommon(object):
         Removes volume from the storage group that belongs to a masking view.
         :param array: the array serial number
         :param volume: volume object
-        :param device_id: the VMAX volume device id
+        :param device_id: the PowerMax/VMAX volume device id
         :param extra_specs: extra specifications
         :param connector: the connector object
         :param is_multiattach: flag to indicate if this is a multiattach case
@@ -839,9 +863,9 @@ class VMAXCommon(object):
                              extra_specs, rep_extra_specs):
         """Helper method to attach a metro volume.
 
-        Metro protected volumes point to two VMAX devices on different arrays,
-        which are presented as a single device to the host. This method
-        masks the remote device to the host.
+        Metro protected volumes point to two PowerMax/VMAX devices on
+        different arrays, which are presented as a single device to the host.
+        This method masks the remote device to the host.
         :param volume: the volume object
         :param connector: the connector dict
         :param is_multiattach: flag to indicate if this a multiattach case
@@ -941,8 +965,8 @@ class VMAXCommon(object):
                 exception_message = (
                     _("The volume: %(volume)s is a snapshot source. "
                       "Extending a volume with snapVx snapshots is only "
-                      "supported on VMAX from HyperMaxOS version 5978 "
-                      "onwards. Exiting...") % {'volume': volume_name})
+                      "supported on PowerMax/VMAX from HyperMaxOS version "
+                      "5978 onwards. Exiting...") % {'volume': volume_name})
                 LOG.error(exception_message)
                 raise exception.VolumeBackendAPIException(
                     message=exception_message)
@@ -1020,7 +1044,7 @@ class VMAXCommon(object):
                                 'array': array_info['SerialNumber']})
 
             if already_queried:
-                # The dictionary will only have one key per VMAX
+                # The dictionary will only have one key per PowerMax/VMAX
                 # Construct the location info
                 try:
                     temp_location_info = (
@@ -1181,7 +1205,7 @@ class VMAXCommon(object):
         return extra_specs, qos_specs
 
     def _find_device_on_array(self, volume, extra_specs):
-        """Given the volume get the VMAX device Id.
+        """Given the volume get the PowerMax/VMAX device Id.
 
         :param volume: volume object
         :param extra_specs: the extra Specs
@@ -1663,7 +1687,7 @@ class VMAXCommon(object):
         return volume_dict
 
     def _set_vmax_extra_specs(self, extra_specs, pool_record):
-        """Set the VMAX extra specs.
+        """Set the PowerMax/PowerMax/VMAX extra specs.
 
         The pool_name extra spec must be set, otherwise a default slo/workload
         will be chosen. The portgroup can either be passed as an extra spec
@@ -1944,7 +1968,7 @@ class VMAXCommon(object):
         clone_id = clone_volume.id
         clone_name = self.utils.get_volume_element_name(clone_id)
         create_snap = False
-        # VMAX supports using a target volume that is bigger than
+        # PowerMax/VMAX supports using a target volume that is bigger than
         # the source volume, so we create the target volume the desired
         # size at this point to avoid having to extend later
         try:
@@ -2105,7 +2129,7 @@ class VMAXCommon(object):
                                 do_delete_temp_volume_snap(source)
 
     def manage_existing(self, volume, external_ref):
-        """Manages an existing VMAX Volume (import to Cinder).
+        """Manages an existing PowerMax/VMAX Volume (import to Cinder).
 
         Renames the existing volume to match the expected name for the volume.
         Also need to consider things like QoS, Emulation, account/tenant.
@@ -2176,7 +2200,7 @@ class VMAXCommon(object):
         :param device_id: the device id
         :param volume_id: the cinder volume id
         :param external_ref: the external reference
-        :returns volume_identifier - name of the volume on VMAX
+        :returns volume_identifier - name of the volume on PowerMax/VMAX
         :returns sg - the storage group which the LUN belongs to
         :raises: ManageExistingInvalidReference, ManageExistingAlreadyManaged:
         """
@@ -2229,7 +2253,7 @@ class VMAXCommon(object):
         return volume_identifier, sg
 
     def manage_existing_get_size(self, volume, external_ref):
-        """Return size of an existing VMAX volume to manage_existing.
+        """Return size of an existing PowerMax/VMAX volume to manage_existing.
 
         :param self: reference to class
         :param volume: the volume object including the volume_type_id
@@ -2251,7 +2275,7 @@ class VMAXCommon(object):
         size = float(self.rest.get_size_of_device_on_array(array, device_id))
         if not size.is_integer():
             exception_message = (
-                _("Cannot manage existing VMAX volume %(device_id)s "
+                _("Cannot manage existing PowerMax/VMAX volume %(device_id)s "
                   "- it has a size of %(vol_size)s but only whole GB "
                   "sizes are supported. Please extend the "
                   "volume to the nearest GB value before importing.")
@@ -2265,7 +2289,7 @@ class VMAXCommon(object):
         return int(size)
 
     def unmanage(self, volume):
-        """Export VMAX volume from Cinder.
+        """Export PowerMax/VMAX volume from Cinder.
 
         Leave the volume intact on the backend array.
 
@@ -2313,7 +2337,7 @@ class VMAXCommon(object):
                 volume_id, extra_specs)
 
     def manage_existing_snapshot(self, snapshot, existing_ref):
-        """Manage an existing VMAX Snapshot (import to Cinder).
+        """Manage an existing PowerMax/VMAX Snapshot (import to Cinder).
 
         Renames the Snapshot to prefix it with OS- to indicate
         it is managed by Cinder
@@ -2409,7 +2433,7 @@ class VMAXCommon(object):
             extra_specs[utils.ARRAY], device_id)
 
     def unmanage_snapshot(self, snapshot):
-        """Export VMAX Snapshot from Cinder.
+        """Export PowerMax/VMAX Snapshot from Cinder.
 
         Leaves the snapshot intact on the backend VMAX
 
@@ -2425,7 +2449,7 @@ class VMAXCommon(object):
             exception_message = (
                 _("It is not possible to unmanage a snapshot where the "
                   "source volume is failed-over, revert back to source "
-                  "VMAX to unmanage snapshot %(snap_name)s")
+                  "PowerMax/VMAX to unmanage snapshot %(snap_name)s")
                 % {'snap_name': snap_name})
 
             LOG.exception(exception_message)
@@ -2452,7 +2476,7 @@ class VMAXCommon(object):
         self._sync_check(array, device_id, volume.name, extra_specs)
 
         LOG.info("Snapshot %(snap_name)s is no longer managed in "
-                 "OpenStack but still remains on VMAX source "
+                 "OpenStack but still remains on PowerMax/VMAX source "
                  "%(array_id)s", {'snap_name': snap_name, 'array_id': array})
 
     def get_manageable_volumes(self, marker, limit, offset, sort_keys,
@@ -2477,11 +2501,11 @@ class VMAXCommon(object):
             'array_id': array})
         volumes = self.rest.get_private_volume_list(array)
 
-        # No volumes returned from VMAX
+        # No volumes returned from PowerMax/VMAX
         if not volumes:
-            LOG.info("There were no volumes found on the backend VMAX. "
-                     "You need to create some volumes before they can be "
-                     "managed into Cinder.")
+            LOG.info("There were no volumes found on the backend "
+                     "PowerMax/VMAX. You need to create some volumes before "
+                     "they can be managed into Cinder.")
             return manageable_vols
 
         for device in volumes:
@@ -2561,11 +2585,11 @@ class VMAXCommon(object):
             'array_id': array})
         volumes = self.rest.get_private_volume_list(array)
 
-        # No volumes returned from VMAX
+        # No volumes returned from PowerMax/VMAX
         if not volumes:
-            LOG.info("There were no volumes found on the backend VMAX. "
-                     "You need to create some volumes before snapshots can "
-                     "be created and managed into Cinder.")
+            LOG.info("There were no volumes found on the backend "
+                     "PowerMax/VMAX. You need to create some volumes "
+                     "before snashot can be created and managed into Cinder.")
             return manageable_snaps
 
         for device in volumes:
@@ -2638,7 +2662,8 @@ class VMAXCommon(object):
                     manageable_snaps = manageable_snaps[snap_index:]
                 else:
                     msg = (_("Snapshot marker %(marker)s not found, marker "
-                             "provided must be a valid VMAX snapshot ID") %
+                             "provided must be a valid PowerMax/VMAX "
+                             "snapshot ID") %
                            {'marker': marker})
                     raise exception.VolumeBackendAPIException(msg)
 
@@ -3625,7 +3650,7 @@ class VMAXCommon(object):
             self, array, device_id, volume_name, extra_specs):
         """Add a volume to the default replication group.
 
-        Replication groups are VMAX storage groups that contain only
+        Replication groups are PowerMax/VMAX storage groups that contain only
         RDF-paired volumes. We can use our normal storage group operations.
         :param array: array serial number
         :param device_id: the device id
@@ -4264,8 +4289,8 @@ class VMAXCommon(object):
             LOG.error(error_msg)
             raise exception.VolumeBackendAPIException(message=error_msg)
 
-        LOG.debug("Enter VMAX create_volume group_from_src. Group to be "
-                  "created: %(grpId)s, Source : %(SourceGrpId)s.",
+        LOG.debug("Enter PowerMax/VMAX create_volume group_from_src. Group "
+                  "to be created: %(grpId)s, Source : %(SourceGrpId)s.",
                   {'grpId': group.id, 'SourceGrpId': source_id})
 
         try:
@@ -4632,19 +4657,22 @@ class VMAXCommon(object):
         username = self.configuration.safe_get(utils.VMAX_USER_NAME)
         password = self.configuration.safe_get(utils.VMAX_PASSWORD)
         if username and password:
-            serial_number = self.configuration.safe_get(utils.VMAX_ARRAY)
+            serial_number = self._get_configuration_value(
+                utils.VMAX_ARRAY, utils.POWERMAX_ARRAY)
             if serial_number is None:
                 LOG.error("Array Serial Number must be set in cinder.conf")
-            srp_name = self.configuration.safe_get(utils.VMAX_SRP)
+            srp_name = self._get_configuration_value(
+                utils.VMAX_SRP, utils.POWERMAX_SRP)
             if srp_name is None:
                 LOG.error("SRP Name must be set in cinder.conf")
-            slo = self.configuration.safe_get(utils.VMAX_SERVICE_LEVEL)
+            slo = self._get_configuration_value(
+                utils.VMAX_SERVICE_LEVEL, utils.POWERMAX_SERVICE_LEVEL)
             workload = self.configuration.safe_get(utils.VMAX_WORKLOAD)
-            port_groups = self.configuration.safe_get(utils.VMAX_PORT_GROUPS)
+            port_groups = self._get_configuration_value(
+                utils.VMAX_PORT_GROUPS, utils.POWERMAX_PORT_GROUPS)
             random_portgroup = None
             if port_groups:
-                random_portgroup = random.choice(self.configuration.safe_get(
-                    utils.VMAX_PORT_GROUPS))
+                random_portgroup = random.choice(port_groups)
 
             kwargs = (
                 {'RestServerIp': self.configuration.safe_get(
@@ -4670,6 +4698,41 @@ class VMAXCommon(object):
 
         return kwargs
 
+    def _get_configuration_value(self, first_key, second_key):
+        """Get the configuration value of the first or second key
+
+        :param first_key: the first key
+        :param second_key: the second key
+        :returns: value
+        """
+        return_value = None
+        if (self.configuration.safe_get(first_key)
+                and self.configuration.safe_get(second_key)):
+            LOG.error("Cannot specifiy both %(first_key)s. "
+                      "and %(second_key)s.",
+                      {'first_key': first_key, 'second_key': second_key})
+        else:
+            return_value = self.configuration.safe_get(first_key)
+            if return_value is None:
+                return_value = self.configuration.safe_get(second_key)
+        return return_value
+
+    def _get_unlink_configuration_value(self, first_key, second_key):
+        """Get the configuration value of snapvx_unlink_limit
+
+        This will give back the value of the default snapvx_unlink_limit
+        unless either powermax_snapvx_unlink_limit or vmax_snapvx_unlink_limit
+        is set to something else
+
+        :param first_key: the first key
+        :param second_key: the second key
+        :returns: value
+        """
+        return_value = self.configuration.safe_get(second_key)
+        if return_value == 3:
+            return_value = self.configuration.safe_get(first_key)
+        return return_value
+
     def _get_unisphere_port(self):
         """Get unisphere port from the configuration file
 
@@ -4680,7 +4743,7 @@ class VMAXCommon(object):
         elif self.configuration.safe_get(utils.VMAX_SERVER_PORT_NEW):
             return self.configuration.safe_get(utils.VMAX_SERVER_PORT_NEW)
         else:
-            LOG.debug("VMAX port is not set, using default port: %s",
+            LOG.debug("PowerMax/VMAX port is not set, using default port: %s",
                       utils.DEFAULT_PORT)
             return utils.DEFAULT_PORT
 

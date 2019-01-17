@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Dell Inc. or its subsidiaries.
+# Copyright (c) 2017-2018 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -101,16 +101,22 @@ U4P_FAILOVER_RETRIES = 'u4p_failover_retries'
 U4P_FAILOVER_BACKOFF_FACTOR = 'u4p_failover_backoff_factor'
 U4P_FAILOVER_AUTOFAILBACK = 'u4p_failover_autofailback'
 U4P_FAILOVER_TARGETS = 'u4p_failover_target'
+POWERMAX_ARRAY = 'powermax_array'
+POWERMAX_SRP = 'powermax_srp'
+POWERMAX_SERVICE_LEVEL = 'powermax_service_level'
+POWERMAX_PORT_GROUPS = 'powermax_port_groups'
+POWERMAX_SNAPVX_UNLINK_LIMIT = 'powermax_snapvx_unlink_limit'
 
 
-class VMAXUtils(object):
-    """Utility class for Rest based VMAX volume drivers.
+class PowerMaxUtils(object):
+    """Utility class for Rest based PowerMax volume drivers.
 
-    This Utility class is for VMAX volume drivers based on Unisphere Rest API.
+    This Utility class is for PowerMax volume drivers based on Unisphere
+    Rest API.
     """
 
     def __init__(self):
-        """Utility class for Rest based VMAX volume drivers."""
+        """Utility class for Rest based PowerMax volume drivers."""
 
     def get_host_short_name(self, host_name):
         """Returns the short name for a given qualified host name.
@@ -245,7 +251,7 @@ class VMAXUtils(object):
 
     @staticmethod
     def modify_snapshot_prefix(snapshot_name, manage=False, unmanage=False):
-        """Modify a Snapshot prefix on VMAX backend.
+        """Modify a Snapshot prefix on PowerMax/VMAX backend.
 
         Prepare a snapshot name for manage/unmanage snapshot process either
         by adding or removing 'OS-' prefix.
@@ -253,7 +259,7 @@ class VMAXUtils(object):
         :param snapshot_name: the old snapshot backend display name
         :param manage: (bool) if the operation is managing a snapshot
         :param unmanage: (bool) if the operation is unmanaging a snapshot
-        :return: snapshot name ready for backend VMAX assignment
+        :return: snapshot name ready for backend PowerMax/VMAX assignment
         """
         new_snap_name = None
         if manage:
@@ -813,8 +819,8 @@ class VMAXUtils(object):
         """
         vol_head = source_vol['volumeHeader']
 
-        # VMAX disk geometry uses cylinders, so volume sizes are matched to
-        # the nearest full cylinder size: 1GB = 547cyl = 1026MB
+        # PowerMax/VMAX disk geometry uses cylinders, so volume sizes are
+        # matched to the nearest full cylinder size: 1GB = 547cyl = 1026MB
         if vol_head['capMB'] < 1026 or not vol_head['capGB'].is_integer():
             return False
 
@@ -857,8 +863,8 @@ class VMAXUtils(object):
         if not source_vol['timeFinderInfo']['snapVXSrc']:
             return False
 
-        # VMAX disk geometry uses cylinders, so volume sizes are matched to
-        # the nearest full cylinder size: 1GB = 547cyl = 1026MB
+        # PowerMax/VMAX disk geometry uses cylinders, so volume sizes are
+        # matched to the nearest full cylinder size: 1GB = 547cyl = 1026MB
         if (vol_head['capMB'] < 1026 or
                 not vol_head['capGB'].is_integer()):
             return False

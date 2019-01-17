@@ -173,6 +173,10 @@ CONF.register_opts(volume_backend_opts, group=config.SHARED_CONF_GROUP)
 # new name (the dict value) for at least a cycle to allow time for deployments
 # to transition.
 MAPPING = {
+    'cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver':
+    'cinder.volume.drivers.dell_emc.powermax.iscsi.PowerMaxISCSIDriver',
+    'cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver':
+    'cinder.volume.drivers.dell_emc.powermax.fc.PowerMaxFCDriver',
 }
 
 

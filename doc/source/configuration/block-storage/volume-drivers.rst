@@ -37,7 +37,7 @@ Driver Configuration Reference
    drivers/dell-storagecenter-driver
    drivers/dell-emc-unity-driver
    drivers/dell-emc-vnx-driver
-   drivers/dell-emc-vmax-driver
+   drivers/dell-emc-powermax-driver
    drivers/dell-emc-vxflex-driver
    drivers/dell-emc-xtremio-driver
    drivers/drbd-driver
