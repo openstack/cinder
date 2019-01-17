@@ -2,11 +2,6 @@
     "admin_api": "is_admin:True",
     "admin_or_owner":  "is_admin:True or project_id:%(project_id)s",
 
-    "volume:get_volume_metadata": "",
-    "volume:get_volume_image_metadata": "",
-    "volume:create_volume_metadata": "",
-    "volume:delete_volume_metadata": "",
-    "volume:update_volume_metadata": "",
     "volume:create_snapshot": "",
     "volume:delete_snapshot": "",
     "volume:get_snapshot": "",
@@ -29,7 +24,6 @@
     "volume_extension:types_extra_specs:update": "",
     "volume_extension:volume_type_access": "",
     "volume_extension:extended_snapshot_attributes": "",
-    "volume_extension:volume_image_metadata": "",
     "volume_extension:services:index": "",
     "volume_extension:services:update" : "rule:admin_api",
 
