@@ -1816,6 +1816,8 @@ class PowerMaxRest(object):
                    "generation": int(generation)}
         if restored:
             payload.update({"restore": True})
+        LOG.debug("The payload is %(payload)s.",
+                  {'payload': payload})
         return self.delete_resource(
             array, REPLICATION, 'snapshot', snap_name, payload=payload,
             private='/private')

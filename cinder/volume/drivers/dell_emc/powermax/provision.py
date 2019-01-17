@@ -129,14 +129,19 @@ class PowerMaxProvision(object):
         :param extra_specs: the extra specifications
         :param ttl: time to live in hours, defaults to 0
         """
-        start_time = time.time()
-        LOG.debug("Create Snap Vx snapshot of: %(source)s.",
-                  {'source': source_device_id})
-        self.rest.create_volume_snap(
-            array, snap_name, source_device_id, extra_specs, ttl)
-        LOG.debug("Create volume snapVx took: %(delta)s H:MM:SS.",
-                  {'delta': self.utils.get_time_delta(start_time,
-                                                      time.time())})
+        @coordination.synchronized("emc-snapvx-{src_device_id}")
+        def do_create_volume_snap(src_device_id):
+            start_time = time.time()
+            LOG.debug("Create Snap Vx snapshot of: %(source)s.",
+                      {'source': src_device_id})
+
+            self.rest.create_volume_snap(
+                array, snap_name, src_device_id, extra_specs, ttl)
+            LOG.debug("Create volume snapVx took: %(delta)s H:MM:SS.",
+                      {'delta': self.utils.get_time_delta(start_time,
+                                                          time.time())})
+
+        do_create_volume_snap(source_device_id)
 
     def create_volume_replica(
             self, array, source_device_id, target_device_id,
@@ -156,9 +161,14 @@ class PowerMaxProvision(object):
             self.create_volume_snapvx(array, source_device_id,
                                       snap_name, extra_specs, ttl=1)
         # Link source to target
-        self.rest.modify_volume_snap(
-            array, source_device_id, target_device_id, snap_name,
-            extra_specs, link=True)
+
+        @coordination.synchronized("emc-snapvx-{src_device_id}")
+        def do_modify_volume_snap(src_device_id):
+            self.rest.modify_volume_snap(
+                array, src_device_id, target_device_id, snap_name,
+                extra_specs, link=True)
+
+        do_modify_volume_snap(source_device_id)
 
         LOG.debug("Create element replica took: %(delta)s H:MM:SS.",
                   {'delta': self.utils.get_time_delta(start_time,
@@ -176,13 +186,17 @@ class PowerMaxProvision(object):
         :param extra_specs: extra specifications
         :param generation: the generation number of the snapshot
         """
-        LOG.debug("Break snap vx link relationship between: %(src)s "
-                  "and: %(tgt)s.",
-                  {'src': source_device_id, 'tgt': target_device_id})
+        @coordination.synchronized("emc-snapvx-{src_device_id}")
+        def do_unlink_volume(src_device_id):
+            LOG.debug("Break snap vx link relationship between: %(src)s "
+                      "and: %(tgt)s.",
+                      {'src': src_device_id, 'tgt': target_device_id})
 
-        self._unlink_volume(array, source_device_id, target_device_id,
-                            snap_name, extra_specs,
-                            list_volume_pairs=None, generation=generation)
+            self._unlink_volume(array, src_device_id, target_device_id,
+                                snap_name, extra_specs,
+                                list_volume_pairs=None, generation=generation)
+
+        do_unlink_volume(source_device_id)
 
     def _unlink_volume(
             self, array, source_device_id, target_device_id, snap_name,
@@ -198,7 +212,6 @@ class PowerMaxProvision(object):
         :param generation: the generation number of the snapshot
         :return: return code
         """
-
         def _unlink_vol():
             """Called at an interval until the synchronization is finished.
 
@@ -240,10 +253,14 @@ class PowerMaxProvision(object):
         :param restored: Flag to indicate if restored session is being deleted
         :param generation: the snapshot generation number
         """
-        LOG.debug("Delete SnapVx: %(snap_name)s for volume %(vol)s.",
-                  {'vol': source_device_id, 'snap_name': snap_name})
-        self.rest.delete_volume_snap(
-            array, snap_name, source_device_id, restored, generation)
+        @coordination.synchronized("emc-snapvx-{src_device_id}")
+        def do_delete_volume_snap(src_device_id):
+            LOG.debug("Delete SnapVx: %(snap_name)s for volume %(vol)s.",
+                      {'vol': src_device_id, 'snap_name': snap_name})
+            self.rest.delete_volume_snap(
+                array, snap_name, src_device_id, restored, generation)
+
+        do_delete_volume_snap(source_device_id)
 
     def is_restore_complete(self, array, source_device_id,
                             snap_name, extra_specs):
@@ -323,17 +340,12 @@ class PowerMaxProvision(object):
         :param source_device_id: the source device id
         :param generation: the generation number for the snapshot
         """
-
-        @coordination.synchronized("emc-snapvx-{snapvx_name}")
-        def do_delete_temp_snap(snapvx_name):
-            # Ensure snap has not been recently deleted
-            if self.rest.get_volume_snap(
-                    array, source_device_id, snapvx_name, generation):
-                self.delete_volume_snap(
-                    array, snapvx_name, source_device_id,
-                    restored=False, generation=generation)
-
-        do_delete_temp_snap(snap_name)
+        snapvx = self.rest.get_volume_snap(
+            array, source_device_id, snap_name, generation)
+        if snapvx:
+            self.delete_volume_snap(
+                array, snap_name, source_device_id,
+                restored=False, generation=generation)
 
     def delete_volume_snap_check_for_links(
             self, array, snap_name, source_devices, extra_specs, generation=0):
