@@ -60,12 +60,16 @@ class VolumeProtectionTests(test.TestCase):
             fakes.wsgi_app(fake_auth_context=context)
         )
 
-    def _create_fake_volume(self, context):
+    def _create_fake_volume(self, context, status=None, attach_status=None):
         vol = {
             'display_name': 'fake_volume1',
             'status': 'available',
             'project_id': context.project_id
         }
+        if status:
+            vol['status'] = status
+        if attach_status:
+            vol['attach_status'] = attach_status
         volume = objects.Volume(context=context, **vol)
         volume.create()
         return volume
@@ -391,4 +395,263 @@ class VolumeProtectionTests(test.TestCase):
 
         response = self._get_request_response(non_owner_context, path,
                                               'DELETE')
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI, 'attach_volume')
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI, 'detach_volume')
+    def test_admin_can_attach_detach_volume(self, mock_detach, mock_attach):
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-attach": {"instance_uuid": fake_constants.UUID1,
+                              "mountpoint": "/dev/vdc"}}
+        response = self._get_request_response(admin_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+        body = {"os-detach": {}}
+        response = self._get_request_response(admin_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI, 'attach_volume')
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI, 'detach_volume')
+    def test_owner_can_attach_detach_volume(self, mock_detach, mock_attach):
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-attach": {"instance_uuid": fake_constants.UUID1,
+                              "mountpoint": "/dev/vdc"}}
+        response = self._get_request_response(user_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+        body = {"os-detach": {}}
+        response = self._get_request_response(user_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI, 'attach_volume')
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI, 'detach_volume')
+    @mock.patch.object(volume_api.API, 'get')
+    def test_owner_cannot_attach_detach_volume_for_others(self, mock_volume,
+                                                          mock_detach,
+                                                          mock_attach):
+        user_context = self.user_context
+        non_owner_context = self.other_user_context
+
+        volume = self._create_fake_volume(user_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': non_owner_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-attach": {"instance_uuid": fake_constants.UUID1,
+                              "mountpoint": "/dev/vdc"}}
+        response = self._get_request_response(non_owner_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+        body = {"os-detach": {}}
+        response = self._get_request_response(non_owner_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+    def test_admin_can_reserve_unreserve_volume(self):
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-reserve": {}}
+        response = self._get_request_response(admin_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+        body = {"os-unreserve": {}}
+        response = self._get_request_response(admin_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    def test_owner_can_reserve_unreserve_volume(self):
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-reserve": {}}
+        response = self._get_request_response(user_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+        body = {"os-unreserve": {}}
+        response = self._get_request_response(user_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get')
+    def test_owner_cannot_reserve_unreserve_volume_for_others(self,
+                                                              mock_volume):
+        user_context = self.user_context
+        non_owner_context = self.other_user_context
+
+        volume = self._create_fake_volume(user_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': non_owner_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-attach": {"instance_uuid": fake_constants.UUID1,
+                              "mountpoint": "/dev/vdc"}}
+        response = self._get_request_response(non_owner_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+        body = {"os-detach": {}}
+        response = self._get_request_response(non_owner_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI,
+                       'initialize_connection')
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI,
+                       'terminate_connection')
+    def test_admin_can_initialize_terminate_conn(self, mock_t, mock_i):
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-initialize_connection": {'connector': {}}}
+        response = self._get_request_response(admin_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.OK, response.status_int)
+
+        body = {"os-terminate_connection": {'connector': {}}}
+        response = self._get_request_response(admin_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI,
+                       'initialize_connection')
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI,
+                       'terminate_connection')
+    def test_owner_can_initialize_terminate_conn(self, mock_t, mock_i):
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context)
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-initialize_connection": {'connector': {}}}
+        response = self._get_request_response(user_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.OK, response.status_int)
+
+        body = {"os-terminate_connection": {'connector': {}}}
+        response = self._get_request_response(user_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI,
+                       'initialize_connection')
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI,
+                       'terminate_connection')
+    @mock.patch.object(volume_api.API, 'get')
+    def test_owner_cannot_initialize_terminate_conn_for_others(self,
+                                                               mock_volume,
+                                                               mock_t,
+                                                               mock_i):
+        user_context = self.user_context
+        non_owner_context = self.other_user_context
+
+        volume = self._create_fake_volume(user_context)
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': non_owner_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-initialize_connection": {'connector': {}}}
+        response = self._get_request_response(non_owner_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+        body = {"os-terminate_connection": {'connector': {}}}
+        response = self._get_request_response(non_owner_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+    def test_admin_can_begin_roll_detaching(self):
+        admin_context = self.admin_context
+
+        volume = self._create_fake_volume(admin_context, status='in-use',
+                                          attach_status='attached')
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': admin_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-begin_detaching": {}}
+        response = self._get_request_response(admin_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+        body = {"os-roll_detaching": {}}
+        response = self._get_request_response(admin_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    def test_owner_can_begin_roll_detaching(self):
+        user_context = self.user_context
+
+        volume = self._create_fake_volume(user_context, status='in-use',
+                                          attach_status='attached')
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': user_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-begin_detaching": {}}
+        response = self._get_request_response(user_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+        body = {"os-roll_detaching": {}}
+        response = self._get_request_response(user_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
+
+    @mock.patch.object(volume_api.API, 'get')
+    def test_owner_cannot_begin_roll_detaching_for_others(self, mock_volume):
+        user_context = self.user_context
+        non_owner_context = self.other_user_context
+
+        volume = self._create_fake_volume(user_context, status='in-use',
+                                          attach_status='attached')
+        mock_volume.return_value = volume
+        path = '/v3/%(project_id)s/volumes/%(volume_id)s/action' % {
+            'project_id': non_owner_context.project_id, 'volume_id': volume.id
+        }
+
+        body = {"os-begin_detaching": {}}
+        response = self._get_request_response(non_owner_context, path, 'POST',
+                                              body=body)
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+
+        body = {"os-roll_detaching": {}}
+        response = self._get_request_response(non_owner_context, path, 'POST',
+                                              body=body)
         self.assertEqual(http_client.FORBIDDEN, response.status_int)
