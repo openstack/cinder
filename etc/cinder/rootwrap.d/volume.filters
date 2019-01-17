@@ -46,9 +46,6 @@ privsep-rootwrap-sys_admin: RegExpFilter, privsep-helper, root, privsep-helper, 
 # is updated appropriately.
 drbdadm: CommandFilter, drbdadm, root
 
-# cinder/brick/local_dev/lvm.py: 'vgcreate', vg_name, pv_list
-vgcreate: CommandFilter, vgcreate, root
-
 # cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', sizestr, '-n', volume_name,..
 # cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', ...
 lvcreate: EnvFilter, env, root, LC_ALL=C, lvcreate
