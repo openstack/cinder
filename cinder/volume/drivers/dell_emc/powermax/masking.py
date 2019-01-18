@@ -180,6 +180,9 @@ class PowerMaxMasking(object):
         masking_view_details = self.rest.get_masking_view(
             serial_number, masking_view_name=maskingview_name)
         if not masking_view_details:
+            self._sanity_port_group_check(
+                masking_view_dict[utils.PORTGROUPNAME], serial_number)
+
             error_message = self._create_new_masking_view(
                 serial_number, masking_view_dict, maskingview_name,
                 default_sg_name, extra_specs)
@@ -191,6 +194,30 @@ class PowerMaxMasking(object):
                     default_sg_name, extra_specs))
 
         return error_message
+
+    def _sanity_port_group_check(self, port_group_name, serial_number):
+        """Check if the port group exists
+
+        :param port_group_name: the port group name (can be None)
+        :param serial_number: the array serial number
+        """
+        exc_msg = None
+        if port_group_name:
+            portgroup = self.rest.get_portgroup(
+                serial_number, port_group_name)
+            if not portgroup:
+                exc_msg = ("Failed to get portgroup %(pg)s."
+                           % {'pg': port_group_name})
+        else:
+            exc_msg = "Port group cannot be left empty."
+        if exc_msg:
+            exception_message = (_(
+                "%(exc_msg)s You must supply a valid pre-created "
+                "port group in cinder.conf or as an extra spec.")
+                % {'exc_msg': exc_msg})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
 
     def _create_new_masking_view(
             self, serial_number, masking_view_dict,
@@ -222,11 +249,6 @@ class PowerMaxMasking(object):
         # get or create child sg
         error_message = self._get_or_create_storage_group(
             serial_number, masking_view_dict, storagegroup_name, extra_specs)
-        if error_message:
-            return error_message
-
-        __, error_message = self._check_port_group(
-            serial_number, port_group_name)
         if error_message:
             return error_message
 

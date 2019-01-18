@@ -7153,6 +7153,30 @@ class PowerMaxMaskingTest(test.TestCase):
         super(PowerMaxMaskingTest, self).tearDown()
         common.PowerMaxCommon._gather_info = self._gather_info
 
+    def test_sanity_port_group_check_none(self):
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.masking._sanity_port_group_check,
+            self.data.array, None)
+
+    @mock.patch.object(
+        rest.PowerMaxRest,
+        'get_portgroup',
+        return_value=None)
+    def test_sanity_port_group_check_invalid_portgroup(self, mock_pg):
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.masking._sanity_port_group_check,
+            self.data.array, None)
+
+    @mock.patch.object(
+        rest.PowerMaxRest,
+        'get_portgroup',
+        return_value=PowerMaxCommonData.portgroup)
+    def test_sanity_port_group_check(self, mock_pg):
+        self.driver.masking._sanity_port_group_check(
+            self.data.array, self.data.port_group_name_f)
+
     @mock.patch.object(
         masking.PowerMaxMasking,
         'get_or_create_masking_view_and_map_lun')
@@ -7276,25 +7300,20 @@ class PowerMaxMaskingTest(test.TestCase):
                      None, None, None, None, None])
     @mock.patch.object(
         masking.PowerMaxMasking,
-        '_check_port_group',
-        side_effect=[(None, "Port group error"), (None, None), (None, None),
-                     (None, None)])
-    @mock.patch.object(
-        masking.PowerMaxMasking,
         '_get_or_create_initiator_group',
         side_effect=[(None, "Initiator group error"), (None, None),
-                     (None, None)])
+                     (None, None), (None, None), (None, None)])
     @mock.patch.object(
         masking.PowerMaxMasking,
         '_move_vol_from_default_sg',
-        side_effect=["Storage group error", None])
+        side_effect=["Storage group error", None, "Storage group error"])
     @mock.patch.object(
         masking.PowerMaxMasking,
         'create_masking_view',
         return_value=None)
     def test_create_new_masking_view(
             self, mock_create_mv, mock_move, mock_create_IG,
-            mock_check_PG, mock_create_SG):
+            mock_create_SG):
         for x in range(0, 6):
             self.driver.masking._create_new_masking_view(
                 self.data.array, self.maskingviewdict,
