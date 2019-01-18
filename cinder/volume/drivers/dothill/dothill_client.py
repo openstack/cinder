@@ -56,10 +56,12 @@ class DotHillClient(object):
         self._session_key = None
         try:
             tree = etree.XML(xml)
-            if (tree.findtext(".//PROPERTY[@name='response-type']") ==
-                    "success"):
-                self._session_key = (
-                    tree.findtext(".//PROPERTY[@name='response']"))
+            # The 'return-code' property is not valid in this context, so we
+            # we check value of 'response-type-numeric' (0 => Success)
+            rtn = tree.findtext(".//PROPERTY[@name='response-type-numeric']")
+            session_key = tree.findtext(".//PROPERTY[@name='response']")
+            if rtn == '0':
+                self._session_key = session_key
         except Exception as e:
             msg = _("Cannot parse session key: %s") % e.msg
             raise exception.DotHillConnectionError(message=msg)
