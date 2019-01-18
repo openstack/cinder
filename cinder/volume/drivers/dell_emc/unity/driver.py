@@ -68,9 +68,10 @@ class UnityDriver(driver.ManageableVD,
                 unity_storage_pool_names are empty
         2.0.5 - Update unity tests to use Unity test base.
                 Fixes logging issue of volume creation.
+        2.0.6 - Enalbe SSL support
     """
 
-    VERSION = '02.00.05'
+    VERSION = '02.00.06'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
