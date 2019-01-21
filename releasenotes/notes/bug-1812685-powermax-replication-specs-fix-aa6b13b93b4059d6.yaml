@@ -1,0 +1,9 @@
+---
+fixes:
+  - When using a PowerMax OS array as a replication target, where the source is
+    an All-Flash/Hybrid array running HyperMax OS, service level and workload
+    settings are not correctly applied for devices on the replication target if
+    a workload is specified. Instead of setting only the workload to None, both
+    service level and workload are set to None. This fix corrects the
+    application of service level and workload settings for replication sessions
+    where the source is HyperMax OS and the target is PowerMax OS.

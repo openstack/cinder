@@ -8434,16 +8434,29 @@ class PowerMaxCommonReplicationTest(test.TestCase):
             rep_extra_specs2 = self.common._get_replication_extra_specs(
                 extra_specs1, rep_config)
         self.assertEqual(ref_specs2, rep_extra_specs2)
-        # Path three - slo not valid
-        extra_specs3 = deepcopy(self.extra_specs)
-        ref_specs3 = deepcopy(ref_specs1)
-        ref_specs3['slo'] = None
-        ref_specs3['workload'] = None
+
+    def test_get_replication_extra_specs_powermax(self):
+        rep_config = self.utils.get_replication_config(
+            [self.replication_device])
+        rep_specs = deepcopy(self.data.rep_extra_specs2)
+        extra_specs = deepcopy(self.extra_specs)
+
+        # SLO not valid, both SLO and Workload set to NONE
+        rep_specs['slo'] = None
+        rep_specs['workload'] = None
         with mock.patch.object(self.provision, 'verify_slo_workload',
                                return_value=(False, False)):
-            rep_extra_specs3 = self.common._get_replication_extra_specs(
-                extra_specs3, rep_config)
-        self.assertEqual(ref_specs3, rep_extra_specs3)
+            rep_extra_specs = self.common._get_replication_extra_specs(
+                extra_specs, rep_config)
+            self.assertEqual(rep_specs, rep_extra_specs)
+        # SL valid, workload invalid, only workload set to NONE
+        rep_specs['slo'] = 'Diamond'
+        rep_specs['workload'] = None
+        with mock.patch.object(self.provision, 'verify_slo_workload',
+                               return_value=(True, False)):
+            rep_extra_specs = self.common._get_replication_extra_specs(
+                extra_specs, rep_config)
+            self.assertEqual(rep_specs, rep_extra_specs)
 
     def test_get_secondary_stats(self):
         rep_config = self.utils.get_replication_config(
