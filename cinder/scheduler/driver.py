@@ -91,6 +91,15 @@ class Scheduler(object):
 
         return self.host_manager.has_all_capabilities()
 
+    def is_first_receive(self):
+        """Returns True if Scheduler receives the capabilities at startup.
+
+        This is to handle the problem of too long sleep time during scheduler
+        service startup process.
+        """
+
+        return self.host_manager.first_receive_capabilities()
+
     def update_service_capabilities(self, service_name, host, capabilities,
                                     cluster_name, timestamp):
         """Process a capability update from a service node."""

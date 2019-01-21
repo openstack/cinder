@@ -66,13 +66,20 @@ class SchedulerManagerTestCase(test.TestCase):
         manager = self.manager
         self.assertIsInstance(manager.driver, self.driver_cls)
 
+    @mock.patch('cinder.scheduler.driver.Scheduler.is_first_receive')
     @mock.patch('eventlet.sleep')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.publish_service_capabilities')
-    def test_init_host_with_rpc(self, publish_capabilities_mock, sleep_mock):
+    def test_init_host_with_rpc_delay_after_3_tries(self,
+                                                    publish_capabilities_mock,
+                                                    sleep_mock,
+                                                    is_first_receive_mock):
         self.manager._startup_delay = True
+        is_first_receive_mock.side_effect = [False, False, True]
         self.manager.init_host_with_rpc()
         publish_capabilities_mock.assert_called_once_with(mock.ANY)
-        sleep_mock.assert_called_once_with(CONF.periodic_interval)
+        calls = [mock.call(1)] * 2
+        sleep_mock.assert_has_calls(calls)
+        self.assertEqual(2, sleep_mock.call_count)
         self.assertFalse(self.manager._startup_delay)
 
     @mock.patch('cinder.scheduler.driver.Scheduler.backend_passes_filters')
