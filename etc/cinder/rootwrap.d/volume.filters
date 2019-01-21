@@ -139,8 +139,6 @@ mmlsfileset: CommandFilter, mmlsfileset, root
 mmlinkfileset: CommandFilter, mmlinkfileset, root
 mmunlinkfileset: CommandFilter, mmunlinkfileset, root
 mmdelfileset: CommandFilter, mmdelfileset, root
-mmcrsnapshot: CommandFilter, mmcrsnapshot, root
-mmdelsnapshot: CommandFilter, mmdelsnapshot, root
 
 # cinder/volume/drivers/ibm/gpfs.py
 # cinder/volume/drivers/ibm/ibmnas.py
