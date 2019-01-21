@@ -24,22 +24,22 @@
      - (Floating point) Multiplier used for weighing free capacity. Negative numbers mean to stack vs spread.
    * - ``enabled_backends`` = ``None``
      - (List) A list of backend names to use. These backend names should be backed by a unique [CONFIG] group with its options
-   * - ``iscsi_helper`` = ``tgtadm``
+   * - ``target_helper`` = ``tgtadm``
      - (String) iSCSI target user-land tool to use. tgtadm is default, use lioadm for LIO iSCSI support, scstadmin for SCST target support, ietadm for iSCSI Enterprise Target, iscsictl for Chelsio iSCSI Target or fake for testing.
    * - ``iscsi_iotype`` = ``fileio``
      - (String) Sets the behavior of the iSCSI target to either perform blockio or fileio optionally, auto can be set and Cinder will autodetect type of backing device
-   * - ``iscsi_ip_address`` = ``$my_ip``
+   * - ``target_ip_address`` = ``$my_ip``
      - (String) The IP address that the iSCSI daemon is listening on
-   * - ``iscsi_port`` = ``3260``
+   * - ``target_port`` = ``3260``
      - (Port number) The port that the iSCSI daemon is listening on
-   * - ``iscsi_protocol`` = ``iscsi``
+   * - ``target_protocol`` = ``iscsi``
      - (String) Determines the iSCSI protocol for new iSCSI volumes, created with tgtadm or lioadm target helpers. In order to enable RDMA, this parameter should be set with the value "iser". The supported iSCSI protocol values are "iscsi" and "iser".
    * - ``iscsi_target_flags`` =
      - (String) Sets the target-specific flags for the iSCSI target. Only used for tgtadm to specify backing device flags using bsoflags option. The specified string is passed as is to the underlying tool.
-   * - ``iscsi_target_prefix`` = ``iqn.2010-10.org.openstack:``
+   * - ``target_prefix`` = ``iqn.2010-10.org.openstack:``
      - (String) Prefix for iSCSI volumes
    * - ``iscsi_write_cache`` = ``on``
-     - (String) Sets the behavior of the iSCSI target to either perform write-back(on) or write-through(off). This parameter is valid if iscsi_helper is set to tgtadm.
+     - (String) Sets the behavior of the iSCSI target to either perform write-back(on) or write-through(off). This parameter is valid if target_helper is set to tgtadm.
    * - ``iser_helper`` = ``tgtadm``
      - (String) The name of the iSER target user-land tool to use
    * - ``iser_ip_address`` = ``$my_ip``

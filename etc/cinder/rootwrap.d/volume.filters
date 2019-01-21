@@ -2,7 +2,7 @@
 # This file should be owned by (and only-writeable by) the root user
 
 [Filters]
-# cinder/volume/iscsi.py: iscsi_helper '--op' ...
+# cinder/volume/targets/iscsi.py: target_helper '--op' ...
 iscsictl: CommandFilter, iscsictl, root
 cinder-rtstool: CommandFilter, cinder-rtstool, root
 

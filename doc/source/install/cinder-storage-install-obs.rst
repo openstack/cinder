@@ -205,8 +205,8 @@ Install and configure components
         # ...
         volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
         volume_group = cinder-volumes
-        iscsi_protocol = iscsi
-        iscsi_helper = tgtadm
+        target_protocol = iscsi
+        target_helper = tgtadm
 
      .. end
 

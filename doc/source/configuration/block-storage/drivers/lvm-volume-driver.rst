@@ -13,14 +13,14 @@ the following options to configure for iSCSI transport:
 .. code-block:: ini
 
    volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
-   iscsi_protocol = iscsi
+   target_protocol = iscsi
 
 Use the following options to configure for the iSER transport:
 
 .. code-block:: ini
 
    volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
-   iscsi_protocol = iser
+   target_protocol = iser
 
 .. config-table::
    :config-target: LVM
