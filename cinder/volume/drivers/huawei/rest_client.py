@@ -44,9 +44,6 @@ class RestClient(object):
                                         self.configuration.storage_pools)
         self.iscsi_info = kwargs.get('iscsi_info',
                                      self.configuration.iscsi_info)
-        self.iscsi_default_target_ip = kwargs.get(
-            'iscsi_default_target_ip',
-            self.configuration.iscsi_default_target_ip)
         self.session = None
         self.url = None
         self.device_id = None
@@ -828,29 +825,25 @@ class RestClient(object):
     def find_chap_info(self, iscsi_info, initiator_name):
         """Find CHAP info from xml."""
         chapinfo = None
-        for ini in iscsi_info:
-            if ini['Name'] == initiator_name:
-                if 'CHAPinfo' in ini:
-                    chapinfo = ini['CHAPinfo']
-                    break
-
+        ini = iscsi_info['initiators'].get(initiator_name)
+        if ini and ini.get('CHAPinfo'):
+            chapinfo = ini['CHAPinfo']
         return chapinfo
 
     def _find_alua_info(self, iscsi_info, initiator_name):
         """Find ALUA info from xml."""
         multipath_type = 0
-        for ini in iscsi_info:
-            if ini['Name'] == initiator_name:
-                if 'ALUA' in ini:
-                    if ini['ALUA'] != '1' and ini['ALUA'] != '0':
-                        msg = (_(
-                            'Invalid ALUA value. '
-                            'ALUA value must be 1 or 0.'))
-                        LOG.error(msg)
-                        raise exception.InvalidInput(msg)
-                    else:
-                        multipath_type = ini['ALUA']
-                        break
+        ini = iscsi_info['initiators'].get(initiator_name)
+        if ini and ini.get('ALUA'):
+            if ini['ALUA'] != '1' and ini['ALUA'] != '0':
+                msg = (_(
+                    'Invalid ALUA value. '
+                    'ALUA value must be 1 or 0.'))
+                LOG.error(msg)
+                raise exception.InvalidInput(msg)
+            else:
+                multipath_type = ini['ALUA']
+
         return multipath_type
 
     def _use_chap(self, chapinfo, initiator_name, host_id):
@@ -1297,9 +1290,10 @@ class RestClient(object):
         portgroup_id = None
 
         if multipath:
-            for ini in self.iscsi_info:
-                if ini['Name'] == initiator:
-                    portgroup = ini.get('TargetPortGroup')
+            ini = self.iscsi_info['initiators'].get(initiator)
+            if ini and ini.get('TargetPortGroup'):
+                portgroup = ini['TargetPortGroup']
+
             if portgroup:
                 portgroup_id = self.get_tgt_port_group(portgroup)
                 temp_tgt_ips = self._get_tgt_ip_from_portgroup(portgroup_id)
@@ -1340,14 +1334,13 @@ class RestClient(object):
 
     def _get_target_ip(self, initiator):
         target_ips = []
-        for ini in self.iscsi_info:
-            if ini['Name'] == initiator:
-                if ini.get('TargetIP'):
-                    target_ips.append(ini.get('TargetIP'))
+        ini = self.iscsi_info['initiators'].get(initiator)
+        if ini and ini.get('TargetIP'):
+            target_ips.append(ini['TargetIP'])
 
         # If not specify target IP for some initiators, use default IP.
         if not target_ips:
-            default_target_ips = self.iscsi_default_target_ip
+            default_target_ips = self.iscsi_info['default_target_ips']
             if default_target_ips:
                 target_ips.append(default_target_ips[0])
 

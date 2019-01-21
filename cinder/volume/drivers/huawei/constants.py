@@ -116,6 +116,8 @@ REPLICA_DATA_STATUS_INCOMPLETE = '3'
 LUN_TYPE_MAP = {'Thick': THICK_LUNTYPE,
                 'Thin': THIN_LUNTYPE}
 
+VALID_PRODUCT = ('V3', 'V5', '18000', 'Dorado')
+
 PRODUCT_LUN_TYPE = {
     'Dorado': 'Thin',
 }

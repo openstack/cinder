@@ -410,13 +410,18 @@ class ReplicaPairManager(object):
             'DESCRIPTION': local_lun_info['DESCRIPTION'],
             'ALLOCTYPE': local_lun_info['ALLOCTYPE'],
             'CAPACITY': local_lun_info['CAPACITY'],
-            'WRITEPOLICY': self.conf.lun_write_type,
-            'PREFETCHPOLICY': self.conf.lun_prefetch_type,
-            'PREFETCHVALUE': self.conf.lun_prefetch_value,
-            'DATATRANSFERPOLICY': self.conf.lun_policy,
             'READCACHEPOLICY': self.conf.lun_read_cache_policy,
             'WRITECACHEPOLICY': self.conf.lun_write_cache_policy,
         }
+
+        if 'WRITEPOLICY' in local_lun_info:
+            params['WRITEPOLICY'] = local_lun_info['WRITEPOLICY']
+        if 'PREFETCHPOLICY' in local_lun_info:
+            params['PREFETCHPOLICY'] = local_lun_info['PREFETCHPOLICY']
+        if 'PREFETCHVALUE' in local_lun_info:
+            params['PREFETCHVALUE'] = local_lun_info['PREFETCHVALUE']
+        if 'DATATRANSFERPOLICY' in local_lun_info:
+            params['DATATRANSFERPOLICY'] = local_lun_info['DATATRANSFERPOLICY']
 
         LOG.debug('Remote lun params: %s.', params)
         return params
