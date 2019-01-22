@@ -114,6 +114,9 @@ Response Parameters
    - volume_id: volume_id
    - id: id
    - name: name
+   - destination_project_id: destination_project_id
+   - source_project_id: source_project_id
+   - accepted: accepted
 
 Response Example
 ----------------
@@ -198,6 +201,9 @@ Response Parameters
    - id: id
    - links: links
    - name: name
+   - destination_project_id: destination_project_id
+   - source_project_id: source_project_id
+   - accepted: accepted
 
 
 Response Example
@@ -264,6 +270,9 @@ Response Parameters
    - id: id
    - links: links
    - name: name
+   - destination_project_id: destination_project_id
+   - source_project_id: source_project_id
+   - accepted: accepted
 
 Response Example
 ----------------

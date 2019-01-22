@@ -5472,7 +5472,8 @@ def transfer_get(context, transfer_id):
 
 def _translate_transfers(transfers):
     fields = ('id', 'volume_id', 'display_name', 'created_at', 'deleted',
-              'no_snapshots')
+              'no_snapshots', 'source_project_id', 'destination_project_id',
+              'accepted')
     return [{k: transfer[k] for k in fields} for transfer in transfers]
 
 
@@ -5624,7 +5625,9 @@ def transfer_accept(context, transfer_id, user_id, project_id,
          .filter_by(id=transfer_id)
          .update({'deleted': True,
                   'deleted_at': timeutils.utcnow(),
-                  'updated_at': literal_column('updated_at')}))
+                  'updated_at': literal_column('updated_at'),
+                  'destination_project_id': project_id,
+                  'accepted': True}))
 
 
 ###############################

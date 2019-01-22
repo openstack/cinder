@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Expanded volume transfer information. Starting with microversion 3.57,
+    ``source_project_id``, ``destination_project_id``, and ``accepted`` fields
+    will be returned in the response of the volume transfer create, show, and
+    list calls.

@@ -410,6 +410,13 @@ absolute:
   in: body
   required: true
   type: object
+accepted:
+  description: |
+    Records if this transfer was accepted or not.
+  in: body
+  required: false
+  type: boolean
+  min_version: 3.57
 active_backend_id:
   description: |
     The ID of active storage backend. Only in ``cinder-volume`` service.
@@ -967,6 +974,13 @@ description_volume_type_required:
   in: body
   required: true
   type: string
+destination_project_id:
+  description: |
+    Records the destination project_id after volume transfer.
+  in: body
+  required: false
+  type: string
+  min_version: 3.57
 detached_at:
   description: |
     The time when attachment is detached.
@@ -2571,6 +2585,13 @@ source_group_id_req:
   in: body
   required: true
   type: string
+source_project_id:
+  description: |
+    Records the source project_id before volume transfer.
+  in: body
+  required: false
+  type: string
+  min_version: 3.57
 source_reference:
   description: |
     The snapshot's origin volume information.

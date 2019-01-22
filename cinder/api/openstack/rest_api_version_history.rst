@@ -446,3 +446,9 @@ Support ability to transfer snapshots along with their parent volume.
 ----
 Add ``user_id`` attribute to response body of list backup with detail and show
 backup detail APIs.
+
+3.57
+----
+Expanded volume transfer record details by adding ``source_project_id``,
+``destination_project_id`` and ``accepted`` fields to ``transfer`` table and
+related api (create/show/list detail transfer APIs) responses.

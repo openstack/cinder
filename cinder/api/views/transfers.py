@@ -63,6 +63,13 @@ class ViewBuilder(common.ViewBuilder):
         if req_version.matches(mv.TRANSFER_WITH_SNAPSHOTS):
             detail_body['transfer'].update({'no_snapshots':
                                             transfer.get('no_snapshots')})
+        if req_version.matches(mv.TRANSFER_WITH_HISTORY):
+            transfer_history = {
+                'destination_project_id': transfer['destination_project_id'],
+                'source_project_id': transfer['source_project_id'],
+                'accepted': transfer['accepted']
+            }
+            detail_body['transfer'].update(transfer_history)
         return detail_body
 
     def create(self, request, transfer):
@@ -81,6 +88,13 @@ class ViewBuilder(common.ViewBuilder):
         if req_version.matches(mv.TRANSFER_WITH_SNAPSHOTS):
             create_body['transfer'].update({'no_snapshots':
                                             transfer.get('no_snapshots')})
+        if req_version.matches(mv.TRANSFER_WITH_HISTORY):
+            transfer_history = {
+                'destination_project_id': transfer['destination_project_id'],
+                'source_project_id': transfer['source_project_id'],
+                'accepted': transfer['accepted']
+            }
+            create_body['transfer'].update(transfer_history)
         return create_body
 
     def _list_view(self, func, request, transfers, origin_transfer_count):

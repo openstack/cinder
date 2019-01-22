@@ -17,6 +17,8 @@
 
 from cinder import context
 from cinder import db
+from cinder.db.sqlalchemy import api as db_api
+from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
@@ -31,13 +33,15 @@ class TransfersTableTestCase(test.TestCase):
         self.ctxt = context.RequestContext(user_id=fake.USER_ID,
                                            project_id=fake.PROJECT_ID)
 
-    def _create_transfer(self, volume_id=None):
+    def _create_transfer(self, volume_id=None, source_project_id=None):
         """Create a transfer object."""
         transfer = {'display_name': 'display_name',
                     'salt': 'salt',
                     'crypt_hash': 'crypt_hash'}
         if volume_id is not None:
             transfer['volume_id'] = volume_id
+        if source_project_id is not None:
+            transfer['source_project_id'] = source_project_id
         return db.transfer_create(self.ctxt, transfer)['id']
 
     def test_transfer_create(self):
@@ -118,6 +122,26 @@ class TransfersTableTestCase(test.TestCase):
         db.transfer_destroy(nctxt.elevated(), xfer_id2)
         xfer = db.transfer_get_all(context.get_admin_context())
         self.assertEqual(0, len(xfer), "Unexpected number of transfer records")
+
+    def test_transfer_accept(self):
+        volume = utils.create_volume(self.ctxt)
+        xfer_id = self._create_transfer(volume['id'], volume['project_id'])
+        nctxt = context.RequestContext(user_id=fake.USER2_ID,
+                                       project_id=fake.PROJECT2_ID)
+        xfer = db.transfer_get(nctxt.elevated(), xfer_id)
+        self.assertEqual(volume.project_id, xfer['source_project_id'])
+        self.assertFalse(xfer['accepted'])
+        self.assertIsNone(xfer['destination_project_id'])
+        db.transfer_accept(nctxt.elevated(), xfer_id, fake.USER2_ID,
+                           fake.PROJECT2_ID)
+
+        xfer = db_api.model_query(
+            nctxt.elevated(), models.Transfer, read_deleted='yes'
+        ).filter_by(id=xfer_id).first()
+
+        self.assertEqual(volume.project_id, xfer['source_project_id'])
+        self.assertTrue(xfer['accepted'])
+        self.assertEqual(fake.PROJECT2_ID, xfer['destination_project_id'])
 
     def test_transfer_accept_with_snapshots(self):
         volume_id = utils.create_volume(self.ctxt)['id']
