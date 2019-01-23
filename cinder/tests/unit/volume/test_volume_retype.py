@@ -18,7 +18,6 @@ from cinder import context
 from cinder import exception
 from cinder import objects
 from cinder.policies import volume_actions as vol_action_policies
-from cinder.policies import volumes as volume_policies
 from cinder import quota
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils as tests_utils
@@ -32,6 +31,7 @@ CONF = cfg.CONF
 
 
 class VolumeRetypeTestCase(base.BaseVolumeTestCase):
+    """Verify multiattach retype restrictions."""
 
     def setUp(self):
         super(VolumeRetypeTestCase, self).setUp()
@@ -72,42 +72,51 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
             return self.default_vol_type
 
     @mock.patch('cinder.context.RequestContext.authorize')
-    @mock.patch.object(volume_types, 'get_by_name_or_id')
-    def test_retype_multiattach(self, _mock_get_types, mock_authorize):
-        """Verify multiattach retype restrictions."""
+    def test_non_multi_to_multi_retype(self, mock_authorize):
+        """Test going from non-multiattach type to multiattach"""
 
-        _mock_get_types.side_effect = self.fake_get_vtype
+        vol = tests_utils.create_volume(self.context,
+                                        volume_type_id=
+                                        self.default_vol_type.id)
 
-        # Test going from default type to multiattach
-        vol = self.volume_api.create(self.context,
-                                     1,
-                                     'test-vol',
-                                     '')
-
-        vol.update({'status': 'available'})
-        vol.save()
+        self.assertFalse(vol.multiattach)
         self.volume_api.retype(self.user_context,
                                vol,
                                'multiattach-type')
-        vol = objects.Volume.get_by_id(self.context, vol.id)
+        vol.refresh()
         self.assertTrue(vol.multiattach)
 
-        # Test going from multiattach to a non-multiattach type
-        vol = self.volume_api.create(
-            self.context,
-            1,
-            'test-multiattachvol',
-            '',
-            volume_type=self.multiattach_type)
-        vol.update({'status': 'available'})
-        vol.save()
+        mock_authorize.assert_has_calls(
+            [mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY)
+             ])
+
+    @mock.patch('cinder.context.RequestContext.authorize')
+    def test_multi_to_non_multi_retype(self, mock_authorize):
+        """Test going from multiattach to a non-multiattach type"""
+
+        vol = tests_utils.create_volume(self.context,
+                                        multiattach=True,
+                                        volume_type_id=
+                                        self.multiattach_type.id)
+
+        self.assertTrue(vol.multiattach)
         self.volume_api.retype(self.user_context,
                                vol,
                                'fake_vol_type')
-        vol = objects.Volume.get_by_id(self.context, vol.id)
+        vol.refresh()
         self.assertFalse(vol.multiattach)
 
-        # Test trying to retype an in-use volume
+        mock_authorize.assert_has_calls(
+            [mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY)
+             ])
+
+    @mock.patch('cinder.context.RequestContext.authorize')
+    def test_in_use_volume_retype(self, mock_authorize):
+        """Test trying to retype an in-use volume"""
+
+        vol = tests_utils.create_volume(self.context,
+                                        volume_type_id=
+                                        self.multiattach_type.id)
         vol.update({'status': 'in-use'})
         vol.save()
         self.assertRaises(exception.InvalidInput,
@@ -116,20 +125,12 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
                           vol,
                           'multiattach-type')
         mock_authorize.assert_has_calls(
-            [mock.call(volume_policies.CREATE_POLICY),
-             mock.call(volume_policies.CREATE_POLICY),
-             mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY),
-             mock.call(volume_policies.MULTIATTACH_POLICY,
-                       target_obj=mock.ANY),
-             mock.call(volume_policies.CREATE_POLICY),
-             mock.call(volume_policies.CREATE_POLICY),
-             mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY),
-             mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY),
+            [mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY),
              ])
 
     @mock.patch('cinder.context.RequestContext.authorize')
     def test_multiattach_to_multiattach_retype(self, mock_authorize):
-        # Test going from multiattach to multiattach
+        """Test going from multiattach to multiattach"""
 
         vol = tests_utils.create_volume(self.context,
                                         multiattach=True,
