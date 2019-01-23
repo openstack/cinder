@@ -3,7 +3,7 @@
 
 [Filters]
 # cinder/volume/iscsi.py: iscsi_helper '--op' ...
-ietadm: CommandFilter, ietadm, root
+tgtadm: CommandFilter, tgtadm, root
 iscsictl: CommandFilter, iscsictl, root
 cinder-rtstool: CommandFilter, cinder-rtstool, root
 
