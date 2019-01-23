@@ -56,7 +56,6 @@ from cinder.volume import rpcapi
 CONF = cfg.CONF
 
 
-@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderApiCmd(test.TestCase):
     """Unit test cases for python modules under cinder/cmd."""
 
@@ -90,7 +89,6 @@ class TestCinderApiCmd(test.TestCase):
         launcher.wait.assert_called_once_with()
 
 
-@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderBackupCmd(test.TestCase):
 
     def setUp(self):
@@ -122,7 +120,6 @@ class TestCinderBackupCmd(test.TestCase):
         launcher.wait.assert_called_once_with()
 
 
-@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderSchedulerCmd(test.TestCase):
 
     def setUp(self):
@@ -149,7 +146,6 @@ class TestCinderSchedulerCmd(test.TestCase):
         service_wait.assert_called_once_with()
 
 
-@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderVolumeCmdPosix(test.TestCase):
 
     def setUp(self):
@@ -329,7 +325,6 @@ class TestCinderVolumeCmdWin32(test.TestCase):
 
 
 @ddt.ddt
-@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderManageCmd(test.TestCase):
 
     def setUp(self):
@@ -1774,7 +1769,6 @@ class TestCinderRtstoolCmd(test.TestCase):
         self.assertEqual(0, rc)
 
 
-@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestCinderVolumeUsageAuditCmd(test.TestCase):
 
     def setUp(self):
@@ -2223,7 +2217,6 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         ])
 
 
-@test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
 class TestVolumeSharedTargetsOnlineMigration(test.TestCase):
     """Unit tests for cinder.db.api.service_*."""
 
