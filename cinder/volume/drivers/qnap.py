@@ -75,6 +75,8 @@ class QnapISCSIDriver(san.SanISCSIDriver):
               Add support for QES fw 2.0.0.
         1.2.003:
               Add support for QES fw 2.1.0.
+        1.2.004:
+              Add support for QES fw on TDS series NAS model.
 
     NOTE: Set driver_ssl_cert_verify as True under backend section to
           enable SSL verification.
@@ -83,7 +85,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "QNAP_CI"
 
-    VERSION = '1.2.003'
+    VERSION = '1.2.004'
 
     TIME_INTERVAL = 3
 
@@ -175,10 +177,10 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         model_type = matches.group(1)
 
         ts_model_types = [
-            "TS", "SS", "IS", "TVS", "TDS", "TBS"
+            "TS", "SS", "IS", "TVS", "TBS"
         ]
         tes_model_types = [
-            "TES"
+            "TES", "TDS"
         ]
         es_model_types = [
             "ES"

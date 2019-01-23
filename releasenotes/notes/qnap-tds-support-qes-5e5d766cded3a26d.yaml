@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    QNAP Cinder driver supports QES FW on TDS series NAS.
