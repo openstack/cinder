@@ -766,7 +766,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                               source_group=None, source_vols=None):
         """Creates a group from source."""
         # The source is either group_snapshot+snapshots or
-        # source_group+source_vols. The target is group+voluems
+        # source_group+source_vols. The target is group+volumes
         # we assume the source (source_vols / snapshots) are in the same
         # order as the target (volumes)
 
