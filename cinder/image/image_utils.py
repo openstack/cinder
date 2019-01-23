@@ -247,7 +247,7 @@ def _convert_image(prefix, source, dest, out_format,
             while not os.path.ismount(conversion_dir):
                 conversion_dir = os.path.dirname(conversion_dir)
 
-            message = _("Insufficient free space on %(location)s for image"
+            message = _("Insufficient free space on %(location)s for image "
                         "conversion.") % {'location': conversion_dir}
             LOG.error(message)
 

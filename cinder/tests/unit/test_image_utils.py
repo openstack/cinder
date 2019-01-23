@@ -313,7 +313,7 @@ class TestConvertImage(test.TestCase):
                           image_utils.convert_image,
                           source, dest, out_format)
         mock_log.assert_called_with('Insufficient free space on fakedir for'
-                                    ' imageconversion.')
+                                    ' image conversion.')
 
 
 class TestResizeImage(test.TestCase):
