@@ -34,6 +34,9 @@
           enable_service barbican
           enable_plugin barbican git://git.openstack.org/openstack/barbican
 
+          # Test with local file locks
+          CINDER_COORDINATION_URL='file://$state_path'
+
           EOF
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
