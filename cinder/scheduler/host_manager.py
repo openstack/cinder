@@ -547,7 +547,7 @@ class HostManager(object):
 
         cluster_msg = (('Cluster: %s - Host: ' % cluster_name) if cluster_name
                        else '')
-        LOG.debug("Received %(service_name)s service update from %(cluster)s"
+        LOG.debug("Received %(service_name)s service update from %(cluster)s "
                   "%(host)s: %(cap)s%(cluster)s",
                   {'service_name': service_name, 'host': host,
                    'cap': capabilities,

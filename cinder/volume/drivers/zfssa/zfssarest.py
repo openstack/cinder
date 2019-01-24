@@ -510,7 +510,7 @@ class ZFSSAApi(object):
             ret = self.rclient.post(svc, arg)
             if ret.status != restclient.Status.CREATED:
                 exception_msg = (_('Error Adding Initiator: '
-                                   '%(initiator)s on group'
+                                   '%(initiator)s on group '
                                    'InitiatorGroup: %(initiatorgroup)s '
                                    'Return code: %(ret.status)d '
                                    'Message: %(ret.data)s .')
@@ -545,7 +545,7 @@ class ZFSSAApi(object):
             ret = self.rclient.put(svc, arg)
             if ret.status != restclient.Status.ACCEPTED:
                 exception_msg = (_('Error Adding Initiator: '
-                                   '%(initiator)s on group'
+                                   '%(initiator)s on group '
                                    'InitiatorGroup: %(initiatorgroup)s '
                                    'Return code: %(ret.status)d '
                                    'Message: %(ret.data)s .')
@@ -584,7 +584,7 @@ class ZFSSAApi(object):
             ret = self.rclient.post(svc, arg)
             if ret.status != restclient.Status.CREATED:
                 exception_msg = (_('Error Creating Target: '
-                                   '%(alias)s'
+                                   '%(alias)s '
                                    'Return code: %(ret.status)d '
                                    'Message: %(ret.data)s .')
                                  % {'alias': alias,
@@ -602,7 +602,7 @@ class ZFSSAApi(object):
         ret = self.rclient.get(svc)
         if ret.status != restclient.Status.OK:
             exception_msg = (_('Error Getting Target: '
-                               '%(alias)s'
+                               '%(alias)s '
                                'Return code: %(ret.status)d '
                                'Message: %(ret.data)s .')
                              % {'alias': alias,
@@ -628,8 +628,8 @@ class ZFSSAApi(object):
             ret = self.rclient.post(svccrt, arg)
             if ret.status != restclient.Status.CREATED:
                 exception_msg = (_('Error Creating TargetGroup: '
-                                   '%(targetgroup)s with'
-                                   'IQN: %(iqn)s'
+                                   '%(targetgroup)s with '
+                                   'IQN: %(iqn)s '
                                    'Return code: %(ret.status)d '
                                    'Message: %(ret.data)s .')
                                  % {'targetgroup': targetgroup,
@@ -648,8 +648,8 @@ class ZFSSAApi(object):
         ret = self.rclient.put(svc, arg)
         if ret.status != restclient.Status.ACCEPTED:
             exception_msg = (_('Error Adding to TargetGroup: '
-                               '%(targetgroup)s with'
-                               'IQN: %(iqn)s'
+                               '%(targetgroup)s with '
+                               'IQN: %(iqn)s '
                                'Return code: %(ret.status)d '
                                'Message: %(ret.data)s.')
                              % {'targetgroup': targetgroup,
@@ -952,7 +952,7 @@ class ZFSSAApi(object):
         ret = self.rclient.post(svc, arg)
         if ret.status != restclient.Status.CREATED:
             exception_msg = (_('Error Creating '
-                               'Snapshot: %(snapshot)s on'
+                               'Snapshot: %(snapshot)s on '
                                'Volume: %(lun)s to '
                                'Pool: %(pool)s '
                                'Project: %(project)s  '
@@ -1153,7 +1153,7 @@ class ZFSSANfsApi(ZFSSAApi):
         ret = self.rclient.post(svc, arg)
         if ret.status != restclient.Status.CREATED:
             exception_msg = (_('Error Creating '
-                               'Snapshot: %(snapshot)s on'
+                               'Snapshot: %(snapshot)s on '
                                'share: %(share)s to '
                                'Pool: %(pool)s '
                                'Project: %(project)s  '

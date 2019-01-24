@@ -123,7 +123,7 @@ RBD_OPTS = [
                     'for permanent removal after being tagged for deferred '
                     'deletion.'),
     cfg.IntOpt('deferred_deletion_purge_interval', default=60,
-               help='Number of seconds between runs of the periodic task'
+               help='Number of seconds between runs of the periodic task '
                     'to purge volumes tagged for deletion.'),
 ]
 
@@ -788,7 +788,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             raise exception.VolumeDriverException(message=message)
 
         if 'cipher' not in encryption or 'key_size' not in encryption:
-            msg = _('encryption spec must contain "cipher" and'
+            msg = _('encryption spec must contain "cipher" and '
                     '"key_size"')
             raise exception.VolumeDriverException(message=msg)
 

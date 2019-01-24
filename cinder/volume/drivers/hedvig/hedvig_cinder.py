@@ -256,7 +256,7 @@ class HedvigISCSIDriver(driver.ISCSIDriver, san.SanDriver):
                      snapshotName, project, snapshotId)
             self.hedvig_create_snapshot(volName, snapshotId)
         except exception.VolumeDriverException:
-            msg = (_('Failed to create snapshot. snapshotName: %s'
+            msg = (_('Failed to create snapshot. snapshotName: %s '
                      'Rest API failed') % snapshotName)
             LOG.exception(msg)
             raise exception.VolumeDriverException(msg)
@@ -277,7 +277,7 @@ class HedvigISCSIDriver(driver.ISCSIDriver, san.SanDriver):
                      "project: %s", volName, snapshotName, project)
             self.hrs.delete_snapshot(snapshotName, volName, snapshotId)
         except exception.VolumeDriverException:
-            msg = _('Failed to delete snapshot: %s'
+            msg = _('Failed to delete snapshot: %s, '
                     'Rest API failed') % snapshotName
             LOG.exception(msg)
             raise exception.VolumeDriverException(msg)
@@ -430,7 +430,7 @@ class HedvigISCSIDriver(driver.ISCSIDriver, san.SanDriver):
             LOG.debug("Found hedvig controller: %s, for host: %s", tgt, host)
             return tgt
         except exception.VolumeDriverException:
-            msg = _('Failed to get hedvig controller for compute %s'
+            msg = _('Failed to get hedvig controller for compute %s '
                     'Rest API failed') % host
             LOG.exception(msg)
             raise exception.VolumeDriverException(msg)

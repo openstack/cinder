@@ -230,7 +230,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         """Any initialization the volume driver does while starting."""
         super(DrbdManageBaseDriver, self).do_setup(context)
 
-        msg = _("The DRBD Manage driver is moving to maintenance mode"
+        msg = _("The DRBD Manage driver is moving to maintenance mode "
                 "in the Stein release and will be removed in T release.")
         versionutils.report_deprecated_feature(LOG, msg)
 
