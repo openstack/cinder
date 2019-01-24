@@ -15,19 +15,29 @@ from oslo_serialization import jsonutils
 from cinder.tests.functional import api_samples_test_base
 
 
-class VolumesSampleJsonTest(api_samples_test_base.ApiSampleTestBase):
+class VolumesSampleBase(api_samples_test_base.ApiSampleTestBase):
     sample_dir = "volumes"
 
+    def _create_volume(self, _use_common_volume_api_samples=True, subs=None):
+
+        orig_value = self.__class__._use_common_volume_api_samples
+        try:
+            self.__class__._use_common_volume_api_samples = (
+                _use_common_volume_api_samples)
+            response = self._do_post('volumes',
+                                     'volume-create-request',
+                                     subs)
+            return response
+
+        finally:
+            self.__class__._use_common_volume_api_samples = orig_value
+
+
+class VolumesSampleJsonTest(VolumesSampleBase):
+
     def setUp(self):
-        super(VolumesSampleJsonTest, self).setUp()
+        super(VolumesSampleBase, self).setUp()
         self.response = self._create_volume()
-
-    def _create_volume(self, subs=None):
-
-        response = self._do_post('volumes',
-                                 'volume-create-request',
-                                 subs)
-        return response
 
     def test_volume_list_detail(self):
 
