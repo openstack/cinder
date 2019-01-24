@@ -1,0 +1,14 @@
+{
+    "metadata": {
+        "kernel_id": "6ff710d2-942b-4d6b-9168-8c9cc2404ab1",
+        "container_format": "bare",
+        "min_ram": "0",
+        "ramdisk_id": "somedisk",
+        "disk_format": "qcow2",
+        "image_name": "image",
+        "image_id": "5137a025-3c5f-43c1-bc64-5f41270040a5",
+        "checksum": "f8ab98ff5e73ebab884d80c9dc9c7290",
+        "min_disk": "0",
+        "size": "13267968"
+    }
+}

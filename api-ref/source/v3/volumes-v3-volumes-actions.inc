@@ -185,6 +185,21 @@ Request Example
    :language: javascript
 
 
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - metadata: metadata_image
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-image-metadata-update-response.json
+   :language: javascript
+
+
 Remove image metadata from a volume
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
