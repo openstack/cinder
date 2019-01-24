@@ -1,0 +1,24 @@
+---
+upgrades:
+  - The FusionStorage driver has added the configuration options "manager_ips",
+    "dsware_rest_url", "san_login", "san_password" and "dsware_storage_pools".
+    "[<backend_id>]/manager_ips", the ips of FusionStorage Agent(FSA). This
+    option is to support FSA to mount accross the different FSA nodes. The
+    parameters takes the standard dict config form, manager_ips = host1:ip1,
+    host2:ip2...
+    "[<backend_id>]/dsware_rest_url", the address and port of FusionStorage
+    Manager(FSM) in the format of a string. Currently, only one "dsware_rest_url"
+    is supported.
+    "[<backend_id>]/san_login", the user name of the FusionStorage Manager(FSM)
+    in the format of a string. Currently, only one "san_login" is supported.
+    "[<backend_id>]/san_password", the user password of FusionStorage Manager(FSM)
+    in the format of a string. Currently, only one "san_password" is supported.
+    "[<backend_id>]/dsware_storage_pools", the name of the storage pools that
+    exists on the FusionStorage Manager. Multiple storage pools can be configed,
+    separated by a semicolon.
+deprecations:
+  - The FusionStorage driver has deprecated the configuration options
+    "dsware_isthin", "dsware_manager", "fusionstorageagent",
+    "clone_volume_timeout", "pool_type", and "pool_id_filter". These configuration
+    options will be removed in the Train release(14.0.0).
+

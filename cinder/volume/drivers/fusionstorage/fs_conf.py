@@ -44,16 +44,15 @@ class FusionStorageConf(object):
             raise exception.InvalidInput(reason=msg)
 
     def update_config_value(self):
-        storage_info = self.configuration.safe_get(constants.CONF_STORAGE)
-        self._pools_name(storage_info)
-        self._san_address(storage_info)
-        self._encode_authentication(storage_info)
-        self._san_user(storage_info)
-        self._san_password(storage_info)
+        self._encode_authentication()
+        self._pools_name()
+        self._san_address()
+        self._san_user()
+        self._san_password()
 
-    def _encode_authentication(self, storage_info):
-        name_node = storage_info.get(constants.CONF_USER)
-        pwd_node = storage_info.get(constants.CONF_PWD)
+    def _encode_authentication(self):
+        name_node = self.configuration.safe_get(constants.CONF_USER)
+        pwd_node = self.configuration.safe_get(constants.CONF_PWD)
 
         need_encode = False
         if name_node is not None and not name_node.startswith('!&&&'):
@@ -67,29 +66,18 @@ class FusionStorageConf(object):
             need_encode = True
 
         if need_encode:
-            self._rewrite_conf(storage_info, name_node, pwd_node)
+            self._rewrite_conf(name_node, pwd_node)
 
-    def _rewrite_conf(self, storage_info, name_node, pwd_node):
-        storage_info.update({constants.CONF_USER: name_node,
-                             constants.CONF_PWD: pwd_node})
-        storage_info = ("\n  %(conf_name)s: %(name)s,"
-                        "\n  %(conf_pwd)s: %(pwd)s,"
-                        "\n  %(conf_url)s: %(url)s,"
-                        "\n  %(conf_pool)s: %(pool)s"
-                        % {"conf_name": constants.CONF_USER,
-                           "conf_pwd": constants.CONF_PWD,
-                           "conf_url": constants.CONF_ADDRESS,
-                           "conf_pool": constants.CONF_POOLS,
-                           "name": name_node,
-                           "pwd": pwd_node,
-                           "url": storage_info.get(constants.CONF_ADDRESS),
-                           "pool": storage_info.get(constants.CONF_POOLS)})
+    def _rewrite_conf(self, name_node, pwd_node):
         if os.path.exists(constants.CONF_PATH):
             utils.execute("chmod", "666", constants.CONF_PATH,
                           run_as_root=True)
             conf = configparser.ConfigParser()
             conf.read(constants.CONF_PATH)
-            conf.set(self.host, constants.CONF_STORAGE, storage_info)
+            if name_node:
+                conf.set(self.host, constants.CONF_USER, name_node)
+            if pwd_node:
+                conf.set(self.host, constants.CONF_PWD, pwd_node)
             fh = open(constants.CONF_PATH, 'w')
             conf.write(fh)
             fh.close()
@@ -102,25 +90,29 @@ class FusionStorageConf(object):
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-    def _san_address(self, storage_info):
-        address = storage_info.get(constants.CONF_ADDRESS)
+    def _san_address(self):
+        address = self.configuration.safe_get(constants.CONF_ADDRESS)
         self._assert_text_result(address, mess=constants.CONF_ADDRESS)
         setattr(self.configuration, 'san_address', address)
 
-    def _san_user(self, storage_info):
-        user_text = storage_info.get(constants.CONF_USER)
+    def _decode_text(self, text):
+        return (base64.b64decode(six.b(text[4:])).decode() if
+                text.startswith('!&&&') else text)
+
+    def _san_user(self):
+        user_text = self.configuration.safe_get(constants.CONF_USER)
         self._assert_text_result(user_text, mess=constants.CONF_USER)
-        user = base64.b64decode(six.b(user_text[4:])).decode()
+        user = self._decode_text(user_text)
         setattr(self.configuration, 'san_user', user)
 
-    def _san_password(self, storage_info):
-        pwd_text = storage_info.get(constants.CONF_PWD)
+    def _san_password(self):
+        pwd_text = self.configuration.safe_get(constants.CONF_PWD)
         self._assert_text_result(pwd_text, mess=constants.CONF_PWD)
-        pwd = base64.b64decode(six.b(pwd_text[4:])).decode()
+        pwd = self._decode_text(pwd_text)
         setattr(self.configuration, 'san_password', pwd)
 
-    def _pools_name(self, storage_info):
-        pools_name = storage_info.get(constants.CONF_POOLS)
+    def _pools_name(self):
+        pools_name = self.configuration.safe_get(constants.CONF_POOLS)
         self._assert_text_result(pools_name, mess=constants.CONF_POOLS)
         pools = set(x.strip() for x in pools_name.split(';') if x.strip())
         if not pools:

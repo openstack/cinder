@@ -23,9 +23,8 @@ VOLUME_NOT_EXIST = 31000000
 BASIC_URI = '/dsware/service/'
 CONF_PATH = "/etc/cinder/cinder.conf"
 
-CONF_ADDRESS = "RestURL"
+CONF_ADDRESS = "dsware_rest_url"
 CONF_MANAGER_IP = "manager_ips"
-CONF_POOLS = "StoragePool"
-CONF_PWD = "Password"
-CONF_STORAGE = "storage"
-CONF_USER = "UserName"
+CONF_POOLS = "dsware_storage_pools"
+CONF_PWD = "san_password"
+CONF_USER = "san_login"
