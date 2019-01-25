@@ -314,3 +314,14 @@ class AttachmentManagerTestCase(test.TestCase):
                           self.context,
                           aref,
                           connector)
+
+    def test_attachment_create_creating_volume(self):
+        """Test attachment_create on a creating volume."""
+        volume_params = {'status': 'creating'}
+
+        vref = tests_utils.create_volume(self.context, **volume_params)
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume_api.attachment_create,
+                          self.context,
+                          vref,
+                          fake.UUID1)
