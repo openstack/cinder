@@ -7322,26 +7322,28 @@ class PowerMaxMaskingTest(test.TestCase):
 
     @mock.patch.object(
         masking.PowerMaxMasking,
-        '_get_or_create_storage_group',
-        side_effect=["Storage group not found", None,
-                     "Storage group not found", None, None, None,
-                     None, None, None, None, None])
-    @mock.patch.object(
-        masking.PowerMaxMasking,
         '_get_or_create_initiator_group',
         side_effect=[(None, "Initiator group error"), (None, None),
+                     (None, None), (None, None), (None, None),
                      (None, None), (None, None), (None, None)])
     @mock.patch.object(
         masking.PowerMaxMasking,
+        '_get_or_create_storage_group',
+        side_effect=["Storage group not found", None,
+                     "Storage group not found", "Storage group not found",
+                     None, None, None, None, None, None, None])
+    @mock.patch.object(
+        masking.PowerMaxMasking,
         '_move_vol_from_default_sg',
-        side_effect=["Storage group error", None, "Storage group error"])
+        side_effect=["Storage group error", None, "Storage group error",
+                     None])
     @mock.patch.object(
         masking.PowerMaxMasking,
         'create_masking_view',
         return_value=None)
     def test_create_new_masking_view(
-            self, mock_create_mv, mock_move, mock_create_IG,
-            mock_create_SG):
+            self, mock_create_mv, mock_move, mock_create_SG,
+            mock_create_IG):
         for x in range(0, 6):
             self.driver.masking._create_new_masking_view(
                 self.data.array, self.maskingviewdict,
@@ -7704,6 +7706,17 @@ class PowerMaxMaskingTest(test.TestCase):
             self.data.array, self.data.initiatorgroup_name_i, initiator_names,
             self.extra_specs)
         self.assertEqual(self.data.initiatorgroup_name_i, ret_init_group_name)
+
+    @mock.patch.object(rest.PowerMaxRest, 'create_initiator_group',
+                       side_effect=([exception.VolumeBackendAPIException(
+                           masking.CREATE_IG_ERROR)]))
+    def test_create_initiator_group_exception(self, mock_create_ig):
+        initiator_names = self.mask.find_initiator_names(self.data.connector)
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.mask._create_initiator_group,
+            self.data.array, self.data.initiatorgroup_name_i, initiator_names,
+            self.extra_specs)
 
     @mock.patch.object(masking.PowerMaxMasking,
                        '_last_volume_delete_initiator_group')

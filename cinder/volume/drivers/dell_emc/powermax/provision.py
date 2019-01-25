@@ -495,7 +495,7 @@ class PowerMaxProvision(object):
                 "%(valid_slos)s.", {'slo': slo, 'valid_slos': valid_slos})
 
         if not is_valid_workload:
-            LOG.error(
+            LOG.warning(
                 "Workload: %(workload)s is not valid. Valid values are "
                 "%(valid_workloads)s. Note you cannot "
                 "set a workload without an SLO.",
