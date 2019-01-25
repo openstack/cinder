@@ -363,15 +363,19 @@ class API(base.Base):
         v_res = volume.update_single_status_where(
             'reverting', 'available')
         if not v_res:
-            msg = _("Can't revert volume %s to its latest snapshot. "
-                    "Volume's status must be 'available'.") % volume.id
+            msg = (_("Can't revert volume %(vol_id)s to its latest snapshot "
+                     "%(snap_id)s. Volume's status must be 'available'.")
+                   % {"vol_id": volume.id,
+                      "snap_id": snapshot.id})
             raise exception.InvalidVolume(reason=msg)
         s_res = snapshot.update_single_status_where(
             fields.SnapshotStatus.RESTORING,
             fields.SnapshotStatus.AVAILABLE)
         if not s_res:
-            msg = _("Can't revert volume %s to its latest snapshot. "
-                    "Snapshot's status must be 'available'.") % snapshot.id
+            msg = (_("Can't revert volume %(vol_id)s to its latest snapshot "
+                     "%(snap_id)s. Snapshot's status must be 'available'.")
+                   % {"vol_id": volume.id,
+                      "snap_id": snapshot.id})
             raise exception.InvalidSnapshot(reason=msg)
 
         self.volume_rpcapi.revert_to_snapshot(context, volume, snapshot)
