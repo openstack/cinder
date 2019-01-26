@@ -657,3 +657,64 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         self._driver.create_cloned_volume(volume, src_volume)
         create_volume_from_fcd.assert_called_once_with(
             src_volume.provider_location, src_volume.size, volume)
+
+    @mock.patch.object(FCD_DRIVER, '_get_storage_profile')
+    @mock.patch.object(FCD_DRIVER, '_get_extra_spec_storage_profile')
+    @mock.patch.object(FCD_DRIVER, '_in_use')
+    @mock.patch.object(FCD_DRIVER, 'volumeops')
+    @mock.patch.object(volumeops.FcdLocation, 'from_provider_location')
+    @mock.patch.object(FCD_DRIVER, 'ds_sel')
+    @ddt.data({},
+              {'storage_policy_enabled': False},
+              {'same_profile': True},
+              {'vol_in_use': True}
+              )
+    @ddt.unpack
+    def test_retype(
+            self, ds_sel, from_provider_location, vops, in_use,
+            get_extra_spec_storage_profile, get_storage_profile,
+            storage_policy_enabled=True, same_profile=False, vol_in_use=False):
+        self._driver._storage_policy_enabled = storage_policy_enabled
+
+        if storage_policy_enabled:
+            profile = mock.sentinel.profile
+            get_storage_profile.return_value = profile
+
+            if same_profile:
+                new_profile = profile
+            else:
+                new_profile = mock.sentinel.new_profile
+            get_extra_spec_storage_profile.return_value = new_profile
+
+            in_use.return_value = vol_in_use
+
+            if not vol_in_use:
+                fcd_loc = mock.sentinel.fcd_loc
+                from_provider_location.return_value = fcd_loc
+
+                new_profile_id = mock.Mock()
+                ds_sel.get_profile_id.return_value = new_profile_id
+
+        ctxt = mock.sentinel.ctxt
+        volume = self._create_volume_obj()
+        new_type = {'id': mock.sentinel.new_type_id}
+        diff = mock.sentinel.diff
+        host = mock.sentinel.host
+        ret = self._driver.retype(ctxt, volume, new_type, diff, host)
+
+        if not storage_policy_enabled:
+            self.assertTrue(ret)
+        else:
+            get_storage_profile.assert_called_once_with(volume)
+            get_extra_spec_storage_profile.assert_called_once_with(
+                new_type['id'])
+            if same_profile:
+                self.assertTrue(ret)
+            else:
+                in_use.assert_called_once_with(volume)
+                if vol_in_use:
+                    self.assertFalse(ret)
+                else:
+                    ds_sel.get_profile_id.assert_called_once_with(new_profile)
+                    vops.update_fcd_policy.assert_called_once_with(
+                        fcd_loc, new_profile_id.uniqueId)

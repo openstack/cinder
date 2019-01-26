@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added support for changing storage policy of backend volumes
+    created by VMwareVStorageObjectDriver using retype API.

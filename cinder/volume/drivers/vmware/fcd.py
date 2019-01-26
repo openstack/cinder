@@ -45,7 +45,8 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
     # 1.0 - initial version based on vSphere 6.5 vStorageObject APIs
     # 1.1 - support for vStorageObject snapshot APIs
     # 1.2 - support for SPBM storage policies
-    VERSION = '1.2.0'
+    # 1.3 - support for retype
+    VERSION = '1.3.0'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
@@ -368,3 +369,23 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         """
         return self._create_volume_from_fcd(
             src_vref.provider_location, src_vref.size, volume)
+
+    def retype(self, context, volume, new_type, diff, host):
+        if not self._storage_policy_enabled:
+            return True
+
+        profile = self._get_storage_profile(volume)
+        new_profile = self._get_extra_spec_storage_profile(new_type['id'])
+        if profile == new_profile:
+            LOG.debug("Storage profile matches between new type and old type.")
+            return True
+
+        if self._in_use(volume):
+            LOG.warning("Cannot change storage profile of attached FCD.")
+            return False
+
+        fcd_loc = vops.FcdLocation.from_provider_location(
+            volume.provider_location)
+        new_profile_id = self.ds_sel.get_profile_id(new_profile)
+        self.volumeops.update_fcd_policy(fcd_loc, new_profile_id.uniqueId)
+        return True
