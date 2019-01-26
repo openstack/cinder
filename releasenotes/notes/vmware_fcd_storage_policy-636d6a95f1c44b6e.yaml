@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added vSphere storage policy support in VMwareVStorageObjectDriver.
+    The storage policies that must be associated with the volumes can
+    be specified using volume type extra-spec key 'vmware:storage_profile'
+    similar to VMware VMDK driver. The vSphere version must be 6.7 or
+    above to use this feature.

@@ -44,7 +44,8 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
     # 1.0 - initial version based on vSphere 6.5 vStorageObject APIs
     # 1.1 - support for vStorageObject snapshot APIs
-    VERSION = '1.1.0'
+    # 1.2 - support for SPBM storage policies
+    VERSION = '1.2.0'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
@@ -60,10 +61,11 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         :param context: The admin context.
         """
         super(VMwareVStorageObjectDriver, self).do_setup(context)
-        self._storage_policy_enabled = False
         self.volumeops.set_vmx_version('vmx-13')
-        self._use_fcd_snapshot = versionutils.is_compatible(
+        vc_67_compatible = versionutils.is_compatible(
             '6.7.0', self._vc_version, same_major=False)
+        self._use_fcd_snapshot = vc_67_compatible
+        self._storage_policy_enabled = vc_67_compatible
 
     def get_volume_stats(self, refresh=False):
         """Collects volume backend stats.
@@ -80,6 +82,10 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
     def _select_ds_fcd(self, volume):
         req = {}
         req[hub.DatastoreSelector.SIZE_BYTES] = volume.size * units.Gi
+
+        if self._storage_policy_enabled:
+            req[hub.DatastoreSelector.PROFILE_NAME] = (
+                self._get_storage_profile(volume))
         (_host_ref, _resource_pool, summary) = self._select_datastore(req)
         return summary.datastore
 
@@ -106,6 +112,12 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             VMwareVStorageObjectDriver, self)._get_disk_type(volume)
         return vops.VirtualDiskType.get_virtual_disk_type(extra_spec_disk_type)
 
+    def _get_storage_profile_id(self, volume):
+        if self._storage_policy_enabled:
+            return super(
+                VMwareVStorageObjectDriver, self)._get_storage_profile_id(
+                    volume)
+
     def create_volume(self, volume):
         """Create a new volume on the backend.
 
@@ -114,8 +126,10 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         """
         disk_type = self._get_disk_type(volume)
         ds_ref = self._select_ds_fcd(volume)
+        profile_id = self._get_storage_profile_id(volume)
         fcd_loc = self.volumeops.create_fcd(
-            volume.name, volume.size * units.Ki, ds_ref, disk_type)
+            volume.name, volume.size * units.Ki, ds_ref, disk_type,
+            profile_id=profile_id)
         return {'provider_location': fcd_loc.provider_location()}
 
     def _delete_fcd(self, provider_loc):
@@ -208,6 +222,11 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
         fcd_loc = self.volumeops.register_disk(
             str(vmdk_url), volume.name, summary.datastore)
+
+        profile_id = self._get_storage_profile_id(volume)
+        if profile_id:
+            self.volumeops.update_fcd_policy(fcd_loc, profile_id)
+
         return {'provider_location': fcd_loc.provider_location()}
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
@@ -268,9 +287,11 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         self.volumeops.extend_fcd(fcd_loc, new_size * units.Ki)
 
     def _clone_fcd(self, provider_loc, name, dest_ds_ref,
-                   disk_type=vops.VirtualDiskType.THIN):
+                   disk_type=vops.VirtualDiskType.THIN,
+                   profile_id=None):
         fcd_loc = vops.FcdLocation.from_provider_location(provider_loc)
-        return self.volumeops.clone_fcd(name, fcd_loc, dest_ds_ref, disk_type)
+        return self.volumeops.clone_fcd(
+            name, fcd_loc, dest_ds_ref, disk_type, profile_id=profile_id)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
@@ -313,8 +334,10 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
     def _create_volume_from_fcd(self, provider_loc, cur_size, volume):
         ds_ref = self._select_ds_fcd(volume)
         disk_type = self._get_disk_type(volume)
+        profile_id = self._get_storage_profile_id(volume)
         cloned_fcd_loc = self._clone_fcd(
-            provider_loc, volume.name, ds_ref, disk_type=disk_type)
+            provider_loc, volume.name, ds_ref, disk_type=disk_type,
+            profile_id=profile_id)
         self._extend_if_needed(cloned_fcd_loc, cur_size, volume.size)
         return {'provider_location': cloned_fcd_loc.provider_location()}
 
@@ -328,8 +351,9 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         fcd_snap_loc = vops.FcdSnapshotLocation.from_provider_location(
             snapshot.provider_location)
         if fcd_snap_loc:
+            profile_id = self._get_storage_profile_id(volume)
             fcd_loc = self.volumeops.create_fcd_from_snapshot(
-                fcd_snap_loc, volume.name)
+                fcd_snap_loc, volume.name, profile_id=profile_id)
             self._extend_if_needed(fcd_loc, snapshot.volume_size, volume.size)
             return {'provider_location': fcd_loc.provider_location()}
         else:

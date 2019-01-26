@@ -1925,12 +1925,17 @@ class VolumeOpsTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 '_create_fcd_backing_spec')
-    def test_create_fcd(self, create_fcd_backing_spec):
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_create_profile_spec')
+    def test_create_fcd(self, create_profile_spec, create_fcd_backing_spec):
         spec = mock.Mock()
         self.session.vim.client.factory.create.return_value = spec
 
         backing_spec = mock.sentinel.backing_spec
         create_fcd_backing_spec.return_value = backing_spec
+
+        profile_spec = mock.sentinel.profile_spec
+        create_profile_spec.return_value = profile_spec
 
         task = mock.sentinel.task
         self.session.invoke_api.return_value = task
@@ -1945,7 +1950,9 @@ class VolumeOpsTestCase(test.TestCase):
         ds_ref_val = mock.sentinel.ds_ref_val
         ds_ref = mock.Mock(value=ds_ref_val)
         disk_type = mock.sentinel.disk_type
-        ret = self.vops.create_fcd(name, size_mb, ds_ref, disk_type)
+        profile_id = mock.sentinel.profile_id
+        ret = self.vops.create_fcd(
+            name, size_mb, ds_ref, disk_type, profile_id=profile_id)
 
         self.assertEqual(fcd_id, ret.fcd_id)
         self.assertEqual(ds_ref_val, ret.ds_ref_val)
@@ -1955,6 +1962,9 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(1024, spec.capacityInMB)
         self.assertEqual(name, spec.name)
         self.assertEqual(backing_spec, spec.backingSpec)
+        self.assertEqual([profile_spec], spec.profile)
+        create_profile_spec.assert_called_once_with(
+            self.session.vim.client.factory, profile_id)
         self.session.invoke_api.assert_called_once_with(
             self.session.vim,
             'CreateDisk_Task',
@@ -1983,12 +1993,17 @@ class VolumeOpsTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 '_create_fcd_backing_spec')
-    def test_clone_fcd(self, create_fcd_backing_spec):
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_create_profile_spec')
+    def test_clone_fcd(self, create_profile_spec, create_fcd_backing_spec):
         spec = mock.Mock()
         self.session.vim.client.factory.create.return_value = spec
 
         backing_spec = mock.sentinel.backing_spec
         create_fcd_backing_spec.return_value = backing_spec
+
+        profile_spec = mock.sentinel.profile_spec
+        create_profile_spec.return_value = profile_spec
 
         task = mock.sentinel.task
         self.session.invoke_api.return_value = task
@@ -2008,7 +2023,9 @@ class VolumeOpsTestCase(test.TestCase):
         dest_ds_ref_val = mock.sentinel.dest_ds_ref_val
         dest_ds_ref = mock.Mock(value=dest_ds_ref_val)
         disk_type = mock.sentinel.disk_type
-        ret = self.vops.clone_fcd(name, fcd_location, dest_ds_ref, disk_type)
+        profile_id = mock.sentinel.profile_id
+        ret = self.vops.clone_fcd(
+            name, fcd_location, dest_ds_ref, disk_type, profile_id=profile_id)
 
         self.assertEqual(fcd_id, ret.fcd_id)
         self.assertEqual(dest_ds_ref_val, ret.ds_ref_val)
@@ -2017,6 +2034,9 @@ class VolumeOpsTestCase(test.TestCase):
         create_fcd_backing_spec.assert_called_once_with(disk_type, dest_ds_ref)
         self.assertEqual(name, spec.name)
         self.assertEqual(backing_spec, spec.backingSpec)
+        self.assertEqual([profile_spec], spec.profile)
+        create_profile_spec.assert_called_once_with(
+            self.session.vim.client.factory, profile_id)
         self.session.invoke_api.assert_called_once_with(
             self.session.vim,
             'CloneVStorageObject_Task',
@@ -2172,9 +2192,14 @@ class VolumeOpsTestCase(test.TestCase):
             snapshotId=fcd_snap_id)
         self.session.wait_for_task(task)
 
-    def test_create_fcd_from_snapshot(self):
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_create_profile_spec')
+    def test_create_fcd_from_snapshot(self, create_profile_spec):
         task = mock.sentinel.task
         self.session.invoke_api.return_value = task
+
+        profile_spec = mock.sentinel.profile_spec
+        create_profile_spec.return_value = profile_spec
 
         task_info = mock.Mock()
         fcd_id = mock.sentinel.fcd_id
@@ -2192,10 +2217,14 @@ class VolumeOpsTestCase(test.TestCase):
         fcd_snap_loc.id.return_value = fcd_snap_id
 
         name = mock.sentinel.name
-        ret = self.vops.create_fcd_from_snapshot(fcd_snap_loc, name)
+        profile_id = mock.sentinel.profile_id
+        ret = self.vops.create_fcd_from_snapshot(
+            fcd_snap_loc, name, profile_id=profile_id)
 
         self.assertEqual(fcd_id, ret.fcd_id)
         self.assertEqual(ds_ref_val, ret.ds_ref_val)
+        create_profile_spec.assert_called_once_with(
+            self.session.vim.client.factory, profile_id)
         self.session.invoke_api.assert_called_once_with(
             self.session.vim,
             'CreateDiskFromSnapshot_Task',
@@ -2203,8 +2232,47 @@ class VolumeOpsTestCase(test.TestCase):
             id=fcd_id,
             datastore=ds_ref,
             snapshotId=fcd_snap_id,
-            name=name)
+            name=name,
+            profile=[profile_spec])
         self.session.wait_for_task.assert_called_once_with(task)
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_create_profile_spec')
+    @ddt.data(mock.sentinel.profile_id, None)
+    def test_update_fcd_policy(self, profile_id, create_profile_spec):
+        cf = self.session.vim.client.factory
+        if profile_id:
+            profile_spec = mock.sentinel.profile_spec
+            create_profile_spec.return_value = profile_spec
+        else:
+            empty_profile_spec = mock.sentinel.empty_profile_spec
+            cf.create.return_value = empty_profile_spec
+
+        task = mock.sentinel.task
+        self.session.invoke_api.return_value = task
+
+        fcd_location = mock.Mock()
+        fcd_id = mock.sentinel.fcd_id
+        fcd_location.id.return_value = fcd_id
+        ds_ref = mock.Mock()
+        fcd_location.ds_ref.return_value = ds_ref
+
+        self.vops.update_fcd_policy(fcd_location, profile_id)
+        if profile_id:
+            create_profile_spec.assert_called_once_with(cf, profile_id)
+            exp_profile_spec = profile_spec
+        else:
+            cf.create.assert_called_once_with(
+                'ns0:VirtualMachineEmptyProfileSpec')
+            exp_profile_spec = empty_profile_spec
+        self.session.invoke_api.assert_called_once_with(
+            self.session.vim,
+            'UpdateVStorageObjectPolicy_Task',
+            self.session.vim.service_content.vStorageObjectManager,
+            id=fcd_id,
+            datastore=ds_ref,
+            profile=[exp_profile_spec])
+        self.session.wait_for_task(task)
 
 
 class VirtualDiskPathTest(test.TestCase):
