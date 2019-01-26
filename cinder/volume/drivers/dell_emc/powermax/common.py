@@ -1687,7 +1687,7 @@ class PowerMaxCommon(object):
         return volume_dict
 
     def _set_vmax_extra_specs(self, extra_specs, pool_record):
-        """Set the PowerMax/PowerMax/VMAX extra specs.
+        """Set the PowerMax/VMAX extra specs.
 
         The pool_name extra spec must be set, otherwise a default slo/workload
         will be chosen. The portgroup can either be passed as an extra spec

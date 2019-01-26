@@ -1,5 +1,13 @@
 ---
 upgrade:
   - |
-    PowerMax driver - 'PowerMax' is to replace 'VMAX' in release notes,
-    online documentation, directory structure and driver name.
+    Dell EMC VMAX has been rebranded to PowerMax. The drivers
+    ``cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver``
+    and ``cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver``
+    will now be updated to ``cinder.volume.drivers.dell_emc.powermax.
+    iscsi.PowerMaxISCSIDriver`` and ``cinder.volume.drivers.dell_emc.
+    powermax.fc.PowerMaxFCDriver`` respectively in cinder.conf.
+    Driver configuration options that start with ``vmax`` should also
+    be updated to ``powermax``. Existing vmax configuration options
+    will continue to work but will be removed in the Train release.
+    Online documentation will also change to reflect these changes.
