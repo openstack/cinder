@@ -167,6 +167,7 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
         self.assertEqual(volume, snapshot.volume)
         volume_get_by_id.assert_called_once_with(self.context,
                                                  snapshot.volume_id)
+        self.assertEqual(snapshot.metadata, {})
         # Test cgsnapshot lazy-loaded field
         cgsnapshot = objects.CGSnapshot(context=self.context,
                                         id=fake.CGSNAPSHOT_ID)
