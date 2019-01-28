@@ -95,7 +95,7 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
 
     def __init__(self, *args, **kwargs):
         super(Snapshot, self).__init__(*args, **kwargs)
-        self._orig_metadata = {}
+        self.metadata = kwargs.get('metadata', {})
 
         self._reset_metadata_tracking()
 
