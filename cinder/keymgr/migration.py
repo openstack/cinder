@@ -27,7 +27,7 @@ from keystoneauth1 import session as ks_session
 from cinder import context
 from cinder import coordination
 from cinder import objects
-from cinder.volume import volume_migration as volume_migration
+from cinder.volume import volume_migration
 
 LOG = logging.getLogger(__name__)
 
