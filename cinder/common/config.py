@@ -30,7 +30,10 @@ import socket
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_middleware import cors
+from oslo_policy import opts as policy_opts
 from oslo_utils import netutils
+
+from cinder.policy import DEFAULT_POLICY_FILENAME
 
 
 CONF = cfg.CONF
@@ -210,3 +213,14 @@ def set_middleware_defaults():
                        'PATCH',
                        'HEAD']
     )
+
+
+def set_external_library_defaults():
+    """Set default configuration options for external openstack libraries."""
+    # This function is required so that our settings will override the defaults
+    # set by the libraries when the Cinder config files are generated.  This
+    # function is declared as an entry point for oslo.config.opts.defaults in
+    # setup.cfg.
+
+    set_middleware_defaults()
+    policy_opts.set_defaults(CONF, policy_file=DEFAULT_POLICY_FILENAME)

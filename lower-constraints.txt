@@ -76,7 +76,7 @@ oslo.i18n==3.15.3
 oslo.log==3.36.0
 oslo.messaging==6.4.0
 oslo.middleware==3.31.0
-oslo.policy==1.30.0
+oslo.policy==1.44.1
 oslo.privsep==1.23.0
 oslo.reports==1.18.0
 oslo.rootwrap==5.8.0
