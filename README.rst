@@ -1,25 +1,19 @@
-======
-CINDER
-======
+==========================
+CINDER - Driver Fixes Only
+==========================
 
-You have come across a storage service for an open cloud computing service.
-It has identified itself as `Cinder`. It was abstracted from the Nova project.
+This is a driverfixes branch of the OpenStack Cinder repo.
 
-* Wiki: http://wiki.openstack.org/Cinder
-* Developer docs: http://docs.openstack.org/developer/cinder
+**This branch is for driver fixes only!!!**
 
-Getting Started
----------------
+This should not be treated like a normal stable branch. Changes allowed here
+are only for fixes to drivers so that vendors and downstream consumers don't
+need to maintain their own forked repos in multiple places to get driver fixes
+to their users.
 
-If you'd like to run from the master branch, you can clone the git repo:
+There is no expectation that the code in this repo is in a runnable state.
+Tempest tests are not run against patches to this repo, only very basic unit
+tests.
 
-    git clone https://git.openstack.org/openstack/cinder.git
-
-For developer information please see
-`HACKING.rst <https://git.openstack.org/cgit/openstack/cinder/plain/HACKING.rst>`_
-
-You can raise bugs here http://bugs.launchpad.net/cinder
-
-Python client
--------------
-https://git.openstack.org/cgit/openstack/python-cinderclient
+It might be best to think of this as a convenient file share for driver vendors
+to keep their driver fixes - nothing more.
