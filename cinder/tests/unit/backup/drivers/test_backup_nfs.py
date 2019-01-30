@@ -29,6 +29,7 @@ import zlib
 
 from eventlet import tpool
 import mock
+from os_brick import exception as brick_exception
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_config import cfg
 import six
@@ -154,6 +155,26 @@ class BackupNFSShareTestCase(test.TestCase):
         driver._init_backup_repo_path()
 
         self.assertEqual(0, mock_remotefsclient.call_count)
+
+    @mock.patch('time.sleep')
+    def test_init_backup_repo_path_mount_retry(self, mock_sleep):
+        self.override_config('backup_share', FAKE_BACKUP_SHARE)
+        self.override_config('backup_mount_attempts', 2)
+
+        mock_remotefsclient = mock.Mock()
+        self.mock_object(remotefs_brick, 'RemoteFsClient',
+                         return_value=mock_remotefsclient)
+
+        mock_remotefsclient.mount.side_effect = [
+            brick_exception.BrickException] * 2
+        with mock.patch.object(nfs.NFSBackupDriver, '_init_backup_repo_path'):
+            driver = nfs.NFSBackupDriver(self.ctxt)
+
+        self.assertRaises(brick_exception.BrickException,
+                          driver._init_backup_repo_path)
+        self.assertEqual([mock.call(FAKE_BACKUP_SHARE),
+                          mock.call(FAKE_BACKUP_SHARE)],
+                         mock_remotefsclient.mount.call_args_list)
 
 
 def fake_md5(arg):

@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    Added config option ``backup_mount_attempts`` to specify the
+    number of attempts to mount NFS share in the NFS backup driver.
