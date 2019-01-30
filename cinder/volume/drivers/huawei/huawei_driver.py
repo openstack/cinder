@@ -164,12 +164,9 @@ class HuaweiISCSIDriver(common.HuaweiBaseDriver, driver.ISCSIDriver):
         portgroup_id = None
         view_id = None
         left_lunnum = -1
-        for ini in self.client.iscsi_info:
-            if ini['Name'] == initiator_name:
-                for key in ini:
-                    if key == 'TargetPortGroup':
-                        portgroup = ini['TargetPortGroup']
-                        break
+        ini = self.client.iscsi_info['initiators'].get(initiator_name)
+        if ini and ini.get('TargetPortGroup'):
+            portgroup = ini['TargetPortGroup']
 
         if portgroup:
             portgroup_id = self.client.get_tgt_port_group(portgroup)

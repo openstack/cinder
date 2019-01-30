@@ -105,11 +105,16 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             return False
 
     def get_local_and_remote_dev_conf(self):
-        self.loc_dev_conf = self.huawei_conf.get_local_device()
+        self.loc_dev_conf = {
+            'san_address': self.configuration.san_address,
+            'san_user': self.configuration.san_user,
+            'san_password': self.configuration.san_password,
+            'storage_pools': self.configuration.storage_pools,
+            'iscsi_info': self.configuration.iscsi_info,
+        }
 
         # Now just support one replication device.
-        replica_devs = self.huawei_conf.get_replication_devices()
-        self.replica_dev_conf = replica_devs[0] if replica_devs else {}
+        self.replica_dev_conf = self.configuration.replication
 
     def get_local_and_remote_client_conf(self):
         if self.active_backend_id:
@@ -310,13 +315,18 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             'DESCRIPTION': volume.name,
             'ALLOCTYPE': opts.get('LUNType', self.configuration.lun_type),
             'CAPACITY': huawei_utils.get_volume_size(volume),
-            'WRITEPOLICY': self.configuration.lun_write_type,
-            'PREFETCHPOLICY': self.configuration.lun_prefetch_type,
-            'PREFETCHVALUE': self.configuration.lun_prefetch_value,
-            'DATATRANSFERPOLICY':
-                opts.get('policy', self.configuration.lun_policy),
             'READCACHEPOLICY': self.configuration.lun_read_cache_policy,
-            'WRITECACHEPOLICY': self.configuration.lun_write_cache_policy, }
+            'WRITECACHEPOLICY': self.configuration.lun_write_cache_policy,
+        }
+
+        if hasattr(self.configuration, 'write_type'):
+            params['WRITEPOLICY'] = self.configuration.write_type
+        if hasattr(self.configuration, 'prefetch_type'):
+            params['PREFETCHPOLICY'] = self.configuration.prefetch_type
+        if hasattr(self.configuration, 'prefetch_value'):
+            params['PREFETCHVALUE'] = self.configuration.prefetch_value
+        if opts.get('policy'):
+            params['DATATRANSFERPOLICY'] = opts['policy']
 
         LOG.info('volume: %(volume)s, lun params: %(params)s.',
                  {'volume': volume.id, 'params': params})

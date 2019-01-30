@@ -22,13 +22,14 @@ and set every property into Configuration object as an attribute.
 
 import base64
 from defusedxml import ElementTree as ET
+import os
+import re
 import six
 
 from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _
-from cinder import utils
 from cinder.volume.drivers.huawei import constants
 
 LOG = logging.getLogger(__name__)
@@ -37,54 +38,68 @@ LOG = logging.getLogger(__name__)
 class HuaweiConf(object):
     def __init__(self, conf):
         self.conf = conf
+        self.last_modify_time = None
 
-    def _encode_authentication(self):
-        need_encode = False
+    def update_config_value(self):
+        file_time = os.stat(self.conf.cinder_huawei_conf_file).st_mtime
+        if self.last_modify_time == file_time:
+            return
+
+        self.last_modify_time = file_time
         tree = ET.parse(self.conf.cinder_huawei_conf_file)
         xml_root = tree.getroot()
+        self._encode_authentication(tree, xml_root)
+
+        attr_funcs = (
+            self._san_address,
+            self._san_user,
+            self._san_password,
+            self._san_vstore,
+            self._san_product,
+            self._ssl_cert_path,
+            self._ssl_cert_verify,
+            self._iscsi_info,
+            self._fc_info,
+            self._hypermetro_devices,
+            self._replication_devices,
+            self._lun_type,
+            self._lun_ready_wait_interval,
+            self._lun_copy_wait_interval,
+            self._lun_timeout,
+            self._lun_write_type,
+            self._lun_prefetch,
+            self._lun_policy,
+            self._lun_read_cache_policy,
+            self._lun_write_cache_policy,
+            self._storage_pools,
+        )
+
+        for f in attr_funcs:
+            f(xml_root)
+
+    def _encode_authentication(self, tree, xml_root):
         name_node = xml_root.find('Storage/UserName')
         pwd_node = xml_root.find('Storage/UserPassword')
-        if (name_node is not None
-                and not name_node.text.startswith('!$$$')):
-            name_node.text = '!$$$' + base64.b64encode(name_node.text)
+        vstore_node = xml_root.find('Storage/vStoreName')
+
+        need_encode = False
+        if name_node is not None and not name_node.text.startswith('!$$$'):
+            encoded = base64.b64encode(six.b(name_node.text)).decode()
+            name_node.text = '!$$$' + encoded
             need_encode = True
-        if (pwd_node is not None
-                and not pwd_node.text.startswith('!$$$')):
-            pwd_node.text = '!$$$' + base64.b64encode(pwd_node.text)
+
+        if pwd_node is not None and not pwd_node.text.startswith('!$$$'):
+            encoded = base64.b64encode(six.b(pwd_node.text)).decode()
+            pwd_node.text = '!$$$' + encoded
+            need_encode = True
+
+        if vstore_node is not None and not vstore_node.text.startswith('!$$$'):
+            encoded = base64.b64encode(six.b(vstore_node.text)).decode()
+            vstore_node.text = '!$$$' + encoded
             need_encode = True
 
         if need_encode:
-            utils.execute('chmod',
-                          '600',
-                          self.conf.cinder_huawei_conf_file,
-                          run_as_root=True)
             tree.write(self.conf.cinder_huawei_conf_file, 'UTF-8')
-
-    def update_config_value(self):
-        self._encode_authentication()
-
-        set_attr_funcs = (self._san_address,
-                          self._san_user,
-                          self._san_password,
-                          self._san_product,
-                          self._san_protocol,
-                          self._lun_type,
-                          self._lun_ready_wait_interval,
-                          self._lun_copy_wait_interval,
-                          self._lun_timeout,
-                          self._lun_write_type,
-                          self._lun_prefetch,
-                          self._lun_policy,
-                          self._lun_read_cache_policy,
-                          self._lun_write_cache_policy,
-                          self._storage_pools,
-                          self._iscsi_default_target_ip,
-                          self._iscsi_info,)
-
-        tree = ET.parse(self.conf.cinder_huawei_conf_file)
-        xml_root = tree.getroot()
-        for f in set_attr_funcs:
-            f(xml_root)
 
     def _san_address(self, xml_root):
         text = xml_root.findtext('Storage/RestURL')
@@ -93,8 +108,7 @@ class HuaweiConf(object):
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-        addrs = text.split(';')
-        addrs = list(set([x.strip() for x in addrs if x.strip()]))
+        addrs = list(set([x.strip() for x in text.split(';') if x.strip()]))
         setattr(self.conf, 'san_address', addrs)
 
     def _san_user(self, xml_root):
@@ -104,7 +118,7 @@ class HuaweiConf(object):
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-        user = base64.b64decode(text[4:])
+        user = base64.b64decode(six.b(text[4:])).decode()
         setattr(self.conf, 'san_user', user)
 
     def _san_password(self, xml_root):
@@ -114,8 +128,51 @@ class HuaweiConf(object):
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-        pwd = base64.b64decode(text[4:])
+        pwd = base64.b64decode(six.b(text[4:])).decode()
         setattr(self.conf, 'san_password', pwd)
+
+    def _san_vstore(self, xml_root):
+        vstore = None
+        text = xml_root.findtext('Storage/vStoreName')
+        if text:
+            vstore = base64.b64decode(six.b(text[4:])).decode()
+        setattr(self.conf, 'vstore_name', vstore)
+
+    def _ssl_cert_path(self, xml_root):
+        text = xml_root.findtext('Storage/SSLCertPath')
+        setattr(self.conf, 'ssl_cert_path', text)
+
+    def _ssl_cert_verify(self, xml_root):
+        value = False
+        text = xml_root.findtext('Storage/SSLCertVerify')
+        if text:
+            if text.lower() in ('true', 'false'):
+                value = text.lower() == 'true'
+            else:
+                msg = _("SSLCertVerify configured error.")
+                LOG.error(msg)
+                raise exception.InvalidInput(reason=msg)
+
+        setattr(self.conf, 'ssl_cert_verify', value)
+
+    def _set_extra_constants_by_product(self, product):
+        extra_constants = {}
+        if product == 'Dorado':
+            extra_constants['QOS_SPEC_KEYS'] = (
+                'maxIOPS', 'maxBandWidth', 'IOType')
+            extra_constants['QOS_IOTYPES'] = ('2',)
+            extra_constants['SUPPORT_LUN_TYPES'] = ('Thin',)
+            extra_constants['DEFAULT_LUN_TYPE'] = 'Thin'
+        else:
+            extra_constants['QOS_SPEC_KEYS'] = (
+                'maxIOPS', 'minIOPS', 'minBandWidth',
+                'maxBandWidth', 'latency', 'IOType')
+            extra_constants['QOS_IOTYPES'] = ('0', '1', '2')
+            extra_constants['SUPPORT_LUN_TYPES'] = ('Thick', 'Thin')
+            extra_constants['DEFAULT_LUN_TYPE'] = 'Thick'
+
+        for k in extra_constants:
+            setattr(constants, k, extra_constants[k])
 
     def _san_product(self, xml_root):
         text = xml_root.findtext('Storage/Product')
@@ -125,47 +182,36 @@ class HuaweiConf(object):
             raise exception.InvalidInput(reason=msg)
 
         product = text.strip()
-        setattr(self.conf, 'san_product', product)
-
-    def _san_protocol(self, xml_root):
-        text = xml_root.findtext('Storage/Protocol')
-        if not text:
-            msg = _("SAN protocol is not configured.")
+        if product not in constants.VALID_PRODUCT:
+            msg = _("Invalid SAN product %(text)s, SAN product must be "
+                    "in %(valid)s.") % {'text': product,
+                                        'valid': constants.VALID_PRODUCT}
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-        protocol = text.strip()
-        setattr(self.conf, 'san_protocol', protocol)
+        self._set_extra_constants_by_product(product)
+        setattr(self.conf, 'san_product', product)
 
     def _lun_type(self, xml_root):
-        lun_type = constants.PRODUCT_LUN_TYPE.get(self.conf.san_product,
-                                                  'Thick')
-
-        def _verify_conf_lun_type(lun_type):
+        lun_type = constants.DEFAULT_LUN_TYPE
+        text = xml_root.findtext('LUN/LUNType')
+        if text:
+            lun_type = text.strip()
             if lun_type not in constants.LUN_TYPE_MAP:
                 msg = _("Invalid lun type %s is configured.") % lun_type
                 LOG.error(msg)
                 raise exception.InvalidInput(reason=msg)
 
-            if self.conf.san_product in constants.PRODUCT_LUN_TYPE:
-                product_lun_type = constants.PRODUCT_LUN_TYPE[
-                    self.conf.san_product]
-                if lun_type != product_lun_type:
-                    msg = _("%(array)s array requires %(valid)s lun type, "
-                            "but %(conf)s is specified.") % {
-                        'array': self.conf.san_product,
-                        'valid': product_lun_type,
-                        'conf': lun_type}
-                    LOG.error(msg)
-                    raise exception.InvalidInput(reason=msg)
+            if lun_type not in constants.SUPPORT_LUN_TYPES:
+                msg = _("%(array)s array requires %(valid)s lun type, "
+                        "but %(conf)s is specified."
+                        ) % {'array': self.conf.san_product,
+                             'valid': constants.SUPPORT_LUN_TYPES,
+                             'conf': lun_type}
+                LOG.error(msg)
+                raise exception.InvalidInput(reason=msg)
 
-        text = xml_root.findtext('LUN/LUNType')
-        if text:
-            lun_type = text.strip()
-            _verify_conf_lun_type(lun_type)
-
-        lun_type = constants.LUN_TYPE_MAP[lun_type]
-        setattr(self.conf, 'lun_type', lun_type)
+        setattr(self.conf, 'lun_type', constants.LUN_TYPE_MAP[lun_type])
 
     def _lun_ready_wait_interval(self, xml_root):
         text = xml_root.findtext('LUN/LUNReadyWaitInterval')
@@ -184,33 +230,19 @@ class HuaweiConf(object):
 
     def _lun_write_type(self, xml_root):
         text = xml_root.findtext('LUN/WriteType')
-        write_type = text.strip() if text else '1'
-        setattr(self.conf, 'lun_write_type', write_type)
+        if text and text.strip():
+            setattr(self.conf, 'write_type', text.strip())
 
     def _lun_prefetch(self, xml_root):
-        prefetch_type = '3'
-        prefetch_value = '0'
-
         node = xml_root.find('LUN/Prefetch')
-        if (node is not None
-                and node.attrib['Type']
-                and node.attrib['Value']):
-            prefetch_type = node.attrib['Type'].strip()
-            if prefetch_type not in ['0', '1', '2', '3']:
-                msg = (_(
-                    "Invalid prefetch type '%s' is configured. "
-                    "PrefetchType must be in 0,1,2,3.") % prefetch_type)
-                LOG.error(msg)
-                raise exception.InvalidInput(reason=msg)
+        if node is not None:
+            if 'Type' in node.attrib:
+                prefetch_type = node.attrib['Type'].strip()
+                setattr(self.conf, 'prefetch_type', prefetch_type)
 
-            prefetch_value = node.attrib['Value'].strip()
-            factor = {'1': 2}
-            factor = int(factor.get(prefetch_type, '1'))
-            prefetch_value = int(prefetch_value) * factor
-            prefetch_value = six.text_type(prefetch_value)
-
-        setattr(self.conf, 'lun_prefetch_type', prefetch_type)
-        setattr(self.conf, 'lun_prefetch_value', prefetch_value)
+            if 'Value' in node.attrib:
+                prefetch_value = node.attrib['Value'].strip()
+                setattr(self.conf, 'prefetch_value', prefetch_value)
 
     def _lun_policy(self, xml_root):
         setattr(self.conf, 'lun_policy', '0')
@@ -222,118 +254,150 @@ class HuaweiConf(object):
         setattr(self.conf, 'lun_write_cache_policy', '5')
 
     def _storage_pools(self, xml_root):
-        nodes = xml_root.findall('LUN/StoragePool')
-        if not nodes:
+        text = xml_root.findtext('LUN/StoragePool')
+        if not text:
             msg = _('Storage pool is not configured.')
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-        texts = [x.text for x in nodes]
-        merged_text = ';'.join(texts)
-        pools = set(x.strip() for x in merged_text.split(';') if x.strip())
+        pools = set(x.strip() for x in text.split(';') if x.strip())
         if not pools:
-            msg = _('Invalid storage pool is configured.')
+            msg = _('No valid storage pool configured.')
             LOG.error(msg)
             raise exception.InvalidInput(msg)
 
         setattr(self.conf, 'storage_pools', list(pools))
 
-    def _iscsi_default_target_ip(self, xml_root):
-        text = xml_root.findtext('iSCSI/DefaultTargetIP')
-        target_ip = text.split() if text else []
-        setattr(self.conf, 'iscsi_default_target_ip', target_ip)
-
     def _iscsi_info(self, xml_root):
+        iscsi_info = {
+            'default_target_ips': [],
+            'CHAPinfo': xml_root.findtext('iSCSI/CHAPinfo'),
+            'ALUA': xml_root.findtext('iSCSI/ALUA'),
+            'FAILOVERMODE': xml_root.findtext('iSCSI/FAILOVERMODE'),
+            'SPECIALMODETYPE': xml_root.findtext('iSCSI/SPECIALMODETYPE'),
+            'PATHTYPE': xml_root.findtext('iSCSI/PATHTYPE'),
+        }
+
+        text = xml_root.findtext('iSCSI/DefaultTargetIP')
+        if text:
+            iscsi_info['default_target_ips'] = [
+                ip.strip() for ip in text.split(';') if ip.strip()]
+
+        initiators = {}
         nodes = xml_root.findall('iSCSI/Initiator')
-        if nodes is None:
-            setattr(self.conf, 'iscsi_info', [])
-            return
+        for node in nodes or []:
+            if 'Name' not in node.attrib:
+                msg = _('Name must be specified for initiator.')
+                LOG.error(msg)
+                raise exception.InvalidInput(msg)
 
-        iscsi_info = []
-        for node in nodes:
-            props = {}
-            for item in node.items():
-                props[item[0].strip()] = item[1].strip()
+            initiators[node.attrib['Name']] = node.attrib
 
-            iscsi_info.append(props)
-
+        iscsi_info['initiators'] = initiators
         setattr(self.conf, 'iscsi_info', iscsi_info)
 
-    def _parse_rmt_iscsi_info(self, iscsi_info):
-        if not (iscsi_info and iscsi_info.strip()):
-            return []
-
-        # Consider iscsi_info value:
-        # ' {Name:xxx ;;TargetPortGroup: xxx};\n'
-        # '{Name:\t\rxxx;CHAPinfo: mm-usr#mm-pwd} '
-
-        # Step 1, ignore whitespace characters, convert to:
-        # '{Name:xxx;;TargetPortGroup:xxx};{Name:xxx;CHAPinfo:mm-usr#mm-pwd}'
-        iscsi_info = ''.join(iscsi_info.split())
-
-        # Step 2, make initiators configure list, convert to:
-        # ['Name:xxx;;TargetPortGroup:xxx', 'Name:xxx;CHAPinfo:mm-usr#mm-pwd']
-        initiator_infos = iscsi_info[1:-1].split('};{')
-
-        # Step 3, get initiator configure pairs, convert to:
-        # [['Name:xxx', '', 'TargetPortGroup:xxx'],
-        #  ['Name:xxx', 'CHAPinfo:mm-usr#mm-pwd']]
-        initiator_infos = map(lambda x: x.split(';'), initiator_infos)
-
-        # Step 4, remove invalid configure pairs, convert to:
-        # [['Name:xxx', 'TargetPortGroup:xxx'],
-        # ['Name:xxx', 'CHAPinfo:mm-usr#mm-pwd']]
-        initiator_infos = map(lambda x: [y for y in x if y],
-                              initiator_infos)
-
-        # Step 5, make initiators configure dict, convert to:
-        # [{'TargetPortGroup': 'xxx', 'Name': 'xxx'},
-        #  {'Name': 'xxx', 'CHAPinfo': 'mm-usr#mm-pwd'}]
-        get_opts = lambda x: x.split(':', 1)
-        initiator_infos = map(lambda x: dict(map(get_opts, x)),
-                              initiator_infos)
-        # Convert generator to list for py3 compatibility.
-        initiator_infos = list(initiator_infos)
-
-        # Step 6, replace CHAPinfo 'user#pwd' to 'user;pwd'
-        key = 'CHAPinfo'
-        for info in initiator_infos:
-            if key in info:
-                info[key] = info[key].replace('#', ';', 1)
-
-        return initiator_infos
-
-    def get_replication_devices(self):
-        devs = self.conf.safe_get('replication_device')
-        if not devs:
-            return []
-
-        devs_config = []
-        for dev in devs:
-            dev_config = {}
-            dev_config['backend_id'] = dev['backend_id']
-            dev_config['san_address'] = dev['san_address'].split(';')
-            dev_config['san_user'] = dev['san_user']
-            dev_config['san_password'] = dev['san_password']
-            dev_config['storage_pools'] = dev['storage_pool'].split(';')
-            dev_config['iscsi_info'] = self._parse_rmt_iscsi_info(
-                dev.get('iscsi_info'))
-            dev_config['iscsi_default_target_ip'] = (
-                dev['iscsi_default_target_ip'].split(';')
-                if 'iscsi_default_target_ip' in dev
-                else [])
-            devs_config.append(dev_config)
-
-        return devs_config
-
-    def get_local_device(self):
-        dev_config = {
-            'backend_id': "default",
-            'san_address': self.conf.san_address,
-            'san_user': self.conf.san_user,
-            'san_password': self.conf.san_password,
-            'storage_pools': self.conf.storage_pools,
-            'iscsi_info': self.conf.iscsi_info,
-            'iscsi_default_target_ip': self.conf.iscsi_default_target_ip,
+    def _fc_info(self, xml_root):
+        fc_info = {
+            'ALUA': xml_root.findtext('FC/ALUA'),
+            'FAILOVERMODE': xml_root.findtext('FC/FAILOVERMODE'),
+            'SPECIALMODETYPE': xml_root.findtext('FC/SPECIALMODETYPE'),
+            'PATHTYPE': xml_root.findtext('FC/PATHTYPE'),
         }
-        return dev_config
+
+        initiators = {}
+        nodes = xml_root.findall('FC/Initiator')
+        for node in nodes or []:
+            if 'Name' not in node.attrib:
+                msg = _('Name must be specified for initiator.')
+                LOG.error(msg)
+                raise exception.InvalidInput(msg)
+
+            initiators[node.attrib['Name']] = node.attrib
+
+        fc_info['initiators'] = initiators
+        setattr(self.conf, 'fc_info', fc_info)
+
+    def _parse_remote_initiator_info(self, dev, ini_type):
+        ini_info = {'default_target_ips': []}
+
+        if dev.get('iscsi_default_target_ip'):
+            ini_info['default_target_ips'] = dev[
+                'iscsi_default_target_ip'].split(';')
+
+        initiators = {}
+        if ini_type in dev:
+            # Analyze initiators configure text, convert to:
+            # [{'Name':'xxx'}, {'Name':'xxx','CHAPinfo':'mm-usr#mm-pwd'}]
+            ini_list = re.split('\s', dev[ini_type])
+
+            def _convert_one_iscsi_info(ini_text):
+                # get initiator configure attr list
+                attr_list = re.split('[{;}]', ini_text)
+
+                # get initiator configures
+                ini = {}
+                for attr in attr_list:
+                    if not attr:
+                        continue
+
+                    pair = attr.split(':', 1)
+                    if pair[0] == 'CHAPinfo':
+                        value = pair[1].replace('#', ';', 1)
+                    else:
+                        value = pair[1]
+                    ini[pair[0]] = value
+
+                if 'Name' not in ini:
+                    msg = _('Name must be specified for initiator.')
+                    LOG.error(msg)
+                    raise exception.InvalidInput(msg)
+
+                return ini
+
+            for text in ini_list:
+                ini = _convert_one_iscsi_info(text)
+                initiators[ini['Name']] = ini
+
+        ini_info['initiators'] = initiators
+        return ini_info
+
+    def _hypermetro_devices(self, xml_root):
+        dev = self.conf.safe_get('hypermetro_device')
+        config = {}
+
+        if dev:
+            config = {
+                'san_address': dev['san_address'].split(';'),
+                'san_user': dev['san_user'],
+                'san_password': dev['san_password'],
+                'vstore_name': dev.get('vstore_name'),
+                'metro_domain': dev['metro_domain'],
+                'storage_pools': dev['storage_pool'].split(';')[:1],
+                'iscsi_info': self._parse_remote_initiator_info(
+                    dev, 'iscsi_info'),
+                'fc_info': self._parse_remote_initiator_info(
+                    dev, 'fc_info'),
+            }
+
+        setattr(self.conf, 'hypermetro', config)
+
+    def _replication_devices(self, xml_root):
+        replication_devs = self.conf.safe_get('replication_device')
+        config = {}
+
+        if replication_devs:
+            dev = replication_devs[0]
+            config = {
+                'backend_id': dev['backend_id'],
+                'san_address': dev['san_address'].split(';'),
+                'san_user': dev['san_user'],
+                'san_password': dev['san_password'],
+                'vstore_name': dev.get('vstore_name'),
+                'storage_pools': dev['storage_pool'].split(';')[:1],
+                'iscsi_info': self._parse_remote_initiator_info(
+                    dev, 'iscsi_info'),
+                'fc_info': self._parse_remote_initiator_info(
+                    dev, 'fc_info'),
+            }
+
+        setattr(self.conf, 'replication', config)
