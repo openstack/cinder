@@ -747,10 +747,8 @@ class LVM(executor.Executor):
         :param snapshot_name: Name of snapshot to revert
         """
 
-        cmd = ['lvconvert', '--merge', '%s/%s' % (self.vg_name, snapshot_name)]
         try:
-            self._execute(*cmd, root_helper=self._root_helper,
-                          run_as_root=True)
+            cinder.privsep.lvm.lvconvert(self.vg_name, snapshot_name)
         except putils.ProcessExecutionError as err:
             LOG.exception('Error Revert Volume')
             LOG.error('Cmd     :%s', err.cmd)
