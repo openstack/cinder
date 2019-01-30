@@ -7632,6 +7632,32 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 expected +
                 self.standard_logout)
 
+    def test_get_volume_stats5(self):
+        # Testing get_volume_stats(refresh=False) for cached values
+        config = self.setup_configuration()
+        self.setup_driver(config=config)
+        with mock.patch.object(self.driver, '_login') as login_mock, \
+                mock.patch.object(self.driver, '_logout') as logout_mock:
+            stats_mock = login_mock.return_value.get_volume_stats
+
+            stats = self.driver.get_volume_stats(True)
+
+            self.assertEqual(stats_mock.return_value, stats)
+            login_mock.assert_called_once_with()
+            stats_mock.assert_called_once_with(True, FILTER_FUNCTION,
+                                               GOODNESS_FUNCTION)
+            logout_mock.assert_called_once_with(login_mock.return_value)
+
+            login_mock.reset_mock()
+            stats_mock.reset_mock()
+            logout_mock.reset_mock()
+
+            cached_stats = self.driver.get_volume_stats(False)
+            self.assertEqual(stats, cached_stats)
+            login_mock.assert_not_called()
+            stats_mock.assert_not_called()
+            logout_mock.assert_not_called()
+
     def test_create_host_with_unmanage_fc_and_manage_iscsi_hosts(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
