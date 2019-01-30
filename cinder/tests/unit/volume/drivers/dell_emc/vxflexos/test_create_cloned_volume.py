@@ -21,12 +21,12 @@ from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import scaleio
-from cinder.tests.unit.volume.drivers.dell_emc.scaleio import mocks
+from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
+from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
 
 
-class TestCreateClonedVolume(scaleio.TestScaleIODriver):
-    """Test cases for ``ScaleIODriver.create_cloned_volume()``"""
+class TestCreateClonedVolume(vxflexos.TestVxFlexOSDriver):
+    """Test cases for ``VxFlexOSDriver.create_cloned_volume()``"""
     def setUp(self):
         """Setup a test case environment.
 

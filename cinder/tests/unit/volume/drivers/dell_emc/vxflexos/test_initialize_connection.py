@@ -17,10 +17,10 @@ import mock
 from cinder import context
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import scaleio
+from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
 
 
-class TestInitializeConnection(scaleio.TestScaleIODriver):
+class TestInitializeConnection(vxflexos.TestVxFlexOSDriver):
     def setUp(self):
         """Setup a test case environment."""
 

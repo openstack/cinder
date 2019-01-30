@@ -18,13 +18,13 @@ import six
 
 from oslo_config import cfg
 
-from cinder.volume.drivers.dell_emc.scaleio import driver
+from cinder.volume.drivers.dell_emc.vxflexos import driver
 
 CONF = cfg.CONF
 
 
-class ScaleIODriver(driver.ScaleIODriver):
-    """Mock ScaleIO Driver class.
+class VxFlexOSDriver(driver.VxFlexOSDriver):
+    """Mock VxFlex OS Driver class.
 
     Provides some fake configuration options
     """

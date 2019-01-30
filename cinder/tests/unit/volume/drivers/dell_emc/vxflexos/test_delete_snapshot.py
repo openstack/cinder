@@ -18,13 +18,13 @@ from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.fake_snapshot import fake_snapshot_obj
-from cinder.tests.unit.volume.drivers.dell_emc import scaleio
-from cinder.tests.unit.volume.drivers.dell_emc.scaleio import mocks
+from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
+from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
 from cinder.volume import configuration
 
 
-class TestDeleteSnapShot(scaleio.TestScaleIODriver):
-    """Test cases for ``ScaleIODriver.delete_snapshot()``"""
+class TestDeleteSnapShot(vxflexos.TestVxFlexOSDriver):
+    """Test cases for ``VxFlexOSDriver.delete_snapshot()``"""
     def setUp(self):
         """Setup a test case environment.
 
@@ -89,7 +89,7 @@ class TestDeleteSnapShot(scaleio.TestScaleIODriver):
 
     def test_delete_snapshot(self):
         """Setting the unmap volume before delete flag for tests """
-        self.override_config('sio_unmap_volume_before_deletion', True,
+        self.override_config('vxflexos_unmap_volume_before_deletion', True,
                              configuration.SHARED_CONF_GROUP)
         self.set_https_response_mode(self.RESPONSE_MODE.Valid)
         self.driver.delete_snapshot(self.snapshot)

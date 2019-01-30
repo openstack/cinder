@@ -87,7 +87,7 @@ This section explains how to configure and connect the block storage
 nodes to a VxFlex OS storage cluster.
 
 Edit the ``cinder.conf`` file by adding the configuration below under
-a new section (for example, ``[scaleio]``) and change the ``enable_backends``
+a new section (for example, ``[vxflexos]``) and change the ``enable_backends``
 setting (in the ``[DEFAULT]`` section) to include this new back end.
 The configuration file is usually located at
 ``/etc/cinder/cinder.conf``.
@@ -102,7 +102,7 @@ Configure the driver name by adding the following parameter:
 
 .. code-block:: ini
 
-   volume_driver = cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver
+   volume_driver = cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver
 
 VxFlex OS Gateway server IP
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -129,7 +129,7 @@ Configure the available Storage Pools by adding the following parameter:
 
 .. code-block:: ini
 
-   sio_storage_pools = <Comma-separated list of protection domain:storage pool name>
+   vxflexos_storage_pools = <Comma-separated list of protection domain:storage pool name>
 
 VxFlex OS user credentials
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -155,11 +155,11 @@ under the separate section for VxFlex OS:
 
 .. code-block:: ini
 
-   sio_max_over_subscription_ratio = <OVER_SUBSCRIPTION_RATIO>
+   vxflexos_max_over_subscription_ratio = <OVER_SUBSCRIPTION_RATIO>
 
 .. note::
 
-   The default value for ``sio_max_over_subscription_ratio``
+   The default value for ``vxflexos_max_over_subscription_ratio``
    is 10.0.
 
 Oversubscription is calculated correctly by the Block Storage service
@@ -200,13 +200,13 @@ parameters as follows:
 .. code-block:: ini
 
    [DEFAULT]
-   enabled_backends = scaleio
+   enabled_backends = vxflexos
 
-   [scaleio]
-   volume_driver = cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver
-   volume_backend_name = scaleio
+   [vxflexos]
+   volume_driver = cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver
+   volume_backend_name = vxflexos
    san_ip = GATEWAY_IP
-   sio_storage_pools = Domain1:Pool1,Domain2:Pool2
+   vxflexos_storage_pools = Domain1:Pool1,Domain2:Pool2
    san_login = SIO_USER
    san_password = SIO_PASSWD
    san_thin_provision = false
@@ -219,9 +219,9 @@ Configuration options
 The VxFlex OS driver supports these configuration options:
 
 .. config-table::
-   :config-target: ScaleIO
+   :config-target: VxFlex OS
 
-   cinder.volume.drivers.dell_emc.scaleio.driver
+   cinder.volume.drivers.dell_emc.vxflexos.driver
 
 Volume Types
 ------------
@@ -240,9 +240,9 @@ requested protection_domain:storage_pool.
 
 .. code-block:: console
 
-   $ openstack volume type create sio_type_1
-   $ openstack volume type set --property volume_backend_name=scaleio sio_type_1
-   $ openstack volume type set --property pool_name=Domain2:Pool2 sio_type_1
+   $ openstack volume type create vxflexos_type_1
+   $ openstack volume type set --property volume_backend_name=vxflexos vxflexos_type_1
+   $ openstack volume type set --property pool_name=Domain2:Pool2 vxflexos_type_1
 
 VxFlex OS thin provisioning support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -254,8 +254,8 @@ of the volume type, as follows:
 
 .. code-block:: console
 
-   $ openstack volume type create sio_type_thick
-   $ openstack volume type set --property provisioning:type=thick sio_type_thick
+   $ openstack volume type create vxflexos_type_thick
+   $ openstack volume type set --property provisioning:type=thick vxflexos_type_thick
 
 VxFlex OS QoS support
 ~~~~~~~~~~~~~~~~~~~~~
@@ -289,8 +289,8 @@ For example:
 .. code-block:: console
 
    $ openstack volume qos create qos-limit-iops --consumer back-end --property maxIOPS=5000
-   $ openstack volume type create sio_limit_iops
-   $ openstack volume qos associate qos-limit-iops sio_limit_iops
+   $ openstack volume type create vxflexos_limit_iops
+   $ openstack volume qos associate qos-limit-iops vxflexos_limit_iops
 
 The driver always chooses the minimum between the QoS keys value
 and the relevant calculated value of ``maxIOPSperGB`` or ``maxBWSperGB``.

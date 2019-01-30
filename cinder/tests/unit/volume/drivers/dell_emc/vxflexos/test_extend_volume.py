@@ -18,16 +18,16 @@ from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.fake_volume import fake_volume_obj
-from cinder.tests.unit.volume.drivers.dell_emc import scaleio
-from cinder.tests.unit.volume.drivers.dell_emc.scaleio import mocks
+from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
+from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
 from cinder.volume import configuration
 
 
-class TestExtendVolume(scaleio.TestScaleIODriver):
-    """Test cases for ``ScaleIODriver.extend_volume()``"""
+class TestExtendVolume(vxflexos.TestVxFlexOSDriver):
+    """Test cases for ``VxFlexOSDriver.extend_volume()``"""
 
     """ New sizes for the volume.
-    Since ScaleIO has a granularity of 8 GB, multiples of 8 always work.
+    Since VxFlex OS has a granularity of 8 GB, multiples of 8 always work.
     The 7 size should be either rounded up to 8 or raise an exception
     based on the round_volume_capacity config setting.
     """
@@ -92,13 +92,13 @@ class TestExtendVolume(scaleio.TestScaleIODriver):
                           self.NEW_SIZE)
 
     def test_extend_volume_bad_size_no_round(self):
-        self.override_config('sio_round_volume_capacity', False,
+        self.override_config('vxflexos_round_volume_capacity', False,
                              configuration.SHARED_CONF_GROUP)
         self.set_https_response_mode(self.RESPONSE_MODE.Valid)
         self.driver.extend_volume(self.volume, self.BAD_SIZE)
 
     def test_extend_volume_bad_size_round(self):
-        self.override_config('sio_round_volume_capacity', True,
+        self.override_config('vxflexos_round_volume_capacity', True,
                              configuration.SHARED_CONF_GROUP)
         self.driver.extend_volume(self.volume, self.BAD_SIZE)
 

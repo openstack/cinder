@@ -16,11 +16,11 @@
 import ddt
 
 from cinder import exception
-from cinder.tests.unit.volume.drivers.dell_emc import scaleio
+from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
 
 
 @ddt.ddt
-class TestMultipleVersions(scaleio.TestScaleIODriver):
+class TestMultipleVersions(vxflexos.TestVxFlexOSDriver):
 
     version = '1.2.3.4'
     good_versions = ['1.2.3.4',
@@ -33,7 +33,7 @@ class TestMultipleVersions(scaleio.TestScaleIODriver):
                     '.6'
                     ]
 
-    # Test cases for ``ScaleIODriver._get_server_api_version()``
+    # Test cases for ``VxFlexOSDriver._get_server_api_version()``
     def setUp(self):
         """Setup a test case environment."""
         super(TestMultipleVersions, self).setUp()

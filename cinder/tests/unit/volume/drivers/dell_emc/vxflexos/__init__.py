@@ -17,9 +17,9 @@ import requests
 import six
 
 from cinder import test
-from cinder.tests.unit.volume.drivers.dell_emc.scaleio import mocks
+from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.dell_emc.scaleio import driver
+from cinder.volume.drivers.dell_emc.vxflexos import driver
 
 
 class CustomResponseMode(object):
@@ -61,8 +61,8 @@ class CustomResponseMode(object):
         self.test_instance.HTTPS_MOCK_RESPONSES = self.current_responses
 
 
-class TestScaleIODriver(test.TestCase):
-    """Base ``TestCase`` subclass for the ``ScaleIODriver``"""
+class TestVxFlexOSDriver(test.TestCase):
+    """Base ``TestCase`` subclass for the ``VxFlexOSDriver``"""
     RESPONSE_MODE = type(str('ResponseMode'), (object, ), dict(
         Valid='0',
         Invalid='1',
@@ -114,15 +114,15 @@ class TestScaleIODriver(test.TestCase):
     def setUp(self):
         """Setup a test case environment.
 
-        Creates a ``ScaleIODriver`` instance
+        Creates a ``VxFlexOSDriver`` instance
         Mocks the ``requests.get/post`` methods to return
                   ``MockHTTPSResponse``'s instead.
         """
-        super(TestScaleIODriver, self).setUp()
-        self.configuration = conf.Configuration(driver.scaleio_opts,
+        super(TestVxFlexOSDriver, self).setUp()
+        self.configuration = conf.Configuration(driver.vxflexos_opts,
                                                 conf.SHARED_CONF_GROUP)
         self._set_overrides()
-        self.driver = mocks.ScaleIODriver(configuration=self.configuration)
+        self.driver = mocks.VxFlexOSDriver(configuration=self.configuration)
 
         self.mock_object(requests, 'get', self.do_request)
         self.mock_object(requests, 'post', self.do_request)
@@ -131,7 +131,7 @@ class TestScaleIODriver(test.TestCase):
         # Override the defaults to fake values
         self.override_config('san_ip', override='127.0.0.1',
                              group=conf.SHARED_CONF_GROUP)
-        self.override_config('sio_rest_server_port', override='8888',
+        self.override_config('vxflexos_rest_server_port', override='8888',
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('san_login', override='test',
                              group=conf.SHARED_CONF_GROUP)
@@ -143,12 +143,12 @@ class TestScaleIODriver(test.TestCase):
         self.override_config('sio_protection_domain_id',
                              override=self.PROT_DOMAIN_ID,
                              group=conf.SHARED_CONF_GROUP)
-        self.override_config('sio_storage_pools',
+        self.override_config('vxflexos_storage_pools',
                              override='PD1:SP1',
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('max_over_subscription_ratio',
                              override=5.0, group=conf.SHARED_CONF_GROUP)
-        self.override_config('sio_server_api_version',
+        self.override_config('vxflexos_server_api_version',
                              override='2.0.0', group=conf.SHARED_CONF_GROUP)
 
     def do_request(self, url, *args, **kwargs):
