@@ -12,6 +12,7 @@
         ],
         "volumes": ["a2cdf1ad-5497-4e57-bd7d-f573768f3d03"],
         "group_snapshot_id": null,
-        "source_group_id": null
+        "source_group_id": null,
+        "project_id": "7ccf4863071f44aeb8f141f65780c51b"
     }
 }

@@ -21,6 +21,7 @@ CREATE_POLICY = 'group:create'
 UPDATE_POLICY = 'group:update'
 GET_POLICY = 'group:get'
 GET_ALL_POLICY = 'group:get_all'
+GROUP_ATTRIBUTES_POLICY = 'group:group_project_attribute'
 
 
 groups_policies = [
@@ -66,6 +67,20 @@ groups_policies = [
             {
                 'method': 'PUT',
                 'path': '/groups/{group_id}'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=GROUP_ATTRIBUTES_POLICY,
+        check_str=base.RULE_ADMIN_API,
+        description="List groups or show group with project attributes.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/groups/{group_id}'
+            },
+            {
+                'method': 'GET',
+                'path': '/groups/detail'
             }
         ]),
 ]

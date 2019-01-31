@@ -165,6 +165,7 @@ Response Parameters
    - name: group_name
    - volumes: volume_ids
    - replication_status: group_replication_status
+   - project_id: project_id_group
 
 Response Example
 ----------------
@@ -316,6 +317,7 @@ Response Parameters
    - id: group_id_path
    - name: name
    - volumes: volume_ids
+   - project_id: project_id_group
 
 Response Example
 ----------------

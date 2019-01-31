@@ -15,6 +15,7 @@
 
 from cinder.api import common
 from cinder.api import microversions as mv
+from cinder.policies import groups as policy
 from cinder import utils
 
 
@@ -46,6 +47,7 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, group):
         """Detailed view of a single group."""
+        context = request.environ['cinder.context']
         group_ref = {
             'group': {
                 'id': group.id,
@@ -77,6 +79,10 @@ class ViewBuilder(common.ViewBuilder):
         # to GROUP_REPLICATION.
         if req_version.matches(mv.GROUP_REPLICATION, None):
             group_ref['group']['replication_status'] = group.replication_status
+
+        if req_version.matches(mv.GROUP_PROJECT_ID, None):
+            if context.authorize(policy.GROUP_ATTRIBUTES_POLICY, fatal=False):
+                group_ref['group']['project_id'] = group.project_id
 
         return group_ref
 

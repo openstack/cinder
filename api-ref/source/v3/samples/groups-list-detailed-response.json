@@ -12,7 +12,8 @@
                 "4e9e6d23-eed0-426d-b90a-28f87a94b6fe",
                 "a3d55d15-eeb1-4816-ada9-bf82decc09b3"
             ],
-            "volumes": ["a2cdf1ad-5497-4e57-bd7d-f573768f3d03"]
+            "volumes": ["a2cdf1ad-5497-4e57-bd7d-f573768f3d03"],
+            "project_id": "7ccf4863071f44aeb8f141f65780c51b"
         },
         {
             "id": "aed36625-a6d7-4681-ba59-c7ba3d18c148",
@@ -25,7 +26,8 @@
             "volume_types": [
                 "c4daaf47-c530-4901-b28e-f5f0a359c4e6"
             ],
-            "volumes": ["a2cdf1ad-5497-4e57-bd7d-f573768f3d03"]
+            "volumes": ["a2cdf1ad-5497-4e57-bd7d-f573768f3d03"],
+            "project_id": "7ccf4863071f44aeb8f141f65780c51b"
         }
     ]
 }
