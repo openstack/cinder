@@ -25,9 +25,12 @@ from cinder import test
 from cinder.volume import configuration as conf
 
 with mock.patch.dict('sys.modules', pywbem=mock.Mock()):
-    from cinder.volume.drivers.fujitsu import eternus_dx_common as dx_common
-    from cinder.volume.drivers.fujitsu import eternus_dx_fc as dx_fc
-    from cinder.volume.drivers.fujitsu import eternus_dx_iscsi as dx_iscsi
+    from cinder.volume.drivers.fujitsu.eternus_dx \
+        import eternus_dx_common as dx_common
+    from cinder.volume.drivers.fujitsu.eternus_dx \
+        import eternus_dx_fc as dx_fc
+    from cinder.volume.drivers.fujitsu.eternus_dx \
+        import eternus_dx_iscsi as dx_iscsi
 
 CONFIG_FILE_NAME = 'cinder_fujitsu_eternus_dx.xml'
 STORAGE_SYSTEM = '172.16.0.2'

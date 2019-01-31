@@ -177,6 +177,10 @@ MAPPING = {
     'cinder.volume.drivers.dell_emc.powermax.iscsi.PowerMaxISCSIDriver',
     'cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver':
     'cinder.volume.drivers.dell_emc.powermax.fc.PowerMaxFCDriver',
+    'cinder.volume.drivers.fujitsu.eternus_dx_fc.FJDXFCDriver':
+    'cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_fc.FJDXFCDriver',
+    'cinder.volume.drivers.fujitsu.eternus_dx_iscsi.FJDXISCSIDriver':
+    'cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_iscsi.FJDXISCSIDriver'
 }
 
 
