@@ -16,7 +16,7 @@
         - cinder-tox-bandit-baseline:
             voting: false
         - openstack-tox-functional-py35:
-            irrelevant-files:
+            irrelevant-files: &functional-irrelevant-files
               - ^.*\.rst$
               - ^api-ref/.*$
               - ^cinder/hacking/.*$
@@ -31,18 +31,10 @@
         - openstack-tox-pylint:
             voting: false
             timeout: 5400
-            irrelevant-files:
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
+            irrelevant-files: *functional-irrelevant-files
         - devstack-plugin-ceph-tempest:
             voting: false
-            irrelevant-files:
+            irrelevant-files: &gate-irrelevant-files
               - ^(test-|)requirements.txt$
               - ^.*\.rst$
               - ^api-ref/.*$
@@ -58,371 +50,61 @@
               - ^tox.ini$
         - openstack-tox-functional:
             voting: false
-            irrelevant-files:
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
+            irrelevant-files: *functional-irrelevant-files
         - legacy-grenade-dsvm-cinder-mn-sub-volbak:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-lvm-multibackend:
             voting: false
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-full-devstack-plugin-nfs:
             voting: false
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - neutron-grenade:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - tempest-slow-py3:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - tempest-full:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - tempest-full-py3:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - grenade-py3:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
         - openstack-tox-functional-py35:
-            irrelevant-files:
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
+            irrelevant-files: *functional-irrelevant-files
         - legacy-grenade-dsvm-cinder-mn-sub-volbak:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - neutron-grenade:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - tempest-full:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - tempest-full-py3:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - grenade-py3:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
     experimental:
       jobs:
         - tempest-cinder-v2-api:
-            irrelevant-files:
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
+            irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-full-sheepdog-src-os-brick:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-zeromq-multibackend:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-multibackend-matrix:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - legacy-grenade-dsvm-cinder-mn-sub-volschbak:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - legacy-grenade-dsvm-cinder-mn-sub-bak:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - devstack-plugin-ceph-tempest-py3:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - tempest-pg-full:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - tempest-full-py3-opensuse150:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-full-sheepdog:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+            irrelevant-files: *gate-irrelevant-files
 
 - job:
     # Previously named legacy-tempest-dsvm-full-lio
@@ -437,17 +119,7 @@
       - openstack/python-barbicanclient
       - openstack/tempest
       - openstack/os-brick
-    irrelevant-files:
-      - ^.*\.rst$
-      - ^api-ref/.*$
-      - ^cinder/hacking/.*$
-      - ^cinder/locale/.*$
-      - ^cinder/tests/functional.*$
-      - ^cinder/tests/unit.*$
-      - ^contrib/block-box.*$
-      - ^doc/.*$
-      - ^releasenotes/.*$
-      - ^tools/.*$
+    irrelevant-files: *gate-irrelevant-files
 
 - job:
     # Security testing for known issues
@@ -458,18 +130,7 @@
       tox_envlist: bandit-baseline
     required-projects:
       - openstack/requirements
-    irrelevant-files:
-      - ^.*\.rst$
-      - ^api-ref/.*$
-      - ^cinder/hacking/.*$
-      - ^cinder/locale/.*$
-      - ^cinder/tests/functional.*$
-      - ^cinder/tests/unit.*$
-      - ^contrib/block-box.*$
-      - ^doc/.*$
-      - ^releasenotes/.*$
-      - ^setup.cfg$
-      - ^tools/.*$
+    irrelevant-files: *gate-irrelevant-files
 
 - job:
     name: cinder-rally-task
