@@ -588,7 +588,7 @@ class ReplicaPairManager(object):
             # Switch replication pair role, and start synchronize.
             self.rmt_driver.enable(pair_id)
 
-            local_metadata = huawei_utils.get_lun_metadata(v)
+            local_metadata = huawei_utils.get_volume_private_data(v)
             new_drv_data = to_string(
                 {'pair_id': pair_id,
                  'rmt_lun_id': local_metadata.get('huawei_lun_id'),
@@ -630,7 +630,7 @@ class ReplicaPairManager(object):
 
             self.rmt_driver.failover(pair_id)
 
-            local_metadata = huawei_utils.get_lun_metadata(v)
+            local_metadata = huawei_utils.get_volume_private_data(v)
             new_drv_data = to_string(
                 {'pair_id': pair_id,
                  'rmt_lun_id': local_metadata.get('huawei_lun_id'),

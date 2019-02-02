@@ -1416,7 +1416,7 @@ class RestClient(object):
 
         return target_iqn
 
-    def create_qos_policy(self, qos, lun_id):
+    def create_qos(self, qos, lun_id):
         # Get local time.
         localtime = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
         # Package QoS name.
@@ -1440,8 +1440,7 @@ class RestClient(object):
 
         return result['data']['ID']
 
-    def delete_qos_policy(self, qos_id):
-        """Delete a QoS policy."""
+    def delete_qos(self, qos_id):
         url = "/ioclass/" + qos_id
         data = {"TYPE": "230", "ID": qos_id}
 
@@ -2371,3 +2370,49 @@ class RestClient(object):
 
         if result.get("data"):
             return result.get("data").get("COUNT")
+
+    def get_lun_info_by_name(self, name):
+        url = "/lun?filter=NAME::%s" % name
+        result = self.call(url, None, "GET")
+
+        msg = _('Get lun by name %s error.') % name
+        self._assert_rest_result(result, msg)
+
+        if result.get('data'):
+            return result['data'][0]
+
+    def get_lun_info_by_id(self, lun_id):
+        url = "/lun/" + lun_id
+        result = self.call(url, None, "GET")
+
+        msg = _('Get lun by id %s error.') % lun_id
+        self._assert_rest_result(result, msg)
+
+        return result['data']
+
+    def get_snapshot_info_by_name(self, name):
+        url = "/snapshot?filter=NAME::%s" % name
+        result = self.call(url, None, "GET")
+
+        msg = _('Get snapshot by name %s error.') % name
+        self._assert_rest_result(result, msg)
+
+        if result.get('data'):
+            return result['data'][0]
+
+    def get_snapshot_info_by_id(self, snapshot_id):
+        url = "/snapshot/" + snapshot_id
+        result = self.call(url, None, "GET")
+
+        msg = _('Get snapshot by id %s error.') % snapshot_id
+        self._assert_rest_result(result, msg)
+
+        return result['data']
+
+    def update_qos_luns(self, qos_id, lun_list):
+        url = "/ioclass/" + qos_id
+        data = {"LUNLIST": lun_list}
+        result = self.call(url, data, "PUT")
+
+        msg = _('Update luns of qos %s error.') % qos_id
+        self._assert_rest_result(result, msg)
