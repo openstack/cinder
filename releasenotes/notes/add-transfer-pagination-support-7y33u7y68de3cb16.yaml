@@ -1,0 +1,3 @@
+---
+features:
+  -  Added transfer pagination support since microversion 3.59.

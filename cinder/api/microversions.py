@@ -157,6 +157,8 @@ TRANSFER_WITH_HISTORY = '3.57'
 
 GROUP_PROJECT_ID = '3.58'
 
+SUPPORT_TRANSFER_PAGINATION = '3.59'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.

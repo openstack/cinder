@@ -5470,6 +5470,22 @@ def transfer_get(context, transfer_id):
     return _transfer_get(context, transfer_id)
 
 
+def _process_transfer_filters(query, filters):
+    if filters:
+        project_id = filters.pop('project_id', None)
+        # Ensure that filters' keys exist on the model
+        if not is_valid_model_filters(models.Transfer, filters):
+            return
+        if project_id:
+            volume = models.Volume
+            query = query.filter(volume.id ==
+                                 models.Transfer.volume_id,
+                                 volume.project_id == project_id)
+
+        query = query.filter_by(**filters)
+    return query
+
+
 def _translate_transfers(transfers):
     fields = ('id', 'volume_id', 'display_name', 'created_at', 'deleted',
               'no_snapshots', 'source_project_id', 'destination_project_id',
@@ -5477,21 +5493,42 @@ def _translate_transfers(transfers):
     return [{k: transfer[k] for k in fields} for transfer in transfers]
 
 
+def _transfer_get_all(context, marker=None, limit=None, sort_keys=None,
+                      sort_dirs=None, filters=None, offset=None):
+    session = get_session()
+    with session.begin():
+        # Generate the query
+        query = _generate_paginate_query(context, session, marker, limit,
+                                         sort_keys, sort_dirs, filters, offset,
+                                         models.Transfer)
+        if query is None:
+            return []
+        return _translate_transfers(query.all())
+
+
 @require_admin_context
-def transfer_get_all(context):
-    results = model_query(context, models.Transfer).all()
-    return _translate_transfers(results)
+def transfer_get_all(context, marker=None, limit=None, sort_keys=None,
+                     sort_dirs=None, filters=None, offset=None):
+    return _transfer_get_all(context, marker=marker, limit=limit,
+                             sort_keys=sort_keys, sort_dirs=sort_dirs,
+                             filters=filters, offset=offset)
+
+
+def _transfer_get_query(context, session=None, project_only=False):
+    return model_query(context, models.Transfer, session=session,
+                       project_only=project_only)
 
 
 @require_context
-def transfer_get_all_by_project(context, project_id):
+def transfer_get_all_by_project(context, project_id, marker=None,
+                                limit=None, sort_keys=None,
+                                sort_dirs=None, filters=None, offset=None):
     authorize_project_context(context, project_id)
-
-    query = (model_query(context, models.Transfer)
-             .filter(models.Volume.id == models.Transfer.volume_id,
-                     models.Volume.project_id == project_id))
-    results = query.all()
-    return _translate_transfers(results)
+    filters = filters.copy() if filters else {}
+    filters['project_id'] = project_id
+    return _transfer_get_all(context, marker=marker, limit=limit,
+                             sort_keys=sort_keys, sort_dirs=sort_dirs,
+                             filters=filters, offset=offset)
 
 
 @require_context
@@ -6836,6 +6873,8 @@ PAGINATION_HELPERS = {
     models.VolumeAttachment: (_attachment_get_query,
                               _process_attachment_filters,
                               _attachment_get),
+    models.Transfer: (_transfer_get_query, _process_transfer_filters,
+                      _transfer_get),
 }
 
 
