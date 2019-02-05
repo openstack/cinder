@@ -29,9 +29,9 @@ that hosts the ``cinder`` volume service.
 #. Log in as ``root`` to the system hosting the ``cinder`` volume
    service.
 
-#. Create a text file named ``nfsshares`` in the ``/etc/cinder/`` directory.
+#. Create a text file named ``nfs_shares`` in the ``/etc/cinder/`` directory.
 
-#. Add an entry to ``/etc/cinder/nfsshares`` for each NFS share
+#. Add an entry to ``/etc/cinder/nfs_shares`` for each NFS share
    that the ``cinder`` volume service should use for back end storage.
    Each entry should be a separate line, and should use the following
    format:
@@ -49,25 +49,25 @@ that hosts the ``cinder`` volume service.
 
    |
 
-#. Set ``/etc/cinder/nfsshares`` to be owned by the ``root`` user and
+#. Set ``/etc/cinder/nfs_shares`` to be owned by the ``root`` user and
    the ``cinder`` group:
 
    .. code-block:: console
 
-      # chown root:cinder /etc/cinder/nfsshares
+      # chown root:cinder /etc/cinder/nfs_shares
 
-#. Set ``/etc/cinder/nfsshares`` to be readable by members of the
+#. Set ``/etc/cinder/nfs_shares`` to be readable by members of the
    cinder group:
 
    .. code-block:: console
 
-      # chmod 0640 /etc/cinder/nfsshares
+      # chmod 0640 /etc/cinder/nfs_shares
 
 #. Configure the ``cinder`` volume service to use the
-   ``/etc/cinder/nfsshares`` file created earlier. To do so, open
+   ``/etc/cinder/nfs_shares`` file created earlier. To do so, open
    the ``/etc/cinder/cinder.conf`` configuration file and set
    the ``nfs_shares_config`` configuration key
-   to ``/etc/cinder/nfsshares``.
+   to ``/etc/cinder/nfs_shares``.
 
    On distributions that include ``openstack-config``, you can configure
    this by running the following command instead:
@@ -75,7 +75,7 @@ that hosts the ``cinder`` volume service.
    .. code-block:: console
 
       # openstack-config --set /etc/cinder/cinder.conf \
-        DEFAULT nfs_shares_config /etc/cinder/nfsshares
+        DEFAULT nfs_shares_config /etc/cinder/nfs_shares
 
    The following distributions include openstack-config:
 
