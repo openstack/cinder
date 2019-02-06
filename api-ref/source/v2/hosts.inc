@@ -92,9 +92,9 @@ Response
 
 .. rest_parameters:: parameters.yaml
 
-  - volume_count: total_count
-  - total_volume_gb: totalGigabytesUsed
-  - total_snapshot_gb: totalSnapshotsUsed
+  - volume_count: total_count_str
+  - total_volume_gb: totalGigabytesUsedStr
+  - total_snapshot_gb: totalSnapshotsUsedStr
   - project: project_id_2
   - host: host_name_1
   - snapshot_count: totalSnapshotsUsed

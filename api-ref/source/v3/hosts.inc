@@ -95,7 +95,7 @@ Response
 
   - host: host
   - volume_count: total_count
-  - total_volume_gb: totalGigabytesUsed
+  - total_volume_gb: totalGigabytesUsedStr
   - total_snapshot_gb: totalSnapGigabytesUsed
   - project: project_id_host
   - host: host_name_backend

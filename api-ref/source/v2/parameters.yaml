@@ -1648,6 +1648,12 @@ total_count:
   in: body
   required: true
   type: integer
+total_count_str:
+  description: |
+    Total number of volumes.
+  in: body
+  required: true
+  type: string
 totalBackupGigabytesUsed:
   description: |
     The total number of backups gibibytes (GiB) used.
@@ -1666,12 +1672,24 @@ totalGigabytesUsed:
   in: body
   required: true
   type: integer
+totalGigabytesUsedStr:
+  description: |
+    The total number of gibibytes (GiB) used.
+  in: body
+  required: true
+  type: string
 totalSnapshotsUsed:
   description: |
     The total number of snapshots used.
   in: body
   required: true
   type: integer
+totalSnapshotsUsedStr:
+  description: |
+    The total number of snapshots used.
+  in: body
+  required: true
+  type: string
 totalVolumesUsed:
   description: |
     The total number of volumes used.
