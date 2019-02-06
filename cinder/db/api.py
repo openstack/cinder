@@ -54,13 +54,17 @@ db_opts = [
     cfg.StrOpt('snapshot_name_template',
                default='snapshot-%s',
                help='Template string to be used to generate snapshot names'),
+]
+
+backup_opts = [
     cfg.StrOpt('backup_name_template',
                default='backup-%s',
-               help='Template string to be used to generate backup names'), ]
-
+               help='Template string to be used to generate backup names'),
+]
 
 CONF = cfg.CONF
 CONF.register_opts(db_opts)
+CONF.register_opts(backup_opts)
 db_options.set_defaults(CONF)
 
 _BACKEND_MAPPING = {'sqlalchemy': 'cinder.db.sqlalchemy.api'}

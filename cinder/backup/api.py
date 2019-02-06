@@ -44,14 +44,14 @@ from cinder import quota_utils
 import cinder.volume
 from cinder.volume import utils as volume_utils
 
-backup_api_opts = [
+backup_opts = [
     cfg.BoolOpt('backup_use_same_host',
                 default=False,
                 help='Backup services use same backend.')
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(backup_api_opts)
+CONF.register_opts(backup_opts)
 LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
 IMPORT_VOLUME_ID = '00000000-0000-0000-0000-000000000000'

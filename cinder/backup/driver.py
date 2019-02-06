@@ -26,7 +26,7 @@ from cinder.db import base
 from cinder import exception
 from cinder.i18n import _
 
-service_opts = [
+backup_opts = [
     cfg.IntOpt('backup_metadata_version', default=2,
                help='Backup metadata version to be used when backing up '
                     'volume metadata. If this number is bumped, make sure the '
@@ -42,7 +42,7 @@ service_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(service_opts)
+CONF.register_opts(backup_opts)
 
 LOG = logging.getLogger(__name__)
 

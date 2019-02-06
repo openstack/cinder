@@ -66,15 +66,6 @@ volume_opts = [
                     ' to find volume'),
     cfg.StrOpt('volume_backend_name',
                help='The backend name for a given driver implementation'),
-    cfg.BoolOpt('use_multipath_for_image_xfer',
-                default=False,
-                help='Do we attach/detach volumes in cinder using multipath '
-                     'for volume to image and image to volume transfers?'),
-    cfg.BoolOpt('enforce_multipath_for_image_xfer',
-                default=False,
-                help='If this is set to True, attachment of volumes for '
-                     'image transfer will be aborted when multipathd is not '
-                     'running. Otherwise, it will fallback to single path.'),
     cfg.StrOpt('volume_clear',
                default='zero',
                choices=['none', 'zero'],
@@ -173,13 +164,6 @@ volume_opts = [
                     'automatically calculate the ratio based on the '
                     'provisioned capacity and the used space. If not set to '
                     'auto, the ratio has to be a minimum of 1.0.'),
-    cfg.StrOpt('scst_target_iqn_name',
-               help='Certain ISCSI targets have predefined target names, '
-                    'SCST target driver uses this name.'),
-    cfg.StrOpt('scst_target_driver',
-               default='iscsi',
-               help='SCST target implementation can choose from multiple '
-                    'SCST target drivers.'),
     cfg.BoolOpt('use_chap_auth',
                 default=False,
                 help='Option to enable/disable CHAP authentication for '
@@ -225,30 +209,6 @@ volume_opts = [
                       "standard dict config form: replication_device = "
                       "target_device_id:<required>,"
                       "key1:value1,key2:value2..."),
-    cfg.BoolOpt('image_upload_use_cinder_backend',
-                default=False,
-                help='If set to True, upload-to-image in raw format will '
-                     'create a cloned volume and register its location to '
-                     'the image service, instead of uploading the volume '
-                     'content. The cinder backend and locations support '
-                     'must be enabled in the image service.'),
-    cfg.BoolOpt('image_upload_use_internal_tenant',
-                default=False,
-                help='If set to True, the image volume created by '
-                     'upload-to-image will be placed in the internal tenant. '
-                     'Otherwise, the image volume is created in the current '
-                     'context\'s tenant.'),
-    cfg.BoolOpt('image_volume_cache_enabled',
-                default=False,
-                help='Enable the image volume cache for this backend.'),
-    cfg.IntOpt('image_volume_cache_max_size_gb',
-               default=0,
-               help='Max size of the image volume cache for this backend in '
-                    'GB. 0 => unlimited.'),
-    cfg.IntOpt('image_volume_cache_max_count',
-               default=0,
-               help='Max number of entries allowed in the image volume cache. '
-                    '0 => unlimited.'),
     cfg.BoolOpt('report_discard_supported',
                 default=False,
                 help='Report to clients of Cinder that the backend supports '
@@ -261,12 +221,6 @@ volume_opts = [
                choices=['iscsi', 'fc'],
                help='Protocol for transferring data between host and '
                     'storage back-end.'),
-    cfg.BoolOpt('backup_use_temp_snapshot',
-                default=False,
-                help='If this is set to True, a temporary snapshot will '
-                     'be created for performing non-disruptive backups. '
-                     'Otherwise a temporary volume will be cloned '
-                     'in order to perform a backup.'),
     cfg.BoolOpt('enable_unsupported_driver',
                 default=False,
                 help="Set this to True when you want to allow an unsupported "
@@ -311,14 +265,74 @@ nvmet_opts = [
                     'that will be created with the path for the LVM volume.'),
 ]
 
+scst_opts = [
+    cfg.StrOpt('scst_target_iqn_name',
+               help='Certain ISCSI targets have predefined target names, '
+                    'SCST target driver uses this name.'),
+    cfg.StrOpt('scst_target_driver',
+               default='iscsi',
+               help='SCST target implementation can choose from multiple '
+                    'SCST target drivers.'),
+]
+
+backup_opts = [
+    cfg.BoolOpt('backup_use_temp_snapshot',
+                default=False,
+                help='If this is set to True, a temporary snapshot will '
+                     'be created for performing non-disruptive backups. '
+                     'Otherwise a temporary volume will be cloned '
+                     'in order to perform a backup.'),
+]
+
+image_opts = [
+    cfg.BoolOpt('image_upload_use_cinder_backend',
+                default=False,
+                help='If set to True, upload-to-image in raw format will '
+                     'create a cloned volume and register its location to '
+                     'the image service, instead of uploading the volume '
+                     'content. The cinder backend and locations support '
+                     'must be enabled in the image service.'),
+    cfg.BoolOpt('image_upload_use_internal_tenant',
+                default=False,
+                help='If set to True, the image volume created by '
+                     'upload-to-image will be placed in the internal tenant. '
+                     'Otherwise, the image volume is created in the current '
+                     'context\'s tenant.'),
+    cfg.BoolOpt('image_volume_cache_enabled',
+                default=False,
+                help='Enable the image volume cache for this backend.'),
+    cfg.IntOpt('image_volume_cache_max_size_gb',
+               default=0,
+               help='Max size of the image volume cache for this backend in '
+                    'GB. 0 => unlimited.'),
+    cfg.IntOpt('image_volume_cache_max_count',
+               default=0,
+               help='Max number of entries allowed in the image volume cache. '
+                    '0 => unlimited.'),
+    cfg.BoolOpt('use_multipath_for_image_xfer',
+                default=False,
+                help='Do we attach/detach volumes in cinder using multipath '
+                     'for volume to image and image to volume transfers?'),
+    cfg.BoolOpt('enforce_multipath_for_image_xfer',
+                default=False,
+                help='If this is set to True, attachment of volumes for '
+                     'image transfer will be aborted when multipathd is not '
+                     'running. Otherwise, it will fallback to single path.'),
+]
+
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(iser_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(nvmet_opts, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(scst_opts, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(image_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(volume_opts)
 CONF.register_opts(iser_opts)
 CONF.register_opts(nvmet_opts)
+CONF.register_opts(scst_opts)
+CONF.register_opts(backup_opts)
+CONF.register_opts(image_opts)
 CONF.import_opt('backup_use_same_host', 'cinder.backup.api')
 
 
@@ -377,6 +391,9 @@ class BaseVD(object):
             self.configuration.append_config_values(volume_opts)
             self.configuration.append_config_values(iser_opts)
             self.configuration.append_config_values(nvmet_opts)
+            self.configuration.append_config_values(scst_opts)
+            self.configuration.append_config_values(backup_opts)
+            self.configuration.append_config_values(image_opts)
             utils.setup_tracing(self.configuration.safe_get('trace_flags'))
 
             # NOTE(geguileo): Don't allow to start if we are enabling

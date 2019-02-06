@@ -42,7 +42,7 @@ from cinder.i18n import _
 from cinder import service_auth
 
 
-glance_opts = [
+image_opts = [
     cfg.ListOpt('allowed_direct_url_schemes',
                 default=[],
                 help='A list of url schemes that can be downloaded directly '
@@ -84,7 +84,7 @@ glance_core_properties_opts = [
                 help='Default core properties of image')
 ]
 CONF = cfg.CONF
-CONF.register_opts(glance_opts)
+CONF.register_opts(image_opts)
 CONF.register_opts(glance_core_properties_opts)
 
 _SESSION = None

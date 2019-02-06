@@ -34,20 +34,24 @@ class ConfigTableDirective(rst.Directive):
         'table-title': directives.unchanged,
         'config-target': directives.unchanged,
         'exclude-list': directives.unchanged,
+        'exclusive-list': directives.unchanged,
     }
 
     has_content = True
 
-    def _doc_module(self, module, filters):
+    def _doc_module(self, module, filters, exclusive):
         """Extract config options from module."""
         options = []
         try:
             mod = importlib.import_module(module)
             for prop in dir(mod):
+                # exclusive-list overrides others
+                if exclusive and prop not in exclusive:
+                    continue
                 if prop in filters:
                     continue
                 thing = getattr(mod, prop)
-                if isinstance(thing, cfg.Opt):
+                if isinstance(thing, cfg.Opt) and thing not in options:
                     # An individual config option
                     options.append(thing)
                 elif (isinstance(thing, list) and len(thing) > 0 and
@@ -94,6 +98,9 @@ class ConfigTableDirective(rst.Directive):
         exclude = self.options.get('exclude-list', '')
         exclude_list = [e.strip() for e in exclude.split(',') if e.strip()]
 
+        exclusive = self.options.get('exclusive-list', '')
+        exclusive_list = [e.strip() for e in exclusive.split(',') if e.strip()]
+
         result.append('.. _{}:'.format(title.replace(' ', '-')), source)
         result.append('', source)
         result.append('.. list-table:: {}'.format(title), source)
@@ -105,7 +112,7 @@ class ConfigTableDirective(rst.Directive):
 
         options = []
         for module in modules:
-            retval = self._doc_module(module, exclude_list)
+            retval = self._doc_module(module, exclude_list, exclusive_list)
             if retval:
                 options.extend(retval)
             else:

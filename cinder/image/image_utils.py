@@ -53,13 +53,14 @@ from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
-image_helper_opts = [cfg.StrOpt('image_conversion_dir',
-                                default='$state_path/conversion',
-                                help='Directory used for temporary storage '
-                                'during image conversion'), ]
+image_opts = [
+    cfg.StrOpt('image_conversion_dir',
+               default='$state_path/conversion',
+               help='Directory used for temporary storage '
+               'during image conversion'), ]
 
 CONF = cfg.CONF
-CONF.register_opts(image_helper_opts)
+CONF.register_opts(image_opts)
 
 QEMU_IMG_LIMITS = processutils.ProcessLimits(
     cpu_time=8,
