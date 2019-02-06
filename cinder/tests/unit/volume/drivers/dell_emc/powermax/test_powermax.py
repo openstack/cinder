@@ -974,15 +974,15 @@ class PowerMaxCommonData(object):
     vmax_model = u'VMAX250F'
 
     version_dict = {
-        'unisphere_version': unisphere_version,
+        'unisphere_for_powermax_version': unisphere_version,
         'openstack_release': openstack_release,
         'openstack_version': openstack_version,
         'python_version': python_version,
-        'vmax_driver_version': vmax_driver_version,
-        'platform': platform,
-        'vmax_firmware_version': vmax_firmware_version,
+        'powermax_cinder_driver_version': vmax_driver_version,
+        'openstack_platform': platform,
+        'storage_firmware_version': vmax_firmware_version,
         'serial_number': array,
-        'vmax_model': vmax_model}
+        'storage_model': vmax_model}
 
     u4p_failover_config = {
         'u4p_failover_backoff_factor': '2',
@@ -1039,7 +1039,7 @@ class FakeResponse(object):
         else:
             raise ValueError
 
-    def status_code(self):
+    def get_status_code(self):
         return self.status_code()
 
     def raise_for_status(self):
@@ -1358,18 +1358,17 @@ class PowerMaxUtilsTest(test.TestCase):
             self.data.test_volume.volume_type_id = (
                 self.data.test_volume_type.id)
             self.utils.get_volumetype_extra_specs(self.data.test_volume)
-            volume_types.get_volume_type_extra_specs.assert_called_once_with(
+            type_mock.assert_called_once_with(
                 self.data.test_volume_type.id)
             type_mock.reset_mock()
             # path 2: volume_type_id passed in
             self.utils.get_volumetype_extra_specs(self.data.test_volume, '123')
-            volume_types.get_volume_type_extra_specs.assert_called_once_with(
+            type_mock.assert_called_once_with(
                 '123')
             type_mock.reset_mock()
             # path 3: no type_id
             self.utils.get_volumetype_extra_specs(self.data.test_clone_volume)
-            (volume_types.get_volume_type_extra_specs.
-             assert_not_called())
+            type_mock.assert_not_called()
 
     def test_get_volumetype_extra_specs_exception(self):
         extra_specs = self.utils.get_volumetype_extra_specs(
@@ -1847,13 +1846,13 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_rest_request_handle_failover(self):
         response = FakeResponse(200, 'Success')
-        with mock.patch.object(self.rest, '_handle_u4p_failover'):
+        with mock.patch.object(self.rest, '_handle_u4p_failover')as mock_fail:
             with mock.patch.object(self.rest.session, 'request',
                                    side_effect=[requests.ConnectionError,
                                                 response]):
                 self.rest.u4p_failover_enabled = True
                 self.rest.request('/fake_uri', 'GET')
-                self.rest._handle_u4p_failover.assert_called_once()
+                mock_fail.assert_called_once()
 
     def test_wait_for_job_complete(self):
         rc, job, status, task = self.rest.wait_for_job_complete(
@@ -2065,10 +2064,10 @@ class PowerMaxRestTest(test.TestCase):
         self.assertEqual(self.data.sg_list, sg_list)
 
     def test_create_storage_group(self):
-        with mock.patch.object(self.rest, 'create_resource'):
+        with mock.patch.object(self.rest, 'create_resource') as mock_create:
             payload = {'someKey': 'someValue'}
             self.rest._create_storagegroup(self.data.array, payload)
-            self.rest.create_resource.assert_called_once_with(
+            mock_create.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'storagegroup', payload)
 
     def test_create_storage_group_success(self):
@@ -2080,8 +2079,9 @@ class PowerMaxRestTest(test.TestCase):
     def test_create_storage_group_next_gen(self):
         with mock.patch.object(self.rest, 'is_next_gen_array',
                                return_value=True):
-            with mock.patch.object(self.rest, '_create_storagegroup',
-                                   return_value=(200, self.data.job_list[0])):
+            with mock.patch.object(
+                    self.rest, '_create_storagegroup',
+                    return_value=(200, self.data.job_list[0])) as mock_sg:
                 self.rest.create_storage_group(
                     self.data.array, self.data.storagegroup_name_f,
                     self.data.srp, self.data.slo, self.data.workload,
@@ -2096,7 +2096,7 @@ class PowerMaxRestTest(test.TestCase):
                                 "volumeAttribute": {
                                     "volume_size": "0",
                                     "capacityUnit": "GB"}}]}
-                self.rest._create_storagegroup.assert_called_once_with(
+                mock_sg.assert_called_once_with(
                     self.data.array, payload)
 
     def test_create_storage_group_failed(self):
@@ -2113,8 +2113,9 @@ class PowerMaxRestTest(test.TestCase):
         self.assertEqual(self.data.default_sg_no_slo, sg_name)
 
     def test_create_storage_group_compression_disabled(self):
-        with mock.patch.object(self.rest, '_create_storagegroup',
-                               return_value=(200, self.data.job_list[0])):
+        with mock.patch.object(
+                self.rest, '_create_storagegroup',
+                return_value=(200, self.data.job_list[0]))as mock_sg:
             self.rest.create_storage_group(
                 self.data.array, self.data.default_sg_compr_disabled,
                 self.data.srp, self.data.slo, self.data.workload,
@@ -2130,17 +2131,16 @@ class PowerMaxRestTest(test.TestCase):
                                 "volume_size": "0",
                                 "capacityUnit": "GB"},
                             "noCompression": "true"}]}
-            self.rest._create_storagegroup.assert_called_once_with(
-                self.data.array, payload)
+            mock_sg.assert_called_once_with(self.data.array, payload)
 
     def test_modify_storage_group(self):
         array = self.data.array
         storagegroup = self.data.defaultstoragegroup_name
         payload = {'someKey': 'someValue'}
         version = self.data.u4v_version
-        with mock.patch.object(self.rest, 'modify_resource'):
+        with mock.patch.object(self.rest, 'modify_resource') as mock_modify:
             self.rest.modify_storage_group(array, storagegroup, payload)
-            self.rest.modify_resource.assert_called_once_with(
+            mock_modify.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'storagegroup',
                 payload, version, resource_name=storagegroup)
 
@@ -2174,12 +2174,12 @@ class PowerMaxRestTest(test.TestCase):
         operation = 'Add volume to sg'
         status_code = 202
         message = self.data.job_list[0]
-        with mock.patch.object(self.rest, 'wait_for_job'):
+        with mock.patch.object(self.rest, 'wait_for_job') as mock_wait:
             device_id = self.data.device_id
             self.rest.add_vol_to_sg(
                 self.data.array, self.data.storagegroup_name_f, device_id,
                 self.data.extra_specs)
-            self.rest.wait_for_job.assert_called_with(
+            mock_wait.assert_called_with(
                 operation, status_code, message, self.data.extra_specs)
 
     def test_add_vol_to_sg_failed(self):
@@ -2194,12 +2194,12 @@ class PowerMaxRestTest(test.TestCase):
         operation = 'Remove vol from sg'
         status_code = 202
         message = self.data.job_list[0]
-        with mock.patch.object(self.rest, 'wait_for_job'):
+        with mock.patch.object(self.rest, 'wait_for_job') as mock_wait:
             device_id = self.data.device_id
             self.rest.remove_vol_from_sg(
                 self.data.array, self.data.storagegroup_name_f, device_id,
                 self.data.extra_specs)
-            self.rest.wait_for_job.assert_called_with(
+            mock_wait.assert_called_with(
                 operation, status_code, message, self.data.extra_specs)
 
     @mock.patch.object(time, 'sleep')
@@ -2233,10 +2233,11 @@ class PowerMaxRestTest(test.TestCase):
         operation = 'delete storagegroup resource'
         status_code = 204
         message = None
-        with mock.patch.object(self.rest, 'check_status_code_success'):
+        with mock.patch.object(
+                self.rest, 'check_status_code_success') as mock_check:
             self.rest.delete_storage_group(
                 self.data.array, self.data.storagegroup_name_f)
-            self.rest.check_status_code_success.assert_called_with(
+            mock_check.assert_called_with(
                 operation, status_code, message)
 
     def test_is_child_sg_in_parent_sg(self):
@@ -2254,12 +2255,13 @@ class PowerMaxRestTest(test.TestCase):
             "expandStorageGroupParam": {
                 "addExistingStorageGroupParam": {
                     "storageGroupId": [self.data.storagegroup_name_f]}}}}
-        with mock.patch.object(self.rest, 'modify_storage_group',
-                               return_value=(202, self.data.job_list[0])):
+        with mock.patch.object(
+                self.rest, 'modify_storage_group',
+                return_value=(202, self.data.job_list[0])) as mock_modify:
             self.rest.add_child_sg_to_parent_sg(
                 self.data.array, self.data.storagegroup_name_f,
                 self.data.parent_sg_f, self.data.extra_specs)
-            self.rest.modify_storage_group.assert_called_once_with(
+            mock_modify.assert_called_once_with(
                 self.data.array, self.data.parent_sg_f, payload)
 
     def test_remove_child_sg_from_parent_sg(self):
@@ -2267,12 +2269,13 @@ class PowerMaxRestTest(test.TestCase):
             "removeStorageGroupParam": {
                 "storageGroupId": [self.data.storagegroup_name_f],
                 "force": 'true'}}}
-        with mock.patch.object(self.rest, 'modify_storage_group',
-                               return_value=(202, self.data.job_list[0])):
+        with mock.patch.object(
+                self.rest, 'modify_storage_group',
+                return_value=(202, self.data.job_list[0])) as mock_modify:
             self.rest.remove_child_sg_from_parent_sg(
                 self.data.array, self.data.storagegroup_name_f,
                 self.data.parent_sg_f, self.data.extra_specs)
-            self.rest.modify_storage_group.assert_called_once_with(
+            mock_modify.assert_called_once_with(
                 self.data.array, self.data.parent_sg_f, payload)
 
     def test_get_volume_list(self):
@@ -2304,9 +2307,9 @@ class PowerMaxRestTest(test.TestCase):
         array = self.data.array
         device_id = self.data.device_id
         payload = {'someKey': 'someValue'}
-        with mock.patch.object(self.rest, 'modify_resource'):
+        with mock.patch.object(self.rest, 'modify_resource') as mock_modify:
             self.rest._modify_volume(array, device_id, payload)
-            self.rest.modify_resource.assert_called_once_with(
+            mock_modify.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'volume',
                 payload, resource_name=device_id)
 
@@ -2327,24 +2330,26 @@ class PowerMaxRestTest(test.TestCase):
                                       "volumeAttribute": {
                                           "volume_size": new_size,
                                           "capacityUnit": "GB"}}}}
-        with mock.patch.object(self.rest, '_modify_volume',
-                               return_value=(202, self.data.job_list[0])):
+        with mock.patch.object(
+                self.rest, '_modify_volume',
+                return_value=(202, self.data.job_list[0])) as mock_modify:
             self.rest.extend_volume(self.data.array, device_id, new_size,
                                     self.data.extra_specs)
-            self.rest._modify_volume.assert_called_once_with(
+            mock_modify.assert_called_once_with(
                 self.data.array, device_id, extend_vol_payload)
 
     def test_delete_volume(self):
         device_id = self.data.device_id
-        with mock.patch.object(self.rest, 'delete_resource'),\
-            mock.patch.object(
-                self.rest, '_modify_volume', side_effect=[
-                    None, None, None, exception.VolumeBackendAPIException]):
+        vb_except = exception.VolumeBackendAPIException
+        with mock.patch.object(self.rest, 'delete_resource') as mock_delete,\
+                mock.patch.object(
+                    self.rest, '_modify_volume',
+                    side_effect=[None, None, None, vb_except]) as mock_modify:
                 for x in range(0, 2):
                     self.rest.delete_volume(self.data.array, device_id)
-                mod_call_count = self.rest._modify_volume.call_count
+                mod_call_count = mock_modify.call_count
                 self.assertEqual(4, mod_call_count)
-                self.rest.delete_resource.assert_called_once_with(
+                mock_delete.assert_called_once_with(
                     self.data.array, 'sloprovisioning', 'volume', device_id)
 
     def test_rename_volume(self):
@@ -2362,7 +2367,7 @@ class PowerMaxRestTest(test.TestCase):
                 self.data.array, device_id, payload)
             mock_mod.reset_mock()
             self.rest.rename_volume(self.data.array, device_id, None)
-            self.rest._modify_volume.assert_called_once_with(
+            mock_mod.assert_called_once_with(
                 self.data.array, device_id, payload2)
 
     def test_check_volume_device_id(self):
@@ -2610,20 +2615,21 @@ class PowerMaxRestTest(test.TestCase):
         init_group_name = self.data.initiatorgroup_name_f
         init_list = [self.data.wwpn1]
         extra_specs = self.data.extra_specs
-        with mock.patch.object(self.rest, 'create_resource',
-                               return_value=(202, self.data.job_list[0])):
+        with mock.patch.object(
+                self.rest, 'create_resource',
+                return_value=(202, self.data.job_list[0])) as mock_create:
             payload = ({"executionOption": "ASYNCHRONOUS",
                         "hostId": init_group_name, "initiatorId": init_list})
             self.rest.create_initiator_group(
                 self.data.array, init_group_name, init_list, extra_specs)
-            self.rest.create_resource.assert_called_once_with(
+            mock_create.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'host', payload)
 
     def test_delete_initiator_group(self):
-        with mock.patch.object(self.rest, 'delete_resource'):
+        with mock.patch.object(self.rest, 'delete_resource') as mock_delete:
             self.rest.delete_initiator_group(
                 self.data.array, self.data.initiatorgroup_name_f)
-            self.rest.delete_resource.assert_called_once_with(
+            mock_delete.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'host',
                 self.data.initiatorgroup_name_f)
 
@@ -2722,8 +2728,9 @@ class PowerMaxRestTest(test.TestCase):
         port_group_name = self.data.port_group_name_f
         init_group_name = self.data.initiatorgroup_name_f
         extra_specs = self.data.extra_specs
-        with mock.patch.object(self.rest, 'create_resource',
-                               return_value=(202, self.data.job_list[0])):
+        with mock.patch.object(
+                self.rest, 'create_resource',
+                return_value=(202, self.data.job_list[0])) as mock_create:
             payload = ({"executionOption": "ASYNCHRONOUS",
                         "portGroupSelection": {
                             "useExistingPortGroupParam": {
@@ -2738,14 +2745,14 @@ class PowerMaxRestTest(test.TestCase):
             self.rest.create_masking_view(
                 self.data.array, maskingview_name, storagegroup_name,
                 port_group_name, init_group_name, extra_specs)
-            self.rest.create_resource.assert_called_once_with(
+            mock_create.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'maskingview', payload)
 
     def test_delete_masking_view(self):
-        with mock.patch.object(self.rest, 'delete_resource'):
+        with mock.patch.object(self.rest, 'delete_resource') as mock_delete:
             self.rest.delete_masking_view(
                 self.data.array, self.data.masking_view_name_f)
-            self.rest.delete_resource.assert_called_once_with(
+            mock_delete.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'maskingview',
                 self.data.masking_view_name_f)
 
@@ -2780,11 +2787,12 @@ class PowerMaxRestTest(test.TestCase):
                    "bothSides": 'false', "star": 'false',
                    "force": 'false'}
         resource_type = 'snapshot/%(snap)s' % {'snap': snap_name}
-        with mock.patch.object(self.rest, 'create_resource',
-                               return_value=(202, self.data.job_list[0])):
+        with mock.patch.object(
+                self.rest, 'create_resource',
+                return_value=(202, self.data.job_list[0])) as mock_create:
             self.rest.create_volume_snap(
                 self.data.array, snap_name, device_id, extra_specs)
-            self.rest.create_resource.assert_called_once_with(
+            mock_create.assert_called_once_with(
                 self.data.array, 'replication', resource_type,
                 payload, private='/private')
         ttl = 1
@@ -2792,11 +2800,12 @@ class PowerMaxRestTest(test.TestCase):
                    "bothSides": 'false', "star": 'false',
                    "force": 'false', "timeToLive": ttl,
                    "timeInHours": "true"}
-        with mock.patch.object(self.rest, 'create_resource',
-                               return_value=(202, self.data.job_list[0])):
+        with mock.patch.object(
+                self.rest, 'create_resource',
+                return_value=(202, self.data.job_list[0])) as mock_create:
             self.rest.create_volume_snap(
                 self.data.array, snap_name, device_id, extra_specs, ttl)
-            self.rest.create_resource.assert_called_once_with(
+            mock_create.assert_called_once_with(
                 self.data.array, 'replication', resource_type,
                 payload, private='/private')
 
@@ -2827,7 +2836,7 @@ class PowerMaxRestTest(test.TestCase):
             payload["action"] = "Link"
             self.rest.modify_volume_snap(
                 array, source_id, target_id, snap_name, extra_specs, link=True)
-            self.rest.modify_resource.assert_called_once_with(
+            mock_modify.assert_called_once_with(
                 array, 'replication', 'snapshot', payload,
                 resource_name=snap_name, private='/private')
             # unlink
@@ -2836,7 +2845,7 @@ class PowerMaxRestTest(test.TestCase):
             self.rest.modify_volume_snap(
                 array, source_id, target_id, snap_name,
                 extra_specs, unlink=True)
-            self.rest.modify_resource.assert_called_once_with(
+            mock_modify.assert_called_once_with(
                 array, 'replication', 'snapshot', payload,
                 resource_name=snap_name, private='/private')
             # restore
@@ -2845,7 +2854,7 @@ class PowerMaxRestTest(test.TestCase):
             self.rest.modify_volume_snap(
                 array, source_id, "", snap_name,
                 extra_specs, unlink=False, restore=True)
-            self.rest.modify_resource.assert_called_once_with(
+            mock_modify.assert_called_once_with(
                 array, 'replication', 'snapshot', payload_restore,
                 resource_name=snap_name, private='/private')
             # link or unlink, list of volumes
@@ -2855,7 +2864,7 @@ class PowerMaxRestTest(test.TestCase):
                 array, "", "", snap_name,
                 extra_specs, unlink=False, link=True,
                 list_volume_pairs=[(source_id, target_id)])
-            self.rest.modify_resource.assert_called_once_with(
+            mock_modify.assert_called_once_with(
                 array, 'replication', 'snapshot', payload,
                 resource_name=snap_name, private='/private')
             # none selected
@@ -2863,7 +2872,7 @@ class PowerMaxRestTest(test.TestCase):
             self.rest.modify_volume_snap(
                 array, source_id, target_id, snap_name,
                 extra_specs)
-            self.rest.modify_resource.assert_not_called()
+            mock_modify.assert_not_called()
 
     def test_delete_volume_snap(self):
         array = self.data.array
@@ -2873,10 +2882,10 @@ class PowerMaxRestTest(test.TestCase):
         payload = {"deviceNameListSource": [{"name": source_device_id}],
                    "generation": 0}
         generation = 0
-        with mock.patch.object(self.rest, 'delete_resource'):
+        with mock.patch.object(self.rest, 'delete_resource') as mock_delete:
             self.rest.delete_volume_snap(
                 array, snap_name, source_device_id, generation)
-            self.rest.delete_resource.assert_called_once_with(
+            mock_delete.assert_called_once_with(
                 array, 'replication', 'snapshot', snap_name,
                 payload=payload, private='/private')
 
@@ -2887,10 +2896,10 @@ class PowerMaxRestTest(test.TestCase):
         source_device_id = self.data.device_id
         payload = {"deviceNameListSource": [{"name": source_device_id}],
                    "restore": True, "generation": 0}
-        with mock.patch.object(self.rest, 'delete_resource'):
+        with mock.patch.object(self.rest, 'delete_resource') as mock_delete:
             self.rest.delete_volume_snap(
                 array, snap_name, source_device_id, restored=True)
-            self.rest.delete_resource.assert_called_once_with(
+            mock_delete.assert_called_once_with(
                 array, 'replication', 'snapshot', snap_name,
                 payload=payload, private='/private')
 
@@ -3502,15 +3511,17 @@ class PowerMaxProvisionTest(test.TestCase):
         extra_specs = self.data.extra_specs
         # TTL of 1 hours
         ttl = 1
-        with mock.patch.object(self.provision, 'create_volume_snapvx'):
-            with mock.patch.object(self.provision.rest, 'modify_volume_snap'):
+        with mock.patch.object(
+                self.provision, 'create_volume_snapvx') as mock_create_snapvx:
+            with mock.patch.object(
+                    self.provision.rest, 'modify_volume_snap') as mock_modify:
                 self.provision.create_volume_replica(
                     array, source_device_id, target_device_id,
                     snap_name, extra_specs, create_snap=True)
-                self.provision.rest.modify_volume_snap.assert_called_once_with(
+                mock_modify.assert_called_once_with(
                     array, source_device_id, target_device_id, snap_name,
                     extra_specs, link=True)
-                self.provision.create_volume_snapvx.assert_called_once_with(
+                mock_create_snapvx.assert_called_once_with(
                     array, source_device_id, snap_name, extra_specs, ttl=ttl)
 
     def test_create_volume_replica_create_snap_false(self):
@@ -3519,15 +3530,17 @@ class PowerMaxProvisionTest(test.TestCase):
         target_device_id = self.data.device_id2
         snap_name = self.data.snap_location['snap_name']
         extra_specs = self.data.extra_specs
-        with mock.patch.object(self.provision, 'create_volume_snapvx'):
-            with mock.patch.object(self.provision.rest, 'modify_volume_snap'):
+        with mock.patch.object(
+                self.provision, 'create_volume_snapvx') as mock_create_snapvx:
+            with mock.patch.object(
+                    self.provision.rest, 'modify_volume_snap') as mock_modify:
                 self.provision.create_volume_replica(
                     array, source_device_id, target_device_id,
                     snap_name, extra_specs, create_snap=False)
-                self.provision.rest.modify_volume_snap.assert_called_once_with(
+                mock_modify.assert_called_once_with(
                     array, source_device_id, target_device_id, snap_name,
                     extra_specs, link=True)
-                self.provision.create_volume_snapvx.assert_not_called()
+                mock_create_snapvx.assert_not_called()
 
     def test_break_replication_relationship(self):
         array = self.data.array
@@ -3535,15 +3548,15 @@ class PowerMaxProvisionTest(test.TestCase):
         target_device_id = self.data.device_id2
         snap_name = self.data.snap_location['snap_name']
         extra_specs = self.data.extra_specs
-        with mock.patch.object(self.provision.rest, 'modify_volume_snap'):
+        with mock.patch.object(
+                self.provision.rest, 'modify_volume_snap') as mock_modify:
             self.provision.break_replication_relationship(
                 array, target_device_id, source_device_id, snap_name,
                 extra_specs)
-            (self.provision.rest.modify_volume_snap.
-                assert_called_once_with(
-                    array, source_device_id, target_device_id,
-                    snap_name, extra_specs,
-                    list_volume_pairs=None, unlink=True, generation=0))
+            mock_modify.assert_called_once_with(
+                array, source_device_id, target_device_id,
+                snap_name, extra_specs, list_volume_pairs=None,
+                unlink=True, generation=0)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=test_utils.ZeroIntervalLoopingCall)
@@ -3831,14 +3844,15 @@ class PowerMaxProvisionTest(test.TestCase):
         array = self.data.array
         snap_name = self.data.group_snapshot_name
         source_group_name = self.data.storagegroup_name_source
+        extra_specs = self.data.extra_specs
+        src_dev_ids = [self.data.device_id]
         with mock.patch.object(
                 self.provision,
                 'delete_group_replica') as mock_delete_replica:
-            self.provision.delete_group_replica(array,
-                                                snap_name,
-                                                source_group_name)
+            self.provision.delete_group_replica(
+                array, snap_name, source_group_name, src_dev_ids, extra_specs)
             mock_delete_replica.assert_called_once_with(
-                array, snap_name, source_group_name)
+                array, snap_name, source_group_name, src_dev_ids, extra_specs)
 
     def test_link_and_break_replica(self):
         array = self.data.array
@@ -4084,10 +4098,9 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertEqual(ref_model_update, model_update)
 
     def test_delete_volume(self):
-        with mock.patch.object(self.common, '_delete_volume'):
+        with mock.patch.object(self.common, '_delete_volume') as mock_delete:
             self.common.delete_volume(self.data.test_volume)
-            self.common._delete_volume.assert_called_once_with(
-                self.data.test_volume)
+            mock_delete.assert_called_once_with(self.data.test_volume)
 
     def test_create_snapshot(self):
         ref_model_update = (
@@ -4101,20 +4114,22 @@ class PowerMaxCommonTest(test.TestCase):
         snap_name = self.data.snap_location['snap_name']
         sourcedevice_id = self.data.snap_location['source_id']
         generation = 0
-        with mock.patch.object(self.provision, 'delete_volume_snap'):
+        with mock.patch.object(
+                self.provision, 'delete_volume_snap') as mock_delete_snap:
             self.common.delete_snapshot(self.data.test_snapshot,
                                         self.data.test_volume)
-            self.provision.delete_volume_snap.assert_called_once_with(
+            mock_delete_snap.assert_called_once_with(
                 self.data.array, snap_name, [sourcedevice_id],
                 restored=False, generation=generation)
 
     def test_delete_snapshot_not_found(self):
         with mock.patch.object(self.common, '_parse_snap_info',
                                return_value=(None, 'Something')):
-            with mock.patch.object(self.provision, 'delete_volume_snap'):
+            with mock.patch.object(
+                    self.provision, 'delete_volume_snap') as mock_delete_snap:
                 self.common.delete_snapshot(self.data.test_snapshot,
                                             self.data.test_volume)
-                self.provision.delete_volume_snap.assert_not_called()
+                mock_delete_snap.assert_not_called()
 
     def test_delete_legacy_snap(self):
         with mock.patch.object(self.common, '_delete_volume') as mock_del:
@@ -4160,9 +4175,9 @@ class PowerMaxCommonTest(test.TestCase):
         extra_specs = deepcopy(self.data.extra_specs_intervals_set)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         connector = self.data.connector
-        with mock.patch.object(self.common, '_remove_members'):
+        with mock.patch.object(self.common, '_remove_members') as mock_remove:
             self.common._unmap_lun(volume, connector)
-            self.common._remove_members.assert_called_once_with(
+            mock_remove.assert_called_once_with(
                 array, volume, device_id, extra_specs,
                 connector, False, async_grp=None)
 
@@ -4189,11 +4204,11 @@ class PowerMaxCommonTest(test.TestCase):
         extra_specs['qos'] = {
             'total_iops_sec': '4000', 'DistributionType': 'Always'}
         connector = self.data.connector
-        with mock.patch.object(self.common, '_remove_members'):
+        with mock.patch.object(self.common, '_remove_members') as mock_remove:
             with mock.patch.object(self.utils, 'get_volumetype_extra_specs',
                                    return_value=extra_specs):
                 self.common._unmap_lun(volume, connector)
-                self.common._remove_members.assert_called_once_with(
+                mock_remove.assert_called_once_with(
                     array, volume, device_id, extra_specs,
                     connector, False, async_grp=None)
 
@@ -4202,9 +4217,10 @@ class PowerMaxCommonTest(test.TestCase):
         connector = self.data.connector
         with mock.patch.object(self.common, 'find_host_lun_id',
                                return_value=({}, False)):
-            with mock.patch.object(self.common, '_remove_members'):
+            with mock.patch.object(
+                    self.common, '_remove_members') as mock_remove:
                 self.common._unmap_lun(volume, connector)
-                self.common._remove_members.assert_not_called()
+                mock_remove.assert_not_called()
 
     def test_unmap_lun_connector_is_none(self):
         array = self.data.array
@@ -4213,9 +4229,9 @@ class PowerMaxCommonTest(test.TestCase):
         extra_specs = deepcopy(self.data.extra_specs_intervals_set)
         extra_specs['storagetype:portgroupname'] = (
             self.data.port_group_name_f)
-        with mock.patch.object(self.common, '_remove_members'):
+        with mock.patch.object(self.common, '_remove_members') as mock_remove:
             self.common._unmap_lun(volume, None)
-            self.common._remove_members.assert_called_once_with(
+            mock_remove.assert_called_once_with(
                 array, volume, device_id, extra_specs, None,
                 False, async_grp=None)
 
@@ -4338,9 +4354,9 @@ class PowerMaxCommonTest(test.TestCase):
     def test_terminate_connection(self):
         volume = self.data.test_volume
         connector = self.data.connector
-        with mock.patch.object(self.common, '_unmap_lun'):
+        with mock.patch.object(self.common, '_unmap_lun') as mock_unmap:
             self.common.terminate_connection(volume, connector)
-            self.common._unmap_lun.assert_called_once_with(
+            mock_unmap.assert_called_once_with(
                 volume, connector)
 
     @mock.patch.object(rest.PowerMaxRest, 'is_next_gen_array',
@@ -4691,18 +4707,20 @@ class PowerMaxCommonTest(test.TestCase):
         ref_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         volume = self.data.test_volume
         with mock.patch.object(self.common, '_sync_check'):
-            with mock.patch.object(self.common, '_delete_from_srp'):
+            with mock.patch.object(
+                    self.common, '_delete_from_srp') as mock_delete:
                 self.common._delete_volume(volume)
-                self.common._delete_from_srp.assert_called_once_with(
+                mock_delete.assert_called_once_with(
                     array, device_id, volume_name, ref_extra_specs)
 
     def test_delete_volume_not_found(self):
         volume = self.data.test_volume
         with mock.patch.object(self.common, '_find_device_on_array',
                                return_value=None):
-            with mock.patch.object(self.common, '_delete_from_srp'):
+            with mock.patch.object(
+                    self.common, '_delete_from_srp') as mock_delete:
                 self.common._delete_volume(volume)
-                self.common._delete_from_srp.assert_not_called()
+                mock_delete.assert_not_called()
 
     def test_create_volume_success(self):
         volume_name = '1'
@@ -4722,15 +4740,14 @@ class PowerMaxCommonTest(test.TestCase):
                                return_value=True):
             with mock.patch.object(self.rest, 'is_next_gen_array',
                                    return_value=True):
-                with mock.patch.object(self.masking,
-                                       'get_or_create_default_storage_group'):
+                with mock.patch.object(
+                        self.masking,
+                        'get_or_create_default_storage_group') as mock_get:
                     self.common._create_volume(
                         volume_name, volume_size, extra_specs)
-                    (self.masking.get_or_create_default_storage_group
-                        .assert_called_once_with(extra_specs['array'],
-                                                 extra_specs[utils.SRP],
-                                                 extra_specs[utils.SLO],
-                                                 'NONE', extra_specs, True))
+                    mock_get.assert_called_once_with(
+                        extra_specs['array'], extra_specs[utils.SRP],
+                        extra_specs[utils.SLO], 'NONE', extra_specs, True)
 
     def test_create_volume_failed(self):
         volume_name = self.data.test_volume.name
@@ -4739,23 +4756,23 @@ class PowerMaxCommonTest(test.TestCase):
         with mock.patch.object(self.masking,
                                'get_or_create_default_storage_group',
                                return_value=self.data.failed_resource):
-            with mock.patch.object(self.rest, 'delete_storage_group'):
+            with mock.patch.object(
+                    self.rest, 'delete_storage_group') as mock_delete:
                 # path 1: not last vol in sg
                 with mock.patch.object(self.rest, 'get_num_vols_in_sg',
                                        return_value=2):
                     self.assertRaises(exception.VolumeBackendAPIException,
                                       self.common._create_volume,
                                       volume_name, volume_size, extra_specs)
-                    self.rest.delete_storage_group.assert_not_called()
+                    mock_delete.assert_not_called()
                 # path 2: last vol in sg, delete sg
                 with mock.patch.object(self.rest, 'get_num_vols_in_sg',
                                        return_value=0):
                     self.assertRaises(exception.VolumeBackendAPIException,
                                       self.common._create_volume,
                                       volume_name, volume_size, extra_specs)
-                    (self.rest.delete_storage_group.
-                     assert_called_once_with(self.data.array,
-                                             self.data.failed_resource))
+                    mock_delete.assert_called_once_with(
+                        self.data.array, self.data.failed_resource)
 
     def test_create_volume_incorrect_slo(self):
         volume_name = self.data.test_volume.name
@@ -4847,14 +4864,14 @@ class PowerMaxCommonTest(test.TestCase):
         device_id = self.data.failed_resource
         volume_name = self.data.test_volume.name
         extra_specs = self.data.extra_specs
-        with mock.patch.object(self.masking,
-                               'add_volume_to_default_storage_group'):
+        with mock.patch.object(
+                self.masking,
+                'add_volume_to_default_storage_group') as mock_add:
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.common._delete_from_srp, array,
                               device_id, volume_name, extra_specs)
-            (self.masking.add_volume_to_default_storage_group.
-                assert_called_once_with(
-                    array, device_id, volume_name, extra_specs))
+            mock_add.assert_called_once_with(
+                array, device_id, volume_name, extra_specs)
 
     @mock.patch.object(utils.PowerMaxUtils, 'is_replication_enabled',
                        side_effect=[False, True])
@@ -4916,31 +4933,32 @@ class PowerMaxCommonTest(test.TestCase):
     def test_get_port_group_from_masking_view(self):
         array = self.data.array
         maskingview_name = self.data.masking_view_name_f
-        with mock.patch.object(self.rest,
-                               'get_element_from_masking_view'):
+        with mock.patch.object(
+                self.rest, 'get_element_from_masking_view') as mock_get:
             self.common.get_port_group_from_masking_view(
                 array, maskingview_name)
-            self.rest.get_element_from_masking_view.assert_called_once_with(
+            mock_get.assert_called_once_with(
                 array, maskingview_name, portgroup=True)
 
     def test_get_initiator_group_from_masking_view(self):
         array = self.data.array
         maskingview_name = self.data.masking_view_name_f
-        with mock.patch.object(self.rest,
-                               'get_element_from_masking_view'):
+        with mock.patch.object(
+                self.rest, 'get_element_from_masking_view') as mock_get:
             self.common.get_initiator_group_from_masking_view(
                 array, maskingview_name)
-            self.rest.get_element_from_masking_view.assert_called_once_with(
+            mock_get.assert_called_once_with(
                 array, maskingview_name, host=True)
 
     def test_get_common_masking_views(self):
         array = self.data.array
         portgroup_name = self.data.port_group_name_f
         initiator_group_name = self.data.initiatorgroup_name_f
-        with mock.patch.object(self.rest, 'get_common_masking_views'):
+        with mock.patch.object(
+                self.rest, 'get_common_masking_views') as mock_get:
             self.common.get_common_masking_views(
                 array, portgroup_name, initiator_group_name)
-            self.rest.get_common_masking_views.assert_called_once_with(
+            mock_get.assert_called_once_with(
                 array, portgroup_name, initiator_group_name)
 
     def test_get_ip_and_iqn(self):
@@ -4974,14 +4992,14 @@ class PowerMaxCommonTest(test.TestCase):
         source_device_id = self.data.device_id
         snap_name = "temp-" + source_device_id + "-snapshot_for_clone"
         ref_dict = self.data.provider_location
-        with mock.patch.object(self.utils, 'get_temp_snap_name',
-                               return_value=snap_name):
+        with mock.patch.object(
+                self.utils, 'get_temp_snap_name',
+                return_value=snap_name) as mock_get_snap:
             clone_dict = self.common._create_replica(
                 array, clone_volume, source_device_id,
                 self.data.extra_specs)
             self.assertEqual(ref_dict, clone_dict)
-            self.utils.get_temp_snap_name.assert_called_once_with(
-                source_device_id)
+            mock_get_snap.assert_called_once_with(source_device_id)
 
     def test_create_replica_failed_cleanup_target(self):
         array = self.data.array
@@ -4990,12 +5008,13 @@ class PowerMaxCommonTest(test.TestCase):
         snap_name = self.data.failed_resource
         clone_name = 'OS-' + clone_volume.id
         extra_specs = self.data.extra_specs
-        with mock.patch.object(self.common, '_cleanup_target'):
+        with mock.patch.object(
+                self.common, '_cleanup_target') as mock_cleanup:
             self.assertRaises(
                 exception.VolumeBackendAPIException,
                 self.common._create_replica, array, clone_volume,
                 device_id, self.data.extra_specs, snap_name)
-            self.common._cleanup_target.assert_called_once_with(
+            mock_cleanup.assert_called_once_with(
                 array, device_id, device_id, clone_name,
                 snap_name, extra_specs)
 
@@ -5006,12 +5025,13 @@ class PowerMaxCommonTest(test.TestCase):
         snap_name = self.data.failed_resource
         with mock.patch.object(self.common, '_create_volume',
                                return_value={'device_id': None}):
-            with mock.patch.object(self.common, '_cleanup_target'):
+            with mock.patch.object(
+                    self.common, '_cleanup_target') as mock_cleanup:
                 self.assertRaises(
                     exception.VolumeBackendAPIException,
                     self.common._create_replica, array, clone_volume,
                     source_device_id, self.data.extra_specs, snap_name)
-                self.common._cleanup_target.assert_not_called()
+                mock_cleanup.assert_not_called()
 
     @mock.patch.object(
         masking.PowerMaxMasking,
@@ -5027,15 +5047,15 @@ class PowerMaxCommonTest(test.TestCase):
         generation = 0
         with mock.patch.object(self.rest, 'get_sync_session',
                                return_value='session'):
-            with mock.patch.object(self.provision,
-                                   'break_replication_relationship'):
+            with mock.patch.object(
+                    self.provision,
+                    'break_replication_relationship') as mock_break:
                 self.common._cleanup_target(
                     array, target_device_id, source_device_id,
                     clone_name, snap_name, extra_specs)
-                (self.provision.break_replication_relationship.
-                    assert_called_with(
-                        array, target_device_id, source_device_id,
-                        snap_name, extra_specs, generation))
+                mock_break.assert_called_with(
+                    array, target_device_id, source_device_id,
+                    snap_name, extra_specs, generation)
 
     def test_cleanup_target_no_sync(self):
         array = self.data.array
@@ -5047,12 +5067,12 @@ class PowerMaxCommonTest(test.TestCase):
         extra_specs = self.data.extra_specs
         with mock.patch.object(self.rest, 'get_sync_session',
                                return_value=None):
-            with mock.patch.object(self.common,
-                                   '_delete_from_srp'):
+            with mock.patch.object(
+                    self.common, '_delete_from_srp') as mock_delete:
                 self.common._cleanup_target(
                     array, target_device_id, source_device_id,
                     clone_name, snap_name, extra_specs)
-                self.common._delete_from_srp.assert_called_once_with(
+                mock_delete.assert_called_once_with(
                     array, target_device_id, clone_name,
                     extra_specs)
 
@@ -5066,14 +5086,12 @@ class PowerMaxCommonTest(test.TestCase):
         array = self.data.array
         device_id = self.data.device_id
         target = self.data.volume_details[1]['volumeId']
-        volume_name = self.data.test_volume.name
         extra_specs = self.data.extra_specs
         snap_name = 'temp-1'
         generation = '0'
         with mock.patch.object(self.rest, 'get_volume_snap',
                                return_value=snap_name):
-            self.common._sync_check(array, device_id, volume_name,
-                                    extra_specs)
+            self.common._sync_check(array, device_id, extra_specs)
             mock_break.assert_called_with(
                 array, target, device_id, snap_name, extra_specs, generation)
             mock_delete.assert_called_with(array, snap_name,
@@ -5089,8 +5107,7 @@ class PowerMaxCommonTest(test.TestCase):
                                return_value=sessions):
             with mock.patch.object(self.rest, 'get_volume_snap',
                                    return_value=snap_name2):
-                self.common._sync_check(array, device_id, volume_name,
-                                        extra_specs)
+                self.common._sync_check(array, device_id, extra_specs)
                 mock_delete.assert_called_once_with(
                     array, snap_name2, device_id, restored=False, generation=0)
 
@@ -5104,7 +5121,6 @@ class PowerMaxCommonTest(test.TestCase):
         array = self.data.array
         device_id = self.data.device_id
         target = self.data.volume_details[1]['volumeId']
-        volume_name = self.data.test_volume.name
         extra_specs = self.data.extra_specs
         snap_name = 'OS-1'
         sessions = [{'source_vol': device_id,
@@ -5112,8 +5128,7 @@ class PowerMaxCommonTest(test.TestCase):
                      'target_vol_list': [(target, "Copied")]}]
         with mock.patch.object(self.rest, 'find_snap_vx_sessions',
                                return_value=sessions):
-            self.common._sync_check(array, device_id, volume_name,
-                                    extra_specs)
+            self.common._sync_check(array, device_id, extra_specs)
             mock_break.assert_called_with(
                 array, target, device_id, snap_name, extra_specs, 0)
             mock_delete.assert_not_called()
@@ -5124,12 +5139,10 @@ class PowerMaxCommonTest(test.TestCase):
     def test_sync_check_no_sessions(self, mock_break):
         array = self.data.array
         device_id = self.data.device_id
-        volume_name = self.data.test_volume.name
         extra_specs = self.data.extra_specs
         with mock.patch.object(self.rest, 'find_snap_vx_sessions',
                                return_value=None):
-            self.common._sync_check(array, device_id, volume_name,
-                                    extra_specs)
+            self.common._sync_check(array, device_id, extra_specs)
             mock_break.assert_not_called()
 
     @mock.patch.object(
@@ -5294,18 +5307,18 @@ class PowerMaxCommonTest(test.TestCase):
                        '_remove_vol_and_cleanup_replication')
     def test_unmanage_success(self, mock_rm):
         volume = self.data.test_volume
-        with mock.patch.object(self.rest, 'rename_volume'):
+        with mock.patch.object(self.rest, 'rename_volume') as mock_rename:
             self.common.unmanage(volume)
-            self.rest.rename_volume.assert_called_once_with(
+            mock_rename.assert_called_once_with(
                 self.data.array, self.data.device_id,
                 self.data.test_volume.id)
         # Test for success when create storage group fails
-        with mock.patch.object(self.rest, 'rename_volume'):
+        with mock.patch.object(self.rest, 'rename_volume') as mock_rename:
             with mock.patch.object(
                     self.provision, 'create_storage_group',
                     side_effect=exception.VolumeBackendAPIException):
                 self.common.unmanage(volume)
-                self.rest.rename_volume.assert_called_once_with(
+                mock_rename.assert_called_once_with(
                     self.data.array, self.data.device_id,
                     self.data.test_volume.id)
 
@@ -5313,9 +5326,9 @@ class PowerMaxCommonTest(test.TestCase):
         volume = self.data.test_volume
         with mock.patch.object(self.common, '_find_device_on_array',
                                return_value=None):
-            with mock.patch.object(self.rest, 'rename_volume'):
+            with mock.patch.object(self.rest, 'rename_volume') as mock_rename:
                 self.common.unmanage(volume)
-                self.rest.rename_volume.assert_not_called()
+                mock_rename.assert_not_called()
 
     @mock.patch.object(common.PowerMaxCommon,
                        '_slo_workload_migration')
@@ -5347,10 +5360,11 @@ class PowerMaxCommonTest(test.TestCase):
         new_type = {'extra_specs': {}}
         volume = self.data.test_volume
         host = {'host': self.data.new_host}
-        with mock.patch.object(self.common, '_migrate_volume'):
+        with mock.patch.object(
+                self.common, '_migrate_volume') as mock_migrate:
             self.common._slo_workload_migration(
                 device_id, volume, host, volume_name, new_type, extra_specs)
-            self.common._migrate_volume.assert_called_once_with(
+            mock_migrate.assert_called_once_with(
                 extra_specs[utils.ARRAY], volume, device_id,
                 extra_specs[utils.SRP], 'Silver',
                 'OLTP', volume_name, new_type, extra_specs)
@@ -5390,12 +5404,13 @@ class PowerMaxCommonTest(test.TestCase):
         with mock.patch.object(
                 self.common, '_is_valid_for_storage_assisted_migration',
                 return_value=(True, self.data.slo, self.data.workload)):
-            with mock.patch.object(self.common, '_migrate_volume'):
+            with mock.patch.object(
+                    self.common, '_migrate_volume') as mock_migrate:
                 migrate_status = self.common._slo_workload_migration(
                     device_id, volume, host, volume_name, new_type,
                     extra_specs)
                 self.assertTrue(bool(migrate_status))
-                self.common._migrate_volume.assert_called_once_with(
+                mock_migrate.assert_called_once_with(
                     extra_specs[utils.ARRAY], volume, device_id,
                     extra_specs[utils.SRP], self.data.slo,
                     self.data.workload, volume_name, new_type, extra_specs)
@@ -5917,7 +5932,7 @@ class PowerMaxCommonTest(test.TestCase):
                     'snap_name': 'OS-%s' % existing_ref['source-name']}
 
         updates = {
-            'display_name': self.data.test_snapshot_manage.display_name,
+            'display_name': 'my_snap',
             'provider_location': six.text_type(prov_loc)}
 
         self.assertEqual(updates_response, updates)
@@ -6182,15 +6197,17 @@ class PowerMaxCommonTest(test.TestCase):
     def test_update_vol_stats_retest_u4p(self):
         self.rest.u4p_in_failover = True
         self.rest.u4p_failover_autofailback = True
-        with mock.patch.object(self.common, 'retest_primary_u4p'):
+        with mock.patch.object(
+                self.common, 'retest_primary_u4p') as mock_retest:
             self.common.update_volume_stats()
-            self.common.retest_primary_u4p.assert_called_once()
+            mock_retest.assert_called_once()
 
         self.rest.u4p_in_failover = True
         self.rest.u4p_failover_autofailback = False
-        with mock.patch.object(self.common, 'retest_primary_u4p'):
+        with mock.patch.object(
+                self.common, 'retest_primary_u4p') as mock_retest:
             self.common.update_volume_stats()
-            self.common.retest_primary_u4p.assert_not_called()
+            mock_retest.assert_not_called()
 
     @mock.patch.object(rest.PowerMaxRest, 'request',
                        return_value=[200, None])
@@ -6223,60 +6240,60 @@ class PowerMaxFCTest(test.TestCase):
             mock.Mock(return_value=self.data.vol_type_extra_specs))
 
     def test_create_volume(self):
-        with mock.patch.object(self.common, 'create_volume'):
+        with mock.patch.object(self.common, 'create_volume') as mock_create:
             self.driver.create_volume(self.data.test_volume)
-            self.common.create_volume.assert_called_once_with(
-                self.data.test_volume)
+            mock_create.assert_called_once_with(self.data.test_volume)
 
     def test_create_volume_from_snapshot(self):
         volume = self.data.test_clone_volume
         snapshot = self.data.test_snapshot
-        with mock.patch.object(self.common, 'create_volume_from_snapshot'):
+        with mock.patch.object(
+                self.common, 'create_volume_from_snapshot') as mock_create:
             self.driver.create_volume_from_snapshot(volume, snapshot)
-            self.common.create_volume_from_snapshot.assert_called_once_with(
-                volume, snapshot)
+            mock_create.assert_called_once_with(volume, snapshot)
 
     def test_create_cloned_volume(self):
         volume = self.data.test_clone_volume
         src_volume = self.data.test_volume
-        with mock.patch.object(self.common, 'create_cloned_volume'):
+        with mock.patch.object(
+                self.common, 'create_cloned_volume') as mock_create:
             self.driver.create_cloned_volume(volume, src_volume)
-            self.common.create_cloned_volume.assert_called_once_with(
-                volume, src_volume)
+            mock_create.assert_called_once_with(volume, src_volume)
 
     def test_delete_volume(self):
-        with mock.patch.object(self.common, 'delete_volume'):
+        with mock.patch.object(self.common, 'delete_volume') as mock_delete:
             self.driver.delete_volume(self.data.test_volume)
-            self.common.delete_volume.assert_called_once_with(
-                self.data.test_volume)
+            mock_delete.assert_called_once_with(self.data.test_volume)
 
     def test_create_snapshot(self):
-        with mock.patch.object(self.common, 'create_snapshot'):
+        with mock.patch.object(self.common, 'create_snapshot') as mock_create:
             self.driver.create_snapshot(self.data.test_snapshot)
-            self.common.create_snapshot.assert_called_once_with(
+            mock_create.assert_called_once_with(
                 self.data.test_snapshot, self.data.test_snapshot.volume)
 
     def test_delete_snapshot(self):
-        with mock.patch.object(self.common, 'delete_snapshot'):
+        with mock.patch.object(self.common, 'delete_snapshot') as mock_delete:
             self.driver.delete_snapshot(self.data.test_snapshot)
-            self.common.delete_snapshot.assert_called_once_with(
+            mock_delete.assert_called_once_with(
                 self.data.test_snapshot, self.data.test_snapshot.volume)
 
     def test_initialize_connection(self):
-        with mock.patch.object(self.common, 'initialize_connection',
-                               return_value=self.data.fc_device_info):
-            with mock.patch.object(self.driver, 'populate_data'):
+        with mock.patch.object(
+                self.common, 'initialize_connection',
+                return_value=self.data.fc_device_info) as mock_initialize:
+            with mock.patch.object(
+                    self.driver, 'populate_data') as mock_populate:
                 self.driver.initialize_connection(self.data.test_volume,
                                                   self.data.connector)
-                self.common.initialize_connection.assert_called_once_with(
+                mock_initialize.assert_called_once_with(
                     self.data.test_volume, self.data.connector)
-                self.driver.populate_data.assert_called_once_with(
+                mock_populate.assert_called_once_with(
                     self.data.fc_device_info, self.data.test_volume,
                     self.data.connector)
 
     def test_populate_data(self):
         with mock.patch.object(self.driver, '_build_initiator_target_map',
-                               return_value=([], {})):
+                               return_value=([], {})) as mock_build:
             ref_data = {
                 'driver_volume_type': 'fibre_channel',
                 'data': {'target_lun': self.data.fc_device_info['hostlunid'],
@@ -6287,23 +6304,25 @@ class PowerMaxFCTest(test.TestCase):
                                              self.data.test_volume,
                                              self.data.connector)
             self.assertEqual(ref_data, data)
-            self.driver._build_initiator_target_map.assert_called_once_with(
+            mock_build.assert_called_once_with(
                 self.data.test_volume, self.data.connector)
 
     def test_terminate_connection(self):
-        with mock.patch.object(self.common, 'terminate_connection'):
+        with mock.patch.object(
+                self.common, 'terminate_connection') as mock_terminate:
             self.driver.terminate_connection(self.data.test_volume,
                                              self.data.connector)
-            self.common.terminate_connection.assert_called_once_with(
+            mock_terminate.assert_called_once_with(
                 self.data.test_volume, self.data.connector)
 
     def test_terminate_connection_no_zoning_mappings(self):
         with mock.patch.object(self.driver, '_get_zoning_mappings',
                                return_value=None):
-            with mock.patch.object(self.common, 'terminate_connection'):
+            with mock.patch.object(
+                    self.common, 'terminate_connection') as mock_terminate:
                 self.driver.terminate_connection(self.data.test_volume,
                                                  self.data.connector)
-                self.common.terminate_connection.assert_not_called()
+                mock_terminate.assert_not_called()
 
     def test_get_zoning_mappings(self):
         ref_mappings = self.data.zoning_mappings
@@ -6362,25 +6381,25 @@ class PowerMaxFCTest(test.TestCase):
                 self.assertEqual(ref_target_map, target_map)
 
     def test_extend_volume(self):
-        with mock.patch.object(self.common, 'extend_volume'):
+        with mock.patch.object(self.common, 'extend_volume') as mock_extend:
             self.driver.extend_volume(self.data.test_volume, '3')
-            self.common.extend_volume.assert_called_once_with(
-                self.data.test_volume, '3')
+            mock_extend.assert_called_once_with(self.data.test_volume, '3')
 
     def test_get_volume_stats(self):
-        with mock.patch.object(self.driver, 'update_volume_stats'):
+        with mock.patch.object(
+                self.driver, 'update_volume_stats') as mock_update:
             # no refresh
             self.driver.get_volume_stats()
-            self.driver.update_volume_stats.assert_not_called()
+            mock_update.assert_not_called()
             # with refresh
             self.driver.get_volume_stats(True)
-            self.driver.update_volume_stats.assert_called_once_with()
+            mock_update.assert_called_once_with()
 
     def test_update_volume_stats(self):
         with mock.patch.object(self.common, 'update_volume_stats',
-                               return_value={}):
+                               return_value={}) as mock_update:
             self.driver.update_volume_stats()
-            self.common.update_volume_stats.assert_called_once_with()
+            mock_update.assert_called_once_with()
 
     def test_check_for_setup_error(self):
         self.driver.check_for_setup_error()
@@ -6399,35 +6418,35 @@ class PowerMaxFCTest(test.TestCase):
 
     def test_manage_existing(self):
         with mock.patch.object(self.common, 'manage_existing',
-                               return_value={}):
+                               return_value={}) as mock_manage:
             external_ref = {u'source-name': u'00002'}
             self.driver.manage_existing(self.data.test_volume, external_ref)
-            self.common.manage_existing.assert_called_once_with(
+            mock_manage.assert_called_once_with(
                 self.data.test_volume, external_ref)
 
     def test_manage_existing_get_size(self):
         with mock.patch.object(self.common, 'manage_existing_get_size',
-                               return_value='1'):
+                               return_value='1') as mock_manage:
             external_ref = {u'source-name': u'00002'}
             self.driver.manage_existing_get_size(
                 self.data.test_volume, external_ref)
-            self.common.manage_existing_get_size.assert_called_once_with(
+            mock_manage.assert_called_once_with(
                 self.data.test_volume, external_ref)
 
     def test_unmanage_volume(self):
         with mock.patch.object(self.common, 'unmanage',
-                               return_value={}):
+                               return_value={}) as mock_unmanage:
             self.driver.unmanage(self.data.test_volume)
-            self.common.unmanage.assert_called_once_with(
+            mock_unmanage.assert_called_once_with(
                 self.data.test_volume)
 
     def test_retype(self):
         host = {'host': self.data.new_host}
         new_type = {'extra_specs': {}}
         with mock.patch.object(self.common, 'retype',
-                               return_value=True):
+                               return_value=True) as mock_retype:
             self.driver.retype({}, self.data.test_volume, new_type, '', host)
-            self.common.retype.assert_called_once_with(
+            mock_retype.assert_called_once_with(
                 self.data.test_volume, new_type, host)
 
     def test_failover_host(self):
@@ -6480,43 +6499,44 @@ class PowerMaxISCSITest(test.TestCase):
             mock.Mock(return_value=self.data.vol_type_extra_specs))
 
     def test_create_volume(self):
-        with mock.patch.object(self.common, 'create_volume'):
+        with mock.patch.object(self.common, 'create_volume') as mock_create:
             self.driver.create_volume(self.data.test_volume)
-            self.common.create_volume.assert_called_once_with(
+            mock_create.assert_called_once_with(
                 self.data.test_volume)
 
     def test_create_volume_from_snapshot(self):
         volume = self.data.test_clone_volume
         snapshot = self.data.test_snapshot
-        with mock.patch.object(self.common, 'create_volume_from_snapshot'):
+        with mock.patch.object(
+                self.common, 'create_volume_from_snapshot') as mock_create:
             self.driver.create_volume_from_snapshot(volume, snapshot)
-            self.common.create_volume_from_snapshot.assert_called_once_with(
+            mock_create.assert_called_once_with(
                 volume, snapshot)
 
     def test_create_cloned_volume(self):
         volume = self.data.test_clone_volume
         src_volume = self.data.test_volume
-        with mock.patch.object(self.common, 'create_cloned_volume'):
+        with mock.patch.object(
+                self.common, 'create_cloned_volume') as mock_create:
             self.driver.create_cloned_volume(volume, src_volume)
-            self.common.create_cloned_volume.assert_called_once_with(
-                volume, src_volume)
+            mock_create.assert_called_once_with(volume, src_volume)
 
     def test_delete_volume(self):
-        with mock.patch.object(self.common, 'delete_volume'):
+        with mock.patch.object(self.common, 'delete_volume') as mock_delete:
             self.driver.delete_volume(self.data.test_volume)
-            self.common.delete_volume.assert_called_once_with(
+            mock_delete.assert_called_once_with(
                 self.data.test_volume)
 
     def test_create_snapshot(self):
-        with mock.patch.object(self.common, 'create_snapshot'):
+        with mock.patch.object(self.common, 'create_snapshot') as mock_create:
             self.driver.create_snapshot(self.data.test_snapshot)
-            self.common.create_snapshot.assert_called_once_with(
+            mock_create.assert_called_once_with(
                 self.data.test_snapshot, self.data.test_snapshot.volume)
 
     def test_delete_snapshot(self):
-        with mock.patch.object(self.common, 'delete_snapshot'):
+        with mock.patch.object(self.common, 'delete_snapshot') as mock_delete:
             self.driver.delete_snapshot(self.data.test_snapshot)
-            self.common.delete_snapshot.assert_called_once_with(
+            mock_delete.assert_called_once_with(
                 self.data.test_snapshot, self.data.test_snapshot.volume)
 
     def test_initialize_connection(self):
@@ -6527,13 +6547,13 @@ class PowerMaxISCSITest(test.TestCase):
                     'ip_and_iqn': [{'ip': self.data.ip,
                                     'iqn': self.data.initiator}],
                     'is_multipath': False}
-        with mock.patch.object(self.driver, 'get_iscsi_dict'):
+        with mock.patch.object(self.driver, 'get_iscsi_dict') as mock_get:
             with mock.patch.object(
                 self.common, 'get_port_group_from_masking_view',
                     return_value=self.data.port_group_name_i):
                 self.driver.initialize_connection(self.data.test_volume,
                                                   self.data.connector)
-                self.driver.get_iscsi_dict.assert_called_once_with(
+                mock_get.assert_called_once_with(
                     ref_dict, self.data.test_volume)
 
     def test_get_iscsi_dict_success(self):
@@ -6544,10 +6564,12 @@ class PowerMaxISCSITest(test.TestCase):
         device_info = self.data.iscsi_device_info
         ref_data = {'driver_volume_type': 'iscsi', 'data': {}}
         with mock.patch.object(
-                self.driver, 'vmax_get_iscsi_properties', return_value={}):
+                self.driver,
+                'vmax_get_iscsi_properties',
+                return_value={}) as mock_get:
             data = self.driver.get_iscsi_dict(device_info, volume)
             self.assertEqual(ref_data, data)
-            self.driver.vmax_get_iscsi_properties.assert_called_once_with(
+            mock_get.assert_called_once_with(
                 volume, ip_and_iqn, True, host_lun_id, None, None)
 
     def test_get_iscsi_dict_exception(self):
@@ -6564,10 +6586,12 @@ class PowerMaxISCSITest(test.TestCase):
         device_info = self.data.iscsi_device_info_metro
         ref_data = {'driver_volume_type': 'iscsi', 'data': {}}
         with mock.patch.object(
-                self.driver, 'vmax_get_iscsi_properties', return_value={}):
+                self.driver,
+                'vmax_get_iscsi_properties',
+                return_value={}) as mock_get:
             data = self.driver.get_iscsi_dict(device_info, volume)
             self.assertEqual(ref_data, data)
-            self.driver.vmax_get_iscsi_properties.assert_called_once_with(
+            mock_get.assert_called_once_with(
                 volume, ip_and_iqn, True, host_lun_id,
                 self.data.iscsi_device_info_metro['metro_ip_and_iqn'],
                 self.data.iscsi_device_info_metro['metro_hostlunid'])
@@ -6663,32 +6687,35 @@ class PowerMaxISCSITest(test.TestCase):
         self.assertEqual(ref_properties, iscsi_properties)
 
     def test_terminate_connection(self):
-        with mock.patch.object(self.common, 'terminate_connection'):
+        with mock.patch.object(
+                self.common, 'terminate_connection') as mock_terminate:
             self.driver.terminate_connection(self.data.test_volume,
                                              self.data.connector)
-            self.common.terminate_connection.assert_called_once_with(
+            mock_terminate.assert_called_once_with(
                 self.data.test_volume, self.data.connector)
 
     def test_extend_volume(self):
-        with mock.patch.object(self.common, 'extend_volume'):
+        with mock.patch.object(
+                self.common, 'extend_volume') as mock_extend:
             self.driver.extend_volume(self.data.test_volume, '3')
-            self.common.extend_volume.assert_called_once_with(
+            mock_extend.assert_called_once_with(
                 self.data.test_volume, '3')
 
     def test_get_volume_stats(self):
-        with mock.patch.object(self.driver, 'update_volume_stats'):
+        with mock.patch.object(
+                self.driver, 'update_volume_stats') as mock_update:
             # no refresh
             self.driver.get_volume_stats()
-            self.driver.update_volume_stats.assert_not_called()
+            mock_update.assert_not_called()
             # with refresh
             self.driver.get_volume_stats(True)
-            self.driver.update_volume_stats.assert_called_once_with()
+            mock_update.assert_called_once_with()
 
     def test_update_volume_stats(self):
         with mock.patch.object(self.common, 'update_volume_stats',
-                               return_value={}):
+                               return_value={}) as mock_update:
             self.driver.update_volume_stats()
-            self.common.update_volume_stats.assert_called_once_with()
+            mock_update.assert_called_once_with()
 
     def test_check_for_setup_error(self):
         self.driver.check_for_setup_error()
@@ -6707,35 +6734,34 @@ class PowerMaxISCSITest(test.TestCase):
 
     def test_manage_existing(self):
         with mock.patch.object(self.common, 'manage_existing',
-                               return_value={}):
+                               return_value={}) as mock_manage:
             external_ref = {u'source-name': u'00002'}
             self.driver.manage_existing(self.data.test_volume, external_ref)
-            self.common.manage_existing.assert_called_once_with(
+            mock_manage.assert_called_once_with(
                 self.data.test_volume, external_ref)
 
     def test_manage_existing_get_size(self):
         with mock.patch.object(self.common, 'manage_existing_get_size',
-                               return_value='1'):
+                               return_value='1') as mock_manage:
             external_ref = {u'source-name': u'00002'}
             self.driver.manage_existing_get_size(
                 self.data.test_volume, external_ref)
-            self.common.manage_existing_get_size.assert_called_once_with(
+            mock_manage.assert_called_once_with(
                 self.data.test_volume, external_ref)
 
     def test_unmanage_volume(self):
         with mock.patch.object(self.common, 'unmanage',
-                               return_value={}):
+                               return_value={}) as mock_unmanage:
             self.driver.unmanage(self.data.test_volume)
-            self.common.unmanage.assert_called_once_with(
-                self.data.test_volume)
+            mock_unmanage.assert_called_once_with(self.data.test_volume)
 
     def test_retype(self):
         host = {'host': self.data.new_host}
         new_type = {'extra_specs': {}}
         with mock.patch.object(self.common, 'retype',
-                               return_value=True):
+                               return_value=True) as mock_retype:
             self.driver.retype({}, self.data.test_volume, new_type, '', host)
-            self.common.retype.assert_called_once_with(
+            mock_retype.assert_called_once_with(
                 self.data.test_volume, new_type, host)
 
     def test_failover_host(self):
@@ -7516,15 +7542,15 @@ class PowerMaxMaskingTest(test.TestCase):
         with mock.patch.object(rest.PowerMaxRest, 'is_next_gen_array',
                                return_value=True):
             with mock.patch.object(
-                    self.mask, 'get_or_create_default_storage_group'):
+                    self.mask,
+                    'get_or_create_default_storage_group') as mock_get:
                 self.mask.add_volume_to_default_storage_group(
                     self.data.array, self.device_id, self.volume_name,
                     self.extra_specs)
-                (self.mask.get_or_create_default_storage_group
-                    .assert_called_once_with(self.data.array, self.data.srp,
-                                             self.extra_specs[utils.SLO],
-                                             'NONE', self.extra_specs, False,
-                                             False, None))
+                mock_get.assert_called_once_with(
+                    self.data.array, self.data.srp,
+                    self.extra_specs[utils.SLO],
+                    'NONE', self.extra_specs, False, False, None)
 
     @mock.patch.object(provision.PowerMaxProvision, 'create_storage_group')
     def test_get_or_create_default_storage_group(self, mock_create_sg):
@@ -7615,17 +7641,18 @@ class PowerMaxMaskingTest(test.TestCase):
                 return_value=PowerMaxCommonData.initiatorgroup_name_f):
             with mock.patch.object(
                     self.mask, '_verify_initiator_group_from_masking_view',
-                    return_value=(True, self.data.initiatorgroup_name_f)):
+                    return_value=(
+                        True,
+                        self.data.initiatorgroup_name_f)) as mock_verify:
                 self.mask._check_existing_initiator_group(
                     self.data.array, self.data.masking_view_name_f,
                     mv_dict, self.data.storagegroup_name_f,
                     self.data.port_group_name_f, self.data.extra_specs)
-                (self.mask._verify_initiator_group_from_masking_view.
-                    assert_called_once_with(
-                        self.data.array, self.data.masking_view_name_f,
-                        mv_dict, self.data.initiatorgroup_name_f,
-                        self.data.storagegroup_name_f,
-                        self.data.port_group_name_f, self.data.extra_specs))
+                mock_verify.assert_called_once_with(
+                    self.data.array, self.data.masking_view_name_f,
+                    mv_dict, self.data.initiatorgroup_name_f,
+                    self.data.storagegroup_name_f,
+                    self.data.port_group_name_f, self.data.extra_specs)
 
     @mock.patch.object(masking.PowerMaxMasking, 'add_child_sg_to_parent_sg',
                        side_effect=[
@@ -7887,7 +7914,7 @@ class PowerMaxCommonReplicationTest(test.TestCase):
 
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=False)
-    @mock.patch.object(objects.Group, 'get_by_id',
+    @mock.patch.object(objects.group.Group, 'get_by_id',
                        return_value=PowerMaxCommonData.test_rep_group)
     @mock.patch.object(volume_utils, 'is_group_a_type', return_value=True)
     @mock.patch.object(utils.PowerMaxUtils, 'check_replication_matched',
@@ -8821,7 +8848,7 @@ class PowerMaxVolumeMetadataDebugTest(test.TestCase):
         volume_metadata = self.volume_metadata.update_volume_info_metadata(
             self.data.data_dict, self.data.version_dict)
         self.assertEqual('2.7.12', volume_metadata['python_version'])
-        self.assertEqual('VMAX250F', volume_metadata['vmax_model'])
+        self.assertEqual('VMAX250F', volume_metadata['storage_model'])
         self.assertEqual('DSS', volume_metadata['workload'])
         self.assertEqual('OS-fibre-PG', volume_metadata['port_group'])
 
@@ -8829,7 +8856,7 @@ class PowerMaxVolumeMetadataDebugTest(test.TestCase):
         datadict = {}
         volume_trace_dict = {}
         volume_key_value = {}
-        result_dict = {'operation': 'create',
+        result_dict = {'successful_operation': 'create',
                        'volume_id': self.data.test_volume.id}
         volume_metadata = self.volume_metadata._fill_volume_trace_dict(
             self.data.test_volume.id, 'create', False, target_name=None,
@@ -8846,7 +8873,7 @@ class PowerMaxVolumeMetadataDebugTest(test.TestCase):
         result_dict = {'masking_view_1': 'mv1',
                        'masking_view_2': 'mv2',
                        'masking_view_3': 'mv3',
-                       'operation': 'attach',
+                       'successful_operation': 'attach',
                        'storage_group_1': 'sg1',
                        'storage_group_2': 'sg2',
                        'storage_group_3': 'sg3',

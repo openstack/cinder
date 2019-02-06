@@ -23,8 +23,9 @@ from oslo_utils import units
 import requests
 import requests.auth
 import requests.exceptions as r_exc
-import requests.packages.urllib3.exceptions as urllib_exp
+# pylint: disable=E0401
 import requests.packages.urllib3.util.retry as requests_retry
+
 import six
 
 from cinder import coordination
@@ -32,8 +33,6 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.utils import retry
 from cinder.volume.drivers.dell_emc.powermax import utils
-
-requests.packages.urllib3.disable_warnings(urllib_exp.InsecureRequestWarning)
 
 LOG = logging.getLogger(__name__)
 SLOPROVISIONING = 'sloprovisioning'
@@ -896,9 +895,9 @@ class PowerMaxRest(object):
         if vol_details:
             vol_identifier = vol_details.get('volume_identifier', None)
             LOG.debug('Element name = %(en)s, Vol identifier = %(vi)s, '
-                      'Device id = %(di)s, vol details = %(vd)s',
+                      'Device id = %(di)s',
                       {'en': element_name, 'vi': vol_identifier,
-                       'di': device_id, 'vd': vol_details})
+                       'di': device_id})
             if vol_identifier == element_name:
                 found_device_id = device_id
             elif name_id:
