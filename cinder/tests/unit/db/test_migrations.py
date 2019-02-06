@@ -34,6 +34,7 @@ from sqlalchemy.engine import reflection
 
 from cinder.db import migration
 import cinder.db.sqlalchemy.migrate_repo
+from cinder.tests.unit import utils as test_utils
 
 
 class MigrationsMixin(test_migrations.WalkVersionsMixin):
@@ -348,6 +349,10 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIn('destination_project_id', volume_transfer.c)
         self.assertIn('accepted', volume_transfer.c)
 
+    # NOTE: this test becomes slower with each addition of new DB migration.
+    # 'pymysql' works much slower on slow nodes than 'psycopg2'. And such
+    # timeout mostly required for testing of 'mysql' backend.
+    @test_utils.set_timeout(300)
     def test_walk_versions(self):
         self.walk_versions(False, False)
         self.assert_each_foreign_key_is_part_of_an_index()
@@ -371,6 +376,7 @@ class TestMysqlMigrations(test_fixtures.OpportunisticDBTestMixin,
     FIXTURE = test_fixtures.MySQLOpportunisticFixture
     BOOL_TYPE = sqlalchemy.dialects.mysql.TINYINT
 
+    @test_utils.set_timeout(300)
     def test_mysql_innodb(self):
         """Test that table creation on mysql only builds InnoDB tables."""
         # add this to the global lists to make reset work with it, it's removed
