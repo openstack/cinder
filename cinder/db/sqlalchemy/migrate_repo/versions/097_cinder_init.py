@@ -13,12 +13,16 @@
 #    under the License.
 
 import datetime
+import uuid
 
 from oslo_config import cfg
 from oslo_utils import timeutils
 from sqlalchemy.dialects import mysql
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index
-from sqlalchemy import Integer, MetaData, String, Table, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer
+from sqlalchemy import MetaData, String, Table, Text, UniqueConstraint, text
+from sqlalchemy.sql import expression
+
+from cinder.volume import group_types as volume_group_types
 
 # Get default values via config.  The defaults will either
 # come from the default values set in the quota option
@@ -203,6 +207,22 @@ def define_tables(meta):
         Column('detach_time', DateTime),
         Column('attach_mode', String(36)),
         Column('attach_status', String(255)),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
+    )
+
+    attachment_specs = Table(
+        'attachment_specs', meta,
+        Column('created_at', DateTime(timezone=False)),
+        Column('updated_at', DateTime(timezone=False)),
+        Column('deleted_at', DateTime(timezone=False)),
+        Column('deleted', Boolean(), default=False),
+        Column('id', Integer, primary_key=True, nullable=False),
+        Column('attachment_id', String(36),
+               ForeignKey('volume_attachment.id'),
+               nullable=False),
+        Column('key', String(255)),
+        Column('value', String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -536,6 +556,7 @@ def define_tables(meta):
         Column('volume_id', String(36), nullable=False),
         Column('size', Integer, nullable=False),
         Column('last_used', DateTime, nullable=False),
+        Column('cluster_name', String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -544,7 +565,7 @@ def define_tables(meta):
         'messages', meta,
         Column('id', String(36), primary_key=True, nullable=False),
         Column('project_id', String(36), nullable=False),
-        Column('request_id', String(255), nullable=False),
+        Column('request_id', String(255)),
         Column('resource_type', String(36)),
         Column('resource_uuid', String(255), nullable=True),
         Column('event_id', String(255), nullable=False),
@@ -570,6 +591,10 @@ def define_tables(meta):
         Column('disabled', Boolean(), default=False),
         Column('disabled_reason', String(255)),
         Column('race_preventer', Integer, nullable=False, default=0),
+        Column('replication_status', String(length=36), default='not-capable'),
+        Column('active_backend_id', String(length=255)),
+        Column('frozen', Boolean, nullable=False, default=False,
+               server_default=expression.false()),
         # To remove potential races on creation we have a constraint set on
         # name and race_preventer fields, and we set value on creation to 0, so
         # 2 clusters with the same name will fail this constraint.  On deletion
@@ -593,6 +618,8 @@ def define_tables(meta):
         Column('status', String(255), nullable=False),
         Column('service_id', Integer, ForeignKey('services.id'),
                nullable=True),
+        Column('race_preventer', Integer, nullable=False, default=0,
+               server_default=text('0')),
         UniqueConstraint('resource_type', 'resource_id'),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
@@ -664,6 +691,7 @@ def define_tables(meta):
             group_snapshots,
             volumes,
             volume_attachment,
+            attachment_specs,
             snapshots,
             snapshot_metadata,
             quality_of_service_specs,
@@ -801,3 +829,32 @@ def upgrade(migrate_engine):
                 'resource_type': 'SENTINEL',
                 'resource_id': 'SUB-SECOND',
                 'status': 'OK'})
+
+    # Create default group type
+    group_types = Table('group_types', meta, autoload=True)
+    group_type_specs = Table('group_type_specs', meta, autoload=True)
+
+    now = timeutils.utcnow()
+    grp_type_id = "%s" % uuid.uuid4()
+    group_type_dicts = {
+        'id': grp_type_id,
+        'name': volume_group_types.DEFAULT_CGSNAPSHOT_TYPE,
+        'description': 'Default group type for migrating cgsnapshot',
+        'created_at': now,
+        'updated_at': now,
+        'deleted': False,
+        'is_public': True,
+    }
+    grp_type = group_types.insert()
+    grp_type.execute(group_type_dicts)
+
+    group_spec_dicts = {
+        'key': 'consistent_group_snapshot_enabled',
+        'value': '<is> True',
+        'group_type_id': grp_type_id,
+        'created_at': now,
+        'updated_at': now,
+        'deleted': False,
+    }
+    grp_spec = group_type_specs.insert()
+    grp_spec.execute(group_spec_dicts)
