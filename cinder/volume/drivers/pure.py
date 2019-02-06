@@ -2287,6 +2287,17 @@ class PureBaseVolumeDriver(san.SanDriver):
                 })
         return model_updates
 
+    def _get_wwn(self, pure_vol_name):
+        """Return the WWN based on the volume's serial number
+
+        The WWN is composed of the constant '36', the OUI for Pure, followed
+        by '0', and finally the serial number.
+        """
+        array = self._get_current_array()
+        volume_info = array.get_volume(pure_vol_name)
+        wwn = '3624a9370' + volume_info['serial']
+        return wwn.lower()
+
     def _get_current_array(self):
         return self._array
 
@@ -2349,6 +2360,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
             })
 
         properties = self._build_connection_properties(targets)
+        properties["data"]["wwn"] = self._get_wwn(pure_vol_name)
 
         if self.configuration.use_chap_auth:
             properties["data"]["auth_method"] = "CHAP"
@@ -2566,6 +2578,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
                 "discard": True,
             }
         }
+        properties["data"]["wwn"] = self._get_wwn(pure_vol_name)
 
         fczm_utils.add_fc_zone(properties)
         return properties

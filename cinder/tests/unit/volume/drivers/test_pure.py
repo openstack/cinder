@@ -183,6 +183,7 @@ ISCSI_CONNECTION_INFO = {
                            ISCSI_IPS[1] + ":" + TARGET_PORT,
                            ISCSI_IPS[2] + ":" + TARGET_PORT,
                            ISCSI_IPS[3] + ":" + TARGET_PORT],
+        "wwn": "3624a93709714b5cb91634c470002b2c8",
     },
 }
 ISCSI_CONNECTION_INFO_AC = {
@@ -203,6 +204,7 @@ ISCSI_CONNECTION_INFO_AC = {
                            AC_ISCSI_IPS[1] + ":" + TARGET_PORT,
                            AC_ISCSI_IPS[2] + ":" + TARGET_PORT,
                            AC_ISCSI_IPS[3] + ":" + TARGET_PORT],
+        "wwn": "3624a93709714b5cb91634c470002b2c8",
     },
 }
 
@@ -216,6 +218,7 @@ FC_CONNECTION_INFO = {
         "target_discovered": True,
         "initiator_target_map": INITIATOR_TARGET_MAP,
         "discard": True,
+        "wwn": "3624a93709714b5cb91634c470002b2c8",
     },
 }
 FC_CONNECTION_INFO_AC = {
@@ -228,6 +231,7 @@ FC_CONNECTION_INFO_AC = {
         "target_discovered": True,
         "initiator_target_map": AC_INITIATOR_TARGET_MAP,
         "discard": True,
+        "wwn": "3624a93709714b5cb91634c470002b2c8",
     },
 }
 PURE_SNAPSHOT = {
@@ -3001,6 +3005,17 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             user_agent=self.driver._user_agent
         )
 
+    def test_get_wwn(self):
+        vol = {'created': '2019-01-28T14:16:54Z',
+               'name': 'volume-fdc9892f-5af0-47c8-9d4a-5167ac29dc98-cinder',
+               'serial': '9714B5CB91634C470002B2C8',
+               'size': 3221225472,
+               'source': 'volume-a366b1ba-ec27-4ca3-9051-c301b75bc778-cinder'}
+        self.array.get_volume.return_value = vol
+        returned_wwn = self.driver._get_wwn(vol['name'])
+        expected_wwn = '3624a93709714b5cb91634c470002b2c8'
+        self.assertEqual(expected_wwn, returned_wwn)
+
 
 class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
 
@@ -3027,12 +3042,14 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
                                      self.array,
                                      ISCSI_CONNECTOR)
 
+    @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
     def test_initialize_connection(self, mock_get_iscsi_ports,
-                                   mock_connection):
+                                   mock_connection, mock_get_wwn):
         vol, vol_name = self.new_fake_vol()
         mock_get_iscsi_ports.return_value = ISCSI_PORTS
+        mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
         lun = 1
         connection = {
             "vol": vol_name,
@@ -3051,16 +3068,18 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
                                      self.driver.initialize_connection,
                                      vol, ISCSI_CONNECTOR)
 
+    @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
     def test_initialize_connection_uniform_ac(self, mock_get_iscsi_ports,
-                                              mock_connection):
+                                              mock_connection, mock_get_wwn):
         repl_extra_specs = {
             'replication_type': '<in> sync',
             'replication_enabled': '<is> true',
         }
         vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
         mock_get_iscsi_ports.side_effect = [ISCSI_PORTS, AC_ISCSI_PORTS]
+        mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
         mock_connection.side_effect = [
             {
                 "vol": vol_name,
@@ -3089,17 +3108,20 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
             mock.call(mock_secondary, vol_name, ISCSI_CONNECTOR, None, None),
         ])
 
+    @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_chap_credentials")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
     def test_initialize_connection_with_auth(self, mock_get_iscsi_ports,
                                              mock_connection,
-                                             mock_get_chap_creds):
+                                             mock_get_chap_creds,
+                                             mock_get_wwn):
         vol, vol_name = self.new_fake_vol()
         auth_type = "CHAP"
         chap_username = ISCSI_CONNECTOR["host"]
         chap_password = "password"
         mock_get_iscsi_ports.return_value = ISCSI_PORTS
+        mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
         mock_connection.return_value = {
             "vol": vol_name,
             "lun": 1,
@@ -3126,13 +3148,15 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
                                      self.driver.initialize_connection,
                                      vol, ISCSI_CONNECTOR)
 
+    @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
     def test_initialize_connection_multipath(self,
                                              mock_get_iscsi_ports,
-                                             mock_connection):
+                                             mock_connection, mock_get_wwn):
         vol, vol_name = self.new_fake_vol()
         mock_get_iscsi_ports.return_value = ISCSI_PORTS
+        mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
         lun = 1
         connection = {
             "vol": vol_name,
@@ -3393,12 +3417,14 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
         actual_result = self.driver._get_host(self.array, connector)
         self.assertEqual([expected_host], actual_result)
 
+    @mock.patch(FC_DRIVER_OBJ + "._get_wwn")
     @mock.patch(FC_DRIVER_OBJ + "._connect")
-    def test_initialize_connection(self, mock_connection):
+    def test_initialize_connection(self, mock_connection, mock_get_wwn):
         vol, vol_name = self.new_fake_vol()
         lookup_service = self.driver._lookup_service
         (lookup_service.get_device_mapping_from_network.
          return_value) = DEVICE_MAPPING
+        mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
         mock_connection.return_value = {"vol": vol_name,
                                         "lun": 1,
                                         }
@@ -3406,8 +3432,10 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
         actual_result = self.driver.initialize_connection(vol, FC_CONNECTOR)
         self.assertDictEqual(FC_CONNECTION_INFO, actual_result)
 
+    @mock.patch(FC_DRIVER_OBJ + "._get_wwn")
     @mock.patch(FC_DRIVER_OBJ + "._connect")
-    def test_initialize_connection_uniform_ac(self, mock_connection):
+    def test_initialize_connection_uniform_ac(self, mock_connection,
+                                              mock_get_wwn):
         repl_extra_specs = {
             'replication_type': '<in> sync',
             'replication_enabled': '<is> true',
@@ -3416,6 +3444,7 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
         lookup_service = self.driver._lookup_service
         (lookup_service.get_device_mapping_from_network.
          return_value) = AC_DEVICE_MAPPING
+        mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
         mock_connection.side_effect = [
             {
                 "vol": vol_name,
