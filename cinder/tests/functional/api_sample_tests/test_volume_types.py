@@ -26,7 +26,8 @@ class VolumeTypesSampleJsonTest(api_samples_test_base.ApiSampleTestBase):
         self.volume_type_name = "vol-type-001"
         self.subs = {
             "name": self.volume_type_name,
-            "description": "volume type 0001"
+            "description": "volume type 0001",
+            "bool": "True"
         }
         CONF.set_override("default_volume_type",
                           "vol-type-001")
@@ -101,7 +102,8 @@ class VolumeTypesSampleJsonTest(api_samples_test_base.ApiSampleTestBase):
 
         subs = {
             "name": "vol-type-002",
-            "description": "volume type 0002"
+            "description": "volume type 0002",
+            "bool": "True"
         }
         self._volume_type_create()
         self._volume_type_create(subs)
@@ -144,3 +146,16 @@ class VolumeTypesSampleJsonTest(api_samples_test_base.ApiSampleTestBase):
             'encryption-type-update-request')
         self._verify_response('encryption-type-update-response',
                               self.subs, response, 200)
+
+    def test_private_volume_type_access_add_list(self):
+
+        subs = self.subs
+        subs['bool'] = "False"
+        res = self._volume_type_create(subs)
+        res = jsonutils.loads(res.content)['volume_type']
+        self._do_post('types/%s/action' % res['id'],
+                      'volume-type-access-add-request')
+        response = self._do_get(
+            'types/%s/os-volume-type-access' % res['id'])
+        self._verify_response('volume-type-access-list-response',
+                              {}, response, 200)

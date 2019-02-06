@@ -1,0 +1,18 @@
+{
+    "volumes": [
+        {
+            "id": "efa54464-8fab-47cd-a05a-be3e6b396188",
+            "links": [
+                {
+                    "href": "http://127.0.0.1:37097/v3/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/volumes/efa54464-8fab-47cd-a05a-be3e6b396188",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://127.0.0.1:37097/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/volumes/efa54464-8fab-47cd-a05a-be3e6b396188",
+                    "rel": "bookmark"
+                }
+            ],
+            "name": null
+        }
+    ]
+}
