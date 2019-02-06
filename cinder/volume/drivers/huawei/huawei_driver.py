@@ -331,7 +331,7 @@ class HuaweiFCDriver(common.HuaweiBaseDriver, driver.FibreChannelDriver):
         # Add host into hostgroup.
         hostgroup_id = self.client.add_host_to_hostgroup(host_id)
 
-        metadata = huawei_utils.get_lun_metadata(volume)
+        metadata = huawei_utils.get_volume_private_data(volume)
         LOG.info("initialize_connection, metadata is: %s.", metadata)
         hypermetro_lun = metadata.get('hypermetro_id') is not None
 
@@ -488,7 +488,7 @@ class HuaweiFCDriver(common.HuaweiBaseDriver, driver.FibreChannelDriver):
                 self.client.delete_mapping_view(view_id)
 
         # Deal with hypermetro connection.
-        metadata = huawei_utils.get_lun_metadata(volume)
+        metadata = huawei_utils.get_volume_private_data(volume)
         LOG.info("Detach Volume, metadata is: %s.", metadata)
 
         if metadata.get('hypermetro_id'):
