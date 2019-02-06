@@ -1306,7 +1306,20 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def _get_fsid(self):
         with RADOSClient(self) as client:
-            return client.cluster.get_fsid()
+            # Librados's get_fsid is represented as binary
+            # in py3 instead of str as it is in py2.
+            # This causes problems with cinder rbd
+            # driver as we rely on get_fsid return value
+            # which should be string, not bytes.
+            # Decode binary to str fixes these issues.
+            # Fix with encodeutils.safe_decode CAN BE REMOVED
+            # after librados's fix will be in stable for some time.
+            #
+            # More informations:
+            # https://bugs.launchpad.net/glance-store/+bug/1816721
+            # https://bugs.launchpad.net/cinder/+bug/1816468
+            # https://tracker.ceph.com/issues/38381
+            return encodeutils.safe_decode(client.cluster.get_fsid())
 
     def _is_cloneable(self, image_location, image_meta):
         try:
@@ -1671,8 +1684,9 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
         with linuxrbd.RBDClient(rbd_user, rbd_pool, conffile=rbd_ceph_conf,
                                 rbd_cluster_name=rbd_cluster_name) as target:
-            if ((rbd_fsid != self._get_fsid() or
-                 rbd_fsid != target.client.get_fsid())):
+            if (rbd_fsid != self._get_fsid()) or \
+                    (rbd_fsid != encodeutils.safe_decode(
+                        target.client.get_fsid())):
                 LOG.info('Migration between clusters is not supported. '
                          'Falling back to generic migration.')
                 return refuse_to_migrate
