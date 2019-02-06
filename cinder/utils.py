@@ -911,7 +911,9 @@ def trace(*dec_args, **dec_kwargs):
 
             if pass_filter:
                 logger.debug('==> %(func)s: call %(all_args)r',
-                             {'func': func_name, 'all_args': all_args})
+                             {'func': func_name,
+                              'all_args': strutils.mask_password(
+                                  six.text_type(all_args))})
 
             start_time = time.time() * 1000
             try:
