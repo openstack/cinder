@@ -698,6 +698,11 @@ class GroupManagerTestCase(test.TestCase):
                                           _mock_create_grp,
                                           mock_notify):
         """Test group_snapshot can be created and deleted."""
+        original_add_volume_type_opts = quota.QUOTAS.add_volume_type_opts
+        quota.QUOTAS.add_volume_type_opts = mock.MagicMock(
+            side_effect=original_add_volume_type_opts
+        )
+
         self.volume.cluster = cluster
         group = tests_utils.create_group(
             self.context,
@@ -736,6 +741,18 @@ class GroupManagerTestCase(test.TestCase):
                                    ['INFO', 'snapshot.create.end']))
 
         self.volume.delete_group_snapshot(self.context, group_snapshot)
+
+        reserve_opts = {
+            'snapshots': -1,
+            'gigabytes': 0
+        }
+
+        quota.QUOTAS.add_volume_type_opts.assert_called()
+        self.assertEqual(
+            (reserve_opts, fake.VOLUME_TYPE_ID),
+            quota.QUOTAS.add_volume_type_opts.call_args[0][1:]
+        )
+        quota.QUOTAS.add_volume_type_opts = original_add_volume_type_opts
 
         self.assert_notify_called(mock_notify,
                                   (['INFO', 'volume.create.start'],
