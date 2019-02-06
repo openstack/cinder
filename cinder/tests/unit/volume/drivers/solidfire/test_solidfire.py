@@ -117,9 +117,8 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.ctxt, volume_id=self.vol.id)
 
         self.fake_sfaccount = {'accountID': 25,
-                               'name': 'testprjid',
                                'targetSecret': 'shhhh',
-                               'username': 'john-wayne',
+                               'username': 'prefix-testprjid',
                                'volumes': [6, 7, 20]}
 
         self.fake_sfvol = {'volumeID': 6,
@@ -300,6 +299,16 @@ class SolidFireVolumeTestCase(test.TestCase):
                     "snapshotID": 1
                 }
             }
+        elif method is 'ListAccounts':
+            return {
+                'result': {
+                    'accounts': [{
+                        'accountID': 5,
+                        'targetSecret': 'shhhh',
+                        'username': 'prefix-testprjid'
+                    }]
+                }
+            }
         else:
             # Crap, unimplemented API call in Fake
             return None
@@ -347,9 +356,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'created_at': timeutils.utcnow()}
 
         fake_sfaccounts = [{'accountID': 5,
-                            'name': 'testprjid',
                             'targetSecret': 'shhhh',
-                            'username': 'john-wayne'}]
+                            'username': 'prefix-testprjid'}]
 
         test_type = {'name': 'sf-1',
                      'qos_specs_id': 'fb0576d7-b4b5-4cad-85dc-ca92e6a497d1',
@@ -411,9 +419,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'volume_type_id': None,
                    'created_at': timeutils.utcnow()}
         fake_sfaccounts = [{'accountID': 5,
-                            'name': 'testprjid',
                             'targetSecret': 'shhhh',
-                            'username': 'john-wayne'}]
+                            'username': 'prefix-testprjid'}]
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         with mock.patch.object(sfv,
@@ -441,9 +448,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'volume_type_id': None,
                    'created_at': timeutils.utcnow()}
         fake_sfaccounts = [{'accountID': 5,
-                            'name': 'testprjid',
                             'targetSecret': 'shhhh',
-                            'username': 'john-wayne'}]
+                            'username': 'prefix-testprjid'}]
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         with mock.patch.object(sfv,
@@ -483,7 +489,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                 mock.patch.object(sfv,
                                   '_get_sfaccounts_for_tenant',
                                   return_value=[{'accountID': 5,
-                                                 'name': 'testprjid'}]):
+                                                 'username':
+                                                 'prefix-testprjid'}]):
             sfv.create_snapshot(testsnap)
             sfv.delete_snapshot(testsnap)
 
@@ -583,7 +590,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.mock_object(solidfire.SolidFireDriver,
                          '_issue_api_request',
                          self.fake_issue_api_request)
-        account = sfv._create_sfaccount('project-id')
+        account = sfv._create_sfaccount('some-name')
         self.assertIsNotNone(account)
 
     def test_create_sfaccount_fails(self):
@@ -594,6 +601,22 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.assertRaises(exception.SolidFireAPIException,
                           sfv._create_sfaccount, 'project-id')
 
+    def test_get_sfaccounts_for_tenant(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
+        accounts = sfv._get_sfaccounts_for_tenant('some-name')
+        self.assertIsNotNone(accounts)
+
+    def test_get_sfaccounts_for_tenant_fails(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request_fails)
+        self.assertRaises(exception.SolidFireAPIException,
+                          sfv._get_sfaccounts_for_tenant, 'some-name')
+
     def test_get_sfaccount_by_name(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         self.mock_object(solidfire.SolidFireDriver,
@@ -601,6 +624,80 @@ class SolidFireVolumeTestCase(test.TestCase):
                          self.fake_issue_api_request)
         account = sfv._get_sfaccount_by_name('some-name')
         self.assertIsNotNone(account)
+
+    def test_get_account_create_availability_no_account(self):
+        fake_sfaccounts = []
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfaccount = sfv._get_account_create_availability(fake_sfaccounts)
+        self.assertIsNone(sfaccount)
+
+    def test_get_account_create_availability(self):
+        fake_sfaccounts = [{'accountID': 29,
+                            'targetSecret': 'shhhh',
+                            'username': 'prefix-testprjid',
+                            'volumes': [6, 7, 20]}]
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfaccount = sfv._get_account_create_availability(fake_sfaccounts)
+        self.assertIsNotNone(sfaccount)
+        self.assertEqual(sfaccount['accountID'],
+                         fake_sfaccounts[0]['accountID'])
+
+    def test_get_account_create_availability_primary_full(self):
+        fake_sfaccounts = [{'accountID': 30,
+                            'targetSecret': 'shhhh',
+                            'username': 'prefix-testprjid'}]
+        get_sfaccount_result = {'accountID': 31,
+                                'targetSecret': 'shhhh',
+                                'username': 'prefix-testprjid_'}
+        get_vol_result = list(range(1, 2001))
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        with mock.patch.object(sfv,
+                               '_get_sfaccounts_for_tenant',
+                               return_value=fake_sfaccounts), \
+                mock.patch.object(sfv,
+                                  '_get_volumes_for_account',
+                                  return_value=get_vol_result):
+            sfaccount = sfv._get_account_create_availability(fake_sfaccounts)
+            self.assertIsNotNone(sfaccount)
+            self.assertEqual(sfaccount['username'],
+                             get_sfaccount_result['username'])
+
+    def test_get_account_create_availability_both_full(self):
+        fake_sfaccounts = [{'accountID': 32,
+                            'targetSecret': 'shhhh',
+                            'username': 'prefix-testprjid'},
+                           {'accountID': 33,
+                            'targetSecret': 'shhhh',
+                            'username': 'prefix-testprjid_'}]
+        get_vol_result = list(range(1, 2001))
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        with mock.patch.object(sfv,
+                               '_get_sfaccounts_for_tenant',
+                               return_value=fake_sfaccounts), \
+                mock.patch.object(sfv,
+                                  '_get_volumes_for_account',
+                                  return_value=get_vol_result):
+            sfaccount = sfv._get_account_create_availability(fake_sfaccounts)
+            self.assertIsNone(sfaccount)
+
+    def test_get_create_account(self):
+        fake_sfaccounts = [{'accountID': 34,
+                            'targetSecret': 'shhhh',
+                            'username': 'prefix-testprjid'},
+                           {'accountID': 35,
+                            'targetSecret': 'shhhh',
+                            'username': 'prefix-testprjid_'}]
+        get_vol_result = list(range(1, 2001))
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        with mock.patch.object(sfv,
+                               '_get_sfaccounts_for_tenant',
+                               return_value=fake_sfaccounts), \
+                mock.patch.object(sfv,
+                                  '_get_volumes_for_account',
+                                  return_value=get_vol_result):
+            sfaccount = sfv._get_account_create_availability(fake_sfaccounts)
+            self.assertRaises(exception.SolidFireDriverException,
+                              sfv._get_create_account, sfaccount)
 
     def test_get_sfaccount_by_name_fails(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -612,9 +709,8 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_get_sfvol_by_cinder_vref_no_provider_id(self):
         fake_sfaccounts = [{'accountID': 25,
-                            'name': 'testprjid',
                             'targetSecret': 'shhhh',
-                            'username': 'john-wayne',
+                            'username': 'prefix-testprjid',
                             'volumes': [6, 7, 20]}]
         self.mock_vref = mock_vref()
 
@@ -647,9 +743,8 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_get_sfvol_by_cinder_vref_no_provider_id_nomatch(self):
         fake_sfaccounts = [{'accountID': 5,
-                            'name': 'testprjid',
                             'targetSecret': 'shhhh',
-                            'username': 'john-wayne',
+                            'username': 'prefix-testprjid',
                             'volumes': [5, 6, 7, 8]}]
 
         self.mock_vref = mock_vref()
@@ -669,9 +764,8 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_get_sfvol_by_cinder_vref_nomatch(self):
         fake_sfaccounts = [{'accountID': 5,
-                            'name': 'testprjid',
                             'targetSecret': 'shhhh',
-                            'username': 'john-wayne',
+                            'username': 'prefix-testprjid',
                             'volumes': [5, 6, 7, 8]}]
 
         self.mock_vref = mock_vref()
@@ -691,9 +785,8 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_get_sfvol_by_cinder_vref(self):
         fake_sfaccounts = [{'accountID': 5,
-                            'name': 'testprjid',
                             'targetSecret': 'shhhh',
-                            'username': 'john-wayne',
+                            'username': 'prefix-testprjid',
                             'volumes': [5, 6, 7, 8]}]
 
         self.mock_vref = mock_vref()
@@ -730,9 +823,8 @@ class SolidFireVolumeTestCase(test.TestCase):
             multiattach=True)
 
         fake_sfaccounts = [{'accountID': 5,
-                            'name': 'testprjid',
                             'targetSecret': 'shhhh',
-                            'username': 'john-wayne'}]
+                            'username': 'prefix-testprjid'}]
 
         get_vol_result = {'volumeID': 5,
                           'name': 'test_volume',
@@ -765,9 +857,8 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_delete_volume_no_volume_on_backend(self):
         fake_sfaccounts = [{'accountID': 5,
-                            'name': 'testprjid',
                             'targetSecret': 'shhhh',
-                            'username': 'john-wayne'}]
+                            'username': 'prefix-testprjid'}]
         fake_no_volumes = []
         testvol = test_utils.create_volume(self.ctxt)
 
@@ -782,9 +873,8 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_delete_snapshot_no_snapshot_on_backend(self):
         fake_sfaccounts = [{'accountID': 5,
-                            'name': 'testprjid',
                             'targetSecret': 'shhhh',
-                            'username': 'john-wayne'}]
+                            'username': 'prefix-testprjid'}]
         fake_no_volumes = []
         testvol = test_utils.create_volume(
             self.ctxt,
@@ -1076,9 +1166,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'migration_status': 'target:'
                                        'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
         fake_sfaccounts = [{'accountID': 5,
-                            'name': 'testprjid',
                             'targetSecret': 'shhhh',
-                            'username': 'john-wayne'}]
+                            'username': 'prefix-testprjid'}]
 
         def _fake_do_v_create(project_id, params):
             return project_id, params

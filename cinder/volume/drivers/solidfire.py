@@ -635,7 +635,7 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         return sfaccount
 
-    def _create_sfaccount(self, project_id):
+    def _create_sfaccount(self, sf_account_name):
         """Create account on SolidFire device if it doesn't already exist.
 
         We're first going to check if the account already exists, if it does
@@ -643,7 +643,6 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         """
 
-        sf_account_name = self._get_sf_account_name(project_id)
         sfaccount = self._get_sfaccount_by_name(sf_account_name)
         if sfaccount is None:
             LOG.debug('solidfire account: %s does not exist, create it...',
@@ -1090,7 +1089,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         # Also: we expect this to be sorted, so we get the primary first
         # in the list
         return sorted([acc for acc in accounts if
-                       cinder_project_id in acc['username']])
+                       cinder_project_id in acc['username']],
+                      key=lambda k: k['accountID'])
 
     def _get_all_active_volumes(self, cinder_uuid=None):
         params = {}
@@ -1120,19 +1120,21 @@ class SolidFireDriver(san.SanISCSIDriver):
         # if it exists and return whichever one has count
         # available.
         for acc in accounts:
-            if self._get_volumes_for_account(
-                    acc['accountID']) > self.max_volumes_per_account:
+            if len(self._get_volumes_for_account(
+                    acc['accountID'])) < self.max_volumes_per_account:
                 return acc
         if len(accounts) == 1:
-            sfaccount = self._create_sfaccount(accounts[0]['name'] + '_')
+            sfaccount = self._create_sfaccount(accounts[0]['username'] + '_')
             return sfaccount
         return None
 
     def _get_create_account(self, proj_id):
         # Retrieve SolidFire accountID to be used for creating volumes.
         sf_accounts = self._get_sfaccounts_for_tenant(proj_id)
+
         if not sf_accounts:
-            sf_account = self._create_sfaccount(proj_id)
+            sf_account_name = self._get_sf_account_name(proj_id)
+            sf_account = self._create_sfaccount(sf_account_name)
         else:
             # Check availability for creates
             sf_account = self._get_account_create_availability(sf_accounts)
@@ -2012,7 +2014,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         if new_project != volume['project_id']:
             # do a create_sfaccount here as this tenant
             # may not exist on the cluster yet
-            sfaccount = self._create_sfaccount(new_project)
+            sfaccount = self._get_create_account(new_project)
 
         params = {
             'volumeID': sf_vol['volumeID'],
@@ -2080,7 +2082,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             'ListActiveVolumes', params)['result']['volumes']
 
         sf_ref = vols[0]
-        sfaccount = self._create_sfaccount(volume['project_id'])
+        sfaccount = self._get_create_account(volume['project_id'])
 
         attributes = {}
         qos = self._retrieve_qos_setting(volume)

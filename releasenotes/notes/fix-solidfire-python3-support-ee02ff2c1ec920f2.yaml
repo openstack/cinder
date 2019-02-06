@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix python3 imcompability issues and make SolidFire driver fully compatible
+    with python3.
