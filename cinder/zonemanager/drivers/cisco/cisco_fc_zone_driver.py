@@ -65,7 +65,9 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
     OpenStack Fibre Channel zone driver to manage FC zoning in
     Cisco SAN fabrics.
 
-    Version history:
+    .. code-block:: none
+
+      Version history:
         1.0 - Initial Cisco FC zone driver
         1.1 - Added friendly zone name support
     """
@@ -117,6 +119,10 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
             if fabric_names:
                 self.fabric_configs = fabric_opts.load_fabric_configurations(
                     fabric_names)
+
+    @staticmethod
+    def get_driver_options():
+        return cisco_opts
 
     @lockutils.synchronized('cisco', 'fcfabric-', True)
     def add_connection(self, fabric, initiator_target_map, host_name=None,

@@ -40,7 +40,10 @@ LOG = logging.getLogger(__name__)
 class HedvigISCSIDriver(driver.ISCSIDriver, san.SanDriver):
     """OpenStack Cinder driver to enable Hedvig storage.
 
-    Version history:
+    .. code-block:: none
+
+     Version history:
+
         1.0 - Initial driver
 
     """
@@ -57,6 +60,10 @@ class HedvigISCSIDriver(driver.ISCSIDriver, san.SanDriver):
         super(HedvigISCSIDriver, self).__init__(*args, **kwargs)
         self.group_stats = {}
         self.hrs = None
+
+    @staticmethod
+    def get_driver_options():
+        return []
 
     def check_for_setup_error(self):
         self.hrs.connect()

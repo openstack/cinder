@@ -19,6 +19,7 @@ Volume driver for NetApp Data ONTAP FibreChannel storage systems.
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap import block_cmode
+from cinder.volume.drivers.netapp import options as na_opts
 from cinder.zonemanager import utils as fczm_utils
 
 
@@ -37,6 +38,10 @@ class NetAppCmodeFibreChannelDriver(driver.BaseVD,
         super(NetAppCmodeFibreChannelDriver, self).__init__(*args, **kwargs)
         self.library = block_cmode.NetAppBlockStorageCmodeLibrary(
             self.DRIVER_NAME, 'FC', **kwargs)
+
+    @staticmethod
+    def get_driver_options():
+        return na_opts.netapp_cluster_opts
 
     def do_setup(self, context):
         self.library.do_setup(context)

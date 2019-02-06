@@ -46,6 +46,10 @@ class FJDXFCDriver(driver.FibreChannelDriver):
             configuration=self.configuration)
         self.VERSION = self.common.VERSION
 
+    @staticmethod
+    def get_driver_options():
+        return eternus_dx_common.FJDXCommon.get_driver_options()
+
     def check_for_setup_error(self):
         if not self.common.pywbemAvailable:
             LOG.error('pywbem could not be imported! '

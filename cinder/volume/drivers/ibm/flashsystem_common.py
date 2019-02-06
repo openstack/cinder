@@ -111,6 +111,10 @@ class FlashSystemDriver(san.SanDriver,
         self._vdisk_copy_in_progress = set()
         self._vdisk_copy_lock = None
 
+    @staticmethod
+    def get_driver_options():
+        return flashsystem_opts
+
     def _ssh(self, ssh_cmd, check_exit_code=True):
         try:
             return self._run_ssh(ssh_cmd, check_exit_code)

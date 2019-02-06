@@ -285,7 +285,9 @@ class ZadaraVPSAConnection(object):
 class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
     """Zadara VPSA iSCSI/iSER volume driver.
 
-    Version history:
+    .. code-block:: none
+
+      Version history:
         15.07 - Initial driver
         16.05 - Move from httplib to requests
     """
@@ -298,6 +300,10 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
     def __init__(self, *args, **kwargs):
         super(ZadaraVPSAISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(zadara_opts)
+
+    @staticmethod
+    def get_driver_options():
+        return zadara_opts
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting.

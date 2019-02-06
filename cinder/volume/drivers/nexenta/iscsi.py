@@ -91,6 +91,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
 
         self._needless_objects = set()
 
+    @staticmethod
+    def get_driver_options():
+        return (options.NEXENTA_CONNECTION_OPTS + options.NEXENTA_ISCSI_OPTS +
+                options.NEXENTA_DATASET_OPTS + options.NEXENTA_RRMGR_OPTS)
+
     @property
     def backend_name(self):
         backend_name = None

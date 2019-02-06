@@ -149,6 +149,10 @@ class NimbleBaseVolumeDriver(san.SanDriver):
         if self.configuration.nimble_verify_certificate is True:
             self.verify = self.configuration.nimble_verify_cert_path or True
 
+    @staticmethod
+    def get_driver_options():
+        return nimble_opts
+
     def _check_config(self):
         """Ensure that the flags we care about are set."""
         required_config = ['san_ip', 'san_login', 'san_password']

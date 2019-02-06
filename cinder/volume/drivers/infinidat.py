@@ -132,6 +132,10 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         self.configuration.append_config_values(infinidat_opts)
         self._lookup_service = fczm_utils.create_lookup_service()
 
+    @staticmethod
+    def get_driver_options():
+        return infinidat_opts
+
     def _setup_and_get_system_object(self, management_address, auth):
         system = infinisdk.InfiniBox(management_address, auth=auth)
         system.api.add_auto_retry(

@@ -243,6 +243,10 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         self._replication_targets = []
         self._target_names = []
 
+    @staticmethod
+    def get_driver_options():
+        return RBD_OPTS
+
     def _get_target_config(self, target_id):
         """Get a replication target from known replication targets."""
         for target in self._replication_targets:

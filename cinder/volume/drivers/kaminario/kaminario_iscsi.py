@@ -33,7 +33,10 @@ utils.trace = common.utils.trace
 class KaminarioISCSIDriver(common.KaminarioCinderDriver):
     """Kaminario K2 iSCSI Volume Driver.
 
-    Version history:
+    .. code-block:: none
+
+     Version history:
+
         1.0 - Initial driver
         1.1 - Added manage/unmanage and extra-specs support for nodedup
         1.2 - Added replication support

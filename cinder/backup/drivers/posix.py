@@ -87,6 +87,10 @@ class PosixBackupDriver(chunkeddriver.ChunkedBackupDriver):
             raise exception.ConfigNotFound(path='backup_path')
         LOG.debug("Using backup repository: %s", self.backup_path)
 
+    @staticmethod
+    def get_driver_options():
+        return posixbackup_service_opts
+
     def update_container_name(self, backup, container):
         if container is not None:
             return container

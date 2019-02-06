@@ -122,6 +122,10 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
                 self.configuration.max_over_subscription_ratio,
                 supports_auto=supports_auto_mosr))
 
+    @staticmethod
+    def get_driver_options():
+        return nfs_opts + remotefs.nas_opts
+
     def initialize_connection(self, volume, connector):
 
         LOG.debug('Initializing connection to volume %(vol)s. '

@@ -74,7 +74,9 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
     Executes commands relating to ACCESS ISCSI.
     Supports creation of volumes on ACCESS.
 
-    API version history:
+    .. code-block:: none
+
+     API version history:
 
         1.0 - Initial version.
     """
@@ -123,6 +125,10 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
                            safe_get('driver_ssl_cert_path') or None)
             if verify_path:
                 self.verify = verify_path
+
+    @staticmethod
+    def get_driver_options():
+        return VA_VOL_OPTS
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""

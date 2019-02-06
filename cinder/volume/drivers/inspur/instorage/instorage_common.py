@@ -166,6 +166,10 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         # This is used to save the available pools in failed-over status
         self._secondary_pools = None
 
+    @staticmethod
+    def get_driver_options():
+        return instorage_mcs_opts
+
     @cinder_utils.trace
     def do_setup(self, ctxt):
         """Check that we have all configuration details from the storage."""

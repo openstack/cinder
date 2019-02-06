@@ -695,6 +695,10 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
                              cert_path=cert_path)
         self._stats = {}
 
+    @staticmethod
+    def get_driver_options():
+        return options.DPL_OPTS
+
     def _convert_size_GB(self, size):
         s = round(float(size) / units.Gi, 2)
         if s > 0:

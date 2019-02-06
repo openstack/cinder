@@ -33,7 +33,10 @@ LOG = logging.getLogger(__name__)
 class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
     """Executes volume driver commands on NexentaEdge cluster.
 
-    Version history:
+    .. code-block:: none
+
+      Version history:
+
         1.0.0 - Initial driver version.
         1.0.1 - Moved opts to options.py.
         1.0.2 - Added HA support.
@@ -97,6 +100,15 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         self.iscsi_target_port = (self.configuration.
                                   nexenta_iscsi_target_portal_port)
         self.ha_vip = None
+
+    @staticmethod
+    def get_driver_options():
+        return (
+            options.NEXENTA_CONNECTION_OPTS +
+            options.NEXENTA_ISCSI_OPTS +
+            options.NEXENTA_DATASET_OPTS +
+            options.NEXENTA_EDGE_OPTS
+        )
 
     @property
     def backend_name(self):

@@ -145,7 +145,9 @@ SIO_MAX_OVERSUBSCRIPTION_RATIO = 10.0
 class ScaleIODriver(driver.VolumeDriver):
     """Cinder ScaleIO Driver
 
-    ScaleIO Driver version history:
+    .. code-block:: none
+
+      ScaleIO Driver version history:
         2.0.1: Added support for SIO 1.3x in addition to 2.0.x
         2.0.2: Added consistency group support to generic volume groups
         2.0.3: Added cache for storage pool and protection domains info
@@ -231,6 +233,10 @@ class ScaleIODriver(driver.VolumeDriver):
             'iopsLimit': None,
             'bandwidthLimit': None,
         }
+
+    @staticmethod
+    def get_driver_options():
+        return scaleio_opts
 
     def check_for_setup_error(self):
         # make sure both domain name and id are not specified

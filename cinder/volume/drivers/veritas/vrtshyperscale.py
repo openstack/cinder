@@ -70,6 +70,10 @@ class HyperScaleDriver(driver.VolumeDriver):
         self.my_dnid = None
 
     @staticmethod
+    def get_driver_options():
+        return []
+
+    @staticmethod
     def _fetch_config_for_controller():
         return HyperScaleDriver._fetch_config_information(
             persona='controller')

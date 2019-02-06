@@ -207,6 +207,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         self._replication_enabled = False
         self._active_backend_id = kwargs.get('active_backend_id', None)
 
+    @staticmethod
+    def get_driver_options():
+        return hpelefthand_opts
+
     def _login(self, timeout=None):
         conf = self._get_lefthand_config()
         if conf:

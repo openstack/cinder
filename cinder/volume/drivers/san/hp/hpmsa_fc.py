@@ -43,5 +43,9 @@ class HPMSAFCDriver(dothill_fc.DotHillFCDriver):
         super(HPMSAFCDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(hpmsa_common.common_opts)
 
+    @staticmethod
+    def get_driver_options():
+        return hpmsa_common.common_opts
+
     def _init_common(self):
         return hpmsa_common.HPMSACommon(self.configuration)

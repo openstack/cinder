@@ -71,6 +71,10 @@ class HPE3PARDriverBase(driver.ManageableVD,
         self.configuration.append_config_values(san.san_opts)
         self.protocol = None
 
+    @staticmethod
+    def get_driver_options():
+        return hpecommon.HPE3PARCommon.get_driver_options()
+
     def _init_common(self):
         return hpecommon.HPE3PARCommon(self.configuration,
                                        self._active_backend_id)

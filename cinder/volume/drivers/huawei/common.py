@@ -97,6 +97,10 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         self.metro_flag = False
         self.replica = None
 
+    @staticmethod
+    def get_driver_options():
+        return huawei_opts
+
     def check_func_support(self, obj_name):
         try:
             self.client._get_object_count(obj_name)

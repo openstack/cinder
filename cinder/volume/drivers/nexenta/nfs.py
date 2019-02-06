@@ -94,6 +94,15 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         self.nfs_versions = {}
         self.shares_with_capacities = {}
 
+    @staticmethod
+    def get_driver_options():
+        return (
+            options.NEXENTA_CONNECTION_OPTS +
+            options.NEXENTA_NFS_OPTS +
+            options.NEXENTA_DATASET_OPTS +
+            options.NEXENTA_RRMGR_OPTS
+        )
+
     @property
     def backend_name(self):
         backend_name = None

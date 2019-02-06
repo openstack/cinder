@@ -140,6 +140,10 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         self._stats = None
         self.tgtiqn = None
 
+    @staticmethod
+    def get_driver_options():
+        return ZFSSA_OPTS
+
     def _get_target_alias(self):
         """return target alias."""
         return self.configuration.zfssa_target_group

@@ -126,7 +126,9 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
     Creates volumes as files on the mounted vzstorage cluster.
 
-    Version history:
+    .. code-block:: none
+
+      Version history:
         1.0     - Initial driver.
         1.1     - Supports vz:volume_format in vendor properties.
     """
@@ -152,6 +154,10 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             'vzstorage', root_helper, execute=execute,
             vzstorage_mount_point_base=self.base,
             vzstorage_mount_options=opts)
+
+    @staticmethod
+    def get_driver_options():
+        return vzstorage_opts
 
     def _update_volume_stats(self):
         super(VZStorageDriver, self)._update_volume_stats()

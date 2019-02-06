@@ -18,6 +18,7 @@
 
 from cinder import interface
 from cinder.volume import driver
+from cinder.volume.drivers.nec import volume_common
 from cinder.volume.drivers.nec import volume_helper
 from cinder.zonemanager import utils as fczm_utils
 
@@ -34,6 +35,10 @@ class MStorageISCSIDriver(volume_helper.MStorageDSVDriver,
         super(MStorageISCSIDriver, self).__init__(*args, **kwargs)
         self._set_config(self.configuration, self.host,
                          self.__class__.__name__)
+
+    @staticmethod
+    def get_driver_options():
+        return volume_common.mstorage_opts
 
     def create_export(self, context, volume, connector):
         return self.iscsi_do_export(context, volume, connector)
@@ -76,6 +81,10 @@ class MStorageFCDriver(volume_helper.MStorageDSVDriver,
         super(MStorageFCDriver, self).__init__(*args, **kwargs)
         self._set_config(self.configuration, self.host,
                          self.__class__.__name__)
+
+    @staticmethod
+    def get_driver_options():
+        return volume_common.mstorage_opts
 
     def create_export(self, context, volume, connector):
         return self.fc_do_export(context, volume, connector)

@@ -96,7 +96,11 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
     Note: To be compliant with the inherited RemoteFSSnapDriver, Quobyte
           volumes are also referred to as shares.
 
-    Version history:
+
+    .. code-block:: none
+
+      Version history:
+
         1.0   - Initial driver.
         1.1   - Adds optional insecure NAS settings
         1.1.1 - Removes getfattr calls from driver
@@ -129,6 +133,10 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
 
         # Used to manage snapshots which are currently attached to a VM.
         self._nova = None
+
+    @staticmethod
+    def get_driver_options():
+        return volume_opts
 
     def _create_regular_file(self, path, size):
         """Creates a regular file of given size in GiB using fallocate."""

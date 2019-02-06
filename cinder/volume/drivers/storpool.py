@@ -99,6 +99,10 @@ class StorPoolDriver(driver.VolumeDriver):
         self._ourIdInt = None
         self._attach = None
 
+    @staticmethod
+    def get_driver_options():
+        return storpool_opts
+
     def _backendException(self, e):
         return exception.VolumeBackendAPIException(data=six.text_type(e))
 

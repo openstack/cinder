@@ -63,7 +63,8 @@ CONF.register_opts(qnap_opts, group=configuration.SHARED_CONF_GROUP)
 class QnapISCSIDriver(san.SanISCSIDriver):
     """QNAP iSCSI based cinder driver
 
-    .. code-block:: default
+
+    .. code-block:: none
 
       Version History:
         1.0.0:
@@ -104,6 +105,10 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         self.target_iqn = ''
         self.target_iqns = []
         self.nasInfoCache = {}
+
+    @staticmethod
+    def get_driver_options():
+        return qnap_opts
 
     def _check_config(self):
         """Ensure that the flags we care about are set."""

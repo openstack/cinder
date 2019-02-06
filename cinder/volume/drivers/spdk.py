@@ -59,6 +59,10 @@ class SPDKDriver(driver.VolumeDriver):
             db=self.db,
             executor=self._execute)
 
+    @staticmethod
+    def get_driver_options():
+        return []
+
     def _rpc_call(self, method, params=None):
         payload = {}
         payload['jsonrpc'] = '2.0'
