@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    PowerMax for Cinder driver now supports storage-assisted in-use retype for
+    volumes including those in replication sessions.

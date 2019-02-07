@@ -171,6 +171,9 @@ class PowerMaxCommonData(object):
     provider_location4 = {'array': six.text_type(uni_array),
                           'device_id': device_id}
 
+    provider_location5 = {'array': remote_array,
+                          'device_id': device_id}
+
     legacy_provider_location = {
         'classname': 'Symm_StorageVolume',
         'keybindings': {'CreationClassName': u'Symm_StorageVolume',
@@ -196,9 +199,10 @@ class PowerMaxCommonData(object):
         replication_driver_data=six.text_type(provider_location3))
 
     test_attached_volume = fake_volume.fake_volume_obj(
-        context=ctx, name='vol1', size=2, provider_auth=None,
+        id='4732de9b-98a4-4b6d-ae4b-3cafb3d34220', context=ctx, name='vol1',
+        size=0, provider_auth=None, attach_status='attached',
         provider_location=six.text_type(provider_location), host=fake_host,
-        volume_type=test_volume_type, attach_status="attached",
+        volume_type=test_volume_type,
         replication_driver_data=six.text_type(provider_location3))
 
     test_legacy_vol = fake_volume.fake_volume_obj(
@@ -279,6 +283,10 @@ class PowerMaxCommonData(object):
                    'array': array,
                    'interval': 3,
                    'retries': 120}
+
+    extra_specs_migrate = deepcopy(extra_specs)
+    extra_specs_migrate[utils.PORTGROUPNAME] = port_group_name_f
+
     extra_specs_disable_compression = deepcopy(extra_specs)
     extra_specs_disable_compression[utils.DISABLECOMPRESSION] = "true"
     extra_specs_intervals_set = deepcopy(extra_specs)
@@ -294,10 +302,16 @@ class PowerMaxCommonData(object):
     rep_extra_specs['rep_mode'] = 'Synchronous'
     rep_extra_specs2 = deepcopy(rep_extra_specs)
     rep_extra_specs2[utils.PORTGROUPNAME] = port_group_name_f
+    rep_extra_specs3 = deepcopy(rep_extra_specs)
+    rep_extra_specs3['slo'] = slo
+    rep_extra_specs3['workload'] = workload
+    rep_extra_specs4 = deepcopy(rep_extra_specs3)
+    rep_extra_specs4['rdf_group_label'] = rdf_group_name
+
     test_volume_type_1 = volume_type.VolumeType(
         id='2b06255d-f5f0-4520-a953-b029196add6a', name='abc',
-        extra_specs=extra_specs
-    )
+        extra_specs=extra_specs)
+
     test_volume_type_list = volume_type.VolumeTypeList(
         objects=[test_volume_type_1])
 
@@ -583,6 +597,24 @@ class PowerMaxCommonData(object):
                        "storageGroupId": ["random_sg_1",
                                           "random_sg_2"]},
                       ]
+
+    volume_details_attached = {"cap_gb": 2,
+                               "num_of_storage_groups": 1,
+                               "volumeId": device_id,
+                               "volume_identifier": "OS-%s" % test_volume.id,
+                               "wwn": volume_wwn,
+                               "snapvx_target": 'false',
+                               "snapvx_source": 'false',
+                               "storageGroupId": [storagegroup_name_f]}
+
+    volume_details_no_sg = {"cap_gb": 2,
+                            "num_of_storage_groups": 1,
+                            "volumeId": device_id,
+                            "volume_identifier": "OS-%s" % test_volume.id,
+                            "wwn": volume_wwn,
+                            "snapvx_target": 'false',
+                            "snapvx_source": 'false',
+                            "storageGroupId": []}
 
     volume_list = [
         {"resultList": {"result": [{"volumeId": device_id}]}},
@@ -1798,6 +1830,16 @@ class PowerMaxUtilsTest(test.TestCase):
             self.assertFalse(
                 self.utils.is_snapshot_manageable(volume))
 
+    def test_get_volume_attached_hostname(self):
+        device_info_pass = self.data.volume_details_attached
+        # Success
+        hostname = self.utils.get_volume_attached_hostname(device_info_pass)
+        self.assertEqual('HostX', hostname)
+        # Fail
+        device_info_fail = self.data.volume_details_no_sg
+        hostname = self.utils.get_volume_attached_hostname(device_info_fail)
+        self.assertIsNone(hostname)
+
 
 class PowerMaxRestTest(test.TestCase):
     def setUp(self):
@@ -2252,17 +2294,16 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_add_child_sg_to_parent_sg(self):
         payload = {"editStorageGroupActionParam": {
-            "expandStorageGroupParam": {
-                "addExistingStorageGroupParam": {
-                    "storageGroupId": [self.data.storagegroup_name_f]}}}}
+            "addExistingStorageGroupParam": {
+                "storageGroupId": [self.data.storagegroup_name_f]}}}
         with mock.patch.object(
                 self.rest, 'modify_storage_group',
-                return_value=(202, self.data.job_list[0])) as mock_modify:
+                return_value=(202, self.data.job_list[0])) as mck_mod_sg:
             self.rest.add_child_sg_to_parent_sg(
                 self.data.array, self.data.storagegroup_name_f,
                 self.data.parent_sg_f, self.data.extra_specs)
-            mock_modify.assert_called_once_with(
-                self.data.array, self.data.parent_sg_f, payload)
+            mck_mod_sg.assert_called_once_with(
+                self.data.array, self.data.parent_sg_f, payload, version='83')
 
     def test_remove_child_sg_from_parent_sg(self):
         payload = {"editStorageGroupActionParam": {
@@ -4747,7 +4788,8 @@ class PowerMaxCommonTest(test.TestCase):
                         volume_name, volume_size, extra_specs)
                     mock_get.assert_called_once_with(
                         extra_specs['array'], extra_specs[utils.SRP],
-                        extra_specs[utils.SLO], 'NONE', extra_specs, True)
+                        extra_specs[utils.SLO], 'NONE', extra_specs, True,
+                        False, None)
 
     def test_create_volume_failed(self):
         volume_name = self.data.test_volume.name
@@ -4785,6 +4827,27 @@ class PowerMaxCommonTest(test.TestCase):
             exception.VolumeBackendAPIException,
             self.common._create_volume,
             volume_name, volume_size, extra_specs)
+
+    @mock.patch.object(rest.PowerMaxRest, 'is_next_gen_array',
+                       return_value=False)
+    @mock.patch.object(provision.PowerMaxProvision, 'verify_slo_workload',
+                       return_value=(True, True))
+    @mock.patch.object(provision.PowerMaxProvision, 'create_volume_from_sg')
+    def test_create_volume_in_use_replication_enabled(self, mock_create,
+                                                      mock_verify,
+                                                      mock_nextgen):
+        volume_name = '1'
+        volume_size = self.data.test_volume.size
+        rep_extra_specs = self.data.rep_extra_specs3
+        with mock.patch.object(
+                self.masking,
+                'get_or_create_default_storage_group') as mck_sg:
+            self.common._create_volume(
+                volume_name, volume_size, rep_extra_specs, in_use=True)
+            mck_sg.assert_called_once_with(
+                rep_extra_specs['array'], rep_extra_specs['srp'],
+                rep_extra_specs['slo'], rep_extra_specs['workload'],
+                rep_extra_specs, False, True, rep_extra_specs['rep_mode'])
 
     def test_set_vmax_extra_specs(self):
         srp_record = self.common.get_attributes_from_cinder_config()
@@ -5343,15 +5406,160 @@ class PowerMaxCommonTest(test.TestCase):
         self.common.retype(volume, new_type, host)
         mock_migrate.assert_called_once_with(
             device_id, volume, host, volume_name, new_type, extra_specs)
-        mock_migrate.reset_mock()
         with mock.patch.object(
                 self.common, '_find_device_on_array', return_value=None):
-            self.common.retype(volume, new_type, host)
-            mock_migrate.assert_not_called()
-        mock_migrate.reset_mock()
-        volume2 = self.data.test_attached_volume
-        self.common.retype(volume2, new_type, host)
-        mock_migrate.assert_not_called()
+            self.assertFalse(self.common.retype(volume, new_type, host))
+
+    def test_retype_attached_vol(self):
+        host = {'host': self.data.new_host}
+        new_type = {'extra_specs': {}}
+        with mock.patch.object(
+                self.common, '_find_device_on_array', return_value=True):
+            with mock.patch.object(self.common,
+                                   '_slo_workload_migration') as mock_retype:
+                self.common.retype(self.data.test_attached_volume,
+                                   new_type, host)
+                mock_retype.assert_called_once()
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume',
+                       return_value=PowerMaxCommonData.volume_details_attached)
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       return_value=PowerMaxCommonData.sg_details[1])
+    @mock.patch.object(utils.PowerMaxUtils, 'get_child_sg_name',
+                       return_value=('OS-Test-SG', '', '', ''))
+    @mock.patch.object(rest.PowerMaxRest, 'is_child_sg_in_parent_sg',
+                       return_value=True)
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'move_volume_between_storage_groups')
+    @mock.patch.object(rest.PowerMaxRest, 'is_volume_in_storagegroup',
+                       return_value=True)
+    def test_retype_inuse_volume_tgt_sg_exist(self, mck_vol_in_sg, mck_sg_move,
+                                              mck_child_sg_in_sg,
+                                              mck_get_sg_name,
+                                              mck_get_sg, mck_get_vol):
+        array = self.data.array
+        srp = self.data.srp
+        slo = self.data.slo
+        workload = self.data.workload
+        device_id = self.data.device_id
+        volume = self.data.test_attached_volume
+        rep_mode = 'Synchronous'
+        src_extra_specs = self.data.extra_specs_migrate
+        interval = src_extra_specs['interval']
+        retries = src_extra_specs['retries']
+        tgt_extra_specs = {
+            'srp': srp, 'array': array, 'slo': slo, 'workload': workload,
+            'interval': interval, 'retries': retries, 'rep_mode': rep_mode}
+
+        success = self.common._retype_inuse_volume(
+            array, srp, volume, device_id, src_extra_specs, slo, workload,
+            tgt_extra_specs, False)[0]
+        self.assertTrue(success)
+        mck_sg_move.assert_called()
+        mck_vol_in_sg.assert_called()
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume',
+                       return_value=PowerMaxCommonData.volume_details_attached)
+    @mock.patch.object(utils.PowerMaxUtils, 'get_child_sg_name',
+                       return_value=('OS-Test-SG', '', '', ''))
+    @mock.patch.object(provision.PowerMaxProvision, 'create_storage_group')
+    @mock.patch.object(masking.PowerMaxMasking, 'add_child_sg_to_parent_sg')
+    @mock.patch.object(rest.PowerMaxRest, 'is_child_sg_in_parent_sg',
+                       return_value=True)
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'move_volume_between_storage_groups')
+    @mock.patch.object(rest.PowerMaxRest, 'is_volume_in_storagegroup',
+                       return_value=True)
+    def test_retype_inuse_volume_no_tgt_sg(self, mck_vol_in_sg, mck_move_vol,
+                                           mck_sg_in_sg, mck_add_sg_to_sg,
+                                           mck_create_sg, mck_get_csg_name,
+                                           mck_get_vol):
+        array = self.data.array
+        srp = self.data.srp
+        slo = self.data.slo
+        workload = self.data.workload
+        device_id = self.data.device_id
+        volume = self.data.test_attached_volume
+        rep_mode = 'Synchronous'
+        src_extra_specs = self.data.extra_specs_migrate
+        interval = src_extra_specs['interval']
+        retries = src_extra_specs['retries']
+        tgt_extra_specs = {
+            'srp': srp, 'array': array, 'slo': slo, 'workload': workload,
+            'interval': interval, 'retries': retries, 'rep_mode': rep_mode}
+
+        with mock.patch.object(self.rest, 'get_storage_group',
+                               side_effect=[PowerMaxCommonData.sg_details[1],
+                                            None,
+                                            PowerMaxCommonData.sg_details[1]]):
+            success = self.common._retype_inuse_volume(
+                array, srp, volume, device_id, src_extra_specs, slo, workload,
+                tgt_extra_specs, False)[0]
+            mck_create_sg.assert_called()
+            mck_add_sg_to_sg.assert_called()
+            self.assertTrue(success)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume',
+                       return_value=PowerMaxCommonData.volume_details_attached)
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       return_value=PowerMaxCommonData.sg_details[1])
+    @mock.patch.object(utils.PowerMaxUtils, 'get_child_sg_name',
+                       return_value=('OS-Test-SG', '', '', ''))
+    @mock.patch.object(rest.PowerMaxRest, 'is_child_sg_in_parent_sg',
+                       return_value=False)
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'move_volume_between_storage_groups')
+    @mock.patch.object(rest.PowerMaxRest, 'is_volume_in_storagegroup',
+                       return_value=False)
+    def test_retype_inuse_volume_fail(self, mck_vol_in_sg, mck_sg_move,
+                                      mck_child_sg_in_sg, mck_get_sg_name,
+                                      mck_get_sg, mck_get_vol):
+        array = self.data.array
+        srp = self.data.srp
+        slo = self.data.slo
+        workload = self.data.workload
+        device_id = self.data.device_id
+        volume = self.data.test_attached_volume
+        rep_mode = 'Synchronous'
+        src_extra_specs = self.data.extra_specs_migrate
+        interval = src_extra_specs['interval']
+        retries = src_extra_specs['retries']
+        tgt_extra_specs = {
+            'srp': srp, 'array': array, 'slo': slo, 'workload': workload,
+            'interval': interval, 'retries': retries, 'rep_mode': rep_mode}
+        success = self.common._retype_inuse_volume(
+            array, srp, volume, device_id, src_extra_specs, slo, workload,
+            tgt_extra_specs, False)[0]
+        self.assertFalse(success)
+        mck_vol_in_sg.assert_not_called()
+        mck_sg_move.assert_not_called()
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume',
+                       return_value=PowerMaxCommonData.volume_details_attached)
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       return_value=PowerMaxCommonData.sg_details[1])
+    @mock.patch.object(utils.PowerMaxUtils, 'get_volume_attached_hostname',
+                       return_value=None)
+    def test_retype_inuse_volume_fail_no_attached_host(self, mck_get_hostname,
+                                                       mck_get_sg,
+                                                       mck_get_vol):
+        array = self.data.array
+        srp = self.data.srp
+        slo = self.data.slo
+        workload = self.data.workload
+        device_id = self.data.device_id
+        volume = self.data.test_attached_volume
+        rep_mode = 'Synchronous'
+        src_extra_specs = self.data.extra_specs_migrate
+        interval = src_extra_specs['interval']
+        retries = src_extra_specs['retries']
+        tgt_extra_specs = {
+            'srp': srp, 'array': array, 'slo': slo, 'workload': workload,
+            'interval': interval, 'retries': retries, 'rep_mode': rep_mode}
+        success = self.common._retype_inuse_volume(
+            array, srp, volume, device_id, src_extra_specs, slo, workload,
+            tgt_extra_specs, False)[0]
+        self.assertFalse(success)
 
     def test_slo_workload_migration_valid(self):
         device_id = self.data.device_id
@@ -5446,6 +5654,105 @@ class PowerMaxCommonTest(test.TestCase):
                     new_type, extra_specs)[0]
                 self.assertTrue(migrate_status)
                 mock_remove.assert_not_called()
+
+    @mock.patch.object(common.PowerMaxCommon, 'cleanup_lun_replication')
+    @mock.patch.object(common.PowerMaxCommon, '_retype_inuse_volume',
+                       return_value=(True, 'Test'))
+    @mock.patch.object(common.PowerMaxCommon,
+                       'setup_inuse_volume_replication',
+                       return_value=('Status', 'Data', 'Info'))
+    @mock.patch.object(common.PowerMaxCommon, '_retype_remote_volume',
+                       return_value=True)
+    def test_migrate_in_use_volume(self, mck_remote_retype, mck_setup,
+                                   mck_retype, mck_cleanup):
+        # Array/Volume info
+        array = self.data.array
+        srp = self.data.srp
+        slo = self.data.slo
+        workload = self.data.workload
+        device_id = self.data.device_id
+        volume = self.data.test_attached_volume
+        volume_name = self.data.test_attached_volume.name
+        # Rep Config
+        rep_mode = 'Synchronous'
+        self.common.rep_config = {'mode': rep_mode}
+        # Extra Specs
+        new_type = {'extra_specs': {}}
+        src_extra_specs = self.data.extra_specs_migrate
+        interval = src_extra_specs['interval']
+        retries = src_extra_specs['retries']
+        tgt_extra_specs = {
+            'srp': srp, 'array': array, 'slo': slo, 'workload': workload,
+            'interval': interval, 'retries': retries, 'rep_mode': rep_mode}
+
+        def _reset_mocks():
+            mck_cleanup.reset_mock()
+            mck_setup.reset_mock()
+            mck_retype.reset_mock()
+            mck_remote_retype.reset_mock()
+
+        # Scenario 1: no_rep => no_rep
+        with mock.patch.object(self.utils, 'is_replication_enabled',
+                               side_effect=[False, False]):
+            success = self.common._migrate_volume(
+                array, volume, device_id, srp, slo, workload, volume_name,
+                new_type, src_extra_specs)[0]
+            mck_retype.assert_called_once_with(
+                array, srp, volume, device_id, src_extra_specs, slo, workload,
+                tgt_extra_specs, False)
+            mck_cleanup.assert_not_called()
+            mck_setup.assert_not_called()
+            mck_remote_retype.assert_not_called()
+            self.assertTrue(success)
+            _reset_mocks()
+
+        # Scenario 2: rep => no_rep
+        with mock.patch.object(self.utils, 'is_replication_enabled',
+                               side_effect=[True, False]):
+            success = self.common._migrate_volume(
+                array, volume, device_id, srp, slo, workload, volume_name,
+                new_type, src_extra_specs)[0]
+            mck_cleanup.assert_called_once_with(
+                volume, volume_name, device_id, src_extra_specs)
+            mck_retype.assert_called_once_with(
+                array, srp, volume, device_id, src_extra_specs, slo, workload,
+                tgt_extra_specs, False)
+            mck_setup.assert_not_called()
+            mck_remote_retype.assert_not_called()
+            self.assertTrue(success)
+            _reset_mocks()
+
+        # Scenario 3: no_rep => rep
+        with mock.patch.object(self.utils, 'is_replication_enabled',
+                               side_effect=[False, True]):
+            success = self.common._migrate_volume(
+                array, volume, device_id, srp, slo, workload, volume_name,
+                new_type, src_extra_specs)[0]
+            mck_setup.assert_called_once_with(
+                self.data.array, volume, device_id, src_extra_specs)
+            mck_retype.assert_called_once_with(
+                array, srp, volume, device_id, src_extra_specs, slo,
+                workload, tgt_extra_specs, False)
+            mck_cleanup.assert_not_called()
+            mck_remote_retype.assert_not_called()
+            self.assertTrue(success)
+            _reset_mocks()
+
+        # Scenario 4: rep => rep
+        with mock.patch.object(self.utils, 'is_replication_enabled',
+                               side_effect=[True, True]):
+            success = self.common._migrate_volume(
+                array, volume, device_id, srp, slo, workload, volume_name,
+                new_type, src_extra_specs)[0]
+            mck_retype.assert_called_once_with(
+                array, srp, volume, device_id, src_extra_specs, slo, workload,
+                tgt_extra_specs, False)
+            mck_remote_retype.assert_called_once_with(
+                array, volume, device_id, volume_name, rep_mode, True,
+                tgt_extra_specs)
+            mck_cleanup.assert_not_called()
+            mck_setup.assert_not_called()
+            self.assertTrue(success)
 
     @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
     def test_migrate_volume_failed_get_new_sg_failed(self, mock_remove):
@@ -6444,9 +6751,9 @@ class PowerMaxFCTest(test.TestCase):
         host = {'host': self.data.new_host}
         new_type = {'extra_specs': {}}
         with mock.patch.object(self.common, 'retype',
-                               return_value=True) as mock_retype:
+                               return_value=True) as mck_retype:
             self.driver.retype({}, self.data.test_volume, new_type, '', host)
-            mock_retype.assert_called_once_with(
+            mck_retype.assert_called_once_with(
                 self.data.test_volume, new_type, host)
 
     def test_failover_host(self):
@@ -6759,9 +7066,9 @@ class PowerMaxISCSITest(test.TestCase):
         host = {'host': self.data.new_host}
         new_type = {'extra_specs': {}}
         with mock.patch.object(self.common, 'retype',
-                               return_value=True) as mock_retype:
+                               return_value=True) as mck_retype:
             self.driver.retype({}, self.data.test_volume, new_type, '', host)
-            mock_retype.assert_called_once_with(
+            mck_retype.assert_called_once_with(
                 self.data.test_volume, new_type, host)
 
     def test_failover_host(self):
@@ -8162,6 +8469,33 @@ class PowerMaxCommonReplicationTest(test.TestCase):
         self.assertEqual({'array': self.data.remote_array,
                           'device_id': self.data.device_id2}, rep_data)
         mock_create.assert_not_called()
+
+    @mock.patch.object(common.PowerMaxCommon, 'get_rdf_details',
+                       return_value=(PowerMaxCommonData.rdf_group_no,
+                                     PowerMaxCommonData.remote_array))
+    @mock.patch.object(rest.PowerMaxRest, 'get_size_of_device_on_array',
+                       return_value=2)
+    @mock.patch.object(common.PowerMaxCommon, '_get_replication_extra_specs',
+                       return_value=PowerMaxCommonData.rep_extra_specs)
+    @mock.patch.object(common.PowerMaxCommon, '_create_volume',
+                       return_value=PowerMaxCommonData.provider_location)
+    @mock.patch.object(common.PowerMaxCommon, '_sync_check')
+    @mock.patch.object(rest.PowerMaxRest, 'create_rdf_device_pair',
+                       return_value=PowerMaxCommonData.rdf_group_details)
+    def test_setup_inuse_volume_replication(self, mck_create_rdf_pair,
+                                            mck_sync_chk, mck_create_vol,
+                                            mck_rep_specs, mck_get_vol_size,
+                                            mck_get_rdf_info):
+        array = self.data.array
+        device_id = self.data.device_id
+        volume = self.data.test_attached_volume
+        extra_specs = self.data.extra_specs_migrate
+        self.rep_config = self.data.rep_extra_specs4
+        rep_status, rep_data, __ = (
+            self.common.setup_inuse_volume_replication(
+                array, volume, device_id, extra_specs))
+        self.assertEqual('enabled', rep_status)
+        self.assertEqual(self.data.rdf_group_details, rep_data)
 
     @mock.patch.object(common.PowerMaxCommon, '_cleanup_remote_target')
     def test_cleanup_lun_replication_success(self, mock_clean):
