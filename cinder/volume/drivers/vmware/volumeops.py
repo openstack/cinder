@@ -608,7 +608,7 @@ class VMwareVolumeOps(object):
                   {'path': path, 'size': requested_size_in_gb})
         diskMgr = self._session.vim.service_content.virtualDiskManager
 
-        # VMWare API needs the capacity unit to be in KB, so convert the
+        # VMware API needs the capacity unit to be in KB, so convert the
         # capacity unit from GB to KB.
         size_in_kb = requested_size_in_gb * units.Mi
         task = self._session.invoke_api(self._session.vim,
