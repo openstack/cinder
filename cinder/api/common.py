@@ -200,7 +200,7 @@ def remove_version_from_href(href):
 
     """
     parsed_url = urllib.parse.urlsplit(href)
-    url_parts = parsed_url.path.split('/', 2)
+    url_parts = parsed_url.path.split('/')
 
     # NOTE: this should match vX.X or vX
     expression = re.compile(r'^v([0-9]+|[0-9]+\.[0-9]+)(/.*|$)')
