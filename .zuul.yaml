@@ -15,21 +15,6 @@
         - cinder-tempest-dsvm-lvm-lio-barbican
         - cinder-tox-bandit-baseline:
             voting: false
-        - nova-multiattach:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
         - openstack-tox-functional-py35:
             irrelevant-files:
               - ^.*\.rst$
@@ -222,21 +207,6 @@
               - ^tox.ini$
     gate:
       jobs:
-        - nova-multiattach:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
         - openstack-tox-functional-py35:
             irrelevant-files:
               - ^.*\.rst$
