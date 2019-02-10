@@ -2067,7 +2067,7 @@ test_terminate_connection_cleanup_deregister:
       get_alu_hlu_map: {}
   vnx:
     _methods:
-      remove_hba:
+      delete_hba:
 
 test_terminate_connection_cleanup_sg_is_not_empty:
   sg:
