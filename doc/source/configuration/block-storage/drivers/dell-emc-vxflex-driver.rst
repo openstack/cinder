@@ -37,6 +37,7 @@ following versions of ScaleIO and VxFlex OS and found to be compatible:
 * ScaleIO 2.0.x
 * ScaleIO 2.5.x
 * VxFlex OS 2.6.x
+* VxFlex OS 3.0.x
 
 Please consult the :ref:`scaleio_docs`
 to determine supported operating systems for each version
@@ -297,6 +298,47 @@ and the relevant calculated value of ``maxIOPSperGB`` or ``maxBWSperGB``.
 
 Since the limits are per SDC, they will be applied after the volume
 is attached to an instance, and thus to a compute node/SDC.
+
+VxFlex OS compression support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Starting from version 3.0, VxFlex OS supports volume compression.
+By default driver will create volumes without compression.
+In order to create a compressed volume, a volume type which enables
+compression support needs to be created first:
+
+.. code-block:: console
+
+   $ openstack volume type create vxflexos_compressed
+   $ openstack volume type set --property provisioning:type=compressed vxflexos_compressed
+
+If a volume with this type is scheduled to a storage pool which doesn't
+support compression, then ``thin`` provisioning will be used.
+See table below for details.
+
++-------------------+---------------------------+--------------------+
+| provisioning:type |  storage pool supports compression             |
+|                   +---------------------------+--------------------+
+|                   | yes (VxFlex 3.0 FG pool)  |  no (other pools)  |
++===================+===========================+====================+
+|   compressed      |     thin with compression |     thin           |
++-------------------+---------------------------+--------------------+
+|   thin            |        thin               |     thin           |
++-------------------+---------------------------+--------------------+
+|   thick           |        thin               |     thick          |
++-------------------+---------------------------+--------------------+
+|   not set         |        thin               |     thin           |
++-------------------+---------------------------+--------------------+
+
+.. note::
+    VxFlex 3.0 Fine Granularity storage pools don't support thick provisioned volumes.
+
+You can add property ``compression_support='<is> True'`` to volume type to
+limit volumes allocation only to data pools which supports compression.
+
+.. code-block:: console
+
+   $ openstack volume type set  --property compression_support='<is> True'  vxflexos_compressed
+
 
 Using VxFlex OS Storage with a containerized overcloud
 ------------------------------------------------------
