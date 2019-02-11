@@ -55,6 +55,18 @@ class TestVolumeDriver(test.TestCase):
                 conn_info = self.driver.initialize_connection(None, None)
                 add_zone_mock.assert_called_once_with(conn_info)
 
+    @mock.patch('cinder.zonemanager.utils.create_zone_manager')
+    @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
+    @mock.patch.object(utils, 'require_driver_initialized')
+    def test_initialize_connection_with_decorator_and_empty_map(
+            self, utils_mock, opt_mock, zm_create_mock):
+        utils_mock.return_value = True
+        with mock.patch.object(fc_zone_manager.ZoneManager, 'add_connection')\
+                as add_zone_mock:
+            self.driver.initialize_connection_with_empty_map(None, None)
+            zm_create_mock.assert_not_called()
+            add_zone_mock.assert_not_called()
+
     @mock.patch.object(utils, 'require_driver_initialized')
     def test_initialize_connection_no_decorator(self, utils_mock):
         utils_mock.return_value = True
@@ -77,6 +89,18 @@ class TestVolumeDriver(test.TestCase):
                 mock_safe_get.return_value = 'fabric'
                 conn_info = self.driver.terminate_connection(None, None)
                 remove_zone_mock.assert_called_once_with(conn_info)
+
+    @mock.patch('cinder.zonemanager.utils.create_zone_manager')
+    @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
+    @mock.patch.object(utils, 'require_driver_initialized')
+    def test_terminate_connection_with_decorator_and_empty_map(
+            self, utils_mock, opt_mock, zm_create_mock):
+        utils_mock.return_value = True
+        with mock.patch.object(fc_zone_manager.ZoneManager,
+                               'delete_connection') as remove_zone_mock:
+            self.driver.terminate_connection_with_empty_map(None, None)
+            zm_create_mock.assert_not_called()
+            remove_zone_mock.assert_not_called()
 
     @mock.patch.object(utils, 'require_driver_initialized')
     def test_terminate_connection_no_decorator(self, utils_mock):
