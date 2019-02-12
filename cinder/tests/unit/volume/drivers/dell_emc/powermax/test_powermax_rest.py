@@ -217,13 +217,13 @@ class PowerMaxRestTest(test.TestCase):
                           self.rest.modify_resource, array, category,
                           resource_type, resource_name)
 
-    def test_get_array_serial(self):
+    def test_get_array_detail(self):
         ref_details = self.data.symmetrix[0]
-        array_details = self.rest.get_array_serial(self.data.array)
+        array_details = self.rest.get_array_detail(self.data.array)
         self.assertEqual(ref_details, array_details)
 
-    def test_get_array_serial_failed(self):
-        array_details = self.rest.get_array_serial(self.data.failed_resource)
+    def test_get_array_detail_failed(self):
+        array_details = self.rest.get_array_detail(self.data.failed_resource)
         self.assertIsNone(array_details)
 
     def test_get_uni_version(self):
@@ -241,32 +241,32 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_get_slo_list_powermax(self):
         ref_settings = self.data.powermax_slo_details['sloId']
-        slo_settings = self.rest.get_slo_list(self.data.array)
+        slo_settings = self.rest.get_slo_list(
+            self.data.array, True, 'PowerMax 2000')
         self.assertEqual(ref_settings, slo_settings)
 
     def test_get_slo_list_vmax(self):
         ref_settings = ['Diamond']
         with mock.patch.object(self.rest, 'get_resource',
                                return_value=self.data.vmax_slo_details):
-            slo_settings = self.rest.get_slo_list(self.data.array)
+            slo_settings = self.rest.get_slo_list(
+                self.data.array, False, 'VMAX250F')
             self.assertEqual(ref_settings, slo_settings)
 
     def test_get_workload_settings(self):
         ref_settings = self.data.workloadtype['workloadId']
         wl_settings = self.rest.get_workload_settings(
-            self.data.array)
+            self.data.array, False)
         self.assertEqual(ref_settings, wl_settings)
 
     def test_get_workload_settings_next_gen(self):
-        with mock.patch.object(self.rest, 'is_next_gen_array',
-                               return_value=True):
-            wl_settings = self.rest.get_workload_settings(
-                self.data.array_herc)
-            self.assertEqual(['None'], wl_settings)
+        wl_settings = self.rest.get_workload_settings(
+            self.data.array_herc, True)
+        self.assertEqual(['None'], wl_settings)
 
     def test_get_workload_settings_failed(self):
         wl_settings = self.rest.get_workload_settings(
-            self.data.failed_resource)
+            self.data.failed_resource, False)
         self.assertEqual([], wl_settings)
 
     def test_is_compression_capable_true(self):
@@ -1478,6 +1478,16 @@ class PowerMaxRestTest(test.TestCase):
         self.assertFalse(is_next_gen)
         is_next_gen2 = self.rest.is_next_gen_array(self.data.array_herc)
         self.assertTrue(is_next_gen2)
+
+    def test_get_array_model_info(self):
+        array_model_vmax, is_next_gen = self.rest.get_array_model_info(
+            self.data.array)
+        self.assertEqual('VMAX250F', array_model_vmax)
+        self.assertFalse(is_next_gen)
+        array_model_powermax, is_next_gen2 = self.rest.get_array_model_info(
+            self.data.array_herc)
+        self.assertTrue(is_next_gen2)
+        self.assertEqual('PowerMax 2000', array_model_powermax)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=test_utils.ZeroIntervalLoopingCall)

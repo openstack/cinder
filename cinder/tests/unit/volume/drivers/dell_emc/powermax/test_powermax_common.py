@@ -69,8 +69,8 @@ class PowerMaxCommonTest(test.TestCase):
             None, 'config_group', None, None)
         fc.PowerMaxFCDriver(configuration=configuration)
 
-    @mock.patch.object(rest.PowerMaxRest, 'is_next_gen_array',
-                       return_value=True)
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_model_info',
+                       return_value=('PowerMax 2000', True))
     @mock.patch.object(rest.PowerMaxRest, 'set_rest_credentials')
     @mock.patch.object(common.PowerMaxCommon, '_get_slo_workload_combinations',
                        return_value=[])
@@ -80,7 +80,7 @@ class PowerMaxCommonTest(test.TestCase):
     def test_gather_info_next_gen(self, mock_parse, mock_combo, mock_rest,
                                   mock_nextgen):
         self.common._gather_info()
-        self.assertTrue(self.common.nextGen)
+        self.assertTrue(self.common.next_gen)
 
     def test_get_slo_workload_combinations_powermax(self):
         array_info = self.common.get_attributes_from_cinder_config()
@@ -110,7 +110,8 @@ class PowerMaxCommonTest(test.TestCase):
         return_value=tpd.PowerMaxData.powermax_slo_details['sloId'])
     def test_get_slo_workload_combinations_next_gen(self, mck_slo, mck_wl,
                                                     mck_model):
-        self.common.nextGen = True
+        self.common.next_gen = True
+        self.common.array_model = 'PowerMax 2000'
         finalarrayinfolist = self.common._get_slo_workload_combinations(
             self.data.array_info_no_wl)
         self.assertTrue(len(finalarrayinfolist) == 14)
@@ -125,7 +126,7 @@ class PowerMaxCommonTest(test.TestCase):
         return_value=tpd.PowerMaxData.powermax_slo_details['sloId'])
     def test_get_slo_workload_combinations_next_gen_vmax(
             self, mck_slo, mck_wl, mck_model):
-        self.common.nextGen = True
+        self.common.next_gen = True
         finalarrayinfolist = self.common._get_slo_workload_combinations(
             self.data.array_info_no_wl)
         self.assertTrue(len(finalarrayinfolist) == 18)
@@ -641,7 +642,7 @@ class PowerMaxCommonTest(test.TestCase):
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         extra_specs[utils.WORKLOAD] = self.data.workload
         ref_mv_dict = self.data.masking_view_dict
-        self.common.nextGen = False
+        self.common.next_gen = False
         masking_view_dict = self.common._populate_masking_dict(
             volume, connector, extra_specs)
         self.assertEqual(ref_mv_dict, masking_view_dict)
@@ -686,7 +687,7 @@ class PowerMaxCommonTest(test.TestCase):
         connector = self.data.connector
         extra_specs = deepcopy(self.data.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
-        self.common.nextGen = True
+        self.common.next_gen = True
         masking_view_dict = self.common._populate_masking_dict(
             volume, connector, extra_specs)
         self.assertEqual('NONE', masking_view_dict[utils.WORKLOAD])
@@ -822,11 +823,12 @@ class PowerMaxCommonTest(test.TestCase):
         volume_name = '1'
         volume_size = self.data.test_volume.size
         extra_specs = self.data.extra_specs
-        self.common.nextGen = True
+        self.common.next_gen = True
         with mock.patch.object(
                 self.utils, 'is_compression_disabled', return_value=True):
             with mock.patch.object(
-                    self.rest, 'is_next_gen_array', return_value=True):
+                    self.rest, 'get_array_model_info',
+                    return_value=('PowerMax 2000', True)):
                 with mock.patch.object(
                         self.masking,
                         'get_or_create_default_storage_group') as mock_get:
@@ -947,7 +949,7 @@ class PowerMaxCommonTest(test.TestCase):
 
     def test_set_vmax_extra_specs_next_gen(self):
         srp_record = self.common.get_attributes_from_cinder_config()
-        self.common.nextGen = True
+        self.common.next_gen = True
         extra_specs = self.common._set_vmax_extra_specs(
             self.data.vol_type_extra_specs, srp_record)
         ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)

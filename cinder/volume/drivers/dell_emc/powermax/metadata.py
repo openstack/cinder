@@ -131,7 +131,7 @@ class PowerMaxVolumeMetadata(object):
         self.version_dict['unisphere_for_powermax_version'] = (
             u4p_version_dict['version'])
         self.version_dict['serial_number'] = serial_number
-        array_info_dict = self.rest.get_array_serial(serial_number)
+        array_info_dict = self.rest.get_array_detail(serial_number)
         self.version_dict['storage_firmware_version'] = (
             array_info_dict['ucode'])
         self.version_dict['storage_model'] = array_info_dict['model']
@@ -465,6 +465,7 @@ class PowerMaxVolumeMetadata(object):
             None, None, None, None)
         rep_mode, replication_status, rdf_group_label, use_bias = (
             None, None, None, None)
+        target_array_model = None
         if rep_info_dict:
             rdf_group_no = rep_info_dict['rdf_group_no']
             target_name = rep_info_dict['target_name']
@@ -475,6 +476,7 @@ class PowerMaxVolumeMetadata(object):
             rdf_group_label = rep_info_dict['rdf_group_label']
             if utils.METROBIAS in extra_specs:
                 use_bias = extra_specs[utils.METROBIAS]
+            target_array_model = rep_info_dict['target_array_model']
 
         default_sg = self.utils.derive_default_sg_from_extra_specs(
             extra_specs, rep_mode)
@@ -500,7 +502,8 @@ class PowerMaxVolumeMetadata(object):
                 'yes' if self.utils.is_compression_disabled(
                     extra_specs) else 'no'),
             source_device_id=source_device_id,
-            temporary_snapvx=temporary_snapvx
+            temporary_snapvx=temporary_snapvx,
+            target_array_model=target_array_model
 
         )
         volume_metadata = self.update_volume_info_metadata(

@@ -452,13 +452,15 @@ class PowerMaxProvision(object):
         return (total_capacity_gb, remaining_capacity_gb,
                 subscribed_capacity_gb, array_reserve_percent)
 
-    def verify_slo_workload(self, array, slo, workload, srp):
+    def verify_slo_workload(
+            self, array, slo, workload, is_next_gen=None, array_model=None):
         """Check if SLO and workload values are valid.
 
         :param array: the array serial number
         :param slo: Service Level Object e.g bronze
         :param workload: workload e.g DSS
-        :param srp: the storage resource pool name
+        :param is_next_gen: can be None
+
         :returns: boolean
         """
         is_valid_slo, is_valid_workload = False, False
@@ -472,8 +474,12 @@ class PowerMaxProvision(object):
         if slo and slo.lower() == 'none':
             slo = None
 
-        valid_slos = self.rest.get_slo_list(array)
-        valid_workloads = self.rest.get_workload_settings(array)
+        if is_next_gen or is_next_gen is None:
+            array_model, is_next_gen = self.rest.get_array_model_info(
+                array)
+        valid_slos = self.rest.get_slo_list(array, is_next_gen, array_model)
+
+        valid_workloads = self.rest.get_workload_settings(array, is_next_gen)
         for valid_slo in valid_slos:
             if slo == valid_slo:
                 is_valid_slo = True

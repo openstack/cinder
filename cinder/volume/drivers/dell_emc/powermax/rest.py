@@ -539,7 +539,7 @@ class PowerMaxRest(object):
         operation = 'delete %(res)s resource' % {'res': resource_type}
         self.check_status_code_success(operation, status_code, message)
 
-    def get_array_serial(self, array):
+    def get_array_detail(self, array):
         """Get an array from its serial number.
 
         :param array: the array serial number
@@ -559,7 +559,7 @@ class PowerMaxRest(object):
         :returns: bool
         """
         is_next_gen = False
-        array_details = self.get_array_serial(array)
+        array_details = self.get_array_detail(array)
         if array_details:
             ucode_version = array_details['ucode'].split('.')[0]
             if ucode_version >= UCODE_5978:
@@ -603,17 +603,19 @@ class PowerMaxRest(object):
                                         resource_name=srp, params=None)
         return srp_details
 
-    def get_slo_list(self, array):
+    def get_slo_list(self, array, is_next_gen, array_model):
         """Retrieve the list of slo's from the array
 
         :param array: the array serial number
+        :param is_next_gen: next generation flag
+        :param array_model
         :returns: slo_list -- list of service level names
         """
         slo_list = []
         slo_dict = self.get_resource(array, SLOPROVISIONING, 'slo')
         if slo_dict and slo_dict.get('sloId'):
-            if not self.is_next_gen_array(array) and (
-                    any(self.get_vmax_model(array) in x for x in
+            if not is_next_gen and (
+                    any(array_model in x for x in
                         utils.VMAX_AFA_MODELS)):
                 if 'Optimized' in slo_dict.get('sloId'):
                     slo_dict['sloId'].remove('Optimized')
@@ -622,15 +624,16 @@ class PowerMaxRest(object):
                     slo_list.append(slo)
         return slo_list
 
-    def get_workload_settings(self, array):
+    def get_workload_settings(self, array, is_next_gen):
         """Get valid workload options from array.
 
         Workloads are no longer supported from HyperMaxOS 5978 onwards.
         :param array: the array serial number
+        :param is_next_gen: is next generation flag
         :returns: workload_setting -- list of workload names
         """
         workload_setting = []
-        if self.is_next_gen_array(array):
+        if is_next_gen:
             workload_setting.append('None')
         else:
             wl_details = self.get_resource(
@@ -645,13 +648,28 @@ class PowerMaxRest(object):
         :param array: the array serial number
         :return: the PowerMax/VMAX model
         """
-        vmax_version = ''
-        system_uri = ("/%(version)s/system/symmetrix/%(array)s" % {
-            'version': U4V_VERSION, 'array': array})
-        system_info = self._get_request(system_uri, SYSTEM)
+        vmax_version = None
+        system_info = self.get_array_detail(array)
         if system_info and system_info.get('model'):
             vmax_version = system_info.get('model')
         return vmax_version
+
+    def get_array_model_info(self, array):
+        """Get the PowerMax/VMAX model.
+
+        :param array: the array serial number
+        :return: the PowerMax/VMAX model
+        """
+        array_model = None
+        is_next_gen = False
+        system_info = self.get_array_detail(array)
+        if system_info and system_info.get('model'):
+            array_model = system_info.get('model')
+        if system_info:
+            ucode_version = system_info['ucode'].split('.')[0]
+            if ucode_version >= UCODE_5978:
+                is_next_gen = True
+        return array_model, is_next_gen
 
     def is_compression_capable(self, array):
         """Check if array is compression capable.
@@ -839,6 +857,7 @@ class PowerMaxRest(object):
                      "addVolumeParam": {
                          "num_of_vols": 1,
                          "emulation": "FBA",
+                         "create_new_volumes": "False",
                          "volumeIdentifier": {
                              "identifier_name": volume_name,
                              "volumeIdentifierChoice": "identifier_name"},

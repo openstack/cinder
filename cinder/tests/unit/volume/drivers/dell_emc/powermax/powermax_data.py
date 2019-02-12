@@ -291,6 +291,8 @@ class PowerMaxData(object):
     rep_extra_specs3['workload'] = workload
     rep_extra_specs4 = deepcopy(rep_extra_specs3)
     rep_extra_specs4['rdf_group_label'] = rdf_group_name
+    rep_extra_specs5 = deepcopy(rep_extra_specs2)
+    rep_extra_specs5['target_array_model'] = 'VMAX250F'
 
     test_volume_type_1 = volume_type.VolumeType(
         id='2b06255d-f5f0-4520-a953-b029196add6a', name='abc',
@@ -744,7 +746,7 @@ class PowerMaxData(object):
                   'model': 'VMAX250F',
                   'ucode': '5977.1091.1092'},
                  {'symmetrixId': array_herc,
-                  'model': 'VMAXHERC',
+                  'model': 'PowerMax 2000',
                   'ucode': '5978.1091.1092'}]
     version_details = {'version': 'V9.0.0.1'}
 
