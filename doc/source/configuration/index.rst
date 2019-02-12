@@ -11,6 +11,7 @@ Cinder Service Configuration
    block-storage/schedulers.rst
    block-storage/logs.rst
    block-storage/policy.rst
+   block-storage/policy-config-HOWTO.rst
    block-storage/fc-zoning.rst
    block-storage/nested-quota.rst
    block-storage/volume-encryption.rst
