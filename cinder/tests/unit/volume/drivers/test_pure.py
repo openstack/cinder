@@ -3229,6 +3229,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
         mock_generate.assert_called_with(HOSTNAME)
         self.array.create_host.assert_called_with(PURE_HOST_NAME,
                                                   iqnlist=[INITIATOR_IQN])
+        self.assertFalse(self.array.set_host.called)
         self.assertEqual(result, real_result)
 
         mock_generate.reset_mock()
@@ -3249,6 +3250,25 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.set_host.assert_called_with(PURE_HOST_NAME,
                                                host_user=chap_user,
                                                host_password=chap_password)
+
+        self.array.reset_mock()
+        self.mock_config.use_chap_auth = False
+        self.mock_config.safe_get.return_value = 'oracle-vm-server'
+
+        # Branch where we fail due to invalid version for setting personality
+        self.assertRaises(exception.PureDriverException, self.driver._connect,
+                          self.array, vol_name, ISCSI_CONNECTOR, None, None)
+        self.assertFalse(self.array.create_host.called)
+        self.assertFalse(self.array.set_host.called)
+
+        self.array.get_rest_version.return_value = '1.14'
+
+        # Branch where personality is set
+        self.driver._connect(self.array, vol_name, ISCSI_CONNECTOR,
+                             None, None)
+        self.assertDictEqual(result, real_result)
+        self.array.set_host.assert_called_with(PURE_HOST_NAME,
+                                               personality='oracle-vm-server')
 
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_host", autospec=True)
     def test_connect_already_connected(self, mock_host):

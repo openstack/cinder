@@ -60,6 +60,11 @@ PURE_OPTS = [
                      "on the current total data reduction values. If used "
                      "this calculated value will override the "
                      "max_over_subscription_ratio config option."),
+    cfg.StrOpt("pure_host_personality",
+               choices=['aix', 'esxi', 'hitachi-vsp', 'hpux',
+                        'oracle-vm-server', 'solaris', 'vms'],
+               help="Determines how the Purity system tunes the protocol used "
+                    "between the array and the initiator."),
     # These are used as default settings.  In future these can be overridden
     # by settings in volume-type.
     cfg.IntOpt("pure_replica_interval_default", default=3600,
@@ -123,6 +128,7 @@ ASYNC_REPLICATION_REQUIRED_API_VERSIONS = [
     '1.3', '1.4', '1.5'] + SYNC_REPLICATION_REQUIRED_API_VERSIONS
 MANAGE_SNAP_REQUIRED_API_VERSIONS = [
     '1.4', '1.5'] + SYNC_REPLICATION_REQUIRED_API_VERSIONS
+PERSONALITY_REQUIRED_API_VERSIONS = ['1.14']
 
 REPL_SETTINGS_PROPAGATE_RETRY_INTERVAL = 5  # 5 seconds
 REPL_SETTINGS_PROPAGATE_MAX_RETRIES = 36  # 36 * 5 = 180 seconds
@@ -2468,6 +2474,21 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                         reason=_("Unable to re-use host with unknown CHAP "
                                  "credentials configured."))
         else:
+            personality = self.configuration.safe_get('pure_host_personality')
+            if personality:
+                api_version = array.get_rest_version()
+                if api_version not in PERSONALITY_REQUIRED_API_VERSIONS:
+                    # Continuing here would mean creating a host not according
+                    # to specificiations, possibly leading to unexpected
+                    # behavior later on.
+                    msg = _('Unable to set host personality with Purity REST '
+                            'API version %(api_version)s, requires '
+                            '%(required_versions)s.') % {
+                        'api_version': api_version,
+                        'required_versions': PERSONALITY_REQUIRED_API_VERSIONS
+                    }
+                    raise exception.PureDriverException(reason=msg)
+
             host_name = self._generate_purity_host_name(connector["host"])
             LOG.info("Creating host object %(host_name)r with IQN:"
                      " %(iqn)s.", {"host_name": host_name, "iqn": iqn})
@@ -2481,6 +2502,18 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                     # pick up the new host.
                     LOG.debug('Unable to create host: %s', err.text)
                     raise exception.PureRetryableException()
+
+            if personality:
+                try:
+                    array.set_host(host_name, personality=personality)
+                except purestorage.PureHTTPError as err:
+                    if (err.code == 400 and
+                            ERR_MSG_HOST_NOT_EXIST in err.text):
+                        # If the host disappeared out from under us that's
+                        # ok, we will just retry and snag a new host.
+                        LOG.debug('Unable to set host personality: %s',
+                                  err.text)
+                        raise exception.PureRetryableException()
 
             if self.configuration.use_chap_auth:
                 try:

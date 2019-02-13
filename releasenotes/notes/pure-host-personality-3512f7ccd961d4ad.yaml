@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Pure Storage FlashArray driver has added configuration option
+    ``pure_host_personality`` for setting the host personality upon host
+    creation (existing hosts are not affected).
