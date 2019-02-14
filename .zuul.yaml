@@ -307,9 +307,6 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
-    post:
-      jobs:
-        - publish-loci-cinder
 - job:
     # Previously named legacy-tempest-dsvm-full-lio
     name: cinder-tempest-dsvm-lvm-lio-barbican
