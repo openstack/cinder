@@ -266,6 +266,3 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
-    post:
-      jobs:
-        - publish-loci-cinder
