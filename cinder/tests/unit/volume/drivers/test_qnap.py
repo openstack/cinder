@@ -4735,6 +4735,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['poolID'] = 'fakepool'
         fake_params['lv_ifssd'] = 'no'
         fake_params['LUNCapacity'] = 100
+        fake_params['LUNSectorSize'] = '512'
         fake_params['lv_threshold'] = '80'
         fake_params['sid'] = 'fakeSid'
 
@@ -4792,6 +4793,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         fake_params['poolID'] = 'fakepool'
         fake_params['lv_ifssd'] = 'no'
         fake_params['LUNCapacity'] = 100
+        fake_params['LUNSectorSize'] = '512'
         fake_params['lv_threshold'] = '80'
         fake_params['sid'] = 'fakeSid'
 
