@@ -47,6 +47,7 @@ qlps = {}
 ifas = {}
 parsed_raw_zoneinfo = ""
 random_no = ''
+auth_version = ''
 session = None
 active_cfg = 'openstack_cfg'
 activate = True
@@ -62,15 +63,14 @@ nameserver_info = """
 </HEAD>
 <BODY>
 <PRE>
---BEGIN NS INFO
-
-2;8;020800;N    ;10:00:00:05:1e:7c:64:96;20:00:00:05:1e:7c:64:96;[89]""" \
-"""Brocade-825 | 3.0.4.09 | DCM-X3650-94 | Microsoft Windows Server 2003 R2"""\
-    """| Service Pack 2";FCP ;      3;20:08:00:05:1e:89:54:a0;"""\
-    """0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0;000000;port8"""\
-    """
---END NS INFO
-
+--BEGIN DEVICEPORT 10:00:00:05:1e:7c:64:96
+node.wwn=20:00:00:05:1e:7c:64:96
+deviceport.portnum=9
+deviceport.portid=300900
+deviceport.portIndex=9
+deviceport.porttype=N
+deviceport.portwwn=10:00:00:05:1e:7c:64:96
+--END DEVICEPORT 10:00:00:05:1e:7c:64:96
 </PRE>
 </BODY>
 </HTML>
@@ -472,6 +472,7 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
         self.ifas = {}
         self.parsed_raw_zoneinfo = ""
         self.random_no = ''
+        self.auth_version = ''
         self.session = None
         super(TestBrcdHttpFCZoneClient, self).setUp()
 
