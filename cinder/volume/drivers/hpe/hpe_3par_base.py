@@ -115,6 +115,14 @@ class HPE3PARDriverBase(driver.ManageableVD,
 
     @utils.trace
     def get_volume_stats(self, refresh=False):
+        # NOTE(geguileo): We don't need to login to the backed if we are not
+        # going to refresh the stats, furthermore if we login, then we'll
+        # return an empty dict, because the _login method calls calls
+        # _init_common which returns a new HPE3PARCommon instance each time,
+        # so it won't have any cached values.
+        if not refresh:
+            return self._stats
+
         common = self._login()
         try:
             self._stats = common.get_volume_stats(
