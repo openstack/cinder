@@ -62,6 +62,7 @@ class BrcdHTTPFCZoneClient(object):
         self.active_cfg = ''
         self.parsed_raw_zoneinfo = ""
         self.random_no = ''
+        self.auth_version = ''
         self.session = None
 
         # Create and assign the authentication header based on the credentials
@@ -98,7 +99,7 @@ class BrcdHTTPFCZoneClient(object):
                 adapter = requests.adapters.HTTPAdapter(pool_connections=1,
                                                         pool_maxsize=1)
                 self.session.mount(protocol + '://', adapter)
-            url = protocol + "://" + self.switch_ip + requestURL
+            url = '%s://%s%s' % (protocol, self.switch_ip, requestURL)
             response = None
             if requestType == zone_constant.GET_METHOD:
                 response = self.session.get(url,
@@ -154,12 +155,19 @@ class BrcdHTTPFCZoneClient(object):
                                                zone_constant.SECINFO_BEGIN,
                                                zone_constant.SECINFO_END)
 
-            # Extract the random no from secinfo.html response
-            self.random_no = self.get_nvp_value(parsed_data,
-                                                zone_constant.RANDOM)
-            # Form the authentication string
-            auth_string = (self.switch_user + ":" + self.switch_pwd +
-                           ":" + self.random_no)
+            # Get the auth version for 8.1.0b+ switches
+            self.auth_version = self.get_nvp_value(parsed_data,
+                                                   zone_constant.AUTHVERSION)
+
+            if self.auth_version == "1":
+                # Extract the random no from secinfo.html response
+                self.random_no = self.get_nvp_value(parsed_data,
+                                                    zone_constant.RANDOM)
+                # Form the authentication string
+                auth_string = '%s:%s:%s' % (self.switch_user, self.switch_pwd,
+                                            self.random_no)
+            else:
+                auth_string = '%s:%s' % (self.switch_user, self.switch_pwd)
             auth_token = base64.encode_as_text(auth_string).strip()
             auth_header = (zone_constant.AUTH_STRING +
                            auth_token)  # Build the proper header
@@ -191,9 +199,14 @@ class BrcdHTTPFCZoneClient(object):
             isauthenticated = self.get_nvp_value(
                 parsed_data, zone_constant.AUTHENTICATED)
             if isauthenticated == "yes":
-                # Replace password in the authentication string with xxx
-                auth_string = (self.switch_user +
-                               ":" + "xxx" + ":" + self.random_no)
+                if self.auth_version == "3":
+                    auth_id = self.get_nvp_value(parsed_data,
+                                                 zone_constant.IDENTIFIER)
+                    auth_string = '%s:xxx:%s' % (self.switch_user, auth_id)
+                else:
+                    # Replace password in the authentication string with xxx
+                    auth_string = '%s:xxx:%s' % (self.switch_user,
+                                                 self.random_no)
                 auth_token = base64.encode_as_text(auth_string).strip()
                 auth_header = zone_constant.AUTH_STRING + auth_token
                 return True, auth_header
@@ -763,15 +776,9 @@ class BrcdHTTPFCZoneClient(object):
         response = self.connect(zone_constant.GET_METHOD,
                                 zone_constant.NS_PAGE,
                                 header=headers)  # GET request to nsinfo.html
-        parsed_raw_zoneinfo = self.get_parsed_data(
-            response,
-            zone_constant.NSINFO_BEGIN,
-            zone_constant.NSINFO_END).strip("\t\n\r")
-        # build the name server information in the correct format
-        for line in parsed_raw_zoneinfo.splitlines():
-            start_index = line.find(zone_constant.NS_DELIM) + 7
-            if start_index != -1:
-                nsinfo.extend([line[start_index:start_index + 23].strip()])
+        for line in response.splitlines():
+            if line.startswith(zone_constant.NS_DELIM):
+                nsinfo.append(line.split('=')[-1])
         return nsinfo
 
     def delete_zones_cfgs(
