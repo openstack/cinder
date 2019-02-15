@@ -78,7 +78,7 @@ def add_fc_zone(connection_info):
     if connection_info:
         vol_type = connection_info.get('driver_volume_type', None)
         if vol_type == 'fibre_channel':
-            if 'initiator_target_map' in connection_info['data']:
+            if connection_info['data'].get('initiator_target_map'):
                 zm = create_zone_manager()
                 if zm:
                     LOG.debug("add_fc_zone connection info: %(conninfo)s.",
@@ -91,7 +91,7 @@ def remove_fc_zone(connection_info):
     if connection_info:
         vol_type = connection_info.get('driver_volume_type', None)
         if vol_type == 'fibre_channel':
-            if 'initiator_target_map' in connection_info['data']:
+            if connection_info['data'].get('initiator_target_map'):
                 zm = create_zone_manager()
                 if zm:
                     LOG.debug("remove_fc_zone connection info: %(conninfo)s.",

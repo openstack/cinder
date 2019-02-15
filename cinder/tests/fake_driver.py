@@ -249,6 +249,15 @@ class FakeFibreChannelDriver(driver.FibreChannelDriver):
         fczm_utils.add_fc_zone(conn_info)
         return conn_info
 
+    def initialize_connection_with_empty_map(self, volume, connector):
+        conn_info = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'initiator_target_map': {},
+            }}
+        fczm_utils.add_fc_zone(conn_info)
+        return conn_info
+
     def no_zone_initialize_connection(self, volume, connector):
         """This shouldn't call the ZM."""
         conn_info = {
@@ -264,6 +273,15 @@ class FakeFibreChannelDriver(driver.FibreChannelDriver):
             'driver_volume_type': 'fibre_channel',
             'data': {
                 'initiator_target_map': {'fake_wwn': ['fake_wwn2']},
+            }}
+        fczm_utils.remove_fc_zone(conn_info)
+        return conn_info
+
+    def terminate_connection_with_empty_map(self, volume, connector, **kwargs):
+        conn_info = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'initiator_target_map': {},
             }}
         fczm_utils.remove_fc_zone(conn_info)
         return conn_info
