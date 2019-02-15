@@ -337,7 +337,15 @@ class CephBackupDriver(driver.BackupDriver):
             LOG.debug("Discarding %(length)s bytes from offset %(offset)s",
                       {'length': length, 'offset': offset})
             if self._file_is_rbd(volume):
-                eventlet.tpool.Proxy(volume.rbd_image).discard(offset, length)
+                limit = 2 * units.Gi - 1
+                chunks = int(length / limit)
+                for chunk in range(0, chunks):
+                    eventlet.tpool.Proxy(volume.rbd_image).discard(
+                        offset + chunk * limit, limit)
+                rem = int(length % limit)
+                if rem:
+                    eventlet.tpool.Proxy(volume.rbd_image).discard(
+                        offset + chunks * limit, rem)
             else:
                 zeroes = '\0' * self.chunk_size
                 chunks = int(length / self.chunk_size)

@@ -899,9 +899,24 @@ class BackupCephTestCase(test.TestCase):
 
         self.service._discard_bytes(wrapped_rbd, 0, 0)
         self.assertEqual(0, image.discard.call_count)
+        image.discard.reset_mock()
 
         self.service._discard_bytes(wrapped_rbd, 0, 1234)
         self.assertEqual(1, image.discard.call_count)
+        image.discard.assert_has_calls([mock.call(0, 1234)])
+        image.discard.reset_mock()
+
+        limit = 2 * units.Gi - 1
+        self.service._discard_bytes(wrapped_rbd, 0, limit)
+        self.assertEqual(1, image.discard.call_count)
+        image.discard.assert_has_calls([mock.call(0, 2147483647)])
+        image.discard.reset_mock()
+
+        self.service._discard_bytes(wrapped_rbd, 0, limit * 2 + 1234)
+        self.assertEqual(3, image.discard.call_count)
+        image.discard.assert_has_calls([mock.call(0, 2147483647),
+                                        mock.call(2147483647, 2147483647),
+                                        mock.call(4294967294, 1234)])
         image.reset_mock()
 
         # Test discard with no remainder
