@@ -14,14 +14,12 @@ to perform VMAX storage operations.
 
 .. note::
 
-   KNOWN ISSUE:
-   Workload support was dropped in ucode 5978. If a VMAX All Flash array is
-   upgraded to 5978 or greater and existing volume types leveraged workload
-   e.g. DSS, DSS_REP, OLTP and OLTP_REP, attaching and detaching will no
-   longer work and the volume type will be unusable. Refrain from upgrading
-   to ucode 5978 or greater on an All Flash until a fix is merged. Please
-   contact your Dell EMC VMAX customer support representative if in any
-   doubt.
+   Workload support was dropped in PowerMax OS 5978. A fix has been merged to
+   Queens to support a PowerMax OS 5878 upgrade on a VMAX All Flash, so all
+   functionality on existing OpenStack Instances and Volumes created from
+   VMAX All Flash storage, will work as before. Please contact your OpenStack
+   distributor to make sure the fix has been included, before attempting an OS
+   upgrade of a VMAX All Flash. `<https://review.openstack.org/#/c/624450>`_
 
 System requirements
 ~~~~~~~~~~~~~~~~~~~
