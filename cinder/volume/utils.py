@@ -20,8 +20,10 @@ import functools
 import json
 import math
 import operator
+import os
 from os import urandom
 import re
+import tempfile
 import time
 import uuid
 
@@ -31,6 +33,7 @@ from castellan import key_manager as castellan_key_manager
 import eventlet
 from eventlet import tpool
 from keystoneauth1 import loading as ks_loading
+from os_brick import encryptors
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -1173,3 +1176,36 @@ def copy_image_to_volume(driver, context, volume, image_meta, image_location,
               " to volume %(volume_id)s successfully.",
               {'image_id': image_id, 'volume_id': volume.id,
                'image_location': image_location})
+
+
+def _image_conversion_dir():
+    tmpdir = (CONF.image_conversion_dir or
+              tempfile.gettempdir())
+
+    # ensure temporary directory exists
+    if not os.path.exists(tmpdir):
+        os.makedirs(tmpdir)
+
+    return tmpdir
+
+
+def check_encryption_provider(db, volume, context):
+    """Check that this is a LUKS encryption provider.
+
+    :returns: encryption dict
+    """
+
+    encryption = db.volume_encryption_metadata_get(context, volume.id)
+    provider = encryption['provider']
+    if provider in encryptors.LEGACY_PROVIDER_CLASS_TO_FORMAT_MAP:
+        provider = encryptors.LEGACY_PROVIDER_CLASS_TO_FORMAT_MAP[provider]
+    if provider != encryptors.LUKS:
+        message = _("Provider %s not supported.") % provider
+        raise exception.VolumeDriverException(message=message)
+
+    if 'cipher' not in encryption or 'key_size' not in encryption:
+        msg = _('encryption spec must contain "cipher" and '
+                '"key_size"')
+        raise exception.VolumeDriverException(message=msg)
+
+    return encryption
