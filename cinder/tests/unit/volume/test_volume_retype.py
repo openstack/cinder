@@ -147,3 +147,22 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
         mock_authorize.assert_has_calls(
             [mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY)
              ])
+
+    def test_retype_driver_not_initialized(self):
+        volume = tests_utils.create_volume(
+            self.context,
+            host=CONF.host,
+            status='available',
+            volume_type_id=self.default_vol_type.id)
+
+        host_obj = {'host': CONF.host, 'capabilities': {}}
+
+        self.volume.driver._initialized = False
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.volume.retype,
+                          self.context, volume,
+                          self.multiattach_type.id, host_obj,
+                          migration_policy='on-demand')
+
+        volume.refresh()
+        self.assertEqual('available', volume.status)

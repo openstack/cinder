@@ -2782,7 +2782,9 @@ class VolumeManager(manager.CleanableManager,
                 if new_reservations:
                     QUOTAS.rollback(context, new_reservations)
 
-        status_update = {'status': volume.previous_status}
+        previous_status = (
+            volume.previous_status or volume.status)
+        status_update = {'status': previous_status}
         if context.project_id != volume.project_id:
             project_id = volume.project_id
         else:
