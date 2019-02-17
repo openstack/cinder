@@ -441,7 +441,7 @@ class BackupCephTestCase(test.TestCase):
     @mock.patch('fcntl.fcntl', spec=True)
     @mock.patch('subprocess.Popen', spec=True)
     def test_backup_volume_from_rbd(self, mock_popen, mock_fnctl):
-        backup_name = self.service._get_backup_base_name(self.backup_id,
+        backup_name = self.service._get_backup_base_name(self.volume_id,
                                                          diff_format=True)
 
         def mock_write_data():
@@ -518,7 +518,7 @@ class BackupCephTestCase(test.TestCase):
     @common_mocks
     def test_backup_volume_from_rbd_set_parent_id_none(self):
         backup_name = self.service._get_backup_base_name(
-            self.backup_id, diff_format=True)
+            self.volume_id, diff_format=True)
 
         self.mock_rbd.RBD().list.return_value = [backup_name]
         self.backup.parent_id = 'mock_parent_id'
@@ -558,7 +558,7 @@ class BackupCephTestCase(test.TestCase):
     @common_mocks
     def test_backup_rbd_set_parent_id(self):
         backup_name = self.service._get_backup_base_name(
-            self.backup_id, diff_format=True)
+            self.volume_id, diff_format=True)
         vol_name = self.volume.name
         vol_length = self.volume.size
 
@@ -594,7 +594,7 @@ class BackupCephTestCase(test.TestCase):
         process when the second exception occurs in
         self._try_delete_base_image().
         """
-        backup_name = self.service._get_backup_base_name(self.backup_id,
+        backup_name = self.service._get_backup_base_name(self.volume_id,
                                                          diff_format=True)
 
         def mock_write_data():
@@ -671,7 +671,7 @@ class BackupCephTestCase(test.TestCase):
         self._backup_metadata(), we want to check the process when the
         second exception occurs in self.delete_backup().
         """
-        backup_name = self.service._get_backup_base_name(self.backup_id,
+        backup_name = self.service._get_backup_base_name(self.volume_id,
                                                          diff_format=True)
 
         def mock_write_data():
@@ -734,7 +734,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_backup_rbd_from_snap(self):
-        backup_name = self.service._get_backup_base_name(self.backup_id,
+        backup_name = self.service._get_backup_base_name(self.volume_id,
                                                          diff_format=True)
         vol_name = self.volume['name']
         vol_length = self.service._get_volume_size_gb(self.volume)
@@ -776,7 +776,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_backup_rbd_from_snap2(self):
-        backup_name = self.service._get_backup_base_name(self.backup_id,
+        backup_name = self.service._get_backup_base_name(self.volume_id,
                                                          diff_format=True)
         vol_name = self.volume['name']
         vol_length = self.service._get_volume_size_gb(self.volume)
@@ -842,7 +842,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_restore(self):
-        backup_name = self.service._get_backup_base_name(self.backup_id,
+        backup_name = self.service._get_backup_base_name(self.volume_id,
                                                          diff_format=True)
 
         self.mock_rbd.RBD.return_value.list.return_value = [backup_name]
