@@ -184,9 +184,9 @@ class PowerMaxCommon(object):
         self.failover = False
         self._get_replication_info()
         self._get_u4p_failover_info()
+        self.nextGen = False
         self._gather_info()
         self.version_dict = {}
-        self.nextGen = False
 
     def _gather_info(self):
         """Gather the relevant information for update_volume_stats."""
@@ -1651,8 +1651,8 @@ class PowerMaxCommon(object):
         :raises: VolumeBackendAPIException:
         """
         array = extra_specs[utils.ARRAY]
-        self.nextGen = self.rest.is_next_gen_array(array)
-        if self.nextGen:
+        nextGen = self.rest.is_next_gen_array(array)
+        if nextGen:
             extra_specs[utils.WORKLOAD] = 'NONE'
         is_valid_slo, is_valid_workload = self.provision.verify_slo_workload(
             array, extra_specs[utils.SLO],
@@ -3852,16 +3852,18 @@ class PowerMaxCommon(object):
                     extra_specs[utils.SLO],
                     rep_extra_specs[utils.WORKLOAD],
                     rep_extra_specs[utils.SRP]))
-            if not is_valid_slo or not is_valid_workload:
-                LOG.warning("The target array does not support the storage "
-                            "pool setting for SLO %(slo)s or workload "
-                            "%(workload)s. Not assigning any SLO or "
-                            "workload.",
-                            {'slo': extra_specs[utils.SLO],
-                             'workload': extra_specs[utils.WORKLOAD]})
+            if not is_valid_slo:
+                LOG.warning("The target array does not support the "
+                            "storage pool setting for SLO %(slo)s, "
+                            "setting to NONE.",
+                            {'slo': extra_specs[utils.SLO]})
                 rep_extra_specs[utils.SLO] = None
-                if extra_specs[utils.WORKLOAD]:
-                    rep_extra_specs[utils.WORKLOAD] = None
+            if not is_valid_workload:
+                LOG.warning("The target array does not support the "
+                            "storage pool setting for workload "
+                            "%(workload)s, setting to NONE.",
+                            {'workload': extra_specs[utils.WORKLOAD]})
+                rep_extra_specs[utils.WORKLOAD] = None
 
         return rep_extra_specs
 
