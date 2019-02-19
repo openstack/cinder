@@ -40,11 +40,6 @@ privsep-rootwrap: RegExpFilter, privsep-helper, root, privsep-helper, --config-f
 # Privsep calls within cinder iteself
 privsep-rootwrap-sys_admin: RegExpFilter, privsep-helper, root, privsep-helper, --config-file, /etc/(?!\.\.).*, --privsep_context, cinder.privsep.sys_admin_pctxt, --privsep_sock_path, /tmp/.*
 
-# The following and any cinder/brick/* entries should all be obsoleted
-# by privsep, and may be removed once the os-brick version requirement
-# is updated appropriately.
-drbdadm: CommandFilter, drbdadm, root
-
 # cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', sizestr, '-n', volume_name,..
 # cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', ...
 lvcreate: EnvFilter, env, root, LC_ALL=C, lvcreate
