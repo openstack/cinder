@@ -483,6 +483,56 @@ Request Example
    :language: javascript
 
 
+Complete migration of a volume
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
+
+Specify the ``os-migrate_volume_completion`` action in the request body.
+
+Complete the migration of a volume, updating the new volume in the DB,
+returning the ``status`` of the new volume to that of the original volume
+and finally deleting the original volume.
+
+**Preconditions**
+
+* Both the original and new volume ``migration_status`` must be ``None`` or
+  both must be set to a non ``None`` value.
+* Additionally when set the new volume ``migration_status`` must take the
+  form of ``target:VOLUME_UUID`` where VOLUME_UUID is the original volume UUID.
+
+**Asynchronous Postconditions**
+
+On success, the volume ``status`` will return to its original status of
+``available`` or ``in-use`` and the ``migration_status`` will be ``success``.
+On failure, the ``migration_status`` will be ``error``.
+
+Response codes
+--------------
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - volume_id: volume_id_path
+   - project_id: project_id_path
+   - os-migrate_volume_completion: os-migrate_volume_completion
+   - new_volume: new_volume
+   - error: migration_completion_error
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-os-migrate_volume_completion-request.json
+   :language: javascript
+
+
 Force delete volume
 ~~~~~~~~~~~~~~~~~~~
 
