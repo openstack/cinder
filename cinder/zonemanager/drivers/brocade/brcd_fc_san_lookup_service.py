@@ -1,4 +1,4 @@
-#    (c) Copyright 2016 Brocade Communications Systems Inc.
+#    (c) Copyright 2019 Brocade, a Broadcom Company
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -121,7 +121,7 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
                         LOG.error("Failed collecting name server info from"
                                   " fabric %s", fabric_ip)
                 except Exception as e:
-                    msg = _("SSH connection failed "
+                    msg = _("Connection failed "
                             "for %(fabric)s with error: %(err)s"
                             ) % {'fabric': fabric_ip, 'err': e}
                     LOG.error(msg)

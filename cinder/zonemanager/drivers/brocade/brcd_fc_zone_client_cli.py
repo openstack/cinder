@@ -1,4 +1,4 @@
-#    (c) Copyright 2016 Brocade Communications Systems Inc.
+#    (c) Copyright 2019 Brocade, a Broadcom Company
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may

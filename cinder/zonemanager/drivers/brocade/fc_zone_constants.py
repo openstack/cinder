@@ -1,4 +1,4 @@
-#    (c) Copyright 2016 Brocade Communications Systems Inc.
+#    (c) Copyright 2019 Brocade, a Broadcom Company
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -102,3 +102,5 @@ ZONE_TX_STATUS = "status"
 SESSION_LF_ID = "sessionLFId"
 HTTP = "http"
 HTTPS = "https"
+REST_HTTP = "rest_http"
+REST_HTTPS = "rest_https"

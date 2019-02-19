@@ -1,4 +1,4 @@
-#    (c) Copyright 2015 Brocade Communications Systems Inc.
+#    (c) Copyright 2019 Brocade, a Broadcom Company
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -59,8 +59,20 @@ class BrcdFCZoneFactory(object):
                        'port': fabric_port,
                        'vf_id': fc_vfid})
 
-            if sb_connector.lower() in (fc_zone_constants.HTTP,
-                                        fc_zone_constants.HTTPS):
+            if sb_connector.lower() in (fc_zone_constants.REST_HTTP,
+                                        fc_zone_constants.REST_HTTPS):
+                client = importutils.import_object(
+                    "cinder.zonemanager.drivers.brocade."
+                    "brcd_rest_fc_zone_client.BrcdRestFCZoneClient",
+                    ipaddress=fabric_ip,
+                    username=fabric_user,
+                    password=fabric_pwd,
+                    port=fabric_port,
+                    vfid=fc_vfid,
+                    protocol=sb_connector
+                )
+            elif sb_connector.lower() in (fc_zone_constants.HTTP,
+                                          fc_zone_constants.HTTPS):
                 client = importutils.import_object(
                     "cinder.zonemanager.drivers.brocade."
                     "brcd_http_fc_zone_client.BrcdHTTPFCZoneClient",

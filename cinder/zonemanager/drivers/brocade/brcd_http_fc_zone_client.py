@@ -1,4 +1,4 @@
-#    (c) Copyright 2016 Brocade Communications Systems Inc.
+#    (c) Copyright 2019 Brocade, a Broadcom Company
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,12 +18,13 @@ Brocade south bound connector to communicate with switch using
 HTTP or HTTPS protocol.
 """
 
-from oslo_log import log as logging
-from oslo_serialization import base64
-from oslo_utils import encodeutils
 import requests
 import six
 import time
+
+from oslo_log import log as logging
+from oslo_serialization import base64
+from oslo_utils import encodeutils
 
 from cinder import exception
 from cinder.i18n import _
