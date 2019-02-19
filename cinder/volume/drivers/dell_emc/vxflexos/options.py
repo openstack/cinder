@@ -26,10 +26,6 @@ SIO_SERVER_CERTIFICATE_PATH = "sio_server_certificate_path"
 SIO_ROUND_VOLUME_CAPACITY = "sio_round_volume_capacity"
 SIO_UNMAP_VOLUME_BEFORE_DELETION = "sio_unmap_volume_before_deletion"
 SIO_STORAGE_POOLS = "sio_storage_pools"
-SIO_PROTECTION_DOMAIN_ID = "sio_protection_domain_id"
-SIO_PROTECTION_DOMAIN_NAME = "sio_protection_domain_name"
-SIO_STORAGE_POOL_NAME = "sio_storage_pool_name"
-SIO_STORAGE_POOL_ID = "sio_storage_pool_id"
 SIO_SERVER_API_VERSION = "sio_server_api_version"
 SIO_MAX_OVER_SUBSCRIPTION_RATIO = "sio_max_over_subscription_ratio"
 SIO_ALLOW_NON_PADDED_VOLUMES = "sio_allow_non_padded_volumes"
@@ -80,34 +76,6 @@ deprecated_opts = [
                deprecated_for_removal=True,
                deprecated_reason='Replaced by %s.' %
                                  VXFLEXOS_STORAGE_POOLS),
-    cfg.StrOpt(SIO_PROTECTION_DOMAIN_ID,
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by %s option" %
-                                 VXFLEXOS_STORAGE_POOLS,
-               deprecated_since="Pike",
-               help='Protection Domain ID. '
-                    'Deprecated, use %s instead. ' % VXFLEXOS_STORAGE_POOLS),
-    cfg.StrOpt(SIO_PROTECTION_DOMAIN_NAME,
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by %s option" %
-                                 VXFLEXOS_STORAGE_POOLS,
-               deprecated_since="Pike",
-               help='Protection Domain Name. '
-                    'Deprecated, use %s instead. ' % VXFLEXOS_STORAGE_POOLS),
-    cfg.StrOpt(SIO_STORAGE_POOL_NAME,
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by %s option" %
-                                 VXFLEXOS_STORAGE_POOLS,
-               deprecated_since="Pike",
-               help='Storage Pool name. '
-                    'Deprecated, use %s instead. ' % VXFLEXOS_STORAGE_POOLS),
-    cfg.StrOpt(SIO_STORAGE_POOL_ID,
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by %s option" %
-                                 VXFLEXOS_STORAGE_POOLS,
-               deprecated_since="Pike",
-               help='Storage Pool ID.'
-                    'Deprecated, use %s instead. ' % VXFLEXOS_STORAGE_POOLS),
     cfg.StrOpt(SIO_SERVER_API_VERSION,
                help='renamed to %s.' %
                     VXFLEXOS_SERVER_API_VERSION,

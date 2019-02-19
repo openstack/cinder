@@ -137,12 +137,6 @@ class TestVxFlexOSDriver(test.TestCase):
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('san_password', override='pass',
                              group=conf.SHARED_CONF_GROUP)
-        self.override_config('sio_storage_pool_id',
-                             override=self.STORAGE_POOL_ID,
-                             group=conf.SHARED_CONF_GROUP)
-        self.override_config('sio_protection_domain_id',
-                             override=self.PROT_DOMAIN_ID,
-                             group=conf.SHARED_CONF_GROUP)
         self.override_config('vxflexos_storage_pools',
                              override='PD1:SP1',
                              group=conf.SHARED_CONF_GROUP)

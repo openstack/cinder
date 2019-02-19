@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    VxFlex OS (ScaleIO) driver drops support for options, which
+    were marked as deprecated in Pike release.
+    Remove config options: ``sio_protection_domain_id``,
+    ``sio_protection_domain_name``,
+    ``sio_storage_pool_name``,
+    ``sio_storage_pool_id``.
+    Remove volume type options: ``sio:sp_name``,
+    ``sio:sp_id``,
+    ``sio:pd_name``,
+    ``sio:pd_id``,
+    ``sio:provisioning_type``,
+    ``sio:iops_limit``,
+    ``sio:bandwidth_limit``.
