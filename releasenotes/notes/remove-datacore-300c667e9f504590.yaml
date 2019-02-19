@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The DataCore drivers were marked as unsupported in the Rocky release and
+    have now been removed.
