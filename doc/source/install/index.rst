@@ -14,19 +14,20 @@ The Block Storage API and scheduler services typically run on the controller
 nodes. Depending upon the drivers used, the volume service can run
 on controller nodes, compute nodes, or standalone storage nodes.
 
-For more information, see the
-`Configuration Reference <https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-drivers.html>`_.
+For more information, see the `Configuration
+Reference <https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-drivers.html>`_.
 
 
 Prerequisites
 ~~~~~~~~~~~~~
 
-This documentation specifically covers the installation of the Cinder Block Storage service.  Before following this
-guide you will need to prepare your OpenStack environment using the instructions in the
+This documentation specifically covers the installation of the Cinder Block
+Storage service. Before following this guide you will need to prepare your
+OpenStack environment using the instructions in the
 `OpenStack Installation Guide <https://docs.openstack.org/install-guide/>`_.
 
-Once able to 'Launch an instance' in your OpenStack environment follow the instructions below to add
-Cinder to the base environment.
+Once able to 'Launch an instance' in your OpenStack environment follow the
+instructions below to add Cinder to the base environment.
 
 
 Adding Cinder to your OpenStack Environment

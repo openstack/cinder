@@ -1,8 +1,8 @@
 Project hosting with Launchpad
 ==============================
 
-`Launchpad`_ hosts the Cinder project. The Cinder project homepage on Launchpad is
-https://launchpad.net/cinder.
+`Launchpad`_ hosts the Cinder project. The Cinder project homepage on Launchpad
+is https://launchpad.net/cinder.
 
 Launchpad credentials
 ---------------------
@@ -21,9 +21,11 @@ Mailing list
 The mailing list email is ``openstack@lists.openstack.org``. This is a common
 mailing list across the OpenStack projects. To participate in the mailing list:
 
-#. Subscribe to the list at http://lists.openstack.org/cgi-bin/mailman/listinfo/openstack
+#. Subscribe to the list at
+   http://lists.openstack.org/cgi-bin/mailman/listinfo/openstack
 
-The mailing list archives are at http://lists.openstack.org/pipermail/openstack/.
+The mailing list archives are at
+http://lists.openstack.org/pipermail/openstack/.
 
 
 Bug tracking
@@ -40,7 +42,8 @@ https://blueprints.launchpad.net/cinder.
 Technical support (Answers)
 ---------------------------
 
-Cinder no longer uses Launchpad Answers to track Cinder technical support questions.
+Cinder no longer uses Launchpad Answers to track Cinder technical support
+questions.
 
 Note that `Ask OpenStack`_ (which is not hosted on Launchpad) can
 be used for technical support requests.

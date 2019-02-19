@@ -152,7 +152,8 @@ Response Example
 Get default quotas
 ~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v2/{admin_project_id}/os-quota-sets/{project_id}/defaults
+.. rest_method::
+   GET /v2/{admin_project_id}/os-quota-sets/{project_id}/defaults
 
 Gets default quotas for a project.
 

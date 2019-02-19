@@ -608,8 +608,8 @@ Obsolete extra specs
 Force detach
 ------------
 
-The user could use `os-force_detach` action to detach a volume from all its attached hosts.
-For more detail, please refer to
+The user could use `os-force_detach` action to detach a volume from all its
+attached hosts. For more detail, please refer to
 https://developer.openstack.org/api-ref/block-storage/v2/?expanded=force-detach-volume-detail#force-detach-volume
 
 

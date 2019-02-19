@@ -8,8 +8,8 @@ Create or update group specs for a group type
 
 .. rest_method::  POST /v3/{project_id}/group_types/{group_type_id}/group_specs
 
-Create group specs for a group type, if the specification key already exists in group specs,
-this API will update the specification as well.
+Create group specs for a group type, if the specification key already exists in
+group specs, this API will update the specification as well.
 
 Response codes
 --------------
@@ -105,7 +105,8 @@ Response Example
 Show one specific group spec for a group type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{project_id}/group_types/{group_type_id}/group_specs/{spec_id}
+.. rest_method::
+   GET /v3/{project_id}/group_types/{group_type_id}/group_specs/{spec_id}
 
 Show a group spec for a group type,
 
@@ -150,7 +151,8 @@ Response Example
 Update one specific group spec for a group type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  PUT /v3/{project_id}/group_types/{group_type_id}/group_specs/{spec_id}
+.. rest_method::
+   PUT /v3/{project_id}/group_types/{group_type_id}/group_specs/{spec_id}
 
 Update a group spec for a group type,
 
@@ -201,7 +203,8 @@ Response Example
 Delete one specific group spec for a group type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  DELETE /v3/{project_id}/group_types/{group_type_id}/group_specs/{spec_id}
+.. rest_method::
+   DELETE /v3/{project_id}/group_types/{group_type_id}/group_specs/{spec_id}
 
 Delete a group spec for a group type,
 

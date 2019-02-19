@@ -78,7 +78,8 @@ Request Example
 List private volume type access details
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v2/{project_id}/types/{volume_type}/os-volume-type-access
+.. rest_method::
+   GET /v2/{project_id}/types/{volume_type}/os-volume-type-access
 
 Lists project IDs that have access to private volume type.
 

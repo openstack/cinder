@@ -75,13 +75,13 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - status: status_snap
-   - os-extended-snapshot-attributes:progress: os-extended-snapshot-attributes:progress
+   - os-extended-snapshot-attributes:progress: os-ext-snap-attr:progress
    - description: description_snap_req
    - created_at: created_at
    - name: name
    - user_id: user_id_min
    - volume_id: volume_id_snap
-   - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
+   - os-extended-snapshot-attributes:project_id: os-ext-snap-attr:project_id
    - size: size
    - id: id_snap
    - metadata: metadata
@@ -374,14 +374,14 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - status: status_snap
-   - os-extended-snapshot-attributes:progress: os-extended-snapshot-attributes:progress
+   - os-extended-snapshot-attributes:progress: os-ext-snap-attr:progress
    - description: description_snap_req
    - created_at: created_at
    - name: name
    - snapshot: snapshot_obj
    - user_id: user_id_min
    - volume_id: volume_id_snap
-   - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
+   - os-extended-snapshot-attributes:project_id: os-ext-snap-attr:project_id
    - size: size
    - id: id_snap
    - metadata: metadata
@@ -528,7 +528,8 @@ Response Example
 Delete a snapshot's metadata
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  DELETE /v3/{project_id}/snapshots/{snapshot_id}/metadata/{key}
+.. rest_method::
+   DELETE /v3/{project_id}/snapshots/{snapshot_id}/metadata/{key}
 
 Deletes metadata for a snapshot.
 

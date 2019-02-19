@@ -24,7 +24,8 @@ it may be difficult to decipher from the code.
 Attach/Detach Operations are multi-part commands
 ================================================
 
-There are three things that happen in the workflow for an attach or detach call.
+There are three things that happen in the workflow for an attach or detach
+call.
 
 1. Update the status of the volume in the DB (ie attaching/detaching)
 
@@ -50,13 +51,15 @@ reserve_volume(self, context, volume)
 Probably the most simple call in to Cinder.  This method simply checks that
 the specified volume is in an "available" state and can be attached.
 Any other state results in an Error response notifying Nova that the volume
-is NOT available.  The only valid state for this call to succeed is "available".
+is NOT available.  The only valid state for this call to succeed is
+"available".
 
 NOTE: multi-attach will add "in-use" to the above acceptable states.
 
-If the volume is in fact available, we immediately issue an update to the Cinder
-database and mark the status of the volume to "attaching" thereby reserving the
-volume so that it won't be used by another API call anywhere else.
+If the volume is in fact available, we immediately issue an update to the
+Cinder database and mark the status of the volume to "attaching" thereby
+reserving the volume so that it won't be used by another API call anywhere
+else.
 
 initialize_connection(self, context, volume, connector)
 -------------------------------------------------------
@@ -87,9 +90,10 @@ shown here:
         }
     }
 
-In the process of building this data structure, the Cinder Volume Manager makes a number of
-calls to the backend driver, and builds a volume_attachment entry in the database to store
-the connection information passed in via the connector object.
+In the process of building this data structure, the Cinder Volume Manager makes
+a number of calls to the backend driver, and builds a volume_attachment entry
+in the database to store the connection information passed in via the connector
+object.
 
 driver.validate_connector
 *************************

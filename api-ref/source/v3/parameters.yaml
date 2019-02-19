@@ -1982,24 +1982,24 @@ os-detach:
   in: body
   required: true
   type: object
+os-ext-snap-attr:progress:
+  description: |
+    A percentage value for the build progress.
+  in: body
+  required: true
+  type: string
+os-ext-snap-attr:project_id:
+  description: |
+    The UUID of the owning project.
+  in: body
+  required: true
+  type: string
 os-extend:
   description: |
     The ``os-extend`` action.
   in: body
   required: true
   type: object
-os-extended-snapshot-attributes:progress:
-  description: |
-    A percentage value for the build progress.
-  in: body
-  required: true
-  type: string
-os-extended-snapshot-attributes:project_id:
-  description: |
-    The UUID of the owning project.
-  in: body
-  required: true
-  type: string
 os-force_delete:
   description: |
     The ``os-force_delete`` action.

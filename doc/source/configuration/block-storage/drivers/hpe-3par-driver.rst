@@ -246,7 +246,8 @@ Adaptive Flash Cache enabled.
 Other restrictions and considerations for ``hpe3par:compression``:
 
 - For a compressed volume, minimum volume size needed is 16 GB; otherwise
-  resulting volume will be created successfully but will not be a compressed volume.
+  resulting volume will be created successfully but will not be a compressed
+  volume.
 
 - A full provisioned volume cannot be compressed,
   if a compression is enabled and provisioning type requested is full,

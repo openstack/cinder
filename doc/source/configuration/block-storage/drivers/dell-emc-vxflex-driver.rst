@@ -226,9 +226,9 @@ The VxFlex OS driver supports these configuration options:
 Volume Types
 ------------
 
-Volume types can be used to specify characteristics of volumes allocated via the
-VxFlex OS Driver. These characteristics are defined as ``Extra Specs`` within
-``Volume Types``.
+Volume types can be used to specify characteristics of volumes allocated via
+the VxFlex OS Driver. These characteristics are defined as ``Extra Specs``
+within ``Volume Types``.
 
 VxFlex OS Protection Domain and Storage Pool
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -301,9 +301,9 @@ is attached to an instance, and thus to a compute node/SDC.
 Using VxFlex OS Storage with a containerized overcloud
 ------------------------------------------------------
 
-When using a containerized overcloud, such as one deployed via TripleO or RedHat
-Openstack version 12 and above, there is an additional step that must be
-performed.
+When using a containerized overcloud, such as one deployed via TripleO or
+Red Hat OpenStack version 12 and above, there is an additional step that must
+be performed.
 
 Before deploying the overcloud
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -318,7 +318,8 @@ be found at
 and
 ``/usr/share/openstack-tripleo-heat-templates/docker/services/cinder-volume.yaml``
 
-Two lines need to be inserted into the list of mapped volumes in each container.
+Two lines need to be inserted into the list of mapped volumes in each
+container.
 
 .. code-block:: yaml
 
@@ -328,7 +329,8 @@ Two lines need to be inserted into the list of mapped volumes in each container.
 .. end
 
 The changes to the two heat templates are identical, as an example
-the original nova-compute file should have section that resembles the following:
+the original nova-compute file should have section that resembles the
+following:
 
 .. code-block:: yaml
 

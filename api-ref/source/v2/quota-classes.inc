@@ -10,7 +10,8 @@ Shows and updates quota classes for a project.
 Show quota classes
 ~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v2/{admin_project_id}/os-quota-class-sets/{quota_class_name}
+.. rest_method::
+   GET /v2/{admin_project_id}/os-quota-class-sets/{quota_class_name}
 
 Shows quota class set for a project. If no specific value for the quota class
 resource exists, then the default value will be reported.
@@ -60,7 +61,8 @@ Response Example
 Update quota classes
 ~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  PUT /v2/{admin_project_id}/os-quota-class-sets/{quota_class_name}
+.. rest_method::
+   PUT /v2/{admin_project_id}/os-quota-class-sets/{quota_class_name}
 
 Updates quota class set for a project. If the ``quota_class_name`` key does not
 exist, then the API will create one.

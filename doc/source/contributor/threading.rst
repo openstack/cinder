@@ -33,17 +33,17 @@ delays in the case that there is only a single green thread::
     greenthread.sleep(0)
 
 In current code, time.sleep(0) does the same thing as greenthread.sleep(0) if
-time module is patched through eventlet.monkey_patch(). To be explicit, we recommend
-contributors use ``greenthread.sleep()`` instead of ``time.sleep()``.
+time module is patched through eventlet.monkey_patch(). To be explicit, we
+recommend contributors use ``greenthread.sleep()`` instead of ``time.sleep()``.
 
 MySQL access and eventlet
 -------------------------
 There are some MySQL DB API drivers for oslo.db, like `PyMySQL`_, MySQL-python
-etc. PyMySQL is the default MySQL DB API driver for oslo.db, and it works well with
-eventlet. MySQL-python uses an external C library for accessing the MySQL database.
-Since eventlet cannot use monkey-patching to intercept blocking calls in a C library,
-queries to the MySQL database using libraries like MySQL-python will block the main
-thread of a service.
+etc. PyMySQL is the default MySQL DB API driver for oslo.db, and it works well
+with eventlet. MySQL-python uses an external C library for accessing the MySQL
+database. Since eventlet cannot use monkey-patching to intercept blocking calls
+in a C library, queries to the MySQL database using libraries like MySQL-python
+will block the main thread of a service.
 
 The Diablo release contained a thread-pooling implementation that did not
 block, but this implementation resulted in a `bug`_ and was removed.

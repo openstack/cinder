@@ -12,7 +12,8 @@ Manage existing volume
 
 .. rest_method::  POST /v2/{project_id}/os-volume-manage
 
-Creates a Block Storage volume by using existing storage rather than allocating new storage.
+Creates a Block Storage volume by using existing storage rather than allocating
+new storage.
 
 The caller must specify a reference to an existing storage volume
 in the ref parameter in the request. Although each storage driver

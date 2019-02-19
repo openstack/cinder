@@ -15,7 +15,8 @@ Extend volume size
 
 .. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
 
-Extends the size of a volume to a requested size, in gibibytes (GiB). Specify the ``os-extend`` action in the request body.
+Extends the size of a volume to a requested size, in gibibytes (GiB). Specify
+the ``os-extend`` action in the request body.
 
 Preconditions
 
@@ -63,7 +64,8 @@ Reset volume statuses
 
 .. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
 
-Administrator only. Resets the status, attach status, and migration status for a volume. Specify the ``os-reset_status`` action in the request body.
+Administrator only. Resets the status, attach status, and migration status for
+a volume. Specify the ``os-reset_status`` action in the request body.
 
 
 Response codes
@@ -98,7 +100,8 @@ Set image metadata for volume
 
 .. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
 
-Sets the image metadata for a volume. Specify the ``os-set_image_metadata`` action in the request body.
+Sets the image metadata for a volume. Specify the ``os-set_image_metadata``
+action in the request body.
 
 Response codes
 --------------
@@ -145,7 +148,9 @@ Remove image metadata from volume
 
 .. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
 
-Removes image metadata, by key, from a volume. Specify the ``os-unset_image_metadata`` action in the request body and the ``key`` for the metadata key and value pair that you want to remove.
+Removes image metadata, by key, from a volume. Specify the
+``os-unset_image_metadata`` action in the request body and the ``key`` for the
+metadata key and value pair that you want to remove.
 
 
 Response codes
@@ -224,7 +229,8 @@ Attach volume to server
 
 .. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
 
-Attaches a volume to a server. Specify the ``os-attach`` action in the request body.
+Attaches a volume to a server. Specify the ``os-attach`` action in the request
+body.
 
 Preconditions
 
@@ -264,7 +270,8 @@ Detach volume from a server
 
 .. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
 
-Detaches a volume from a server. Specify the ``os-detach`` action in the request body.
+Detaches a volume from a server. Specify the ``os-detach`` action in the
+request body.
 
 Preconditions
 
@@ -301,7 +308,9 @@ Unmanage volume
 
 .. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
 
-Removes a volume from Block Storage management without removing the back-end storage object that is associated with it. Specify the ``os-unmanage`` action in the request body.
+Removes a volume from Block Storage management without removing the back-end
+storage object that is associated with it. Specify the ``os-unmanage`` action
+in the request body.
 
 Preconditions
 
@@ -337,7 +346,8 @@ Force detach volume
 
 .. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
 
-Forces a volume to detach. Specify the ``os-force_detach`` action in the request body.
+Forces a volume to detach. Specify the ``os-force_detach`` action in the
+request body.
 
 Rolls back an unsuccessful detach operation after you disconnect
 the volume.
@@ -380,7 +390,8 @@ Retype volume
 
 .. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
 
-Change type of existing volume. Specify the ``os-retype`` action in the request body.
+Change type of existing volume. Specify the ``os-retype`` action in the request
+body.
 
 Change the volume type of existing volume, Cinder may migrate the volume to
 proper volume host according to the new volume type.
@@ -488,8 +499,8 @@ Force delete volume
 
 .. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
 
-Attempts force-delete of volume, regardless of state. Specify the ``os-force_delete`` action
-in the request body.
+Attempts force-delete of volume, regardless of state. Specify the
+``os-force_delete`` action in the request body.
 
 Response codes
 --------------
@@ -520,7 +531,8 @@ Update volume bootable status
 
 .. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
 
-Update the bootable status for a volume, mark it as a bootable volume. Specify the ``os-set_bootable`` action in the request body.
+Update the bootable status for a volume, mark it as a bootable volume. Specify
+the ``os-set_bootable`` action in the request body.
 
 
 Response codes

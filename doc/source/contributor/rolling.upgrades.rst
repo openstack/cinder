@@ -127,9 +127,9 @@ create a new column with desired properties and start moving the data (in a
 live manner). In worst case old column can be removed in N+2. Whole procedure
 is described in more details below.
 
-In aforementioned case we need to make more complicated steps stretching through
-3 releases - always keeping the backwards compatibility. In short when we want
-to start to move data inside the DB, then in N we should:
+In aforementioned case we need to make more complicated steps stretching
+through 3 releases - always keeping the backwards compatibility. In short when
+we want to start to move data inside the DB, then in N we should:
 
 * Add a new column for the data.
 * Write data in both places (N-1 needs to read it).

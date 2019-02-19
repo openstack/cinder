@@ -205,7 +205,8 @@ If UUID is specified, the backup will be restored to the specified volume.
 The specified volume has the following requirements:
 
 * the specified volume status is ``available``.
-* the size of specified volume must be equal to or greater than the size of backup.
+* the size of specified volume must be equal to or greater than the size of
+  backup.
 
 If no existing volume UUID is provided, the backup will be restored to a
 new volume matching the size and name of the originally backed up volume.

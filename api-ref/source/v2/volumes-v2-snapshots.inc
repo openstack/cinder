@@ -65,12 +65,12 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - status: status_2
-   - os-extended-snapshot-attributes:progress: os-extended-snapshot-attributes:progress
+   - os-extended-snapshot-attributes:progress: os-ext-snap-attr:progress
    - description: description
    - created_at: created_at
    - name: name
    - volume_id: volume_id_5
-   - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
+   - os-extended-snapshot-attributes:project_id: os-ext-snap-attr:project_id
    - size: size
    - id: id_4
    - metadata: metadata
@@ -89,7 +89,8 @@ Create snapshot
 
 .. rest_method::  POST /v2/{project_id}/snapshots
 
-Creates a volume snapshot, which is a point-in-time, complete copy of a volume. You can create a volume from a snapshot.
+Creates a volume snapshot, which is a point-in-time, complete copy of a volume.
+You can create a volume from a snapshot.
 
 Response codes
 --------------
@@ -138,7 +139,8 @@ List snapshots
 
 .. rest_method::  GET /v2/{project_id}/snapshots
 
-Lists all Block Storage snapshots, with summary information, that the project can access.
+Lists all Block Storage snapshots, with summary information, that the project
+can access.
 
 Response codes
 --------------
@@ -335,13 +337,13 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - status: status_2
-   - os-extended-snapshot-attributes:progress: os-extended-snapshot-attributes:progress
+   - os-extended-snapshot-attributes:progress: os-ext-snap-attr:progress
    - description: description
    - created_at: created_at
    - name: name
    - snapshot: snapshot
    - volume_id: volume_id_5
-   - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
+   - os-extended-snapshot-attributes:project_id: os-ext-snap-attr:project_id
    - size: size
    - id: id_4
    - metadata: metadata

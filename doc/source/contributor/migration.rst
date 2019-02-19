@@ -248,15 +248,15 @@ the RBD driver as a reference for this implementation.
 
 If you would like to implement a driver specific volume migration for
 your driver, the API method associated with the driver specific migration
-is the following admin only method:
+is the following admin only method::
 
     migrate_volume(self, ctxt, volume, host)
 
 If your driver is taken as the destination back-end for a generic host-assisted
 migration and your driver needs to update the volume model after a successful
-migration, you need to implement the following method for your driver:
+migration, you need to implement the following method for your driver::
 
-    update_migrated_volume(self, ctxt, volume, new_volume, original_volume_status):
+    update_migrated_volume(self, ctxt, volume, new_volume, original_volume_status)
 
 
 Required methods
