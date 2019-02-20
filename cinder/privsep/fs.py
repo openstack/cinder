@@ -20,8 +20,38 @@ Helpers for filesystem related routines.
 
 
 from oslo_concurrency import processutils
+from oslo_log import log as logging
 
 import cinder.privsep
+
+LOG = logging.getLogger(__name__)
+
+mult_table = {'K': 1024}
+mult_table['M'] = mult_table['K'] * 1024
+mult_table['G'] = mult_table['M'] * 1024
+mult_table['T'] = mult_table['G'] * 1024
+mult_table['P'] = mult_table['T'] * 1024
+mult_table['E'] = mult_table['P'] * 1024
+
+
+def _convert_sizestr(sizestr):
+    try:
+        ret = int(sizestr)
+        return ret
+    except ValueError:
+        pass
+
+    error = ValueError(sizestr + " is not a valid sizestr")
+
+    unit = sizestr[-1:].upper()
+    if unit in mult_table:
+        try:
+            ret = int(sizestr[:-1]) * mult_table[unit]
+        except ValueError:
+            raise error
+        return ret
+
+    raise error
 
 
 @cinder.privsep.sys_admin_pctxt.entrypoint
@@ -30,5 +60,18 @@ def umount(mountpoint):
 
 
 @cinder.privsep.sys_admin_pctxt.entrypoint
-def truncate(size, path):
-    processutils.execute('truncate', '-s', size, path)
+def _truncate(size, path):
+    # On Python 3.6, os.truncate() can accept a path arg.
+    # For now, do it this way.
+    with open(path, 'a+b') as f:
+        f.truncate(size)
+
+
+def truncate(sizestr, path):
+    # TODO(eharney): change calling code to use bytes instead size strings
+    size = _convert_sizestr(sizestr)
+
+    LOG.debug('truncating file %(path)s to %(size)s bytes', {'path': path,
+                                                             'size': size})
+
+    _truncate(size, path)
