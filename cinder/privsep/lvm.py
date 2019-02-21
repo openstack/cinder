@@ -36,3 +36,9 @@ def lvrename(vg_name, lv_name, new_name):
 def create_vg(vg_name, pv_list):
     cmd = ['vgcreate', vg_name, ','.join(pv_list)]
     processutils.execute(*cmd)
+
+
+@cinder.privsep.sys_admin_pctxt.entrypoint
+def lvconvert(vg_name, snapshot_name):
+    processutils.execute(
+        'lvconvert', '--merge', '%s/%s' % (vg_name, snapshot_name))
