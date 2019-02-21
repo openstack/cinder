@@ -56,7 +56,7 @@
           # As we are setting DEVSTACK_GATE_TEMPEST_ALL_PLUGINS, we need to add
           # the regex to limit the tests to the same as a tempest -efull would
           # run.
-          DEVSTACK_GATE_TEMPEST_REGEX='(^tempest\.(api|scenario)|(^cinder\.tests.tempest))'
+          DEVSTACK_GATE_TEMPEST_REGEX='(^tempest\.(api|scenario\.test_encrypted_cinder_volumes|scenario\.test_volume|scenario\.test_shelve_instance)|(^cinder\.tests.tempest))'
           DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesSnapshotTestJSON.test_snapshot_backup)'
           DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsAdminTest.test_volume_backup_export_import)'
           DEVSTACK_GATE_TEMPEST_REGEX+='(?!.*VolumesBackupsAdminTest.test_volume_backup_reset_status)'
