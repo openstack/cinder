@@ -37,6 +37,7 @@ from cinder.backup import driver
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+import cinder.privsep.path
 from cinder import utils
 
 LOG = logging.getLogger(__name__)
@@ -108,9 +109,7 @@ def _make_link(volume_path, backup_path, vol_id):
     """
 
     try:
-        utils.execute('ln', volume_path, backup_path,
-                      run_as_root=True,
-                      check_exit_code=True)
+        cinder.privsep.path.symlink(volume_path, backup_path)
     except processutils.ProcessExecutionError as exc:
         err = (_('backup: %(vol_id)s failed to create device hardlink '
                  'from %(vpath)s to %(bpath)s.\n'

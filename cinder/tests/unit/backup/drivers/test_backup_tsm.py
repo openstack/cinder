@@ -265,7 +265,8 @@ class BackupTSMTestCase(test.TestCase):
         return db.backup_create(self.ctxt, backup)['id']
 
     @mock.patch.object(tsm.os, 'stat', fake_stat_image)
-    def test_backup_image(self):
+    @mock.patch('cinder.privsep.path.symlink')
+    def test_backup_image(self, mock_symlink):
         volume_id = fake.VOLUME_ID
         mode = 'image'
         self._create_volume_db_entry(volume_id)
@@ -299,7 +300,8 @@ class BackupTSMTestCase(test.TestCase):
             self.driver.delete_backup(backup1)
 
     @mock.patch.object(tsm.os, 'stat', fake_stat_file)
-    def test_backup_file(self):
+    @mock.patch('cinder.privsep.path.symlink')
+    def test_backup_file(self, mock_symlink):
         volume_id = fake.VOLUME_ID
         mode = 'file'
         self._create_volume_db_entry(volume_id)
