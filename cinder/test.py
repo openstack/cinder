@@ -403,7 +403,22 @@ class TestCase(testtools.TestCase):
         return result
 
     # Useful assertions
-    def assert_notify_called(self, mock_notify, calls):
+    def assert_notify_called(self, mock_notify, calls, any_order=False):
+        if any_order is True:
+            for c in calls:
+                # mock_notify.call_args_list = [
+                #     mock.call('INFO', 'volume.retype', ...),
+                #     mock.call('WARN', 'cinder.fire', ...)]
+                # m = mock_notify.call_args_list
+                # m[0] = Call
+                # m[0][0] = tuple('INFO', <context>, 'volume.retype', ...)
+                if not any(m for m in mock_notify.call_args_list
+                           if (m[0][0] == c[0]     # 'INFO'
+                               and
+                               m[0][2] == c[1])):  # 'volume.retype'
+                    raise AssertionError("notify call not found: %s" % c)
+            return
+
         for i in range(0, len(calls)):
             mock_call = mock_notify.call_args_list[i]
             call = calls[i]
