@@ -1227,7 +1227,7 @@ class QnapAPIExecutor(object):
     def execute_login(self):
         """Login and return sid."""
         params = OrderedDict()
-        params['pwd'] = base64.b64encode(self.password.encode("utf-8"))
+        params['pwd'] = str(base64.b64encode(self.password.encode("utf-8")), "utf-8")
         params['serviceKey'] = '1'
         params['user'] = self.username
 
