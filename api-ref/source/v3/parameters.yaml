@@ -1773,6 +1773,12 @@ migrate_lock_volume:
   in: body
   required: false
   type: boolean
+migration_completion_error:
+  description: |
+    Used to indicate if an error has occured elsewhere that requires clean up.
+  in: body
+  required: false
+  type: boolean
 # NOTE(mriedem): We can update the migration_policy retype note about encrypted
 # in-use volumes not being supported once
 # https://bugzilla.redhat.com/show_bug.cgi?id=760547 is fixed.
@@ -1944,6 +1950,12 @@ new_type:
   in: body
   required: true
   type: string
+new_volume:
+  description: |
+    The UUID of the new volume.
+  in: body
+  required: true
+  type: string
 no_snapshots:
   description: |
     Transfer volume without snapshots. Defaults to False if not specified.
@@ -2021,6 +2033,12 @@ os-initialize_connection:
 os-migrate_volume:
   description: |
     The ``os-migrate_volume`` action.
+  in: body
+  required: true
+  type: object
+os-migrate_volume_completion:
+  description: |
+    The ``os-migrate_volume_completion`` action.
   in: body
   required: true
   type: object
