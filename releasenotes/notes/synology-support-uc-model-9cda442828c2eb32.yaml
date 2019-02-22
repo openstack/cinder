@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added support for UC-Series model to Synology Cinder driver.
