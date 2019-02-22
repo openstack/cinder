@@ -348,21 +348,20 @@ class RBDTestCase(test.TestCase):
 
     @mock.patch.object(driver.RBDDriver, '_enable_replication',
                        return_value=mock.sentinel.volume_update)
-    def test_enable_replication_if_needed_replicated_volume(self, mock_enable):
+    def test_setup_volume_with_replication(self, mock_enable):
         self.volume_a.volume_type = fake_volume.fake_volume_type_obj(
             self.context,
             id=fake.VOLUME_TYPE_ID,
             extra_specs={'replication_enabled': '<is> True'})
-        res = self.driver._enable_replication_if_needed(self.volume_a)
+        res = self.driver._setup_volume(self.volume_a)
         self.assertEqual(mock.sentinel.volume_update, res)
         mock_enable.assert_called_once_with(self.volume_a)
 
     @ddt.data(False, True)
     @mock.patch.object(driver.RBDDriver, '_enable_replication')
-    def test_enable_replication_if_needed_non_replicated(self, enabled,
-                                                         mock_enable):
+    def test_setup_volume_without_replication(self, enabled, mock_enable):
         self.driver._is_replication_enabled = enabled
-        res = self.driver._enable_replication_if_needed(self.volume_a)
+        res = self.driver._setup_volume(self.volume_a)
         if enabled:
             expect = {'replication_status': fields.ReplicationStatus.DISABLED}
         else:
@@ -1322,7 +1321,7 @@ class RBDTestCase(test.TestCase):
             thin_provisioning_support=True,
             provisioned_capacity_gb=mock.sentinel.provisioned_capacity_gb,
             max_over_subscription_ratio=1.0,
-            multiattach=False,
+            multiattach=True,
             location_info=expected_location_info,
             backend_state='up')
 
@@ -1366,7 +1365,7 @@ class RBDTestCase(test.TestCase):
             reserved_percentage=0,
             thin_provisioning_support=True,
             max_over_subscription_ratio=1.0,
-            multiattach=False,
+            multiattach=True,
             location_info=expected_location_info,
             backend_state='up')
 
@@ -1401,7 +1400,7 @@ class RBDTestCase(test.TestCase):
                         total_capacity_gb='unknown',
                         free_capacity_gb='unknown',
                         reserved_percentage=0,
-                        multiattach=False,
+                        multiattach=True,
                         max_over_subscription_ratio=1.0,
                         thin_provisioning_support=True,
                         location_info=expected_location_info,

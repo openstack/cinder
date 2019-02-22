@@ -971,6 +971,11 @@ class PureRetryableException(VolumeBackendAPIException):
     message = _("Retryable Pure Storage Exception encountered")
 
 
+# RBD
+class RBDDriverException(VolumeDriverException):
+    message = _("RBD Cinder driver failure: %(reason)s")
+
+
 # SolidFire
 class SolidFireAPIException(VolumeBackendAPIException):
     message = _("Bad response from SolidFire API")

@@ -1,0 +1,8 @@
+---
+features:
+  - RBD driver has added multiattach support.  It should be noted that
+    replication and multiattach are mutually exclusive, so a single RBD
+    volume can only be configured to support one of these features at a
+    time.  Additionally, RBD image features are not preserved which
+    prevents a volume being retyped from multiattach to another type.
+    This limitation is temporary and will be addressed soon.
