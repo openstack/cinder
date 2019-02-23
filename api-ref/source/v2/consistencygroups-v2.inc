@@ -186,7 +186,8 @@ Request Example
 Delete consistency group
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  POST /v2/{project_id}/consistencygroups/{consistencygroup_id}/delete
+.. rest_method::
+   POST /v2/{project_id}/consistencygroups/{consistencygroup_id}/delete
 
 Deletes a consistency group.
 
@@ -264,7 +265,8 @@ Response Example
 Update consistency group
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  PUT /v2/{project_id}/consistencygroups/{consistencygroup_id}/update
+.. rest_method::
+   PUT /v2/{project_id}/consistencygroups/{consistencygroup_id}/update
 
 Updates a consistency group.
 

@@ -21,8 +21,8 @@ word ``volume``::
 
 If a user makes a request without specifying a version, they will get
 the ``_MIN_API_VERSION`` as defined in
-``cinder/api/openstack/api_version_request.py``. This value is currently ``3.0``
-and is expected to remain so for quite a long time.
+``cinder/api/openstack/api_version_request.py``. This value is currently
+``3.0`` and is expected to remain so for quite a long time.
 
 The Nova project was the first to implement microversions. For full
 details please read Nova's `Kilo spec for microversions

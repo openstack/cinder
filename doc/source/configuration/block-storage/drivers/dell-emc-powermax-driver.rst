@@ -2,10 +2,11 @@
 Dell EMC POWERMAX iSCSI and FC drivers
 ======================================
 
-The Dell EMC PowerMax drivers, ``PowerMaxISCSIDriver`` and ``PowerMaxFCDriver``,
-support the use of Dell EMC PowerMax and VMAX storage arrays with the Cinder
-Block Storage project. They both provide equivalent functions and differ only
-in support for their respective host attachment methods.
+The Dell EMC PowerMax drivers, ``PowerMaxISCSIDriver`` and
+``PowerMaxFCDriver``, support the use of Dell EMC PowerMax and VMAX storage
+arrays with the Cinder Block Storage project. They both provide equivalent
+functions and differ only in support for their respective host attachment
+methods.
 
 The drivers perform volume operations by communicating with the back-end
 PowerMax storage management software. They use the Requests HTTP library to
@@ -256,8 +257,8 @@ PowerMax Driver Integration
    - i.e., on the same server running Solutions Enabler; on a server
    connected to the Solutions Enabler server; or using the eManagement
    container application (containing Solutions Enabler and Unisphere for
-   PowerMax). See ``Dell EMC Solutions Enabler 9.0.x Installation and Configuration
-   Guide`` at ``support.emc.com``.
+   PowerMax). See ``Dell EMC Solutions Enabler 9.0.x Installation and
+   Configuration Guide`` at ``support.emc.com``.
 
 
 2. FC Zoning with PowerMax
@@ -275,8 +276,8 @@ complex and open-zoning would raise security concerns.
 
 .. note::
 
-   You can only ping the PowerMax iSCSI target ports when there is a valid masking
-   view. An attach operation creates this masking view.
+   You can only ping the PowerMax iSCSI target ports when there is a valid
+   masking view. An attach operation creates this masking view.
 
 
 4. Configure Block Storage in cinder.conf
@@ -417,8 +418,8 @@ complex and open-zoning would raise security concerns.
 
       # driver_ssl_cert_verify = True
 
-#. Ensure ``driver_ssl_cert_path`` is set to ``True`` in ``cinder.conf`` backend
-   stanza if steps 3-6 are skipped, otherwise ensure both
+#. Ensure ``driver_ssl_cert_path`` is set to ``True`` in ``cinder.conf``
+   backend stanza if steps 3-6 are skipped, otherwise ensure both
    ``driver_ssl_cert_path`` and ``driver_ssl_cert_path`` are set in
    ``cinder.conf`` backend stanza.
 
@@ -439,10 +440,10 @@ complex and open-zoning would raise security concerns.
 
    .. note::
 
-      It is possible to create as many volume types as the number of Service Level
-      and Workload(available) combination for provisioning volumes. The pool_name
-      is the additional property which has to be set and is of the format:
-      ``<ServiceLevel>+<Workload>+<SRP>+<Array ID>``.
+      It is possible to create as many volume types as the number of Service
+      Level and Workload(available) combination for provisioning volumes. The
+      pool_name is the additional property which has to be set and is of the
+      format: ``<ServiceLevel>+<Workload>+<SRP>+<Array ID>``.
       This can be obtained from the output of the ``cinder get-pools--detail``.
       Workload is NONE for PowerMax or any All Flash with PowerMax OS (5978)
       or greater.
@@ -490,8 +491,8 @@ complex and open-zoning would raise security concerns.
    .. note::
 
       PowerMax and Hybrid support Optimized, Diamond, Platinum, Gold, Silver,
-      Bronze, and NONE service levels. VMAX All Flash supports Diamond and None.
-      Hybrid and All Flash support DSS_REP, DSS, OLTP_REP, OLTP, and None
+      Bronze, and NONE service levels. VMAX All Flash supports Diamond and
+      None. Hybrid and All Flash support DSS_REP, DSS, OLTP_REP, OLTP, and None
       workloads, the latter up until ucode 5977. There is no support for
       workloads in PowerMax OS (5978) or greater.
 
@@ -913,7 +914,8 @@ Prerequisites - PowerMax
 
 **Outcome - Block Storage (Cinder)**
 
-Volume is created against volume type and QOS is enforced with the parameters above
+Volume is created against volume type and QOS is enforced with the parameters
+above.
 
 
 USE CASE 4 - Default values
@@ -1237,7 +1239,8 @@ https://docs.openstack.org/nova/latest/admin/configuring-migrations.html
    By default, the RPC messaging client is set to timeout after 60 seconds,
    meaning if any operation you perform takes longer than 60 seconds to
    complete the operation will timeout and fail with the ERROR message
-   "Messaging Timeout: Timed out waiting for a reply to message ID [message_id]"
+   "Messaging Timeout: Timed out waiting for a reply to message ID
+   [message_id]"
 
    If this occurs, increase the ``rpc_response_timeout`` flag value in
    ``cinder.conf`` and ``nova.conf`` on all Cinder and Nova nodes and restart
@@ -1364,8 +1367,8 @@ for configuration information.
 Multi-attach Architecture
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In PowerMax, a volume cannot belong to two or more FAST storage groups at the same
-time. This can cause issues when we are attaching a volume to multiple
+In PowerMax, a volume cannot belong to two or more FAST storage groups at the
+same time. This can cause issues when we are attaching a volume to multiple
 instances on different hosts. To get around this limitation, we leverage both
 cascaded storage groups and non-FAST storage groups (i.e. a storage group with
 no service level, workload, or SRP specified).
@@ -1527,13 +1530,13 @@ Configure the source and target arrays
 
       .. note::
 
-         ``replication_device`` key value pairs will need to be on the same line
-         (separated by commas) in cinder.conf.  They are displayed on separated lines
-         above for readiblity.
+         ``replication_device`` key value pairs will need to be on the same
+         line (separated by commas) in cinder.conf. They are displayed on
+         separated lines above for readiblity.
 
-   * ``target_device_id`` is a unique PowerMax array serial number of the target
-     array. For full failover functionality, the source and target PowerMax arrays
-     must be discovered and managed by the same U4V server.
+   * ``target_device_id`` is a unique PowerMax array serial number of the
+     target array. For full failover functionality, the source and target
+     PowerMax arrays must be discovered and managed by the same U4V server.
 
    * ``remote_port_group`` is the name of a PowerMax port group that has been
      pre-configured to expose volumes managed by this backend in the event
@@ -1546,11 +1549,11 @@ Configure the source and target arrays
    * ``rdf_group_label`` is the name of a PowerMax SRDF group that has been
      pre-configured between the source and target arrays.
 
-   * ``allow_extend`` is a flag for allowing the extension of replicated volumes.
-     To extend a volume in an SRDF relationship, this relationship must first be
-     broken, both the source and target volumes are then independently extended,
-     and then the replication relationship is re-established. If not explicitly
-     set, this flag defaults to ``False``.
+   * ``allow_extend`` is a flag for allowing the extension of replicated
+     volumes. To extend a volume in an SRDF relationship, this relationship
+     must first be broken, both the source and target volumes are then
+     independently extended, and then the replication relationship is
+     re-established. If not explicitly set, this flag defaults to ``False``.
 
      .. note::
         As the SRDF link must be severed, due caution should be exercised when
@@ -1566,19 +1569,21 @@ Configure the source and target arrays
    * ``metro_use_bias`` is a flag to indicate if 'bias' protection should be
      used instead of Witness. This defaults to False.
 
-   * ``allow_delete_metro`` is a flag to indicate if metro devices can be deleted.
-     All Metro devices in an RDF group need to be managed together, so in order to delete
-     one of the pairings, the whole group needs to be first suspended. Because of this,
-     we require this flag to be explicitly set. This flag defaults to False.
+   * ``allow_delete_metro`` is a flag to indicate if metro devices can be
+     deleted. All Metro devices in an RDF group need to be managed together, so
+     in order to delete one of the pairings, the whole group needs to be first
+     suspended. Because of this, we require this flag to be explicitly set.
+     This flag defaults to False.
 
 
    .. note::
       Service Level and Workload: An attempt will be made to create a storage
-      group on the target array with the same service level and workload combination
-      as the primary. However, if this combination is unavailable on the target
-      (for example, in a situation where the source array is a Hybrid, the target array
-      is an All Flash, and an All Flash incompatible service level like Bronze is
-      configured), no service level will be applied.
+      group on the target array with the same service level and workload
+      combination as the primary. However, if this combination is unavailable
+      on the target (for example, in a situation where the source array is a
+      Hybrid, the target array is an All Flash, and an All Flash incompatible
+      service level like Bronze is configured), no service level will be
+      applied.
 
    .. note::
       The PowerMax Cinder drivers can support a single replication target per
@@ -1603,7 +1608,8 @@ Volume replication interoperability with other features
 
 Most features are supported, except for the following:
 
-* Replication Group operations are available for volumes in Synchronous mode only.
+* Replication Group operations are available for volumes in Synchronous mode
+  only.
 
 * Storage-assisted retype operations on replication-enabled PowerMax volumes
   (moving from a non-replicated type to a replicated-type and vice-versa.
@@ -1611,9 +1617,9 @@ Most features are supported, except for the following:
   not supported.
 
 * It is not currently possible to extend SRDF/Metro protected volumes.
-  If a bigger volume size is required for a SRDF/Metro protected volume, this can be
-  achieved by cloning the original volume and choosing a larger size for the new
-  cloned volume.
+  If a bigger volume size is required for a SRDF/Metro protected volume, this
+  can be achieved by cloning the original volume and choosing a larger size for
+  the new cloned volume.
 
 * The image volume cache functionality is supported (enabled by setting
   ``image_volume_cache_enabled = True``), but one of two actions must be taken
@@ -1955,19 +1961,19 @@ the same format:
    Pool example 2: Diamond+SRP_1+111111111111
 
 
-.. table:: **Pool values**
+.. list-table:: Pool values
+   :header-rows: 1
 
- +----------------+-------------------------------------------------------------+
- |  Key           | Value                                                       |
- +================+=============================================================+
- |  service_level | The service level of the volume to be managed               |
- +----------------+-------------------------------------------------------------+
- |  workload      | The workload of the volume to be managed                    |
- +----------------+-------------------------------------------------------------+
- |  SRP           | The Storage Resource Pool configured for use by the backend |
- +----------------+-------------------------------------------------------------+
- |  array_id      | The PowerMax serial number (12 digit numerical)             |
- +----------------+-------------------------------------------------------------+
+   * - Key
+     - Value
+   * - service_level
+     - The service level of the volume to be managed
+   * - workload
+     - The workload of the volume to be managed
+   * - SRP
+     - The Storage Resource Pool configured for use by the backend
+   * - array_id
+     - The PowerMax serial number (12 digit numerical)
 
 
 Manage Volumes

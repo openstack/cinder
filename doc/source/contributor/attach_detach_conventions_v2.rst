@@ -48,7 +48,8 @@ attachment-create
 -----------------
 
 ```
-cinder --os-volume-api-version 3.27 attachment-create <volume-id> <instance-uuid>
+cinder
+--os-volume-api-version 3.27 attachment-create <volume-id> <instance-uuid>
 ```
 
 The attachment_create call simply creates an empty Attachment record for the
@@ -123,10 +124,11 @@ attachment-update
 cinder --os-volume-api-version 3.27 attachment-update <attachment-id>
 ```
 
-Once we have a reserved volume, this CLI can be used to update an attachment for a cinder volume.
-This call is designed to be more of an attachment completion than anything else.
-It expects the value of a connector object to notify the driver that the volume is going to be
-connected and where it's being connected to. The usage is the following::
+Once we have a reserved volume, this CLI can be used to update an attachment
+for a cinder volume. This call is designed to be more of an attachment
+completion than anything else. It expects the value of a connector object to
+notify the driver that the volume is going to be connected and where it's being
+connected to. The usage is the following::
 
   usage: cinder --os-volume-api-version 3.27 attachment-update
          <attachment-id> ...

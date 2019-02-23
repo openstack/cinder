@@ -98,7 +98,8 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume_type/volume-type-extra-specs-create-update-request.json
+.. literalinclude::
+   ./samples/volume_type/volume-type-extra-specs-create-update-request.json
    :language: javascript
 
 
@@ -113,7 +114,8 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume_type/volume-type-extra-specs-create-update-response.json
+.. literalinclude::
+   ./samples/volume_type/volume-type-extra-specs-create-update-response.json
    :language: javascript
 
 
@@ -151,7 +153,8 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume_type/volume-type-all-extra-specs-show-response.json
+.. literalinclude::
+   ./samples/volume_type/volume-type-all-extra-specs-show-response.json
    :language: javascript
 
 
@@ -182,7 +185,8 @@ Request
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume_type/volume-type-specific-extra-specs-show-response.json
+.. literalinclude::
+   ./samples/volume_type/volume-type-specific-extra-specs-show-response.json
    :language: javascript
 
 
@@ -213,21 +217,24 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume_type/volume-type-specific-extra-specs-update-request.json
+.. literalinclude::
+   ./samples/volume_type/volume-type-specific-extra-specs-update-request.json
    :language: javascript
 
 
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume_type/volume-type-specific-extra-specs-update-response.json
+.. literalinclude::
+   ./samples/volume_type/volume-type-specific-extra-specs-update-response.json
    :language: javascript
 
 
 Delete extra specification for volume type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  DELETE /v3/{project_id}/types/{volume_type_id}/extra_specs/{key}
+.. rest_method::
+   DELETE /v3/{project_id}/types/{volume_type_id}/extra_specs/{key}
 
 Deletes the specific extra specification assigned to a volume type.
 
@@ -536,14 +543,16 @@ Request
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume_type/encryption-type-specific-specs-show-response.json
+.. literalinclude::
+   ./samples/volume_type/encryption-type-specific-specs-show-response.json
    :language: javascript
 
 
 Delete an encryption type
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  DELETE /v3/{project_id}/types/{volume_type_id}/encryption/{encryption_id}
+.. rest_method::
+   DELETE /v3/{project_id}/types/{volume_type_id}/encryption/{encryption_id}
 
 To delete an encryption type for an existing volume type.
 
@@ -623,7 +632,8 @@ Response Example
 Update an encryption type
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  PUT /v3/{project_id}/types/{volume_type_id}/encryption/{encryption_id}
+.. rest_method::
+   PUT /v3/{project_id}/types/{volume_type_id}/encryption/{encryption_id}
 
 To update an encryption type for an existing volume type.
 

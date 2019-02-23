@@ -50,8 +50,10 @@ Configuration
       Target> iscsi target auth incominguser add iqn.2018-02.com.veritas:target02 user1
       ...
 
-#. Ensure that the Veritas Access iSCSI target service is online. If the Veritas Access
-   iSCSI target service is not online, enable the service by using the CLI or REST API.
+#. Ensure that the Veritas Access iSCSI target service is online. If the
+   Veritas Access
+   iSCSI target service is not online, enable the service by using the CLI or
+   REST API.
 
    .. code-block:: console
 

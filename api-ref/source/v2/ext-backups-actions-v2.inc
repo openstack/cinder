@@ -11,7 +11,8 @@ Force-delete backup
 
 .. rest_method::  POST /v2/{project_id}/backups/{backup_id}/action
 
-Force-deletes a backup. Specify the ``os-force_delete`` action in the request body.
+Force-deletes a backup. Specify the ``os-force_delete`` action in the request
+body.
 
 This operation deletes the backup and any backup data.
 
@@ -52,7 +53,8 @@ Reset backup's status
 
 .. rest_method::  POST /v2/{project_id}/backups/{backup_id}/action
 
-Reset a backup's status. Specify the ``os-reset_status`` action in the request body.
+Reset a backup's status. Specify the ``os-reset_status`` action in the request
+body.
 
 Response codes
 --------------

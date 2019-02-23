@@ -14,23 +14,26 @@ Jenkins performs tasks such as:
     Run Pylint checks on proposed code changes that have been reviewed.
 
 `gate-cinder-python27`_
-    Run unit tests using python2.7 on proposed code changes that have been reviewed.
+    Run unit tests using python2.7 on proposed code changes that have been
+    reviewed.
 
 `gate-cinder-python34`_
-    Run unit tests using python3.4 on proposed code changes that have been reviewed.
+    Run unit tests using python3.4 on proposed code changes that have been
+    reviewed.
 
 `cinder-coverage`_
     Calculate test coverage metrics.
 
 `cinder-docs`_
-    Build this documentation and push it to `OpenStack Cinder <https://docs.openstack.org/cinder/latest/>`_.
+    Build this documentation and push it to
+    `OpenStack Cinder <https://docs.openstack.org/cinder/latest/>`_.
 
 `cinder-merge-release-tags`_
     Merge reviewed code into the git repository.
 
 `cinder-tarball`_
-    Do ``python setup.py sdist`` to create a tarball of the cinder code and upload
-    it to http://tarballs.openstack.org/cinder
+    Do ``python setup.py sdist`` to create a tarball of the cinder code and
+    upload it to http://tarballs.openstack.org/cinder
 
 .. _Jenkins: http://jenkins-ci.org
 .. _Launchpad: https://launchpad.net

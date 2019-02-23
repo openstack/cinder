@@ -62,7 +62,8 @@ Response Example
 Show quota usage for a project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{admin_project_id}/os-quota-sets/{project_id}?{usage}=True
+.. rest_method::
+   GET /v3/{admin_project_id}/os-quota-sets/{project_id}?{usage}=True
 
 Shows quota usage for a project.
 
@@ -204,7 +205,8 @@ Request
 Get default quotas for a project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{admin_project_id}/os-quota-sets/{project_id}/defaults
+.. rest_method::
+   GET /v3/{admin_project_id}/os-quota-sets/{project_id}/defaults
 
 Gets default quotas for a project.
 
@@ -253,10 +255,11 @@ Response Example
 Validate setup for nested quota
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{admin_project_id}/os-quota-sets/validate_setup_for_nested_quota_use
+.. rest_method::
+   GET /v3/{admin_project_id}/os-quota-sets/validate_setup_for_nested_quota_use
 
-Validate setup for nested quota, administrator should ensure that Keystone v3 or greater is
-being used.
+Validate setup for nested quota, administrator should ensure that Keystone v3
+or greater is being used.
 
 Response codes
 --------------

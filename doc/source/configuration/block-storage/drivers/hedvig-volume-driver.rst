@@ -27,7 +27,8 @@ With the Hedvig Volume Driver for OpenStack, you can :
     servers.
 - Deliver predictable performance:
     Receive consistent high-IOPS performance for demanding applications
-    through massive parallelism, dedicated flash, and edge cache configurations.
+    through massive parallelism, dedicated flash, and edge cache
+    configurations.
 
 Requirement
 -----------

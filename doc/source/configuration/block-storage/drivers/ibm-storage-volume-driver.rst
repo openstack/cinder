@@ -595,7 +595,8 @@ DS8000 storage systems.
 
    * Metro Mirror replication is enabled on DS8000 storage systems.
 
-#. Perform the following procedure, replacing the values in the example with your own:
+#. Perform the following procedure, replacing the values in the example with
+   your own:
 
    .. code-block:: console
 

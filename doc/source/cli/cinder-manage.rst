@@ -22,7 +22,8 @@ DESCRIPTION
 :command:`cinder-manage` provides control of cinder database migration,
 and provides an interface to get information about the current state
 of cinder.
-More information about OpenStack Cinder is available at `OpenStack Cinder <https://docs.openstack.org/cinder/latest/>`_.
+More information about OpenStack Cinder is available at `OpenStack
+Cinder <https://docs.openstack.org/cinder/latest/>`_.
 
 OPTIONS
 =======
@@ -36,12 +37,15 @@ For example, to obtain a list of the cinder services currently running:
 Run without arguments to see a list of available command categories:
 ``cinder-manage``
 
-Categories are shell, logs, migrate, db, volume, host, service, backup, version, and config. Detailed descriptions are below.
+Categories are shell, logs, migrate, db, volume, host, service, backup,
+version, and config. Detailed descriptions are below.
 
-You can also run with a category argument such as 'db' to see a list of all commands in that category:
+You can also run with a category argument such as 'db' to see a list of all
+commands in that category:
 ``cinder-manage db``
 
-These sections describe the available categories and arguments for cinder-manage.
+These sections describe the available categories and arguments for
+cinder-manage.
 
 Cinder Db
 ~~~~~~~~~
@@ -52,7 +56,8 @@ Print the current database version.
 
 ``cinder-manage db sync [--bump-versions] [version]``
 
-Sync the database up to the most recent version. This is the standard way to create the db as well.
+Sync the database up to the most recent version. This is the standard way to
+create the db as well.
 
 This command interprets the following options when it is invoked:
 
@@ -65,27 +70,34 @@ version          Database version
 
 ``cinder-manage db purge [<number of days>]``
 
-Purge database entries that are marked as deleted, that are older than the number of days specified.
+Purge database entries that are marked as deleted, that are older than the
+number of days specified.
 
 ``cinder-manage db online_data_migrations [--max-count <n>]``
 
-Perform online data migrations for database upgrade between releases in batches.
+Perform online data migrations for database upgrade between releases in
+batches.
 
 This command interprets the following options when it is invoked:
 
---max-count     Maximum number of objects to migrate. If not specified, all possible migrations will be completed, in batches of 50 at a time.
+.. code-block:: console
 
-Returns exit status 0 if no (further) updates are possible, 1 if the ``--max-count``
-option was used and some updates were completed successfully (even if others generated
-errors), 2 if some updates generated errors and no other migrations were able to take
-effect in the last batch attempted, or 127 if invalid input is provided (e.g.
-non-numeric max-count).
+   --max-count     Maximum number of objects to migrate. If not specified, all
+                   possible migrations will be completed, in batches of 50 at a
+                   time.
 
-This command should be run after upgrading the database schema. If it exits with partial
-updates (exit status 1) it should be called again, even if some updates initially generated
-errors, because some updates may depend on others having completed. If it exits with
-status 2, intervention is required to resolve the issue causing remaining updates to fail.
-It should be considered successfully completed only when the exit status is 0.
+Returns exit status 0 if no (further) updates are possible, 1 if the
+``--max-count`` option was used and some updates were completed successfully
+(even if others generated errors), 2 if some updates generated errors and no
+other migrations were able to take effect in the last batch attempted, or 127
+if invalid input is provided (e.g. non-numeric max-count).
+
+This command should be run after upgrading the database schema. If it exits
+with partial updates (exit status 1) it should be called again, even if some
+updates initially generated errors, because some updates may depend on others
+having completed. If it exits with status 2, intervention is required to
+resolve the issue causing remaining updates to fail. It should be considered
+successfully completed only when the exit status is 0.
 
 Cinder Logs
 ~~~~~~~~~~~
@@ -96,7 +108,8 @@ Displays cinder errors from log files.
 
 ``cinder-manage logs syslog [<number>]``
 
-Displays cinder the most recent entries from syslog.  The optional number argument specifies the number of entries to display (default 10).
+Displays cinder the most recent entries from syslog.  The optional number
+argument specifies the number of entries to display (default 10).
 
 Cinder Shell
 ~~~~~~~~~~~~
@@ -128,23 +141,27 @@ Cinder Volume
 
 Delete a volume without first checking that the volume is available.
 
-``cinder-manage volume update_host --currenthost <current host> --newhost <new host>``
+``cinder-manage volume update_host --currenthost <current host>
+--newhost <new host>``
 
-Updates the host name of all volumes currently associated with a specified host.
+Updates the host name of all volumes currently associated with a specified
+host.
 
 Cinder Host
 ~~~~~~~~~~~
 
 ``cinder-manage host list [<zone>]``
 
-Displays a list of all physical hosts and their zone.  The optional zone argument allows the list to be filtered on the requested zone.
+Displays a list of all physical hosts and their zone.  The optional zone
+argument allows the list to be filtered on the requested zone.
 
 Cinder Service
 ~~~~~~~~~~~~~~
 
 ``cinder-manage service list``
 
-Displays a list of all cinder services and their host, zone, status, state and when the information was last updated.
+Displays a list of all cinder services and their host, zone, status, state and
+when the information was last updated.
 
 ``cinder-manage service remove <service> <host>``
 
@@ -155,11 +172,14 @@ Cinder Backup
 
 ``cinder-manage backup list``
 
-Displays a list of all backups (including ones in progress) and the host on which the backup operation is running.
+Displays a list of all backups (including ones in progress) and the host on
+which the backup operation is running.
 
-``cinder-manage backup update_backup_host --currenthost <current host> --newhost <new host>``
+``cinder-manage backup update_backup_host --currenthost <current host>
+--newhost <new host>``
 
-Updates the host name of all backups currently associated with a specified host.
+Updates the host name of all backups currently associated with a specified
+host.
 
 Cinder Version
 ~~~~~~~~~~~~~~
@@ -173,12 +193,15 @@ Cinder Config
 
 ``cinder-manage config list [<param>]``
 
-Displays the current configuration parameters (options) for Cinder. The optional flag parameter may be used to display the configuration of one parameter.
+Displays the current configuration parameters (options) for Cinder. The
+optional flag parameter may be used to display the configuration of one
+parameter.
 
 FILES
 =====
 
-The cinder.conf file contains configuration information in the form of python-gflags.
+The cinder.conf file contains configuration information in the form of
+python-gflags.
 
 The cinder-manage.log file logs output from cinder-manage.
 
@@ -190,4 +213,5 @@ SEE ALSO
 BUGS
 ====
 
-* Cinder is hosted on Launchpad so you can view current bugs at `Bugs : Cinder <https://bugs.launchpad.net/cinder/>`__
+* Cinder is hosted on Launchpad so you can view current bugs at `Bugs :
+  Cinder <https://bugs.launchpad.net/cinder/>`__

@@ -242,7 +242,8 @@ List volumes
 
 .. rest_method::  GET /v2/{project_id}/volumes
 
-Lists summary information for all Block Storage volumes that the project can access.
+Lists summary information for all Block Storage volumes that the project can
+access.
 
 
 Response codes

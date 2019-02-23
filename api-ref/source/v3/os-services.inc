@@ -124,7 +124,8 @@ Log Disabled Cinder Service Information
 
 .. rest_method:: PUT /v3/{project_id}/os-services/disable-log-reason
 
-Logs information to the Cinder service table about why a Cinder service was disabled.
+Logs information to the Cinder service table about why a Cinder service was
+disabled.
 
 Specify the service by its host name and binary name.
 

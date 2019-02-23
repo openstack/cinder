@@ -78,7 +78,8 @@ During the documentation build a number of things happen:
         will look consistent with all the other OpenStack documentation.
       * The resulting HTML is put into ``doc/build/html``.
 
-   * Sample files like cinder.conf.sample are generated and put into ``doc/source/_static``.
+   * Sample files like cinder.conf.sample are generated and put into
+     ``doc/source/_static``.
    * All of Cinder's ``.py`` files are processed and the docstrings are used to
      generate the files under ``doc/source/contributor/api``
 

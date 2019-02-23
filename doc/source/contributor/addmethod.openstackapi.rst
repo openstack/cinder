@@ -17,32 +17,46 @@
 Adding a Method to the OpenStack API
 ====================================
 
-The interface is a mostly RESTful API. REST stands for Representational State Transfer and provides an architecture "style" for distributed systems using HTTP for transport. Figure out a way to express your request and response in terms of resources that are being created, modified, read, or destroyed.
+The interface is a mostly RESTful API. REST stands for Representational State
+Transfer and provides an architecture "style" for distributed systems using
+HTTP for transport. Figure out a way to express your request and response in
+terms of resources that are being created, modified, read, or destroyed.
 
 Routing
 -------
 
-To map URLs to controllers+actions, OpenStack uses the Routes package, a clone of Rails routes for Python implementations. See http://routes.groovie.org/ for more information.
+To map URLs to controllers+actions, OpenStack uses the Routes package, a clone
+of Rails routes for Python implementations. See http://routes.groovie.org/ for
+more information.
 
-URLs are mapped to "action" methods on "controller" classes in ``cinder/api/openstack/__init__/ApiRouter.__init__`` .
+URLs are mapped to "action" methods on "controller" classes in
+``cinder/api/openstack/__init__/ApiRouter.__init__`` .
 
-See http://routes.readthedocs.io/en/latest/ for all syntax, but you'll probably just need these two:
-   - mapper.connect() lets you map a single URL to a single action on a controller.
+See http://routes.readthedocs.io/en/latest/ for all syntax, but you'll probably
+just need these two:
+
+   - mapper.connect() lets you map a single URL to a single action on a
+     controller.
    - mapper.resource() connects many standard URLs to actions on a controller.
 
 Controllers and actions
 -----------------------
 
-Controllers live in ``cinder/api/openstack``, and inherit from cinder.wsgi.Controller.
+Controllers live in ``cinder/api/openstack``, and inherit from
+cinder.wsgi.Controller.
 
 See ``cinder/api/v2/volumes.py`` for an example.
 
-Action methods take parameters that are sucked out of the URL by mapper.connect() or .resource().  The first two parameters are self and the WebOb request, from which you can get the req.environ, req.body, req.headers, etc.
+Action methods take parameters that are sucked out of the URL by
+mapper.connect() or .resource().  The first two parameters are self and the
+WebOb request, from which you can get the req.environ, req.body, req.headers,
+etc.
 
 Serialization
 -------------
 
-Actions return a dictionary, and wsgi.Controller serializes that to JSON or XML based on the request's content-type.
+Actions return a dictionary, and wsgi.Controller serializes that to JSON or XML
+based on the request's content-type.
 
 Errors
 ------

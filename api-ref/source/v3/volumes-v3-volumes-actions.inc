@@ -83,7 +83,8 @@ Reset a volume's statuses
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
 Administrator only. Resets the status, attach status, revert to snapshot,
-and migration status for a volume. Specify the ``os-reset_status`` action in the request body.
+and migration status for a volume. Specify the ``os-reset_status`` action in
+the request body.
 
 Response codes
 --------------
@@ -117,8 +118,8 @@ Revert volume to snapshot
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Revert a volume to its latest snapshot, this API only support reverting a detached volume,
-and the volume status must be ``available``.
+Revert a volume to its latest snapshot, this API only support reverting a
+detached volume, and the volume status must be ``available``.
 
 Available since API microversion ``3.40``.
 
@@ -158,7 +159,8 @@ Set image metadata for a volume
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Sets the image metadata for a volume. Specify the ``os-set_image_metadata`` action in the request body.
+Sets the image metadata for a volume. Specify the ``os-set_image_metadata``
+action in the request body.
 
 Response codes
 --------------
@@ -205,7 +207,9 @@ Remove image metadata from a volume
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Removes image metadata, by key, from a volume. Specify the ``os-unset_image_metadata`` action in the request body and the ``key`` for the metadata key and value pair that you want to remove.
+Removes image metadata, by key, from a volume. Specify the
+``os-unset_image_metadata`` action in the request body and the ``key`` for the
+metadata key and value pair that you want to remove.
 
 Response codes
 --------------
@@ -284,7 +288,8 @@ Attach volume to a server
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Attaches a volume to a server. Specify the ``os-attach`` action in the request body.
+Attaches a volume to a server. Specify the ``os-attach`` action in the request
+body.
 
 Preconditions
 
@@ -325,7 +330,8 @@ Detach volume from server
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Detaches a volume from a server. Specify the ``os-detach`` action in the request body.
+Detaches a volume from a server. Specify the ``os-detach`` action in the
+request body.
 
 Preconditions
 
@@ -398,7 +404,8 @@ Force detach a volume
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Forces a volume to detach. Specify the ``os-force_detach`` action in the request body.
+Forces a volume to detach. Specify the ``os-force_detach`` action in the
+request body.
 
 Rolls back an unsuccessful detach operation after you disconnect
 the volume.
@@ -439,7 +446,8 @@ Retype a volume
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Change type of existing volume. Specify the ``os-retype`` action in the request body.
+Change type of existing volume. Specify the ``os-retype`` action in the request
+body.
 
 Change the volume type of existing volume, Cinder may migrate the volume to
 proper volume host according to the new volume type.
@@ -601,8 +609,8 @@ Force delete a volume
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Attempts force-delete of volume, regardless of state. Specify the ``os-force_delete`` action
-in the request body.
+Attempts force-delete of volume, regardless of state. Specify the
+``os-force_delete`` action in the request body.
 
 Response codes
 --------------

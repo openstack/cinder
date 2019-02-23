@@ -229,10 +229,10 @@ configuration.
 We advise setting up automated tests because the Block Storage API has a lot
 of API calls and you'll want to test each of them against an admin user, an
 observer-admin user, and a "regular" end user.  Further, if you anticipate that
-you may require finer-grained access than outlined in this example (for example,
-you would like a "creator" role that can create and read, but not delete), your
-configuration will be all the more complex and hence require more extensive
-testing that you won't want to do by hand.
+you may require finer-grained access than outlined in this example (for
+example, you would like a "creator" role that can create and read, but not
+delete), your configuration will be all the more complex and hence require more
+extensive testing that you won't want to do by hand.
 
 Step 1: Create a new role
 `````````````````````````

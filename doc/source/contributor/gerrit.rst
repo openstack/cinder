@@ -1,9 +1,9 @@
 Code Reviews
 ============
 
-Cinder follows the same `Review guidelines`_ outlined by the OpenStack community.
-This page provides additional information that is helpful for reviewers of
-patches to Cinder.
+Cinder follows the same `Review guidelines`_ outlined by the OpenStack
+community. This page provides additional information that is helpful for
+reviewers of patches to Cinder.
 
 Gerrit
 ------
@@ -16,7 +16,8 @@ requests to the Cinder repository will be ignored`.
 
 See `Quick Reference`_ for information on quick reference for developers.
 See `Getting Started`_ for information on how to get started using Gerrit.
-See `Development Workflow`_ for more detailed information on how to work with Gerrit.
+See `Development Workflow`_ for more detailed information on how to work with
+Gerrit.
 
 Targeting Milestones
 --------------------

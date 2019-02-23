@@ -229,11 +229,13 @@ Note that more than one ``replication_device`` line can be added to allow for
 multi-target device replication.
 
 A volume is only replicated if the volume is of a volume-type that has
-the extra spec ``replication_enabled`` set to ``<is> True``. You can optionally specify
-the ``replication_type`` key to specify ``<in> sync`` or ``<in> async`` to choose the
-type of replication for that volume. If not specified it will default to ``async``.
+the extra spec ``replication_enabled`` set to ``<is> True``. You can optionally
+specify the ``replication_type`` key to specify ``<in> sync`` or ``<in> async``
+to choose the type of replication for that volume. If not specified it will
+default to ``async``.
 
-To create a volume type that specifies replication to remote back ends with async replication:
+To create a volume type that specifies replication to remote back ends with
+async replication:
 
 .. code-block:: console
 
@@ -244,48 +246,32 @@ To create a volume type that specifies replication to remote back ends with asyn
 The following table contains the optional configuration parameters available
 for async replication configuration with the Pure Storage array.
 
-==================================================== ============= ================
-Option                                               Description   Default
-==================================================== ============= ================
-``pure_replica_interval_default``                    Snapshot
-                                                     replication
-                                                     interval in
-                                                     seconds.      ``3600``
-``pure_replica_retention_short_term_default``        Retain all
-                                                     snapshots on
-                                                     target for
-                                                     this time
-                                                     (in seconds). ``14400``
-``pure_replica_retention_long_term_per_day_default`` Retain how
-                                                     many
-                                                     snapshots
-                                                     for each
-                                                     day.          ``3``
-``pure_replica_retention_long_term_default``         Retain
-                                                     snapshots
-                                                     per day
-                                                     on target
-                                                     for this
-                                                     time (in
-                                                     days).        ``7``
-``pure_replication_pg_name``                         Pure
-                                                     Protection
-                                                     Group name to
-                                                     use for async
-                                                     replication
-                                                     (will be
-                                                     created if
-                                                     it does not
-                                                     exist).       ``cinder-group``
-``pure_replication_pod_name``                        Pure Pod name
-                                                     to use for
-                                                     sync
-                                                     replication
-                                                     (will be
-                                                     created if
-                                                     it does not
-                                                     exist).       ``cinder-pod``
-==================================================== ============= ================
+.. list-table:: Pure Storage replication configuration options
+   :header-rows: 1
+
+   * - Option
+     - Description
+     - Default
+   * - ``pure_replica_interval_default``
+     - Snapshot replication interval in seconds.
+     - ``3600``
+   * - ``pure_replica_retention_short_term_default``
+     - Retain all snapshots on target for this time (in seconds).
+     - ``14400``
+   * - ``pure_replica_retention_long_term_per_day_default``
+     - Retain how many snapshots for each day.
+     - ``3``
+   * - ``pure_replica_retention_long_term_default``
+     - Retain snapshots per day on target for this time (in days).
+     - ``7``
+   * - ``pure_replication_pg_name``
+     - Pure Protection Group name to use for async replication (will be created
+       if it does not exist).
+     - ``cinder-group``
+   * - ``pure_replication_pod_name``
+     - Pure Pod name to use for sync replication (will be created if it does
+       not exist).
+     - ``cinder-pod``
 
 
 .. note::
@@ -317,8 +303,9 @@ file:
 
 .. note::
 
-   Arrays with very good data reduction rates (compression/data deduplication/thin provisioning)
-   can get *very* large oversubscription rates applied.
+   Arrays with very good data reduction rates
+   (compression/data deduplication/thin provisioning) can get *very* large
+   oversubscription rates applied.
 
 Scheduling metrics
 ~~~~~~~~~~~~~~~~~~
