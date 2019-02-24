@@ -34,7 +34,6 @@ from sqlalchemy.engine import reflection
 
 from cinder.db import migration
 import cinder.db.sqlalchemy.migrate_repo
-from cinder.volume import group_types as volume_group_types
 
 
 class MigrationsMixin(test_migrations.WalkVersionsMixin):
@@ -107,13 +106,8 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         # manner is provided in Cinder's developer documentation.
         # Reviewers: DO NOT ALLOW THINGS TO BE ADDED HERE WITHOUT CARE
         exceptions = [
-            # NOTE(ameade): 87 sets messages.request_id to nullable. This is
-            # 100% backward compatible and according to MySQL docs such ALTER
-            # is performed with the same restrictions as column addition, which
-            # we of course allow.
-            87,
             # NOTE : 104 modifies size of messages.project_id to 255.
-            # This should be safe for the same reason as migration 87.
+            # This should be safe according to documentation.
             104,
             # NOTE(brinzhang): 127 changes size of quota_usage.resource
             # to 300. This should be safe for the 'quota_usage' db table,
@@ -136,80 +130,6 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(columns.updated_at.type, self.TIME_TYPE)
         self.assertIsInstance(columns.deleted_at.type, self.TIME_TYPE)
         self.assertIsInstance(columns.deleted.type, self.BOOL_TYPE)
-
-    def _check_086(self, engine, data):
-        """Test inserting default cgsnapshot group type."""
-        self.assertTrue(engine.dialect.has_table(engine.connect(),
-                                                 "group_types"))
-        group_types = db_utils.get_table(engine, 'group_types')
-        t1 = (group_types.select(group_types.c.name ==
-                                 volume_group_types.DEFAULT_CGSNAPSHOT_TYPE).
-              execute().first())
-        self.assertIsNotNone(t1)
-
-        group_specs = db_utils.get_table(engine, 'group_type_specs')
-        specs = group_specs.select(
-            group_specs.c.group_type_id == t1.id and
-            group_specs.c.key == 'consistent_group_snapshot_enabled'
-        ).execute().first()
-        self.assertIsNotNone(specs)
-        self.assertEqual('<is> True', specs.value)
-
-    def _check_087(self, engine, data):
-        """Test request_id column in messages is nullable."""
-        self.assertTrue(engine.dialect.has_table(engine.connect(),
-                                                 "messages"))
-        messages = db_utils.get_table(engine, 'messages')
-
-        self.assertIsInstance(messages.c.request_id.type,
-                              self.VARCHAR_TYPE)
-        self.assertTrue(messages.c.request_id.nullable)
-
-    def _check_088(self, engine, data):
-        """Test adding replication data to cluster table."""
-        clusters = db_utils.get_table(engine, 'clusters')
-        self.assertIsInstance(clusters.c.replication_status.type,
-                              self.VARCHAR_TYPE)
-        self.assertIsInstance(clusters.c.active_backend_id.type,
-                              self.VARCHAR_TYPE)
-        self.assertIsInstance(clusters.c.frozen.type,
-                              self.BOOL_TYPE)
-
-    def _check_089(self, engine, data):
-        """Test adding cluster_name to image volume cache table."""
-        image_cache = db_utils.get_table(engine, 'image_volume_cache_entries')
-        self.assertIsInstance(image_cache.c.cluster_name.type,
-                              self.VARCHAR_TYPE)
-
-    def _check_090(self, engine, data):
-        """Test adding race_preventer to workers table."""
-        workers = db_utils.get_table(engine, 'workers')
-        self.assertIsInstance(workers.c.race_preventer.type,
-                              self.INTEGER_TYPE)
-
-    def _check_091(self, engine, data):
-        self.assertTrue(engine.dialect.has_table(engine.connect(),
-                                                 "attachment_specs"))
-        attachment = db_utils.get_table(engine, 'attachment_specs')
-
-        self.assertIsInstance(attachment.c.created_at.type,
-                              self.TIME_TYPE)
-        self.assertIsInstance(attachment.c.updated_at.type,
-                              self.TIME_TYPE)
-        self.assertIsInstance(attachment.c.deleted_at.type,
-                              self.TIME_TYPE)
-        self.assertIsInstance(attachment.c.deleted.type,
-                              self.BOOL_TYPE)
-        self.assertIsInstance(attachment.c.id.type,
-                              self.INTEGER_TYPE)
-        self.assertIsInstance(attachment.c.key.type,
-                              self.VARCHAR_TYPE)
-        self.assertIsInstance(attachment.c.value.type,
-                              self.VARCHAR_TYPE)
-        self.assertIsInstance(attachment.c.attachment_id.type,
-                              self.VARCHAR_TYPE)
-        f_keys = self.get_foreign_key_columns(engine, 'attachment_specs')
-        self.assertEqual({'attachment_id'}, f_keys)
 
     def _check_098(self, engine, data):
         self.assertTrue(engine.dialect.has_table(engine.connect(),
