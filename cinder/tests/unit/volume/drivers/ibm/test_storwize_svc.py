@@ -3103,7 +3103,8 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
     def _create_volume(self, **kwargs):
         pool = _get_test_pool()
         prop = {'host': 'openstack@svc#%s' % pool,
-                'size': 1}
+                'size': 1,
+                'volume_type_id': self.vt['id']}
         for p in prop.keys():
             if p not in kwargs:
                 kwargs[p] = prop[p]
@@ -3742,7 +3743,8 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
     def _create_volume(self, **kwargs):
         pool = _get_test_pool()
         prop = {'host': 'openstack@svc#%s' % pool,
-                'size': 1}
+                'size': 1,
+                'volume_type_id': self.vt['id']}
         for p in prop.keys():
             if p not in kwargs:
                 kwargs[p] = prop[p]
@@ -4798,9 +4800,13 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         pools = _get_test_pool(get_all=True)
         for pool in pools:
             host = 'openstack@svc#%s' % pool
-            vol1 = testutils.create_volume(self.ctxt, host=host)
+            vol1 = testutils.create_volume(
+                self.ctxt, host=host,
+                volume_type_id=self.vt['id'])
             self.driver.create_volume(vol1)
-            vol2 = testutils.create_volume(self.ctxt, host=host)
+            vol2 = testutils.create_volume(
+                self.ctxt, host=host,
+                volume_type_id=self.vt['id'])
             self.driver.create_volume(vol2)
         for pool in pools:
             pool_vols = self._get_pool_volumes(pool)
@@ -4835,7 +4841,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def _generate_vol_info(self, vol_type=None, size=10):
         pool = _get_test_pool()
         prop = {'size': size,
-                'host': 'openstack@svc#%s' % pool}
+                'host': 'openstack@svc#%s' % pool,
+                'volume_type_id': self.vt['id']}
         if vol_type:
             prop['volume_type_id'] = vol_type.id
         vol = testutils.create_volume(self.ctxt, **prop)
@@ -4859,7 +4866,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def _create_volume(self, **kwargs):
         pool = _get_test_pool()
         prop = {'host': 'openstack@svc#%s' % pool,
-                'size': 1}
+                'size': 1,
+                'volume_type_id': self.vt['id']}
         for p in prop.keys():
             if p not in kwargs:
                 kwargs[p] = prop[p]
@@ -5044,8 +5052,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     def test_storwize_svc_create_cloned_volume(self):
         vol1 = self._create_volume()
-        vol2 = testutils.create_volume(self.ctxt)
-        vol3 = testutils.create_volume(self.ctxt)
+        vol2 = testutils.create_volume(
+            self.ctxt,
+            volume_type_id=self.vt['id'])
+        vol3 = testutils.create_volume(
+            self.ctxt,
+            volume_type_id=self.vt['id'])
 
         # Try to clone where source size = target size
         vol1['size'] = vol2['size']
@@ -5097,7 +5109,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                 new_type_ref['id'])
 
         self.driver.create_volume(volume)
-        volume2 = testutils.create_volume(self.ctxt)
+        volume2 = testutils.create_volume(
+            self.ctxt,
+            volume_type_id=self.vt['id'])
         self.driver.create_cloned_volume(volume2, volume)
         if self.USESIM:
             # Validate copyrate was set on the flash copy

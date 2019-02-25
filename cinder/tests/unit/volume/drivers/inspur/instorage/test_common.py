@@ -289,7 +289,8 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
 
     def _generate_vol_info(self, vol_name, vol_id):
         pool = fakes.get_test_pool()
-        prop = {'mdisk_grp_name': pool}
+        prop = {'mdisk_grp_name': pool,
+                'volume_type_id': self.vt['id']}
         if vol_name:
             prop.update(volume_name=vol_name,
                         volume_id=vol_id,
@@ -309,7 +310,8 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
     def _create_volume(self, **kwargs):
         pool = fakes.get_test_pool()
         prop = {'host': 'openstack@mcs#%s' % pool,
-                'size': 1}
+                'size': 1,
+                'volume_type_id': self.vt['id']}
         for p in prop.keys():
             if p not in kwargs:
                 kwargs[p] = prop[p]
@@ -403,7 +405,9 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
                        '_get_vdisk_params')
     def test_instorage_mcs_create_volume_with_qos(self, get_vdisk_params,
                                                   add_vdisk_qos):
-        vol = testutils.create_volume(self.ctxt)
+        vol = testutils.create_volume(
+            self.ctxt,
+            volume_type_id=self.vt['id'])
         fake_opts = self._get_default_opts()
         # If the qos is empty, chvdisk should not be called
         # for create_volume.
@@ -470,8 +474,12 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
 
     def test_instorage_mcs_create_cloned_volume(self):
         vol1 = self._create_volume()
-        vol2 = testutils.create_volume(self.ctxt)
-        vol3 = testutils.create_volume(self.ctxt)
+        vol2 = testutils.create_volume(
+            self.ctxt,
+            volume_type_id=self.vt['id'])
+        vol3 = testutils.create_volume(
+            self.ctxt,
+            volume_type_id=self.vt['id'])
 
         # Try to clone where source size > target size
         vol1['size'] = vol2['size'] + 1

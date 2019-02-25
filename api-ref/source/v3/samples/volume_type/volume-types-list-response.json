@@ -1,24 +1,33 @@
 {
     "volume_types": [
         {
+            "description": "volume type 0002",
+            "extra_specs": {
+                "capabilities": "gpu"
+            },
+            "id": "ef512777-6552-4013-82f0-57a96e5804b7",
+            "is_public": true,
+            "name": "vol-type-002",
+            "os-volume-type-access:is_public": true,
+            "qos_specs_id": null
+        },
+        {
             "description": "volume type 0001",
             "extra_specs": {
                 "capabilities": "gpu"
             },
-            "id": "6685584b-1eac-4da6-b5c3-555430cf68ff",
+            "id": "18947ff2-ad57-42b2-9350-34262e530203",
             "is_public": true,
             "name": "vol-type-001",
             "os-volume-type-access:is_public": true,
             "qos_specs_id": null
         },
         {
-            "description": "volume type 0002",
-            "extra_specs": {
-                "capabilities": "gpu"
-            },
-            "id": "6685584b-1eac-4da6-b5c3-555430cf68ff",
+            "description": "Default Volume Type",
+            "extra_specs": {},
+            "id": "7a56b996-b73f-4233-9f00-dd6a68b49b27",
             "is_public": true,
-            "name": "vol-type-002",
+            "name": "__DEFAULT__",
             "os-volume-type-access:is_public": true,
             "qos_specs_id": null
         }

@@ -569,6 +569,53 @@ def service_update(context, service_id, values):
         raise exception.ServiceNotFound(service_id=service_id)
 
 
+@enginefacade.writer
+def untyped_volumes_online_data_migration(context, max_count):
+    from cinder.volume import volume_types
+    default_type = volume_types.get_default_volume_type()
+    # get all volumes having volume_type=None
+    total = 0
+    updated = 0
+    session = get_session()
+    with session.begin():
+        total = model_query(context,
+                            models.Volume,
+                            session=session).filter_by(
+            volume_type_id=None).limit(max_count).count()
+        volumes = model_query(context,
+                              models.Volume,
+                              session=session).filter_by(
+            volume_type_id=None).limit(max_count).all()
+        for volume in volumes:
+            volume.volume_type_id = default_type.get('id')
+            updated += 1
+
+    return total, updated
+
+
+@enginefacade.writer
+def untyped_snapshots_online_data_migration(context, max_count):
+    from cinder.volume import volume_types
+    default_type = volume_types.get_default_volume_type()
+    # get all snapshots having volume_type=None
+    total = 0
+    updated = 0
+    session = get_session()
+    with session.begin():
+        total = model_query(context,
+                            models.Snapshot,
+                            session=session).filter_by(
+            volume_type_id=None).limit(max_count).count()
+        snapshots = model_query(context,
+                                models.Snapshot,
+                                session=session).filter_by(
+            volume_type_id=None).limit(max_count).all()
+        for snapshot in snapshots:
+            snapshot.volume_type_id = default_type.get('id')
+            updated += 1
+
+    return total, updated
+
 ###################
 
 

@@ -62,7 +62,9 @@ class VolumeTypesApiTest(test.TestCase):
             mv.SUPPORT_VOLUME_TYPE_FILTER))
         res_dict = self.controller.index(req)
 
-        self.assertEqual(3, len(res_dict['volume_types']))
+        # since __DEFAULT__ type always exists, total number of volume types
+        # is total_types_created + 1. In this case it's 4
+        self.assertEqual(4, len(res_dict['volume_types']))
 
         # Test filter volume type with extra specs
         req = fakes.HTTPRequest.blank(

@@ -30,6 +30,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import quota
 from cinder import test
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit.brick import fake_lvm
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils as tests_utils
@@ -66,6 +67,15 @@ def create_snapshot(volume_id, size=1, metadata=None, ctxt=None,
 
 @ddt.ddt
 class SnapshotTestCase(base.BaseVolumeTestCase):
+
+    def setUp(self, *args, **kwargs):
+        super(SnapshotTestCase, self).setUp()
+        db.volume_type_create(self.context,
+                              v2_fakes.fake_default_type_get(
+                                  fake.VOLUME_TYPE2_ID))
+        self.vol_type = db.volume_type_get_by_name(self.context,
+                                                   'vol_type_name')
+
     def test_delete_snapshot_frozen(self):
         service = tests_utils.create_service(self.context, {'frozen': True})
         volume = tests_utils.create_volume(self.context, host=service.host)

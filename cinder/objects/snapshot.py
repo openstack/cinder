@@ -23,6 +23,7 @@ from cinder import objects
 from cinder.objects import base
 from cinder.objects import cleanable
 from cinder.objects import fields as c_fields
+from cinder.volume import volume_types
 
 
 CONF = cfg.CONF
@@ -191,6 +192,10 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
             raise exception.ObjectActionError(
                 action='create',
                 reason=_('group_snapshot assigned'))
+        if ('volume_type_id' not in updates or
+                updates['volume_type_id'] is None):
+            updates['volume_type_id'] = (
+                volume_types.get_default_volume_type()['id'])
 
         db_snapshot = db.snapshot_create(self._context, updates)
         self._from_db_object(self._context, self, db_snapshot)

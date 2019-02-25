@@ -391,6 +391,11 @@ class VolumeTypeInUse(CinderException):
                 "volumes present with the type.")
 
 
+class VolumeTypeDefault(CinderException):
+    message = _("The volume type %(volume_type_name)s "
+                "is the default volume type and cannot be deleted.")
+
+
 class GroupTypeNotFound(NotFound):
     message = _("Group type %(group_type_id)s could not be found.")
 

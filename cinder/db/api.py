@@ -429,6 +429,13 @@ def volume_has_other_project_snp_filter():
     return IMPL.volume_has_other_project_snp_filter()
 
 
+def untyped_volumes_online_data_migration(context, max_count):
+    return IMPL.untyped_volumes_online_data_migration(context, max_count)
+
+
+def untyped_snapshots_online_data_migration(context, max_count):
+    return IMPL.untyped_snapshots_online_data_migration(context, max_count)
+
 ####################
 
 

@@ -42,6 +42,7 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import utils as test_utils
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi
+from cinder.volume import volume_types
 
 
 def app():
@@ -71,7 +72,9 @@ class BaseAdminTest(test.TestCase):
                      'host': 'test',
                      'binary': constants.VOLUME_BINARY,
                      'availability_zone': 'fake_zone',
-                     'attach_status': fields.VolumeAttachStatus.DETACHED}
+                     'attach_status': fields.VolumeAttachStatus.DETACHED,
+                     'volume_type_id':
+                         volume_types.get_default_volume_type()['id']}
         if updates:
             db_volume.update(updates)
 
@@ -192,7 +195,8 @@ class AdminActionsTest(BaseAdminTest):
     def test_reset_attach_status(self):
         volume = db.volume_create(self.ctx,
                                   {'attach_status':
-                                   fields.VolumeAttachStatus.DETACHED})
+                                   fields.VolumeAttachStatus.DETACHED,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
 
         resp = self._issue_volume_reset(self.ctx,
                                         volume,
@@ -207,7 +211,8 @@ class AdminActionsTest(BaseAdminTest):
     def test_reset_attach_invalid_status(self):
         volume = db.volume_create(self.ctx,
                                   {'attach_status':
-                                   fields.VolumeAttachStatus.DETACHED})
+                                   fields.VolumeAttachStatus.DETACHED,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
 
         resp = self._issue_volume_reset(self.ctx,
                                         volume,
@@ -219,7 +224,9 @@ class AdminActionsTest(BaseAdminTest):
                          volume['attach_status'])
 
     def test_reset_migration_invalid_status(self):
-        volume = db.volume_create(self.ctx, {'migration_status': None})
+        volume = db.volume_create(self.ctx, {'migration_status': None,
+                                             'volume_type_id':
+                                                 fake.VOLUME_TYPE_ID})
 
         resp = self._issue_volume_reset(self.ctx,
                                         volume,
@@ -230,7 +237,9 @@ class AdminActionsTest(BaseAdminTest):
         self.assertIsNone(volume['migration_status'])
 
     def test_reset_migration_status(self):
-        volume = db.volume_create(self.ctx, {'migration_status': None})
+        volume = db.volume_create(self.ctx, {'migration_status': None,
+                                             'volume_type_id':
+                                                 fake.VOLUME_TYPE_ID})
 
         resp = self._issue_volume_reset(self.ctx,
                                         volume,
@@ -241,7 +250,9 @@ class AdminActionsTest(BaseAdminTest):
         self.assertEqual('migrating', volume['migration_status'])
 
     def test_reset_status_as_admin(self):
-        volume = db.volume_create(self.ctx, {'status': 'available'})
+        volume = db.volume_create(self.ctx, {'status': 'available',
+                                             'volume_type_id':
+                                                 fake.VOLUME_TYPE_ID})
 
         resp = self._issue_volume_reset(self.ctx,
                                         volume,
@@ -255,7 +266,8 @@ class AdminActionsTest(BaseAdminTest):
     def test_reset_status_as_non_admin(self, fake_get):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         volume = db.volume_create(self.ctx,
-                                  {'status': 'error', 'size': 1})
+                                  {'status': 'error', 'size': 1,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         fake_get.return_value = volume
         resp = self._issue_volume_reset(ctx,
                                         volume,
@@ -270,7 +282,9 @@ class AdminActionsTest(BaseAdminTest):
     def test_backup_reset_status_as_admin(self):
         volume = db.volume_create(self.ctx, {'status': 'available',
                                              'user_id': fake.USER_ID,
-                                             'project_id': fake.PROJECT_ID})
+                                             'project_id': fake.PROJECT_ID,
+                                             'volume_type_id':
+                                                 fake.VOLUME_TYPE_ID})
         backup = db.backup_create(self.ctx,
                                   {'status': fields.BackupStatus.AVAILABLE,
                                    'size': 1,
@@ -297,7 +311,8 @@ class AdminActionsTest(BaseAdminTest):
     def test_backup_reset_status(self):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
-                                   'provider_location': '', 'size': 1})
+                                   'provider_location': '', 'size': 1,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         backup = db.backup_create(self.ctx,
                                   {'status': fields.BackupStatus.AVAILABLE,
                                    'volume_id': volume['id'],
@@ -315,7 +330,8 @@ class AdminActionsTest(BaseAdminTest):
     def test_invalid_status_for_backup(self, status):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
-                                   'provider_location': '', 'size': 1})
+                                   'provider_location': '', 'size': 1,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         backup = db.backup_create(self.ctx, {'status': 'available',
                                              'volume_id': volume['id']})
         resp = self._issue_backup_reset(self.ctx,
@@ -325,7 +341,8 @@ class AdminActionsTest(BaseAdminTest):
     def test_backup_reset_status_with_invalid_backup(self):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
-                                   'provider_location': '', 'size': 1})
+                                   'provider_location': '', 'size': 1,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         backup = db.backup_create(self.ctx,
                                   {'status': fields.BackupStatus.AVAILABLE,
                                    'volume_id': volume['id'],
@@ -344,7 +361,8 @@ class AdminActionsTest(BaseAdminTest):
     def test_backup_reset_status_with_invalid_body(self, body):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
-                                   'provider_location': '', 'size': 1})
+                                   'provider_location': '', 'size': 1,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         backup = db.backup_create(self.ctx,
                                   {'status': fields.BackupStatus.AVAILABLE,
                                    'volume_id': volume['id'],
@@ -361,7 +379,9 @@ class AdminActionsTest(BaseAdminTest):
         self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
 
     def test_malformed_reset_status_body(self):
-        volume = db.volume_create(self.ctx, {'status': 'available', 'size': 1})
+        volume = db.volume_create(self.ctx, {'status': 'available', 'size': 1,
+                                             'volume_type_id':
+                                                 fake.VOLUME_TYPE_ID})
 
         resp = self._issue_volume_reset(self.ctx,
                                         volume,
@@ -372,7 +392,9 @@ class AdminActionsTest(BaseAdminTest):
         self.assertEqual('available', volume['status'])
 
     def test_invalid_status_for_volume(self):
-        volume = db.volume_create(self.ctx, {'status': 'available', 'size': 1})
+        volume = db.volume_create(self.ctx, {'status': 'available', 'size': 1,
+                                             'volume_type_id':
+                                                 fake.VOLUME_TYPE_ID})
         resp = self._issue_volume_reset(self.ctx,
                                         volume,
                                         {'status': 'invalid'})
@@ -445,7 +467,8 @@ class AdminActionsTest(BaseAdminTest):
                                   {'status': 'available', 'host': 'test',
                                    'provider_location': '', 'size': 1,
                                    'attach_status':
-                                       fields.VolumeAttachStatus.DETACHED})
+                                       fields.VolumeAttachStatus.DETACHED,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         resp = self._issue_volume_reset(
             self.ctx,
             volume,
@@ -463,7 +486,8 @@ class AdminActionsTest(BaseAdminTest):
                                    'provider_location': '', 'size': 1,
                                    'availability_zone': 'test',
                                    'attach_status':
-                                       fields.VolumeAttachStatus.DETACHED})
+                                       fields.VolumeAttachStatus.DETACHED,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         kwargs = {
             'volume_id': volume['id'],
             'cgsnapshot_id': None,
@@ -490,7 +514,8 @@ class AdminActionsTest(BaseAdminTest):
     def test_invalid_status_for_snapshot(self, updated_status):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
-                                   'provider_location': '', 'size': 1})
+                                   'provider_location': '', 'size': 1,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         snapshot = objects.Snapshot(self.ctx,
                                     status=fields.SnapshotStatus.AVAILABLE,
                                     volume_id=volume['id'])
@@ -506,10 +531,12 @@ class AdminActionsTest(BaseAdminTest):
     def test_snapshot_reset_status_with_invalid_body(self, body):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
-                                   'provider_location': '', 'size': 1})
+                                   'provider_location': '', 'size': 1,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         snapshot = objects.Snapshot(self.ctx,
                                     status=fields.SnapshotStatus.AVAILABLE,
-                                    volume_id=volume['id'])
+                                    volume_id=volume['id'],
+                                    volume_tpe_id=volume['volume_type_id'])
         snapshot.create()
         self.addCleanup(snapshot.destroy)
 
@@ -798,8 +825,12 @@ class AdminActionsTest(BaseAdminTest):
 
     @mock.patch("cinder.volume.api.API.get")
     def test_migrate_volume_comp_as_non_admin(self, fake_get):
-        volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID})
-        new_volume = db.volume_create(self.ctx, {'id': fake.VOLUME2_ID})
+        volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID,
+                                             'volume_type_id':
+                                                 fake.VOLUME_TYPE_ID})
+        new_volume = db.volume_create(self.ctx, {'id': fake.VOLUME2_ID,
+                                                 'volume_type_id':
+                                                     fake.VOLUME_TYPE_ID})
         expected_status = http_client.FORBIDDEN
         expected_id = None
         fake_get.return_value = volume
@@ -829,8 +860,12 @@ class AdminActionsTest(BaseAdminTest):
                                        expected_status, expected_id)
 
     def test_migrate_volume_comp_no_action(self):
-        volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID})
-        new_volume = db.volume_create(self.ctx, {'id': fake.VOLUME2_ID})
+        volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID,
+                                             'volume_type_id':
+                                                 fake.VOLUME_TYPE_ID})
+        new_volume = db.volume_create(self.ctx, {'id': fake.VOLUME2_ID,
+                                                 'volume_type_id':
+                                                     fake.VOLUME_TYPE_ID})
         expected_status = http_client.BAD_REQUEST
         expected_id = None
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
@@ -854,7 +889,9 @@ class AdminActionsTest(BaseAdminTest):
                                        expected_status, expected_id)
 
     def test_migrate_volume_comp_no_new_volume(self):
-        volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID})
+        volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID,
+                                             'volume_type_id':
+                                                 fake.VOLUME_TYPE_ID})
         req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
             fake.PROJECT_ID, volume['id']))
         req.method = 'POST'

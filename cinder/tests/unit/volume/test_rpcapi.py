@@ -52,6 +52,7 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
         vol['attach_status'] = "detached"
         vol['metadata'] = {"test_key": "test_val"}
         vol['size'] = 1
+        vol['volume_type_id'] = fake.VOLUME_TYPE_ID
         volume = db.volume_create(self.context, vol)
 
         kwargs = {

@@ -23,7 +23,6 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder import utils
 
-
 DEFAULT_VOL_NAME = "displayname"
 DEFAULT_VOL_DESCRIPTION = "displaydesc"
 DEFAULT_VOL_SIZE = 1
@@ -282,6 +281,24 @@ def fake_volume_type_get(context, id, *args, **kwargs):
             'updated_at': None,
             'qos_specs_id': fake.QOS_SPEC_ID,
             'deleted': False}
+
+
+def fake_default_type_get(id=fake.VOLUME_TYPE_ID):
+    return {'id': id,
+            'name': 'vol_type_name',
+            'description': 'A fake volume type',
+            'is_public': True,
+            'projects': [],
+            'extra_specs': {},
+            'created_at': None,
+            'deleted_at': None,
+            'updated_at': None,
+            'qos_specs_id': fake.QOS_SPEC_ID,
+            'deleted': False}
+
+
+def fake_volume_type_name_get(context, id, *args, **kwargs):
+    return fake_volume_type_get(context, id)['name'] or id
 
 
 def fake_volume_admin_metadata_get(context, volume_id, **kwargs):

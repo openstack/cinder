@@ -38,6 +38,7 @@ LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
 ENCRYPTION_IGNORED_FIELDS = ['volume_type_id', 'created_at', 'updated_at',
                              'deleted_at', 'encryption_id']
+DEFAULT_VOLUME_TYPE = "__DEFAULT__"
 
 
 def create(context,
@@ -102,6 +103,9 @@ def destroy(context, id):
     if id is None:
         msg = _("id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
+    vol_type = get_volume_type(context, id)
+    if vol_type['name'] == DEFAULT_VOLUME_TYPE:
+        raise exception.VolumeTypeDefault(vol_type['name'])
     elevated = context if context.is_admin else context.elevated()
     return db.volume_type_destroy(elevated, id)
 
@@ -169,17 +173,19 @@ def get_default_volume_type():
     """Get the default volume type."""
     name = CONF.default_volume_type
     vol_type = {}
-
-    if name is not None:
-        ctxt = context.get_admin_context()
+    ctxt = context.get_admin_context()
+    if name:
         try:
             vol_type = get_volume_type_by_name(ctxt, name)
         except exception.VolumeTypeNotFoundByName:
             # Couldn't find volume type with the name in default_volume_type
-            # flag, record this issue and move on
+            # flag, record this issue and raise exception
             # TODO(zhiteng) consider add notification to warn admin
             LOG.exception('Default volume type is not found. '
                           'Please check default_volume_type config:')
+            raise exception.VolumeTypeNotFoundByName(volume_type_name=name)
+    else:
+        vol_type = get_volume_type_by_name(ctxt, DEFAULT_VOLUME_TYPE)
 
     return vol_type
 

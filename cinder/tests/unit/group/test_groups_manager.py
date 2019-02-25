@@ -25,7 +25,6 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import quota
 from cinder import test
-from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_group_snapshot
@@ -892,12 +891,8 @@ class GroupManagerTestCase(test.TestCase):
 
     def test_create_volume_with_group_invalid_type(self):
         """Test volume creation with group & invalid volume type."""
-        vol_type = db.volume_type_create(
-            context.get_admin_context(),
-            dict(name=conf_fixture.def_vol_type, extra_specs={})
-        )
-        db_vol_type = db.volume_type_get(context.get_admin_context(),
-                                         vol_type.id)
+        db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
+                                                 '__DEFAULT__')
 
         grp = tests_utils.create_group(
             self.context,

@@ -141,6 +141,7 @@ class BaseBackupTest(test.TestCase):
         vol['availability_zone'] = '1'
         vol['previous_status'] = previous_status
         vol['encryption_key_id'] = encryption_key_id
+        vol['volume_type_id'] = fake.VOLUME_TYPE_ID
         volume = objects.Volume(context=self.ctxt, **vol)
         volume.create()
         return volume.id
@@ -222,6 +223,8 @@ class BackupTestCase(BaseBackupTest):
                        'do_setup')
     @mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
                        'check_for_setup_error')
+    @mock.patch.object(cinder.db.sqlalchemy.api, '_volume_type_get_by_name',
+                       v2_fakes.fake_volume_type_get)
     @mock.patch('cinder.context.get_admin_context')
     def test_init_host(self, mock_get_admin_context, mock_check, mock_setup,
                        mock_set_initialized):

@@ -55,6 +55,7 @@ from cinder import service
 from cinder.tests import fixtures as cinder_fixtures
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_notifier
+from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
 
@@ -323,6 +324,11 @@ class TestCase(testtools.TestCase):
 
         # NOTE(mikal): make sure we don't load a privsep helper accidentally
         self.useFixture(cinder_fixtures.PrivsepNoHelperFixture())
+
+        # NOTE: This volume type is created to avoid failure at database since
+        # volume_type_id is non-nullable for volumes and snapshots
+
+        self.vt = volume_types.get_default_volume_type()
 
     def _restore_obj_registry(self):
         objects_base.CinderObjectRegistry._registry._obj_classes = \

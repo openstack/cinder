@@ -256,7 +256,8 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
                        'host': 'fakehost',
                        'cluster_name': 'fakecluster',
                        'availability_zone': 'fakezone',
-                       'size': 1}
+                       'size': 1,
+                       'volume_type_id': fake.VOLUME_TYPE_ID}
         vol = fake_volume.fake_volume_obj(self.context, **volume_dict)
         snapshot = fake_snapshot.fake_snapshot_obj(self.context)
 

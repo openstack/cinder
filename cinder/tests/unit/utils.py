@@ -67,6 +67,7 @@ def create_volume(ctxt,
                   id=None,
                   metadata=None,
                   admin_metadata=None,
+                  volume_type_id=fake.VOLUME_TYPE2_ID,
                   **kwargs):
     """Create a volume object in the DB."""
     vol = {'size': size,
@@ -78,6 +79,7 @@ def create_volume(ctxt,
            'display_description': display_description,
            'attach_status': fields.VolumeAttachStatus.DETACHED,
            'availability_zone': availability_zone,
+           'volume_type_id': volume_type_id
            }
 
     if metadata:

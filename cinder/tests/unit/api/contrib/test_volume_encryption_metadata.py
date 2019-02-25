@@ -63,6 +63,7 @@ class VolumeEncryptionMetadataTest(test.TestCase):
             'availability_zone': availability_zone,
             'host': host,
             'encryption_key_id': encryption_key_id,
+            'volume_type_id': fake.VOLUME_TYPE_ID
         }
         return db.volume_create(context, volume)['id']
 

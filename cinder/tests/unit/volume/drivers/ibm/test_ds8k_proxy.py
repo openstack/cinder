@@ -1111,7 +1111,8 @@ class DS8KProxyTest(test.TestCase):
     def _create_volume(self, **kwargs):
         properties = {
             'host': TEST_HOST_2,
-            'size': 1
+            'size': 1,
+            'volume_type_id': self.vt['id']
         }
         for p in properties.keys():
             if p not in kwargs:

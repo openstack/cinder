@@ -86,8 +86,10 @@ class DBCommonFilterTestCase(BaseTest):
 
     def setUp(self):
         super(DBCommonFilterTestCase, self).setUp()
-        self.fake_volume = db.volume_create(self.ctxt,
-                                            {'display_name': 'fake_name'})
+        self.fake_volume = db.volume_create(
+            self.ctxt,
+            {'display_name': 'fake_name',
+             'volume_type_id': fake.VOLUME_TYPE_ID})
         self.fake_group = utils.create_group(
             self.ctxt,
             group_type_id=fake.GROUP_TYPE_ID,
@@ -135,6 +137,8 @@ class DBCommonFilterTestCase(BaseTest):
     def test_resource_get_all_like_filter(self, handler, column, resource):
         for index in ['001', '002']:
             option = {column: "fake_%s_%s" % (column, index)}
+            if resource in ['volume', 'snapshot']:
+                option['volume_type_id'] = fake.VOLUME_TYPE_ID
             if resource in ['snapshot', 'backup']:
                 option['volume_id'] = self.fake_volume.id
             if resource in ['message']:
@@ -394,7 +398,9 @@ class DBAPIVolumeTestCase(BaseTest):
     """Unit tests for cinder.db.api.volume_*."""
 
     def test_volume_create(self):
-        volume = db.volume_create(self.ctxt, {'host': 'host1'})
+        volume = db.volume_create(
+            self.ctxt, {'host': 'host1',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
         self.assertTrue(uuidutils.is_uuid_like(volume['id']))
         self.assertEqual('host1', volume.host)
 
@@ -403,7 +409,9 @@ class DBAPIVolumeTestCase(BaseTest):
                           42, 'invalid-uuid', None, '/tmp')
 
     def test_volume_attached_to_instance(self):
-        volume = db.volume_create(self.ctxt, {'host': 'host1'})
+        volume = db.volume_create(
+            self.ctxt, {'host': 'host1',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
         instance_uuid = fake.INSTANCE_ID
         values = {'volume_id': volume['id'],
                   'instance_uuid': instance_uuid,
@@ -437,7 +445,9 @@ class DBAPIVolumeTestCase(BaseTest):
         self.assertEqual(volume.project_id, attachment['volume']['project_id'])
 
     def test_volume_attached_to_host(self):
-        volume = db.volume_create(self.ctxt, {'host': 'host1'})
+        volume = db.volume_create(
+            self.ctxt, {'host': 'host1',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
         host_name = 'fake_host'
         values = {'volume_id': volume['id'],
                   'attached_host': host_name,
@@ -471,8 +481,10 @@ class DBAPIVolumeTestCase(BaseTest):
     def test_volume_data_get_for_host(self):
         for i in range(THREE):
             for j in range(THREE):
-                db.volume_create(self.ctxt, {'host': 'h%d' % i,
-                                             'size': ONE_HUNDREDS})
+                db.volume_create(
+                    self.ctxt, {'host': 'h%d' % i,
+                                'size': ONE_HUNDREDS,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         for i in range(THREE):
             self.assertEqual((THREE, THREE_HUNDREDS),
                              db.volume_data_get_for_host(
@@ -481,9 +493,10 @@ class DBAPIVolumeTestCase(BaseTest):
     def test_volume_data_get_for_host_for_multi_backend(self):
         for i in range(THREE):
             for j in range(THREE):
-                db.volume_create(self.ctxt, {'host':
-                                             'h%d@lvmdriver-1#lvmdriver-1' % i,
-                                             'size': ONE_HUNDREDS})
+                db.volume_create(
+                    self.ctxt, {'host': 'h%d@lvmdriver-1#lvmdriver-1' % i,
+                                'size': ONE_HUNDREDS,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         for i in range(THREE):
             self.assertEqual((THREE, THREE_HUNDREDS),
                              db.volume_data_get_for_host(
@@ -492,10 +505,11 @@ class DBAPIVolumeTestCase(BaseTest):
     def test_volume_data_get_for_project(self):
         for i in range(THREE):
             for j in range(THREE):
-                db.volume_create(self.ctxt, {'project_id': 'p%d' % i,
-                                             'size': ONE_HUNDREDS,
-                                             'host': 'h-%d-%d' % (i, j),
-                                             })
+                db.volume_create(
+                    self.ctxt, {'project_id': 'p%d' % i,
+                                'size': ONE_HUNDREDS,
+                                'host': 'h-%d-%d' % (i, j),
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         for i in range(THREE):
             self.assertEqual((THREE, THREE_HUNDREDS),
                              db.volume_data_get_for_project(
@@ -505,20 +519,24 @@ class DBAPIVolumeTestCase(BaseTest):
 
         db.volume_create(self.ctxt, {'project_id': fake.PROJECT_ID,
                                      'size': 100,
-                                     'host': 'host1'})
+                                     'host': 'host1',
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_create(self.ctxt, {'project_id': fake.PROJECT2_ID,
                                      'size': 200,
-                                     'host': 'host1'})
+                                     'host': 'host1',
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_create(self.ctxt, {'project_id': fake.PROJECT2_ID,
                                      'size': 300,
-                                     'host': 'host2'})
+                                     'host': 'host2',
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         resp = db.volume_data_get_for_project(self.ctxt,
                                               fake.PROJECT2_ID,
                                               host='host2')
         self.assertEqual((1, 300), resp)
 
     def test_volume_detached_from_instance(self):
-        volume = db.volume_create(self.ctxt, {})
+        volume = db.volume_create(self.ctxt,
+                                  {'volume_type_id': fake.VOLUME_TYPE_ID})
         instance_uuid = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         values = {'volume_id': volume['id'],
                   'instance_uuid': instance_uuid,
@@ -547,7 +565,8 @@ class DBAPIVolumeTestCase(BaseTest):
         self.assertEqual('available', volume.status)
 
     def test_volume_detached_two_attachments(self):
-        volume = db.volume_create(self.ctxt, {})
+        volume = db.volume_create(self.ctxt,
+                                  {'volume_type_id': fake.VOLUME_TYPE_ID})
         instance_uuid = fake.INSTANCE_ID
         values = {'volume_id': volume.id,
                   'instance_uuid': instance_uuid,
@@ -580,7 +599,8 @@ class DBAPIVolumeTestCase(BaseTest):
         self.assertEqual('in-use', volume.status)
 
     def test_volume_detached_invalid_attachment(self):
-        volume = db.volume_create(self.ctxt, {})
+        volume = db.volume_create(self.ctxt,
+                                  {'volume_type_id': fake.VOLUME_TYPE_ID})
         # detach it again
         volume_updates, attachment_updates = (
             db.volume_detached(self.ctxt, volume.id, fake.ATTACHMENT_ID))
@@ -593,7 +613,8 @@ class DBAPIVolumeTestCase(BaseTest):
         self.assertEqual('available', volume.status)
 
     def test_volume_detached_from_host(self):
-        volume = db.volume_create(self.ctxt, {})
+        volume = db.volume_create(self.ctxt,
+                                  {'volume_type_id': fake.VOLUME_TYPE_ID})
         host_name = 'fake_host'
         values = {'volume_id': volume.id,
                   'attach_host': host_name,
@@ -621,13 +642,15 @@ class DBAPIVolumeTestCase(BaseTest):
         self.assertEqual('available', volume.status)
 
     def test_volume_get(self):
-        volume = db.volume_create(self.ctxt, {})
+        volume = db.volume_create(self.ctxt,
+                                  {'volume_type_id': fake.VOLUME_TYPE_ID})
         self._assertEqualObjects(volume, db.volume_get(self.ctxt,
                                                        volume['id']))
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=UTC_NOW)
     def test_volume_destroy(self, utcnow_mock):
-        volume = db.volume_create(self.ctxt, {})
+        volume = db.volume_create(self.ctxt,
+                                  {'volume_type_id': fake.VOLUME_TYPE_ID})
         self.assertDictEqual(
             {'status': 'deleted', 'deleted': True, 'deleted_at': UTC_NOW,
              'migration_status': None},
@@ -637,7 +660,8 @@ class DBAPIVolumeTestCase(BaseTest):
 
     def test_volume_get_all(self):
         volumes = [db.volume_create(self.ctxt,
-                   {'host': 'h%d' % i, 'size': i})
+                   {'host': 'h%d' % i, 'size': i,
+                    'volume_type_id': fake.VOLUME_TYPE_ID})
                    for i in range(3)]
         self._assertEqualListsOfObjects(volumes, db.volume_get_all(
                                         self.ctxt, None, None, ['host'], None))
@@ -659,10 +683,18 @@ class DBAPIVolumeTestCase(BaseTest):
 
     def test_volume_get_all_marker_passed(self):
         volumes = [
-            db.volume_create(self.ctxt, {'id': 1}),
-            db.volume_create(self.ctxt, {'id': 2}),
-            db.volume_create(self.ctxt, {'id': 3}),
-            db.volume_create(self.ctxt, {'id': 4}),
+            db.volume_create(
+                self.ctxt, {'id': 1,
+                            'volume_type_id': fake.VOLUME_TYPE_ID}),
+            db.volume_create(
+                self.ctxt, {'id': 2,
+                            'volume_type_id': fake.VOLUME_TYPE_ID}),
+            db.volume_create(
+                self.ctxt, {'id': 3,
+                            'volume_type_id': fake.VOLUME_TYPE_ID}),
+            db.volume_create(
+                self.ctxt, {'id': 4,
+                            'volume_type_id': fake.VOLUME_TYPE_ID}),
         ]
 
         self._assertEqualListsOfObjects(volumes[2:], db.volume_get_all(
@@ -671,7 +703,9 @@ class DBAPIVolumeTestCase(BaseTest):
     def test_volume_get_all_by_host(self):
         volumes = []
         for i in range(3):
-            volumes.append([db.volume_create(self.ctxt, {'host': 'h%d' % i})
+            volumes.append([db.volume_create(
+                self.ctxt, {'host': 'h%d' % i,
+                            'volume_type_id': fake.VOLUME_TYPE_ID})
                             for j in range(3)])
         for i in range(3):
             self._assertEqualListsOfObjects(volumes[i],
@@ -680,26 +714,39 @@ class DBAPIVolumeTestCase(BaseTest):
 
     def test_volume_get_all_by_host_with_pools(self):
         volumes = []
-        vol_on_host_wo_pool = [db.volume_create(self.ctxt, {'host': 'foo'})
-                               for j in range(3)]
+        vol_on_host_wo_pool = [db.volume_create(
+            self.ctxt,
+            {'host': 'foo',
+             'volume_type_id': fake.VOLUME_TYPE_ID})
+            for j in range(3)]
         vol_on_host_w_pool = [db.volume_create(
-            self.ctxt, {'host': 'foo#pool0'})]
+            self.ctxt, {'host': 'foo#pool0',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})]
         volumes.append((vol_on_host_wo_pool +
                         vol_on_host_w_pool))
         # insert an additional record that doesn't belongs to the same
         # host as 'foo' and test if it is included in the result
-        db.volume_create(self.ctxt, {'host': 'foobar'})
+        db.volume_create(self.ctxt, {'host': 'foobar',
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         self._assertEqualListsOfObjects(volumes[0],
                                         db.volume_get_all_by_host(
                                         self.ctxt, 'foo'))
 
     def test_volume_get_all_by_host_with_filters(self):
-        v1 = db.volume_create(self.ctxt, {'host': 'h1', 'display_name': 'v1',
-                                          'status': 'available'})
-        v2 = db.volume_create(self.ctxt, {'host': 'h1', 'display_name': 'v2',
-                                          'status': 'available'})
-        v3 = db.volume_create(self.ctxt, {'host': 'h2', 'display_name': 'v1',
-                                          'status': 'available'})
+        v1 = db.volume_create(
+            self.ctxt, {'host': 'h1', 'display_name': 'v1',
+                        'status': 'available',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
+        v2 = db.volume_create(
+            self.ctxt,
+            {'host': 'h1', 'display_name': 'v2',
+             'status': 'available',
+             'volume_type_id': fake.VOLUME_TYPE_ID})
+        v3 = db.volume_create(
+            self.ctxt,
+            {'host': 'h2', 'display_name': 'v1',
+             'status': 'available',
+             'volume_type_id': fake.VOLUME_TYPE_ID})
         self._assertEqualListsOfObjects(
             [v1],
             db.volume_get_all_by_host(self.ctxt, 'h1',
@@ -730,19 +777,26 @@ class DBAPIVolumeTestCase(BaseTest):
         volumes = []
         for i in range(3):
             volumes.append([db.volume_create(self.ctxt, {
-                'consistencygroup_id': 'g%d' % i}) for j in range(3)])
+                'consistencygroup_id': 'g%d' % i,
+                'volume_type_id': fake.VOLUME_TYPE_ID}) for j in range(3)])
         for i in range(3):
             self._assertEqualListsOfObjects(volumes[i],
                                             db.volume_get_all_by_group(
                                             self.ctxt, 'g%d' % i))
 
     def test_volume_get_all_by_group_with_filters(self):
-        v1 = db.volume_create(self.ctxt, {'consistencygroup_id': 'g1',
-                                          'display_name': 'v1'})
-        v2 = db.volume_create(self.ctxt, {'consistencygroup_id': 'g1',
-                                          'display_name': 'v2'})
-        v3 = db.volume_create(self.ctxt, {'consistencygroup_id': 'g2',
-                                          'display_name': 'v1'})
+        v1 = db.volume_create(self.ctxt,
+                              {'consistencygroup_id': 'g1',
+                               'display_name': 'v1',
+                               'volume_type_id': fake.VOLUME_TYPE_ID})
+        v2 = db.volume_create(self.ctxt,
+                              {'consistencygroup_id': 'g1',
+                               'display_name': 'v2',
+                               'volume_type_id': fake.VOLUME_TYPE_ID})
+        v3 = db.volume_create(self.ctxt,
+                              {'consistencygroup_id': 'g2',
+                               'display_name': 'v1',
+                               'volume_type_id': fake.VOLUME_TYPE_ID})
         self._assertEqualListsOfObjects(
             [v1],
             db.volume_get_all_by_group(self.ctxt, 'g1',
@@ -768,7 +822,8 @@ class DBAPIVolumeTestCase(BaseTest):
         volumes = []
         for i in range(3):
             volumes.append([db.volume_create(self.ctxt, {
-                'project_id': 'p%d' % i}) for j in range(3)])
+                'project_id': 'p%d' % i,
+                'volume_type_id': fake.VOLUME_TYPE_ID}) for j in range(3)])
         for i in range(3):
             self._assertEqualListsOfObjects(volumes[i],
                                             db.volume_get_all_by_project(
@@ -776,9 +831,15 @@ class DBAPIVolumeTestCase(BaseTest):
                                             None, ['host'], None))
 
     def test_volume_get_by_name(self):
-        db.volume_create(self.ctxt, {'display_name': 'vol1'})
-        db.volume_create(self.ctxt, {'display_name': 'vol2'})
-        db.volume_create(self.ctxt, {'display_name': 'vol3'})
+        db.volume_create(self.ctxt,
+                         {'display_name': 'vol1',
+                          'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_create(self.ctxt,
+                         {'display_name': 'vol2',
+                          'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_create(self.ctxt,
+                         {'display_name': 'vol3',
+                          'volume_type_id': fake.VOLUME_TYPE_ID})
 
         # no name filter
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
@@ -796,11 +857,14 @@ class DBAPIVolumeTestCase(BaseTest):
 
     def test_volume_list_by_status(self):
         db.volume_create(self.ctxt, {'display_name': 'vol1',
-                                     'status': 'available'})
+                                     'status': 'available',
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_create(self.ctxt, {'display_name': 'vol2',
-                                     'status': 'available'})
+                                     'status': 'available',
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_create(self.ctxt, {'display_name': 'vol3',
-                                     'status': 'in-use'})
+                                     'status': 'in-use',
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
 
         # no status filter
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
@@ -870,21 +934,25 @@ class DBAPIVolumeTestCase(BaseTest):
         vols.extend([db.volume_create(self.ctxt,
                                       {'project_id': 'g1',
                                        'display_name': 'name_%d' % i,
-                                       'size': 1})
+                                       'size': 1,
+                                       'volume_type_id': fake.VOLUME_TYPE_ID})
                      for i in range(2)])
         vols.extend([db.volume_create(self.ctxt,
                                       {'project_id': 'g1',
                                        'display_name': 'name_%d' % i,
-                                       'size': 2})
+                                       'size': 2,
+                                       'volume_type_id': fake.VOLUME_TYPE_ID})
                      for i in range(2)])
         vols.extend([db.volume_create(self.ctxt,
                                       {'project_id': 'g1',
-                                       'display_name': 'name_%d' % i})
+                                       'display_name': 'name_%d' % i,
+                                       'volume_type_id': fake.VOLUME_TYPE_ID})
                      for i in range(2)])
         vols.extend([db.volume_create(self.ctxt,
                                       {'project_id': 'g2',
                                        'display_name': 'name_%d' % i,
-                                       'size': 1})
+                                       'size': 1,
+                                       'volume_type_id': fake.VOLUME_TYPE_ID})
                      for i in range(2)])
 
         # By project, filter on size and name
@@ -930,17 +998,25 @@ class DBAPIVolumeTestCase(BaseTest):
         self._assertEqualsVolumeOrderResult([], filters=filters)
 
     def test_volume_get_all_filters_limit(self):
-        vol1 = db.volume_create(self.ctxt, {'display_name': 'test1'})
-        vol2 = db.volume_create(self.ctxt, {'display_name': 'test2'})
-        vol3 = db.volume_create(self.ctxt, {'display_name': 'test2',
-                                            'metadata': {'key1': 'val1'}})
-        vol4 = db.volume_create(self.ctxt, {'display_name': 'test3',
-                                            'metadata': {'key1': 'val1',
-                                                         'key2': 'val2'}})
-        vol5 = db.volume_create(self.ctxt, {'display_name': 'test3',
-                                            'metadata': {'key2': 'val2',
-                                                         'key3': 'val3'},
-                                            'host': 'host5'})
+        vol1 = db.volume_create(self.ctxt,
+                                {'display_name': 'test1',
+                                 'volume_type_id': fake.VOLUME_TYPE_ID})
+        vol2 = db.volume_create(self.ctxt,
+                                {'display_name': 'test2',
+                                 'volume_type_id': fake.VOLUME_TYPE_ID})
+        vol3 = db.volume_create(self.ctxt,
+                                {'display_name': 'test2',
+                                 'metadata': {'key1': 'val1'},
+                                 'volume_type_id': fake.VOLUME_TYPE_ID})
+        vol4 = db.volume_create(self.ctxt,
+                                {'display_name': 'test3',
+                                 'metadata': {'key1': 'val1', 'key2': 'val2'},
+                                 'volume_type_id': fake.VOLUME_TYPE_ID})
+        vol5 = db.volume_create(self.ctxt,
+                                {'display_name': 'test3',
+                                 'metadata': {'key2': 'val2', 'key3': 'val3'},
+                                 'host': 'host5',
+                                 'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_admin_metadata_update(self.ctxt, vol5.id,
                                         {"readonly": "True"}, False)
 
@@ -1014,13 +1090,21 @@ class DBAPIVolumeTestCase(BaseTest):
         This filter returns volumes with either a NULL 'migration_status'
         or a non-NULL value that does not start with 'target:'.
         """
-        vol1 = db.volume_create(self.ctxt, {'display_name': 'test1'})
-        vol2 = db.volume_create(self.ctxt, {'display_name': 'test2',
-                                            'migration_status': 'bogus'})
-        vol3 = db.volume_create(self.ctxt, {'display_name': 'test3',
-                                            'migration_status': 'btarget:'})
-        vol4 = db.volume_create(self.ctxt, {'display_name': 'test4',
-                                            'migration_status': 'target:'})
+        vol1 = db.volume_create(self.ctxt,
+                                {'display_name': 'test1',
+                                 'volume_type_id': fake.VOLUME_TYPE_ID})
+        vol2 = db.volume_create(self.ctxt,
+                                {'display_name': 'test2',
+                                 'migration_status': 'bogus',
+                                 'volume_type_id': fake.VOLUME_TYPE_ID})
+        vol3 = db.volume_create(self.ctxt,
+                                {'display_name': 'test3',
+                                 'migration_status': 'btarget:',
+                                 'volume_type_id': fake.VOLUME_TYPE_ID})
+        vol4 = db.volume_create(self.ctxt,
+                                {'display_name': 'test4',
+                                 'migration_status': 'target:',
+                                 'volume_type_id': fake.VOLUME_TYPE_ID})
 
         # Ensure we have 4 total instances, default sort of created_at (desc)
         self._assertEqualsVolumeOrderResult([vol4, vol3, vol2, vol1])
@@ -1038,31 +1122,47 @@ class DBAPIVolumeTestCase(BaseTest):
 
     def test_volume_get_all_by_filters_sort_keys(self):
         # Volumes that will reply to the query
-        test_h1_avail = db.volume_create(self.ctxt, {'display_name': 'test',
-                                                     'status': 'available',
-                                                     'host': 'h1'})
-        test_h1_error = db.volume_create(self.ctxt, {'display_name': 'test',
-                                                     'status': 'error',
-                                                     'host': 'h1'})
-        test_h1_error2 = db.volume_create(self.ctxt, {'display_name': 'test',
-                                                      'status': 'error',
-                                                      'host': 'h1'})
-        test_h2_avail = db.volume_create(self.ctxt, {'display_name': 'test',
-                                                     'status': 'available',
-                                                     'host': 'h2'})
-        test_h2_error = db.volume_create(self.ctxt, {'display_name': 'test',
-                                                     'status': 'error',
-                                                     'host': 'h2'})
-        test_h2_error2 = db.volume_create(self.ctxt, {'display_name': 'test',
-                                                      'status': 'error',
-                                                      'host': 'h2'})
+        test_h1_avail = db.volume_create(
+            self.ctxt, {'display_name': 'test',
+                        'status': 'available',
+                        'host': 'h1',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
+        test_h1_error = db.volume_create(
+            self.ctxt, {'display_name': 'test',
+                        'status': 'error',
+                        'host': 'h1',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
+        test_h1_error2 = db.volume_create(
+            self.ctxt, {'display_name': 'test',
+                        'status': 'error',
+                        'host': 'h1',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
+        test_h2_avail = db.volume_create(
+            self.ctxt, {'display_name': 'test',
+                        'status': 'available',
+                        'host': 'h2',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
+        test_h2_error = db.volume_create(
+            self.ctxt, {'display_name': 'test',
+                        'status': 'error',
+                        'host': 'h2',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
+        test_h2_error2 = db.volume_create(
+            self.ctxt, {'display_name': 'test',
+                        'status': 'error',
+                        'host': 'h2',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
         # Other volumes in the DB, will not match name filter
-        other_error = db.volume_create(self.ctxt, {'display_name': 'other',
-                                                   'status': 'error',
-                                                   'host': 'a'})
-        other_active = db.volume_create(self.ctxt, {'display_name': 'other',
-                                                    'status': 'available',
-                                                    'host': 'a'})
+        other_error = db.volume_create(
+            self.ctxt, {'display_name': 'other',
+                        'status': 'error',
+                        'host': 'a',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
+        other_active = db.volume_create(
+            self.ctxt, {'display_name': 'other',
+                        'status': 'available',
+                        'host': 'a',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
         filters = {'display_name': 'test'}
 
         # Verify different sort key/direction combinations
@@ -1120,28 +1220,44 @@ class DBAPIVolumeTestCase(BaseTest):
     def test_volume_get_all_by_filters_sort_keys_paginate(self):
         """Verifies sort order with pagination."""
         # Volumes that will reply to the query
-        test1_avail = db.volume_create(self.ctxt, {'display_name': 'test',
-                                                   'size': 1,
-                                                   'status': 'available'})
-        test1_error = db.volume_create(self.ctxt, {'display_name': 'test',
-                                                   'size': 1,
-                                                   'status': 'error'})
-        test1_error2 = db.volume_create(self.ctxt, {'display_name': 'test',
-                                                    'size': 1,
-                                                    'status': 'error'})
-        test2_avail = db.volume_create(self.ctxt, {'display_name': 'test',
-                                                   'size': 2,
-                                                   'status': 'available'})
-        test2_error = db.volume_create(self.ctxt, {'display_name': 'test',
-                                                   'size': 2,
-                                                   'status': 'error'})
-        test2_error2 = db.volume_create(self.ctxt, {'display_name': 'test',
-                                                    'size': 2,
-                                                    'status': 'error'})
+        test1_avail = db.volume_create(
+            self.ctxt, {'display_name': 'test',
+                        'size': 1,
+                        'status': 'available',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
+        test1_error = db.volume_create(
+            self.ctxt, {'display_name': 'test',
+                        'size': 1,
+                        'status': 'error',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
+        test1_error2 = db.volume_create(
+            self.ctxt, {'display_name': 'test',
+                        'size': 1,
+                        'status': 'error',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
+        test2_avail = db.volume_create(
+            self.ctxt, {'display_name': 'test',
+                        'size': 2,
+                        'status': 'available',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
+        test2_error = db.volume_create(
+            self.ctxt, {'display_name': 'test',
+                        'size': 2,
+                        'status': 'error',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
+        test2_error2 = db.volume_create(
+            self.ctxt, {'display_name': 'test',
+                        'size': 2,
+                        'status': 'error',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
 
         # Other volumes in the DB, will not match name filter
-        db.volume_create(self.ctxt, {'display_name': 'other'})
-        db.volume_create(self.ctxt, {'display_name': 'other'})
+        db.volume_create(self.ctxt,
+                         {'display_name': 'other',
+                          'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_create(self.ctxt,
+                         {'display_name': 'other',
+                          'volume_type_id': fake.VOLUME_TYPE_ID})
         filters = {'display_name': 'test'}
         # Common sort information for every query
         sort_keys = ['size', 'status', 'created_at']
@@ -1176,7 +1292,9 @@ class DBAPIVolumeTestCase(BaseTest):
                               self.ctxt, None, None, sort_keys=keys)
 
     def test_volume_update(self):
-        volume = db.volume_create(self.ctxt, {'host': 'h1'})
+        volume = db.volume_create(self.ctxt,
+                                  {'host': 'h1',
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_update(self.ctxt, volume.id,
                          {'host': 'h2',
                           'metadata': {'m1': 'v1'}})
@@ -1193,7 +1311,8 @@ class DBAPIVolumeTestCase(BaseTest):
 
     def test_volume_metadata_get(self):
         metadata = {'a': 'b', 'c': 'd'}
-        db.volume_create(self.ctxt, {'id': 1, 'metadata': metadata})
+        db.volume_create(self.ctxt, {'id': 1, 'metadata': metadata,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
 
         self.assertEqual(metadata, db.volume_metadata_get(self.ctxt, 1))
 
@@ -1202,7 +1321,8 @@ class DBAPIVolumeTestCase(BaseTest):
         metadata2 = {'a': '3', 'd': '5'}
         should_be = {'a': '3', 'c': '2', 'd': '5'}
 
-        db.volume_create(self.ctxt, {'id': 1, 'metadata': metadata1})
+        db.volume_create(self.ctxt, {'id': 1, 'metadata': metadata1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db_meta = db.volume_metadata_update(self.ctxt, 1, metadata2, False)
 
         self.assertEqual(should_be, db_meta)
@@ -1216,7 +1336,8 @@ class DBAPIVolumeTestCase(BaseTest):
 
         # create volume with metadata.
         db.volume_create(self.ctxt, {'id': 1,
-                                     'metadata': image_metadata})
+                                     'metadata': image_metadata,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
 
         # delete metadata associated with the volume.
         db.volume_metadata_delete(self.ctxt,
@@ -1233,7 +1354,8 @@ class DBAPIVolumeTestCase(BaseTest):
 
         # create volume with metadata.
         db.volume_create(self.ctxt, {'id': 1,
-                                     'metadata': user_metadata})
+                                     'metadata': user_metadata,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
 
         # delete user metadata associated with the volume.
         db.volume_metadata_delete(self.ctxt, 1, 'c',
@@ -1276,7 +1398,8 @@ class DBAPIVolumeTestCase(BaseTest):
         expected2 = {'e': '3', 'f': '2', 'g': '5'}
         FAKE_METADATA_TYPE = enum.Enum('METADATA_TYPES', 'fake_type')
 
-        db.volume_create(self.ctxt, {'id': 1, 'metadata': user_metadata1})
+        db.volume_create(self.ctxt, {'id': 1, 'metadata': user_metadata1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
 
         # update user metatdata associated with volume.
         db_meta = db.volume_metadata_update(
@@ -1340,14 +1463,16 @@ class DBAPIVolumeTestCase(BaseTest):
         metadata2 = {'a': '3', 'd': '4'}
         should_be = metadata2
 
-        db.volume_create(self.ctxt, {'id': 1, 'metadata': metadata1})
+        db.volume_create(self.ctxt, {'id': 1, 'metadata': metadata1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db_meta = db.volume_metadata_update(self.ctxt, 1, metadata2, True)
 
         self.assertEqual(should_be, db_meta)
 
     def test_volume_metadata_delete(self):
         metadata = {'a': 'b', 'c': 'd'}
-        db.volume_create(self.ctxt, {'id': 1, 'metadata': metadata})
+        db.volume_create(self.ctxt, {'id': 1, 'metadata': metadata,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_metadata_delete(self.ctxt, 1, 'c')
         metadata.pop('c')
         self.assertEqual(metadata, db.volume_metadata_get(self.ctxt, 1))
@@ -1358,7 +1483,8 @@ class DBAPIVolumeTestCase(BaseTest):
         FAKE_METADATA_TYPE = enum.Enum('METADATA_TYPES', 'fake_type')
 
         # test that user metadata deleted with meta_type specified.
-        db.volume_create(self.ctxt, {'id': 1, 'metadata': user_metadata})
+        db.volume_create(self.ctxt, {'id': 1, 'metadata': user_metadata,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_metadata_delete(self.ctxt, 1, 'c',
                                   meta_type=common.METADATA_TYPES.user)
         user_metadata.pop('c')
@@ -1393,7 +1519,9 @@ class DBAPIVolumeTestCase(BaseTest):
                           FAKE_METADATA_TYPE.fake_type)
 
     def test_volume_glance_metadata_create(self):
-        volume = db.volume_create(self.ctxt, {'host': 'h1'})
+        volume = db.volume_create(self.ctxt,
+                                  {'host': 'h1',
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(self.ctxt, volume['id'],
                                          'image_name',
                                          u'\xe4\xbd\xa0\xe5\xa5\xbd')
@@ -1407,13 +1535,15 @@ class DBAPIVolumeTestCase(BaseTest):
         """Test volume_glance_metadata_list_get in DB API."""
         db.volume_create(self.ctxt, {'id': 'fake1', 'status': 'available',
                                      'host': 'test', 'provider_location': '',
-                                     'size': 1})
+                                     'size': 1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(self.ctxt, 'fake1', 'key1', 'value1')
         db.volume_glance_metadata_create(self.ctxt, 'fake1', 'key2', 'value2')
 
         db.volume_create(self.ctxt, {'id': 'fake2', 'status': 'available',
                                      'host': 'test', 'provider_location': '',
-                                     'size': 1})
+                                     'size': 1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(self.ctxt, 'fake2', 'key3', 'value3')
         db.volume_glance_metadata_create(self.ctxt, 'fake2', 'key4', 'value4')
 
@@ -1435,12 +1565,16 @@ class DBAPIVolumeTestCase(BaseTest):
                                                       'updated_at'])
 
     def _create_volume_with_image_metadata(self):
-        vol1 = db.volume_create(self.ctxt, {'display_name': 'test1'})
+        vol1 = db.volume_create(self.ctxt,
+                                {'display_name': 'test1',
+                                 'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(self.ctxt, vol1.id, 'image_name',
                                          'imageTestOne')
         db.volume_glance_metadata_create(self.ctxt, vol1.id, 'test_image_key',
                                          'test_image_value')
-        vol2 = db.volume_create(self.ctxt, {'display_name': 'test2'})
+        vol2 = db.volume_create(self.ctxt,
+                                {'display_name': 'test2',
+                                 'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(self.ctxt, vol2.id, 'image_name',
                                          'imageTestTwo')
         db.volume_glance_metadata_create(self.ctxt, vol2.id, 'disk_format',
@@ -1477,13 +1611,16 @@ class DBAPIVolumeTestCase(BaseTest):
         return [
             db.volume_create(self.ctxt,
                              {'host': 'host1@backend1#pool1',
-                              'cluster_name': 'cluster1@backend1#pool1'}),
+                              'cluster_name': 'cluster1@backend1#pool1',
+                              'volume_type_id': fake.VOLUME_TYPE_ID}),
             db.volume_create(self.ctxt,
                              {'host': 'host1@backend2#pool2',
-                              'cluster_name': 'cluster1@backend2#pool2'}),
+                              'cluster_name': 'cluster1@backend2#pool2',
+                              'volume_type_id': fake.VOLUME_TYPE_ID}),
             db.volume_create(self.ctxt,
                              {'host': 'host2@backend#poo1',
-                              'cluster_name': 'cluster2@backend#pool'}),
+                              'cluster_name': 'cluster2@backend#pool',
+                              'volume_type_id': fake.VOLUME_TYPE_ID}),
         ]
 
     @ddt.data('host1@backend1#pool1', 'host1@backend1')
@@ -1556,10 +1693,12 @@ class DBAPISnapshotTestCase(BaseTest):
         self.assertEqual((0, 0), actual)
         db.volume_create(self.ctxt, {'id': 1,
                                      'project_id': 'project1',
-                                     'size': 42})
+                                     'size': 42,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1,
                                        'project_id': 'project1',
-                                       'volume_size': 42})
+                                       'volume_size': 42,
+                                       'volume_type_id': fake.VOLUME_TYPE_ID})
         actual = db.snapshot_data_get_for_project(self.ctxt, 'project1')
         self.assertEqual((1, 42), actual)
 
@@ -1574,13 +1713,15 @@ class DBAPISnapshotTestCase(BaseTest):
         def hours_ago(hour):
             return timeutils.utcnow() - datetime.timedelta(
                 hours=hour)
-        db.volume_create(self.ctxt, {'id': 1})
+        db.volume_create(self.ctxt, {'id': 1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         for snapshot in time_collection:
             db.snapshot_create(self.ctxt,
                                {'id': snapshot, 'volume_id': 1,
                                 'display_name': 'one',
                                 'created_at': hours_ago(snapshot),
-                                'status': fields.SnapshotStatus.AVAILABLE})
+                                'status': fields.SnapshotStatus.AVAILABLE,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
 
         snapshot = db.snapshot_get_latest_for_volume(self.ctxt, 1)
 
@@ -1588,34 +1729,44 @@ class DBAPISnapshotTestCase(BaseTest):
 
     def test_snapshot_get_latest_for_volume_not_found(self):
 
-        db.volume_create(self.ctxt, {'id': 1})
+        db.volume_create(self.ctxt, {'id': 1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         for t_id in [2, 3]:
             db.snapshot_create(self.ctxt,
                                {'id': t_id, 'volume_id': t_id,
                                 'display_name': 'one',
-                                'status': fields.SnapshotStatus.AVAILABLE})
+                                'status': fields.SnapshotStatus.AVAILABLE,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
 
         self.assertRaises(exception.VolumeSnapshotNotFound,
                           db.snapshot_get_latest_for_volume, self.ctxt, 1)
 
     def test_snapshot_get_all_by_filter(self):
-        db.volume_create(self.ctxt, {'id': 1})
-        db.volume_create(self.ctxt, {'id': 2})
+        db.volume_create(self.ctxt, {'id': 1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_create(self.ctxt, {'id': 2,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         snapshot1 = db.snapshot_create(self.ctxt,
                                        {'id': 1, 'volume_id': 1,
                                         'display_name': 'one',
                                         'status':
-                                            fields.SnapshotStatus.AVAILABLE})
+                                            fields.SnapshotStatus.AVAILABLE,
+                                        'volume_type_id': fake.VOLUME_TYPE_ID}
+                                       )
         snapshot2 = db.snapshot_create(self.ctxt,
                                        {'id': 2, 'volume_id': 1,
                                         'display_name': 'two',
                                         'status':
-                                            fields.SnapshotStatus.CREATING})
+                                            fields.SnapshotStatus.CREATING,
+                                        'volume_type_id': fake.VOLUME_TYPE_ID}
+                                       )
         snapshot3 = db.snapshot_create(self.ctxt,
                                        {'id': 3, 'volume_id': 2,
                                         'display_name': 'three',
                                         'status':
-                                            fields.SnapshotStatus.AVAILABLE})
+                                            fields.SnapshotStatus.AVAILABLE,
+                                        'volume_type_id': fake.VOLUME_TYPE_ID}
+                                       )
         # no filter
         filters = {}
         snapshots = db.snapshot_get_all(self.ctxt, filters=filters)
@@ -1691,14 +1842,21 @@ class DBAPISnapshotTestCase(BaseTest):
                                 {s.id for s in result})
 
     def test_snapshot_get_all_by_host(self):
-        db.volume_create(self.ctxt, {'id': 1, 'host': 'host1'})
-        db.volume_create(self.ctxt, {'id': 2, 'host': 'host2'})
-        snapshot1 = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1})
+        db.volume_create(self.ctxt, {'id': 1, 'host': 'host1',
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_create(self.ctxt, {'id': 2, 'host': 'host2',
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
+        snapshot1 = db.snapshot_create(self.ctxt,
+                                       {'id': 1, 'volume_id': 1,
+                                        'volume_type_id': fake.VOLUME_TYPE_ID}
+                                       )
         snapshot2 = db.snapshot_create(self.ctxt,
                                        {'id': 2,
                                         'volume_id': 2,
                                         'status':
-                                            fields.SnapshotStatus.ERROR})
+                                            fields.SnapshotStatus.ERROR,
+                                        'volume_type_id': fake.VOLUME_TYPE_ID}
+                                       )
 
         self._assertEqualListsOfObjects([snapshot1],
                                         db.snapshot_get_all_by_host(
@@ -1728,11 +1886,19 @@ class DBAPISnapshotTestCase(BaseTest):
         self.assertEqual([], db.snapshot_get_all_by_host(self.ctxt, ''))
 
     def test_snapshot_get_all_by_host_with_pools(self):
-        db.volume_create(self.ctxt, {'id': 1, 'host': 'host1#pool1'})
-        db.volume_create(self.ctxt, {'id': 2, 'host': 'host1#pool2'})
+        db.volume_create(self.ctxt, {'id': 1, 'host': 'host1#pool1',
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_create(self.ctxt, {'id': 2, 'host': 'host1#pool2',
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
 
-        snapshot1 = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1})
-        snapshot2 = db.snapshot_create(self.ctxt, {'id': 2, 'volume_id': 2})
+        snapshot1 = db.snapshot_create(self.ctxt,
+                                       {'id': 1, 'volume_id': 1,
+                                        'volume_type_id': fake.VOLUME_TYPE_ID}
+                                       )
+        snapshot2 = db.snapshot_create(self.ctxt,
+                                       {'id': 2, 'volume_id': 2,
+                                        'volume_type_id': fake.VOLUME_TYPE_ID}
+                                       )
 
         self._assertEqualListsOfObjects([snapshot1, snapshot2],
                                         db.snapshot_get_all_by_host(
@@ -1752,13 +1918,19 @@ class DBAPISnapshotTestCase(BaseTest):
                                         ignored_keys='volume')
 
     def test_snapshot_get_all_by_project(self):
-        db.volume_create(self.ctxt, {'id': 1})
-        db.volume_create(self.ctxt, {'id': 2})
-        snapshot1 = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1,
-                                                   'project_id': 'project1'})
+        db.volume_create(self.ctxt, {'id': 1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_create(self.ctxt, {'id': 2,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
+        snapshot1 = db.snapshot_create(self.ctxt,
+                                       {'id': 1, 'volume_id': 1,
+                                        'project_id': 'project1',
+                                        'volume_type_id': fake.VOLUME_TYPE_ID}
+                                       )
         snapshot2 = db.snapshot_create(
             self.ctxt, {'id': 2, 'volume_id': 2, 'status':
-                        fields.SnapshotStatus.ERROR, 'project_id': 'project2'})
+                        fields.SnapshotStatus.ERROR, 'project_id': 'project2',
+                        'volume_type_id': fake.VOLUME_TYPE_ID})
 
         self._assertEqualListsOfObjects([snapshot1],
                                         db.snapshot_get_all_by_project(
@@ -1790,20 +1962,26 @@ class DBAPISnapshotTestCase(BaseTest):
 
     def test_snapshot_get_all_by_project_with_host(self):
         db.volume_create(self.ctxt, {'id': 1, 'host': 'host1', 'size': 1,
-                                     'project_id': fake.PROJECT_ID})
+                                     'project_id': fake.PROJECT_ID,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_create(self.ctxt, {'id': 2, 'host': 'host1', 'size': 2,
-                                     'project_id': fake.PROJECT2_ID})
+                                     'project_id': fake.PROJECT2_ID,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_create(self.ctxt, {'id': 3, 'host': 'host2', 'size': 3,
-                                     'project_id': fake.PROJECT2_ID})
+                                     'project_id': fake.PROJECT2_ID,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1,
                                        'project_id': fake.PROJECT_ID,
-                                       'volume_size': 1})
+                                       'volume_size': 1,
+                                       'volume_type_id': fake.VOLUME_TYPE_ID})
         db.snapshot_create(self.ctxt, {'id': 2, 'volume_id': 2,
                                        'project_id': fake.PROJECT2_ID,
-                                       'volume_size': 2})
+                                       'volume_size': 2,
+                                       'volume_type_id': fake.VOLUME_TYPE_ID})
         db.snapshot_create(self.ctxt, {'id': 3, 'volume_id': 3,
                                        'project_id': fake.PROJECT2_ID,
-                                       'volume_size': 3})
+                                       'volume_size': 3,
+                                       'volume_type_id': fake.VOLUME_TYPE_ID})
         resp = db.snapshot_data_get_for_project(self.ctxt,
                                                 fake.PROJECT2_ID,
                                                 host='host2')
@@ -1811,9 +1989,11 @@ class DBAPISnapshotTestCase(BaseTest):
 
     def test_snapshot_metadata_get(self):
         metadata = {'a': 'b', 'c': 'd'}
-        db.volume_create(self.ctxt, {'id': 1})
+        db.volume_create(self.ctxt, {'id': 1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.snapshot_create(self.ctxt,
-                           {'id': 1, 'volume_id': 1, 'metadata': metadata})
+                           {'id': 1, 'volume_id': 1, 'metadata': metadata,
+                            'volume_type_id': fake.VOLUME_TYPE_ID})
 
         self.assertEqual(metadata, db.snapshot_metadata_get(self.ctxt, 1))
 
@@ -1822,9 +2002,11 @@ class DBAPISnapshotTestCase(BaseTest):
         metadata2 = {'a': '3', 'd': '5'}
         should_be = {'a': '3', 'c': '2', 'd': '5'}
 
-        db.volume_create(self.ctxt, {'id': 1})
+        db.volume_create(self.ctxt, {'id': 1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.snapshot_create(self.ctxt,
-                           {'id': 1, 'volume_id': 1, 'metadata': metadata1})
+                           {'id': 1, 'volume_id': 1, 'metadata': metadata1,
+                            'volume_type_id': fake.VOLUME_TYPE_ID})
         db_meta = db.snapshot_metadata_update(self.ctxt, 1, metadata2, False)
 
         self.assertEqual(should_be, db_meta)
@@ -1834,9 +2016,11 @@ class DBAPISnapshotTestCase(BaseTest):
         metadata2 = {'a': '3', 'd': '5'}
         should_be = metadata2
 
-        db.volume_create(self.ctxt, {'id': 1})
+        db.volume_create(self.ctxt, {'id': 1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.snapshot_create(self.ctxt,
-                           {'id': 1, 'volume_id': 1, 'metadata': metadata1})
+                           {'id': 1, 'volume_id': 1, 'metadata': metadata1,
+                            'volume_type_id': fake.VOLUME_TYPE_ID})
         db_meta = db.snapshot_metadata_update(self.ctxt, 1, metadata2, True)
 
         self.assertEqual(should_be, db_meta)
@@ -1865,9 +2049,11 @@ class DBAPISnapshotTestCase(BaseTest):
         metadata = {'a': '1', 'c': '2'}
         should_be = {'a': '1'}
 
-        db.volume_create(self.ctxt, {'id': 1})
+        db.volume_create(self.ctxt, {'id': 1,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.snapshot_create(self.ctxt,
-                           {'id': 1, 'volume_id': 1, 'metadata': metadata})
+                           {'id': 1, 'volume_id': 1, 'metadata': metadata,
+                            'volume_type_id': fake.VOLUME_TYPE_ID})
         db.snapshot_metadata_delete(self.ctxt, 1, 'c')
 
         self.assertEqual(should_be, db.snapshot_metadata_get(self.ctxt, 1))
@@ -2050,18 +2236,13 @@ class DBAPIVolumeTypeTestCase(BaseTest):
         super(DBAPIVolumeTypeTestCase, self).setUp()
 
     def test_volume_type_create_exists(self):
-        vt = db.volume_type_create(self.ctxt, {'name': 'n1'})
         self.assertRaises(exception.VolumeTypeExists,
                           db.volume_type_create,
                           self.ctxt,
-                          {'name': 'n1'})
-        self.assertRaises(exception.VolumeTypeExists,
-                          db.volume_type_create,
-                          self.ctxt,
-                          {'name': 'n2', 'id': vt['id']})
+                          {'name': 'n2', 'id': self.vt['id']})
 
     def test_volume_type_access_remove(self):
-        vt = db.volume_type_create(self.ctxt, {'name': 'n1'})
+        vt = db.volume_type_create(self.ctxt, {'name': 'n2'})
         db.volume_type_access_add(self.ctxt, vt['id'], 'fake_project')
         vtas = db.volume_type_access_get_all(self.ctxt, vt['id'])
         self.assertEqual(1, len(vtas))
@@ -2070,7 +2251,7 @@ class DBAPIVolumeTypeTestCase(BaseTest):
         self.assertEqual(0, len(vtas))
 
     def test_volume_type_access_remove_high_id(self):
-        vt = db.volume_type_create(self.ctxt, {'name': 'n1'})
+        vt = db.volume_type_create(self.ctxt, {'name': 'n2'})
         vta = db.volume_type_access_add(self.ctxt, vt['id'], 'fake_project')
         vtas = db.volume_type_access_get_all(self.ctxt, vt['id'])
         self.assertEqual(1, len(vtas))
@@ -2093,7 +2274,7 @@ class DBAPIVolumeTypeTestCase(BaseTest):
         # the DB session is closed.
         vt_extra_specs = {'mock_key': 'mock_value'}
         vt = db.volume_type_create(self.ctxt,
-                                   {'name': 'n1',
+                                   {'name': 'n2',
                                     'extra_specs': vt_extra_specs})
         volume_ref = db.volume_create(self.ctxt, {'volume_type_id': vt.id})
 
@@ -2215,7 +2396,8 @@ class DBAPIEncryptionTestCase(BaseTest):
 
     def test_volume_encryption_get(self):
         # normal volume -- metadata should be None
-        volume = db.volume_create(self.ctxt, {})
+        volume = db.volume_create(self.ctxt, {
+            'volume_type_id': fake.VOLUME_TYPE_ID})
         values = db.volume_encryption_metadata_get(self.ctxt, volume.id)
 
         self.assertEqual({'encryption_key_id': None}, values)
@@ -3055,34 +3237,45 @@ class DBAPIGenericTestCase(BaseTest):
         #                      sql.exists().where(and_(*conditions)))
         # Instead of what we do:
         #  query = get_session().query(sql.exists().where(and_(*conditions)))
-        db.volume_create(self.ctxt, {'id': fake.VOLUME_ID})
-        db.volume_create(self.ctxt, {'id': fake.VOLUME2_ID})
+        db.volume_create(self.ctxt, {'id': fake.VOLUME_ID,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_create(self.ctxt, {'id': fake.VOLUME2_ID,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         model = db.get_model_for_versioned_object(objects.Volume)
         res = sqlalchemy_api.resource_exists(self.ctxt, model, fake.VOLUME_ID)
         self.assertTrue(res, msg="Couldn't find existing Volume")
 
     def test_resource_exists_volume_fails(self):
-        db.volume_create(self.ctxt, {'id': fake.VOLUME_ID})
+        db.volume_create(self.ctxt, {'id': fake.VOLUME_ID,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         model = db.get_model_for_versioned_object(objects.Volume)
         res = sqlalchemy_api.resource_exists(self.ctxt, model, fake.VOLUME2_ID)
         self.assertFalse(res, msg='Found nonexistent Volume')
 
     def test_resource_exists_snapshot(self):
         # Read NOTE in test_resource_exists_volume on why we create 2 snapshots
-        vol = db.volume_create(self.ctxt, {'id': fake.VOLUME_ID})
+        vol = db.volume_create(self.ctxt,
+                               {'id': fake.VOLUME_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         db.snapshot_create(self.ctxt, {'id': fake.SNAPSHOT_ID,
-                                       'volume_id': vol.id})
+                                       'volume_id': vol.id,
+                                       'volume_type_id': fake.VOLUME_TYPE_ID})
         db.snapshot_create(self.ctxt, {'id': fake.SNAPSHOT2_ID,
-                                       'volume_id': vol.id})
+                                       'volume_id': vol.id,
+                                       'volume_type_id': fake.VOLUME_TYPE_ID})
         model = db.get_model_for_versioned_object(objects.Snapshot)
         res = sqlalchemy_api.resource_exists(self.ctxt, model,
                                              fake.SNAPSHOT_ID)
         self.assertTrue(res, msg="Couldn't find existing Snapshot")
 
     def test_resource_exists_snapshot_fails(self):
-        vol = db.volume_create(self.ctxt, {'id': fake.VOLUME_ID})
+        vol = db.volume_create(self.ctxt,
+                               {'id': fake.VOLUME_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         db.snapshot_create(self.ctxt, {'id': fake.SNAPSHOT_ID,
-                                       'volume_id': vol.id})
+                                       'volume_id': vol.id,
+                                       'volume_type_id':
+                                           fake.VOLUME_TYPE_ID})
         model = db.get_model_for_versioned_object(objects.Snapshot)
         res = sqlalchemy_api.resource_exists(self.ctxt, model,
                                              fake.SNAPSHOT2_ID)
@@ -3094,7 +3287,8 @@ class DBAPIGenericTestCase(BaseTest):
         user2_context = context.RequestContext(fake.USER2_ID, fake.PROJECT2_ID,
                                                is_admin=False)
         volume = db.volume_create(user_context,
-                                  {'project_id': fake.PROJECT_ID})
+                                  {'project_id': fake.PROJECT_ID,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         model = db.get_model_for_versioned_object(objects.Volume)
 
         # Owner can find it
@@ -3115,9 +3309,13 @@ class DBAPIGenericTestCase(BaseTest):
                                               is_admin=False)
         user2_context = context.RequestContext(fake.USER2_ID, fake.PROJECT2_ID,
                                                is_admin=False)
-        vol = db.volume_create(user_context, {'project_id': fake.PROJECT_ID})
-        snap = db.snapshot_create(self.ctxt, {'project_id': fake.PROJECT_ID,
-                                              'volume_id': vol.id})
+        vol = db.volume_create(user_context,
+                               {'project_id': fake.PROJECT_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
+        snap = db.snapshot_create(self.ctxt,
+                                  {'project_id': fake.PROJECT_ID,
+                                   'volume_id': vol.id,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
         model = db.get_model_for_versioned_object(objects.Snapshot)
 
         # Owner can find it

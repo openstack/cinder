@@ -30,6 +30,7 @@ import webob
 
 from cinder.api import common
 from cinder.api import extensions
+from cinder.api.v2.views import volumes as v_vol
 from cinder.api.v2 import volumes
 from cinder import context
 from cinder import db
@@ -45,6 +46,7 @@ from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import utils
 from cinder.volume import api as volume_api
+from cinder.volume import volume_types
 
 CONF = cfg.CONF
 
@@ -65,6 +67,23 @@ class VolumeApiTest(test.TestCase):
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         # This will be cleaned up by the NestedTempfile fixture in base class
         self.tmp_path = self.useFixture(fixtures.TempDir()).path
+        self.mock_object(objects.VolumeType, 'get_by_id',
+                         self.fake_volume_type_get)
+        self.mock_object(v_vol.ViewBuilder, '_get_volume_type',
+                         v2_fakes.fake_volume_type_name_get)
+
+    def fake_volume_type_get(self, context, id, *args, **kwargs):
+        return {'id': id,
+                'name': 'vol_type_name',
+                'description': 'A fake volume type',
+                'is_public': True,
+                'projects': [],
+                'extra_specs': {},
+                'created_at': None,
+                'deleted_at': None,
+                'updated_at': None,
+                'qos_specs_id': fake.QOS_SPEC_ID,
+                'deleted': False}
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
@@ -91,13 +110,8 @@ class VolumeApiTest(test.TestCase):
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_volume_create_with_type(self, mock_validate, mock_service_get):
-        vol_type = db.volume_type_create(
-            context.get_admin_context(),
-            dict(name=CONF.default_volume_type, extra_specs={})
-        )
-
-        db_vol_type = db.volume_type_get(context.get_admin_context(),
-                                         vol_type.id)
+        db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
+                                                 '__DEFAULT__')
 
         vol = self._vol_in_request_body(volume_type="FakeTypeName")
         body = {"volume": vol}
@@ -120,8 +134,9 @@ class VolumeApiTest(test.TestCase):
         volume_id = res_dict['volume']['id']
         self.assertEqual(1, len(res_dict))
 
-        vol_db = v2_fakes.create_fake_volume(volume_id,
-                                             volume_type={'name': vol_type})
+        vol_db = v2_fakes.create_fake_volume(
+            volume_id,
+            volume_type={'name': db_vol_type['name']})
         vol_obj = fake_volume.fake_volume_obj(context.get_admin_context(),
                                               **vol_db)
         self.mock_object(volume_api.API, 'get_all',
@@ -256,10 +271,15 @@ class VolumeApiTest(test.TestCase):
 
         kwargs = self._expected_volume_api_create_kwargs(
             v2_fakes.fake_snapshot(snapshot_id))
-        create.assert_called_once_with(self.controller.volume_api, context,
-                                       vol['size'], v2_fakes.DEFAULT_VOL_NAME,
-                                       v2_fakes.DEFAULT_VOL_DESCRIPTION,
-                                       **kwargs)
+        create.assert_called_once_with(
+            self.controller.volume_api, context,
+            vol['size'], v2_fakes.DEFAULT_VOL_NAME,
+            v2_fakes.DEFAULT_VOL_DESCRIPTION,
+            volume_type=
+            objects.VolumeType.get_by_name_or_id(
+                context,
+                volume_types.get_default_volume_type()['id']),
+            **kwargs)
 
     @mock.patch.object(volume_api.API, 'get_snapshot', autospec=True)
     def test_volume_creation_fails_with_invalid_snapshot(self, get_snapshot):
@@ -316,10 +336,15 @@ class VolumeApiTest(test.TestCase):
         vol_obj = fake_volume.fake_volume_obj(context, **db_vol)
         kwargs = self._expected_volume_api_create_kwargs(
             source_volume=vol_obj)
-        create.assert_called_once_with(self.controller.volume_api, context,
-                                       vol['size'], v2_fakes.DEFAULT_VOL_NAME,
-                                       v2_fakes.DEFAULT_VOL_DESCRIPTION,
-                                       **kwargs)
+        create.assert_called_once_with(
+            self.controller.volume_api, context,
+            vol['size'], v2_fakes.DEFAULT_VOL_NAME,
+            v2_fakes.DEFAULT_VOL_DESCRIPTION,
+            volume_type=
+            objects.VolumeType.get_by_name_or_id(
+                context,
+                volume_types.get_default_volume_type()['id']),
+            **kwargs)
 
     @mock.patch.object(volume_api.API, 'get_volume', autospec=True)
     def test_volume_creation_fails_with_invalid_source_volume(self,
@@ -710,7 +735,6 @@ class VolumeApiTest(test.TestCase):
         volume = v2_fakes.create_fake_volume(fake.VOLUME_ID)
         del volume['name']
         del volume['volume_type']
-        del volume['volume_type_id']
         volume['metadata'] = {'key': 'value'}
         db.volume_create(context.get_admin_context(), volume)
 
@@ -736,7 +760,7 @@ class VolumeApiTest(test.TestCase):
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.update(req, fake.VOLUME_ID, body=body)
         expected = self._expected_vol_from_controller(
-            availability_zone=v2_fakes.DEFAULT_AZ, volume_type=None,
+            availability_zone=v2_fakes.DEFAULT_AZ,
             status='in-use', name='Updated Test Name',
             attachments=[{'id': fake.VOLUME_ID,
                           'attachment_id': attachment['id'],
@@ -747,6 +771,7 @@ class VolumeApiTest(test.TestCase):
                           'attached_at': attach_tmp['attach_time'].replace(
                               tzinfo=iso8601.UTC),
                           }],
+            volume_type=fake.VOLUME_TYPE_NAME,
             metadata={'key': 'value', 'readonly': 'True'},
             with_migration_status=True)
         expected['volume']['updated_at'] = volume_tmp['updated_at'].replace(
@@ -863,7 +888,6 @@ class VolumeApiTest(test.TestCase):
         volume = v2_fakes.create_fake_volume(fake.VOLUME_ID)
         del volume['name']
         del volume['volume_type']
-        del volume['volume_type_id']
         volume['metadata'] = {'key': 'value'}
         db.volume_create(context.get_admin_context(), volume)
         db.volume_admin_metadata_update(context.get_admin_context(),
@@ -885,7 +909,7 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.detail(req)
         exp_vol = self._expected_vol_from_controller(
             availability_zone=v2_fakes.DEFAULT_AZ,
-            status="in-use", volume_type=None,
+            status="in-use", volume_type=fake.VOLUME_TYPE_NAME,
             attachments=[{'attachment_id': attachment['id'],
                           'device': '/',
                           'server_id': fake.INSTANCE_ID,
@@ -1326,7 +1350,6 @@ class VolumeApiTest(test.TestCase):
         volume = v2_fakes.create_fake_volume(fake.VOLUME_ID)
         del volume['name']
         del volume['volume_type']
-        del volume['volume_type_id']
         volume['metadata'] = {'key': 'value'}
         db.volume_create(context.get_admin_context(), volume)
         db.volume_admin_metadata_update(context.get_admin_context(),
@@ -1347,7 +1370,7 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.show(req, fake.VOLUME_ID)
         expected = self._expected_vol_from_controller(
             availability_zone=v2_fakes.DEFAULT_AZ,
-            volume_type=None, status='in-use',
+            volume_type=fake.VOLUME_TYPE_NAME, status='in-use',
             attachments=[{'id': fake.VOLUME_ID,
                           'attachment_id': attachment['id'],
                           'volume_id': v2_fakes.DEFAULT_VOL_ID,

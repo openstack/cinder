@@ -30,6 +30,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import quota
 from cinder.tests import fake_driver
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import utils as tests_utils
@@ -79,8 +80,11 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
             'display_description': 'Test Desc',
             'size': 20,
             'status': 'uploading',
-            'host': 'dummy'
+            'host': 'dummy',
+            'volume_type_id': fake.VOLUME_TYPE_ID
         }
+        self.mock_object(db.sqlalchemy.api, 'volume_type_get',
+                         v2_fakes.fake_volume_type_get)
 
     def test_copy_volume_to_image_status_available(self):
         # creating volume testdata
@@ -437,6 +441,14 @@ class ImageVolumeCacheTestCase(base.BaseVolumeTestCase):
 
 class ImageVolumeTestCases(base.BaseVolumeTestCase):
 
+    def setUp(self):
+        super(ImageVolumeTestCases, self).setUp()
+        db.volume_type_create(self.context,
+                              v2_fakes.fake_default_type_get(
+                                  fake.VOLUME_TYPE2_ID))
+        self.vol_type = db.volume_type_get_by_name(self.context,
+                                                   'vol_type_name')
+
     @mock.patch('cinder.volume.drivers.lvm.LVMVolumeDriver.'
                 'create_cloned_volume')
     @mock.patch('cinder.quota.QUOTAS.rollback')
@@ -453,7 +465,9 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
 
         self.assertNotEqual(False, result)
         mock_reserve.assert_called_once_with(self.context, volumes=1,
-                                             gigabytes=vol.size)
+                                             volumes_vol_type_name=1,
+                                             gigabytes=vol.size,
+                                             gigabytes_vol_type_name=vol.size)
         mock_commit.assert_called_once_with(self.context, ["RESERVATION"],
                                             project_id=vol.project_id)
 
@@ -468,7 +482,9 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
                 self.context, vol, {'id': fake.VOLUME_ID}))
 
         mock_reserve.assert_called_once_with(self.context, volumes=1,
-                                             gigabytes=vol.size)
+                                             volumes_vol_type_name=1,
+                                             gigabytes=vol.size,
+                                             gigabytes_vol_type_name=vol.size)
         mock_rollback.assert_called_once_with(self.context, ["RESERVATION"])
 
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -669,7 +685,8 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
             volume_api = cinder.volume.api.API(
                 image_service=FakeImageService())
             volume = volume_api.create(self.context, 2, 'name', 'description',
-                                       image_id=self.FAKE_UUID)
+                                       image_id=self.FAKE_UUID,
+                                       volume_type=self.vol_type)
             volume_id = volume['id']
             self.assertEqual('creating', volume['status'])
 

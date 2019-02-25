@@ -31,6 +31,6 @@
         "status": "creating",
         "updated_at": null,
         "user_id": "c853ca26-e8ea-4797-8a52-ee124a013d0e",
-        "volume_type": null
+        "volume_type": "__DEFAULT__"
     }
 }

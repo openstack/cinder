@@ -29,7 +29,7 @@ CONF.import_opt('backup_driver', 'cinder.backup.manager')
 CONF.import_opt('backend', 'cinder.keymgr', group='key_manager')
 CONF.import_opt('scheduler_driver', 'cinder.scheduler.manager')
 
-def_vol_type = 'fake_vol_type'
+def_vol_type = '__DEFAULT__'
 
 
 def set_defaults(conf):

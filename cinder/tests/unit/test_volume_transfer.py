@@ -24,6 +24,7 @@ from cinder import exception
 from cinder import objects
 from cinder import quota
 from cinder import test
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils
 from cinder.transfer import api as transfer_api
@@ -105,7 +106,8 @@ class VolumeTransferTestCase(test.TestCase):
         svc = self.start_service('volume', host='test_host')
         self.addCleanup(svc.stop)
         tx_api = transfer_api.API()
-        volume = utils.create_volume(self.ctxt, updated_at=self.updated_at)
+        volume = utils.create_volume(self.ctxt, updated_at=self.updated_at,
+                                     volume_type_id=self.vt['id'])
         transfer = tx_api.create(self.ctxt, volume.id, 'Description')
         volume = objects.Volume.get_by_id(self.ctxt, volume.id)
         self.assertEqual('awaiting-transfer', volume['status'],
@@ -365,7 +367,10 @@ class VolumeTransferTestCase(test.TestCase):
                           tx_api.create, self.ctxt, volume.id, 'Description')
 
     @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
-    def test_transfer_accept_with_detail_records(self, mock_notify):
+    @mock.patch.object(db, 'volume_type_get', v2_fakes.fake_volume_type_get)
+    @mock.patch.object(quota.QUOTAS, 'reserve')
+    def test_transfer_accept_with_detail_records(self, mock_notify,
+                                                 mock_type_get):
         svc = self.start_service('volume', host='test_host')
         self.addCleanup(svc.stop)
         tx_api = transfer_api.API()

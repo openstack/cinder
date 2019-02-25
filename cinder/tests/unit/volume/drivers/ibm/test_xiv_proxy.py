@@ -393,7 +393,8 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli = mock.MagicMock()
 
         volume = testutils.create_volume(
-            self.ctxt, size=16, display_name='WTF32')
+            self.ctxt, size=16, display_name='WTF32',
+            volume_type_id=self.vt['id'])
         p.create_volume(volume)
 
         p.ibm_storage_cli.cmd.vol_create.assert_called_once_with(
@@ -414,7 +415,8 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli = mock.MagicMock()
 
         volume = testutils.create_volume(
-            self.ctxt, size=16, display_name='WTF32')
+            self.ctxt, size=16, display_name='WTF32',
+            volume_type_id=self.vt['id'])
         snapshot = testutils.create_snapshot(self.ctxt, volume.id)
 
         p.create_volume_from_snapshot(volume, snapshot)
@@ -445,7 +447,7 @@ class XIVProxyTest(test.TestCase):
 
         volume = testutils.create_volume(
             self.ctxt, size=16, display_name='WTF32',
-            volume_type_id='b3fcacb5-fbd8-4394-8c00-06853bc13929')
+            volume_type_id=self.vt['id'])
 
         ex = getattr(p, "_get_exception")()
         self.assertRaises(ex, p.create_volume, volume)
@@ -478,7 +480,8 @@ class XIVProxyTest(test.TestCase):
         p.targets = {'tgt1': 'info1'}
 
         group = self._create_test_group('WTF')
-        vol = testutils.create_volume(self.ctxt)
+        vol = testutils.create_volume(self.ctxt,
+                                      volume_type_id=self.vt['id'])
         ret = p.enable_replication(self.ctxt, group, [vol])
 
         self.assertEqual((
@@ -519,7 +522,8 @@ class XIVProxyTest(test.TestCase):
         p._call_remote_xiv_xcli.cmd.cg_create.side_effect = error
 
         group = self._create_test_group('WTF')
-        vol = testutils.create_volume(self.ctxt)
+        vol = testutils.create_volume(self.ctxt,
+                                      volume_type_id=self.vt['id'])
         ret = p.enable_replication(self.ctxt, group, [vol])
 
         self.assertEqual((
@@ -581,7 +585,8 @@ class XIVProxyTest(test.TestCase):
             driver)
         group = self._create_test_group('WTF')
         group.replication_status = fields.ReplicationStatus.FAILED_OVER
-        vol = testutils.create_volume(self.ctxt)
+        vol = testutils.create_volume(self.ctxt,
+                                      volume_type_id=self.vt['id'])
         group_update, vol_update = p.failover_replication(self.ctxt, group,
                                                           [vol], 'default')
         updates = {'status': 'available'}
@@ -615,7 +620,8 @@ class XIVProxyTest(test.TestCase):
         group = self._create_test_group('WTF')
         failed_over = fields.ReplicationStatus.FAILED_OVER
         group.replication_status = failed_over
-        vol = testutils.create_volume(self.ctxt)
+        vol = testutils.create_volume(self.ctxt,
+                                      volume_type_id=self.vt['id'])
         group_update, vol_update = p.failover_replication(self.ctxt, group,
                                                           [vol],
                                                           'secondary_id')
@@ -807,7 +813,7 @@ class XIVProxyTest(test.TestCase):
 
         volume = testutils.create_volume(
             self.ctxt, size=16, display_name='WTF32',
-            volume_type_id='b3fcacb5-fbd8-4394-8c00-06853bc13929')
+            volume_type_id=self.vt['id'])
         volume.group = None
         p.create_volume(volume)
 
@@ -835,7 +841,7 @@ class XIVProxyTest(test.TestCase):
 
         volume = testutils.create_volume(
             self.ctxt, size=16, display_name='WTF32',
-            volume_type_id='b3fcacb5-fbd8-4394-8c00-06853bc13929')
+            volume_type_id=self.vt['id'])
         grp = testutils.create_group(self.ctxt, name='bla', group_type_id='1')
         volume.group = grp
         ex = getattr(p, "_get_exception")()
@@ -861,7 +867,7 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli = mock.MagicMock()
         volume = testutils.create_volume(
             self.ctxt, size=16, display_name='WTF32',
-            volume_type_id='b3fcacb5-fbd8-4394-8c00-06853bc13929')
+            volume_type_id=self.vt['id'])
         volume.group = None
         ex = getattr(p, "_get_exception")()
         self.assertRaises(ex, p.create_volume, volume)
@@ -1879,7 +1885,8 @@ class XIVProxyTest(test.TestCase):
         group_obj = self._create_test_group()
         cgsnap_group_obj = self._create_test_cgsnapshot(group_obj.id)
 
-        volume = testutils.create_volume(self.ctxt)
+        volume = testutils.create_volume(self.ctxt,
+                                         volume_type_id=self.vt['id'])
         snapshot = testutils.create_snapshot(self.ctxt, volume.id)
 
         model_update, vols_model_update = p.create_group_from_src(
@@ -1908,8 +1915,10 @@ class XIVProxyTest(test.TestCase):
         group_obj = self._create_test_group()
         src_group_obj = self._create_test_group(g_name='src_group')
 
-        volume = testutils.create_volume(self.ctxt)
-        src_volume = testutils.create_volume(self.ctxt)
+        volume = testutils.create_volume(self.ctxt,
+                                         volume_type_id=self.vt['id'])
+        src_volume = testutils.create_volume(self.ctxt,
+                                             volume_type_id=self.vt['id'])
 
         model_update, vols_model_update = p.create_group_from_src(
             {}, group_obj, [volume],
@@ -1939,7 +1948,8 @@ class XIVProxyTest(test.TestCase):
         group_obj = self._create_test_group()
         cgsnap_group_obj = self._create_test_cgsnapshot(group_obj.id)
 
-        volume = testutils.create_volume(self.ctxt)
+        volume = testutils.create_volume(self.ctxt,
+                                         volume_type_id=self.vt['id'])
         snapshot = testutils.create_snapshot(self.ctxt, volume.id)
 
         ex = getattr(p, "_get_exception")()
@@ -1965,8 +1975,10 @@ class XIVProxyTest(test.TestCase):
         group_obj = self._create_test_group()
         src_group_obj = self._create_test_group(g_name='src_group')
 
-        volume = testutils.create_volume(self.ctxt)
-        src_volume = testutils.create_volume(self.ctxt)
+        volume = testutils.create_volume(self.ctxt,
+                                         volume_type_id=self.vt['id'])
+        src_volume = testutils.create_volume(self.ctxt,
+                                             volume_type_id=self.vt['id'])
 
         ex = getattr(p, "_get_exception")()
         self.assertRaises(ex, p.create_group_from_src, {},
@@ -1992,7 +2004,8 @@ class XIVProxyTest(test.TestCase):
         group_obj = self._create_test_group()
         cgsnap_group_obj = self._create_test_cgsnapshot(group_obj.id)
 
-        volume = testutils.create_volume(self.ctxt)
+        volume = testutils.create_volume(self.ctxt,
+                                         volume_type_id=self.vt['id'])
         snapshot = testutils.create_snapshot(self.ctxt, volume.id)
 
         ex = getattr(p, "_get_exception")()
@@ -2018,8 +2031,10 @@ class XIVProxyTest(test.TestCase):
         group_obj = self._create_test_group()
         src_group_obj = self._create_test_group(g_name='src_group')
 
-        volume = testutils.create_volume(self.ctxt)
-        src_volume = testutils.create_volume(self.ctxt)
+        volume = testutils.create_volume(self.ctxt,
+                                         volume_type_id=self.vt['id'])
+        src_volume = testutils.create_volume(self.ctxt,
+                                             volume_type_id=self.vt['id'])
 
         ex = getattr(p, "_get_exception")()
         self.assertRaises(ex, p.create_group_from_src, {},
@@ -2045,7 +2060,8 @@ class XIVProxyTest(test.TestCase):
         group_obj = self._create_test_group()
         cgsnap_group_obj = self._create_test_cgsnapshot(group_obj.id)
 
-        volume = testutils.create_volume(self.ctxt)
+        volume = testutils.create_volume(self.ctxt,
+                                         volume_type_id=self.vt['id'])
         snapshot = testutils.create_snapshot(self.ctxt, volume.id)
 
         ex = getattr(p, "_get_exception")()
@@ -2071,8 +2087,10 @@ class XIVProxyTest(test.TestCase):
         group_obj = self._create_test_group()
         src_group_obj = self._create_test_group(g_name='src_group')
 
-        volume = testutils.create_volume(self.ctxt)
-        src_volume = testutils.create_volume(self.ctxt)
+        volume = testutils.create_volume(self.ctxt,
+                                         volume_type_id=self.vt['id'])
+        src_volume = testutils.create_volume(self.ctxt,
+                                             volume_type_id=self.vt['id'])
 
         ex = getattr(p, "_get_exception")()
         self.assertRaises(ex, p.create_group_from_src, {},
@@ -2244,8 +2262,10 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli = mock.MagicMock()
 
         group_obj = self._create_test_group()
-        vol_add = testutils.create_volume(self.ctxt, display_name='WTF32')
-        vol_remove = testutils.create_volume(self.ctxt, display_name='WTF64')
+        vol_add = testutils.create_volume(self.ctxt, display_name='WTF32',
+                                          volume_type_id=self.vt['id'])
+        vol_remove = testutils.create_volume(self.ctxt, display_name='WTF64',
+                                             volume_type_id=self.vt['id'])
 
         model_update, add_model_update, remove_model_update = (
             p.update_group({}, group_obj, [vol_add], [vol_remove]))
@@ -2272,7 +2292,8 @@ class XIVProxyTest(test.TestCase):
             'bla', 'bla', ElementTree.Element('bla'))
 
         group_obj = self._create_test_group()
-        vol_add = testutils.create_volume(self.ctxt, display_name='WTF32')
+        vol_add = testutils.create_volume(self.ctxt, display_name='WTF32',
+                                          volume_type_id=self.vt['id'])
 
         ex = getattr(p, "_get_exception")()
         self.assertRaises(ex, p.update_group, {}, group_obj, [vol_add], [])
@@ -2293,7 +2314,8 @@ class XIVProxyTest(test.TestCase):
             'bla', 'bla', ElementTree.Element('bla'))
 
         group_obj = self._create_test_group()
-        vol_remove = testutils.create_volume(self.ctxt)
+        vol_remove = testutils.create_volume(self.ctxt,
+                                             volume_type_id=self.vt['id'])
 
         ex = getattr(p, "_get_exception")()
         self.assertRaises(ex, p.update_group, {},
@@ -2316,7 +2338,8 @@ class XIVProxyTest(test.TestCase):
                 'bla', 'bla', ElementTree.Element('bla')))
 
         group_obj = self._create_test_group()
-        vol_remove = testutils.create_volume(self.ctxt)
+        vol_remove = testutils.create_volume(self.ctxt,
+                                             volume_type_id=self.vt['id'])
 
         model_update, add_model_update, remove_model_update = (
             p.update_group({}, group_obj, [], [vol_remove]))
@@ -2548,9 +2571,11 @@ class XIVProxyTest(test.TestCase):
             driver)
 
         vol_src = testutils.create_volume(self.ctxt, display_name='bla',
-                                          size=17)
+                                          size=17,
+                                          volume_type_id=self.vt['id'])
         vol_trg = testutils.create_volume(self.ctxt, display_name='bla',
-                                          size=17)
+                                          size=17,
+                                          volume_type_id=self.vt['id'])
 
         p.ibm_storage_cli = mock.MagicMock()
         p._cg_name_from_volume = mock.MagicMock(return_value="cg")
@@ -2586,7 +2611,8 @@ class XIVProxyTest(test.TestCase):
 
         xiv_replication.VolumeReplication = mock.MagicMock()
         grp = testutils.create_group(self.ctxt, name='bla', group_type_id='1')
-        volume = testutils.create_volume(self.ctxt, display_name='bla')
+        volume = testutils.create_volume(self.ctxt, display_name='bla',
+                                         volume_type_id=self.vt['id'])
         volume.group = grp
         ret_val = p.handle_created_vol_properties({'enabled': True}, volume)
 

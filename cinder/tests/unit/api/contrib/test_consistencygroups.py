@@ -50,6 +50,12 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                            is_admin=True)
         self.user_ctxt = context.RequestContext(
             fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+        self.admin_ctxt = context.get_admin_context()
+        db.volume_type_create(self.admin_ctxt,
+                              v2_fakes.fake_default_type_get(
+                                  fake.VOLUME_TYPE2_ID))
+        self.vol_type = db.volume_type_get_by_name(self.admin_ctxt,
+                                                   'vol_type_name')
 
     def _create_consistencygroup(
             self,
@@ -1195,11 +1201,12 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
     def test_create_consistencygroup_from_src_cg(self, mock_validate):
+
         self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
 
         source_cg = utils.create_group(
             self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
-            volume_type_ids=[fake.VOLUME_TYPE_ID],)
+            volume_type_ids=[self.vol_type['id']],)
 
         volume_id = utils.create_volume(
             self.ctxt,
@@ -1531,14 +1538,16 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                        side_effect=exception.CinderException(
                            'Create volume failed.'))
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_type_get')
     def test_create_consistencygroup_from_src_cg_create_volume_failed(
-            self, mock_validate, mock_create):
+            self, mock_validate, mock_create, mock_vol_type_get):
         source_cg = utils.create_group(
             self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
             volume_type_ids=[fake.VOLUME_TYPE_ID],)
         volume_id = utils.create_volume(
             self.ctxt,
-            group_id=source_cg.id)['id']
+            group_id=source_cg.id,
+            volume_type_id=fake.VOLUME_TYPE_ID)['id']
         mock_validate.return_value = True
 
         test_cg_name = 'test cg'

@@ -18,6 +18,7 @@ Tests for volume transfer code.
 """
 import ddt
 
+import mock
 from oslo_serialization import jsonutils
 from six.moves import http_client
 import webob
@@ -28,8 +29,10 @@ from cinder.api.v3 import volume_transfer as volume_transfer_v3
 from cinder import context
 from cinder import db
 from cinder.objects import fields
+from cinder import quota
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 import cinder.transfer
 
@@ -77,6 +80,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         vol['display_description'] = display_description
         vol['attach_status'] = attach_status
         vol['availability_zone'] = 'fake_zone'
+        vol['volume_type_id'] = fake.VOLUME_TYPE_ID
         volume_id = db.volume_create(context.get_admin_context(), vol)['id']
         self.addCleanup(db.volume_destroy, context.get_admin_context(),
                         volume_id)
@@ -324,7 +328,9 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(db.volume_get(context.get_admin_context(),
                          volume_id)['status'], 'available')
 
-    def test_accept_transfer_volume_id_specified(self):
+    @mock.patch.object(quota.QUOTAS, 'reserve')
+    @mock.patch.object(db, 'volume_type_get', v2_fakes.fake_volume_type_get)
+    def test_accept_transfer_volume_id_specified(self, type_get):
         volume_id = self._create_volume()
         transfer = self.volume_transfer_api.create(context.get_admin_context(),
                                                    volume_id, 'test_transfer')

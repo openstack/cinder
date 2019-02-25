@@ -46,6 +46,7 @@ from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import utils as test_utils
 from cinder.volume import api as volume_api
 from cinder.volume import api as vol_get
+from cinder.volume import volume_types
 
 DEFAULT_AZ = "zone1:host1"
 
@@ -121,12 +122,16 @@ class VolumeApiTest(test.TestCase):
     def _create_volume_with_glance_metadata(self):
         vol1 = db.volume_create(self.ctxt, {'display_name': 'test1',
                                             'project_id':
-                                            self.ctxt.project_id})
+                                            self.ctxt.project_id,
+                                            'volume_type_id':
+                                                fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(self.ctxt, vol1.id, 'image_name',
                                          'imageTestOne')
         vol2 = db.volume_create(self.ctxt, {'display_name': 'test2',
                                             'project_id':
-                                            self.ctxt.project_id})
+                                            self.ctxt.project_id,
+                                            'volume_type_id':
+                                                fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(self.ctxt, vol2.id, 'image_name',
                                          'imageTestTwo')
         db.volume_glance_metadata_create(self.ctxt, vol2.id, 'disk_format',
@@ -138,23 +143,30 @@ class VolumeApiTest(test.TestCase):
                                             'project_id':
                                             self.ctxt.project_id,
                                             'group_id':
-                                            fake.GROUP_ID})
+                                            fake.GROUP_ID,
+                                            'volume_type_id':
+                                                fake.VOLUME_TYPE_ID})
         vol2 = db.volume_create(self.ctxt, {'display_name': 'test2',
                                             'project_id':
                                             self.ctxt.project_id,
                                             'group_id':
-                                            fake.GROUP2_ID})
+                                            fake.GROUP2_ID,
+                                            'volume_type_id':
+                                                fake.VOLUME_TYPE_ID})
         return [vol1, vol2]
 
     def _create_multiple_volumes_with_different_project(self):
         # Create volumes in project 1
         db.volume_create(self.ctxt, {'display_name': 'test1',
-                                     'project_id': fake.PROJECT_ID})
+                                     'project_id': fake.PROJECT_ID,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_create(self.ctxt, {'display_name': 'test2',
-                                     'project_id': fake.PROJECT_ID})
+                                     'project_id': fake.PROJECT_ID,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
         # Create volume in project 2
         db.volume_create(self.ctxt, {'display_name': 'test3',
-                                     'project_id': fake.PROJECT2_ID})
+                                     'project_id': fake.PROJECT2_ID,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID})
 
     def test_volume_index_filter_by_glance_metadata(self):
         vols = self._create_volume_with_glance_metadata()
@@ -224,6 +236,8 @@ class VolumeApiTest(test.TestCase):
     def test_list_volume_with_count_param(self, method, display_param):
         self._create_multiple_volumes_with_different_project()
 
+        self.mock_object(ViewBuilder, '_get_volume_type',
+                         v2_fakes.fake_volume_type_name_get)
         is_detail = True if 'detail' in method else False
         show_count = strutils.bool_from_string(display_param, strict=True)
         # Request with 'with_count' and 'limit'
@@ -322,7 +336,11 @@ class VolumeApiTest(test.TestCase):
         create.assert_called_once_with(
             self.controller.volume_api, context,
             vol['size'], v2_fakes.DEFAULT_VOL_NAME,
-            v2_fakes.DEFAULT_VOL_DESCRIPTION, **kwargs)
+            v2_fakes.DEFAULT_VOL_DESCRIPTION,
+            volume_type=objects.VolumeType.get_by_name_or_id(
+                context,
+                volume_types.get_default_volume_type()['id']),
+            **kwargs)
 
     def test_volumes_summary_in_unsupport_version(self):
         """Function call to test summary volumes API in unsupported version"""
@@ -620,6 +638,7 @@ class VolumeApiTest(test.TestCase):
         create.side_effect = v2_fakes.fake_volume_api_create
         get_snapshot.side_effect = v2_fakes.fake_snapshot_get
         volume_type_get.side_effect = v2_fakes.fake_volume_type_get
+
         fake_group = {
             'id': fake.GROUP_ID,
             'group_type_id': fake.GROUP_TYPE_ID,
@@ -647,10 +666,14 @@ class VolumeApiTest(test.TestCase):
             v2_fakes.fake_snapshot(snapshot_id),
             test_group=fake_group,
             req_version=req.api_version_request)
-        create.assert_called_once_with(self.controller.volume_api, context,
-                                       vol['size'], v2_fakes.DEFAULT_VOL_NAME,
-                                       v2_fakes.DEFAULT_VOL_DESCRIPTION,
-                                       **kwargs)
+        create.assert_called_once_with(
+            self.controller.volume_api, context,
+            vol['size'], v2_fakes.DEFAULT_VOL_NAME,
+            v2_fakes.DEFAULT_VOL_DESCRIPTION,
+            volume_type=objects.VolumeType.get_by_name_or_id(
+                context,
+                volume_types.get_default_volume_type()['id']),
+            **kwargs)
 
     @ddt.data(mv.VOLUME_CREATE_FROM_BACKUP,
               mv.get_prior_version(mv.VOLUME_CREATE_FROM_BACKUP))
@@ -685,11 +708,15 @@ class VolumeApiTest(test.TestCase):
                                                context, backup_id)
             kwargs.update({'backup': v2_fakes.fake_backup_get(None, context,
                                                               backup_id)})
-        create.assert_called_once_with(self.controller.volume_api, context,
-                                       vol['size'],
-                                       v2_fakes.DEFAULT_VOL_NAME,
-                                       v2_fakes.DEFAULT_VOL_DESCRIPTION,
-                                       **kwargs)
+        create.assert_called_once_with(
+            self.controller.volume_api, context,
+            vol['size'],
+            v2_fakes.DEFAULT_VOL_NAME,
+            v2_fakes.DEFAULT_VOL_DESCRIPTION,
+            volume_type=objects.VolumeType.get_by_name_or_id(
+                context,
+                volume_types.get_default_volume_type()['id']),
+            **kwargs)
 
     def test_volume_creation_with_scheduler_hints(self):
         vol = self._vol_in_request_body(availability_zone=None)

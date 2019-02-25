@@ -68,7 +68,8 @@ class PurgeDeletedTest(test.TestCase):
             self.uuidstrs.append(uuid.uuid4().hex)
         # Add 6 rows to table
         for uuidstr in self.uuidstrs:
-            ins_stmt = self.volumes.insert().values(id=uuidstr)
+            ins_stmt = self.volumes.insert().values(id=uuidstr,
+                                                    volume_type_id=uuidstr)
             self.conn.execute(ins_stmt)
             ins_stmt = self.vm.insert().values(volume_id=uuidstr)
             self.conn.execute(ins_stmt)
@@ -83,7 +84,8 @@ class PurgeDeletedTest(test.TestCase):
             self.conn.execute(ins_stmt)
 
             ins_stmt = self.snapshots.insert().values(
-                id=uuidstr, volume_id=uuidstr)
+                id=uuidstr, volume_id=uuidstr,
+                volume_type_id=uuidstr)
             self.conn.execute(ins_stmt)
             ins_stmt = self.sm.insert().values(snapshot_id=uuidstr)
             self.conn.execute(ins_stmt)
@@ -281,7 +283,7 @@ class PurgeDeletedTest(test.TestCase):
         # Verify that we only have 1 rows now
         self.assertEqual(1, vol_rows)
         self.assertEqual(1, vol_meta_rows)
-        self.assertEqual(2, vol_type_rows)
+        self.assertEqual(3, vol_type_rows)
         self.assertEqual(1, vol_type_proj_rows)
         self.assertEqual(1, snap_rows)
         self.assertEqual(1, snap_meta_rows)
@@ -314,7 +316,7 @@ class PurgeDeletedTest(test.TestCase):
         # Verify that we only deleted 2
         self.assertEqual(4, vol_rows)
         self.assertEqual(4, vol_meta_rows)
-        self.assertEqual(8, vol_type_rows)
+        self.assertEqual(9, vol_type_rows)
         self.assertEqual(4, vol_type_proj_rows)
         self.assertEqual(4, snap_rows)
         self.assertEqual(4, snap_meta_rows)
@@ -347,7 +349,7 @@ class PurgeDeletedTest(test.TestCase):
         # Verify that we only have 2 rows now
         self.assertEqual(2, vol_rows)
         self.assertEqual(2, vol_meta_rows)
-        self.assertEqual(4, vol_type_rows)
+        self.assertEqual(5, vol_type_rows)
         self.assertEqual(2, vol_type_proj_rows)
         self.assertEqual(2, snap_rows)
         self.assertEqual(2, snap_meta_rows)
@@ -379,7 +381,8 @@ class PurgeDeletedTest(test.TestCase):
         # add new entry in volume and volume_admin_metadata for
         # integrity check
         uuid_str = uuid.uuid4().hex
-        ins_stmt = self.volumes.insert().values(id=uuid_str)
+        ins_stmt = self.volumes.insert().values(id=uuid_str,
+                                                volume_type_id=uuid_str)
         self.conn.execute(ins_stmt)
         ins_stmt = self.vm.insert().values(volume_id=uuid_str)
         self.conn.execute(ins_stmt)

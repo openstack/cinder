@@ -90,7 +90,7 @@ class SnapshotApiTest(test.TestCase):
         self.ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
     def test_snapshot_create(self):
-        volume = utils.create_volume(self.ctx)
+        volume = utils.create_volume(self.ctx, volume_type_id=None)
         snapshot_name = 'Snapshot Test Name'
         snapshot_description = 'Snapshot Test Desc'
         snapshot = {
@@ -113,7 +113,7 @@ class SnapshotApiTest(test.TestCase):
 
     def test_snapshot_create_with_null_validate(self):
 
-        volume = utils.create_volume(self.ctx)
+        volume = utils.create_volume(self.ctx, volume_type_id=None)
         snapshot = {
             "volume_id": volume.id,
             "force": False,
@@ -132,7 +132,8 @@ class SnapshotApiTest(test.TestCase):
 
     @ddt.data(True, 'y', 'true', 'yes', '1', 'on')
     def test_snapshot_create_force(self, force_param):
-        volume = utils.create_volume(self.ctx, status='in-use')
+        volume = utils.create_volume(self.ctx, status='in-use',
+                                     volume_type_id=None)
         snapshot_name = 'Snapshot Test Name'
         snapshot_description = 'Snapshot Test Desc'
         snapshot = {
@@ -156,7 +157,8 @@ class SnapshotApiTest(test.TestCase):
 
     @ddt.data(False, 'n', 'false', 'No', '0', 'off')
     def test_snapshot_create_force_failure(self, force_param):
-        volume = utils.create_volume(self.ctx, status='in-use')
+        volume = utils.create_volume(self.ctx, status='in-use',
+                                     volume_type_id=None)
         snapshot_name = 'Snapshot Test Name'
         snapshot_description = 'Snapshot Test Desc'
         snapshot = {
@@ -177,7 +179,8 @@ class SnapshotApiTest(test.TestCase):
     @ddt.data("**&&^^%%$$##@@", '-1', 2, '01', 'falSE', 0, 'trUE', 1,
               "1         ")
     def test_snapshot_create_invalid_force_param(self, force_param):
-        volume = utils.create_volume(self.ctx, status='available')
+        volume = utils.create_volume(self.ctx, status='available',
+                                     volume_type_id=None)
         snapshot_name = 'Snapshot Test Name'
         snapshot_description = 'Snapshot Test Desc'
 
@@ -217,7 +220,7 @@ class SnapshotApiTest(test.TestCase):
               {"snapshot": {"description": " sample description ",
                             "name": "  test name  "}})
     def test_snapshot_create_with_leading_trailing_spaces(self, body):
-        volume = utils.create_volume(self.ctx)
+        volume = utils.create_volume(self.ctx, volume_type_id=None)
         body['snapshot']['volume_id'] = volume.id
         req = fakes.HTTPRequest.blank('/v2/snapshots')
         resp_dict = self.controller.create(req, body=body)
@@ -609,7 +612,7 @@ class SnapshotApiTest(test.TestCase):
             self.assertNotIn('snapshots_links', res)
 
     def _create_db_snapshots(self, num_snaps):
-        volume = utils.create_volume(self.ctx)
+        volume = utils.create_volume(self.ctx, volume_type_id=None)
         snaps = [utils.create_snapshot(self.ctx,
                                        volume.id,
                                        display_name='snap' + str(i))

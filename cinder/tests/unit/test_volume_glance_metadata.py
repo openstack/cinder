@@ -42,8 +42,10 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
 
     def test_vol_update_glance_metadata(self):
         ctxt = context.get_admin_context()
-        db.volume_create(ctxt, {'id': fake.VOLUME_ID})
-        db.volume_create(ctxt, {'id': fake.VOLUME2_ID})
+        db.volume_create(ctxt, {'id': fake.VOLUME_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_create(ctxt, {'id': fake.VOLUME2_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(ctxt, fake.VOLUME_ID, 'key1',
                                          'value1')
         db.volume_glance_metadata_create(ctxt, fake.VOLUME2_ID, 'key1',
@@ -88,9 +90,12 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
 
     def test_vols_get_glance_metadata(self):
         ctxt = context.get_admin_context()
-        db.volume_create(ctxt, {'id': fake.VOLUME_ID})
-        db.volume_create(ctxt, {'id': fake.VOLUME2_ID})
-        db.volume_create(ctxt, {'id': '3'})
+        db.volume_create(ctxt, {'id': fake.VOLUME_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_create(ctxt, {'id': fake.VOLUME2_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_create(ctxt, {'id': '3',
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(ctxt, fake.VOLUME_ID, 'key1',
                                          'value1')
         db.volume_glance_metadata_create(ctxt, fake.VOLUME2_ID, 'key2',
@@ -114,7 +119,8 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
 
     def test_vol_delete_glance_metadata(self):
         ctxt = context.get_admin_context()
-        db.volume_create(ctxt, {'id': fake.VOLUME_ID})
+        db.volume_create(ctxt, {'id': fake.VOLUME_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_delete_by_volume(ctxt, fake.VOLUME_ID)
         db.volume_glance_metadata_create(ctxt, fake.VOLUME_ID, 'key1',
                                          'value1')
@@ -124,7 +130,8 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
 
     def test_vol_glance_metadata_copy_to_snapshot(self):
         ctxt = context.get_admin_context()
-        db.volume_create(ctxt, {'id': fake.VOLUME_ID})
+        db.volume_create(ctxt, {'id': fake.VOLUME_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         snap = objects.Snapshot(ctxt, volume_id=fake.VOLUME_ID)
         snap.create()
         db.volume_glance_metadata_create(ctxt, fake.VOLUME_ID, 'key1',
@@ -143,9 +150,11 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
 
     def test_vol_glance_metadata_copy_from_volume_to_volume(self):
         ctxt = context.get_admin_context()
-        db.volume_create(ctxt, {'id': fake.VOLUME_ID})
+        db.volume_create(ctxt, {'id': fake.VOLUME_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_create(ctxt, {'id': fake.VOLUME2_ID,
-                                'source_volid': fake.VOLUME_ID})
+                                'source_volid': fake.VOLUME_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(ctxt, fake.VOLUME_ID, 'key1',
                                          'value1')
         db.volume_glance_metadata_copy_from_volume_to_volume(ctxt,
@@ -160,8 +169,10 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
                 self.assertEqual(value, meta[key])
 
     def test_volume_glance_metadata_copy_to_volume(self):
-        vol1 = db.volume_create(self.ctxt, {})
-        vol2 = db.volume_create(self.ctxt, {})
+        vol1 = db.volume_create(self.ctxt,
+                                {'volume_type_id': fake.VOLUME_TYPE_ID})
+        vol2 = db.volume_create(self.ctxt,
+                                {'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(self.ctxt, vol1['id'], 'm1', 'v1')
         snapshot = objects.Snapshot(self.ctxt, volume_id=vol1['id'])
         snapshot.create()
@@ -174,7 +185,8 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
         self.assertEqual({'m1': 'v1'}, metadata)
 
     def test_volume_snapshot_glance_metadata_get_nonexistent(self):
-        vol = db.volume_create(self.ctxt, {})
+        vol = db.volume_create(self.ctxt,
+                               {'volume_type_id': fake.VOLUME_TYPE_ID})
         snapshot = objects.Snapshot(self.ctxt, volume_id=vol['id'])
         snapshot.create()
         self.assertRaises(exception.GlanceMetadataNotFound,
