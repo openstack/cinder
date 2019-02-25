@@ -72,9 +72,12 @@ class VNXDriver(driver.ManageableVD,
         9.0.0 - Use asynchronous migration for cloning
         9.0.1 - Extend SMP size before aync migration when cloning from an
                 image cache volume
+        9.0.2 - Fix bug https://bugs.launchpad.net/cinder/+bug/1817385 to
+                make sure sg can be created again after it was destroyed
+                under `destroy_empty_stroage_group` setting to `True`
     """
 
-    VERSION = '09.00.01'
+    VERSION = '09.00.02'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_VNX_CI"
