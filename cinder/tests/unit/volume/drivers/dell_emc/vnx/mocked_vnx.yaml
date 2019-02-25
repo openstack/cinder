@@ -2052,6 +2052,8 @@ test_terminate_connection_cleanup_remove_sg:
       delete:
       disconnect_host:
       get_alu_hlu_map: {}
+      update:
+      with_poll: _context
 
 test_terminate_connection_cleanup_sg_absent:
   sg:
@@ -2065,6 +2067,8 @@ test_terminate_connection_cleanup_deregister:
       delete:
       disconnect_host:
       get_alu_hlu_map: {}
+      update:
+      with_poll: _context
   vnx:
     _methods:
       delete_hba:
