@@ -109,7 +109,17 @@ VNX_OPTS = [
                 default=False,
                 help='Force LUN creation even if '
                 'the full threshold of pool is reached. '
-                'By default, the value is False.')
+                'By default, the value is False.'),
+    cfg.BoolOpt('vnx_async_migrate',
+                default=True,
+                help='Always use asynchronous migration during volume cloning '
+                     'and creating from snapshot. As described in '
+                     'configuration doc, async migration has some '
+                     'constraints. Besides using metadata, customers could '
+                     'use this option to disable async migration. Be aware '
+                     'that `async_migrate` in metadata overrides this '
+                     'option when both are set. By default, the value is True.'
+                )
 ]
 
 CONF.register_opts(VNX_OPTS, group=configuration.SHARED_CONF_GROUP)

@@ -205,6 +205,18 @@ class TestUtils(test_base.TestCase):
                          async_migrate)
         self.assertEqual(provision.name, 'THICK')
 
+    @res_mock.mock_driver_input
+    def test_calc_migrate_and_provision_default(self, mocked):
+        volume = mocked['volume']
+        volume.display_name = 'volume-ca86b9a0-d0d5-4267-8cd5-c62274056cc0'
+        async_migrate, provision = vnx_utils.calc_migrate_and_provision(
+            volume, default_async_migrate=False)
+        self.assertFalse(async_migrate)
+        self.assertEqual(provision.name, 'THICK')
+        async_migrate, provision = vnx_utils.calc_migrate_and_provision(
+            volume, default_async_migrate=True)
+        self.assertTrue(async_migrate)
+
     @ut_utils.patch_extra_specs({})
     @res_mock.mock_driver_input
     def test_get_backend_qos_specs(self, cinder_input):

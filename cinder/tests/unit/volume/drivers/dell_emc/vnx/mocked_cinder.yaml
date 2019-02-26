@@ -573,6 +573,9 @@ test_calc_migrate_and_provision_image_cache:
 test_calc_migrate_and_provision:
   volume: *volume_base
 
+test_calc_migrate_and_provision_default:
+  volume: *volume_base
+
 test_get_backend_qos_specs:
   volume:
     _type: 'volume'

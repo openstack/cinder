@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Dell EMC VNX Driver: Fix `bug 1796825
+    <https://bugs.launchpad.net/cinder/+bug/1796825>`__, adding an option named
+    `vnx_async_migrate` to accept the default setting for async migration.

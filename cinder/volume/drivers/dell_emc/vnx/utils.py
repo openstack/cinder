@@ -257,7 +257,7 @@ def is_snapcopy_enabled(volume):
     return 'snapcopy' in meta and meta['snapcopy'].lower() == 'true'
 
 
-def is_async_migrate_enabled(volume):
+def is_async_migrate_enabled(volume, default=True):
     extra_specs = common.ExtraSpecs.from_volume(volume)
     if extra_specs.is_replication_enabled:
         # For replication-enabled volume, we should not use the async-cloned
@@ -266,8 +266,7 @@ def is_async_migrate_enabled(volume):
         return False
     meta = get_metadata(volume)
     if 'async_migrate' not in meta:
-        # Asynchronous migration is the default behavior now
-        return True
+        return default
     return 'async_migrate' in meta and meta['async_migrate'].lower() == 'true'
 
 
@@ -441,7 +440,7 @@ def is_image_cache_volume(volume):
     return False
 
 
-def calc_migrate_and_provision(volume):
+def calc_migrate_and_provision(volume, default_async_migrate=True):
     """Returns a tuple of async migrate and provision type.
 
     The first element is the flag whether to enable async migrate,
@@ -451,7 +450,8 @@ def calc_migrate_and_provision(volume):
         return False, storops.VNXProvisionEnum.THIN
     else:
         specs = common.ExtraSpecs.from_volume(volume)
-        return is_async_migrate_enabled(volume), specs.provision
+        return (is_async_migrate_enabled(volume, default_async_migrate),
+                specs.provision)
 
 
 def get_backend_qos_specs(volume):
