@@ -223,3 +223,8 @@ additional-builtins=_
 # List of module names for which member attributes should not be checked
 ignored-modules=six.moves,_MovedItems
 
+# This is for cinder.objects.*, and requests.packages.*, but due to
+# https://github.com/PyCQA/pylint/issues/2498
+# it doesn't seem that generated-members can be specified correctly.
+# Clean this up later when pylint works correctly.
+generated-members=objects,requests
