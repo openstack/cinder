@@ -193,6 +193,21 @@ class UnityUtilsTest(unittest.TestCase):
         volume = test_adapter.MockOSResource(host='host@backend#pool_name')
         self.assertEqual('pool_name', utils.get_pool_name(volume))
 
+    def test_get_pool_name_from_host(self):
+        host = {'host': 'host@backend#pool_name'}
+        ret = utils.get_pool_name_from_host(host)
+        self.assertEqual('pool_name', ret)
+
+    def get_backend_name_from_volume(self):
+        volume = test_adapter.MockOSResource(host='host@backend#pool_name')
+        ret = utils.get_backend_name_from_volume(volume)
+        self.assertEqual('host@backend', ret)
+
+    def get_backend_name_from_host(self):
+        host = {'host': 'host@backend#pool_name'}
+        ret = utils.get_backend_name_from_volume(host)
+        self.assertEqual('host@backend', ret)
+
     def test_ignore_exception(self):
         class IgnoredException(Exception):
             pass
