@@ -14,6 +14,8 @@
 #    under the License.
 
 from cinder.api import common
+from cinder.api import microversions as mv
+from cinder.policies import group_snapshots as policy
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -47,7 +49,7 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, group_snapshot):
         """Detailed view of a single group_snapshot."""
-        return {
+        group_snapshot_ref = {
             'group_snapshot': {
                 'id': group_snapshot.id,
                 'group_id': group_snapshot.group_id,
@@ -58,6 +60,16 @@ class ViewBuilder(common.ViewBuilder):
                 'description': group_snapshot.description
             }
         }
+        req_version = request.api_version_request
+        context = request.environ['cinder.context']
+
+        if req_version.matches(mv.GROUP_GROUPSNAPSHOT_PROJECT_ID, None):
+            if context.authorize(policy.GROUP_SNAPSHOT_ATTRIBUTES_POLICY,
+                                 fatal=False):
+                group_snapshot_ref['group_snapshot']['project_id'] = (
+                    group_snapshot.project_id)
+
+        return group_snapshot_ref
 
     def _list_view(self, func, request, group_snapshots):
         """Provide a view for a list of group_snapshots."""

@@ -297,6 +297,43 @@ class GroupSnapshotsAPITestCase(test.TestCase):
                           self.controller.show,
                           req, fake.WILL_NOT_BE_FOUND_ID)
 
+    def test_show_group_snapshot_with_project_id(self):
+        group_snapshot = utils.create_group_snapshot(
+            self.context, group_id=self.group.id)
+        req = fakes.HTTPRequest.blank(
+            '/v3/%s/group_snapshots/%s' % (fake.PROJECT_ID,
+                                           group_snapshot.id),
+            version=mv.GROUP_GROUPSNAPSHOT_PROJECT_ID,
+            use_admin_context=True)
+        res_dict = self.controller.show(req, group_snapshot.id)
+
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual('test_group_snapshot',
+                         res_dict['group_snapshot']['name'])
+        self.assertEqual(fake.PROJECT_ID,
+                         res_dict['group_snapshot']['project_id'])
+
+        group_snapshot.destroy()
+
+    def test_show_group_snapshot_without_project_id(self):
+        group_snapshot = utils.create_group_snapshot(
+            self.context, group_id=self.group.id)
+        # using mv.TRANSFER_WITH_HISTORY (3.57) to test the
+        # project_id field is not in response before mv 3.58
+        req = fakes.HTTPRequest.blank(
+            '/v3/%s/group_snapshots/%s' % (fake.PROJECT_ID,
+                                           group_snapshot.id),
+            version=mv.TRANSFER_WITH_HISTORY,
+            use_admin_context=True)
+        res_dict = self.controller.show(req, group_snapshot.id)
+
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual('test_group_snapshot',
+                         res_dict['group_snapshot']['name'])
+        self.assertNotIn('project_id', res_dict['group_snapshot'])
+
+        group_snapshot.destroy()
+
     @ddt.data(True, False)
     def test_list_group_snapshots_json(self, is_detail):
         if is_detail:
@@ -323,6 +360,29 @@ class GroupSnapshotsAPITestCase(test.TestCase):
             else:
                 self.assertNotIn('description',
                                  res_dict['group_snapshots'][2 - index].keys())
+
+    @ddt.data(True, False)
+    def test_list_group_snapshots_with_project_id(self, is_detail):
+        if is_detail:
+            request_url = '/v3/%s/group_snapshots/detail'
+        else:
+            request_url = '/v3/%s/group_snapshots'
+        req = fakes.HTTPRequest.blank(
+            request_url % fake.PROJECT_ID,
+            version=mv.GROUP_GROUPSNAPSHOT_PROJECT_ID,
+            use_admin_context=True)
+        if is_detail:
+            res_dict = self.controller.detail(req)
+        else:
+            res_dict = self.controller.index(req)
+
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual(3, len(res_dict['group_snapshots']))
+        for group in res_dict['group_snapshots']:
+            if is_detail:
+                self.assertIsNotNone(group['project_id'])
+            else:
+                self.assertNotIn('project_id', group)
 
     @mock.patch('cinder.db.volume_type_get')
     @mock.patch('cinder.quota.VolumeTypeQuotaEngine.reserve')

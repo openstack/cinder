@@ -455,8 +455,9 @@ related api (create/show/list detail transfer APIs) responses.
 
 3.58
 ----
-Add ``project_id`` attribute to response body of list groups with detail and
-show group detail APIs.
+Add ``project_id`` attribute to response body of list groups with detail,
+list group snapshots with detail, show group detail and show group snapshot
+detail APIs.
 
 3.59
 ----

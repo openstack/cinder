@@ -23,6 +23,7 @@ DELETE_POLICY = 'group:delete_group_snapshot'
 UPDATE_POLICY = 'group:update_group_snapshot'
 GET_POLICY = 'group:get_group_snapshot'
 GET_ALL_POLICY = 'group:get_all_group_snapshots'
+GROUP_SNAPSHOT_ATTRIBUTES_POLICY = 'group:group_snapshot_project_attribute'
 
 
 group_snapshots_policies = [
@@ -78,6 +79,21 @@ group_snapshots_policies = [
             {
                 'method': 'PUT',
                 'path': '/group_snapshots/{group_snapshot_id}'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=GROUP_SNAPSHOT_ATTRIBUTES_POLICY,
+        check_str=base.RULE_ADMIN_API,
+        description="List group snapshots or show group "
+                    "snapshot with project attributes.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/group_snapshots/{group_snapshot_id}'
+            },
+            {
+                'method': 'GET',
+                'path': '/group_snapshots/detail'
             }
         ]),
 ]

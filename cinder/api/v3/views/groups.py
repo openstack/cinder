@@ -80,7 +80,7 @@ class ViewBuilder(common.ViewBuilder):
         if req_version.matches(mv.GROUP_REPLICATION, None):
             group_ref['group']['replication_status'] = group.replication_status
 
-        if req_version.matches(mv.GROUP_PROJECT_ID, None):
+        if req_version.matches(mv.GROUP_GROUPSNAPSHOT_PROJECT_ID, None):
             if context.authorize(policy.GROUP_ATTRIBUTES_POLICY, fatal=False):
                 group_ref['group']['project_id'] = group.project_id
 
