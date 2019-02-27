@@ -46,6 +46,25 @@ class VolumeTypeTestCase(test.TestCase):
                                     visible="True")
         self.vol_type1_description = self.vol_type1_name + '_desc'
 
+    def test_volume_type_destroy_with_encryption(self):
+        volume_type = volume_types.create(self.ctxt, "type1")
+        volume_type_id = volume_type.get('id')
+
+        encryption = {
+            'control_location': 'front-end',
+            'provider': 'fake_provider',
+        }
+        db_api.volume_type_encryption_create(self.ctxt, volume_type_id,
+                                             encryption)
+        ret = volume_types.get_volume_type_encryption(self.ctxt,
+                                                      volume_type_id)
+        self.assertIsNotNone(ret)
+
+        volume_types.destroy(self.ctxt, volume_type_id)
+        ret = volume_types.get_volume_type_encryption(self.ctxt,
+                                                      volume_type_id)
+        self.assertIsNone(ret)
+
     def test_volume_type_create_then_destroy(self):
         """Ensure volume types can be created and deleted."""
         project_id = fake.PROJECT_ID
