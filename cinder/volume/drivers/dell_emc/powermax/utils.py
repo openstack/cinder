@@ -887,3 +887,16 @@ class PowerMaxUtils(object):
             return False
 
         return True
+
+    @staticmethod
+    def get_volume_attached_hostname(device_info):
+        """Parse a hostname from a storage group ID.
+
+        :param device_info: the device info dict
+        :return: str -- the attached hostname
+        """
+        try:
+            sg_id = device_info.get("storageGroupId")[0]
+            return sg_id.split('-')[1]
+        except IndexError:
+            return None

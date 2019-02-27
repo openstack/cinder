@@ -1641,18 +1641,19 @@ class PowerMaxCommon(object):
         return volume_name
 
     def _create_volume(
-            self, volume_name, volume_size, extra_specs):
+            self, volume_name, volume_size, extra_specs, in_use=False):
         """Create a volume.
 
         :param volume_name: the volume name
         :param volume_size: the volume size
         :param extra_specs: extra specifications
-        :returns: dict -- volume_dict
+        :param in_use: if the volume is in 'in-use' state
+        :return: volume_dict --dict
         :raises: VolumeBackendAPIException:
         """
         array = extra_specs[utils.ARRAY]
-        nextGen = self.rest.is_next_gen_array(array)
-        if nextGen:
+        next_gen = self.rest.is_next_gen_array(array)
+        if next_gen:
             extra_specs[utils.WORKLOAD] = 'NONE'
         is_valid_slo, is_valid_workload = self.provision.verify_slo_workload(
             array, extra_specs[utils.SLO],
@@ -1678,10 +1679,17 @@ class PowerMaxCommon(object):
         do_disable_compression = self.utils.is_compression_disabled(
             extra_specs)
 
+        # If the volume is in-use, set replication config for correct SG
+        # creation
+        if in_use and self.utils.is_replication_enabled(extra_specs):
+            is_re, rep_mode = True, extra_specs['rep_mode']
+        else:
+            is_re, rep_mode = False, None
+
         storagegroup_name = self.masking.get_or_create_default_storage_group(
             array, extra_specs[utils.SRP], extra_specs[utils.SLO],
             extra_specs[utils.WORKLOAD], extra_specs,
-            do_disable_compression)
+            do_disable_compression, is_re, rep_mode)
         try:
             volume_dict = self.provision.create_volume_from_sg(
                 array, volume_name, storagegroup_name,
@@ -2787,24 +2795,11 @@ class PowerMaxCommon(object):
                  {'volume': volume_name})
 
         extra_specs = self._initial_setup(volume)
-
         device_id = self._find_device_on_array(volume, extra_specs)
         if device_id is None:
             LOG.error("Volume %(name)s not found on the array. "
                       "No volume to migrate using retype.",
                       {'name': volume_name})
-            return False
-
-        # If the volume is attached, we can't support retype.
-        # Need to explicitly check this after the code change,
-        # as 'move' functionality will cause the volume to appear
-        # as successfully retyped, but will remove it from the masking view.
-        if volume.attach_status == 'attached':
-            LOG.error(
-                "Volume %(name)s is not suitable for storage "
-                "assisted migration using retype "
-                "as it is attached.",
-                {'name': volume_name})
             return False
 
         return self._slo_workload_migration(device_id, volume, host,
@@ -2883,7 +2878,7 @@ class PowerMaxCommon(object):
         :param extra_specs: the extra specifications
         :returns: bool
         """
-        model_update, rep_mode, move_target = None, None, False
+        model_update, rep_mode, move_target, success = None, None, False, False
         target_extra_specs = new_type['extra_specs']
         target_extra_specs[utils.SRP] = srp
         target_extra_specs[utils.ARRAY] = array
@@ -2893,52 +2888,92 @@ class PowerMaxCommon(object):
         target_extra_specs[utils.RETRIES] = extra_specs[utils.RETRIES]
         is_compression_disabled = self.utils.is_compression_disabled(
             target_extra_specs)
+
         if self.rep_config and self.rep_config.get('mode'):
             rep_mode = self.rep_config['mode']
             target_extra_specs[utils.REP_MODE] = rep_mode
         was_rep_enabled = self.utils.is_replication_enabled(extra_specs)
         is_rep_enabled = self.utils.is_replication_enabled(target_extra_specs)
-        if was_rep_enabled:
-            if not is_rep_enabled:
-                # Disable replication is True
-                self._remove_vol_and_cleanup_replication(
-                    array, device_id, volume_name, extra_specs, volume)
-                model_update = {'replication_status': REPLICATION_DISABLED,
-                                'replication_driver_data': None}
-            else:
-                # Ensure both source and target volumes are retyped
-                move_target = True
-        else:
-            if is_rep_enabled:
-                # Setup_volume_replication will put volume in correct sg
-                rep_status, rdf_dict, __ = self.setup_volume_replication(
-                    array, volume, device_id, target_extra_specs)
+
+        if volume.attach_status == 'attached':
+            # Scenario: Rep was enabled, target VT has rep disabled, need to
+            # disable replication
+            if was_rep_enabled and not is_rep_enabled:
+                self.cleanup_lun_replication(volume, volume_name,
+                                             device_id, extra_specs)
+                model_update = {
+                    'replication_status': REPLICATION_DISABLED,
+                    'replication_driver_data': None}
+
+            # Scenario: Rep was not enabled, target VT has rep enabled, need to
+            # enable replication
+            elif not was_rep_enabled and is_rep_enabled:
+                rep_status, rep_driver_data, rep_info_dict = (
+                    self.setup_inuse_volume_replication(
+                        array, volume, device_id, extra_specs))
                 model_update = {
                     'replication_status': rep_status,
-                    'replication_driver_data': six.text_type(rdf_dict)}
-                return True, model_update
+                    'replication_driver_data': six.text_type(rep_driver_data)}
 
-        try:
-            target_sg_name = self.masking.get_or_create_default_storage_group(
-                array, srp, target_slo, target_workload, extra_specs,
-                is_compression_disabled, is_rep_enabled, rep_mode)
-        except Exception as e:
-            LOG.error("Failed to get or create storage group. "
-                      "Exception received was %(e)s.", {'e': e})
-            return False
+            # Retype the device on the source array
+            success, target_sg_name = self._retype_inuse_volume(
+                array, srp, volume, device_id, extra_specs,
+                target_slo, target_workload, target_extra_specs,
+                is_compression_disabled)
 
-        success = self._retype_volume(
-            array, device_id, volume_name, target_sg_name,
-            volume, target_extra_specs)
-        if success and move_target:
-            success = self._retype_remote_volume(
-                array, volume, device_id, volume_name,
-                rep_mode, is_rep_enabled, target_extra_specs)
+            # If the volume was replication enabled both before and after
+            # retype, the volume needs to be retyped on the remote array also
+            if was_rep_enabled and is_rep_enabled:
+                success = self._retype_remote_volume(
+                    array, volume, device_id, volume_name,
+                    rep_mode, is_rep_enabled, target_extra_specs)
 
-        self.volume_metadata.capture_retype_info(
-            volume, device_id, array, srp, target_slo,
-            target_workload, target_sg_name, is_rep_enabled, rep_mode,
-            is_compression_disabled)
+        # Volume is not attached, retype as normal
+        elif volume.attach_status != 'attached':
+            if was_rep_enabled:
+                if not is_rep_enabled:
+                    # Disable replication is True
+                    self._remove_vol_and_cleanup_replication(
+                        array, device_id, volume_name, extra_specs, volume)
+                    model_update = {'replication_status': REPLICATION_DISABLED,
+                                    'replication_driver_data': None}
+                else:
+                    # Ensure both source and target volumes are retyped
+                    move_target = True
+            else:
+                if is_rep_enabled:
+                    # Setup_volume_replication will put volume in correct sg
+                    rep_status, rdf_dict, __ = self.setup_volume_replication(
+                        array, volume, device_id, target_extra_specs)
+                    model_update = {
+                        'replication_status': rep_status,
+                        'replication_driver_data': six.text_type(rdf_dict)}
+                    return True, model_update
+
+            try:
+                target_sg_name = (
+                    self.masking.get_or_create_default_storage_group(
+                        array, srp, target_slo, target_workload, extra_specs,
+                        is_compression_disabled, is_rep_enabled, rep_mode))
+            except Exception as e:
+                LOG.error("Failed to get or create storage group. "
+                          "Exception received was %(e)s.", {'e': e})
+                return False
+
+            success = self._retype_volume(
+                array, device_id, volume_name, target_sg_name,
+                volume, target_extra_specs)
+
+            if move_target:
+                success = self._retype_remote_volume(
+                    array, volume, device_id, volume_name,
+                    rep_mode, is_rep_enabled, target_extra_specs)
+
+        if success:
+            self.volume_metadata.capture_retype_info(
+                volume, device_id, array, srp, target_slo,
+                target_workload, target_sg_name, is_rep_enabled, rep_mode,
+                is_compression_disabled)
 
         return success, model_update
 
@@ -2987,6 +3022,75 @@ class PowerMaxCommon(object):
             return False
 
         return True
+
+    def _retype_inuse_volume(self, array, srp, volume, device_id, extra_specs,
+                             target_slo, target_workload, target_extra_specs,
+                             is_compression_disabled):
+        """Retype an in-use volume using storage assisted migration.
+
+        :param array: the array serial
+        :param srp: the SRP ID
+        :param volume: the volume object
+        :param device_id: the device id
+        :param extra_specs: the source volume type extra specs
+        :param target_slo: the service level of the target volume type
+        :param target_workload: the workload of the target volume type
+        :param target_extra_specs: the target extra specs
+        :param is_compression_disabled: if compression is disabled in the
+        target volume type
+        :return: if the retype was successful -- bool,
+                 the storage group the volume has moved to --str
+        """
+        success = False
+        device_info = self.rest.get_volume(array, device_id)
+        source_sg_name = device_info['storageGroupId'][0]
+        source_sg = self.rest.get_storage_group(array, source_sg_name)
+        target_extra_specs[utils.PORTGROUPNAME] = extra_specs[
+            utils.PORTGROUPNAME]
+
+        attached_host = self.utils.get_volume_attached_hostname(device_info)
+        if not attached_host:
+            LOG.error(
+                "There was an issue retrieving attached host from volume "
+                "%(volume_name)s, aborting storage-assisted migration.",
+                {'volume_name': device_id})
+            return False, None
+
+        target_sg_name, __, __, __ = self.utils.get_child_sg_name(
+            attached_host, target_extra_specs)
+        target_sg = self.rest.get_storage_group(array, target_sg_name)
+
+        if not target_sg:
+            self.provision.create_storage_group(array, target_sg_name, srp,
+                                                target_slo,
+                                                target_workload,
+                                                target_extra_specs,
+                                                is_compression_disabled)
+            parent_sg = source_sg['parent_storage_group'][0]
+            self.masking.add_child_sg_to_parent_sg(
+                array, target_sg_name, parent_sg, target_extra_specs)
+            target_sg = self.rest.get_storage_group(array, target_sg_name)
+
+        target_in_parent = self.rest.is_child_sg_in_parent_sg(
+            array, target_sg_name, target_sg['parent_storage_group'][0])
+
+        if target_sg and target_in_parent:
+            self.masking.move_volume_between_storage_groups(
+                array, device_id, source_sg_name, target_sg_name,
+                target_extra_specs)
+            success = self.rest.is_volume_in_storagegroup(
+                array, device_id, target_sg_name)
+
+        if not success:
+            LOG.error(
+                "Volume: %(volume_name)s has not been "
+                "added to target storage group %(storageGroup)s.",
+                {'volume_name': device_id,
+                 'storageGroup': target_sg_name})
+        else:
+            LOG.info("Move successful: %(success)s", {'success': success})
+
+        return success, target_sg_name
 
     def _retype_remote_volume(self, array, volume, device_id,
                               volume_name, rep_mode, is_re, extra_specs):
@@ -3178,6 +3282,64 @@ class PowerMaxCommon(object):
             self._add_volume_to_async_rdf_managed_grp(
                 array, device_id, source_name, remote_array,
                 target_device_id, extra_specs)
+
+        LOG.info('Successfully setup replication for %s.',
+                 target_name)
+        replication_status = REPLICATION_ENABLED
+        replication_driver_data = rdf_dict
+        rep_info_dict = self.volume_metadata.gather_replication_info(
+            volume.id, 'replication', False,
+            rdf_group_no=rdf_group_no,
+            target_name=target_name, remote_array=remote_array,
+            target_device_id=target_device_id,
+            replication_status=replication_status,
+            rep_mode=rep_extra_specs['rep_mode'],
+            rdf_group_label=self.rep_config['rdf_group_label'])
+
+        return replication_status, replication_driver_data, rep_info_dict
+
+    def setup_inuse_volume_replication(self, array, volume, device_id,
+                                       extra_specs):
+        """Setup replication for in-use volume.
+
+        :param array: the array serial number
+        :param volume: the volume object
+        :param device_id: the device id
+        :param extra_specs: the extra specifications
+        :return: replication_status -- str, replication_driver_data -- dict
+                 rep_info_dict -- dict
+        """
+        source_name = volume.name
+        LOG.debug('Starting replication setup '
+                  'for volume: %s.', source_name)
+        rdf_group_no, remote_array = self.get_rdf_details(array)
+        extra_specs['replication_enabled'] = '<is> True'
+        extra_specs['rep_mode'] = self.rep_config['mode']
+
+        rdf_vol_size = volume.size
+        if rdf_vol_size == 0:
+            rdf_vol_size = self.rest.get_size_of_device_on_array(
+                array, device_id)
+
+        target_name = self.utils.get_volume_element_name(volume.id)
+
+        rep_extra_specs = self._get_replication_extra_specs(
+            extra_specs, self.rep_config)
+        volume_dict = self._create_volume(
+            target_name, rdf_vol_size, rep_extra_specs, in_use=True)
+        target_device_id = volume_dict['device_id']
+
+        LOG.debug("Create volume replica: Target device: %(target)s "
+                  "Source Device: %(source)s "
+                  "Volume identifier: %(name)s.",
+                  {'target': target_device_id,
+                   'source': device_id,
+                   'name': target_name})
+
+        self._sync_check(array, device_id, extra_specs, tgt_only=True)
+        rdf_dict = self.rest.create_rdf_device_pair(
+            array, device_id, rdf_group_no, target_device_id, remote_array,
+            extra_specs)
 
         LOG.info('Successfully setup replication for %s.',
                  target_name)

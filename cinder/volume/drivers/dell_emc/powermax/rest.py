@@ -731,10 +731,10 @@ class PowerMaxRest(object):
         :param extra_specs: the extra specifications
         """
         payload = {"editStorageGroupActionParam": {
-            "expandStorageGroupParam": {
-                "addExistingStorageGroupParam": {
-                    "storageGroupId": [child_sg]}}}}
-        sc, job = self.modify_storage_group(array, parent_sg, payload)
+            "addExistingStorageGroupParam": {
+                "storageGroupId": [child_sg]}}}
+        sc, job = self.modify_storage_group(array, parent_sg, payload,
+                                            version="83")
         self.wait_for_job('Add child sg to parent sg', sc, job, extra_specs)
 
     def remove_child_sg_from_parent_sg(
