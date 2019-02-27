@@ -38,6 +38,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder.objects import fields
+import cinder.privsep.fs
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
@@ -379,8 +380,7 @@ class RemoteFSDriver(driver.BaseVD):
 
     def _create_sparsed_file(self, path, size):
         """Creates a sparse file of a given size in GiB."""
-        self._execute('truncate', '-s', '%sG' % size,
-                      path, run_as_root=self._execute_as_root)
+        cinder.privsep.fs.truncate('%sG' % size, path)
 
     def _create_regular_file(self, path, size):
         """Creates a regular file of given size in GiB."""
@@ -753,8 +753,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         if not (os.path.exists(info_path) or os.name == 'nt'):
             # We're not managing file permissions on Windows.
             # Plus, 'truncate' is not available.
-            self._execute('truncate', "-s0", info_path,
-                          run_as_root=self._execute_as_root)
+            cinder.privsep.fs.truncate(0, info_path)
             self._set_rw_permissions(info_path)
 
         with open(info_path, 'w') as f:

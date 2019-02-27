@@ -27,3 +27,8 @@ import cinder.privsep
 @cinder.privsep.sys_admin_pctxt.entrypoint
 def umount(mountpoint):
     processutils.execute('umount', mountpoint, attempts=1, delay_on_retry=True)
+
+
+@cinder.privsep.sys_admin_pctxt.entrypoint
+def truncate(size, path):
+    processutils.execute('truncate', '-s', size, path)

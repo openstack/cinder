@@ -24,6 +24,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+import cinder.privsep.fs
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
@@ -241,13 +242,12 @@ class NexentaNfsDriver(nfs.NfsDriver):
         LOG.info('Extending volume: %(id)s New size: %(size)s GB',
                  {'id': volume['id'], 'size': new_size})
         if self.sparsed_volumes:
-            self._execute('truncate', '-s', '%sG' % new_size,
-                          self.local_path(volume),
-                          run_as_root=self._execute_as_root)
+            cinder.privsep.fs.truncate('%sG' % new_size,
+                                       self.local_path(volume))
         else:
             block_size_mb = 1
-            block_count = ((new_size - volume['size']) * units.Gi //
-                           (block_size_mb * units.Mi))
+            block_count = ((new_size - volume['size']) * units.Gi
+                           // (block_size_mb * units.Mi))
             self._execute(
                 'dd', 'if=/dev/zero',
                 'seek=%d' % (volume['size'] * units.Gi / block_size_mb),
