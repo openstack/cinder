@@ -994,9 +994,9 @@ class TestCommonAdapter(test.TestCase):
         host = common.Host('fake_host', ['fake_initiator1', 'fake_initiator2'])
         sg = mocked_res['sg']
         common_adapter.terminate_connection_cleanup(host, sg)
-        common_adapter.client.vnx.remove_hba.assert_any_call(
+        common_adapter.client.vnx.delete_hba.assert_any_call(
             'fake_initiator1')
-        common_adapter.client.vnx.remove_hba.assert_any_call(
+        common_adapter.client.vnx.delete_hba.assert_any_call(
             'fake_initiator2')
 
     @res_mock.patch_common_adapter

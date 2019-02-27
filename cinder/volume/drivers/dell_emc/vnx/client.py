@@ -535,7 +535,10 @@ class Client(object):
         if not isinstance(initiators, list):
             initiators = [initiators]
         for initiator_uid in initiators:
-            self.vnx.remove_hba(initiator_uid)
+            try:
+                self.vnx.delete_hba(initiator_uid)
+            except AttributeError:
+                self.vnx.remove_hba(initiator_uid)
 
     def update_consistencygroup(self, cg, lun_ids_to_add, lun_ids_to_remove):
         lun_ids_in_cg = (set([l.lun_id for l in cg.lun_list]) if cg.lun_list
