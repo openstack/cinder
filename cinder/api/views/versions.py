@@ -68,6 +68,8 @@ class ViewBuilder(object):
     def _generate_href(self, version='v3', path=None):
         """Create a URL that refers to a specific version_number."""
         base_url = self._get_base_url_without_version()
+        # Always add '/' to base_url end for urljoin href url
+        base_url = base_url.rstrip('/') + '/'
         rel_version = version.lstrip('/')
         href = urllib.parse.urljoin(base_url, rel_version).rstrip('/') + '/'
         if path:
