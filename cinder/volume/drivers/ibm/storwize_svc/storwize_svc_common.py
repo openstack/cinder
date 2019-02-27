@@ -2911,7 +2911,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                         return processutils.ssh_execute(
                             ssh,
                             command,
-                            check_exit_code=check_exit_code)
+                            check_exit_code=check_exit_code,
+                            sanitize_stdout=False)
                     except Exception as e:
                         LOG.error('Error has occurred: %s', e)
                         last_exception = e
