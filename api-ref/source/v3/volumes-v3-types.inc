@@ -333,6 +333,7 @@ Response Parameters
    - extra_specs: extra_specs_volume_type_optional
    - description: description_volume_type_required
    - name: name_volume_type_required
+   - qos_specs_id: qos_specs_id
 
 
 Response Example
