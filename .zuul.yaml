@@ -2,7 +2,6 @@
     templates:
       - openstack-lower-constraints-jobs
       - openstack-python-jobs
-      - openstack-python35-jobs
       - openstack-python36-jobs
       - publish-openstack-docs-pti
       - periodic-stable-jobs
@@ -15,7 +14,7 @@
         - cinder-tempest-dsvm-lvm-lio-barbican
         - cinder-tox-bandit-baseline:
             voting: false
-        - openstack-tox-functional-py35:
+        - openstack-tox-functional-py36:
             irrelevant-files: &functional-irrelevant-files
               - ^.*\.rst$
               - ^api-ref/.*$
@@ -25,7 +24,6 @@
               - ^contrib/block-box.*$
               - ^doc/.*$
               - ^releasenotes/.*$
-        - openstack-tox-functional-py36
         - cinder-rally-task:
             voting: false
         - openstack-tox-pylint:
@@ -71,8 +69,6 @@
             irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
-        - openstack-tox-functional-py35:
-            irrelevant-files: *functional-irrelevant-files
         - legacy-grenade-dsvm-cinder-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
         - neutron-grenade:
