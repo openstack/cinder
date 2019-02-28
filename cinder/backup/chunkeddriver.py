@@ -47,7 +47,7 @@ if sys.platform == 'win32':
 
 LOG = logging.getLogger(__name__)
 
-chunkedbackup_service_opts = [
+backup_opts = [
     cfg.StrOpt('backup_compression_algorithm',
                default='zlib',
                choices=['none', 'off', 'no',
@@ -57,7 +57,7 @@ chunkedbackup_service_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(chunkedbackup_service_opts)
+CONF.register_opts(backup_opts)
 
 
 # Object writer and reader returned by inheriting classes must not have any

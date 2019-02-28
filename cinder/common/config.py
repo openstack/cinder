@@ -46,39 +46,7 @@ core_opts = [
 
 CONF.register_cli_opts(core_opts)
 
-global_opts = [
-    cfg.HostAddressOpt('my_ip',
-                       sample_default='<HOST_IP_ADDRESS>',
-                       default=netutils.get_my_ipv4(),
-                       help='IP address of this host'),
-    cfg.ListOpt('glance_api_servers',
-                default=None,
-                help='A list of the URLs of glance API servers available to '
-                     'cinder ([http[s]://][hostname|ip]:port). If protocol '
-                     'is not specified it defaults to http.'),
-    cfg.IntOpt('glance_num_retries',
-               min=0,
-               default=0,
-               help='Number retries when downloading an image from glance'),
-    cfg.BoolOpt('glance_api_insecure',
-                default=False,
-                help='Allow to perform insecure SSL (https) requests to '
-                     'glance (https will be used but cert validation will '
-                     'not be performed).'),
-    cfg.BoolOpt('glance_api_ssl_compression',
-                default=False,
-                help='Enables or disables negotiation of SSL layer '
-                     'compression. In some cases disabling compression '
-                     'can improve data throughput, such as when high '
-                     'network bandwidth is available and you use '
-                     'compressed image formats like qcow2.'),
-    cfg.StrOpt('glance_ca_certificates_file',
-               help='Location of ca certificates file to use for glance '
-                    'client requests.'),
-    cfg.IntOpt('glance_request_timeout',
-               help='http/https timeout value for glance operations. If no '
-                    'value (None) is supplied here, the glanceclient default '
-                    'value is used.'),
+api_opts = [
     cfg.BoolOpt('enable_v2_api',
                 default=True,
                 deprecated_for_removal=True,
@@ -89,6 +57,9 @@ global_opts = [
     cfg.BoolOpt('api_rate_limit',
                 default=True,
                 help='Enables or disables rate limit of the API.'),
+    cfg.StrOpt('group_api_class',
+               default='cinder.group.api.API',
+               help='The full class name of the group API class'),
     cfg.ListOpt('osapi_volume_ext_list',
                 default=[],
                 help='Specify list of extensions to load when using osapi_'
@@ -97,12 +68,19 @@ global_opts = [
     cfg.MultiStrOpt('osapi_volume_extension',
                     default=['cinder.api.contrib.standard_extensions'],
                     help='osapi volume extension to load'),
+    cfg.StrOpt('volume_api_class',
+               default='cinder.volume.api.API',
+               help='The full class name of the volume API class to use'),
+]
+
+global_opts = [
+    cfg.HostAddressOpt('my_ip',
+                       sample_default='<HOST_IP_ADDRESS>',
+                       default=netutils.get_my_ipv4(),
+                       help='IP address of this host'),
     cfg.StrOpt('volume_manager',
                default='cinder.volume.manager.VolumeManager',
                help='Full class name for the Manager for volume'),
-    cfg.StrOpt('backup_manager',
-               default='cinder.backup.manager.BackupManager',
-               help='Full class name for the Manager for volume backup'),
     cfg.StrOpt('scheduler_manager',
                default='cinder.scheduler.manager.SchedulerManager',
                help='Full class name for the Manager for scheduler'),
@@ -150,18 +128,6 @@ global_opts = [
                default=60,
                help='Maximum time since last check-in for a service to be '
                     'considered up'),
-    cfg.StrOpt('volume_api_class',
-               default='cinder.volume.api.API',
-               help='The full class name of the volume API class to use'),
-    cfg.StrOpt('backup_api_class',
-               default='cinder.backup.api.API',
-               help='The full class name of the volume backup API class'),
-    cfg.StrOpt('auth_strategy',
-               default='keystone',
-               choices=[('noauth', 'Do not perform authentication'),
-                        ('keystone', 'Authenticate using keystone')],
-               help='The strategy to use for auth. Supports noauth or '
-                    'keystone.'),
     cfg.ListOpt('enabled_backends',
                 help='A list of backend names to use. These backend names '
                      'should be backed by a unique [CONFIG] group '
@@ -175,15 +141,65 @@ global_opts = [
     cfg.StrOpt('consistencygroup_api_class',
                default='cinder.consistencygroup.api.API',
                help='The full class name of the consistencygroup API class'),
-    cfg.StrOpt('group_api_class',
-               default='cinder.group.api.API',
-               help='The full class name of the group API class'),
     cfg.BoolOpt('split_loggers',
                 default=False,
                 help='Log requests to multiple loggers.')
 ]
 
+auth_opts = [
+    cfg.StrOpt('auth_strategy',
+               default='keystone',
+               choices=[('noauth', 'Do not perform authentication'),
+                        ('keystone', 'Authenticate using keystone')],
+               help='The strategy to use for auth. Supports noauth or '
+                    'keystone.'),
+]
+
+backup_opts = [
+    cfg.StrOpt('backup_api_class',
+               default='cinder.backup.api.API',
+               help='The full class name of the volume backup API class'),
+    cfg.StrOpt('backup_manager',
+               default='cinder.backup.manager.BackupManager',
+               help='Full class name for the Manager for volume backup'),
+]
+
+image_opts = [
+    cfg.ListOpt('glance_api_servers',
+                default=None,
+                help='A list of the URLs of glance API servers available to '
+                     'cinder ([http[s]://][hostname|ip]:port). If protocol '
+                     'is not specified it defaults to http.'),
+    cfg.IntOpt('glance_num_retries',
+               min=0,
+               default=0,
+               help='Number retries when downloading an image from glance'),
+    cfg.BoolOpt('glance_api_insecure',
+                default=False,
+                help='Allow to perform insecure SSL (https) requests to '
+                     'glance (https will be used but cert validation will '
+                     'not be performed).'),
+    cfg.BoolOpt('glance_api_ssl_compression',
+                default=False,
+                help='Enables or disables negotiation of SSL layer '
+                     'compression. In some cases disabling compression '
+                     'can improve data throughput, such as when high '
+                     'network bandwidth is available and you use '
+                     'compressed image formats like qcow2.'),
+    cfg.StrOpt('glance_ca_certificates_file',
+               help='Location of ca certificates file to use for glance '
+                    'client requests.'),
+    cfg.IntOpt('glance_request_timeout',
+               help='http/https timeout value for glance operations. If no '
+                    'value (None) is supplied here, the glanceclient default '
+                    'value is used.'),
+]
+
+CONF.register_opts(api_opts)
 CONF.register_opts(core_opts)
+CONF.register_opts(auth_opts)
+CONF.register_opts(backup_opts)
+CONF.register_opts(image_opts)
 CONF.register_opts(global_opts)
 
 
