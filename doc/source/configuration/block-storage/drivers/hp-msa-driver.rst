@@ -2,15 +2,16 @@
 HP MSA Fibre Channel and iSCSI drivers
 ======================================
 
-The ``HPMSAFCDriver`` and ``HPMSAISCSIDriver`` Cinder drivers allow HP MSA
-2040 or 1040 arrays to be used for Block Storage in OpenStack deployments.
+The ``HPMSAFCDriver`` and ``HPMSAISCSIDriver`` Cinder drivers allow the
+HPE MSA 2050, 1050, 2040, and 1040 arrays to be used for Block Storage in
+OpenStack deployments.
 
 System requirements
 ~~~~~~~~~~~~~~~~~~~
 
 To use the HP MSA drivers, the following are required:
 
-- HP MSA 2040 or 1040 array with:
+- HPE MSA 2050, 1050, 2040 or 1040 array with:
 
   - iSCSI or FC host interfaces
   - G22x firmware or later
@@ -62,11 +63,13 @@ Configuring the array
      array, or a name that is shared among multiple storage pools to let the
      volume scheduler choose where new volumes are allocated.
 
-   * The rest of the options will be repeated for each storage pool in a given
-     array: the appropriate Cinder driver name; IP address or host name of the
-     array management interface; the username and password of an array user
-     account with ``manage`` privileges; and the iSCSI IP addresses for the
-     array if using the iSCSI transport protocol.
+   * The rest of the options will be repeated for each storage pool in a
+     given array: ``volume_driver`` specifies the Cinder driver name;
+     ``san_ip`` specifies the IP addresses or host names of the array's
+     management controllers; ``san_login`` and ``san_password`` specify
+     the username and password of an array user account with ``manage``
+     privileges; and ``hpmsa_iscsi_ips`` specfies the iSCSI IP addresses
+     for the array if using the iSCSI transport protocol.
 
    In the examples below, two back ends are defined, one for pool A and one for
    pool B, and a common ``volume_backend_name`` is used so that a single
@@ -80,7 +83,7 @@ Configuring the array
       hpmsa_backend_name = A
       volume_backend_name = hpmsa-array
       volume_driver = cinder.volume.drivers.san.hp.hpmsa_iscsi.HPMSAISCSIDriver
-      san_ip = 10.1.2.3
+      san_ip = 10.1.2.3,10.1.2.4
       san_login = manage
       san_password = !manage
       hpmsa_iscsi_ips = 10.2.3.4,10.2.3.5
@@ -89,7 +92,7 @@ Configuring the array
       hpmsa_backend_name = B
       volume_backend_name = hpmsa-array
       volume_driver = cinder.volume.drivers.san.hp.hpmsa_iscsi.HPMSAISCSIDriver
-      san_ip = 10.1.2.3
+      san_ip = 10.1.2.3,10.1.2.4
       san_login = manage
       san_password = !manage
       hpmsa_iscsi_ips = 10.2.3.4,10.2.3.5
@@ -102,7 +105,7 @@ Configuring the array
       hpmsa_backend_name = A
       volume_backend_name = hpmsa-array
       volume_driver = cinder.volume.drivers.san.hp.hpmsa_fc.HPMSAFCDriver
-      san_ip = 10.1.2.3
+      san_ip = 10.1.2.3,10.1.2.4
       san_login = manage
       san_password = !manage
 
@@ -110,7 +113,7 @@ Configuring the array
       hpmsa_backend_name = B
       volume_backend_name = hpmsa-array
       volume_driver = cinder.volume.drivers.san.hp.hpmsa_fc.HPMSAFCDriver
-      san_ip = 10.1.2.3
+      san_ip = 10.1.2.3,10.1.2.4
       san_login = manage
       san_password = !manage
 

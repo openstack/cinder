@@ -65,9 +65,11 @@ Configuring the array
       let the volume scheduler choose where new volumes are allocated.
 
    -  The rest of the options will be repeated for each storage pool in a
-      given array: the appropriate Cinder driver name; IP address or
-      host name of the array management interface; the username and password
-      of an array user account with ``manage`` privileges; and the iSCSI IP
+      given array: ``volume_driver`` specifies the Cinder driver name;
+      ``san_ip`` specifies the IP addresses or host names of the array's
+      management controllers; ``san_login`` and ``san_password`` specify
+      the username and password of an array user account with ``manage``
+      privileges; and ``lenovo_iscsi_ips`` specfies the iSCSI IP
       addresses for the array if using the iSCSI transport protocol.
 
    In the examples below, two back ends are defined, one for pool A and one
