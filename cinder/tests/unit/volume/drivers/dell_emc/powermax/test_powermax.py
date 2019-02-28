@@ -101,6 +101,7 @@ class PowerMaxCommonData(object):
     rdf_managed_async_grp = "OS-%s-Asynchronous-rdf-sg" % rdf_group_name
     volume_id = '2b06255d-f5f0-4520-a953-b029196add6a'
     no_slo_sg_name = 'OS-HostX-No_SLO-OS-fibre-PG'
+    temp_snapvx = 'temp-00001-snapshot_for_clone'
 
     # connector info
     wwpn1 = "123456789012345"
@@ -157,6 +158,15 @@ class PowerMaxCommonData(object):
                       'controller': {'host': '10.00.00.00'},
                       'hostlunid': 3}
 
+    # snapshot info
+    snapshot_id = '390eeb4d-0f56-4a02-ba14-167167967014'
+    snapshot_display_id = 'my_snap'
+    managed_snap_id = 'OS-390eeb4d-0f56-4a02-ba14-167167967014'
+    test_snapshot_snap_name = 'OS-' + snapshot_id[:6] + snapshot_id[-9:]
+
+    snap_location = {'snap_name': test_snapshot_snap_name,
+                     'source_id': device_id}
+
     # cinder volume info
     ctx = context.RequestContext('admin', 'fake', True)
     provider_location = {'array': array,
@@ -170,6 +180,14 @@ class PowerMaxCommonData(object):
 
     provider_location4 = {'array': six.text_type(uni_array),
                           'device_id': device_id}
+    provider_location_clone = {'array': array,
+                               'device_id': device_id,
+                               'snap_name': temp_snapvx,
+                               'source_device_id': device_id}
+    provider_location_snapshot = {'array': array,
+                                  'device_id': device_id,
+                                  'snap_name': test_snapshot_snap_name,
+                                  'source_device_id': device_id}
 
     provider_location5 = {'array': remote_array,
                           'device_id': device_id}
@@ -211,8 +229,6 @@ class PowerMaxCommonData(object):
         replication_driver_data=six.text_type(legacy_provider_location2),
         host=fake_host, volume_type=test_volume_type)
 
-    snapshot_id = '390eeb4d-0f56-4a02-ba14-167167967014'
-
     test_clone_volume = fake_volume.fake_volume_obj(
         context=ctx, name='vol1', size=2, provider_auth=None,
         provider_location=six.text_type(provider_location2),
@@ -225,13 +241,6 @@ class PowerMaxCommonData(object):
         provider_location=six.text_type(provider_location),
         volume_type=test_volume_type, host=fake_host,
         replication_driver_data=six.text_type(provider_location4))
-
-    snapshot_display_id = 'my_snap'
-    managed_snap_id = 'OS-390eeb4d-0f56-4a02-ba14-167167967014'
-    test_snapshot_snap_name = 'OS-' + snapshot_id[:6] + snapshot_id[-9:]
-
-    snap_location = {'snap_name': test_snapshot_snap_name,
-                     'source_id': device_id}
 
     test_snapshot = fake_snapshot.fake_snapshot_obj(
         context=ctx, id=snapshot_id,
@@ -1494,7 +1503,7 @@ class PowerMaxUtilsTest(test.TestCase):
 
     def test_get_temp_snap_name(self):
         source_device_id = self.data.device_id
-        ref_name = "temp-00001-snapshot_for_clone"
+        ref_name = self.data.temp_snapvx
         snap_name = self.utils.get_temp_snap_name(source_device_id)
         self.assertEqual(ref_name, snap_name)
 
@@ -4121,22 +4130,31 @@ class PowerMaxCommonTest(test.TestCase):
     def test_create_volume_from_snapshot(self):
         ref_model_update = (
             {'provider_location': six.text_type(
-                self.data.provider_location)})
+                deepcopy(self.data.provider_location_snapshot))})
         model_update = self.common.create_volume_from_snapshot(
             self.data.test_clone_volume, self.data.test_snapshot)
-        self.assertEqual(ref_model_update, model_update)
+        self.assertEqual(
+            ast.literal_eval(ref_model_update['provider_location']),
+            ast.literal_eval(model_update['provider_location']))
         # Test from legacy snapshot
+        ref_model_update = (
+            {'provider_location': six.text_type(
+                deepcopy(self.data.provider_location_clone))})
         model_update = self.common.create_volume_from_snapshot(
             self.data.test_clone_volume, self.data.test_legacy_snapshot)
-        self.assertEqual(ref_model_update, model_update)
+        self.assertEqual(
+            ast.literal_eval(ref_model_update['provider_location']),
+            ast.literal_eval(model_update['provider_location']))
 
     def test_cloned_volume(self):
         ref_model_update = (
             {'provider_location': six.text_type(
-                self.data.provider_location)})
+                self.data.provider_location_clone)})
         model_update = self.common.create_cloned_volume(
             self.data.test_clone_volume, self.data.test_volume)
-        self.assertEqual(ref_model_update, model_update)
+        self.assertEqual(
+            ast.literal_eval(ref_model_update['provider_location']),
+            ast.literal_eval(model_update['provider_location']))
 
     def test_delete_volume(self):
         with mock.patch.object(self.common, '_delete_volume') as mock_delete:
@@ -4651,7 +4669,7 @@ class PowerMaxCommonTest(test.TestCase):
         volume = self.data.test_clone_volume
         source_volume = self.data.test_volume
         extra_specs = self.data.extra_specs
-        ref_dict = self.data.provider_location
+        ref_dict = self.data.provider_location_clone
         clone_dict = self.common._create_cloned_volume(
             volume, source_volume, extra_specs)
         self.assertEqual(ref_dict, clone_dict)
@@ -4669,7 +4687,7 @@ class PowerMaxCommonTest(test.TestCase):
         volume = self.data.test_clone_volume
         source_volume = self.data.test_snapshot
         extra_specs = self.data.extra_specs
-        ref_dict = self.data.provider_location
+        ref_dict = self.data.provider_location_snapshot
         clone_dict = self.common._create_cloned_volume(
             volume, source_volume, extra_specs, False, True)
         self.assertEqual(ref_dict, clone_dict)
@@ -5043,7 +5061,7 @@ class PowerMaxCommonTest(test.TestCase):
         clone_volume = self.data.test_clone_volume
         source_device_id = self.data.device_id
         snap_name = self.data.snap_location['snap_name']
-        ref_dict = self.data.provider_location
+        ref_dict = self.data.provider_location_snapshot
         clone_dict = self.common._create_replica(
             array, clone_volume, source_device_id,
             self.data.extra_specs, snap_name)
@@ -5054,7 +5072,7 @@ class PowerMaxCommonTest(test.TestCase):
         clone_volume = self.data.test_clone_volume
         source_device_id = self.data.device_id
         snap_name = "temp-" + source_device_id + "-snapshot_for_clone"
-        ref_dict = self.data.provider_location
+        ref_dict = self.data.provider_location_clone
         with mock.patch.object(
                 self.utils, 'get_temp_snap_name',
                 return_value=snap_name) as mock_get_snap:
@@ -8254,7 +8272,7 @@ class PowerMaxCommonReplicationTest(test.TestCase):
                                return_value=({}, {})) as mock_rep:
             self.common.create_cloned_volume(
                 self.data.test_clone_volume, self.data.test_volume)
-            volume_dict = self.data.provider_location
+            volume_dict = self.data.provider_location_clone
             mock_rep.assert_called_once_with(
                 self.data.test_clone_volume,
                 self.data.test_clone_volume.name, volume_dict, extra_specs)
@@ -8266,7 +8284,7 @@ class PowerMaxCommonReplicationTest(test.TestCase):
                                return_value=({}, {})) as mock_rep:
             self.common.create_volume_from_snapshot(
                 self.data.test_clone_volume, self.data.test_snapshot)
-            volume_dict = self.data.provider_location
+            volume_dict = self.data.provider_location_snapshot
             mock_rep.assert_called_once_with(
                 self.data.test_clone_volume,
                 "snapshot-%s" % self.data.snapshot_id,
