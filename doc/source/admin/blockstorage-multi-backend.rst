@@ -111,7 +111,7 @@ an example:
    [backend_default]
    image_volume_cache_enabled = True
    volume_clear = none
-   iscsi_helper = tgtadm
+   target_helper = tgtadm
    volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
 
    [backend1]

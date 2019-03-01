@@ -1,7 +1,7 @@
 [DEFAULT]
 rootwrap_config = /etc/cinder/rootwrap.conf
 api_paste_confg = /etc/cinder/api-paste.ini
-iscsi_helper = tgtadm
+target_helper = tgtadm
 volume_name_template = volume-%s
 volume_group = cinder-volumes
 verbose = True
