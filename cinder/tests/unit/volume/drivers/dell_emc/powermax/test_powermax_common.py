@@ -1791,6 +1791,56 @@ class PowerMaxCommonTest(test.TestCase):
             mck_setup.assert_not_called()
             self.assertTrue(success)
 
+    @mock.patch.object(common.PowerMaxCommon, '_retype_volume',
+                       return_value=True)
+    @mock.patch.object(common.PowerMaxCommon, 'cleanup_lun_replication')
+    @mock.patch.object(common.PowerMaxCommon, '_retype_inuse_volume',
+                       return_value=(True, 'test'))
+    @mock.patch.object(common.PowerMaxCommon,
+                       'setup_inuse_volume_replication',
+                       return_value=('Status', 'Data', 'Info'))
+    @mock.patch.object(common.PowerMaxCommon, '_retype_remote_volume',
+                       return_value=True)
+    def test_migrate_volume_attachment_path(self, mck_remote_retype, mck_setup,
+                                            mck_inuse_retype, mck_cleanup,
+                                            mck_retype):
+        # Array/Volume info
+        array = self.data.array
+        srp = self.data.srp
+        slo = self.data.slo
+        workload = self.data.workload
+        device_id = self.data.device_id
+        volume_attached = self.data.test_attached_volume
+        volume_attached_name = self.data.test_attached_volume.name
+        volume_not_attached = self.data.test_volume
+        volume_not_attached_name = self.data.test_volume.name
+
+        # Extra Specs
+        new_type = {'extra_specs': {}}
+        self.common.rep_config = {'mode': None}
+        src_extra_specs = self.data.extra_specs_migrate
+
+        # Scenario 1: Volume attached
+        with mock.patch.object(self.utils, 'is_replication_enabled',
+                               side_effect=[False, False]):
+            success = self.common._migrate_volume(
+                array, volume_attached, device_id, srp, slo, workload,
+                volume_attached_name, new_type, src_extra_specs)[0]
+            mck_inuse_retype.assert_called_once()
+            self.assertTrue(success)
+
+        mck_cleanup.reset_mock()
+        mck_setup.reset_mock()
+
+        # Scenario 2: Volume not attached
+        with mock.patch.object(self.utils, 'is_replication_enabled',
+                               side_effect=[False, False]):
+            success = self.common._migrate_volume(
+                array, volume_not_attached, device_id, srp, slo, workload,
+                volume_not_attached_name, new_type, src_extra_specs)[0]
+            mck_retype.assert_called_once()
+            self.assertTrue(success)
+
     @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
     def test_migrate_volume_failed_get_new_sg_failed(self, mock_remove):
         device_id = self.data.device_id

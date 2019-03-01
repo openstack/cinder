@@ -3011,7 +3011,7 @@ class PowerMaxCommon(object):
                     rep_mode, is_rep_enabled, target_extra_specs)
 
         # Volume is not attached, retype as normal
-        elif volume.attach_status != 'attached':
+        else:
             if was_rep_enabled:
                 if not is_rep_enabled:
                     # Disable replication is True
