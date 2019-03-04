@@ -739,7 +739,9 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             msg = _("'active' must be present when writing snap_info.")
             raise exception.RemoteFSException(msg)
 
-        if not os.path.exists(info_path):
+        if not (os.path.exists(info_path) or os.name == 'nt'):
+            # We're not managing file permissions on Windows.
+            # Plus, 'truncate' is not available.
             self._execute('truncate', "-s0", info_path,
                           run_as_root=self._execute_as_root)
             self._set_rw_permissions(info_path)
