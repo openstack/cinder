@@ -30,6 +30,7 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi as volume_rpcapi
+from cinder.volume import utils as volume_utils
 
 
 @ddt.ddt
@@ -341,3 +342,24 @@ class AttachmentsAPITestCase(test.TestCase):
 
         self.assertEqual(1, len(res_dict))
         self.assertEqual(count, len(res_dict['attachments']))
+
+    @mock.patch.object(volume_utils, 'notify_about_volume_usage')
+    def test_complete_attachment(self, mock_notify):
+
+        def fake_notify(context, volume, event_suffix,
+                        extra_usage_info=None, host=None):
+            # Check the notify content is in-use volume and 'attach.end'
+            self.assertEqual('in-use', volume['status'])
+            self.assertEqual('attach.end', event_suffix)
+
+        mock_notify.side_effect = fake_notify
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s/action' %
+                                      (fake.PROJECT_ID, self.attachment1.id),
+                                      version=mv.NEW_ATTACH_COMPLETION,
+                                      use_admin_context=True)
+        body = {"os-complete": {}}
+
+        self.controller.complete(req, self.attachment1.id,
+                                 body=body)
+        # Check notify has been called once
+        mock_notify.assert_called_once()

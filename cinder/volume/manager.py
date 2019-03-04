@@ -4547,7 +4547,6 @@ class VolumeManager(manager.CleanableManager,
                                 False)
         vref.refresh()
         attachment_ref.refresh()
-        self._notify_about_volume_usage(context, vref, "attach.end")
         LOG.info("attachment_update completed successfully.",
                  resource=vref)
         return connection_info
