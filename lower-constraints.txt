@@ -143,7 +143,7 @@ statsd==3.2.2
 stestr==2.0.0
 stevedore==1.20.0
 suds-jurko==0.6
-taskflow==2.16.0
+taskflow==3.2.0
 tempest==17.1.0
 Tempita==0.5.2
 tenacity==4.9.0
