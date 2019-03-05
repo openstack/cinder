@@ -32,8 +32,9 @@ Enable driver filter and weighing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To enable the driver filter, set the ``scheduler_default_filters`` option in
-the ``cinder.conf`` file to ``DriverFilter`` or add it to the list if
-other filters are already present.
+the ``cinder.conf`` file to ``DriverFilter``. The DriverFilter can also be
+used along with other filters by adding it to the list if other filters are
+already present.
 
 To enable the goodness filter as a weigher, set the
 ``scheduler_default_weighers`` option in the ``cinder.conf`` file to
@@ -47,10 +48,8 @@ choose an ideal back end.
 
 .. important::
 
-   The support for the ``DriverFilter`` and ``GoodnessWeigher`` is
-   optional for back ends. If you are using a back end that does not
-   support the filter and weigher functionality you may not get the
-   full benefit.
+   The GoodnessWeigher can be used along with CapacityWeigher and others,
+   but must be used with caution as it might obfuscate the CapacityWeigher.
 
 Example ``cinder.conf`` configuration file:
 
@@ -64,7 +63,8 @@ Example ``cinder.conf`` configuration file:
    It is useful to use the other filters and weighers available in
    OpenStack in combination with these custom ones. For example, the
    ``CapacityFilter`` and ``CapacityWeigher`` can be combined with
-   these.
+   these. Using them together should be done with caution as depending
+   on the defined logic, one might obfuscate the other.
 
 Defining your own filter and goodness functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -132,6 +132,10 @@ available for use:
 
 Host stats for a back end
 -------------------------
+
+In order to access these properties, use the following format:
+``stats.<property>``
+
 host
     The host's name
 
@@ -156,6 +160,9 @@ total\_capacity\_gb
 allocated\_capacity\_gb
     The allocated capacity in GB
 
+free\_capacity\_gb
+    The free capacity in GB
+
 reserved\_percentage
     The reserved storage percentage
 
@@ -164,10 +171,18 @@ Capabilities specific to a back end
 
 These properties are determined by the specific back end
 you are creating filter and goodness functions for. Some back ends
-may not have any properties available here.
+may not have any properties available here. Once the capabilities vary
+too much according to the backend, it is better to check its properties
+reported on the scheduler log. The scheduler reports these capabilities
+constantly.
+In order to access these properties, use the following format:
+``capabilities.<property>``
 
 Requested volume properties
 ---------------------------
+
+In order to access the volume properties, use the following format:
+``volume.<property>``
 
 status
     Status for the requested volume
@@ -366,8 +381,8 @@ The above is an example of how back-end specific properties can be used
 in the filter and goodness functions. In this example the LVM driver's
 ``total_volumes`` capability is being used to determine which host gets
 used during a volume request. In the above example, lvm-1 and lvm-2 will
-handle volume requests for all volumes with a size less than 5 GB. The
-lvm-1 host will have priority until it contains three or more volumes.
-After than lvm-2 will have priority until it contains eight or more
+handle volume requests for all volumes with a size less than 5 GB. Both
+lvm-1 and lvm-2 will have the same priority while lvm-1 contains 3 or less
+volumes. After that lvm-2 will have priority while it contains 8 or less
 volumes. The lvm-3 will collect all volumes greater or equal to 5 GB as
 well as all volumes once lvm-1 and lvm-2 lose priority.
