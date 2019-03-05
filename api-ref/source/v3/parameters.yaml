@@ -2216,7 +2216,14 @@ project_id_group:
   description: |
     The UUID of the volume group project.
   in: body
-  required: true
+  required: false
+  type: string
+  min_version: 3.58
+project_id_group_snapshot:
+  description: |
+    The UUID of the volume group snapshot project.
+  in: body
+  required: false
   type: string
   min_version: 3.58
 project_id_host:

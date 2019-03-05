@@ -1,5 +1,0 @@
----
-features:
-  - |
-    Added ``project_id`` attribute to response body of list groups with detail
-    and show group detail APIs since microversion "3.58".

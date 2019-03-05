@@ -132,7 +132,8 @@ REST_API_VERSION_HISTORY = """
     * 3.57 - Add 'source_project_id', 'destination_project_id', 'accepted' to
              transfer.
     * 3.58 - Add ``project_id`` attribute to response body of list groups with
-             detail and show group detail APIs.
+             detail, list group snapshots with detail, show group detail and
+             show group snapshot detail APIs.
     * 3.59 - Support volume transfer pagination.
 """
 

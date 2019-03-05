@@ -80,6 +80,7 @@ Response Parameters
    - status: status_group_snap
    - description: description_group_snap_req
    - group_type_id: group_type_id
+   - project_id: project_id_group_snapshot
 
 Response Example
 ----------------
@@ -135,6 +136,7 @@ Response Parameters
    - created_at: created_at
    - group_id: group_id
    - group_type_id: group_type_id
+   - project_id: project_id_group_snapshot
 
 Response Example
 ----------------
