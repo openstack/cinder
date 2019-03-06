@@ -34,7 +34,6 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder.objects import fields
-import cinder.privsep.fs
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
@@ -489,7 +488,7 @@ class GPFSDriver(driver.CloneableImageVD,
         """Creates file with 0 disk usage."""
 
         sizestr = _sizestr(size)
-        cinder.privsep.fs.truncate(sizestr, path)
+        self.gpfs_execute('truncate', '-s', sizestr, path)
 
     def _allocate_file_blocks(self, path, size):
         """Preallocate file blocks by writing zeros."""

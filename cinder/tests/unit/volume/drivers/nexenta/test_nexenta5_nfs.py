@@ -141,22 +141,22 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nef_mock.get.return_value = {}
         self.drv.delete_volume(self.TEST_VOLUME)
         self.nef_mock.delete.assert_called_with(
-            'storage/pools/pool/filesystems/share%2Fvolume-'
-            + fake.VOLUME_ID + '?snapshots=true')
+            'storage/pools/pool/filesystems/share%2Fvolume-' +
+            fake.VOLUME_ID + '?snapshots=true')
 
     def test_create_snapshot(self):
         self._create_volume_db_entry()
         self.drv.create_snapshot(self.TEST_SNAPSHOT)
-        url = ('storage/pools/pool/filesystems/share%2Fvolume-'
-               + fake.VOLUME_ID + '/snapshots')
+        url = ('storage/pools/pool/filesystems/share%2Fvolume-' +
+               fake.VOLUME_ID + '/snapshots')
         data = {'name': self.TEST_SNAPSHOT['name']}
         self.nef_mock.post.assert_called_with(url, data)
 
     def test_delete_snapshot(self):
         self._create_volume_db_entry()
         self.drv.delete_snapshot(self.TEST_SNAPSHOT)
-        url = ('storage/pools/pool/filesystems/share%2Fvolume-'
-               + fake.VOLUME_ID + '/snapshots/snapshot1')
+        url = ('storage/pools/pool/filesystems/share%2Fvolume-' +
+               fake.VOLUME_ID + '/snapshots/snapshot1')
         self.drv.delete_snapshot(self.TEST_SNAPSHOT)
         self.nef_mock.delete.assert_called_with(url)
 
@@ -185,15 +185,18 @@ class TestNexentaNfsDriver(test.TestCase):
 
     @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
            'NexentaNfsDriver.local_path')
-    @patch('cinder.privsep.fs.truncate')
-    def test_extend_volume_sparsed(self, mock_truncate, path):
+    @patch('oslo_concurrency.processutils.execute')
+    def test_extend_volume_sparsed(self, _execute, path):
         self._create_volume_db_entry()
         path.return_value = 'path'
 
         self.drv.extend_volume(self.TEST_VOLUME, 2)
 
-        mock_truncate.assert_called_once_with(
-            '2G', 'path')
+        _execute.assert_called_with(
+            'truncate', '-s', '2G',
+            'path',
+            root_helper='sudo cinder-rootwrap /etc/cinder/rootwrap.conf',
+            run_as_root=True)
 
     @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
            'NexentaNfsDriver.local_path')

@@ -86,6 +86,7 @@ stat: CommandFilter, stat, root
 mount: CommandFilter, mount, root
 df: CommandFilter, df, root
 du: CommandFilter, du, root
+truncate: CommandFilter, truncate, root
 chmod: CommandFilter, chmod, root
 rm: CommandFilter, rm, root
 
