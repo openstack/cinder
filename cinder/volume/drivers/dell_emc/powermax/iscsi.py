@@ -131,6 +131,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
                 configuration=self.configuration,
                 active_backend_id=self.active_backend_id))
 
+    @staticmethod
+    def get_driver_options():
+        return common.powermax_opts
+
     def check_for_setup_error(self):
         pass
 

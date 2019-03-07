@@ -119,6 +119,10 @@ class DSWAREDriver(driver.VolumeDriver):
         self.conf = fs_conf.FusionStorageConf(self.configuration, self.host)
         self.client = None
 
+    @staticmethod
+    def get_driver_options():
+        return volume_opts
+
     def do_setup(self, context):
         self.conf.update_config_value()
         url_str = self.configuration.san_address

@@ -345,6 +345,10 @@ class HPE3PARCommon(object):
     def get_version(self):
         return self.VERSION
 
+    @staticmethod
+    def get_driver_options():
+        return hpe3par_opts
+
     def check_flags(self, options, required_flags):
         for flag in required_flags:
             if not getattr(options, flag, None):

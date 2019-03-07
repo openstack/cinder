@@ -185,6 +185,10 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         CS_DISKLESS = dm_const.CSTATE_PREFIX + dm_const.FLAG_DISKLESS
         CS_UPD_CON = dm_const.CSTATE_PREFIX + dm_const.FLAG_UPD_CON
 
+    @staticmethod
+    def get_driver_options():
+        return drbd_opts
+
     def dbus_connect(self):
         self.odm = dbus.SystemBus().get_object(self.drbdmanage_dbus_name,
                                                self.drbdmanage_dbus_interface)

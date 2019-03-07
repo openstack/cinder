@@ -293,6 +293,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         self._dc_cache = {}
         self._ds_regex = None
 
+    @staticmethod
+    def get_driver_options():
+        return vmdk_opts
+
     @property
     def volumeops(self):
         return self._volumeops

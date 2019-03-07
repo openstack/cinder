@@ -126,6 +126,10 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         k2_lock_sfx = self.configuration.safe_get('san_ip')
         self.k2_lock_name = "%s-%s" % (K2_LOCK_PREFIX, k2_lock_sfx)
 
+    @staticmethod
+    def get_driver_options():
+        return kaminario_opts
+
     @utils.trace
     def check_for_setup_error(self):
         if krest is None:

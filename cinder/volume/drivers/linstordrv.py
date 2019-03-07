@@ -117,6 +117,10 @@ class LinstorBaseDriver(driver.VolumeDriver):
             'volume_backend_name')
         self.host_name = socket.gethostname()
 
+    @staticmethod
+    def get_driver_options():
+        return linstor_opts
+
     def _ping(self):
         with lin_drv(self.default_uri) as lin:
             return lin.ping()

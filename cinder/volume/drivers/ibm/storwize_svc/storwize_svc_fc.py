@@ -109,6 +109,10 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         self.configuration.append_config_values(
             storwize_svc_fc_opts)
 
+    @staticmethod
+    def get_driver_options():
+        return storwize_common.storwize_svc_opts + storwize_svc_fc_opts
+
     def validate_connector(self, connector):
         """Check connector for at least one enabled FC protocol."""
         if 'wwpns' not in connector:

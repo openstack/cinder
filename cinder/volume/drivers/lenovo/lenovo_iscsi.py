@@ -45,5 +45,9 @@ class LenovoISCSIDriver(dothill_iscsi.DotHillISCSIDriver):
         self.configuration.append_config_values(lenovo_common.iscsi_opts)
         self.iscsi_ips = self.configuration.lenovo_iscsi_ips
 
+    @staticmethod
+    def get_driver_options():
+        return lenovo_common.common_opts + lenovo_common.iscsi_opts
+
     def _init_common(self):
         return lenovo_common.LenovoCommon(self.configuration)

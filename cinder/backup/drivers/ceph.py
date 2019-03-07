@@ -194,6 +194,10 @@ class CephBackupDriver(driver.BackupDriver):
         self._ceph_backup_pool = utils.convert_str(CONF.backup_ceph_pool)
         self._ceph_backup_conf = utils.convert_str(CONF.backup_ceph_conf)
 
+    @staticmethod
+    def get_driver_options():
+        return service_opts
+
     def _validate_string_args(self, *args):
         """Ensure all args are non-None and non-empty."""
         return all(args)

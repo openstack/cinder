@@ -15,6 +15,7 @@
 """Generate list of Cinder drivers"""
 
 import argparse
+import operator
 import os
 import json
 import textwrap
@@ -73,19 +74,56 @@ def format_description(desc, output):
     output.write('')
     output.write(textwrap.dedent('\n'.join(lines[1:])))
 
-def print_drivers(drivers, config_name, output):
-    for driver in sorted(drivers, key=lambda x: x.class_fqn):
-        driver_name = driver.class_name
+
+def format_options(driver_options, output):
+    if driver_options and len(driver_options) > 0:
+
+        output.write('* Driver Configuration Options:')
+        output.write('')
+        output.write('.. list-table:: **Driver configuration options**')
+        output.write('   :header-rows: 1')
+        output.write('   :widths: 14 30')
+        output.write('')
+        output.write('   * - Name = Default Value')
+        output.write('     - (Type) Description')
+        sorted_options = sorted(driver_options,
+                                key=operator.attrgetter('name'))
+        for opt in sorted_options:
+            output.write('   * - %s = %s' %
+                         (opt.name, opt.default))
+            output.write('     - (%s) %s' % (opt.type, opt.help))
+        output.write('')
+
+def filter_drivers(drivers):
+    '''This filters all of the drivers into separate lists.'''
+
+    supported_drivers = []
+    unsupported_drivers = []
+
+    for driver in drivers:
         if not driver.supported:
+            unsupported_drivers.append(driver)
+        else:
+            supported_drivers.append(driver)
+
+    return supported_drivers, unsupported_drivers
+
+
+def print_drivers(drivers, config_name, output, section_char='-',
+                  display_unsupported=True):
+    for driver in sorted(drivers, key=lambda x: x.class_name):
+        driver_name = driver.class_name
+        if not driver.supported and display_unsupported:
             driver_name += " (unsupported)"
         output.write(driver_name)
-        output.write('-' * len(driver_name))
+        output.write(section_char * len(driver_name))
         if driver.version:
             output.write('* Version: %s' % driver.version)
         output.write('* %s=%s' % (config_name, driver.class_fqn))
         if driver.ci_wiki_name and 'Cinder_Jenkins' not in driver.ci_wiki_name:
             output.write('* CI info: %s%s' % (CI_WIKI_ROOT,
                                               driver.ci_wiki_name))
+        format_options(driver.driver_options, output)
         format_description(driver.desc, output)
         output.write('')
     output.write('')
@@ -95,7 +133,18 @@ def output_str(cinder_root, args):
     with Output(cinder_root, args.output_list) as output:
         output.write('Volume Drivers')
         output.write('==============')
-        print_drivers(util.get_volume_drivers(), 'volume_driver', output)
+        supported_drivers, unsupported_drivers = filter_drivers(
+            util.get_volume_drivers())
+
+        output.write('Supported Drivers')
+        output.write('-----------------')
+        output.write('')
+        print_drivers(supported_drivers, 'volume_driver', output, '~')
+
+        output.write('Unsupported Drivers')
+        output.write('-------------------')
+        output.write('')
+        print_drivers(unsupported_drivers, 'volume_driver', output, '~')
 
         output.write('Backup Drivers')
         output.write('==============')
@@ -114,7 +163,9 @@ def collect_driver_info(driver):
             'fqn': driver.class_fqn,
             'description': driver.desc,
             'ci_wiki_name': driver.ci_wiki_name,
-            'supported': driver.supported}
+            'supported': driver.supported,
+            'options': driver.driver_options,
+            }
 
     return info
 

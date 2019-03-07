@@ -109,6 +109,10 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         self.configuration.append_config_values(
             storwize_svc_iscsi_opts)
 
+    @staticmethod
+    def get_driver_options():
+        return storwize_common.storwize_svc_opts + storwize_svc_iscsi_opts
+
     def validate_connector(self, connector):
         """Check connector for at least one enabled iSCSI protocol."""
         if 'initiator' not in connector:

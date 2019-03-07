@@ -146,12 +146,15 @@ class GPFSDriver(driver.CloneableImageVD,
                  driver.BaseVD):
     """Implements volume functions using GPFS primitives.
 
-    Version history:
-    1.0.0 - Initial driver
-    1.1.0 - Add volume retype, refactor volume migration
-    1.2.0 - Add consistency group support
-    1.3.0 - Add NFS based GPFS storage backend support
-    1.3.1 - Add GPFS native encryption (encryption of data at rest) support
+    .. code-block:: none
+
+     Version history:
+
+       1.0.0 - Initial driver
+       1.1.0 - Add volume retype, refactor volume migration
+       1.2.0 - Add consistency group support
+       1.3.0 - Add NFS based GPFS storage backend support
+       1.3.1 - Add GPFS native encryption (encryption of data at rest) support
     """
 
     VERSION = "1.3.1"
@@ -165,6 +168,10 @@ class GPFSDriver(driver.CloneableImageVD,
         self.gpfs_execute = self._gpfs_local_execute
         self._execute = utils.execute
         self.GPFS_PATH = ''
+
+    @staticmethod
+    def get_driver_options():
+        return gpfs_opts
 
     def _gpfs_local_execute(self, *cmd, **kwargs):
         if 'run_as_root' not in kwargs:
@@ -1407,6 +1414,10 @@ class GPFSRemoteDriver(GPFSDriver, san.SanDriver):
         self.configuration.san_ssh_port = self.configuration.gpfs_ssh_port
         self.gpfs_execute = self._gpfs_remote_execute
         self.GPFS_PATH = '/usr/lpp/mmfs/bin/'
+
+    @staticmethod
+    def get_driver_options():
+        return gpfs_opts + gpfs_remote_ssh_opts
 
     def _gpfs_remote_execute(self, *cmd, **kwargs):
         check_exit_code = kwargs.pop('check_exit_code', None)

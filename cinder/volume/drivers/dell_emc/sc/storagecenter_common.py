@@ -110,6 +110,10 @@ class SCCommonDriver(driver.ManageableVD,
         self.storage_protocol = 'iSCSI'
         self.failback_timeout = 60
 
+    @staticmethod
+    def get_driver_options():
+        return common_opts
+
     def _bytes_to_gb(self, spacestring):
         """Space is returned in a string like ...
 

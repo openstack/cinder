@@ -27,7 +27,9 @@ LOG = logging.getLogger(__name__)
 class SynoISCSIDriver(driver.ISCSIDriver):
     """OpenStack Cinder drivers for Synology storage.
 
-    Version history:
+    .. code-block:: none
+
+     Version history:
         1.0.0 - Initial driver. Provide Cinder minimum features
     """
     # ThirdPartySystems wiki page
@@ -40,6 +42,10 @@ class SynoISCSIDriver(driver.ISCSIDriver):
         self.common = None
         self.configuration.append_config_values(common.cinder_opts)
         self.stats = {}
+
+    @staticmethod
+    def get_driver_options():
+        return common.cinder_opts
 
     def do_setup(self, context):
         self.common = common.SynoCommon(self.configuration, 'iscsi')

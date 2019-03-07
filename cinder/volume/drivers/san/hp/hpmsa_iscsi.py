@@ -45,5 +45,9 @@ class HPMSAISCSIDriver(dothill_iscsi.DotHillISCSIDriver):
         self.configuration.append_config_values(hpmsa_common.iscsi_opts)
         self.iscsi_ips = self.configuration.hpmsa_iscsi_ips
 
+    @staticmethod
+    def get_driver_options():
+        return hpmsa_common.common_opts + hpmsa_common.iscsi_opts
+
     def _init_common(self):
         return hpmsa_common.HPMSACommon(self.configuration)

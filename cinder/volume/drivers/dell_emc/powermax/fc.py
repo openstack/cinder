@@ -126,6 +126,10 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
             active_backend_id=self.active_backend_id)
         self.zonemanager_lookup_service = fczm_utils.create_lookup_service()
 
+    @staticmethod
+    def get_driver_options():
+        return common.powermax_opts
+
     def check_for_setup_error(self):
         pass
 

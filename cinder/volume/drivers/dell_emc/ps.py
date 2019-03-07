@@ -155,6 +155,10 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
         self._group_ip = None
         self.sshpool = None
 
+    @staticmethod
+    def get_driver_options():
+        return eqlx_opts
+
     def _get_output(self, chan):
         out = ''
         ending = '%s> ' % self.configuration.eqlx_group_name

@@ -52,7 +52,9 @@ class UnityDriver(driver.ManageableVD,
                   driver.BaseVD):
     """Unity Driver.
 
-    Version history:
+    .. code-block:: none
+
+      Version history:
         1.0.0 - Initial version
         2.0.0 - Add thin clone support
         3.0.0 - Add IPv6 support
@@ -78,6 +80,10 @@ class UnityDriver(driver.ManageableVD,
         else:
             self.protocol = adapter.PROTOCOL_ISCSI
             self.adapter = adapter.ISCSIAdapter(self.VERSION)
+
+    @staticmethod
+    def get_driver_options():
+        return UNITY_OPTS
 
     def do_setup(self, context):
         self.adapter.do_setup(self, self.configuration)

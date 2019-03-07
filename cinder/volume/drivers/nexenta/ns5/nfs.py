@@ -82,6 +82,14 @@ class NexentaNfsDriver(nfs.NfsDriver):
         self.nef_user = self.configuration.nexenta_user
         self.nef_password = self.configuration.nexenta_password
 
+    @staticmethod
+    def get_driver_options():
+        return (
+            options.NEXENTA_CONNECTION_OPTS +
+            options.NEXENTA_NFS_OPTS +
+            options.NEXENTA_DATASET_OPTS
+        )
+
     @property
     def backend_name(self):
         backend_name = None

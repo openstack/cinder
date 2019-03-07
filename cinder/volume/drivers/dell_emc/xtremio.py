@@ -434,6 +434,10 @@ class XtremIOVolumeDriver(san.SanDriver):
         self._stats = {}
         self.client = XtremIOClient3(self.configuration, self.cluster_id)
 
+    @staticmethod
+    def get_driver_options():
+        return XTREMIO_OPTS
+
     def _obj_from_result(self, res):
         typ, idx = res['links'][0]['href'].split('/')[-2:]
         return self.client.req(typ, idx=int(idx))['content']

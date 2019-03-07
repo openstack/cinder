@@ -201,6 +201,10 @@ class AS13000Driver(san.SanISCSIDriver):
                                      self.username,
                                      self.password)
 
+    @staticmethod
+    def get_driver_options():
+        return inspur_as13000_opts
+
     @utils.trace
     def do_setup(self, context):
         # get tokens for the driver

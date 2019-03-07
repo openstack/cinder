@@ -124,6 +124,10 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         self._thin_provisioning_support = thin_enabled
         self._thick_provisioning_support = not thin_enabled
 
+    @staticmethod
+    def get_driver_options():
+        return volume_opts
+
     def do_setup(self, context):
         self._check_os_platform()
 

@@ -158,6 +158,10 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         if context:
             self.initialize()
 
+    @staticmethod
+    def get_driver_options():
+        return swiftbackup_service_opts
+
     def initialize(self):
         self.swift_attempts = CONF.backup_swift_retry_attempts
         self.swift_backoff = CONF.backup_swift_retry_backoff

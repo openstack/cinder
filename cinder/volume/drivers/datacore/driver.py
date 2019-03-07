@@ -94,6 +94,10 @@ class DataCoreVolumeDriver(driver.BaseVD):
         self._api = None
         self._default_volume_options = None
 
+    @staticmethod
+    def get_driver_options():
+        return datacore_opts
+
     def do_setup(self, context):
         """Perform validations and establish connection to server.
 

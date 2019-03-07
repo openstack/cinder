@@ -67,6 +67,10 @@ class WindowsISCSIDriver(driver.ISCSIDriver):
         self._tgt_utils = utilsfactory.get_iscsi_target_utils()
         self._hostutils = utilsfactory.get_hostutils()
 
+    @staticmethod
+    def get_driver_options():
+        return windows_opts
+
     def do_setup(self, context):
         """Setup the Windows Volume driver.
 

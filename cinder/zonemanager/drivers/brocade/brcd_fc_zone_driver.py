@@ -65,7 +65,9 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
     OpenStack Fibre Channel zone driver to manage FC zoning in
     Brocade SAN fabrics.
 
-    Version history:
+    .. code-block:: none
+
+      Version history:
         1.0 - Initial Brocade FC zone driver
         1.1 - Implements performance enhancements
         1.2 - Added support for friendly zone name
@@ -110,6 +112,10 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
             if fabric_names:
                 self.fabric_configs = fabric_opts.load_fabric_configurations(
                     fabric_names)
+
+    @staticmethod
+    def get_driver_options():
+        return brcd_opts
 
     @lockutils.synchronized('brcd', 'fcfabric-', True)
     def add_connection(self, fabric, initiator_target_map, host_name=None,

@@ -452,6 +452,10 @@ class SheepdogDriver(driver.VolumeDriver):
         self.node_list = [addr]
         self.client = SheepdogClient(self.node_list, self.port)
 
+    @staticmethod
+    def get_driver_options():
+        return sheepdog_opts
+
     def check_for_setup_error(self):
         """Check cluster status and update node list."""
         self.client.check_cluster_status()

@@ -181,6 +181,10 @@ class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                     credentials=creds)
         self.resumable = self.writer_chunk_size != -1
 
+    @staticmethod
+    def get_driver_options():
+        return gcsbackup_service_opts
+
     def check_for_setup_error(self):
         required_options = ('backup_gcs_bucket', 'backup_gcs_credential_file',
                             'backup_gcs_project_id')

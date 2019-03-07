@@ -19,6 +19,7 @@ Volume driver for NetApp Data ONTAP (C-mode) iSCSI storage systems.
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap import block_cmode
+from cinder.volume.drivers.netapp import options as na_opts
 
 
 @interface.volumedriver
@@ -36,6 +37,10 @@ class NetAppCmodeISCSIDriver(driver.BaseVD,
         super(NetAppCmodeISCSIDriver, self).__init__(*args, **kwargs)
         self.library = block_cmode.NetAppBlockStorageCmodeLibrary(
             self.DRIVER_NAME, 'iSCSI', **kwargs)
+
+    @staticmethod
+    def get_driver_options():
+        return na_opts.netapp_cluster_opts
 
     def do_setup(self, context):
         self.library.do_setup(context)

@@ -55,6 +55,10 @@ class GlusterfsBackupDriver(posix.PosixBackupDriver):
         super(GlusterfsBackupDriver, self).__init__(context,
                                                     backup_path=backup_path)
 
+    @staticmethod
+    def get_driver_options():
+        return glusterfsbackup_service_opts
+
     def check_for_setup_error(self):
         """Raises error if any required configuration flag is missing."""
         required_flags = ['glusterfs_backup_share']

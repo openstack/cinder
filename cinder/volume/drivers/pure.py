@@ -203,6 +203,10 @@ class PureBaseVolumeDriver(san.SanDriver):
             'platform': platform.platform()
         }
 
+    @staticmethod
+    def get_driver_options():
+        return PURE_OPTS
+
     def parse_replication_configs(self):
         self._replication_pg_name = (
             self.configuration.pure_replication_pg_name)

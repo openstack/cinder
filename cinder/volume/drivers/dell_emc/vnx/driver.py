@@ -99,6 +99,10 @@ class VNXDriver(driver.ManageableVD,
         self.adapter = None
         self._stats = {}
 
+    @staticmethod
+    def get_driver_options():
+        return common.VNX_OPTS
+
     def do_setup(self, context):
         if self.protocol == common.PROTOCOL_FC:
             self.adapter = adapter.FCAdapter(self.configuration,

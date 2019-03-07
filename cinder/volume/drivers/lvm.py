@@ -112,6 +112,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
         self.protocol = self.target_driver.protocol
         self._sparse_copy_volume = False
 
+    @staticmethod
+    def get_driver_options():
+        return volume_opts
+
     def _sizestr(self, size_in_g):
         return '%sg' % size_in_g
 

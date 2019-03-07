@@ -170,6 +170,10 @@ class FJDXCommon(object):
             self.configuration.iscsi_ip_address = (
                 self._get_drvcfg('EternusISCSIIP'))
 
+    @staticmethod
+    def get_driver_options():
+        return FJ_ETERNUS_DX_OPT_opts
+
     def create_volume(self, volume):
         """Create volume on ETERNUS."""
         LOG.debug('create_volume, '

@@ -292,6 +292,10 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         self._set_cluster_pairs()
 
+    @staticmethod
+    def get_driver_options():
+        return sf_opts
+
     def __getattr__(self, attr):
         if hasattr(self.target_driver, attr):
             return getattr(self.target_driver, attr)
