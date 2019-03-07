@@ -415,7 +415,7 @@ class GeneralFiltersTest(test.TestCase):
                'resource': 'fake_resource'},
               {'filters': {'is_public': True},
                'is_admin': False,
-               'result': {'volume_type': []},
+               'result': {'volume_type': ["is_public"]},
                'expected': {'is_public': True},
                'resource': 'volume_type'})
     @ddt.unpack
@@ -485,7 +485,7 @@ class GeneralFiltersTest(test.TestCase):
                'expected': ["name", "status", "volume_id", "metadata",
                             "availability_zone"]},
               {'resource': 'group_snapshot',
-               'expected': ["status", "group_id"]},
+               'expected': ["name", "status", "group_id"]},
               {'resource': 'attachment',
                'expected': ["volume_id", "status", "instance_id",
                             "attach_status"]},
