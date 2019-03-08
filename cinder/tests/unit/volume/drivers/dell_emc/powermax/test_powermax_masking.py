@@ -67,20 +67,20 @@ class PowerMaxMaskingTest(test.TestCase):
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.driver.masking._sanity_port_group_check,
-            self.data.array, None)
+            None, self.data.array)
 
     @mock.patch.object(rest.PowerMaxRest, 'get_portgroup', return_value=None)
     def test_sanity_port_group_check_invalid_portgroup(self, mock_pg):
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.driver.masking._sanity_port_group_check,
-            self.data.array, None)
+            None, self.data.array)
 
     @mock.patch.object(rest.PowerMaxRest, 'get_portgroup',
                        return_value=tpd.PowerMaxData.portgroup)
     def test_sanity_port_group_check(self, mock_pg):
         self.driver.masking._sanity_port_group_check(
-            self.data.array, self.data.port_group_name_f)
+            self.data.port_group_name_f, self.data.array)
 
     @mock.patch.object(masking.PowerMaxMasking,
                        'get_or_create_masking_view_and_map_lun')
