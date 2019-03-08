@@ -1450,6 +1450,11 @@ class PowerMaxCommon(object):
             extra_specs[utils.WORKLOAD])
         masking_view_dict[utils.ARRAY] = extra_specs[utils.ARRAY]
         masking_view_dict[utils.SRP] = extra_specs[utils.SRP]
+        if not extra_specs[utils.PORTGROUPNAME]:
+            LOG.warning("You must supply a valid pre-created port group "
+                        "in cinder.conf or as an extra spec. Port group "
+                        "cannot be left empty as creating a new masking "
+                        "view will fail.")
         masking_view_dict[utils.PORTGROUPNAME] = (
             extra_specs[utils.PORTGROUPNAME])
         masking_view_dict[utils.INITIATOR_CHECK] = (
