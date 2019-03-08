@@ -186,7 +186,7 @@ class PowerMaxRest(object):
                     "Cinder Volume service to revert back to the primary "
                     "Unisphere instance.")
             self.u4p_failover_lock = False
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.VolumeBackendAPIException(message=msg)
 
     def request(self, target_uri, method, params=None, request_object=None,
                 u4p_check=False, retry=False):
@@ -287,8 +287,8 @@ class PowerMaxRest(object):
             LOG.exception(msg, {'method': method, 'url': url,
                                 'e': six.text_type(e)})
             raise exception.VolumeBackendAPIException(
-                data=(msg, {'method': method, 'url': url,
-                            'e': six.text_type(e)}))
+                message=(msg, {'method': method, 'url': url,
+                               'e': six.text_type(e)}))
 
         return status_code, message
 
@@ -326,7 +326,7 @@ class PowerMaxRest(object):
                 exception_message = (_("Issue encountered waiting for job."))
                 LOG.exception(exception_message)
                 raise exception.VolumeBackendAPIException(
-                    data=exception_message)
+                    message=exception_message)
 
             if retries > int(extra_specs[utils.RETRIES]):
                 LOG.error("_wait_for_job_complete failed after "
@@ -389,7 +389,7 @@ class PowerMaxRest(object):
                     'operation': operation, 'sc': status_code,
                     'message': message})
             raise exception.VolumeBackendAPIException(
-                data=exception_message)
+                message=exception_message)
 
     def wait_for_job(self, operation, status_code, job, extra_specs):
         """Check if call is async, wait for it to complete.
@@ -413,7 +413,7 @@ class PowerMaxRest(object):
                         'error': six.text_type(result), 'status': status})
                 LOG.error(exception_message)
                 raise exception.VolumeBackendAPIException(
-                    data=exception_message)
+                    message=exception_message)
         return task
 
     @staticmethod
@@ -1029,7 +1029,7 @@ class PowerMaxRest(object):
                     'dv': qos_unit})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
-                data=exception_message)
+                message=exception_message)
         return property_dict
 
     @staticmethod
@@ -1048,7 +1048,7 @@ class PowerMaxRest(object):
                     'dl': dynamic_list})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
-                data=exception_message)
+                message=exception_message)
         return property_dict
 
     def set_storagegroup_srp(
@@ -1138,7 +1138,8 @@ class PowerMaxRest(object):
             exception_message = (_("Volume %(deviceID)s not found.")
                                  % {'deviceID': device_id})
             LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
         return volume_dict
 
     def _get_private_volume(self, array, device_id):
@@ -1160,7 +1161,8 @@ class PowerMaxRest(object):
             exception_message = (_("Volume %(deviceID)s not found.")
                                  % {'deviceID': device_id})
             LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
         return volume_dict
 
     def get_volume_list(self, array, params):
@@ -1609,7 +1611,8 @@ class PowerMaxRest(object):
         else:
             exception_message = (_("Error retrieving masking group."))
             LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
         return element
 
     def get_common_masking_views(self, array, portgroup_name, ig_name):
@@ -1922,7 +1925,7 @@ class PowerMaxRest(object):
                                        "synchronization."))
                 LOG.exception(exception_message)
                 raise exception.VolumeBackendAPIException(
-                    data=exception_message)
+                    message=exception_message)
 
             if kwargs['retries'] > int(extra_specs[utils.RETRIES]):
                 LOG.error("_wait_for_sync failed after %(retries)d "
@@ -2185,7 +2188,7 @@ class PowerMaxRest(object):
                 exception_message = _("Issue encountered waiting for job.")
                 LOG.exception(exception_message)
                 raise exception.VolumeBackendAPIException(
-                    data=exception_message)
+                    message=exception_message)
 
             if retries > int(extra_specs[utils.RETRIES]):
                 LOG.error("_wait_for_consistent_state failed after "

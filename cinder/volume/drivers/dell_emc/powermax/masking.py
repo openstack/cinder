@@ -19,6 +19,7 @@ import sys
 import time
 
 from oslo_log import log as logging
+import re
 import six
 
 from cinder import coordination
@@ -29,6 +30,8 @@ from cinder.volume.drivers.dell_emc.powermax import utils
 from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
+
+CREATE_IG_ERROR = "is already in use in another Initiator Group"
 
 
 class PowerMaxMasking(object):
@@ -239,6 +242,11 @@ class PowerMaxMasking(object):
         LOG.info("Port Group in masking view operation: %(port_group_name)s.",
                  {'port_group_name': port_group_name})
 
+        init_group_name, error_message = (self._get_or_create_initiator_group(
+            serial_number, init_group_name, connector, extra_specs))
+        if error_message:
+            return error_message
+
         # get or create parent sg
         error_message = self._get_or_create_storage_group(
             serial_number, masking_view_dict, parent_sg_name, extra_specs,
@@ -249,11 +257,6 @@ class PowerMaxMasking(object):
         # get or create child sg
         error_message = self._get_or_create_storage_group(
             serial_number, masking_view_dict, storagegroup_name, extra_specs)
-        if error_message:
-            return error_message
-
-        init_group_name, error_message = (self._get_or_create_initiator_group(
-            serial_number, init_group_name, connector, extra_specs))
         if error_message:
             return error_message
 
@@ -978,8 +981,19 @@ class PowerMaxMasking(object):
         :param extra_specs: the extra specifications
         :returns: the initiator group name
         """
-        self.rest.create_initiator_group(
-            serial_number, init_group_name, initiator_names, extra_specs)
+        try:
+            self.rest.create_initiator_group(
+                serial_number, init_group_name, initiator_names, extra_specs)
+        except exception.VolumeBackendAPIException as ex:
+            if re.search(CREATE_IG_ERROR, ex.msg):
+                LOG.error("It is probable that initiator(s) %(initiators)s "
+                          "belong to an existing initiator group (host) "
+                          "that is neither logged into the array or part "
+                          "of a masking view and as such cannot be queried. "
+                          "Please delete this initiator group (host) and "
+                          "re-run the operation.",
+                          {'initiators': initiator_names})
+            raise exception.VolumeBackendAPIException(message=ex)
         return init_group_name
 
     def _check_ig_rollback(
