@@ -456,6 +456,7 @@ class PowerMaxRest(object):
                       {'e': e})
         if sc == STATUS_200:
             resource_object = message
+            resource_object = self.list_pagination(resource_object)
         return resource_object
 
     def get_resource(self, array, category, resource_type,
@@ -889,8 +890,10 @@ class PowerMaxRest(object):
         :param name_id: name id - used in host_assisted migration, optional
         :returns: found_device_id
         """
-        element_name = self.utils.get_volume_element_name(volume_id)
         found_device_id = None
+        if not device_id:
+            return found_device_id
+        element_name = self.utils.get_volume_element_name(volume_id)
         vol_details = self.get_volume(array, device_id)
         if vol_details:
             vol_identifier = vol_details.get('volume_identifier', None)
@@ -1152,7 +1155,7 @@ class PowerMaxRest(object):
             volume_info = self.get_resource(
                 array, SLOPROVISIONING, 'volume', params=params,
                 private='/private')
-            volume_dict = volume_info['resultList']['result'][0]
+            volume_dict = volume_info[0]
         except (KeyError, TypeError):
             exception_message = (_("Volume %(deviceID)s not found.")
                                  % {'deviceID': device_id})
@@ -1170,9 +1173,8 @@ class PowerMaxRest(object):
         :returns: device_ids -- list
         """
         device_ids = []
-        volumes = self.get_resource(
+        volume_dict_list = self.get_resource(
             array, SLOPROVISIONING, 'volume', params=params)
-        volume_dict_list = self.list_pagination(volumes)
         try:
             for vol_dict in volume_dict_list:
                 device_id = vol_dict['volumeId']
@@ -1188,11 +1190,9 @@ class PowerMaxRest(object):
         :param params: filter parameters
         :returns: list -- dicts with volume information
         """
-        volume_info = self.get_resource(
+        return self.get_resource(
             array, SLOPROVISIONING, 'volume', params=params,
             private='/private')
-
-        return self.list_pagination(volume_info)
 
     def _modify_volume(self, array, device_id, payload):
         """Modify a volume (PUT operation).
@@ -2534,8 +2534,7 @@ class PowerMaxRest(object):
             start_position = list_info['resultList']['from']
             end_position = list_info['resultList']['to']
         except (KeyError, TypeError):
-            return result_list
-
+            return list_info
         if list_count > max_page_size:
             LOG.info("More entries exist in the result list, retrieving "
                      "remainder of results from iterator.")
