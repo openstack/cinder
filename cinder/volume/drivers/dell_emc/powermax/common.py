@@ -419,6 +419,10 @@ class PowerMaxCommon(object):
         group_name = None
         group_id = None
         extra_specs = self._initial_setup(volume)
+        # Check if the RDF group is valid
+        if self.utils.is_replication_enabled(extra_specs):
+            self.get_rdf_details(extra_specs[utils.ARRAY])
+
         if 'qos' in extra_specs:
             del extra_specs['qos']
 

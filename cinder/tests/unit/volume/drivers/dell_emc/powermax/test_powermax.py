@@ -8325,6 +8325,33 @@ class PowerMaxCommonReplicationTest(test.TestCase):
         self.common.create_volume(self.data.test_volume_group_member)
         mock_add.assert_called_once()
 
+    @mock.patch.object(
+        common.PowerMaxCommon, '_replicate_volume',
+        return_value=({
+            'replication_driver_data':
+                PowerMaxCommonData.test_volume.replication_driver_data}, {}))
+    @mock.patch.object(utils.PowerMaxUtils, 'is_replication_enabled',
+                       return_value=True)
+    @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group_number',
+                       side_effect=['4', None])
+    def test_create_replicated_vol_side_effect(
+            self, mock_rdf_no, mock_rep_enabled, mock_rep_vol):
+        self.common.rep_config = self.utils.get_replication_config(
+            [self.replication_device])
+        ref_rep_data = {'array': six.text_type(self.data.remote_array),
+                        'device_id': self.data.device_id2}
+        ref_model_update = {
+            'provider_location': six.text_type(
+                self.data.test_volume.provider_location),
+            'replication_driver_data': six.text_type(ref_rep_data)}
+
+        model_update = self.common.create_volume(self.data.test_volume)
+        self.assertEqual(ref_model_update, model_update)
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common.create_volume,
+                          self.data.test_volume)
+
     def test_create_cloned_replicated_volume(self):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
