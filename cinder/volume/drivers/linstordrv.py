@@ -965,7 +965,7 @@ class LinstorIscsiDriver(LinstorBaseDriver):
             self.helper_driver = self.helper_name
             self.target_driver = None
         else:
-            self.helper_name = self.configuration.safe_get('iscsi_helper')
+            self.helper_name = self.configuration.safe_get('target_helper')
             self.helper_driver = self.target_mapping[self.helper_name]
             self.target_driver = importutils.import_object(
                 self.helper_driver,
