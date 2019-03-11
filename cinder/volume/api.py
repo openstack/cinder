@@ -2079,7 +2079,7 @@ class API(base.Base):
 
         if not result:
             override = False
-            if instance_uuid:
+            if instance_uuid and vref.status in ('in-use', 'reserved'):
                 # Refresh the volume reference in case multiple instances were
                 # being concurrently attached to the same non-multiattach
                 # volume.
@@ -2094,9 +2094,11 @@ class API(base.Base):
                         break
 
             if not override:
-                msg = (_('Volume %(vol_id)s status must be %(statuses)s') %
+                msg = (_('Volume %(vol_id)s status must be %(statuses)s to '
+                         'reserve, but the current status is %(current)s.') %
                        {'vol_id': vref.id,
-                        'statuses': utils.build_or_str(expected['status'])})
+                        'statuses': utils.build_or_str(expected['status']),
+                        'current': vref.status})
                 raise exception.InvalidVolume(reason=msg)
 
         values = {'volume_id': vref.id,
