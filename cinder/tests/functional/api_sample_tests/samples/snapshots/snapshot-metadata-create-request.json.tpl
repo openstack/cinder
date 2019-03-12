@@ -1,5 +1,5 @@
 {
     "metadata": {
-        "key": "v3"
+        "key": "value"
     }
 }

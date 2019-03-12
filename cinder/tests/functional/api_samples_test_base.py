@@ -244,7 +244,7 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
                 {'expected': expected, 'result_str': result_str,
                  'result': result})
         try:
-            matched_value = match.group('id')
+            matched_value = match.group()
         except IndexError:
             if match.groups():
                 matched_value = match.groups()[0]
@@ -270,8 +270,17 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
                 expected, result, result_str, matched_value)
         # template string
         elif isinstance(expected, six.string_types) and '%' in expected:
-            matched_value = self._compare_template(
-                expected, result, result_str, matched_value)
+            if expected[-1] == '%':
+                if result != expected:
+                    raise NoMatch(
+                        'Values do not match:\n'
+                        'Template: %(expected)s\n%(result_str)s: '
+                        '%(result)s' % {'expected': expected,
+                                        'result_str': result_str,
+                                        'result': result})
+            else:
+                matched_value = self._compare_template(
+                    expected, result, result_str, matched_value)
         # string
         elif isinstance(expected, six.string_types):
 
