@@ -1606,7 +1606,7 @@ class FJDXCommon(object):
                      'Error: Volume is in Busy state')
                    % {'cpsession': cpsession,
                       'operation': operation})
-            raise exception.VolumeIsBusy(data=msg)
+            raise exception.VolumeIsBusy(msg)
         elif rc != 0:
             msg = (_('_delete_copysession, '
                      'copysession: %(cpsession)s, '

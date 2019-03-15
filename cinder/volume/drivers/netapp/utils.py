@@ -139,7 +139,7 @@ def setup_api_trace_pattern(api_trace_pattern):
     except (re.error, TypeError):
         msg = _('Cannot parse the API trace pattern. %s is not a '
                 'valid python regular expression.') % api_trace_pattern
-        raise exception.InvalidConfigurationValue(reason=msg)
+        raise exception.InvalidConfigurationValue(msg)
     API_TRACE_PATTERN = api_trace_pattern
 
 

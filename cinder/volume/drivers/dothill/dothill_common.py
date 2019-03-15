@@ -283,7 +283,7 @@ class DotHillCommon(object):
             err = (_("Unable to get stats for backend_name: %s") %
                    self.backend_name)
             LOG.exception(err)
-            raise exception.Invalid(reason=err)
+            raise exception.Invalid(err)
 
         stats['pools'].append(pool)
         self.stats = stats

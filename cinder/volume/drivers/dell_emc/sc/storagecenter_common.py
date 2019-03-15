@@ -2031,6 +2031,6 @@ class SCCommonDriver(driver.ManageableVD,
                     'back-end or resolve primary system issues and '
                     'fail back to reenable full functionality.')
             LOG.error(msg)
-            raise exception.Invalid(reason=msg)
+            raise exception.Invalid(msg)
 
         return True
