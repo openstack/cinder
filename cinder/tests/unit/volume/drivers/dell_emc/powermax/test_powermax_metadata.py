@@ -247,7 +247,7 @@ class PowerMaxVolumeMetadataDebugTest(test.TestCase):
         rest.PowerMaxRest, 'get_unisphere_version',
         return_value={'version': tpd.PowerMaxData.unisphere_version})
     @mock.patch.object(
-        rest.PowerMaxRest, 'get_array_serial',
+        rest.PowerMaxRest, 'get_array_detail',
         return_value={'ucode': tpd.PowerMaxData.vmax_firmware_version,
                       'model': tpd.PowerMaxData.vmax_model})
     def test_gather_version_info(

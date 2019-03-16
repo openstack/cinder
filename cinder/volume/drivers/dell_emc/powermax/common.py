@@ -184,7 +184,7 @@ class PowerMaxCommon(object):
         self.failover = False
         self._get_replication_info()
         self._get_u4p_failover_info()
-        self.nextGen = False
+        self.next_gen = False
         self._gather_info()
         self.version_dict = {}
 
@@ -199,7 +199,7 @@ class PowerMaxCommon(object):
                       "longer supported.")
         self.rest.set_rest_credentials(array_info)
         if array_info:
-            self.nextGen = self.rest.is_next_gen_array(
+            self.array_model, self.next_gen = self.rest.get_array_model_info(
                 array_info['SerialNumber'])
         finalarrayinfolist = self._get_slo_workload_combinations(
             array_info)
@@ -351,10 +351,12 @@ class PowerMaxCommon(object):
             if self.failover:
                 array = self.active_backend_id
 
-            slo_settings = self.rest.get_slo_list(array)
+            slo_settings = self.rest.get_slo_list(
+                array, self.next_gen, self.array_model)
             slo_list = [x for x in slo_settings
                         if x.lower() not in ['none', 'optimized']]
-            workload_settings = self.rest.get_workload_settings(array)
+            workload_settings = self.rest.get_workload_settings(
+                array, self.next_gen)
             workload_settings.append('None')
             slo_workload_set = set(
                 ['%(slo)s:%(workload)s' % {'slo': slo,
@@ -362,7 +364,7 @@ class PowerMaxCommon(object):
                  for slo in slo_list for workload in workload_settings])
             slo_workload_set.add('None:None')
 
-            if self.nextGen:
+            if self.next_gen:
                 LOG.warning("Workloads have been deprecated for arrays "
                             "running PowerMax OS uCode level 5978 or higher. "
                             "Any supplied workloads will be treated as None "
@@ -375,7 +377,7 @@ class PowerMaxCommon(object):
                 slo_workload_set.add('Optimized:None')
                 # If array is 5978 or greater and a VMAX AFA add legacy SL/WL
                 # combinations
-                if any(self.rest.get_vmax_model(array) in x for x in
+                if any(self.array_model in x for x in
                        utils.VMAX_AFA_MODELS):
                     slo_workload_set.add('Diamond:OLTP')
                     slo_workload_set.add('Diamond:OLTP_REP')
@@ -383,7 +385,7 @@ class PowerMaxCommon(object):
                     slo_workload_set.add('Diamond:DSS_REP')
                     slo_workload_set.add('Diamond:None')
 
-            if not any(self.rest.get_vmax_model(array) in x for x in
+            if not any(self.array_model in x for x in
                        utils.VMAX_AFA_MODELS):
                 slo_workload_set.add('Optimized:None')
 
@@ -1450,7 +1452,7 @@ class PowerMaxCommon(object):
         protocol = self.utils.get_short_protocol_type(self.protocol)
         short_host_name = self.utils.get_host_short_name(connector['host'])
         masking_view_dict[utils.SLO] = extra_specs[utils.SLO]
-        masking_view_dict[utils.WORKLOAD] = 'NONE' if self.nextGen else (
+        masking_view_dict[utils.WORKLOAD] = 'NONE' if self.next_gen else (
             extra_specs[utils.WORKLOAD])
         masking_view_dict[utils.ARRAY] = extra_specs[utils.ARRAY]
         masking_view_dict[utils.SRP] = extra_specs[utils.SRP]
@@ -1666,12 +1668,12 @@ class PowerMaxCommon(object):
         :raises: VolumeBackendAPIException:
         """
         array = extra_specs[utils.ARRAY]
-        next_gen = self.rest.is_next_gen_array(array)
+        array_model, next_gen = self.rest.get_array_model_info(array)
         if next_gen:
             extra_specs[utils.WORKLOAD] = 'NONE'
         is_valid_slo, is_valid_workload = self.provision.verify_slo_workload(
             array, extra_specs[utils.SLO],
-            extra_specs[utils.WORKLOAD], extra_specs[utils.SRP])
+            extra_specs[utils.WORKLOAD], next_gen, array_model)
         if not is_valid_slo or not is_valid_workload:
             exception_message = (_(
                 "Either SLO: %(slo)s or workload %(workload)s is invalid. "
@@ -1769,14 +1771,14 @@ class PowerMaxCommon(object):
             workload_from_extra_spec = pool_details[1]
             # Check if legacy pool chosen
             if (workload_from_extra_spec == pool_record['srpName'] or
-                    self.nextGen):
+                    self.next_gen):
                 workload_from_extra_spec = 'NONE'
 
         elif pool_record.get('ServiceLevel'):
             slo_from_extra_spec = pool_record['ServiceLevel']
             workload_from_extra_spec = pool_record.get('Workload', 'None')
             # If workload is None in cinder.conf, convert to string
-            if not workload_from_extra_spec or self.nextGen:
+            if not workload_from_extra_spec or self.next_gen:
                 workload_from_extra_spec = 'NONE'
             LOG.info("Pool_name is not present in the extra_specs "
                      "- using slo/ workload from cinder.conf: %(slo)s/%(wl)s.",
@@ -1784,7 +1786,8 @@ class PowerMaxCommon(object):
                       'wl': workload_from_extra_spec})
 
         else:
-            slo_list = self.rest.get_slo_list(pool_record['SerialNumber'])
+            slo_list = self.rest.get_slo_list(
+                pool_record['SerialNumber'], self.next_gen, self.array_model)
             if 'Optimized' in slo_list:
                 slo_from_extra_spec = 'Optimized'
             elif 'Diamond' in slo_list:
@@ -3428,7 +3431,8 @@ class PowerMaxCommon(object):
             target_device_id=target_device_id,
             replication_status=replication_status,
             rep_mode=rep_extra_specs['rep_mode'],
-            rdf_group_label=self.rep_config['rdf_group_label'])
+            rdf_group_label=self.rep_config['rdf_group_label'],
+            target_array_model=rep_extra_specs['target_array_model'])
 
         return replication_status, replication_driver_data, rep_info_dict
 
@@ -4084,12 +4088,14 @@ class PowerMaxCommon(object):
 
         # Check to see if SLO and Workload are configured on the target array.
         if extra_specs[utils.SLO]:
+            rep_extra_specs['target_array_model'], next_gen = (
+                self.rest.get_array_model_info(rep_config['array']))
             is_valid_slo, is_valid_workload = (
                 self.provision.verify_slo_workload(
                     rep_extra_specs[utils.ARRAY],
                     extra_specs[utils.SLO],
-                    rep_extra_specs[utils.WORKLOAD],
-                    rep_extra_specs[utils.SRP]))
+                    rep_extra_specs[utils.WORKLOAD], next_gen,
+                    rep_extra_specs['target_array_model']))
             if not is_valid_slo:
                 LOG.warning("The target array does not support the "
                             "storage pool setting for SLO %(slo)s, "
@@ -4102,7 +4108,6 @@ class PowerMaxCommon(object):
                             "%(workload)s, setting to NONE.",
                             {'workload': extra_specs[utils.WORKLOAD]})
                 rep_extra_specs[utils.WORKLOAD] = None
-
         return rep_extra_specs
 
     @staticmethod
