@@ -653,6 +653,7 @@ class LVM(executor.Executor):
         else:
             LOG.debug("Volume %s has been deactivated.", name)
 
+    @utils.retry(putils.ProcessExecutionError, retries=5, backoff_rate=2)
     def activate_lv(self, name, is_snapshot=False, permanent=False):
         """Ensure that logical volume/snapshot logical volume is activated.
 
