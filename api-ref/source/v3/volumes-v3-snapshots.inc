@@ -92,7 +92,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/snapshots-list-detailed-response.json
+.. literalinclude:: ./samples/snapshots/snapshots-list-detailed-response.json
    :language: javascript
 
 
@@ -128,7 +128,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/snapshot-create-request.json
+.. literalinclude:: ./samples/snapshots/snapshot-create-request.json
    :language: javascript
 
 Response Parameters
@@ -151,7 +151,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/snapshot-create-response.json
+.. literalinclude:: ./samples/snapshots/snapshot-create-response.json
    :language: javascript
 
 
@@ -211,7 +211,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/snapshots-list-response.json
+.. literalinclude:: ./samples/snapshots/snapshots-list-response.json
    :language: javascript
 
 
@@ -249,7 +249,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/snapshot-metadata-show-response.json
+.. literalinclude:: ./samples/snapshots/snapshot-metadata-show-response.json
    :language: javascript
 
 
@@ -283,7 +283,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/snapshot-metadata-create-request.json
+.. literalinclude:: ./samples/snapshots/snapshot-metadata-create-request.json
    :language: javascript
 
 Response Parameters
@@ -296,7 +296,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/snapshot-metadata-create-response.json
+.. literalinclude:: ./samples/snapshots/snapshot-metadata-create-response.json
    :language: javascript
 
 Update a snapshot's metadata
@@ -326,7 +326,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/snapshot-metadata-update-request.json
+.. literalinclude:: ./samples/snapshots/snapshot-metadata-update-request.json
    :language: javascript
 
 
@@ -340,7 +340,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/snapshot-metadata-update-response.json
+.. literalinclude:: ./samples/snapshots/snapshot-metadata-update-response.json
    :language: javascript
 
 
@@ -390,7 +390,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/snapshot-show-response.json
+.. literalinclude:: ./samples/snapshots/snapshot-show-response.json
    :language: javascript
 
 
@@ -423,7 +423,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/snapshot-update-request.json
+.. literalinclude:: ./samples/snapshots/snapshot-update-request.json
    :language: javascript
 
 
@@ -447,7 +447,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/snapshot-update-response.json
+.. literalinclude:: ./samples/snapshots/snapshot-update-response.json
    :language: javascript
 
 
@@ -520,7 +520,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/snapshot-metadata-show-key-response.json
+.. literalinclude:: ./samples/snapshots/snapshot-metadata-show-key-response.json
    :language: javascript
 
 
@@ -579,7 +579,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/snapshot-metadata-update-key-request.json
+.. literalinclude:: ./samples/snapshots/snapshot-metadata-update-key-request.json
    :language: javascript
 
 Response Parameters
@@ -592,5 +592,5 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/snapshot-metadata-update-key-response.json
+.. literalinclude:: ./samples/snapshots/snapshot-metadata-update-key-response.json
    :language: javascript

@@ -1,0 +1,17 @@
+{
+    "snapshots": [
+        {
+            "created_at": "2019-03-11T16:29:08.973832",
+            "description": "Daily backup",
+            "id": "2c228773-50eb-422d-be7e-b5c6ced0c7a9",
+            "metadata": {
+                "key": "v3"
+            },
+            "name": "snap-001",
+            "size": 10,
+            "status": "creating",
+            "updated_at": null,
+            "volume_id": "428ec041-b999-40d8-8a54-9e98b19406cc"
+        }
+    ]
+}
