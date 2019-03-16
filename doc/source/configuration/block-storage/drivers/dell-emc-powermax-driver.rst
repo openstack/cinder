@@ -138,6 +138,7 @@ PowerMax drivers also support the following features:
 -  Encrypted Volume support
 -  Extending attached volume
 -  Replicated volume retype support
+-  Retyping attached(in-use) volume
 
 .. note::
 
@@ -283,84 +284,88 @@ complex and open-zoning would raise security concerns.
 4. Configure Block Storage in cinder.conf
 -----------------------------------------
 
-    .. config-table::
-       :config-target: PowerMax
+.. config-table::
+   :config-target: PowerMax
 
-       cinder.volume.drivers.dell_emc.powermax.common
-
-   .. note::
-
-      For security and backend uniformity, the use of the XML file for PowerMax
-      backend configuration was deprecated in Queens and removed entirely
-      in Rocky.
-
-   .. note::
-
-      ``san_api_port`` is ``8443`` by default but can be changed if
-      necessary. For the purposes of this documentation the default is
-      assumed so the tag will not appear in any of the ``cinder.conf``
-      extracts below.
-
-   .. note::
-
-      PowerMax ``PortGroups`` must be pre-configured to expose volumes managed
-      by the array. Port groups can be supplied in the ``cinder.conf``, or
-      can be specified as an extra spec ``storagetype:portgroupname`` on a
-      volume type. The latter gives the user more control. When a dynamic
-      masking view is created by the PowerMax driver, if there is no port group
-      specified as an extra specification, the port group is chosen randomly
-      from the PortGroup list, to evenly distribute load across the set of
-      groups provided.
-
-   .. note::
-
-      Service Level and workload can be added to the cinder.conf when the
-      backend is the default case and there is no associated volume type.
-      This not a recommended configuration as it is too restrictive.
-      Workload is NONE for PowerMax and any All Flash with PowerMax OS
-      (5978) or greater.
-
-      +--------------------+------------------------+---------+----------+
-      | PowerMAX parameter | cinder.conf parameter  | Default | Required |
-      +====================+========================+=========+==========+
-      |  ServiceLevel      | vmax_service_level     | None    | No       |
-      +--------------------+------------------------+---------+----------+
-      |  Workload          | vmax_workload          | None    | No       |
-      +--------------------+------------------------+---------+----------+
-
-   Configure Block Storage in cinder.conf
-
-   Add the following entries to ``/etc/cinder/cinder.conf``:
-
-   .. code-block:: ini
-
-      enabled_backends = CONF_GROUP_ISCSI, CONF_GROUP_FC
-
-      [CONF_GROUP_ISCSI]
-      volume_driver = cinder.volume.drivers.dell_emc.powermax.iscsi.PowerMaxISCSIDriver
-      volume_backend_name = POWERMAX_ISCSI
-      vmax_port_groups = [OS-ISCSI-PG]
-      san_ip = 10.10.10.10
-      san_login = my_username
-      san_password = my_password
-      vmax_array = 000123456789
-      vmax_srp = SRP_1
+   cinder.volume.drivers.dell_emc.powermax.common
 
 
-      [CONF_GROUP_FC]
-      volume_driver = cinder.volume.drivers.dell_emc.powermax.fc.PowerMaxFCDriver
-      volume_backend_name = POWERMAX_FC
-      vmax_port_groups = [OS-FC-PG]
-      san_ip = 10.10.10.10
-      san_login = my_username
-      san_password = my_password
-      vmax_array = 000123456789
-      vmax_srp = SRP_1
+.. note::
 
-   In this example, two back-end configuration groups are enabled:
-   ``CONF_GROUP_ISCSI`` and ``CONF_GROUP_FC``. Each configuration group has a
-   section describing unique parameters for connections, drivers and the
-   ``volume_backend_name``.
+   For security and backend uniformity, the use of the XML file for PowerMax
+   backend configuration was deprecated in Queens and removed entirely
+   in Rocky.
+
+
+.. note::
+
+   ``san_api_port`` is ``8443`` by default but can be changed if
+   necessary. For the purposes of this documentation the default is
+   assumed so the tag will not appear in any of the ``cinder.conf``
+   extracts below.
+
+
+.. note::
+
+   PowerMax ``PortGroups`` must be pre-configured to expose volumes managed
+   by the array. Port groups can be supplied in the ``cinder.conf``, or
+   can be specified as an extra spec ``storagetype:portgroupname`` on a
+   volume type. The latter gives the user more control. When a dynamic
+   masking view is created by the PowerMax driver, if there is no port group
+   specified as an extra specification, the port group is chosen randomly
+   from the PortGroup list, to evenly distribute load across the set of
+   groups provided.
+
+.. note::
+
+   Service Level and workload can be added to the cinder.conf when the
+   backend is the default case and there is no associated volume type.
+   This not a recommended configuration as it is too restrictive.
+   Workload is NONE for PowerMax and any All Flash with PowerMax OS
+   (5978) or greater.
+
+   +--------------------+----------------------------+---------+----------+
+   | PowerMax parameter | cinder.conf parameter      | Default | Required |
+   +====================+============================+=========+==========+
+   |  ServiceLevel      | powermax_service_level     | None    | No       |
+   +--------------------+----------------------------+---------+----------+
+   |  Workload          | powermax_workload          | None    | No       |
+   +--------------------+----------------------------+---------+----------+
+
+
+Configure Block Storage in cinder.conf
+
+Add the following entries to ``/etc/cinder/cinder.conf``:
+
+.. code-block:: ini
+
+   enabled_backends = CONF_GROUP_ISCSI, CONF_GROUP_FC
+
+   [CONF_GROUP_ISCSI]
+   volume_driver = cinder.volume.drivers.dell_emc.powermax.iscsi.PowerMaxISCSIDriver
+   volume_backend_name = POWERMAX_ISCSI
+   powermax_port_groups = [OS-ISCSI-PG]
+   san_ip = 10.10.10.10
+   san_login = my_username
+   san_password = my_password
+   powermax_array = 000123456789
+   powermax_srp = SRP_1
+
+
+   [CONF_GROUP_FC]
+   volume_driver = cinder.volume.drivers.dell_emc.powermax.fc.PowerMaxFCDriver
+   volume_backend_name = POWERMAX_FC
+   powermax_port_groups = [OS-FC-PG]
+   san_ip = 10.10.10.10
+   san_login = my_username
+   san_password = my_password
+   powermax_array = 000123456789
+   powermax_srp = SRP_1
+
+In this example, two back-end configuration groups are enabled:
+``CONF_GROUP_ISCSI`` and ``CONF_GROUP_FC``. Each configuration group has a
+section describing unique parameters for connections, drivers and the
+``volume_backend_name``.
 
 
 5. SSL support
@@ -519,12 +524,12 @@ Add the following lines to the PowerMax backend in the cinder.conf:
    [CONF_GROUP_ISCSI]
    volume_driver = cinder.volume.drivers.dell_emc.powermax.iscsi.PowerMaxISCSIDriver
    volume_backend_name = POWERMAX_ISCSI
-   vmax_port_groups = [OS-ISCSI-PG]
+   powermax_port_groups = [OS-ISCSI-PG]
    san_ip = 10.10.10.10
    san_login = my_username
    san_password = my_password
-   vmax_array = 000123456789
-   vmax_srp = SRP_1
+   powermax_array = 000123456789
+   powermax_srp = SRP_1
    interval = 1
    retries = 700
 
@@ -591,9 +596,9 @@ Settings and Configuration
       san_ip = 10.10.10.10
       san_login = my_u4v_username
       san_password = my_u4v_password
-      vmax_srp = SRP_1
-      vmax_array = 000123456789
-      vmax_port_groups = [OS-ISCSI-PG]
+      powermax_srp = SRP_1
+      powermax_array = 000123456789
+      powermax_port_groups = [OS-ISCSI-PG]
       use_chap_auth = True
       chap_username = my_username
       chap_password = my_password
@@ -1433,31 +1438,31 @@ PowerMax view point.
 
 .. code-block:: console
 
-   +-------------------------+---------------------------------------------------------+
-   | Key                     | Value                                                   |
-   +-------------------------+---------------------------------------------------------+
-   | service_level           | Gold                                                    |
-   | is_compression_disabled | no                                                      |
-   | vmax_driver_version     | 3.2.0                                                   |
-   | identifier_name         | OS-819470ab-a6d4-49cc-b4db-6f85e82822b7                 |
-   | openstack_release       | 13.0.0.0b3.dev3                                         |
-   | volume_id               | 819470ab-a6d4-49cc-b4db-6f85e82822b7                    |
-   | vmax_model              | PowerMax_8000                                           |
-   | operation               | delete                                                  |
-   | default_sg_name         | OS-DEFAULT_SRP-Gold-NONE-SG                             |
-   | device_id               | 01C03                                                   |
-   | unisphere_version       | V9.0.0.9                                                |
-   | workload                | NONE                                                    |
-   | openstack_version       | 13.0.0                                                  |
-   | volume_updated_time     | 2018-08-03 03:13:53                                     |
-   | platform                | Linux-4.4.0-127-generic-x86_64-with-Ubuntu-16.04-xenial |
-   | python_version          | 2.7.12                                                  |
-   | volume_size             | 20                                                      |
-   | srp                     | DEFAULT_SRP                                             |
-   | openstack_name          | 91_Test_Vol56                                           |
-   | vmax_firmware_version   | 5978.143.144                                            |
-   | serial_number           | 000123456789                                            |
-   +-------------------------+---------------------------------------------------------+
+   +------------------------------------+---------------------------------------------------------+
+   | Key                                | Value                                                   |
+   +------------------------------------+---------------------------------------------------------+
+   | service_level                      | Gold                                                    |
+   | is_compression_disabled            | no                                                      |
+   | powermax_cinder_driver_version     | 3.2.0                                                   |
+   | identifier_name                    | OS-819470ab-a6d4-49cc-b4db-6f85e82822b7                 |
+   | openstack_release                  | 13.0.0.0b3.dev3                                         |
+   | volume_id                          | 819470ab-a6d4-49cc-b4db-6f85e82822b7                    |
+   | storage_model                      | PowerMax_8000                                           |
+   | successful_operation               | delete                                                  |
+   | default_sg_name                    | OS-DEFAULT_SRP-Gold-NONE-SG                             |
+   | device_id                          | 01C03                                                   |
+   | unisphere_for_powermax_version     | V9.0.0.9                                                |
+   | workload                           | NONE                                                    |
+   | openstack_version                  | 13.0.0                                                  |
+   | volume_updated_time                | 2018-08-03 03:13:53                                     |
+   | platform                           | Linux-4.4.0-127-generic-x86_64-with-Ubuntu-16.04-xenial |
+   | python_version                     | 2.7.12                                                  |
+   | volume_size                        | 20                                                      |
+   | srp                                | DEFAULT_SRP                                             |
+   | openstack_name                     | 90_Test_Vol56                                           |
+   | storage_firmware_version           | 5978.143.144                                            |
+   | serial_number                      | 000123456789                                            |
+   +------------------------------------+---------------------------------------------------------+
 
 
 Cinder supported operations
@@ -1471,7 +1476,7 @@ Configure the source and target arrays
 
 #. Configure an SRDF group between the chosen source and target
    arrays for the PowerMax Cinder driver to use. The source array must
-   correspond with the 'vmax_array' entry in the cinder.conf.
+   correspond with the 'powermax_array' entry in the cinder.conf.
 #. Select both the director and the ports for the SRDF emulation to use on
    both sides. Bear in mind that network topology is important when choosing
    director endpoints. Supported modes are `Synchronous`, `Asynchronous`,
@@ -1515,9 +1520,9 @@ Configure the source and target arrays
       san_ip = 10.10.10.10
       san_login = my_u4v_username
       san_password = my_u4v_password
-      vmax_srp = SRP_1
-      vmax_array = 000123456789
-      vmax_port_groups = [OS-FC-PG]
+      powermax_srp = SRP_1
+      powermax_array = 000123456789
+      powermax_port_groups = [OS-FC-PG]
       volume_backend_name = POWERMAX_FC_REPLICATION
       replication_device = target_device_id:000197811111,
                            remote_port_group:os-failover-pg,
@@ -1989,14 +1994,14 @@ Command format:
 
 .. code-block:: console
 
-   $ cinder manage --name <new_volume_name> --volume-type <vmax_vol_type> \
+   $ cinder manage --name <new_volume_name> --volume-type <powermax_vol_type> \
      --availability-zone <av_zone> <--bootable> <host> <identifier>
 
 Command Example:
 
 .. code-block:: console
 
-   $ cinder manage --name vmax_managed_volume --volume-type POWERMAX_ISCSI_DIAMOND \
+   $ cinder manage --name powermax_managed_volume --volume-type POWERMAX_ISCSI_DIAMOND \
      --availability-zone nova demo@POWERMAX_ISCSI_DIAMOND#Diamond+SRP_1+111111111111 031D8
 
 After the above command has been run, the volume will be available for use in
@@ -2043,7 +2048,7 @@ Command example:
 
 .. code-block:: console
 
-   $ cinder unmanage vmax_test_vol
+   $ cinder unmanage powermax_test_vol
 
 Once unmanaged from OpenStack, the volume can still be retrieved using its
 device ID or OpenStack volume ID. Within Unisphere you will also notice that
