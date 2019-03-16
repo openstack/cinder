@@ -1083,6 +1083,11 @@ class CommonAdapter(replication.ReplicationAdapter):
             LOG.info("Storage Group %s is empty.", sg.name)
             sg.disconnect_host(sg.name)
             sg.delete()
+
+            # Update sg with poll makes the one in client.sg_cache is with
+            # latest status which is un-exist. This makes sure the sg is
+            # created during next attaching.
+            self.update_storage_group_if_required(sg)
             if host is not None and self.itor_auto_dereg:
                 # `host` is None when force-detach
                 self._deregister_initiator(host)
