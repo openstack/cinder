@@ -56,7 +56,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-manage-request.json
+.. literalinclude:: ./samples/volume_manage_extensions/volume-manage-request.json
    :language: javascript
 
 .. literalinclude:: ./samples/volume-manage-request-cluster.json
@@ -94,7 +94,7 @@ Response
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-manage-response.json
+.. literalinclude:: ./samples/volume_manage_extensions/volume-manage-response.json
    :language: javascript
 
 

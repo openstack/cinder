@@ -1,6 +1,6 @@
 {
     "volume": {
-        "host": "geraint-VirtualBox",
+        "host": "%(host)s",
         "ref": {
             "source-name": "existingLV",
             "source-id": "1234"

@@ -702,7 +702,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-upload-to-image-request.json
+.. literalinclude:: ./samples/volume_actions/volume-upload-to-image-request.json
    :language: javascript
 
 Response Parameters
@@ -728,7 +728,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-upload-to-image-response.json
+.. literalinclude:: ./samples/volume_actions/volume-upload-to-image-response.json
    :language: javascript
 
 
