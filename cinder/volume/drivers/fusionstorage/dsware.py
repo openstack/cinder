@@ -25,6 +25,7 @@ from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.fusionstorage import fs_client
 from cinder.volume.drivers.fusionstorage import fs_conf
+from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
@@ -89,13 +90,15 @@ volume_opts = [
                 help='This option is to support the FSA to mount across the '
                      'different nodes. The parameters takes the standard dict '
                      'config form, manager_ips = host1:ip1, host2:ip2...'),
-    cfg.DictOpt('storage',
-                default={},
-                secret=True,
-                help='This field is configured with the information of array '
-                     'and user info. The parameters takes the standard dict '
-                     'config form, Storage = UserName:xxx, Password:xxx, '
-                     'RestURL:xxx')
+    cfg.StrOpt('dsware_rest_url',
+               default='',
+               help='The address of FusionStorage array. For example, '
+                    '"dsware_rest_url=xxx"'),
+    cfg.StrOpt('dsware_storage_pools',
+               default="",
+               help='The list of pools on the FusionStorage array, the '
+                    'semicolon(;) was used to split the storage pools, '
+                    '"dsware_storage_pools = xxx1; xxx2; xxx3"')
 ]
 
 CONF = cfg.CONF
@@ -116,6 +119,7 @@ class DSWAREDriver(driver.VolumeDriver):
             raise exception.InvalidInput(reason=msg)
 
         self.configuration.append_config_values(volume_opts)
+        self.configuration.append_config_values(san.san_opts)
         self.conf = fs_conf.FusionStorageConf(self.configuration, self.host)
         self.client = None
 

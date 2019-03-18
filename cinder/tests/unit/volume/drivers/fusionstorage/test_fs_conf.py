@@ -15,6 +15,7 @@
 import ddt
 
 import mock
+import os
 import shutil
 import tempfile
 
@@ -43,51 +44,107 @@ class FusionStorageConfTestCase(test.TestCase):
             self.tmp_dir + '/cinder.conf')
 
         config = configparser.ConfigParser()
-        config.add_section('storage')
-        config.set('storage', 'RestURL', 'https://fake_rest_site')
-        config.set('storage', 'UserName', 'fake_user')
-        config.set('storage', 'Password', 'fake_passwd')
-        config.set('storage', 'StoragePool', 'fake_pool')
+        config.add_section('backend_name')
+        config.set('backend_name', 'dsware_rest_url', 'https://fake_rest_site')
+        config.set('backend_name', 'san_login', 'fake_user')
+        config.set('backend_name', 'san_password', 'fake_passwd')
+        config.set('backend_name', 'dsware_storage_pools', 'fake_pool')
+
         config.add_section('manager_ip')
         config.set('manager_ip', 'fake_host', 'fake_ip')
         config.write(open(self.conf.cinder_fusionstorage_conf_file, 'w'))
 
-    def test_update_config_value(self):
+    @mock.patch.object(fs_conf.FusionStorageConf, '_encode_authentication')
+    @mock.patch.object(fs_conf.FusionStorageConf, '_pools_name')
+    @mock.patch.object(fs_conf.FusionStorageConf, '_san_address')
+    @mock.patch.object(fs_conf.FusionStorageConf, '_san_user')
+    @mock.patch.object(fs_conf.FusionStorageConf, '_san_password')
+    def test_update_config_value(self, mock_san_password, mock_san_user,
+                                 mock_san_address, mock_pools_name,
+                                 mock_encode_authentication):
+        self.fusionstorage_conf.update_config_value()
+        mock_encode_authentication.assert_called_once_with()
+        mock_pools_name.assert_called_once_with()
+        mock_san_address.assert_called_once_with()
+        mock_san_user.assert_called_once_with()
+        mock_san_password.assert_called_once_with()
+
+    @mock.patch.object(os.path, 'exists')
+    def test__encode_authentication(self, mock_exists):
         config = configparser.ConfigParser()
         config.read(self.conf.cinder_fusionstorage_conf_file)
-        storage_info = {'RestURL': config.get('storage', 'RestURL'),
-                        'UserName': config.get('storage', 'UserName'),
-                        'Password': config.get('storage', 'Password'),
-                        'StoragePool': config.get('storage', 'StoragePool')}
+        mock_exists.return_value = False
 
+        user_name = 'fake_user'
         self.mock_object(
             self.fusionstorage_conf.configuration, 'safe_get',
-            return_value=storage_info)
+            return_value=user_name)
+        self.fusionstorage_conf._encode_authentication()
 
-        self.fusionstorage_conf.update_config_value()
+        password = 'fake_passwd'
+        self.mock_object(
+            self.fusionstorage_conf.configuration, 'safe_get',
+            return_value=password)
+        self.fusionstorage_conf._encode_authentication()
 
+    @mock.patch.object(os.path, 'exists')
+    @mock.patch.object(configparser.ConfigParser, 'set')
+    def test__rewrite_conf(self, mock_set, mock_exists):
+        mock_exists.return_value = False
+        mock_set.return_value = "success"
+        self.fusionstorage_conf._rewrite_conf('fake_name', 'fake_pwd')
+
+    def test__san_address(self):
+        address = 'https://fake_rest_site'
+        self.mock_object(
+            self.fusionstorage_conf.configuration, 'safe_get',
+            return_value=address)
+        self.fusionstorage_conf._san_address()
         self.assertEqual('https://fake_rest_site',
                          self.fusionstorage_conf.configuration.san_address)
+
+    def test__san_user(self):
+        user = '!&&&ZmFrZV91c2Vy'
+        self.mock_object(
+            self.fusionstorage_conf.configuration, 'safe_get',
+            return_value=user)
+        self.fusionstorage_conf._san_user()
         self.assertEqual(
             'fake_user', self.fusionstorage_conf.configuration.san_user)
+
+        user = 'fake_user_2'
+        self.mock_object(
+            self.fusionstorage_conf.configuration, 'safe_get',
+            return_value=user)
+        self.fusionstorage_conf._san_user()
+        self.assertEqual(
+            'fake_user_2', self.fusionstorage_conf.configuration.san_user)
+
+    def test__san_password(self):
+        password = '!&&&ZmFrZV9wYXNzd2Q='
+        self.mock_object(
+            self.fusionstorage_conf.configuration, 'safe_get',
+            return_value=password)
+        self.fusionstorage_conf._san_password()
         self.assertEqual(
             'fake_passwd', self.fusionstorage_conf.configuration.san_password)
+
+        password = 'fake_passwd_2'
+        self.mock_object(
+            self.fusionstorage_conf.configuration, 'safe_get',
+            return_value=password)
+        self.fusionstorage_conf._san_password()
+        self.assertEqual('fake_passwd_2',
+                         self.fusionstorage_conf.configuration.san_password)
+
+    def test__pools_name(self):
+        pools_name = 'fake_pool'
+        self.mock_object(
+            self.fusionstorage_conf.configuration, 'safe_get',
+            return_value=pools_name)
+        self.fusionstorage_conf._pools_name()
         self.assertListEqual(
             ['fake_pool'], self.fusionstorage_conf.configuration.pools_name)
-
-    def test__encode_authentication(self):
-        config = configparser.ConfigParser()
-        config.read(self.conf.cinder_fusionstorage_conf_file)
-
-        storage_info = {'RestURL': config.get('storage', 'RestURL'),
-                        'UserName': config.get('storage', 'UserName'),
-                        'Password': config.get('storage', 'Password'),
-                        'StoragePool': config.get('storage', 'StoragePool')}
-        self.fusionstorage_conf._encode_authentication(storage_info)
-        name_node = storage_info.get('UserName')
-        pwd_node = storage_info.get('Password')
-        self.assertEqual('!&&&ZmFrZV91c2Vy', name_node)
-        self.assertEqual('!&&&ZmFrZV9wYXNzd2Q=', pwd_node)
 
     def test__manager_ip(self):
         manager_ips = {'fake_host': 'fake_ip'}
