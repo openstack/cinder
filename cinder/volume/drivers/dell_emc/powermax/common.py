@@ -2602,11 +2602,14 @@ class PowerMaxCommon(object):
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
 
-        self._sync_check(array, device_id, extra_specs)
-
         LOG.info("Snapshot %(snap_name)s is no longer managed in "
                  "OpenStack but still remains on PowerMax/VMAX source "
                  "%(array_id)s", {'snap_name': snap_name, 'array_id': array})
+
+        LOG.warning("In order to remove the snapshot source volume from "
+                    "OpenStack you will need to either delete the linked "
+                    "SnapVX snapshot on the array or un-manage the volume "
+                    "from Cinder.")
 
     def get_manageable_volumes(self, marker, limit, offset, sort_keys,
                                sort_dirs):

@@ -2301,11 +2301,17 @@ class PowerMaxCommonTest(test.TestCase):
                           self.common.manage_existing_snapshot,
                           snapshot, existing_ref)
 
-    @mock.patch.object(common.PowerMaxCommon, '_sync_check')
     @mock.patch.object(rest.PowerMaxRest, 'modify_volume_snap')
-    def test_unmanage_snapshot_success(self, mock_mod, mock_sync):
+    def test_unmanage_snapshot_success(self, mock_mod, ):
         self.common.unmanage_snapshot(self.data.test_snapshot_manage)
         mock_mod.assert_called_once()
+
+    @mock.patch.object(common.PowerMaxCommon, '_sync_check')
+    @mock.patch.object(rest.PowerMaxRest, 'modify_volume_snap')
+    def test_unmanage_snapshot_no_sync_check(self, mock_mod, mock_sync):
+        self.common.unmanage_snapshot(self.data.test_snapshot_manage)
+        mock_mod.assert_called_once()
+        mock_sync.assert_not_called()
 
     @mock.patch.object(utils.PowerMaxUtils, 'is_volume_failed_over',
                        return_value=True)
