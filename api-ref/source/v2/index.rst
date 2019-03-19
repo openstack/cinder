@@ -23,6 +23,7 @@ Block Storage API V2 (DEPRECATED)
 .. include:: volume-type-access.inc
 .. include:: volumes-v2-extensions.inc
 .. include:: volumes-v2-snapshots.inc
+.. include:: volumes-v2-snapshots-actions.inc
 .. include:: volumes-v2-types.inc
 .. include:: volumes-v2-versions.inc
 .. include:: volumes-v2-volumes-actions.inc
