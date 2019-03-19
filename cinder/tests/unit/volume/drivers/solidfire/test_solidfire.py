@@ -673,6 +673,49 @@ class SolidFireVolumeTestCase(test.TestCase):
             id=vol_id,
             display_name='test_volume',
             provider_id='1 5 None',
+            multiattach=False)
+
+        fake_sfaccounts = [{'accountID': 5,
+                            'name': 'testprjid',
+                            'targetSecret': 'shhhh',
+                            'username': 'john-wayne'}]
+
+        get_vol_result = {'volumeID': 5,
+                          'name': 'test_volume',
+                          'accountID': 25,
+                          'sliceCount': 1,
+                          'totalSize': 1 * units.Gi,
+                          'enable512e': True,
+                          'access': "readWrite",
+                          'status': "active",
+                          'attributes': {},
+                          'qos': None,
+                          'iqn': 'super_fake_iqn'}
+
+        mod_conf = self.configuration
+        mod_conf.sf_enable_vag = True
+        sfv = solidfire.SolidFireDriver(configuration=mod_conf)
+        with mock.patch.object(sfv,
+                               '_get_sfaccounts_for_tenant',
+                               return_value=fake_sfaccounts), \
+            mock.patch.object(sfv,
+                              '_get_sfvol_by_cinder_vref',
+                              return_value=get_vol_result), \
+            mock.patch.object(sfv,
+                              '_issue_api_request'), \
+            mock.patch.object(sfv,
+                              '_remove_volume_from_vags') as rem_vol:
+
+            sfv.delete_volume(testvol)
+            rem_vol.not_called(get_vol_result['volumeID'])
+
+    def test_delete_multiattach_volume(self):
+        vol_id = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
+        testvol = test_utils.create_volume(
+            self.ctxt,
+            id=vol_id,
+            display_name='test_volume',
+            provider_id='1 5 None',
             multiattach=True)
 
         fake_sfaccounts = [{'accountID': 5,
