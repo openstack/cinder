@@ -17,6 +17,7 @@ import platform
 import prettytable
 import six
 import time
+import traceback
 import types
 
 from oslo_log import log as logging
@@ -39,9 +40,9 @@ def debug_required(func):
                 return func(*args, **kwargs)
             else:
                 pass
-        except Exception as ex:
+        except Exception:
             LOG.warning("Volume metadata logging failure. "
-                        "Exception is %s.", ex)
+                        "Exception is %s.", traceback.format_exc())
 
     return func_wrapper
 
@@ -215,7 +216,6 @@ class PowerMaxVolumeMetadata(object):
                     elif k2 == 'sg_list' and v2:
                         for i, item in enumerate(v2, 1):
                             my_volume_trace_dict["storage_group_%d" % i] = item
-
         return my_volume_trace_dict
 
     def _param_condition(self, key, value):

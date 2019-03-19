@@ -32,7 +32,7 @@ class PowerMaxVolumeMetadataNoDebugTest(test.TestCase):
         super(PowerMaxVolumeMetadataNoDebugTest, self).setUp()
         is_debug = False
         self.volume_metadata = metadata.PowerMaxVolumeMetadata(
-            rest.PowerMaxRest, '3.1', is_debug)
+            rest.PowerMaxRest, '4.0', is_debug)
 
     @mock.patch.object(
         metadata.PowerMaxVolumeMetadata, '_fill_volume_trace_dict',
@@ -49,7 +49,7 @@ class PowerMaxVolumeMetadataDebugTest(test.TestCase):
         super(PowerMaxVolumeMetadataDebugTest, self).setUp()
         is_debug = True
         self.volume_metadata = metadata.PowerMaxVolumeMetadata(
-            rest.PowerMaxRest, '3.1', is_debug)
+            rest.PowerMaxRest, '4.1', is_debug)
         self.utils = self.volume_metadata.utils
         self.rest = self.volume_metadata.rest
 
@@ -255,3 +255,26 @@ class PowerMaxVolumeMetadataDebugTest(test.TestCase):
         self.volume_metadata.gather_version_info(self.data.array)
         self.assertEqual(
             self.data.version_dict, self.volume_metadata.version_dict)
+
+    def test_gather_replication_info_target_model(self):
+        rep_extra_specs = {'rep_mode': 'Synchronous',
+                           'target_array_model': 'PowerMax_2000'}
+        rdf_group_no = '70'
+        remote_array = '000197800124'
+        rep_config = {'mode': 'Synchronous',
+                      'rdf_group_label': '23_24_007',
+                      'portgroup': 'OS-fibre-PG',
+                      'allow_extend': True,
+                      'array': '000197800124',
+                      'srp': 'SRP_2'}
+        rep_info_dict = self.volume_metadata.gather_replication_info(
+            self.data.volume_id, 'replication', False,
+            rdf_group_no=rdf_group_no,
+            target_name='target_name', remote_array=remote_array,
+            target_device_id=self.data.device_id2,
+            replication_status=fields.ReplicationStatus.ENABLED,
+            rep_mode=rep_extra_specs['rep_mode'],
+            rdf_group_label=rep_config['rdf_group_label'],
+            target_array_model=rep_extra_specs['target_array_model'])
+        self.assertEqual(
+            'PowerMax_2000', rep_info_dict['target_array_model'])

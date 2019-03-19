@@ -3325,7 +3325,6 @@ class PowerMaxCommon(object):
         :returns: replication_status -- str, replication_driver_data -- dict
                   rep_info_dict -- dict
         """
-        rep_extra_specs = {'rep_mode': None}
         source_name = volume.name
         LOG.debug('Starting replication setup '
                   'for volume: %s.', source_name)
@@ -3340,10 +3339,10 @@ class PowerMaxCommon(object):
         # source volume
         target_name = self.utils.get_volume_element_name(volume.id)
 
+        rep_extra_specs = self._get_replication_extra_specs(
+            extra_specs, self.rep_config)
         if not target_device_id:
             # Create a target volume on the target array
-            rep_extra_specs = self._get_replication_extra_specs(
-                extra_specs, self.rep_config)
             volume_dict = self._create_volume(
                 target_name, rdf_vol_size, rep_extra_specs)
             target_device_id = volume_dict['device_id']
@@ -3376,7 +3375,8 @@ class PowerMaxCommon(object):
             target_device_id=target_device_id,
             replication_status=replication_status,
             rep_mode=rep_extra_specs['rep_mode'],
-            rdf_group_label=self.rep_config['rdf_group_label'])
+            rdf_group_label=self.rep_config['rdf_group_label'],
+            target_array_model=rep_extra_specs['target_array_model'])
 
         return replication_status, replication_driver_data, rep_info_dict
 
@@ -4090,9 +4090,9 @@ class PowerMaxCommon(object):
                 rep_extra_specs.pop(utils.DISABLECOMPRESSION, None)
 
         # Check to see if SLO and Workload are configured on the target array.
+        rep_extra_specs['target_array_model'], next_gen = (
+            self.rest.get_array_model_info(rep_config['array']))
         if extra_specs[utils.SLO]:
-            rep_extra_specs['target_array_model'], next_gen = (
-                self.rest.get_array_model_info(rep_config['array']))
             is_valid_slo, is_valid_workload = (
                 self.provision.verify_slo_workload(
                     rep_extra_specs[utils.ARRAY],

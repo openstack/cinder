@@ -999,7 +999,7 @@ class PowerMaxData(object):
     openstack_release = '12.0.0.0b3.dev401'
     openstack_version = '12.0.0'
     python_version = '2.7.12'
-    vmax_driver_version = '3.1'
+    vmax_driver_version = '4.1'
     vmax_firmware_version = u'5977.1125.1125'
     vmax_model = u'VMAX250F'
 
