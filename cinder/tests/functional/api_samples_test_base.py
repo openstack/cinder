@@ -448,7 +448,8 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
             'versioned_volume_endpoint': self._get_versioned_volume_endpoint(),
             'name': text,
             'description': text,
-            'extension_update': extension_update
+            'extension_update': extension_update,
+            'auth_key': '[a-z0-9]{16}'
         }
 
     def _get_volume_endpoint(self):

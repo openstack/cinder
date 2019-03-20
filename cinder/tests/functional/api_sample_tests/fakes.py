@@ -31,21 +31,63 @@ def stub_copy_volume_to_image(self, context, volume, metadata, force):
 
 def stub_manage_existing(self, req, body):
     volume = {
-        "host": "null",
-        "cluster": "cluster@backend",
-        "ref": {
-            "source-name": "existingLV",
-            "source-id": "1234"
-        },
-        "name": "New Volume",
-        "availability_zone": "az2",
-        "description": "Volume imported from existingLV",
-        "volume_type": "null",
-        "bootable": True,
-        "metadata": {
-            "key1": "value1",
-            "key2": "value2"
+        "volume": {
+            "status": "creating",
+            "user_id": "eae1472b5fc5496998a3d06550929e7e",
+            "attachments": [],
+            "links": [
+                {
+                    "href":
+                        "http://10.0.2.15:8776/v3/87c8522052ca4eed98bc672b4c1a"
+                        "3ddb/volumes/23cf872b-c781-4cd4-847d-5f2ec8cbd91c",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://10.0.2.15:8776/87c8522052ca4eed98bc672b4c1"
+                            "a3ddb/volumes/23cf872b-c781-4cd4-847d-5f2ec8cbd91"
+                            "c",
+                    "rel": "bookmark"
+                }
+            ],
+            "availability_zone": "az2",
+            "bootable": "false",
+            "encrypted": "false",
+            "created_at": "2014-07-18T00:12:54.000000",
+            "description": "Volume imported from existingLV",
+            "os-vol-tenant-attr:tenant_id": "87c8522052ca4eed98bc672b4c1a3ddb",
+            "volume_type": "null",
+            "name": "New Volume",
+            "source_volid": "null",
+            "snapshot_id": "null",
+            "metadata": {
+                "key2": "value2",
+                "key1": "value1"
+            },
+            "id": "23cf872b-c781-4cd4-847d-5f2ec8cbd91c",
+            "size": 0
         }
     }
 
     return volume
+
+
+def stub_manage_existing_snapshot(self, req, body):
+    snapshot = {
+        "snapshot": {
+            "status": "creating",
+            "size": 1,
+            "metadata": {
+                "manage-snap-meta1": "value1",
+                "manage-snap-meta3": "value3",
+                "manage-snap-meta2": "value2"
+            },
+            "name": "new_snapshot",
+            "volume_id": "1df34919-aba7-4a1b-a614-3b409d71ac03",
+            "created_at": "2018-09-26T03:45:03.893592",
+            "description": "this is a new snapshot",
+            "id": "b6314a71-9d3d-439a-861d-b790def0d693",
+            "updated_at": "null"
+        }
+    }
+
+    return snapshot

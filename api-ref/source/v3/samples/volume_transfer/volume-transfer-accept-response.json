@@ -1,0 +1,17 @@
+{
+    "transfer": {
+        "id": "0a840aa1-8f8f-4042-86d7-09d8ca755272",
+        "links": [
+            {
+                "href": "http://127.0.0.1:46057/v3/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/os-volume-transfer/0a840aa1-8f8f-4042-86d7-09d8ca755272",
+                "rel": "self"
+            },
+            {
+                "href": "http://127.0.0.1:46057/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/os-volume-transfer/0a840aa1-8f8f-4042-86d7-09d8ca755272",
+                "rel": "bookmark"
+            }
+        ],
+        "name": "first volume",
+        "volume_id": "e56dee53-e565-40f4-9c6b-b983f74a2aa5"
+    }
+}
