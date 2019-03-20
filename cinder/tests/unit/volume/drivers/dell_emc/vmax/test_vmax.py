@@ -6213,6 +6213,7 @@ class VMAXISCSITest(test.TestCase):
         self.data = VMAXCommonData()
 
         super(VMAXISCSITest, self).setUp()
+        volume_utils.get_max_over_subscription_ratio = mock.Mock()
         configuration = FakeConfiguration(
             None, 'ISCSITests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
