@@ -112,6 +112,7 @@
     required-projects:
       - openstack-infra/devstack-gate
       - openstack/barbican
+      - openstack/cinderlib
       - openstack/python-barbicanclient
       - openstack/tempest
       - openstack/os-brick
