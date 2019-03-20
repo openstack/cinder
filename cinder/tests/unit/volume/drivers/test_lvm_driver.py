@@ -1000,15 +1000,15 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
                            'host': 'fakehost2',
                            'initiator': 'iqn.2012-07.org.fake:02'}
 
-        host1_attachment1 = fake_volume.fake_volume_attachment_obj(
+        host1_attachment1 = fake_volume.volume_attachment_ovo(
             self.context)
         host1_attachment1.connector = host1_connector
 
-        host1_attachment2 = fake_volume.fake_volume_attachment_obj(
+        host1_attachment2 = fake_volume.volume_attachment_ovo(
             self.context)
         host1_attachment2.connector = host1_connector
 
-        host2_attachment = fake_volume.fake_volume_attachment_obj(self.context)
+        host2_attachment = fake_volume.volume_attachment_ovo(self.context)
         host2_attachment.connector = host2_connector
 
         # Create a multiattach volume object with two active attachments on

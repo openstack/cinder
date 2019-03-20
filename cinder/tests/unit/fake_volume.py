@@ -15,6 +15,7 @@
 from oslo_utils.uuidutils import is_uuid_like
 from oslo_versionedobjects import fields
 
+from cinder.db.sqlalchemy import models
 from cinder import objects
 from cinder.objects import fields as c_fields
 from cinder.tests.unit import fake_constants as fake
@@ -123,3 +124,24 @@ def fake_volume_attachment_obj(context, **updates):
     return objects.VolumeAttachment._from_db_object(
         context, objects.VolumeAttachment(),
         fake_db_volume_attachment(**updates))
+
+
+def volume_db_obj(**updates):
+    """Return a volume ORM object."""
+    updates.setdefault('id', fake.VOLUME_ID)
+    updates.setdefault('size', 1)
+    return models.Volume(**updates)
+
+
+def volume_attachment_db_obj(**updates):
+    updates.setdefault('id', fake.ATTACHMENT_ID)
+    updates.setdefault('volume_id', fake.VOLUME_ID)
+    updates.setdefault('volume', volume_db_obj())
+    return models.VolumeAttachment(**updates)
+
+
+def volume_attachment_ovo(context, **updates):
+    orm = volume_attachment_db_obj(**updates)
+    return objects.VolumeAttachment._from_db_object(context,
+                                                    objects.VolumeAttachment(),
+                                                    orm)
