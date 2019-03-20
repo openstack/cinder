@@ -3232,7 +3232,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._driver.revert_to_snapshot(
             mock.sentinel.context, volume, snapshot)
 
-        vops.get_backing.assert_called_once_with(volume.name)
+        vops.get_backing.assert_called_once_with(volume.name, volume.id)
         vops.revert_to_snapshot.assert_not_called()
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -3260,7 +3260,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._driver.revert_to_snapshot(
             mock.sentinel.context, volume, snapshot)
 
-        vops.get_backing.assert_called_once_with(volume.name)
+        vops.get_backing.assert_called_once_with(volume.name, volume.id)
         vops.revert_to_snapshot.assert_called_once_with(backing,
                                                         snapshot.name)
 
