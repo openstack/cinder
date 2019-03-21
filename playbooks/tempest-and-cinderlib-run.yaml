@@ -1,0 +1,23 @@
+# Playbook imported from https://opendev.org/openstack/tempest/src/branch/master/playbooks/devstack-tempest.yaml
+
+# Changes that run through devstack-tempest are likely to have an impact on
+# the devstack part of the job, so we keep devstack in the main play to
+# avoid zuul retrying on legitimate failures.
+- hosts: all
+  roles:
+    - orchestrate-devstack
+
+# We run tests only on one node, regardless how many nodes are in the system
+- hosts: tempest
+  environment:
+    # This enviroment variable is used by the optional tempest-gabbi
+    # job provided by the gabbi-tempest plugin. It can be safely ignored
+    # if that plugin is not being used.
+    GABBI_TEMPEST_PATH: "{{ gabbi_tempest_path | default('') }}"
+  roles:
+    - setup-tempest-run-dir
+    - setup-tempest-data-dir
+    - acl-devstack-files
+    - run-tempest
+
+- import_playbook: cinderlib-run.yaml cinderlib_hosts=tempest
