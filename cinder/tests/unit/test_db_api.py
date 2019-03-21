@@ -494,6 +494,8 @@ class DBAPIServiceTestCase(BaseTest):
             self.ctxt, {'host': 'host1@lvm-driver1#lvm-driver1'})
         db.volume_create(
             self.ctxt, {'host': 'host1@lvm-driver1#lvm-driver1'})
+        # Entries with no host should be skipped
+        db.volume_create(self.ctxt, {'host': None})
 
         values = {
             'host': 'host1@lvm-driver1',
@@ -506,12 +508,14 @@ class DBAPIServiceTestCase(BaseTest):
         total, updated = db.volume_service_uuids_online_data_migration(
             self.ctxt, 2)
 
+        # total = number of volumes that have hosts and don't have a
+        # service_uuid
         self.assertEqual(3, total)
         self.assertEqual(2, updated)
 
-        # Now get the ,last one (intentionally setting max > expected)
+        # Now get the last one (intentionally setting max > expected)
         total, updated = db.volume_service_uuids_online_data_migration(
-            self.ctxt, 2)
+            self.ctxt, 99)
 
         self.assertEqual(1, total)
         self.assertEqual(1, updated)

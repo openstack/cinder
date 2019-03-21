@@ -622,7 +622,8 @@ def volume_service_uuids_online_data_migration(context, max_count):
 
     updated = 0
     query = model_query(context,
-                        models.Volume).filter_by(service_uuid=None)
+                        models.Volume).filter_by(service_uuid=None).\
+        filter(models.Volume.host.isnot(None))
     total = query.count()
     vol_refs = query.limit(max_count).all()
 
