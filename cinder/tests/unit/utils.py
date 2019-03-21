@@ -507,6 +507,7 @@ def default_service_values():
         'topic': 'fake_topic',
         'report_count': 3,
         'disabled': False,
+        'availability_zone': 'nova',
     }
 
 
