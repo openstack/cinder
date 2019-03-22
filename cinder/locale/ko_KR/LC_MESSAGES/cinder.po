@@ -15,7 +15,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-01-11 16:51+0000\n"
+"POT-Creation-Date: 2019-03-21 22:19+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -550,23 +550,12 @@ msgstr ""
 msgid "CPG (%s) doesn't exist on array"
 msgstr "배열에 CPG(%s)가 없음"
 
-msgid "Cache name is None, please set smartcache:cachename in key."
-msgstr "캐시 이름이 None입니다. 키에서 smartcache:cachename을 설정하십시오. "
-
 #, python-format
 msgid "Cache volume %s does not have required properties"
 msgstr "캐시 볼륨 %s에 필수 특성이 없음"
 
 msgid "Can not add FC port to host."
 msgstr "호스트에 FC 포트를 추가할 수 없습니다."
-
-#, python-format
-msgid "Can not find cache id by cache name %(name)s."
-msgstr "캐시 이름 %(name)s을(를) 사용하여 캐시 id를 찾을 수 없습니다. "
-
-#, python-format
-msgid "Can not find partition id by name %(name)s."
-msgstr "이름 %(name)s을(를) 사용하여 파티션 id를 찾을 수 없습니다. "
 
 #, python-format
 msgid "Can not get pool info. pool: %s"
@@ -608,10 +597,6 @@ msgstr ""
 
 msgid "Can't find the same host id from arrays."
 msgstr "배열에서 동일한 호스트 id를 찾을 수 없습니다."
-
-#, python-format
-msgid "Can't get volume id from snapshot, snapshot: %(id)s"
-msgstr "스냅샷에서 볼륨 id를 가져올 수 없음, 스냅샷: %(id)s"
 
 #, python-format
 msgid "Can't get volume id. Volume name: %s."
@@ -1384,22 +1369,6 @@ msgstr "configfs가 /sys/kernel/config에 마운트되는지 확인하십시오.
 
 #, python-format
 msgid ""
-"Error Adding Initiator: %(initiator)s on groupInitiatorGroup: "
-"%(initiatorgroup)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"groupInitiatorGroup에 개시자 %(initiator)s을(를) 추가하는 중 오류 발생: "
-"%(initiatorgroup)s. 리턴 코드: %(ret.status)d 메시지: %(ret.data)s ."
-
-#, python-format
-msgid ""
-"Error Adding to TargetGroup: %(targetgroup)s withIQN: %(iqn)sReturn code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"IQN이 %(iqn)s인 대상 그룹 %(targetgroup)s에 추가하는 중 오류 발생. 리턴 코"
-"드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
 "Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
 "Project: %(project)s  Clone project: %(clone_proj)s Return code: "
 "%(ret.status)d Message: %(ret.data)s."
@@ -1439,38 +1408,6 @@ msgid ""
 msgstr ""
 "공유 작성 중 오류 발생: %(name)s 리턴 코드: %(ret.status)d 메시지:  "
 "%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Snapshot: %(snapshot)s onVolume: %(lun)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"%(pool)s 풀 %(project)s 프로젝트의 %(lun)s 볼륨에 %(snapshot)s 스냅샷을 가져"
-"오는 중 오류 발생. 리턴 코드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Snapshot: %(snapshot)s onshare: %(share)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"스냅샷 작성 오류: %(snapshot)s 공유: %(share)s 대상 풀: %(pool)s 프로젝트: "
-"%(project)s 리턴 코드: %(ret.status)d 메시지:  %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Target: %(alias)sReturn code: %(ret.status)d Message: "
-"%(ret.data)s ."
-msgstr ""
-"%(alias)s 대상 작성 중 오류 발생. 리턴 코드: %(ret.status)d 메시지: "
-"%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating TargetGroup: %(targetgroup)s withIQN: %(iqn)sReturn code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"IQN %(iqn)s(으)로 대상 그룹 %(targetgroup)s을(를) 작성하는 중 오류 발생. 리"
-"턴 코드: %(ret.status)d 메시지: %(ret.data)s."
 
 #, python-format
 msgid ""
@@ -1550,14 +1487,6 @@ msgid ""
 msgstr ""
 "공유 가져오기 중 오류 발생: %(share)s 풀: %(pool)s 프로젝트: %(project)s 리"
 "턴 코드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Getting Target: %(alias)sReturn code: %(ret.status)d Message: "
-"%(ret.data)s ."
-msgstr ""
-"%(alias)s 대상을 가져오는 중 오류 발생. 리턴 코드: %(ret.status)d 메시지: "
-"%(ret.data)s."
 
 #, python-format
 msgid ""
@@ -2977,24 +2906,12 @@ msgstr ""
 "flashsystem_connection_protocol에 올바르지 않은 값 '%(prot)s'을(를) 지정함: "
 "올바른 값은 %(enabled)s입니다."
 
-msgid "Illegal value specified for IOTYPE: 0, 1, or 2."
-msgstr "IOTYPE에 대해 잘못된 값이 지정됨 : 0, 1 또는 2."
-
-msgid "Illegal value specified for smarttier: set to either 0, 1, 2, or 3."
-msgstr "smarttier에 대해 잘못된 값이 지정됨: 0, 1, 2 또는 3으로 설정하십시오. "
-
 msgid ""
 "Illegal value specified for storwize_svc_vol_grainsize: set to either 32, "
 "64, 128, or 256."
 msgstr ""
 "storwize_svc_vol_grainsize에 잘못된 값이 지정됨:32, 64, 128 또는 256으로 설정"
 "하십시오. "
-
-msgid ""
-"Illegal value specified for thin: Can not set thin and thick at the same "
-"time."
-msgstr ""
-"thin에 대해 잘못된 값이 지정됨: 동시에 thin과 thick을 설정할 수 없습니다. "
 
 #, python-format
 msgid "Image %(image_id)s could not be found."
@@ -3251,13 +3168,6 @@ msgstr ""
 "새 snapCPG 이름이 재입력을 수행하기에 올바르지 않습니다. new_snap_cpg='%s'."
 
 #, python-format
-msgid ""
-"Invalid prefetch type '%s' is configured. PrefetchType must be in 0,1,2,3."
-msgstr ""
-"올바르지 않은 프리페치 유형 '%s'이(가) 구성되었습니다. PrefetchType은 0,1,2,3"
-"이어야 합니다."
-
-#, python-format
 msgid "Invalid qos specs: %(reason)s"
 msgstr "올바르지 않은 qos 스펙: %(reason)s"
 
@@ -3291,9 +3201,6 @@ msgstr ""
 #, python-format
 msgid "Invalid storage pool %s specificed."
 msgstr "올바르지 않은 스토리지 풀 %s이(가) 지정되었습니다."
-
-msgid "Invalid storage pool is configured."
-msgstr "올바르지 않은 스토리지 풀이 구성되었습니다."
 
 #, python-format
 msgid "Invalid update setting: '%s'"
@@ -3863,11 +3770,6 @@ msgstr "시작 %(res)s %(prop)s은(는) '%(vals)s' 값 중 하나여야 함"
 msgid "ParseException: %s"
 msgstr "ParseException: %s"
 
-msgid "Partition name is None, please set smartpartition:partitionname in key."
-msgstr ""
-"파티션 이름이 None입니다. 키에서 smartpartition:partitionname을 설정하십시"
-"오. "
-
 msgid ""
 "Password or SSH private key is required for authentication: set either "
 "san_password or san_private_key option."
@@ -3936,29 +3838,6 @@ msgstr "%(specs_id)s QoS 스펙이 이미 존재합니다. "
 #, python-format
 msgid "QoS Specs %(specs_id)s is still associated with entities."
 msgstr "QoS 스펙 %(specs_id)s이(가) 엔티티와 연관되어 있습니다. "
-
-#, python-format
-msgid "QoS config is wrong. %s must > 0."
-msgstr "QoS 구성이 잘못되었습니다. %s이(가)  0보다 커야 합니다."
-
-#, python-format
-msgid ""
-"QoS policy must specify for IOTYPE and another qos_specs, QoS policy: "
-"%(qos_policy)s."
-msgstr ""
-"IOTYPE 및 다른 qos_specs에 대해 QoS 정책을 지정해야 함, QoS 정책: "
-"%(qos_policy)s."
-
-#, python-format
-msgid ""
-"QoS policy must specify for IOTYPE: 0, 1, or 2, QoS policy: %(qos_policy)s "
-msgstr ""
-"IOTYPE의 QoS 정책을 지정해야 함: 0, 1 또는 2, QoS 정책: %(qos_policy)s "
-
-#, python-format
-msgid ""
-"QoS policy upper_limit and lower_limit conflict, QoS policy: %(qos_policy)s."
-msgstr "QoS 정책 upper_limit 및 lower_limit 충돌, QoS 정책: %(qos_policy)s."
 
 #, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
@@ -4237,9 +4116,6 @@ msgstr "VMware vCenter 버전이 %s보다 낮은 Cinder는 실행할 수 없습�
 msgid "SAN product is not configured."
 msgstr "SAN 제품이 구성되지 않았습니다."
 
-msgid "SAN protocol is not configured."
-msgstr "SAN 프로토콜이 구성되지 않았습니다."
-
 #, python-format
 msgid "SMBFS config file at %(config)s doesn't exist."
 msgstr "SMBFS 구성 파일이 %(config)s에 없습니다."
@@ -4256,10 +4132,6 @@ msgstr ""
 #, python-format
 msgid "SSH command injection detected: %(command)s"
 msgstr "SSH 명령 인젝션 발견됨: %(command)s"
-
-#, python-format
-msgid "SSH connection failed for %(fabric)s with error: %(err)s"
-msgstr "오류: %(err)s과(와) 함께 %(fabric)s에 대한 SSH 연결 실패 "
 
 #, python-format
 msgid "Scheduler Host Filter %(filter_name)s could not be found."
@@ -6692,10 +6564,6 @@ msgstr "볼륨이 지정됨"
 
 msgid "volumes changed"
 msgstr "볼륨이 변경됨"
-
-#, python-format
-msgid "wait_for_condition: %s timed out."
-msgstr "wait_for_condition: %s 제한시간 초과되었습니다. "
 
 #, python-format
 msgid ""

@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-01-11 16:51+0000\n"
+"POT-Creation-Date: 2019-03-21 22:19+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -522,23 +522,12 @@ msgstr ""
 msgid "CPG (%s) doesn't exist on array"
 msgstr "CPG (%s) não existe na matriz"
 
-msgid "Cache name is None, please set smartcache:cachename in key."
-msgstr "O nome do cache é Nenhum; configure smartcache:cachename na chave."
-
 #, python-format
 msgid "Cache volume %s does not have required properties"
 msgstr "O volume de cache %s não possui as propriedades necessárias. "
 
 msgid "Can not add FC port to host."
 msgstr "Não é possível incluir a porta FC no host."
-
-#, python-format
-msgid "Can not find cache id by cache name %(name)s."
-msgstr "Não é possível localizar ID de cache pelo nome do cache %(name)s."
-
-#, python-format
-msgid "Can not find partition id by name %(name)s."
-msgstr "Não é possível localizar o ID da partição por nome %(name)s."
 
 #, python-format
 msgid "Can not get pool info. pool: %s"
@@ -584,12 +573,6 @@ msgstr ""
 
 msgid "Can't find the same host id from arrays."
 msgstr "Não é possível localizar o mesmo ID de host a partir das matrizes."
-
-#, python-format
-msgid "Can't get volume id from snapshot, snapshot: %(id)s"
-msgstr ""
-"Não é possível obter ID de volume a partir da captura instantânea, captura "
-"instantânea: %(id)s"
 
 #, python-format
 msgid "Can't get volume id. Volume name: %s."
@@ -1383,22 +1366,6 @@ msgstr "Assegure-se de que configfs esteja montado em /sys/kernel/config."
 
 #, python-format
 msgid ""
-"Error Adding Initiator: %(initiator)s on groupInitiatorGroup: "
-"%(initiatorgroup)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"Erro ao Incluir Inicializador: %(initiator)s em groupInitiatorGroup: "
-"%(initiatorgroup)s Código de retorno: %(ret.status)d Mensagem: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Adding to TargetGroup: %(targetgroup)s withIQN: %(iqn)sReturn code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Erro ao Incluir ao TargetGroup: %(targetgroup)s com IQN: %(iqn)s Código de "
-"retorno: %(ret.status)d Mensagem: %(ret.data)s."
-
-#, python-format
-msgid ""
 "Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
 "Project: %(project)s  Clone project: %(clone_proj)s Return code: "
 "%(ret.status)d Message: %(ret.data)s."
@@ -1438,40 +1405,6 @@ msgid ""
 msgstr ""
 "Erro ao Criar Compartilhamento: %(name)s Código de retorno: %(ret.status)d "
 "Mensagem: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Snapshot: %(snapshot)s onVolume: %(lun)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Erro ao Criar Captura Instantânea: %(snapshot)s no Volume: %(lun)s para o "
-"Conjunto: %(pool)s Projeto: %(project)s  Código de retorno: %(ret.status)d "
-"Mensagem: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Snapshot: %(snapshot)s onshare: %(share)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Erro ao Criar Captura Instantânea: %(snapshot)s no Compartilhamento: "
-"%(share)s para Conjunto: %(pool)s Projeto: %(project)s  Código de retorno: "
-"%(ret.status)d Mensagem: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Target: %(alias)sReturn code: %(ret.status)d Message: "
-"%(ret.data)s ."
-msgstr ""
-"Erro ao Criar Destino: %(alias)s Código de Retorno: %(ret.status)d Mensagem: "
-"%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating TargetGroup: %(targetgroup)s withIQN: %(iqn)sReturn code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"Erro ao Criar TargetGroup: %(targetgroup)s withIQN: %(iqn)s Código de "
-"retorno: %(ret.status)d Mensagem: %(ret.data)s."
 
 #, python-format
 msgid ""
@@ -1554,14 +1487,6 @@ msgid ""
 msgstr ""
 "Erro ao Obter Compartilhamento: %(share)s no Conjunto: %(pool)s Projeto: "
 "%(project)s Código de retorno: %(ret.status)d Mensagem: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Getting Target: %(alias)sReturn code: %(ret.status)d Message: "
-"%(ret.data)s ."
-msgstr ""
-"Erro ao Obter Destino: %(alias)s Código de retorno: %(ret.status)d Mensagem: "
-"%(ret.data)s."
 
 #, python-format
 msgid ""
@@ -2977,26 +2902,12 @@ msgstr ""
 "Valor ilegal '%(prot)s' especificado para flashsystem_connection_protocol: "
 "valor(es) válido(s) são %(enabled)s."
 
-msgid "Illegal value specified for IOTYPE: 0, 1, or 2."
-msgstr "Valor ilegal especificado para  IOTYPE: 0, 1 ou 2."
-
-msgid "Illegal value specified for smarttier: set to either 0, 1, 2, or 3."
-msgstr ""
-"Valor ilegal especificado para smarttier: configurado para 0, 1, 2 ou 3."
-
 msgid ""
 "Illegal value specified for storwize_svc_vol_grainsize: set to either 32, "
 "64, 128, or 256."
 msgstr ""
 "Valor ilegal especificado para storwize_svc_vol_grainsize: configurado como "
 "32, 64, 128 ou 256."
-
-msgid ""
-"Illegal value specified for thin: Can not set thin and thick at the same "
-"time."
-msgstr ""
-"Valor ilegal especificado para thin: não é possível configurar thin e thick "
-"ao mesmo tempo."
 
 #, python-format
 msgid "Image %(image_id)s could not be found."
@@ -3226,13 +3137,6 @@ msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
 msgstr "Novo nome do snapCPG inválido para nova digitação.  new_snap_cpg='%s'."
 
 #, python-format
-msgid ""
-"Invalid prefetch type '%s' is configured. PrefetchType must be in 0,1,2,3."
-msgstr ""
-"Um tipo de pré-busca inválido '%s' está configurado. O PrefetchType deve ser "
-"em 0,1,2,3."
-
-#, python-format
 msgid "Invalid qos specs: %(reason)s"
 msgstr "Inválidas qos specs: %(reason)s"
 
@@ -3267,9 +3171,6 @@ msgstr ""
 #, python-format
 msgid "Invalid storage pool %s specificed."
 msgstr "Conjunto de armazenamento inválido %s especificado."
-
-msgid "Invalid storage pool is configured."
-msgstr "Um conjunto de armazenamento inválido foi configurado."
 
 #, python-format
 msgid "Invalid update setting: '%s'"
@@ -3850,10 +3751,6 @@ msgstr "A origem de %(res)s %(prop)s deve ser um dos valores '%(vals)s'"
 msgid "ParseException: %s"
 msgstr "ParseException: %s"
 
-msgid "Partition name is None, please set smartpartition:partitionname in key."
-msgstr ""
-"O nome da partição é Nenhum; configure smartpartition:partitionname na chave."
-
 msgid ""
 "Password or SSH private key is required for authentication: set either "
 "san_password or san_private_key option."
@@ -3922,32 +3819,6 @@ msgstr "Especificações QoS %(specs_id)s já existem."
 #, python-format
 msgid "QoS Specs %(specs_id)s is still associated with entities."
 msgstr "Especificações QoS %(specs_id)s ainda estão associadas com entidades."
-
-#, python-format
-msgid "QoS config is wrong. %s must > 0."
-msgstr "A configuração de QoS está errada. %s deve ser > 0."
-
-#, python-format
-msgid ""
-"QoS policy must specify for IOTYPE and another qos_specs, QoS policy: "
-"%(qos_policy)s."
-msgstr ""
-"A política de QoS deve ser especificada para o IOTYPE e para outras "
-"qos_specs, política de QoS: %(qos_policy)s."
-
-#, python-format
-msgid ""
-"QoS policy must specify for IOTYPE: 0, 1, or 2, QoS policy: %(qos_policy)s "
-msgstr ""
-"A política de QoS deve ser especificada para IOTYPE: 0, 1 ou 2, política de "
-"QoS: %(qos_policy)s "
-
-#, python-format
-msgid ""
-"QoS policy upper_limit and lower_limit conflict, QoS policy: %(qos_policy)s."
-msgstr ""
-"Conflito de upper_limit e lower_limit da política do QoS, política do QoS: "
-"%(qos_policy)s."
 
 #, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
@@ -4225,9 +4096,6 @@ msgstr ""
 msgid "SAN product is not configured."
 msgstr "O produto SAN não está configurado."
 
-msgid "SAN protocol is not configured."
-msgstr "O protocolo SAN não está configurado."
-
 #, python-format
 msgid "SMBFS config file at %(config)s doesn't exist."
 msgstr "O arquivo de configuração SMBFS em %(config)s não existe."
@@ -4242,10 +4110,6 @@ msgstr "Comando SSH falhou após '%(total_attempts)r' tentativas: '%(command)s'"
 #, python-format
 msgid "SSH command injection detected: %(command)s"
 msgstr "Injeção de comando SSH detectada: %(command)s"
-
-#, python-format
-msgid "SSH connection failed for %(fabric)s with error: %(err)s"
-msgstr "Conexão SSH falhou para %(fabric)s com erro: %(err)s"
 
 #, python-format
 msgid "Scheduler Host Filter %(filter_name)s could not be found."
@@ -6742,10 +6606,6 @@ msgstr "volumes designados"
 
 msgid "volumes changed"
 msgstr "volumes alterados"
-
-#, python-format
-msgid "wait_for_condition: %s timed out."
-msgstr "wait_for_condition: %s atingiu tempo limite."
 
 #, python-format
 msgid ""

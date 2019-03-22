@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-01-11 16:51+0000\n"
+"POT-Creation-Date: 2019-03-21 22:19+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -489,23 +489,12 @@ msgstr ""
 msgid "CPG (%s) doesn't exist on array"
 msgstr "陣列上不存在 CPG (%s)"
 
-msgid "Cache name is None, please set smartcache:cachename in key."
-msgstr "快取名稱為「無」，請在索引鍵中設定 smartcache:cachename。"
-
 #, python-format
 msgid "Cache volume %s does not have required properties"
 msgstr "快取磁區 %s 沒有必需的內容"
 
 msgid "Can not add FC port to host."
 msgstr "無法將 FC 埠新增至主機。"
-
-#, python-format
-msgid "Can not find cache id by cache name %(name)s."
-msgstr "依快取名稱 %(name)s 找不到快取 ID。"
-
-#, python-format
-msgid "Can not find partition id by name %(name)s."
-msgstr "依名稱 %(name)s 找不到分割區 ID。"
 
 #, python-format
 msgid "Can not get pool info. pool: %s"
@@ -543,10 +532,6 @@ msgstr "在陣列上找不到 Snapshot，請檢查 source-name 或 source-id。"
 
 msgid "Can't find the same host id from arrays."
 msgstr "從陣列中找不到相同的主機 ID。"
-
-#, python-format
-msgid "Can't get volume id from snapshot, snapshot: %(id)s"
-msgstr "無法從 Snapshot 取得磁區 ID，Snapshot：%(id)s"
 
 #, python-format
 msgid "Can't get volume id. Volume name: %s."
@@ -1262,22 +1247,6 @@ msgstr "請確保 configfs 已裝載於 /sys/kernel/config 中。"
 
 #, python-format
 msgid ""
-"Error Adding Initiator: %(initiator)s on groupInitiatorGroup: "
-"%(initiatorgroup)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"在下列 groupInitiatorGroup 上新增起始器 %(initiator)s 時發生錯誤："
-"%(initiatorgroup)s。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Adding to TargetGroup: %(targetgroup)s withIQN: %(iqn)sReturn code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"新增至帶 IQN %(iqn)s 的目標群組 %(targetgroup)s 時發生錯誤。回覆碼："
-"%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
 "Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
 "Project: %(project)s  Clone project: %(clone_proj)s Return code: "
 "%(ret.status)d Message: %(ret.data)s."
@@ -1316,37 +1285,6 @@ msgid ""
 "%(ret.data)s."
 msgstr ""
 "建立共用 %(name)s 時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Snapshot: %(snapshot)s onVolume: %(lun)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在儲存區 %(pool)s 的磁區 %(lun)s 上建立 Snapshot：%(snapshot)s 時發生錯誤專"
-"案：%(project)s。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Snapshot: %(snapshot)s onshare: %(share)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在下列儲存區的共用 %(share)s 上建立 Snapshot %(snapshot)s 時發生錯誤："
-"%(pool)s 專案：%(project)s  回覆碼：%(ret.status)d 訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Target: %(alias)sReturn code: %(ret.status)d Message: "
-"%(ret.data)s ."
-msgstr ""
-"建立目標 %(alias)s 時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating TargetGroup: %(targetgroup)s withIQN: %(iqn)sReturn code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"建立帶 IQN %(iqn)s 的目標群組 %(targetgroup)s 時發生錯誤。回覆碼："
-"%(ret.status)d。訊息：%(ret.data)s。"
 
 #, python-format
 msgid ""
@@ -1426,13 +1364,6 @@ msgid ""
 msgstr ""
 "取得儲存區 %(pool)s 上的共用 %(share)s 時發生錯誤。專案：%(project)s回覆碼："
 "%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Target: %(alias)sReturn code: %(ret.status)d Message: "
-"%(ret.data)s ."
-msgstr ""
-"取得目標 %(alias)s 時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
 
 #, python-format
 msgid ""
@@ -2751,22 +2682,11 @@ msgstr ""
 "為 flashsystem_connection_protocol 指定的值 '%(prot)s' 不正確：有效值為 "
 "%(enabled)s。"
 
-msgid "Illegal value specified for IOTYPE: 0, 1, or 2."
-msgstr "為 IOTYPE 指定的值無效：0、1 或 2。"
-
-msgid "Illegal value specified for smarttier: set to either 0, 1, 2, or 3."
-msgstr "指定給 smarttier 的值不正確：設定為 0、1、2 或 3。"
-
 msgid ""
 "Illegal value specified for storwize_svc_vol_grainsize: set to either 32, "
 "64, 128, or 256."
 msgstr ""
 "指定給 storwize_svc_vol_grainsize 的值不正確：應設為 32、64、128 或 256。"
-
-msgid ""
-"Illegal value specified for thin: Can not set thin and thick at the same "
-"time."
-msgstr "指定給 thin 的值不正確：無法同時設定thin 和 thick。"
 
 #, python-format
 msgid "Image %(image_id)s could not be found."
@@ -2987,11 +2907,6 @@ msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
 msgstr "新 snapCPG 名稱無效，無法執行 Retype 動作。new_snap_cpg='%s'。"
 
 #, python-format
-msgid ""
-"Invalid prefetch type '%s' is configured. PrefetchType must be in 0,1,2,3."
-msgstr "所配置的預先提取類型 %s 無效。PrefetchType 必須位於 0、1、2 和 3 中。"
-
-#, python-format
 msgid "Invalid qos specs: %(reason)s"
 msgstr "無效的服務品質規格：%(reason)s"
 
@@ -3024,9 +2939,6 @@ msgstr "所要求的儲存區 %s 無效。執行 Retype 動作失敗。"
 #, python-format
 msgid "Invalid storage pool %s specificed."
 msgstr "所指定的儲存區 %s 無效。"
-
-msgid "Invalid storage pool is configured."
-msgstr "所配置的儲存區無效。"
 
 #, python-format
 msgid "Invalid update setting: '%s'"
@@ -3552,9 +3464,6 @@ msgstr "原始 %(res)s %(prop)s 必須是值 %(vals)s 的其中之一"
 msgid "ParseException: %s"
 msgstr "ParseException：%s"
 
-msgid "Partition name is None, please set smartpartition:partitionname in key."
-msgstr "分割區名稱為「無」，請在索引鍵中設定 smartpartition:partitionname。"
-
 msgid ""
 "Password or SSH private key is required for authentication: set either "
 "san_password or san_private_key option."
@@ -3616,31 +3525,6 @@ msgstr "服務品質規格 %(specs_id)s 已存在。"
 #, python-format
 msgid "QoS Specs %(specs_id)s is still associated with entities."
 msgstr "服務品質規格 %(specs_id)s 仍與實體相關聯。"
-
-#, python-format
-msgid "QoS config is wrong. %s must > 0."
-msgstr "服務品質配置錯誤。%s 必須大於 0。"
-
-#, python-format
-msgid ""
-"QoS policy must specify for IOTYPE and another qos_specs, QoS policy: "
-"%(qos_policy)s."
-msgstr ""
-"必須為 IOTYPE 指定服務品質原則及另一個 qos_specs，服務品質原則："
-"%(qos_policy)s。"
-
-#, python-format
-msgid ""
-"QoS policy must specify for IOTYPE: 0, 1, or 2, QoS policy: %(qos_policy)s "
-msgstr ""
-"必須為 IOTYPE 指定服務品質原則：0、1 或 2，服務品質原則：%(qos_policy)s "
-
-#, python-format
-msgid ""
-"QoS policy upper_limit and lower_limit conflict, QoS policy: %(qos_policy)s."
-msgstr ""
-"服務品質原則 upper_limit 與 lower_limit 相衝突，服務品質原則："
-"%(qos_policy)s。"
 
 #, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
@@ -3907,9 +3791,6 @@ msgstr "不容許使用低於 %s 的 VMware vCenter 版本來執行 Cinder。"
 msgid "SAN product is not configured."
 msgstr "未配置 SAN 產品。"
 
-msgid "SAN protocol is not configured."
-msgstr "未配置 SAN 通訊協定。"
-
 #, python-format
 msgid "SMBFS config file at %(config)s doesn't exist."
 msgstr "%(config)s 處的 SMBFS 配置檔不存在。"
@@ -3924,10 +3805,6 @@ msgstr "嘗試 '%(total_attempts)r' 次之後 SSH 指令仍失敗：'%(command)s
 #, python-format
 msgid "SSH command injection detected: %(command)s"
 msgstr "偵測到 SSH 指令注入：%(command)s"
-
-#, python-format
-msgid "SSH connection failed for %(fabric)s with error: %(err)s"
-msgstr "%(fabric)s 進行 SSH 連線失敗，發生錯誤：%(err)s"
 
 #, python-format
 msgid "Scheduler Host Filter %(filter_name)s could not be found."
@@ -6218,10 +6095,6 @@ msgstr "已指派磁區"
 
 msgid "volumes changed"
 msgstr "已變更磁區"
-
-#, python-format
-msgid "wait_for_condition: %s timed out."
-msgstr "wait_for_condition：%s 已逾時。"
 
 #, python-format
 msgid ""

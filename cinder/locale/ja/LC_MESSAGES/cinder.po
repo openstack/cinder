@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-01-11 16:51+0000\n"
+"POT-Creation-Date: 2019-03-21 22:19+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -449,15 +449,6 @@ msgid "At least one valid iSCSI IP address must be set."
 msgstr "有効な iSCSI IP アドレスを 1 つ以上設定する必要があります。"
 
 #, python-format
-msgid "Attach volume to host failed in copy volume to image, retcode: %s."
-msgstr ""
-"ホストへのボリュームの接続が、イメージからのボリュームのコピー中に失敗しまし"
-"た。retcode: %s"
-
-msgid "Attach_volume failed."
-msgstr "ボリュームの接続に失敗しました。"
-
-#, python-format
 msgid "Attempt to transfer %s with invalid auth key."
 msgstr "無効な認証キーを使用して %s を転送しようとしています。"
 
@@ -622,25 +613,12 @@ msgstr ""
 msgid "CPG (%s) doesn't exist on array"
 msgstr "CPG (%s) がアレイ上に存在しません"
 
-msgid "Cache name is None, please set smartcache:cachename in key."
-msgstr ""
-"キャッシュ名がありません。キーで smartcache:cachename を設定してください。"
-
 #, python-format
 msgid "Cache volume %s does not have required properties"
 msgstr "キャッシュボリューム %s に必須のプロパティーがありません"
 
 msgid "Can not add FC port to host."
 msgstr "ホストに FC ポートを追加できません。"
-
-#, python-format
-msgid "Can not find cache id by cache name %(name)s."
-msgstr ""
-"キャッシュ名 %(name)s によってキャッシュ ID を見つけることができません。"
-
-#, python-format
-msgid "Can not find partition id by name %(name)s."
-msgstr "名前 %(name)s によってパーティション ID を見つけることができません。"
 
 #, python-format
 msgid "Can not get pool info. pool: %s"
@@ -698,11 +676,6 @@ msgid "Can't find valid IP from rest, please check it on storage."
 msgstr ""
 "rest で有効な IP を見つけることができません。ストーレジ上で確認を行ってくださ"
 "い。"
-
-#, python-format
-msgid "Can't get volume id from snapshot, snapshot: %(id)s"
-msgstr ""
-"スナップショットからボリューム ID を取得できません。スナップショット: %(id)s"
 
 #, python-format
 msgid "Can't get volume id. Volume name: %s."
@@ -791,9 +764,6 @@ msgid "Can't support partition on the array, partition name is: %(name)s."
 msgstr ""
 "アレイでパーティションがサポートできません、パーティション名は %(name)s で"
 "す。"
-
-msgid "Can't support qos on the array"
-msgstr "アレイで QoS がサポートできません。"
 
 msgid "Can't support qos on the array."
 msgstr "アレイで QoS がサポートできません。"
@@ -1072,16 +1042,6 @@ msgid ""
 msgstr ""
 "クローンタイプ '%(clone_type)s' は無効です。有効な値は '%(full_clone)s' およ"
 "び '%(linked_clone)s' です。"
-
-#, python-format
-msgid "Clone volume %(new_volume_name)s failed, volume status is: %(status)s."
-msgstr ""
-"ボリューム %(new_volume_name)s のクローンが失敗しました。ボリュームのステータ"
-"ス: %(status)s"
-
-#, python-format
-msgid "Clone volume %s failed while waiting for success."
-msgstr "ボリューム %s のクローンが、成功を待っている間に失敗しました。"
 
 msgid "Cluster"
 msgstr "クラスター"
@@ -1653,76 +1613,6 @@ msgstr ""
 "ているフィールド (%s) があります。"
 
 #, python-format
-msgid "Dsware Create Snapshot failed! Result: %s."
-msgstr "Dsware でのスナップショットの作成に失敗しました。結果: %s"
-
-msgid "Dsware clone volume failed: volume can not be found from Dsware."
-msgstr ""
-"Dsware でのボリュームのクローンが失敗しました: ボリュームが Dsware 内に見つか"
-"りません。"
-
-#, python-format
-msgid ""
-"Dsware clone volume time out. Volume: %(new_volume_name)s, status: %(status)s"
-msgstr ""
-"Dsware での ボリューム %(new_volume_name)s のクローンがタイムアウトしました。"
-"ステータス: %(status)s"
-
-msgid "Dsware config file not exists!"
-msgstr "Dsware 設定ファイルが見つかりません。"
-
-#, python-format
-msgid "Dsware create volume failed! Result is: %s."
-msgstr "Dsware でボリュームの作成に失敗しました。 結果は %s です。"
-
-#, python-format
-msgid "Dsware delete volume failed: %s!"
-msgstr "Dsware でのボリュームの削除に失敗しました: %s"
-
-#, python-format
-msgid "Dsware detach volume from host failed: %s!"
-msgstr "Dsware でホストからのボリュームの切り離しに失敗しました: %s "
-
-#, python-format
-msgid ""
-"Dsware extend Volume failed! New size %(new_size)s should be greater than "
-"old size %(old_size)s!"
-msgstr ""
-"Dsware で、ボリュームの拡張に失敗しました。変更後のサイズ %(new_size)s は現在"
-"のサイズ %(old_size)s より大きくなければいけません。"
-
-#, python-format
-msgid "Dsware extend Volume failed! Result:%s."
-msgstr "Dsware でボリュームの拡張に失敗しました。 結果:  %s "
-
-#, python-format
-msgid "Dsware fails to start cloning volume %s."
-msgstr "Dsware がボリューム %s のクローニングの開始に失敗しました。"
-
-msgid "Dsware get manager ip failed, volume provider_id is None!"
-msgstr ""
-"Dsware が管理 ip の取得に失敗しました。 volume provider_id が None です。"
-
-msgid "Dsware get snapshot failed!"
-msgstr "Dsware でのスナップショットの取得に失敗しました。"
-
-msgid "Dsware query Dsware version failed!"
-msgstr "Dsware で、 Dsware バージョンの問い合わせに失敗しました。"
-
-#, python-format
-msgid "Dsware query volume %s failed!"
-msgstr "Dsware でのボリューム %s の問い合わせに失敗しました。"
-
-#, python-format
-msgid "Dsware: create volume from snap failed. Result: %s."
-msgstr ""
-"Dsware: スナップショットからのボリュームの作成に失敗しました。 結果: %s"
-
-msgid "Dsware: volume size can not be less than snapshot size."
-msgstr ""
-"Dsware: ボリュームのサイズはスナップショットのサイズより小さくはできません。"
-
-#, python-format
 msgid ""
 "EMC VNX Cinder Driver CLI exception: %(cmd)s (Return Code: %(rc)s) (Output: "
 "%(out)s)."
@@ -1769,23 +1659,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Error Adding Initiator: %(initiator)s on groupInitiatorGroup: "
-"%(initiatorgroup)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"groupInitiatorGroup %(initiatorgroup)s でのイニシエーター %(initiator)s の追"
-"加中にエラーが発生しました。戻りコード: %(ret.status)d メッセージ: "
-"%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Adding to TargetGroup: %(targetgroup)s withIQN: %(iqn)sReturn code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"IQN %(iqn)s でターゲットグループ %(targetgroup)s への追加中にエラーが発生しま"
-"した。戻りコード: %(ret.status)d、メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
 "Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
 "Project: %(project)s  Clone project: %(clone_proj)s Return code: "
 "%(ret.status)d Message: %(ret.data)s."
@@ -1825,40 +1698,6 @@ msgid ""
 msgstr ""
 "共有 %(name)s の作成中にエラーが発生しました。戻りコード: %(ret.status)d、"
 "メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Snapshot: %(snapshot)s onVolume: %(lun)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"ボリューム %(lun)s でスナップショット %(snapshot)s をプール %(pool)s に作成し"
-"ているときにエラーが発生しました。プロジェクト: %(project)s、戻りコード: "
-"%(ret.status)d、メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Snapshot: %(snapshot)s onshare: %(share)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"共有 %(share)s でスナップショット %(snapshot)s をプール %(pool)s に作成中にエ"
-"ラーが発生しました。プロジェクト: %(project)s  戻りコード: %(ret.status)d "
-"メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Target: %(alias)sReturn code: %(ret.status)d Message: "
-"%(ret.data)s ."
-msgstr ""
-"ターゲットの作成中にエラーが発生しました: %(alias)s。戻りコード: "
-"%(ret.status)d、メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating TargetGroup: %(targetgroup)s withIQN: %(iqn)sReturn code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"IQN %(iqn)s でターゲットグループ %(targetgroup)s の作成中にエラーが発生しまし"
-"た。戻りコード: %(ret.status)d、メッセージ: %(ret.data)s。"
 
 #, python-format
 msgid ""
@@ -1942,14 +1781,6 @@ msgid ""
 msgstr ""
 "プール %(pool)s での共有 %(share)s の取得中にエラーが発生しました。プロジェク"
 "ト: %(project)s 戻りコード: %(ret.status)d メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Target: %(alias)sReturn code: %(ret.status)d Message: "
-"%(ret.data)s ."
-msgstr ""
-"ターゲットの取得中にエラーが発生しました: %(alias)s。戻りコード: "
-"%(ret.status)d、メッセージ: %(ret.data)s。"
 
 #, python-format
 msgid ""
@@ -3620,27 +3451,12 @@ msgstr ""
 "正しくない値 '%(prot)s' が flashsystem_connection_protocol に指定されていま"
 "す。有効な値は %(enabled)s です。"
 
-msgid "Illegal value specified for IOTYPE: 0, 1, or 2."
-msgstr "IOTYPE に正しくない値が指定されています: 0、1、または 2。"
-
-msgid "Illegal value specified for smarttier: set to either 0, 1, 2, or 3."
-msgstr ""
-"smarttier に正しくない値が指定されています: 0、1、2、または 3 のいずれかに設"
-"定してください。"
-
 msgid ""
 "Illegal value specified for storwize_svc_vol_grainsize: set to either 32, "
 "64, 128, or 256."
 msgstr ""
 "正しくない値が storwize_svc_vol_grainsize に指定されています。32、64、128、"
 "256 のいずれかに設定してください。"
-
-msgid ""
-"Illegal value specified for thin: Can not set thin and thick at the same "
-"time."
-msgstr ""
-"thin に正しくない値が指定されています: thin と thick を同時に設定することはで"
-"きません。"
 
 #, python-format
 msgid "Image %(image_id)s could not be found."
@@ -3893,13 +3709,6 @@ msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
 msgstr "新規 snapCPG 名がタイプ変更には無効です。new_snap_cpg='%s'。"
 
 #, python-format
-msgid ""
-"Invalid prefetch type '%s' is configured. PrefetchType must be in 0,1,2,3."
-msgstr ""
-"無効なプリフェッチタイプ '%s' が設定されています。プリフェッチタイプは 0、1、"
-"2、3 でなければなりません。"
-
-#, python-format
 msgid "Invalid qos specs: %(reason)s"
 msgstr "qos 仕様が無効です: %(reason)s"
 
@@ -3940,9 +3749,6 @@ msgstr "無効なストレージプール %s が要求されました。再入�
 #, python-format
 msgid "Invalid storage pool %s specificed."
 msgstr "無効なストレージプール %s が指定されました。"
-
-msgid "Invalid storage pool is configured."
-msgstr "無効なストレージプールが設定されています。"
 
 #, python-format
 msgid "Invalid update setting: '%s'"
@@ -4661,11 +4467,6 @@ msgstr "パラメーター [snapshot_uuid]  が無効です。"
 msgid "ParseException: %s"
 msgstr "ParseException: %s"
 
-msgid "Partition name is None, please set smartpartition:partitionname in key."
-msgstr ""
-"パーティション名がありません。キーで smartpartition:partitionname を設定して"
-"ください。"
-
 msgid "Password has expired or has been reset, please change the password."
 msgstr ""
 "パスワードの期限が切れているか、リセットされました。パスワードを変更してくだ"
@@ -4748,32 +4549,6 @@ msgid "QoS Specs %(specs_id)s is still associated with entities."
 msgstr "QoS 仕様 %(specs_id)s はまだエンティティーと関連付けられています。"
 
 #, python-format
-msgid "QoS config is wrong. %s must > 0."
-msgstr "QoS 設定が誤っています。%s は 0 より大きくなければなりません。"
-
-#, python-format
-msgid ""
-"QoS policy must specify for IOTYPE and another qos_specs, QoS policy: "
-"%(qos_policy)s."
-msgstr ""
-"IOTYPE ともう 1 つの qos_specs に QoS ポリシーを指定する必要があります。QoS "
-"ポリシー: %(qos_policy)s。"
-
-#, python-format
-msgid ""
-"QoS policy must specify for IOTYPE: 0, 1, or 2, QoS policy: %(qos_policy)s "
-msgstr ""
-"IOTYPE に QoS ポリシーを指定する必要があります: 0、1、または 2、QoS ポリ"
-"シー: %(qos_policy)s "
-
-#, python-format
-msgid ""
-"QoS policy upper_limit and lower_limit conflict, QoS policy: %(qos_policy)s."
-msgstr ""
-"QoS ポリシー upper_limit と lower_limit が競合しています。QoS ポリシー: "
-"%(qos_policy)s。"
-
-#, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
 msgstr ""
 "QoS 仕様 %(specs_id)s には、キー %(specs_key)s を持つ仕様はありません。"
@@ -4781,16 +4556,8 @@ msgstr ""
 msgid "Qos specs still in use."
 msgstr "Qos 仕様はまだ使用中です。"
 
-#, python-format
-msgid "Query Dsware version failed! Retcode is %s."
-msgstr "Dsware でバージョンのクエリーに失敗しました。 Retcode は %s です。"
-
 msgid "Query resource pool error."
 msgstr "リソースプール照会のエラー。"
-
-#, python-format
-msgid "Query volume attach failed, result=%s."
-msgstr "Query ボリュームの接続に失敗しました。結果 = %s"
 
 #, python-format
 msgid "Quota class %(class_name)s could not be found."
@@ -5101,9 +4868,6 @@ msgstr ""
 msgid "SAN product is not configured."
 msgstr "SAN 製品は設定されていません。"
 
-msgid "SAN protocol is not configured."
-msgstr "SAN プロトコルは設定されていません。"
-
 #, python-format
 msgid "SMBFS config file at %(config)s doesn't exist."
 msgstr "%(config)s の SMBFS 構成ファイルは存在しません。"
@@ -5119,10 +4883,6 @@ msgstr ""
 #, python-format
 msgid "SSH command injection detected: %(command)s"
 msgstr "SSH コマンド注入が検出されました: %(command)s"
-
-#, python-format
-msgid "SSH connection failed for %(fabric)s with error: %(err)s"
-msgstr "%(fabric)s の SSH 接続がエラー %(err)s で失敗しました"
 
 #, python-format
 msgid "Scheduler Host Filter %(filter_name)s could not be found."
@@ -8082,10 +7842,6 @@ msgstr "割り当てられたボリューム"
 
 msgid "volumes changed"
 msgstr "変更されたボリューム"
-
-#, python-format
-msgid "wait_for_condition: %s timed out."
-msgstr "wait_for_condition: %s はタイムアウトしました。"
 
 #, python-format
 msgid ""
