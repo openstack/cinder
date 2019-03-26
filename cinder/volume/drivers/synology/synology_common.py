@@ -20,6 +20,7 @@ import json
 import math
 from os import urandom
 from random import randint
+import re
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -856,17 +857,26 @@ class SynoCommon(object):
                                               reason=_('data not found'))
         firmware_version = out['data']['firmware_ver']
 
-        # e.g. 'DSM 6.1-7610', 'DSM 6.0.1-7370', 'DSM 6.0-7321 update 3'
-        version = firmware_version.split()[1].split('-')[0]
-        versions = version.split('.')
-        major, minor, hotfix = (versions[0],
-                                versions[1],
-                                versions[2] if len(versions) is 3 else '0')
+        # e.g. 'DSM 6.1-7610', 'DSM 6.0.1-7321 update 3', 'DSM UC 1.0-6789'
+        pattern = re.compile(r"^(.*) (\d+)\.(\d+)(?:\.(\d+))?-(\d+)"
+                             r"(?: [uU]pdate (\d+))?$")
+        matches = pattern.match(firmware_version)
 
-        major, minor, hotfix = (int(major), int(minor), int(hotfix))
+        if not matches:
+            m = (_('DS version %s is not supported') %
+                 firmware_version)
+            raise exception.VolumeDriverException(message=m)
 
-        if (6 > major) or (major is 6 and minor is 0 and hotfix < 2):
-            m = (_('DS version %s is not supperted') %
+        os_name = matches.group(1)
+        major = int(matches.group(2))
+        minor = int(matches.group(3))
+        hotfix = int(matches.group(4)) if matches.group(4) else 0
+
+        if os_name == 'DSM UC':
+            return
+        elif (os_name == 'DSM' and
+                ((6 > major) or (major is 6 and minor is 0 and hotfix < 2))):
+            m = (_('DS version %s is not supported') %
                  firmware_version)
             raise exception.VolumeDriverException(message=m)
 

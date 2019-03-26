@@ -1104,10 +1104,10 @@ class SynoCommonTestCase(test.TestCase):
 
     def test__check_ds_version(self):
         ver1 = 'DSM 6.1-9999'
-        ver2 = 'DSM 6.0.2-9999'
+        ver2 = 'DSM UC 1.0-9999 Update 2'
         ver3 = 'DSM 6.0.1-9999 Update 2'
         ver4 = 'DSM 6.0-9999 Update 2'
-        ver5 = 'DSM 5.2-9999 '
+        ver5 = 'DSM 5.2-9999'
         out = {
             'data': {
             },
