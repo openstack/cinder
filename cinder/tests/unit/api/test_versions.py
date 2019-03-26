@@ -14,6 +14,8 @@
 #    under the License.
 
 import ddt
+from oslo_config import cfg
+from oslo_config import fixture as config_fixture
 from oslo_serialization import jsonutils
 from oslo_utils import encodeutils
 import six
@@ -29,6 +31,7 @@ from cinder import test
 from cinder.tests.unit.api import fakes
 
 
+CONF = cfg.CONF
 VERSION_HEADER_NAME = 'OpenStack-API-Version'
 VOLUME_SERVICE = 'volume '
 
@@ -80,6 +83,21 @@ class VersionsControllerTestCase(test.TestCase):
                          v3.get('version'))
         self.assertEqual(api_version_request._MIN_API_VERSION,
                          v3.get('min_version'))
+
+    @ddt.data('2.0', '3.0')
+    def test_all_versions_excludes_disabled(self, version):
+        self.fixture = self.useFixture(config_fixture.Config(CONF))
+        if version == '2.0':
+            self.fixture.config(enable_v2_api=False)
+        elif version == '3.0':
+            self.fixture.config(enable_v3_api=False)
+        else:
+            return
+        vc = versions.VersionsController()
+        req = self.build_request(base_url='http://localhost')
+        resp = vc.all(req)
+        all_versions = [x['id'] for x in resp['versions']]
+        self.assertNotIn('v' + version, all_versions)
 
     def test_versions_v2_no_header(self):
         req = self.build_request(base_url='http://localhost/v2')
