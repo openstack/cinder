@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    A warning has been added to the ``cinder-status upgrade check`` CLI if a
+    ``policy.json`` file is present. Documentation has been updated to
+    correct the file as ``policy.yaml`` if any policies need to be changed from
+    their defaults.

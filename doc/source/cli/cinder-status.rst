@@ -87,6 +87,8 @@ Upgrade
 
   * Check added to ensure the backup_driver setting is using the full driver
     class path and not just the module path.
+  * Checks for the presence of a **policy.json** file have been added to warn
+    if policy changes should be present in a **policy.yaml** file.
 
 See Also
 ========
