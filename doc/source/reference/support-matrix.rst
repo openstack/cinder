@@ -82,3 +82,4 @@ release.
 * Train
    * Tintri Storage Driver
    * Veritas HyperScale Storage Driver
+   * Nexenta Edge Storage Driver
