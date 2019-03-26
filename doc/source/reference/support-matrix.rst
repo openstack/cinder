@@ -81,3 +81,4 @@ release.
 
 * Train
    * Tintri Storage Driver
+   * Veritas HyperScale Storage Driver
