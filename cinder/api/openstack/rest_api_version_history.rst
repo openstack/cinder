@@ -459,7 +459,7 @@ Add ``project_id`` attribute to response body of list groups with detail,
 list group snapshots with detail, show group detail and show group snapshot
 detail APIs.
 
-3.59
-----
+3.59 (Maximum in Stein)
+-----------------------
 Support volume transfer pagination.
 
