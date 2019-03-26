@@ -12,6 +12,7 @@
 
 """Unit tests for the cinder-status CLI interfaces."""
 
+import mock
 from oslo_config import cfg
 from oslo_upgradecheck import upgradecheck as uc
 import testtools
@@ -28,18 +29,69 @@ class TestCinderStatus(testtools.TestCase):
         super(TestCinderStatus, self).setUp()
         self.checks = status.Checks()
 
-    def _set_backup_driver(self, driver_path):
-        CONF.set_override('backup_driver', driver_path)
-        self.addCleanup(CONF.clear_override, 'backup_driver')
+        # Make sure configuration is initialized
+        try:
+            CONF([], project='cinder')
+        except cfg.RequiredOptError:
+            # Doesn't matter in this situation
+            pass
+
+        # Make sure our expected path is returned
+        patcher = mock.patch.object(CONF, 'find_file')
+        self.addCleanup(patcher.stop)
+        self.find_file = patcher.start()
+        self.find_file.return_value = '/etc/cinder/'
+
+    def _set_config(self, key, value, group=None):
+        CONF.set_override(key, value, group=group)
+        self.addCleanup(CONF.clear_override, key, group=group)
 
     def test_check_backup_module(self):
-        self._set_backup_driver(
+        self._set_config(
+            'backup_driver',
             'cinder.backup.drivers.swift.SwiftBackupDriver')
         result = self.checks._check_backup_module()
         self.assertEqual(uc.Code.SUCCESS, result.code)
 
     def test_check_backup_module_not_class(self):
-        self._set_backup_driver('cinder.backup.drivers.swift')
+        self._set_config('backup_driver', 'cinder.backup.drivers.swift')
         result = self.checks._check_backup_module()
         self.assertEqual(uc.Code.FAILURE, result.code)
         self.assertIn('requires the full path', result.details)
+
+    def test_check_policy_file(self):
+        with mock.patch.object(self.checks, '_file_exists') as fe:
+            fe.return_value = False
+            result = self.checks._check_policy_file()
+
+        self.assertEqual(uc.Code.SUCCESS, result.code)
+
+    def test_check_policy_file_exists(self):
+        with mock.patch.object(self.checks, '_file_exists') as fe:
+            fe.return_value = True
+            result = self.checks._check_policy_file()
+
+        self.assertEqual(uc.Code.WARNING, result.code)
+        self.assertIn('policy.json file is present', result.details)
+
+    def test_check_policy_file_custom_path(self):
+        policy_path = '/my/awesome/configs/policy.yaml'
+        self._set_config('policy_file', policy_path, group='oslo_policy')
+        with mock.patch.object(self.checks, '_file_exists') as fe:
+            fe.return_value = False
+            result = self.checks._check_policy_file()
+            fe.assert_called_with(policy_path)
+
+        self.assertEqual(uc.Code.WARNING, result.code)
+        self.assertIn(policy_path, result.details)
+
+    def test_check_policy_file_custom_file(self):
+        policy_path = 'mypolicy.yaml'
+        self._set_config('policy_file', policy_path, group='oslo_policy')
+        with mock.patch.object(self.checks, '_file_exists') as fe:
+            fe.return_value = False
+            result = self.checks._check_policy_file()
+            fe.assert_called_with('/etc/cinder/%s' % policy_path)
+
+        self.assertEqual(uc.Code.WARNING, result.code)
+        self.assertIn(policy_path, result.details)
