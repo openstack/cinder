@@ -538,10 +538,10 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                           {'volume_id': volume.id})
             raise exception.ImageUnacceptable(ex)
         except exception.ImageTooBig as ex:
-            LOG.exception("Failed to copy image %(image_id)s to volume: "
-                          "%(volume_id)s",
-                          {'volume_id': volume.id, 'image_id': image_id})
-            excutils.save_and_reraise_exception()
+            with excutils.save_and_reraise_exception():
+                LOG.exception("Failed to copy image %(image_id)s to volume: "
+                              "%(volume_id)s",
+                              {'volume_id': volume.id, 'image_id': image_id})
         except Exception as ex:
             LOG.exception("Failed to copy image %(image_id)s to "
                           "volume: %(volume_id)s",
