@@ -499,7 +499,7 @@ class Client(client_base.Client):
                                'destination-block-number':
                                six.text_type(dest_block),
                                'block-count':
-                               six.text_type(block_count)})
+                               six.text_type(int(block_count))})
                     block_ranges.add_child_elem(block_range)
                     src_block += int(block_count)
                     dest_block += int(block_count)
