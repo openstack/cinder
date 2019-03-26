@@ -69,3 +69,4 @@ release.
 * Stein
    * HGST Flash Storage Suite Driver (vgc)
    * ITRI DISCO Driver
+   * NetApp E-Series Driver
