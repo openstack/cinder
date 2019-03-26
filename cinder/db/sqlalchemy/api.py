@@ -4014,7 +4014,14 @@ def volume_types_get_by_name_or_id(context, volume_type_list):
         if not uuidutils.is_uuid_like(vol_t):
             vol_type = _volume_type_get_by_name(context, vol_t)
         else:
-            vol_type = _volume_type_get(context, vol_t)
+            try:
+                vol_type = _volume_type_get(context, vol_t)
+            except exception.VolumeTypeNotFound:
+                # check again if we get this volume type by uuid-like name
+                try:
+                    vol_type = _volume_type_get_by_name(context, vol_t)
+                except exception.VolumeTypeNotFoundByName:
+                    raise exception.VolumeTypeNotFound(volume_type_id=vol_t)
         req_volume_types.append(vol_type)
     return req_volume_types
 
