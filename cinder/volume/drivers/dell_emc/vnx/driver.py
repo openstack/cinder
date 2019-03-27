@@ -76,10 +76,13 @@ class VNXDriver(driver.ManageableVD,
                    image cache volume
           10.1.0 - Add QoS support
           10.2.0 - Add replication group support
-          11.0.0 - Fix failure of migration during cloning
+          10.2.1 - Fix failure of migration during cloning
+          10.2.2 - Fix bug https://bugs.launchpad.net/cinder/+bug/1817385 to
+                   make sure sg can be created again after it was destroyed
+                   under `destroy_empty_stroage_group` setting to `True`
     """
 
-    VERSION = '11.00.00'
+    VERSION = '10.02.02'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_VNX_CI"
