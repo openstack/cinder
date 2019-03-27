@@ -20,6 +20,7 @@ from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.v3 import messages
 from cinder import context
+from cinder import exception
 from cinder.message import api as message_api
 from cinder.message import message_field
 from cinder import test
@@ -54,8 +55,7 @@ class MessageApiTest(test.TestCase):
             'request_id': 'fakerequestid',
             'resource_type': 'fake_resource_type',
             'resource_uuid': None,
-            'action_id':
-                message_field.Action.SCHEDULE_ALLOCATE_VOLUME[0],
+            'action_id': message_field.Action.SCHEDULE_ALLOCATE_VOLUME[0],
             'detail_id': message_field.Detail.UNKNOWN_ERROR[0],
             'message_level': 'ERROR',
             'expires_at': expected_expires_at,
@@ -65,6 +65,205 @@ class MessageApiTest(test.TestCase):
                                 message_field.Action.SCHEDULE_ALLOCATE_VOLUME,
                                 detail=message_field.Detail.UNKNOWN_ERROR,
                                 resource_type="fake_resource_type")
+
+        self.message_api.db.message_create.assert_called_once_with(
+            self.ctxt, expected_message_record)
+        mock_utcnow.assert_called_with()
+
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_create_with_minimum_args(self, mock_utcnow):
+        CONF.set_override('message_ttl', 300)
+        mock_utcnow.return_value = datetime.datetime.utcnow()
+        expected_expires_at = timeutils.utcnow() + datetime.timedelta(
+            seconds=300)
+        expected_message_record = {
+            'project_id': 'fakeproject',
+            'request_id': 'fakerequestid',
+            'resource_type': message_field.Resource.VOLUME,
+            'resource_uuid': None,
+            'action_id': message_field.Action.SCHEDULE_ALLOCATE_VOLUME[0],
+            'detail_id': message_field.Detail.UNKNOWN_ERROR[0],
+            'message_level': 'ERROR',
+            'expires_at': expected_expires_at,
+            'event_id': "VOLUME_VOLUME_001_001",
+        }
+        self.message_api.create(
+            self.ctxt,
+            action=message_field.Action.SCHEDULE_ALLOCATE_VOLUME)
+
+        self.message_api.db.message_create.assert_called_once_with(
+            self.ctxt, expected_message_record)
+        mock_utcnow.assert_called_with()
+
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_create_with_no_detail(self, mock_utcnow):
+        # Should get Detail.UNKNOWN_ERROR
+        CONF.set_override('message_ttl', 300)
+        mock_utcnow.return_value = datetime.datetime.utcnow()
+        expected_expires_at = timeutils.utcnow() + datetime.timedelta(
+            seconds=300)
+        expected_message_record = {
+            'project_id': 'fakeproject',
+            'request_id': 'fakerequestid',
+            'resource_type': 'fake_resource_type',
+            'resource_uuid': None,
+            'action_id': message_field.Action.SCHEDULE_ALLOCATE_VOLUME[0],
+            'detail_id': message_field.Detail.UNKNOWN_ERROR[0],
+            'message_level': 'ERROR',
+            'expires_at': expected_expires_at,
+            'event_id': "VOLUME_fake_resource_type_001_001",
+        }
+        self.message_api.create(
+            self.ctxt,
+            action=message_field.Action.SCHEDULE_ALLOCATE_VOLUME,
+            resource_type="fake_resource_type")
+
+        self.message_api.db.message_create.assert_called_once_with(
+            self.ctxt, expected_message_record)
+        mock_utcnow.assert_called_with()
+
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_create_with_detail_only(self, mock_utcnow):
+        CONF.set_override('message_ttl', 300)
+        mock_utcnow.return_value = datetime.datetime.utcnow()
+        expected_expires_at = timeutils.utcnow() + datetime.timedelta(
+            seconds=300)
+        expected_message_record = {
+            'project_id': 'fakeproject',
+            'request_id': 'fakerequestid',
+            'resource_type': 'fake_resource_type',
+            'resource_uuid': None,
+            'action_id': message_field.Action.SCHEDULE_ALLOCATE_VOLUME[0],
+            # this doesn't make sense for this Action, but that's the point
+            'detail_id': message_field.Detail.FAILED_TO_UPLOAD_VOLUME[0],
+            'message_level': 'ERROR',
+            'expires_at': expected_expires_at,
+            'event_id': "VOLUME_fake_resource_type_001_004",
+        }
+        self.message_api.create(
+            self.ctxt,
+            action=message_field.Action.SCHEDULE_ALLOCATE_VOLUME,
+            detail=message_field.Detail.FAILED_TO_UPLOAD_VOLUME,
+            resource_type="fake_resource_type")
+
+        self.message_api.db.message_create.assert_called_once_with(
+            self.ctxt, expected_message_record)
+        mock_utcnow.assert_called_with()
+
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_create_passed_exception_no_detail(self, mock_utcnow):
+        # Detail should be automatically supplied based on the
+        # message_field.Detail.EXCEPTION_DETAIL_MAPPINGS
+        CONF.set_override('message_ttl', 300)
+        mock_utcnow.return_value = datetime.datetime.utcnow()
+        expected_expires_at = timeutils.utcnow() + datetime.timedelta(
+            seconds=300)
+        expected_message_record = {
+            'project_id': 'fakeproject',
+            'request_id': 'fakerequestid',
+            'resource_type': 'fake_resource_type',
+            'resource_uuid': None,
+            'action_id': message_field.Action.SCHEDULE_ALLOCATE_VOLUME[0],
+            # this is determined by the exception we'll be passing
+            'detail_id': message_field.Detail.NOT_ENOUGH_SPACE_FOR_IMAGE[0],
+            'message_level': 'ERROR',
+            'expires_at': expected_expires_at,
+            'event_id': "VOLUME_fake_resource_type_001_007",
+        }
+        exc = exception.ImageTooBig(image_id='fake_image', reason='MYOB')
+        self.message_api.create(
+            self.ctxt,
+            action=message_field.Action.SCHEDULE_ALLOCATE_VOLUME,
+            exception=exc,
+            resource_type="fake_resource_type")
+
+        self.message_api.db.message_create.assert_called_once_with(
+            self.ctxt, expected_message_record)
+        mock_utcnow.assert_called_with()
+
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_create_passed_unmapped_exception_no_detail(self, mock_utcnow):
+        CONF.set_override('message_ttl', 300)
+        mock_utcnow.return_value = datetime.datetime.utcnow()
+        expected_expires_at = timeutils.utcnow() + datetime.timedelta(
+            seconds=300)
+        expected_message_record = {
+            'project_id': 'fakeproject',
+            'request_id': 'fakerequestid',
+            'resource_type': 'fake_resource_type',
+            'resource_uuid': None,
+            'action_id': message_field.Action.COPY_IMAGE_TO_VOLUME[0],
+            'detail_id': message_field.Detail.UNKNOWN_ERROR[0],
+            'message_level': 'ERROR',
+            'expires_at': expected_expires_at,
+            'event_id': "VOLUME_fake_resource_type_005_001",
+        }
+        exc = exception.ImageUnacceptable(image_id='fake_image', reason='MYOB')
+        self.message_api.create(
+            self.ctxt,
+            action=message_field.Action.COPY_IMAGE_TO_VOLUME,
+            exception=exc,
+            resource_type="fake_resource_type")
+
+        self.message_api.db.message_create.assert_called_once_with(
+            self.ctxt, expected_message_record)
+        mock_utcnow.assert_called_with()
+
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_create_passed_mapped_exception_and_detail(self, mock_utcnow):
+        # passed Detail should be ignored because this is a mapped exception
+        CONF.set_override('message_ttl', 300)
+        mock_utcnow.return_value = datetime.datetime.utcnow()
+        expected_expires_at = timeutils.utcnow() + datetime.timedelta(
+            seconds=300)
+        expected_message_record = {
+            'project_id': 'fakeproject',
+            'request_id': 'fakerequestid',
+            'resource_type': 'fake_resource_type',
+            'resource_uuid': None,
+            'action_id': message_field.Action.UPDATE_ATTACHMENT[0],
+            'detail_id': message_field.Detail.NOT_ENOUGH_SPACE_FOR_IMAGE[0],
+            'message_level': 'ERROR',
+            'expires_at': expected_expires_at,
+            'event_id': "VOLUME_fake_resource_type_004_007",
+        }
+        exc = exception.ImageTooBig(image_id='fake_image', reason='MYOB')
+        self.message_api.create(
+            self.ctxt,
+            action=message_field.Action.UPDATE_ATTACHMENT,
+            detail=message_field.Detail.VOLUME_ATTACH_MODE_INVALID,
+            exception=exc,
+            resource_type="fake_resource_type")
+
+        self.message_api.db.message_create.assert_called_once_with(
+            self.ctxt, expected_message_record)
+        mock_utcnow.assert_called_with()
+
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_create_passed_unmapped_exception_and_detail(self, mock_utcnow):
+        # passed Detail should be honored
+        CONF.set_override('message_ttl', 300)
+        mock_utcnow.return_value = datetime.datetime.utcnow()
+        expected_expires_at = timeutils.utcnow() + datetime.timedelta(
+            seconds=300)
+        expected_message_record = {
+            'project_id': 'fakeproject',
+            'request_id': 'fakerequestid',
+            'resource_type': 'fake_resource_type',
+            'resource_uuid': None,
+            'action_id': message_field.Action.UPDATE_ATTACHMENT[0],
+            'detail_id': message_field.Detail.VOLUME_ATTACH_MODE_INVALID[0],
+            'message_level': 'ERROR',
+            'expires_at': expected_expires_at,
+            'event_id': "VOLUME_fake_resource_type_004_005",
+        }
+        exc = ValueError('bogus error')
+        self.message_api.create(
+            self.ctxt,
+            action=message_field.Action.UPDATE_ATTACHMENT,
+            detail=message_field.Detail.VOLUME_ATTACH_MODE_INVALID,
+            exception=exc,
+            resource_type="fake_resource_type")
 
         self.message_api.db.message_create.assert_called_once_with(
             self.ctxt, expected_message_record)

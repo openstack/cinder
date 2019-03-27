@@ -38,12 +38,55 @@ LOG = logging.getLogger(__name__)
 
 
 class API(base.Base):
-    """API for handling user messages."""
+    """API for handling user messages.
+
+    Cinder Messages describe the outcome of a user action using predefined
+    fields that are members of objects defined in the
+    cinder.message.message_field package.  They are intended to be exposed to
+    end users.  Their primary purpose is to provide end users with a means of
+    discovering what went wrong when an asynchronous action in the Volume REST
+    API (for which they've already received a 2xx response) fails.
+
+    Messages contain an 'expires_at' field based on the creation time plus the
+    value of the 'message_ttl' configuration option.  They are periodically
+    reaped by a task of the SchedulerManager class whose periodicity is given
+    by the 'message_reap_interval' configuration option.
+
+    """
 
     def create(self, context, action,
                resource_type=message_field.Resource.VOLUME,
                resource_uuid=None, exception=None, detail=None, level="ERROR"):
-        """Create a message with the specified information."""
+        """Create a message record with the specified information.
+
+        :param context: current context object
+        :param action:
+            a message_field.Action field describing what was taking place
+            when this message was created
+        :param resource_type:
+            a message_field.Resource field describing the resource this
+            message applies to.  Default is message_field.Resource.VOLUME
+        :param resource_uuid:
+            the resource ID if this message applies to an existing resource.
+            Default is None
+        :param exception:
+            if an exception has occurred, you can pass it in and it will be
+            translated into an appropriate message detail ID (possibly
+            message_field.Detail.UNKNOWN_ERROR).  The message
+            in the exception itself is ignored in order not to expose
+            sensitive information to end users.  Default is None
+        :param detail:
+            a message_field.Detail field describing the event the message
+            is about.  Default is None, in which case
+            message_field.Detail.UNKNOWN_ERROR will be used for the message
+            unless an exception in the message_field.EXCEPTION_DETAIL_MAPPINGS
+            is passed; in that case the message_field.Detail field that's
+            mapped to the exception is used.
+        :param level:
+            a string describing the severity of the message.  Suggested
+            values are 'INFO', 'ERROR', 'WARNING'.  Default is 'ERROR'.
+        """
+
         LOG.info("Creating message record for request_id = %s",
                  context.request_id)
         # Updates expiry time for message as per message_ttl config.
