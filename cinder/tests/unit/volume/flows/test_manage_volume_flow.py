@@ -38,7 +38,7 @@ class ManageVolumeFlowTestCase(test.TestCase):
         self.counter = float(0)
 
     def test_cast_manage_existing(self):
-        volume = fake_volume.fake_volume_type_obj(self.ctxt)
+        volume = fake_volume.fake_volume_obj(self.ctxt)
 
         spec = {
             'name': 'name',
@@ -61,6 +61,28 @@ class ManageVolumeFlowTestCase(test.TestCase):
         create_what.update({'volume': volume})
         create_what.pop('volume_id')
         task.execute(self.ctxt, **create_what)
+
+    def test_create_db_entry_task_with_multiattach(self):
+
+        fake_volume_type = fake_volume.fake_volume_type_obj(
+            self.ctxt, extra_specs={'multiattach': '<is> True'})
+
+        spec = {
+            'name': 'name',
+            'description': 'description',
+            'host': 'host',
+            'ref': 'ref',
+            'volume_type': fake_volume_type,
+            'metadata': {},
+            'availability_zone': 'availability_zone',
+            'bootable': 'bootable',
+            'volume_type_id': fake_volume_type.id,
+            'cluster_name': 'fake_cluster'
+        }
+        task = manage_existing.EntryCreateTask(fake_volume_api.FakeDb())
+
+        result = task.execute(self.ctxt, **spec)
+        self.assertTrue(result['volume_properties']['multiattach'])
 
     @staticmethod
     def _stub_volume_object_get(self):
