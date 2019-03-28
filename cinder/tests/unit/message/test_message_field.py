@@ -11,6 +11,8 @@
 #    under the License.
 
 import ddt
+import inspect
+from itertools import chain
 
 from oslo_config import cfg
 
@@ -23,6 +25,30 @@ CONF = cfg.CONF
 
 @ddt.ddt
 class MessageFieldTest(test.TestCase):
+    def test_unique_action_ids(self):
+        """Assert that no action_id is duplicated."""
+        action_ids = [x[0] for x in message_field.Action.ALL]
+        self.assertEqual(len(action_ids), len(set(action_ids)))
+
+    def test_unique_detail_ids(self):
+        """Assert that no detail_id is duplicated."""
+        detail_ids = [x[0] for x in message_field.Detail.ALL]
+        self.assertEqual(len(detail_ids), len(set(detail_ids)))
+
+    known_exceptions = [
+        name for name, _ in
+        inspect.getmembers(exception, inspect.isclass)]
+    mapped_exceptions = list(chain.from_iterable(
+        message_field.Detail.EXCEPTION_DETAIL_MAPPINGS.values()))
+
+    @ddt.idata(mapped_exceptions)
+    def test_exception_detail_map_no_unknown_exceptions(self, exc):
+        """Assert that only known exceptions are in the map."""
+        self.assertIn(exc, self.known_exceptions)
+
+
+@ddt.ddt
+class MessageFieldFunctionsTest(test.TestCase):
 
     @ddt.data({'id': '001', 'content': 'schedule allocate volume'},
               {'id': '002', 'content': 'attach volume'},
