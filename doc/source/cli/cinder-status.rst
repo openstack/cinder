@@ -90,6 +90,12 @@ Upgrade
   * Checks for the presence of a **policy.json** file have been added to warn
     if policy changes should be present in a **policy.yaml** file.
   * Ensure that correct volume_driver path is used for Windows iSCSI driver.
+  * Ensure that none of the volume drivers removed in Stein are enabled.
+    Please note that if a driver is in **cinder.conf** but not in the
+    ``enabled_drivers`` config option this check will not catch the problem.
+    If you have used the CoprHD, ITRI Disco or HGST drivers in the past you
+    should ensure that any data from these backends is transferred to a
+    supported storage array before upgrade.
 
 See Also
 ========
