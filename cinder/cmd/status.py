@@ -18,17 +18,39 @@
 import os
 import sys
 
+from cinder import objects
+from cinder import service  # noqa
 from oslo_config import cfg
 from oslo_upgradecheck import upgradecheck as uc
 
 from cinder.policy import DEFAULT_POLICY_FILENAME
 import cinder.service  # noqa
 
+# We must first register Cinder's objects. Otherwise
+# we cannot import the volume manager.
+objects.register_all()
+
+import cinder.volume.manager as volume_manager
+
 CONF = cfg.CONF
 
 SUCCESS = uc.Code.SUCCESS
 FAILURE = uc.Code.FAILURE
 WARNING = uc.Code.WARNING
+
+
+def _get_enabled_drivers():
+    """Returns a list of volume_driver entries"""
+    volume_drivers = []
+    if CONF.enabled_backends:
+        for backend in filter(None, CONF.enabled_backends):
+            # Each backend group needs to be registered first
+            CONF.register_opts(volume_manager.volume_backend_opts,
+                               group=backend)
+            volume_driver = CONF[backend]['volume_driver']
+            volume_drivers.append(volume_driver)
+
+    return volume_drivers
 
 
 class Checks(uc.UpgradeCommands):
@@ -109,9 +131,34 @@ class Checks(uc.UpgradeCommands):
 
         return uc.Result(SUCCESS)
 
+    def _check_legacy_windows_config(self):
+        """Checks to ensure that the Windows driver path is properly updated.
+
+        The WindowsDriver was renamed in the Queens release to
+        WindowsISCSIDriver to avoid confusion with the SMB driver.
+        The backwards compatibility for this has now been removed, so
+        any cinder.conf settings still using
+        cinder.volume.drivers.windows.windows.WindowsDriver
+        must now be updated to use
+        cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver.
+        """
+        for volume_driver in _get_enabled_drivers():
+            if (volume_driver ==
+                    "cinder.volume.drivers.windows.windows.WindowsDriver"):
+                return uc.Result(
+                    FAILURE,
+                    'Setting volume_driver to '
+                    'cinder.volume.drivers.windows.windows.WindowsDriver '
+                    'is no longer supported.  Please update to use '
+                    'cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver '
+                    'in cinder.conf.')
+
+        return uc.Result(SUCCESS)
+
     _upgrade_checks = (
         ('Backup Driver Path', _check_backup_module),
         ('Use of Policy File', _check_policy_file),
+        ('Windows Driver Path', _check_legacy_windows_config),
     )
 
 

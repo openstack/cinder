@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    A new check is added to the ``cinder-status upgrade check`` CLI to check
+    for the use of ``cinder.volume.drivers.windows.windows.WindowsDriver``
+    and a message is reported that the user needs to update the setting
+    to ``cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver`` if
+    it is encountered.
