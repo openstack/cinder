@@ -89,6 +89,7 @@ Upgrade
     class path and not just the module path.
   * Checks for the presence of a **policy.json** file have been added to warn
     if policy changes should be present in a **policy.yaml** file.
+  * Ensure that correct volume_driver path is used for Windows iSCSI driver.
 
   **15.0.0 (Train)**
 
