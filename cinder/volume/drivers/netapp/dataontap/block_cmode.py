@@ -390,29 +390,6 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         msg = 'Deleted LUN with name %(name)s and QoS info %(qos)s'
         LOG.debug(msg, {'name': volume['name'], 'qos': qos_policy_group_info})
 
-    def _get_preferred_target_from_list(self, target_details_list,
-                                        filter=None):
-        # cDOT iSCSI LIFs do not migrate from controller to controller
-        # in failover.  Rather, an iSCSI LIF must be configured on each
-        # controller and the initiator has to take responsibility for
-        # using a LIF that is UP.  In failover, the iSCSI LIF on the
-        # downed controller goes DOWN until the controller comes back up.
-        #
-        # Currently Nova only accepts a single target when obtaining
-        # target details from Cinder, so we pass back the first portal
-        # with an UP iSCSI LIF.  There are plans to have Nova accept
-        # and try multiple targets.  When that happens, we can and should
-        # remove this filter and return all targets since their operational
-        # state could change between the time we test here and the time
-        # Nova uses the target.
-
-        operational_addresses = (
-            self.zapi_client.get_operational_lif_addresses())
-
-        return (super(NetAppBlockStorageCmodeLibrary, self)
-                ._get_preferred_target_from_list(target_details_list,
-                                                 filter=operational_addresses))
-
     def _setup_qos_for_volume(self, volume, extra_specs):
         try:
             qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
