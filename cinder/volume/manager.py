@@ -1743,40 +1743,42 @@ class VolumeManager(manager.CleanableManager,
         This method calls the driver initialize_connection and returns
         it to the caller.  The connector parameter is a dictionary with
         information about the host that will connect to the volume in the
-        following format::
+        following format:
 
-          .. code:: json
+        .. code:: json
 
-            {
-                'ip': ip,
-                'initiator': initiator,
-            }
+          {
+             "ip": "<ip>",
+             "initiator": "<initiator>"
+          }
 
-        ip: the ip address of the connecting machine
+        ip:
+            the ip address of the connecting machine
 
-        initiator: the iscsi initiator name of the connecting machine.
-        This can be None if the connecting machine does not support iscsi
-        connections.
+        initiator:
+            the iscsi initiator name of the connecting machine. This can be
+            None if the connecting machine does not support iscsi connections.
 
         driver is responsible for doing any necessary security setup and
-        returning a connection_info dictionary in the following format::
+        returning a connection_info dictionary in the following format:
 
-          .. code:: json
+        .. code:: json
 
-            {
-                'driver_volume_type': driver_volume_type,
-                'data': data,
-            }
+          {
+             "driver_volume_type": "<driver_volume_type>",
+             "data": "<data>"
+          }
 
-        driver_volume_type: a string to identify the type of volume.  This
-                           can be used by the calling code to determine the
-                           strategy for connecting to the volume. This could
-                           be 'iscsi', 'rbd', 'sheepdog', etc.
+        driver_volume_type:
+            a string to identify the type of volume.  This can be used by the
+            calling code to determine the strategy for connecting to the
+            volume. This could be 'iscsi', 'rbd', 'sheepdog', etc.
 
-        data: this is the data that the calling code will use to connect
-              to the volume. Keep in mind that this will be serialized to
-              json in various places, so it should not contain any non-json
-              data types.
+        data:
+            this is the data that the calling code will use to connect to the
+            volume. Keep in mind that this will be serialized to json in
+            various places, so it should not contain any non-json data types.
+
         """
         # NOTE(flaper87): Verify the driver is enabled
         # before going forward. The exception will be caught
@@ -4921,31 +4923,29 @@ class VolumeManager(manager.CleanableManager,
         .. code:: json
 
           {
-              'replication_targets': [
+              "replication_targets": [
                   {
-                      'backend_id': 'vendor-id-1',
-                      'unique_key': 'val1',
-                      ......
+                      "backend_id": "vendor-id-1",
+                      "unique_key": "val1"
                   },
                   {
-                      'backend_id': 'vendor-id-2',
-                      'unique_key': 'val2',
-                      ......
+                      "backend_id": "vendor-id-2",
+                      "unique_key": "val2"
                   }
                ]
           }
 
         Response example for non-admin:
 
-        .. code json
+        .. code:: json
 
           {
-              'replication_targets': [
+              "replication_targets": [
                   {
-                      'backend_id': 'vendor-id-1'
+                      "backend_id": "vendor-id-1"
                   },
                   {
-                      'backend_id': 'vendor-id-2'
+                      "backend_id": "vendor-id-2"
                   }
                ]
           }

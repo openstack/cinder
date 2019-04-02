@@ -144,7 +144,7 @@ class AttachmentsController(wsgi.Controller):
                 "connector":
                 {
                     "initiator": "iqn.1993-08.org.debian:01:cad181614cec",
-                    "ip":"192.168.1.20",
+                    "ip": "192.168.1.20",
                     "platform": "x86_64",
                     "host": "tempest-1",
                     "os_type": "linux2",
@@ -215,13 +215,13 @@ class AttachmentsController(wsgi.Controller):
                     "connector":
                     {
                         "initiator": "iqn.1993-08.org.debian:01:cad181614cec",
-                        "ip":"192.168.1.20",
+                        "ip": "192.168.1.20",
                         "platform": "x86_64",
                         "host": "tempest-1",
                         "os_type": "linux2",
-                        "multipath": False,
+                        "multipath": false,
                         "mountpoint": "/dev/vdb",
-                        "mode": None|"rw"|"ro",
+                        "mode": "None|rw|ro"
                     }
                 }
             }
