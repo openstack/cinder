@@ -108,7 +108,6 @@ class Detail(object):
                        'BackupLimitExceeded',
                        'SnapshotLimitExceeded'],
         NOT_ENOUGH_SPACE_FOR_IMAGE: ['ImageTooBig'],
-        UNMANAGE_ENC_NOT_SUPPORTED: ['UnmanageEncVolNotSupported'],
     }
 
 
