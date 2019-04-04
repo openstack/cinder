@@ -372,7 +372,7 @@ def get_export_host_junction_path(share):
     if '[' in share and ']' in share:
         try:
             # ipv6
-            host = re.search('\[(.*)\]', share).group(1)
+            host = re.search(r'\[(.*)\]', share).group(1)
             junction_path = share.split(':')[-1]
         except AttributeError:
             raise exception.NetAppDriverException(_("Share '%s' is "
