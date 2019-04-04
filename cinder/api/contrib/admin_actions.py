@@ -87,8 +87,8 @@ class AdminController(wsgi.Controller):
             attachments = (
                 db.volume_attachment_get_all_by_volume_id(context, id))
             for attachment in attachments:
-                db.volume_detached(context, id, attachment.id)
-            db.volume_admin_metadata_delete(context, id,
+                db.volume_detached(context.elevated(), id, attachment.id)
+            db.volume_admin_metadata_delete(context.elevated(), id,
                                             'attached_mode')
 
         context = req.environ['cinder.context']
