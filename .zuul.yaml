@@ -24,6 +24,7 @@
               - ^contrib/block-box.*$
               - ^doc/.*$
               - ^releasenotes/.*$
+              - ^.zuul\.yaml$
         - cinder-rally-task:
             voting: false
         - openstack-tox-pylint:
@@ -34,8 +35,10 @@
             voting: false
             irrelevant-files: &gate-irrelevant-files
               - ^(test-|)requirements.txt$
+              - ^lower-constraints.txt$
               - ^.*\.rst$
               - ^api-ref/.*$
+              - ^cinder/cmd/status\.py$
               - ^cinder/hacking/.*$
               - ^cinder/locale/.*$
               - ^cinder/tests/functional.*$
@@ -46,6 +49,7 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
+              - ^.zuul\.yaml$
         - openstack-tox-functional:
             voting: false
             irrelevant-files: *functional-irrelevant-files
