@@ -85,7 +85,8 @@ Upgrade
 
   **14.0.0 (Stein)**
 
-  * Placeholder to be filled in with checks as they are added in Stein.
+  * Check added to ensure the backup_driver setting is using the full driver
+    class path and not just the module path.
 
 See Also
 ========
