@@ -17,7 +17,7 @@
               dest: devstack-gate
           EOF
           /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
-              git://git.openstack.org \
+              https://git.openstack.org \
               openstack-infra/devstack-gate
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
@@ -32,7 +32,7 @@
           CINDER_ISCSI_HELPER=lioadm
           CINDER_LVM_TYPE=thin
           enable_service barbican
-          enable_plugin barbican git://git.openstack.org/openstack/barbican
+          enable_plugin barbican https://git.openstack.org/openstack/barbican
 
           EOF
         executable: /bin/bash
