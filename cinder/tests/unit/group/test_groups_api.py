@@ -764,3 +764,83 @@ class GroupAPITestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           group_api.delete_group_snapshot,
                           self.ctxt, gsnap)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs',
+                return_value={'qos_specs': {}})
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.create_group')
+    def test_cast_create_group(self,
+                               mock_create_group,
+                               mock_get_volume_type_qos_specs):
+        vol_type = utils.create_volume_type(self.ctxt, name='test_vol_type')
+        encryption_key_id = mock.sentinel.encryption_key_id
+        description = mock.sentinel.description
+        name = mock.sentinel.name
+        req_spec = {'volume_type': vol_type,
+                    'encryption_key_id': encryption_key_id,
+                    'description': description,
+                    'name': name}
+
+        grp_name = "test_group"
+        grp_description = "this is a test group"
+        grp_spec = {'name': grp_name,
+                    'description': grp_description}
+
+        grp = utils.create_group(self.ctxt,
+                                 group_type_id=fake.GROUP_TYPE_ID,
+                                 volume_type_ids=[vol_type.id],
+                                 availability_zone='nova')
+
+        grp_filter_properties = mock.sentinel.group_filter_properties
+        filter_properties_list = mock.sentinel.filter_properties_list
+        self.group_api._cast_create_group(self.ctxt,
+                                          grp,
+                                          grp_spec,
+                                          [req_spec],
+                                          grp_filter_properties,
+                                          filter_properties_list)
+
+        mock_get_volume_type_qos_specs.assert_called_once_with(vol_type.id)
+
+        exp_vol_properties = {
+            'size': 0,
+            'user_id': self.ctxt.user_id,
+            'project_id': self.ctxt.project_id,
+            'status': 'creating',
+            'attach_status': 'detached',
+            'encryption_key_id': encryption_key_id,
+            'display_description': description,
+            'display_name': name,
+            'volume_type_id': vol_type.id,
+            'group_type_id': grp.group_type_id,
+            'availability_zone': grp.availability_zone
+        }
+        exp_req_spec = {
+            'volume_type': vol_type,
+            'encryption_key_id': encryption_key_id,
+            'description': description,
+            'name': name,
+            'volume_properties': exp_vol_properties,
+            'qos_specs': None
+        }
+        exp_grp_properties = {
+            'size': 0,
+            'user_id': self.ctxt.user_id,
+            'project_id': self.ctxt.project_id,
+            'status': 'creating',
+            'display_description': grp_description,
+            'display_name': grp_name,
+            'group_type_id': grp.group_type_id,
+        }
+        exp_grp_spec = {
+            'name': grp_name,
+            'description': grp_description,
+            'volume_properties': exp_grp_properties,
+            'qos_specs': None
+        }
+        mock_create_group.assert_called_once_with(
+            self.ctxt,
+            grp,
+            group_spec=exp_grp_spec,
+            request_spec_list=[exp_req_spec],
+            group_filter_properties=grp_filter_properties,
+            filter_properties_list=filter_properties_list)
