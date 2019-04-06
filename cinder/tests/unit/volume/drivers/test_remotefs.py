@@ -610,6 +610,48 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                                                       'count=1024',
                                                       run_as_root=True)
 
+    @ddt.data({},
+              {'info_file_exists': True},
+              {'os_name': 'nt'})
+    @ddt.unpack
+    @mock.patch('json.dump')
+    @mock.patch('cinder.volume.drivers.remotefs.open')
+    @mock.patch('os.path.exists')
+    def test_write_info_file(self,
+                             mock_os_path_exists,
+                             mock_open,
+                             mock_json_dump,
+                             info_file_exists=False,
+                             os_name='posix'):
+
+        mock_os_path_exists.return_value = info_file_exists
+        fake_info_path = '/path/to/info'
+        fake_snapshot_info = {'active': self._fake_snapshot_path}
+        self._driver._execute = mock.Mock()
+        self._driver._set_rw_permissions = mock.Mock()
+
+        self._driver._write_info_file(fake_info_path, fake_snapshot_info)
+
+        mock_open.assert_called_once_with(fake_info_path, 'w')
+        mock_json_dump.assert_called_once_with(
+            fake_snapshot_info, mock.ANY, indent=1, sort_keys=True)
+
+        if info_file_exists or os.name == 'nt':
+            self._driver._execute.assert_not_called()
+            self._driver._set_rw_permissions.assert_not_called()
+        else:
+            self._driver._execute.assert_called_once_with(
+                'truncate', "-s0", fake_info_path,
+                run_as_root=self._driver._execute_as_root)
+            self._driver._set_rw_permissions.assert_called_once_with(
+                fake_info_path)
+
+        fake_snapshot_info.pop('active')
+        self.assertRaises(exception.RemoteFSException,
+                          self._driver._write_info_file,
+                          fake_info_path,
+                          fake_snapshot_info)
+
 
 class RemoteFSPoolMixinTestCase(test.TestCase):
     def setUp(self):
