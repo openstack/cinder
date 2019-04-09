@@ -1480,6 +1480,20 @@ test_delete_async_volume_migrating:
       get_lun: *lun_used_by_feature
       get_snap: *snap_test_delete_async_volume
 
+test_delete_async_volume_not_from_snapshot:
+  vnx:
+    _methods:
+      get_lun: *lun_test_delete_lun
+
+test_delete_async_volume_from_snapshot:
+  snap: &snap_test_delete_async_volume_from_snapshot
+    _methods:
+      delete:
+  vnx:
+    _methods:
+      get_lun: *lun_test_delete_lun
+      get_snap: *snap_test_delete_async_volume_from_snapshot
+
 test_enable_compression:
   lun:
     _properties:
