@@ -66,6 +66,18 @@ backup_manager_opts = [
     cfg.StrOpt('backup_driver',
                default='cinder.backup.drivers.swift.SwiftBackupDriver',
                help='Driver to use for backups.',),
+    cfg.IntOpt('backup_driver_init_check_interval',
+               default=60,
+               min=5,
+               help='Time in seconds between checks to see if the backup '
+                    'driver has been successfully initialized, any time '
+                    'the driver is restarted.'),
+    cfg.IntOpt('backup_driver_status_check_interval',
+               default=60,
+               min=10,
+               help='Time in seconds between checks of the backup driver '
+                    'status.  If does not report as working, it is '
+                    'restarted.'),
     cfg.BoolOpt('backup_service_inithost_offload',
                 default=True,
                 help='Offload pending backup delete during '
@@ -157,7 +169,7 @@ class BackupManager(manager.ThreadPoolManager):
         try:
             init_loop = loopingcall.FixedIntervalLoopingCall(
                 self._setup_backup_driver, ctxt)
-            init_loop.start(interval=CONF.periodic_interval)
+            init_loop.start(interval=CONF.backup_driver_init_check_interval)
         except loopingcall.LoopingCallDone:
             LOG.info("Backup driver was successfully initialized.")
         except Exception:
@@ -1133,7 +1145,8 @@ class BackupManager(manager.ThreadPoolManager):
     def is_working(self):
         return self.is_initialized
 
-    @periodic_task.periodic_task(spacing=CONF.periodic_interval)
+    @periodic_task.periodic_task(
+        spacing=CONF.backup_driver_status_check_interval)
     def _report_driver_status(self, context):
         if not self.is_working():
             self.setup_backup_backend(context)

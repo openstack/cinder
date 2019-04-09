@@ -109,9 +109,34 @@ class Checks(uc.UpgradeCommands):
 
         return uc.Result(SUCCESS)
 
+    def _check_periodic_interval(self):
+        """Checks for non-default use of periodic_interval.
+
+        Some new configuration options have been introduced to supplement
+        periodic_interval, which was being used for multiple, possibly
+        conflicting purposes.  If a non-default value for periodic_interval
+        is configured, warn the operator to review whether one of the new
+        options is better suited for the periodic task(s) being tuned.
+        """
+        periodic_interval = CONF.periodic_interval
+
+        if periodic_interval != 60:
+            return uc.Result(
+                WARNING,
+                "Detected non-default value for the 'periodic_interval' "
+                "option.  New configuration options have been introduced to "
+                "replace the use of 'periodic_interval' for some purposes.  "
+                "Please consult the 'Upgrade' section of the Train release "
+                "notes for more information.")
+
+        return uc.Result(SUCCESS)
+
     _upgrade_checks = (
+        # added in Stein
         ('Backup Driver Path', _check_backup_module),
         ('Use of Policy File', _check_policy_file),
+        # added in Train
+        ('Periodic Interval Use', _check_periodic_interval),
     )
 
 

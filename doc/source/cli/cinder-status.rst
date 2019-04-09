@@ -90,6 +90,12 @@ Upgrade
   * Checks for the presence of a **policy.json** file have been added to warn
     if policy changes should be present in a **policy.yaml** file.
 
+  **15.0.0 (Train)**
+
+  * Check added to make operators aware of new finer-grained configuration
+    options affecting the periodicity of various Cinder tasks.  Triggered
+    when the the ``periodic_interval`` option is not set to its default value.
+
 See Also
 ========
 

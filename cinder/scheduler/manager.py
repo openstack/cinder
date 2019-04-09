@@ -50,13 +50,20 @@ from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder.volume import rpcapi as volume_rpcapi
 
 
-scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
-                                  default='cinder.scheduler.filter_scheduler.'
-                                          'FilterScheduler',
-                                  help='Default scheduler driver to use')
+scheduler_manager_opts = [
+    cfg.StrOpt('scheduler_driver',
+               default='cinder.scheduler.filter_scheduler.'
+                       'FilterScheduler',
+               help='Default scheduler driver to use'),
+    cfg.IntOpt('scheduler_driver_init_wait_time',
+               default=60,
+               min=1,
+               help='Maximum time in seconds to wait for the driver to '
+                    'report as ready'),
+]
 
 CONF = cfg.CONF
-CONF.register_opt(scheduler_driver_opt)
+CONF.register_opts(scheduler_manager_opts)
 
 QUOTAS = quota.QUOTAS
 
@@ -104,7 +111,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         ctxt = context.get_admin_context()
         self.request_service_capabilities(ctxt)
 
-        for __ in range(CONF.periodic_interval):
+        for __ in range(CONF.scheduler_driver_init_wait_time):
             if self.driver.is_first_receive():
                 break
             eventlet.sleep(1)
@@ -163,7 +170,8 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
 
     def _wait_for_scheduler(self):
         # NOTE(dulek): We're waiting for scheduler to announce that it's ready
-        # or CONF.periodic_interval seconds from service startup has passed.
+        # or CONF.scheduler_driver_init_wait_time seconds from service startup
+        # has passed.
         while self._startup_delay and not self.driver.is_ready():
             eventlet.sleep(1)
 

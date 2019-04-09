@@ -24,6 +24,7 @@ import mock
 from os_brick.initiator.connectors import fake as fake_connectors
 from oslo_config import cfg
 from oslo_db import exception as db_exc
+from oslo_service import loopingcall
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
@@ -329,6 +330,21 @@ class BackupTestCase(BaseBackupTest):
         mock_add_threadpool.assert_called_once_with(
             mock_migrate_fixed_key,
             backups=mock_get_all_by_host())
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall')
+    @ddt.data(123456, 654321)
+    def test_setup_backup_backend_uses_new_config(
+            self, new_cfg_value, mock_FILC):
+        # previously used CONF.periodic_interval; see Bug #1828748
+        new_cfg_name = 'backup_driver_init_check_interval'
+
+        self.addCleanup(CONF.clear_override, new_cfg_name)
+        CONF.set_override(new_cfg_name, new_cfg_value)
+        mock_init_loop = mock.MagicMock()
+        mock_init_loop.start.side_effect = loopingcall.LoopingCallDone()
+        mock_FILC.return_value = mock_init_loop
+        self.backup_mgr.setup_backup_backend(self.ctxt)
+        mock_init_loop.start.assert_called_once_with(interval=new_cfg_value)
 
     @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
