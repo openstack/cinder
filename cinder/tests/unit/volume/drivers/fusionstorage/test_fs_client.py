@@ -30,18 +30,18 @@ class FakeSession(test_utils.FakeBaseSession):
             '/storagePool$':
                 {'storagePools': [{'poolName': 'fake_pool_name',
                                    'poolId': 'fake_pool_id'}]},
-            '/storagePool\?poolId=0':
+            r'/storagePool\?poolId=0':
                 {'storagePools': [{'poolName': 'fake_pool_name1',
                                    'poolId': 0}]},
-            '/volume/queryByName\?volName=fake_name':
+            r'/volume/queryByName\?volName=fake_name':
                 {'errorCode': 0, 'lunDetailInfo':
                     [{'volume_id': 'fake_id',
                       'volume_name': 'fake_name'}]},
-            '/volume/queryById\?volId=fake_id':
+            r'/volume/queryById\?volId=fake_id':
                 {'errorCode': 0, 'lunDetailInfo':
                     [{'volume_id': 'fake_id',
                       'volume_name': 'fake_name'}]},
-            '/lun/wwn/list\?wwn=fake_wwn':
+            r'/lun/wwn/list\?wwn=fake_wwn':
                 {'errorCode': 0, 'lunDetailInfo':
                     [{'volume_id': 'fake_id',
                       'volume_wwn': 'fake_wwn'}]},

@@ -328,7 +328,7 @@ class HuaweiConf(object):
         if ini_type in dev:
             # Analyze initiators configure text, convert to:
             # [{'Name':'xxx'}, {'Name':'xxx','CHAPinfo':'mm-usr#mm-pwd'}]
-            ini_list = re.split('\s', dev[ini_type])
+            ini_list = re.split(r'\s', dev[ini_type])
 
             def _convert_one_iscsi_info(ini_text):
                 # get initiator configure attr list
