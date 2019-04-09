@@ -319,7 +319,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         self.assert_notify_called(mock_notify,
                                   (['INFO', 'volume.create.start'],
-                                   ['INFO', 'volume.create.end']))
+                                   ['INFO', 'volume.create.end']),
+                                  any_order=True)
         self.assertEqual({'_pool0': {'allocated_capacity_gb': 1}},
                          self.volume.stats['pools'])
 
@@ -332,7 +333,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                   (['INFO', 'volume.create.start'],
                                    ['INFO', 'volume.create.end'],
                                    ['INFO', 'volume.delete.start'],
-                                   ['INFO', 'volume.delete.end']))
+                                   ['INFO', 'volume.delete.end']),
+                                  any_order=True)
         self.assertEqual({'_pool0': {'allocated_capacity_gb': 0}},
                          self.volume.stats['pools'])
 
