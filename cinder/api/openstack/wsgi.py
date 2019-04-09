@@ -14,7 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import collections
+# TODO(smcginnis) update this once six has support for collections.abc
+# (https://github.com/benjaminp/six/pull/241) or clean up once we drop py2.7.
+try:
+    from collections.abc import Callable
+except ImportError:
+    from collections import Callable
+
 import functools
 import inspect
 import math
@@ -1089,7 +1095,7 @@ class ControllerMetaclass(type):
                 versioned_methods.append(getattr(base, VER_METHOD_ATTR))
 
         for key, value in cls_dict.items():
-            if not isinstance(value, collections.Callable):
+            if not isinstance(value, Callable):
                 continue
             if getattr(value, 'wsgi_action', None):
                 actions[value.wsgi_action] = key

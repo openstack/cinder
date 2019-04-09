@@ -48,13 +48,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-"""
-  CLI interface for cinder management.
-"""
+"""CLI interface for cinder management."""
 
 from __future__ import print_function
 
-import collections
+try:
+    import collections.abc as collections
+except ImportError:
+    import collections
+
 import logging as python_logging
 import prettytable
 import sys

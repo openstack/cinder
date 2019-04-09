@@ -13,11 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Manage backends in the current zone.
-"""
+"""Manage backends in the current zone."""
 
-import collections
+# TODO(smcginnis) update this once six has support for collections.abc
+# (https://github.com/benjaminp/six/pull/241) or clean up once we drop py2.7.
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -68,7 +71,7 @@ CONF.import_opt('max_over_subscription_ratio', 'cinder.volume.driver')
 LOG = logging.getLogger(__name__)
 
 
-class ReadOnlyDict(collections.Mapping):
+class ReadOnlyDict(Mapping):
     """A read-only dict."""
     def __init__(self, source=None):
         if source is not None:
