@@ -53,6 +53,11 @@ class EntryCreateTask(flow_utils.CinderTask):
         volume_type = kwargs.pop('volume_type')
         volume_type_id = volume_type['id'] if volume_type else None
 
+        multiattach = False
+        if volume_type and volume_type.get('extra_specs'):
+            multiattach = volume_type['extra_specs'].get(
+                'multiattach', '') == '<is> True'
+
         volume_properties = {
             'size': 0,
             'user_id': context.user_id,
@@ -68,6 +73,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             'volume_type_id': volume_type_id,
             'metadata': kwargs.pop('metadata') or {},
             'bootable': kwargs.pop('bootable'),
+            'multiattach': multiattach,
         }
 
         volume = objects.Volume(context=context, **volume_properties)
