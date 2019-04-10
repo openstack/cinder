@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Dell EMC VNX Driver: Fixes `bug 1817385
+    <https://bugs.launchpad.net/cinder/+bug/1817385>`__ to make sure the sg can
+    be created again after it was destroyed under `destroy_empty_storage_group`
+    setting to `True`.
