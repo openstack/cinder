@@ -21,7 +21,6 @@ import json
 import os
 import re
 import shutil
-import tempfile
 import time
 
 from oslo_config import cfg
@@ -927,26 +926,6 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
     def _get_mount_point_base(self):
         return self.base
 
-    def _ensure_share_writable(self, path):
-        """Ensure that the Cinder user can write to the share.
-
-        If not, raise an exception.
-
-        :param path: path to test
-        :raises: RemoteFSException
-        :returns: None
-        """
-
-        prefix = '.cinder-write-test-' + str(os.getpid()) + '-'
-
-        try:
-            tempfile.NamedTemporaryFile(prefix=prefix, dir=path)
-        except OSError:
-            msg = _('Share at %(dir)s is not writable by the '
-                    'Cinder volume service. Snapshot operations will not be '
-                    'supported.') % {'dir': path}
-            raise exception.RemoteFSException(msg)
-
     def _copy_volume_to_image(self, context, volume, image_service,
                               image_meta):
         """Copy the volume to the specified image."""
@@ -1111,7 +1090,6 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         self._validate_state(volume_status, acceptable_states)
 
         vol_path = self._local_volume_dir(snapshot.volume)
-        self._ensure_share_writable(vol_path)
 
         # Determine the true snapshot file for this snapshot
         # based on the .info file

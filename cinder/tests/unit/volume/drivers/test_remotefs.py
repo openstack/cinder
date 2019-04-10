@@ -100,7 +100,6 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         self._driver._write_info_file = mock.Mock()
         self._driver._img_commit = mock.Mock()
         self._driver._rebase_img = mock.Mock()
-        self._driver._ensure_share_writable = mock.Mock()
         self._driver._delete_stale_snapshot = mock.Mock()
         self._driver._delete_snapshot_online = mock.Mock()
 
