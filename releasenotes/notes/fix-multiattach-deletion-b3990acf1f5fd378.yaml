@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed NetApp SolidFire bug that avoided multiatached volumes to be deleted.

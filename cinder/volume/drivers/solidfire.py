@@ -1535,12 +1535,15 @@ class SolidFireDriver(san.SanISCSIDriver):
                         self._issue_api_request('PurgeDeletedVolume', params,
                                                 endpoint=cluster['endpoint'])
 
+            # The multiattach volumes are only removed from the VAG on
+            # deletion.
+            if volume.get('multiattach'):
+                self._remove_volume_from_vags(sf_vol['volumeID'])
+
             if sf_vol['status'] == 'active':
                 params = {'volumeID': sf_vol['volumeID']}
                 self._issue_api_request('DeleteVolume', params)
                 self._issue_api_request('PurgeDeletedVolume', params)
-            if volume.get('multiattach'):
-                self._remove_volume_from_vags(sf_vol['volumeID'])
         else:
             LOG.error("Volume ID %s was not found on "
                       "the SolidFire Cluster while attempting "
