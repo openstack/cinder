@@ -53,7 +53,7 @@ backup_opts = [
                choices=['none', 'off', 'no',
                         'zlib', 'gzip',
                         'bz2', 'bzip2'],
-               help='Compression algorithm (None to disable)'),
+               help='Compression algorithm ("none" to disable)'),
 ]
 
 CONF = cfg.CONF
