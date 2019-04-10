@@ -121,6 +121,7 @@ PowerMax drivers support these operations:
 -  Quality of service (QoS)
 -  Manage and unmanage volumes and snapshots
 -  List Manageable Volumes/Snapshots
+-  Backup create, delete, list, restore and show
 
 PowerMax drivers also support the following features:
 
@@ -139,6 +140,7 @@ PowerMax drivers also support the following features:
 -  Extending attached volume
 -  Replicated volume retype support
 -  Retyping attached(in-use) volume
+-  Unisphere high availability(HA) support
 
 .. note::
 
@@ -283,6 +285,14 @@ complex and open-zoning would raise security concerns.
 
 4. Configure Block Storage in cinder.conf
 -----------------------------------------
+
+.. note::
+
+   VMAX driver was rebranded to PowerMax in Stein, so some of the driver
+   specific tags have also changed. Legacy tags like vmax_srp, vmax_array,
+   vmax_service_level and vmax_port_group, as well as the old driver
+   location, will continue to work until the 'V' release.
+
 
 .. config-table::
    :config-target: PowerMax
@@ -1464,6 +1474,84 @@ PowerMax view point.
    | serial_number                      | 000123456789                                            |
    +------------------------------------+---------------------------------------------------------+
 
+17. Unisphere high availability(HA) support
+-------------------------------------------
+
+This feature facilitates high availability of Unisphere for PowerMax servers,
+allowing for one or more backup unisphere instances in the event of a loss in
+connection to the primary Unisphere instance. The PowerMax driver will
+cycle through the list of failover instances, trying each until a successful
+connection is made. The ordering is first in, first out (FIFO), so the first
+``u4p_failover_target`` specified in ``cinder.conf`` will be the first
+selected, the second ``u4p_failover_target`` in ``cinder.conf`` will be the
+second selected, and so on until all failover targets are exhausted.
+
+Requirements
+~~~~~~~~~~~~
+
+- All required instances of Unisphere for PowerMax are set up and configured
+  for the array(s)
+- Array(s) are locally registered with the instance of Unisphere that will be
+  used as a failover instance. There are two failover types, local and remote:
+
+  - `Local failover` - Primary Unisphere is unreachable, failover to
+    secondary local instance of Unisphere to resume normal operations at
+    primary site.
+  - `Remote failover` - Complete loss of primary site so primary instance of
+    Unisphere is unreachable, failover to secondary instance of Unisphere at
+    remote site to resume operations with the R2 array.
+
+.. note::
+
+   Replication must be configured in advance for remote failover to work
+   successfully, human intervention will also be required to failover from R1
+   array to R2 array in Cinder using ``cinder failover-host`` command
+   (see ``Volume replication support`` for replication setup details).
+
+.. note::
+
+   The remote target array must be registered as local to the remote instance
+   of Unisphere
+
+Configuration
+~~~~~~~~~~~~~
+
+The following configuration changes need to be made in cinder.conf in order to
+support the failover to secondary Unisphere. Cinder services will need to be
+restarted for changes to take effect.
+
+.. code-block:: console
+
+   u4p_failover_timeout = 30
+   u4p_failover_retries = 3
+   u4p_failover_backoff_factor = 1
+   u4p_failover_autofailback = True
+   u4p_failover_target = san_ip:10.10.10.12,
+                         san_api_port: 8443,
+                         san_login:my_username,
+                         san_password:my_password,
+                         driver_ssl_cert_verify: False,
+   u4p_failover_target = san_ip:10.10.10.13,
+                         san_api_port: 8443
+                         san_login:my_username,
+                         san_password:my_password,
+                         driver_ssl_cert_verify: True,
+                         driver_ssl_cert_path: /path/to/my_unisphere_host.pem
+
+.. note::
+
+  ``u4p_failover_target`` key value pairs will need to be on the same
+  line (separated by commas) in cinder.conf. They are displayed on
+  separated lines above for readiblity.
+
+.. note::
+
+   To add more than one Unisphere failover target create additional
+   ``u4p_failover_target`` details for the Unisphere instance. These will be
+   cycled through in a first-in, first-out (FIFO) basis, the first failover
+   target in ``cinder.conf`` will be the first backup instance of Unisphere
+   used by the PowerMax driver.
+
 
 Cinder supported operations
 ===========================
@@ -1726,6 +1814,11 @@ retype, follow these steps:
    - Retype non-replicated volume to a replicated volume type
    - Retype replicated volume to a non-replicated volume type
    - Retype a replicated volume to a different replicated volume type
+
+
+.. note::
+
+   With the Stein release, In Use (attached) volume retype is supported
 
 
 Generic volume group support
@@ -2257,6 +2350,16 @@ List manageable snapshots is filtered by:
    when the state/properties of a volume is modified using ``symcli``.  To
    prevent this it is preferrable to modify state/properties of volumes within
    Unisphere.
+
+
+Cinder backup support
+---------------------
+
+PowerMax cinder driver supports cinder backup functionality. See
+https://docs.openstack.org/cinder/latest/configuration/block-storage/backup-drivers.html
+and https://docs.openstack.org/python-openstackclient/latest/cli/command-objects/backup.html
+for more details.
+
 
 Upgrading from SMI-S based driver to RESTAPI based driver
 =========================================================
