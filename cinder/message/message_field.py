@@ -124,6 +124,18 @@ def translate_detail(detail_id):
 
 
 def translate_detail_id(exception, detail):
+    """Get a detail_id to use for a message.
+
+    If exception is in the EXCEPTION_DETAIL_MAPPINGS, returns the detail_id
+    of the mapped Detail field.  If exception is not in the mapping or is None,
+    returns the detail_id of the passed-in Detail field.  Otherwise, returns
+    the detail_id of Detail.UNKNOWN_ERROR.
+
+    :param exception: an Exception (or None)
+    :param detail: a message_field.Detail field (or None)
+    :returns: string
+    :returns: the detail_id of a message_field.Detail field
+    """
     if exception is not None and isinstance(exception, Exception):
         for key, value in Detail.EXCEPTION_DETAIL_MAPPINGS.items():
             if exception.__class__.__name__ in value:
