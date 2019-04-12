@@ -239,7 +239,7 @@ After maintenance window
 
 * Since Ocata, you also need to run ``cinder-manage db online_data_migrations``
   command to make sure data migrations are applied. The tool lets you limit
-  the impact of the data migrations by using ``--max-count`` option to limit
+  the impact of the data migrations by using ``--max_count`` option to limit
   number of migrations executed in one run. If this option is used, the
   exit status will be 1 if any migrations were successful (even if others
   generated errors, which could be due to dependencies between migrations).

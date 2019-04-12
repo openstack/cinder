@@ -503,7 +503,7 @@ Running batches of 50 until complete.
                                  command.online_data_migrations, max_count=50)
         self.assertEqual(2, exit.code)
 
-        # When --max-count is not used, we should get 2 if all possible
+        # When --max_count is not used, we should get 2 if all possible
         # migrations completed but some raise exceptions
         good_remaining = [50]
         exit = self.assertRaises(SystemExit,

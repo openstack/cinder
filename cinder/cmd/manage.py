@@ -381,7 +381,7 @@ class DbCommands(object):
         if max_count is not None:
             unlimited = False
             if max_count < 1:
-                print(_('Must supply a positive value for max_number.'))
+                print(_('Must supply a positive value for max_count.'))
                 sys.exit(127)
         else:
             unlimited = True
