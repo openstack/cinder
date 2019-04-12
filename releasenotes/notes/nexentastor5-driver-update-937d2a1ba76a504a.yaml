@@ -1,0 +1,34 @@
+---
+features:
+  - Added revert to snapshot support for NexentaStor5 iSCSI and NFS drivers.
+  - NexentaStor5 iSCSI and NFS drivers multiattach capability enabled.
+  - Added support for creating, deleting, and updating consistency groups
+    for NexentaStor5 iSCSI and NFS drivers.
+  - Added support for taking, deleting, and restoring consistency group
+    snapshots for NexentaStor5 iSCSI and NFS drivers.
+  - Added consistency group capability to generic volume groups for
+    NexentaStor5 iSCSI and NFS drivers.
+  - Added volume manage/unmanage support for NexentaStor5 iSCSI and NFS
+    drivers.
+  - Added snapshot manage/unmanage support for NexentaStor5 iSCSI and NFS
+    drivers.
+  - Added the ability to list manageable volumes and snapshots for
+    NexentaStor5 iSCSI and NFS drivers.
+upgrade:
+  - Added a new config option ``nexenta_rest_connect_timeout``. This option
+    specifies the time limit (in seconds), within which the connection to
+    NexentaStor management REST API server must be established.
+  - Added a new config option ``nexenta_rest_read_timeout``. This option
+    specifies the time limit (in seconds), within which NexentaStor
+    management REST API server must send a response.
+  - Added a new config option ``nexenta_rest_backoff_factor``. This option
+    specifies the backoff factor to apply between connection attempts to
+    NexentaStor management REST API server.
+  - Added a new config option ``nexenta_rest_retry_count``. This option
+    specifies the number of times to repeat NexentaStor management REST
+    API call in case of connection errors and NexentaStor appliance EBUSY
+    or ENOENT errors.
+  - Added a new config option ``nexenta_origin_snapshot_template``.
+    This option specifies template string to generate origin name of clone.
+  - Added a new config option ``nexenta_group_snapshot_template``.
+    This option specifies template string to generate group snapshot name.

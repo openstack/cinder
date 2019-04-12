@@ -1,4 +1,4 @@
-# Copyright 2016 Nexenta Systems, Inc.
+# Copyright 2019 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,7 +17,6 @@ from oslo_config import cfg
 
 from cinder.volume import configuration as conf
 
-POLL_RETRIES = 5
 DEFAULT_ISCSI_PORT = 3260
 DEFAULT_HOST_GROUP = 'all'
 DEFAULT_TARGET_GROUP = 'all'
@@ -63,31 +62,53 @@ NEXENTA_EDGE_OPTS = [
 ]
 
 NEXENTA_CONNECTION_OPTS = [
+    cfg.StrOpt('nexenta_host',
+               default='',
+               help='IP address of NexentaStor Appliance'),
     cfg.StrOpt('nexenta_rest_address',
                deprecated_for_removal=True,
                deprecated_reason='Rest address should now be set using '
                                  'the common param depending on driver type, '
                                  'san_ip or nas_host',
                default='',
-               help='IP address of NexentaEdge management REST API endpoint'),
-    cfg.StrOpt('nexenta_host',
-               default='',
-               help='IP address of Nexenta SA'),
+               help='IP address of NexentaStor management REST API endpoint'),
     cfg.IntOpt('nexenta_rest_port',
                deprecated_for_removal=True,
                deprecated_reason='Rest address should now be set using '
                                  'the common param san_api_port.',
                default=0,
-               help='HTTP(S) port to connect to Nexenta REST API server. '
-                    'If it is equal zero, 8443 for HTTPS and 8080 for HTTP '
-                    'is used'),
+               help='HTTP(S) port to connect to NexentaStor management '
+                    'REST API server. If it is equal zero, 8443 for '
+                    'HTTPS and 8080 for HTTP is used'),
     cfg.StrOpt('nexenta_rest_protocol',
                default='auto',
                choices=['http', 'https', 'auto'],
-               help='Use http or https for REST connection (default auto)'),
+               help='Use http or https for NexentaStor management '
+                    'REST API connection (default auto)'),
+    cfg.FloatOpt('nexenta_rest_connect_timeout',
+                 default=30,
+                 help='Specifies the time limit (in seconds), within '
+                      'which the connection to NexentaStor management '
+                      'REST API server must be established'),
+    cfg.FloatOpt('nexenta_rest_read_timeout',
+                 default=300,
+                 help='Specifies the time limit (in seconds), '
+                      'within which NexentaStor management '
+                      'REST API server must send a response'),
+    cfg.FloatOpt('nexenta_rest_backoff_factor',
+                 default=0.5,
+                 help='Specifies the backoff factor to apply '
+                      'between connection attempts to NexentaStor '
+                      'management REST API server'),
+    cfg.IntOpt('nexenta_rest_retry_count',
+               default=3,
+               help='Specifies the number of times to repeat NexentaStor '
+                    'management REST API call in case of connection errors '
+                    'and NexentaStor appliance EBUSY or ENOENT errors'),
     cfg.BoolOpt('nexenta_use_https',
                 default=True,
-                help='Use secure HTTP for REST connection (default True)'),
+                help='Use HTTP secure protocol for NexentaStor '
+                     'management REST API connections'),
     cfg.BoolOpt('nexenta_lu_writebackcache_disabled',
                 default=False,
                 help='Postponed write to backing store or not'),
@@ -97,24 +118,26 @@ NEXENTA_CONNECTION_OPTS = [
                                  'depending on the driver type: '
                                  'san_login or nas_login',
                default='admin',
-               help='User name to connect to Nexenta SA'),
+               help='User name to connect to NexentaStor '
+                    'management REST API server'),
     cfg.StrOpt('nexenta_password',
                deprecated_for_removal=True,
                deprecated_reason='Common password parameters should be used '
                                  'depending on the driver type: '
                                  'san_password or nas_password',
                default='nexenta',
-               help='Password to connect to Nexenta SA',
-               secret=True),
+               help='Password to connect to NexentaStor '
+                    'management REST API server',
+               secret=True)
 ]
 
 NEXENTA_ISCSI_OPTS = [
     cfg.StrOpt('nexenta_iscsi_target_portal_groups',
                default='',
-               help='Nexenta target portal groups'),
+               help='NexentaStor target portal groups'),
     cfg.StrOpt('nexenta_iscsi_target_portals',
                default='',
-               help='Comma separated list of portals for NexentaStor5, in '
+               help='Comma separated list of portals for NexentaStor5, in'
                     'format of IP1:port1,IP2:port2. Port is optional, '
                     'default=3260. Example: 10.10.10.1:3267,10.10.1.2'),
     cfg.StrOpt('nexenta_iscsi_target_host_group',
@@ -122,22 +145,22 @@ NEXENTA_ISCSI_OPTS = [
                help='Group of hosts which are allowed to access volumes'),
     cfg.IntOpt('nexenta_iscsi_target_portal_port',
                default=3260,
-               help='Nexenta target portal port'),
+               help='Nexenta appliance iSCSI target portal port'),
     cfg.IntOpt('nexenta_luns_per_target',
                default=100,
-               help='Amount of iSCSI LUNs per each target'),
+               help='Amount of LUNs per iSCSI target'),
     cfg.StrOpt('nexenta_volume',
                default='cinder',
-               help='SA Pool that holds all volumes'),
+               help='NexentaStor pool name that holds all volumes'),
     cfg.StrOpt('nexenta_target_prefix',
                default='iqn.1986-03.com.sun:02:cinder',
-               help='IQN prefix for iSCSI targets'),
+               help='iqn prefix for NexentaStor iSCSI targets'),
     cfg.StrOpt('nexenta_target_group_prefix',
                default='cinder',
-               help='Prefix for iSCSI target groups on SA'),
+               help='Prefix for iSCSI target groups on NexentaStor'),
     cfg.StrOpt('nexenta_host_group_prefix',
                default='cinder',
-               help='Prefix for iSCSI host groups on SA'),
+               help='Prefix for iSCSI host groups on NexentaStor'),
     cfg.StrOpt('nexenta_volume_group',
                default='iscsi',
                help='Volume group for NexentaStor5 iSCSI'),
@@ -156,6 +179,9 @@ NEXENTA_NFS_OPTS = [
                      'sparsed files that take no space. If disabled '
                      '(False), volume is created as a regular file, '
                      'which takes a long time.'),
+    cfg.BoolOpt('nexenta_qcow2_volumes',
+                default=False,
+                help='Create volumes as QCOW2 files rather than raw files'),
     cfg.BoolOpt('nexenta_nms_cache_volroot',
                 default=True,
                 help=('If set True cache NexentaStor appliance volroot option '
@@ -188,6 +214,12 @@ NEXENTA_DATASET_OPTS = [
     cfg.BoolOpt('nexenta_sparse',
                 default=False,
                 help='Enables or disables the creation of sparse datasets'),
+    cfg.StrOpt('nexenta_origin_snapshot_template',
+               default='origin-snapshot-%s',
+               help='Template string to generate origin name of clone'),
+    cfg.StrOpt('nexenta_group_snapshot_template',
+               default='group-snapshot-%s',
+               help='Template string to generate group snapshot name')
 ]
 
 NEXENTA_RRMGR_OPTS = [
