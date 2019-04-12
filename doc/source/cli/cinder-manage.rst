@@ -73,7 +73,7 @@ version          Database version
 Purge database entries that are marked as deleted, that are older than the
 number of days specified.
 
-``cinder-manage db online_data_migrations [--max-count <n>]``
+``cinder-manage db online_data_migrations [--max_count <n>]``
 
 Perform online data migrations for database upgrade between releases in
 batches.
@@ -82,12 +82,12 @@ This command interprets the following options when it is invoked:
 
 .. code-block:: console
 
-   --max-count     Maximum number of objects to migrate. If not specified, all
+   --max_count     Maximum number of objects to migrate. If not specified, all
                    possible migrations will be completed, in batches of 50 at a
                    time.
 
 Returns exit status 0 if no (further) updates are possible, 1 if the
-``--max-count`` option was used and some updates were completed successfully
+``--max_count`` option was used and some updates were completed successfully
 (even if others generated errors), 2 if some updates generated errors and no
 other migrations were able to take effect in the last batch attempted, or 127
 if invalid input is provided (e.g. non-numeric max-count).
