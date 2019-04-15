@@ -141,7 +141,8 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
     @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_create_iscsi_target(self):
-        with mock.patch('cinder.privsep.targets.tgt.tgtadm_show', return_value=('', '')),\
+        with mock.patch('cinder.privsep.targets.tgt.tgtadm_show',
+                        return_value=('', '')),\
                 mock.patch.object(self.target, '_get_target',
                                   side_effect=lambda x: 1),\
                 mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',
@@ -342,7 +343,8 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                            self.testvol['name'] + ' 1',
                            'auth': 'CHAP QZJb P68e'}
 
-        with mock.patch('cinder.privsep.targets.tgt.tgtadm_show', return_value=('', '')),\
+        with mock.patch('cinder.privsep.targets.tgt.tgtadm_show',
+                        return_value=('', '')),\
                 mock.patch.object(self.target, '_get_target',
                                   side_effect=lambda x: 1),\
                 mock.patch.object(self.target, '_verify_backing_lun',
@@ -390,7 +392,8 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
     @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_create_iscsi_target_retry(self):
-        with mock.patch('cinder.privsep.targets.tgt.tgtadm_show', return_value=('', '')),\
+        with mock.patch('cinder.privsep.targets.tgt.tgtadm_show',
+                        return_value=('', '')),\
                 mock.patch.object(self.target, '_get_target',
                                   side_effect=[None, None, 1]) as get_target,\
                 mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',

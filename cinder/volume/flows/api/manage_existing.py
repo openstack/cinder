@@ -97,7 +97,7 @@ class EntryCreateTask(flow_utils.CinderTask):
 
 
 class ManageCastTask(flow_utils.CinderTask):
-    """Performs a volume manage cast to the scheduler and to the volume manager.
+    """Performs a volume manage cast to the scheduler and the volume manager.
 
     This which will signal a transition of the api workflow to another child
     and/or related workflow.

@@ -159,7 +159,7 @@ class StorwizeSVCReplicationMetroMirror(
 
 
 class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
-    """Support for Storwize/SVC global mirror with change volumes mode replication.
+    """Support for Storwize/SVC GMCV mode replication.
 
     Global Mirror with Change Volumes(GMCV) provides asynchronous replication
     based on point-in-time copies of data. The volumes in a GMCV relationship

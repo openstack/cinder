@@ -187,7 +187,7 @@ class RequestContext(context.RequestContext):
                    )
 
     def authorize(self, action, target=None, target_obj=None, fatal=True):
-        """Verifies that the given action is valid on the target in this context.
+        """Verify that the given action is valid on the target in this context.
 
         :param action: string representing the action to be checked.
         :param target: dictionary representing the object of the action

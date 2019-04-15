@@ -1765,9 +1765,12 @@ class ScaleIODriver(driver.VolumeDriver):
         if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
             raise NotImplementedError()
 
-        get_scaleio_snapshot_params = lambda snapshot: {
-            'volumeId': snapshot.volume['provider_id'],
-            'snapshotName': self._id_to_base64(snapshot['id'])}
+        def get_scaleio_snapshot_params(snapshot):
+            return {
+                'volumeId': snapshot.volume['provider_id'],
+                'snapshotName': self._id_to_base64(snapshot['id'])
+            }
+
         snapshot_defs = list(map(get_scaleio_snapshot_params, snapshots))
         r, response = self._snapshot_volume_group(snapshot_defs)
         if r.status_code != http_client.OK and "errorCode" in response:
@@ -1843,9 +1846,12 @@ class ScaleIODriver(driver.VolumeDriver):
         if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
 
-        get_scaleio_snapshot_params = lambda src_volume, trg_volume: {
-            'volumeId': src_volume['provider_id'],
-            'snapshotName': self._id_to_base64(trg_volume['id'])}
+        def get_scaleio_snapshot_params(src_volume, trg_volume):
+            return {
+                'volumeId': src_volume['provider_id'],
+                'snapshotName': self._id_to_base64(trg_volume['id'])
+            }
+
         if group_snapshot and snapshots:
             snapshot_defs = map(get_scaleio_snapshot_params,
                                 snapshots,

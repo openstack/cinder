@@ -510,7 +510,6 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
                               self.data.test_snapshot)
             self.assertTrue(delete.called)
 
-
 # ##### Clone Volume #####
     def test_clone_volume(self, req):
         req.side_effect = xms_request

@@ -219,12 +219,12 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
 
         if req:
             if level:
-                l = level + ":" + key
+                lk = level + ":" + key
             else:
-                l = key
+                lk = key
 
             msg = _('DRBDmanage driver error: expected key "%s" '
-                    'not in answer, wrong DRBDmanage version?') % l
+                    'not in answer, wrong DRBDmanage version?') % lk
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -847,6 +847,7 @@ class DrbdManageIscsiDriver(DrbdManageBaseDriver):
         return self.target_driver.terminate_connection(volume,
                                                        connector,
                                                        **kwargs)
+
 
 # for backwards compatibility keep the old class name, too
 DrbdManageDriver = DrbdManageIscsiDriver

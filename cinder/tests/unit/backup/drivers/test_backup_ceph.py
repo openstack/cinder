@@ -541,7 +541,8 @@ class BackupCephTestCase(test.TestCase):
                     mock.patch.object(self.service,
                                       '_try_delete_base_image'):
                 with mock.patch.object(self.service, '_backup_metadata'):
-                    with mock.patch.object(self.service, 'get_backup_snaps') as \
+                    with mock.patch.object(self.service,
+                                           'get_backup_snaps') as \
                             mock_get_backup_snaps:
                         image = self.service.rbd.Image()
                         meta = linuxrbd.RBDImageMetadata(image,
@@ -566,8 +567,9 @@ class BackupCephTestCase(test.TestCase):
 
         with mock.patch.object(self.service, '_snap_exists'), \
                 mock.patch.object(self.service, '_get_backup_base_name') as \
-                mock_get_backup_base_name, mock.patch.object(
-                self.service, '_get_most_recent_snap') as mock_get_most_recent_snap, \
+                mock_get_backup_base_name, \
+                mock.patch.object(self.service, '_get_most_recent_snap') as \
+                mock_get_most_recent_snap, \
                 mock.patch.object(self.service, '_rbd_diff_transfer'):
             mock_get_backup_base_name.return_value = backup_name
             mock_get_most_recent_snap.return_value = (
@@ -635,7 +637,8 @@ class BackupCephTestCase(test.TestCase):
                     = mock_rbd_diff_transfer_side_effect
 
                 with mock.patch.object(self.service, '_full_backup'), \
-                    mock.patch.object(self.service, '_try_delete_base_image') as \
+                    mock.patch.object(self.service,
+                                      '_try_delete_base_image') as \
                         mock_try_delete_base_image:
                     def mock_try_delete_base_image_side_effect(backup_id,
                                                                base_name):
@@ -748,7 +751,8 @@ class BackupCephTestCase(test.TestCase):
                     mock_get_backup_snaps:
                 with mock.patch.object(self.service, '_rbd_diff_transfer') as \
                         mock_rbd_diff_transfer:
-                    with mock.patch.object(self.service, '_get_backup_base_name') as \
+                    with mock.patch.object(self.service,
+                                           '_get_backup_base_name') as \
                             mock_get_backup_base_name:
                         mock_get_backup_base_name.return_value = (
                             backup_name)
@@ -790,7 +794,8 @@ class BackupCephTestCase(test.TestCase):
                     mock_get_backup_base_name:
                 with mock.patch.object(self.service, '_rbd_diff_transfer') as \
                         mock_rbd_diff_transfer:
-                    with mock.patch.object(self.service, '_get_new_snap_name') as \
+                    with mock.patch.object(self.service,
+                                           '_get_new_snap_name') as \
                             mock_get_new_snap_name:
                         mock_get_backup_base_name.return_value = (
                             backup_name)
@@ -1346,7 +1351,8 @@ class BackupCephTestCase(test.TestCase):
                 with mock.patch.object(self.service, '_file_is_rbd',
                                        return_value=False):
                     with mock.patch.object(self.service, '_full_backup'):
-                        with mock.patch.object(self.service, 'delete_backup') as \
+                        with mock.patch.object(self.service,
+                                               'delete_backup') as \
                                 mock_delete:
                             self.assertRaises(exception.BackupOperationError,
                                               self.service.backup, self.backup,

@@ -848,7 +848,7 @@ class BackupTestCase(BaseBackupTest):
                                              mock_chown,
                                              mock_backup_device,
                                              mock_brick):
-        backup_service = lambda: None
+        backup_service = mock.Mock()
         backup_service.backup = mock.Mock(
             return_value=mock.sentinel.backup_update)
         self.backup_mgr.service = lambda x: backup_service

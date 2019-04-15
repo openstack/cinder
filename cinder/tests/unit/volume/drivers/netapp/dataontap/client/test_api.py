@@ -351,11 +351,11 @@ class NetAppApiElementTransTests(test.TestCase):
         root = netapp_api.NaElement('root')
         root['l'] = ['l1', 'l2']
         root['t'] = ('t1', 't2')
-        l = root.get_child_by_name('l')
-        self.assertIsInstance(l, netapp_api.NaElement)
+        l_element = root.get_child_by_name('l')
+        self.assertIsInstance(l_element, netapp_api.NaElement)
         t = root.get_child_by_name('t')
         self.assertIsInstance(t, netapp_api.NaElement)
-        for le in l.get_children():
+        for le in l_element.get_children():
             self.assertIn(le.get_name(), ['l1', 'l2'])
         for te in t.get_children():
             self.assertIn(te.get_name(), ['t1', 't2'])

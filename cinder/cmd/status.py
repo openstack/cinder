@@ -253,5 +253,6 @@ def main():
                'Please re-run using the --config-dir <dirname> option '
                'with a valid cinder configuration directory.')
 
+
 if __name__ == '__main__':
     sys.exit(main())

@@ -334,7 +334,8 @@ class TestCase(testtools.TestCase):
         osprofiler should not run for unit tests.
         """
 
-        side_effect = lambda value: value
+        def side_effect(value):
+            return value
         mock_decorator = mock.MagicMock(side_effect=side_effect)
         p = mock.patch("osprofiler.profiler.trace_cls",
                        return_value=mock_decorator)
@@ -486,7 +487,9 @@ class ModelsObjectComparatorMixin(object):
 
     def _assertEqualListsOfObjects(self, objs1, objs2, ignored_keys=None,
                                    msg=None):
-        obj_to_dict = lambda o: self._dict_from_object(o, ignored_keys)
+        def obj_to_dict(o):
+            return self._dict_from_object(o, ignored_keys)
+
         objs1 = map(obj_to_dict, objs1)
         objs2 = list(map(obj_to_dict, objs2))
         # We don't care about the order of the lists, as long as they are in

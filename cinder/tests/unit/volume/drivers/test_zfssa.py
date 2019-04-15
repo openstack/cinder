@@ -21,6 +21,7 @@ import math
 import mock
 from oslo_utils import units
 import six
+import textwrap
 
 from cinder import context
 from cinder import exception
@@ -157,9 +158,17 @@ class TestZFSSAISCSIDriver(test.TestCase):
             'iqn.1-0.org.deb:01:d7, iqn.1-0.org.deb:01:d9'
         self.configuration.zfssa_initiator_user = ''
         self.configuration.zfssa_initiator_password = ''
-        self.configuration.zfssa_initiator_config = "{'test-init-grp1':[{'iqn':\
-            'iqn.1-0.org.deb:01:d7','user':'','password':''}],'test-init-grp\
-            2':[{'iqn':'iqn.1-0.org.deb:01:d9','user':'','password':''}]}"
+        self.configuration.zfssa_initiator_config = textwrap.dedent('''
+            {'test-init-grp1':
+              [{'iqn': 'iqn.1-0.org.deb:01:d7',
+                'user': '',
+                'password': ''}],
+             'test-init-grp2':
+              [{'iqn': 'iqn.1.0.org.deb:01:d9',
+                'user': '',
+                'password': ''}]
+            }
+            ''')
         self.configuration.zfssa_target_group = 'test-target-grp1'
         self.configuration.zfssa_target_user = ''
         self.configuration.zfssa_target_password = ''
