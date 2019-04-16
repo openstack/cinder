@@ -316,7 +316,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
 
         if capabilities['free_capacity_gb'] < volume['size']:
             LOG.error('There is not enough space available on the '
-                      'host %(host)s to migrate volume %(volume), '
+                      'host %(host)s to migrate volume %(volume)s, '
                       'free space: %(free)d, required: %(size)d',
                       {'host': host, 'volume': volume['name'],
                        'free': capabilities['free_capacity_gb'],
