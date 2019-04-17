@@ -729,6 +729,38 @@ class PowerMaxCommonTest(test.TestCase):
                               self.common._create_cloned_volume,
                               volume, source_volume, extra_specs)
 
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_find_device_on_array')
+    def test_create_cloned_volume_not_licenced_2(self, mock_device):
+        volume = self.data.test_clone_volume
+        source_volume = self.data.test_volume
+        extra_specs = self.data.extra_specs
+        with mock.patch.object(self.rest, 'is_snapvx_licensed',
+                               return_value=False):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.common._create_cloned_volume,
+                              volume, source_volume, extra_specs,
+                              False, False)
+            mock_device.assert_not_called()
+
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_find_device_on_array',
+                       return_value=None)
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_clone_check')
+    def test_create_cloned_volume_source_not_found(
+            self, mock_check, mock_device):
+        volume = self.data.test_clone_volume
+        source_volume = self.data.test_volume
+        extra_specs = self.data.extra_specs
+        with mock.patch.object(self.rest, 'is_snapvx_licensed',
+                               return_value=True):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.common._create_cloned_volume,
+                              volume, source_volume, extra_specs,
+                              False, False)
+            mock_check.assert_not_called()
+
     def test_parse_snap_info_found(self):
         ref_device_id = self.data.device_id
         ref_snap_name = self.data.snap_location['snap_name']
@@ -1247,6 +1279,32 @@ class PowerMaxCommonTest(test.TestCase):
                                return_value=None):
             self.common._sync_check(array, device_id, extra_specs)
             mock_break.assert_not_called()
+
+    def test_do_sync_check_repeat(self):
+        array = self.data.array
+        device_id = self.data.device_id
+        extra_specs = self.data.extra_specs
+        with mock.patch.object(self.common,
+                               '_unlink_targets_and_delete_temp_snapvx',
+                               side_effect=Exception):
+            with mock.patch.object(self.common,
+                                   '_unlink_targets_and_delete_temp_snapvx',
+                                   side_effect=None):
+                self.common._sync_check(array, device_id, extra_specs)
+
+    def test_do_sync_check_repeat_and_fail_again(self):
+        array = self.data.array
+        device_id = self.data.device_id
+        extra_specs = self.data.extra_specs
+        with mock.patch.object(self.common,
+                               '_unlink_targets_and_delete_temp_snapvx',
+                               side_effect=Exception):
+            with mock.patch.object(self.common,
+                                   '_unlink_targets_and_delete_temp_snapvx',
+                                   side_effect=Exception):
+                self.assertRaises(exception.VolumeBackendAPIException,
+                                  self.common._sync_check, array,
+                                  device_id, extra_specs)
 
     @mock.patch.object(provision.PowerMaxProvision, 'delete_volume_snap')
     @mock.patch.object(provision.PowerMaxProvision,

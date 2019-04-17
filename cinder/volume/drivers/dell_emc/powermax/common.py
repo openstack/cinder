@@ -30,6 +30,7 @@ from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
+from cinder.utils import retry
 from cinder.volume import configuration
 from cinder.volume.drivers.dell_emc.powermax import masking
 from cinder.volume.drivers.dell_emc.powermax import metadata as volume_metadata
@@ -51,6 +52,8 @@ REPLICATION_ENABLED = fields.ReplicationStatus.ENABLED
 REPLICATION_FAILOVER = fields.ReplicationStatus.FAILED_OVER
 FAILOVER_ERROR = fields.ReplicationStatus.FAILOVER_ERROR
 REPLICATION_ERROR = fields.ReplicationStatus.ERROR
+
+retry_exc_tuple = (exception.VolumeBackendAPIException,)
 
 
 powermax_opts = [
@@ -1515,16 +1518,23 @@ class PowerMaxCommon(object):
 
         array = extra_specs[utils.ARRAY]
         is_clone_license = self.rest.is_snapvx_licensed(array)
+        if not is_clone_license:
+            exception_message = (_(
+                "SnapVx feature is not licensed on %(array)s.")
+                % {'array': array})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
+
         if from_snapvx:
             source_device_id, snap_name = self._parse_snap_info(
                 array, source_volume)
         else:
             source_device_id = self._find_device_on_array(
                 source_volume, extra_specs)
-
-        if not is_clone_license:
+        if not source_device_id:
             exception_message = (_(
-                "SnapVx feature is not licensed on %(array)s.")
+                "Cannot find source device on %(array)s.")
                 % {'array': array})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
@@ -2088,6 +2098,7 @@ class PowerMaxCommon(object):
             self._do_sync_check(
                 array, device_id, extra_specs, tgt_only)
 
+    @retry(retry_exc_tuple, interval=2, retries=2)
     def _do_sync_check(
             self, array, device_id, extra_specs, tgt_only=False):
         """Check if volume is part of a SnapVx sync process.
@@ -2112,31 +2123,49 @@ class PowerMaxCommon(object):
                 snap_vx_sessions.sort(
                     key=lambda k: k['generation'], reverse=True)
                 for session in snap_vx_sessions:
-                    source = session['source_vol']
-                    snap_name = session['snap_name']
-                    targets = session['target_vol_list']
-                    generation = session['generation']
-                    # Break the replication relationship
-                    for target in targets:
-                        LOG.debug("Unlinking source from target. Source: "
-                                  "%(volume)s, Target: %(target)s, "
-                                  "generation: %(generation)s.",
-                                  {'volume': source, 'target': target[0],
-                                   'generation': generation})
-                        self.provision.break_replication_relationship(
-                            array, target[0], source, snap_name,
-                            extra_specs, generation)
-                    # The snapshot name will only have 'temp' (or EMC_SMI for
-                    # legacy volumes) if it is a temporary volume.
-                    # Only then is it a candidate for deletion.
-                    if 'temp' in snap_name or 'EMC_SMI' in snap_name:
-                        LOG.debug("Deleting temporary snapshot. Source: "
-                                  "%(volume)s, snap name: %(snap_name)s, "
-                                  "generation: %(generation)s.",
-                                  {'volume': source, 'snap_name': snap_name,
-                                   'generation': generation})
-                        self.provision.delete_temp_volume_snap(
-                            array, snap_name, source, generation)
+                    try:
+                        self._unlink_targets_and_delete_temp_snapvx(
+                            session, array, extra_specs)
+                    except Exception:
+                        exception_message = _(
+                            "Will retry one more time.")
+
+                        LOG.warning(exception_message)
+                        raise exception.VolumeBackendAPIException(
+                            exception_message)
+
+    def _unlink_targets_and_delete_temp_snapvx(
+            self, session, array, extra_specs):
+        """unlink targets and delete the temporary snapvx
+
+        :param session: the snapvx session
+        :param array: the array serial number
+        :param extra_specs: extra specifications
+        """
+        source = session['source_vol']
+        snap_name = session['snap_name']
+        targets = session['target_vol_list']
+        generation = session['generation']
+        for target in targets:
+            LOG.debug("Unlinking source from target. Source: "
+                      "%(volume)s, Target: %(target)s, "
+                      "generation: %(generation)s.",
+                      {'volume': source, 'target': target[0],
+                       'generation': generation})
+            self.provision.break_replication_relationship(
+                array, target[0], source, snap_name,
+                extra_specs, generation)
+        # The snapshot name will only have 'temp' (or EMC_SMI for
+        # legacy volumes) if it is a temporary volume.
+        # Only then is it a candidate for deletion.
+        if 'temp' in snap_name or 'EMC_SMI' in snap_name:
+            LOG.debug("Deleting temporary snapshot. Source: "
+                      "%(volume)s, snap name: %(snap_name)s, "
+                      "generation: %(generation)s.",
+                      {'volume': source, 'snap_name': snap_name,
+                       'generation': generation})
+            self.provision.delete_temp_volume_snap(
+                array, snap_name, source, generation)
 
     def _get_target_source_device(
             self, array, device_id, tgt_only=False):
