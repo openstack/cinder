@@ -77,16 +77,6 @@ make special considerations at attach-time for multiattach volumes (like
 disable caching) and there's no mechanism currently to update a currently
 attached volume in a safe way while keeping it attached the whole time.
 
-Multiattach flag - DEPRECATED
------------------------------
-
-Starting from the Queens release using the old way of specifying multiattach
-with the flag is DEPRECATED:
-
-.. code-block:: console
-
-   $ cinder create <volume_size> --name <volume_name> --allow-multiattach
-
 RO / RW caveats (the secondary RW attachment issue)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
