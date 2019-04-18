@@ -38,7 +38,7 @@ LOG = logging.getLogger(__name__)
 SLOPROVISIONING = 'sloprovisioning'
 REPLICATION = 'replication'
 SYSTEM = 'system'
-U4V_VERSION = '90'
+U4V_VERSION = '91'
 UCODE_5978 = '5978'
 retry_exc_tuple = (exception.VolumeBackendAPIException,)
 # HTTP constants
@@ -584,8 +584,8 @@ class PowerMaxRest(object):
 
         :returns: version dict
         """
-        version_url = "/%s/system/version" % U4V_VERSION
-        version_dict = self._get_request(version_url, 'version')
+        version_url = "/%s/system/info" % U4V_VERSION
+        version_dict = self._get_request(version_url, 'info')
         if not version_dict:
             LOG.error("Unisphere version info not found.")
         return version_dict
@@ -678,7 +678,8 @@ class PowerMaxRest(object):
         :returns: bool
         """
         is_compression_capable = False
-        target_uri = "/84/sloprovisioning/symmetrix?compressionCapable=true"
+        target_uri = ("/%s/sloprovisioning/symmetrix?compressionCapable=true"
+                      % U4V_VERSION)
         status_code, message = self.request(target_uri, GET)
         self.check_status_code_success(
             "Check if compression enabled", status_code, message)
@@ -750,10 +751,11 @@ class PowerMaxRest(object):
         :param extra_specs: the extra specifications
         """
         payload = {"editStorageGroupActionParam": {
-            "addExistingStorageGroupParam": {
-                "storageGroupId": [child_sg]}}}
-        sc, job = self.modify_storage_group(array, parent_sg, payload,
-                                            version="83")
+            "expandStorageGroupParam": {
+                "addExistingStorageGroupParam": {
+                    "storageGroupId": [child_sg]}}}}
+
+        sc, job = self.modify_storage_group(array, parent_sg, payload)
         self.wait_for_job('Add child sg to parent sg', sc, job, extra_specs)
 
     def remove_child_sg_from_parent_sg(
@@ -806,12 +808,12 @@ class PowerMaxRest(object):
         if slo:
             if self.is_next_gen_array(array):
                 workload = 'NONE'
-            slo_param = {"num_of_vols": 0,
-                         "sloId": slo,
+            slo_param = {"sloId": slo,
                          "workloadSelection": workload,
-                         "volumeAttribute": {
+                         "volumeAttributes": [{
                              "volume_size": "0",
-                             "capacityUnit": "GB"}}
+                             "capacityUnit": "GB",
+                             "num_of_vols": 0}]}
             if do_disable_compression:
                 slo_param.update({"noCompression": "true"})
             elif self.is_compression_capable(array):
@@ -854,7 +856,7 @@ class PowerMaxRest(object):
             {"executionOption": "ASYNCHRONOUS",
              "editStorageGroupActionParam": {
                  "expandStorageGroupParam": {
-                     "addVolumeParam": {
+                     "addVolumeParam": [{
                          "num_of_vols": 1,
                          "emulation": "FBA",
                          "create_new_volumes": "False",
@@ -863,7 +865,7 @@ class PowerMaxRest(object):
                              "volumeIdentifierChoice": "identifier_name"},
                          "volumeAttribute": {
                              "volume_size": volume_size,
-                             "capacityUnit": "GB"}}}}})
+                             "capacityUnit": "GB"}}]}}})
         status_code, job = self.modify_storage_group(
             array, storagegroup_name, payload)
 
@@ -1413,7 +1415,7 @@ class PowerMaxRest(object):
         if portgroup_info:
             port_key = portgroup_info["symmetrixPortKey"]
             for key in port_key:
-                port = key['portId']
+                port = "%s:%s" % (key['directorId'], key['portId'])
                 portlist.append(port)
         return portlist
 
@@ -1804,8 +1806,7 @@ class PowerMaxRest(object):
                        "copy": 'true', "action": action,
                        "star": 'false', "force": 'false',
                        "exact": 'false', "remote": 'false',
-                       "symforce": 'false', "nocopy": 'false',
-                       "generation": generation}
+                       "symforce": 'false', "generation": generation}
 
         elif action == "Rename":
             operation = 'Rename snapVx snapshot'
@@ -1868,9 +1869,9 @@ class PowerMaxRest(object):
         snapshot = None
         snap_info = self.get_volume_snap_info(array, device_id)
         if snap_info:
-            if (snap_info.get('snapshotSrc') and
-                    bool(snap_info['snapshotSrc'])):
-                for snap in snap_info['snapshotSrc']:
+            if (snap_info.get('snapshotSrcs') and
+                    bool(snap_info['snapshotSrcs'])):
+                for snap in snap_info['snapshotSrcs']:
                     if snap['snapshotName'] == snap_name:
                         if snap['generation'] == generation:
                             snapshot = snap
@@ -1887,8 +1888,8 @@ class PowerMaxRest(object):
         snapshot_list = []
         snap_info = self.get_volume_snap_info(array, source_device_id)
         if snap_info:
-            if bool(snap_info['snapshotSrc']):
-                snapshot_list = snap_info['snapshotSrc']
+            if bool(snap_info['snapshotSrcs']):
+                snapshot_list = snap_info['snapshotSrcs']
         return snapshot_list
 
     def is_vol_in_rep_session(self, array, device_id):

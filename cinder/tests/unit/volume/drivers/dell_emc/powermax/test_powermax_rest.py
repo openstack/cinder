@@ -228,7 +228,7 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_get_uni_version(self):
         version, major_version = self.rest.get_uni_version()
-        self.assertEqual('90', major_version)
+        self.assertEqual('91', major_version)
         with mock.patch.object(self.rest, '_get_request', return_value=None):
             version, major_version = self.rest.get_uni_version()
             self.assertIsNone(major_version)
@@ -317,12 +317,12 @@ class PowerMaxRestTest(test.TestCase):
                            'storageGroupId': self.data.storagegroup_name_f,
                            'emulation': 'FBA',
                            'sloBasedStorageGroupParam': [
-                               {'num_of_vols': 0,
-                                'sloId': self.data.slo,
+                               {'sloId': self.data.slo,
                                 'workloadSelection': 'NONE',
-                                'volumeAttribute': {
+                                'volumeAttributes': [{
                                     'volume_size': '0',
-                                    'capacityUnit': 'GB'}}]}
+                                    'capacityUnit': 'GB',
+                                    'num_of_vols': 0}]}]}
                 mock_sg.assert_called_once_with(self.data.array, payload)
 
     def test_create_storage_group_failed(self):
@@ -350,12 +350,12 @@ class PowerMaxRestTest(test.TestCase):
                        'storageGroupId': self.data.default_sg_compr_disabled,
                        'emulation': 'FBA',
                        'sloBasedStorageGroupParam': [
-                           {'num_of_vols': 0,
-                            'sloId': self.data.slo,
+                           {'sloId': self.data.slo,
                             'workloadSelection': self.data.workload,
-                            'volumeAttribute': {
+                            'volumeAttributes': [{
                                 'volume_size': '0',
-                                'capacityUnit': 'GB'},
+                                'capacityUnit': 'GB',
+                                'num_of_vols': 0}],
                             'noCompression': 'true'}]}
             mock_sg.assert_called_once_with(self.data.array, payload)
 
@@ -475,8 +475,9 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_add_child_sg_to_parent_sg(self):
         payload = {'editStorageGroupActionParam': {
-            'addExistingStorageGroupParam': {
-                'storageGroupId': [self.data.storagegroup_name_f]}}}
+            'expandStorageGroupParam': {
+                'addExistingStorageGroupParam': {
+                    'storageGroupId': [self.data.storagegroup_name_f]}}}}
         with mock.patch.object(
                 self.rest, 'modify_storage_group',
                 return_value=(202, self.data.job_list[0])) as mck_mod_sg:
@@ -484,7 +485,7 @@ class PowerMaxRestTest(test.TestCase):
                 self.data.array, self.data.storagegroup_name_f,
                 self.data.parent_sg_f, self.data.extra_specs)
             mck_mod_sg.assert_called_once_with(
-                self.data.array, self.data.parent_sg_f, payload, version='83')
+                self.data.array, self.data.parent_sg_f, payload)
 
     def test_remove_child_sg_from_parent_sg(self):
         payload = {'editStorageGroupActionParam': {
@@ -1001,7 +1002,7 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_create_volume_snap(self):
         snap_name = self.data.volume_snap_vx[
-            'snapshotSrc'][0]['snapshotName']
+            'snapshotSrcs'][0]['snapshotName']
         device_id = self.data.device_id
         extra_specs = self.data.extra_specs
         payload = {'deviceNameListSource': [{'name': device_id}],
@@ -1034,8 +1035,8 @@ class PowerMaxRestTest(test.TestCase):
         array = self.data.array
         source_id = self.data.device_id
         target_id = self.data.volume_snap_vx[
-            'snapshotSrc'][0]['linkedDevices'][0]['targetDevice']
-        snap_name = self.data.volume_snap_vx['snapshotSrc'][0]['snapshotName']
+            'snapshotSrcs'][0]['linkedDevices'][0]['targetDevice']
+        snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         extra_specs = self.data.extra_specs
         payload = {'deviceNameListSource': [{'name': source_id}],
                    'deviceNameListTarget': [
@@ -1043,8 +1044,7 @@ class PowerMaxRestTest(test.TestCase):
                    'copy': 'true', 'action': "",
                    'star': 'false', 'force': 'false',
                    'exact': 'false', 'remote': 'false',
-                   'symforce': 'false', 'nocopy': 'false',
-                   'generation': 0}
+                   'symforce': 'false', 'generation': 0}
         payload_restore = {'deviceNameListSource': [{'name': source_id}],
                            'deviceNameListTarget': [{'name': source_id}],
                            'action': 'Restore',
@@ -1094,7 +1094,7 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_delete_volume_snap(self):
         array = self.data.array
-        snap_name = self.data.volume_snap_vx['snapshotSrc'][0]['snapshotName']
+        snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         source_device_id = self.data.device_id
         payload = {'deviceNameListSource': [{'name': source_device_id}],
                    'generation': 0}
@@ -1108,7 +1108,7 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_delete_volume_snap_restore(self):
         array = self.data.array
-        snap_name = self.data.volume_snap_vx['snapshotSrc'][0]['snapshotName']
+        snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         source_device_id = self.data.device_id
         payload = {'deviceNameListSource': [{'name': source_device_id}],
                    'restore': True, 'generation': 0}
@@ -1128,22 +1128,22 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_get_volume_snap(self):
         array = self.data.array
-        snap_name = self.data.volume_snap_vx['snapshotSrc'][0]['snapshotName']
+        snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         device_id = self.data.device_id
-        ref_snap = self.data.volume_snap_vx['snapshotSrc'][0]
+        ref_snap = self.data.volume_snap_vx['snapshotSrcs'][0]
         snap = self.rest.get_volume_snap(array, device_id, snap_name)
         self.assertEqual(ref_snap, snap)
 
     def test_get_volume_snap_none(self):
         array = self.data.array
-        snap_name = self.data.volume_snap_vx['snapshotSrc'][0]['snapshotName']
+        snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         device_id = self.data.device_id
         with mock.patch.object(self.rest, 'get_volume_snap_info',
                                return_value=None):
             snap = self.rest.get_volume_snap(array, device_id, snap_name)
             self.assertIsNone(snap)
         with mock.patch.object(self.rest, 'get_volume_snap_info',
-                               return_value={'snapshotSrc': []}):
+                               return_value={'snapshotSrcs': []}):
             snap = self.rest.get_volume_snap(array, device_id, snap_name)
             self.assertIsNone(snap)
 
@@ -1167,10 +1167,10 @@ class PowerMaxRestTest(test.TestCase):
         source_id = self.data.device_id
         generation = 0
         target_id = self.data.volume_snap_vx[
-            'snapshotSrc'][0]['linkedDevices'][0]['targetDevice']
-        snap_name = self.data.volume_snap_vx['snapshotSrc'][0]['snapshotName']
+            'snapshotSrcs'][0]['linkedDevices'][0]['targetDevice']
+        snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         ref_sync = self.data.volume_snap_vx[
-            'snapshotSrc'][0]['linkedDevices'][0]
+            'snapshotSrcs'][0]['linkedDevices'][0]
         sync = self.rest.get_sync_session(
             array, source_id, snap_name, target_id, generation)
         self.assertEqual(ref_sync, sync)

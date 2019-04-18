@@ -67,7 +67,7 @@ class PowerMaxData(object):
     device_id4 = '00004'
     rdf_group_name = '23_24_007'
     rdf_group_no = '70'
-    u4v_version = '90'
+    u4v_version = '91'
     storagegroup_name_source = 'Grp_source_sg'
     storagegroup_name_target = 'Grp_target_sg'
     group_snapshot_name = 'Grp_snapshot'
@@ -438,12 +438,12 @@ class PowerMaxData(object):
     portgroup = [{'portGroupId': port_group_name_f,
                   'symmetrixPortKey': [
                       {'directorId': 'FA-1D',
-                       'portId': 'FA-1D:4'}],
+                       'portId': '4'}],
                   'maskingview': [masking_view_name_f]},
                  {'portGroupId': port_group_name_i,
                   'symmetrixPortKey': [
                       {'directorId': 'SE-4E',
-                       'portId': 'SE-4E:0'}],
+                       'portId': '0'}],
                   'maskingview': [masking_view_name_i]}]
 
     port_list = [
@@ -663,7 +663,7 @@ class PowerMaxData(object):
 
     # replication
     volume_snap_vx = {'snapshotLnks': [],
-                      'snapshotSrc': [
+                      'snapshotSrcs': [
                           {'generation': 0,
                            'linkedDevices': [
                                {'targetDevice': device_id2,
@@ -748,7 +748,7 @@ class PowerMaxData(object):
                  {'symmetrixId': array_herc,
                   'model': 'PowerMax 2000',
                   'ucode': '5978.1091.1092'}]
-    version_details = {'version': 'V9.0.0.1'}
+    version_details = {'version': 'V9.1.0.1'}
 
     headroom = {'headroom': [{'headroomCapacity': 20348.29}]}
 
@@ -995,7 +995,7 @@ class PowerMaxData(object):
 
     data_dict = {volume_id: volume_info_dict}
     platform = 'Linux-4.4.0-104-generic-x86_64-with-Ubuntu-16.04-xenial'
-    unisphere_version = u'V9.0.0.1'
+    unisphere_version = u'V9.1.0.1'
     openstack_release = '12.0.0.0b3.dev401'
     openstack_version = '12.0.0'
     python_version = '2.7.12'

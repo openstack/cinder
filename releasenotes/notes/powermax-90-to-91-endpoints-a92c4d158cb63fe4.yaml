@@ -1,0 +1,5 @@
+---
+other:
+  - |
+    PowerMax driver - the minimum version of Unisphere for PowerMax required
+    for Train is 9.1, so all the latest 91 REST endpoints will be used.
