@@ -56,8 +56,8 @@ class PowerMaxProvision(object):
         """
         start_time = time.time()
 
-        @coordination.synchronized("emc-sg-{storage_group}")
-        def do_create_storage_group(storage_group):
+        @coordination.synchronized("emc-sg-{storage_group}-{array}")
+        def do_create_storage_group(storage_group, array):
             # Check if storage group has been recently created
             storagegroup = self.rest.get_storage_group(
                 array, storagegroup_name)
@@ -76,7 +76,7 @@ class PowerMaxProvision(object):
                          {'sg': storagegroup_name})
             return storagegroup
 
-        return do_create_storage_group(storagegroup_name)
+        return do_create_storage_group(storagegroup_name, array)
 
     def create_volume_from_sg(self, array, volume_name, storagegroup_name,
                               volume_size, extra_specs):
@@ -89,8 +89,8 @@ class PowerMaxProvision(object):
         :param extra_specs: the extra specifications
         :returns: dict -- volume_dict - the volume dict
         """
-        @coordination.synchronized("emc-sg-{storage_group}")
-        def do_create_volume_from_sg(storage_group):
+        @coordination.synchronized("emc-sg-{storage_group}-{array}")
+        def do_create_volume_from_sg(storage_group, array):
             start_time = time.time()
 
             volume_dict = self.rest.create_volume_from_sg(
@@ -102,7 +102,7 @@ class PowerMaxProvision(object):
                       {'delta': self.utils.get_time_delta(start_time,
                                                           time.time())})
             return volume_dict
-        return do_create_volume_from_sg(storagegroup_name)
+        return do_create_volume_from_sg(storagegroup_name, array)
 
     def delete_volume_from_srp(self, array, device_id, volume_name):
         """Delete a volume from the srp.
