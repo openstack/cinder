@@ -1043,3 +1043,55 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
                                                             host2_connector))
             mock_term_conn.assert_has_calls([mock.call(vol, host1_connector),
                                              mock.call(vol, host2_connector)])
+
+    def test_multiattach_terminate_connection_with_differing_mountpoints(self):
+        # Ensure that target_driver.terminate_connection is only called when a
+        # single active volume attachment remains per host for each volume
+        # regardless of the volumes being attached under differing mountpoints.
+        # As seen reported in bug #1825957.
+
+        connector_mountpoint_1 = {'ip': '10.0.0.2',
+                                  'host': 'fakehost1',
+                                  'mountpoint': '/dev/vdb',
+                                  'initiator': 'iqn.2012-07.org.fake:01'}
+
+        connector_mountpoint_2 = {'ip': '10.0.0.2',
+                                  'host': 'fakehost1',
+                                  'mountpoint': '/dev/vdc',
+                                  'initiator': 'iqn.2012-07.org.fake:01'}
+
+        attachment1 = fake_volume.fake_volume_attachment_obj(self.context)
+        attachment1.connector = connector_mountpoint_1
+
+        attachment2 = fake_volume.fake_volume_attachment_obj(self.context)
+        attachment2.connector = connector_mountpoint_2
+
+        # Create a multiattach volume object with two active attachments on
+        # the same host using different mountpoints within the connectors
+        vol = fake_volume.fake_volume_obj(self.context)
+        vol.multiattach = True
+        vol.volume_attachment.objects.append(attachment1)
+        vol.volume_attachment.objects.append(attachment2)
+
+        self.configuration = conf.Configuration(None)
+        vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes', False, None,
+                                       'default')
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
+                                         db=db, vg_obj=vg_obj)
+
+        with mock.patch.object(lvm_driver.target_driver,
+                               'terminate_connection') as mock_term_conn:
+
+            # Verify that terminate_connection is not called when there are
+            # multiple active attachments against the same host even when their
+            # mountpoints do not match.
+            self.assertTrue(lvm_driver.terminate_connection(
+                            vol, connector_mountpoint_1))
+            mock_term_conn.assert_not_called()
+
+            # Verify that terminate_connection is called against either host
+            # when only one active attachment per host is present.
+            vol.volume_attachment.objects.remove(attachment1)
+            self.assertFalse(lvm_driver.terminate_connection(
+                             vol, connector_mountpoint_2))
+            mock_term_conn.assert_called_with(vol, connector_mountpoint_2)
