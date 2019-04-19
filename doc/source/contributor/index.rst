@@ -26,7 +26,7 @@ APIs.
 Programming HowTos and Tutorials
 --------------------------------
 .. toctree::
-    :maxdepth: 3
+    :maxdepth: 2
 
     development.environment
     testing
@@ -42,6 +42,13 @@ Programming HowTos and Tutorials
     api.apache
     rolling.upgrades
     groups
+
+Managing the Development Cycle
+------------------------------
+.. toctree::
+   :maxdepth: 1
+
+   releasecycle
 
 Documentation Contribution
 --------------------------
