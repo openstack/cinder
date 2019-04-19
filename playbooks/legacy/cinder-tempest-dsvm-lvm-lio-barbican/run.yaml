@@ -13,12 +13,12 @@
           set -x
           cat > clonemap.yaml << EOF
           clonemap:
-            - name: openstack-infra/devstack-gate
+            - name: openstack/devstack-gate
               dest: devstack-gate
           EOF
           /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
-              https://git.openstack.org \
-              openstack-infra/devstack-gate
+              https://opendev.org \
+              openstack/devstack-gate
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
       environment: '{{ zuul | zuul_legacy_vars }}'
@@ -32,7 +32,7 @@
           CINDER_ISCSI_HELPER=lioadm
           CINDER_LVM_TYPE=thin
           enable_service barbican
-          enable_plugin barbican https://git.openstack.org/openstack/barbican
+          enable_plugin barbican https://opendev.org/openstack/barbican
 
           # Test with local file locks
           CINDER_COORDINATION_URL='file://$state_path'
