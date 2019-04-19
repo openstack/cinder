@@ -110,7 +110,7 @@
     post-run: playbooks/legacy/cinder-tempest-dsvm-lvm-lio-barbican/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/barbican
       - openstack/python-barbicanclient
       - openstack/tempest
@@ -134,7 +134,7 @@
     timeout: 7800
     vars:
       devstack_plugins:
-        rally-openstack: https://git.openstack.org/openstack/rally-openstack
+        rally-openstack: https://opendev.org/openstack/rally-openstack
       rally_task: rally-jobs/cinder.yaml
     required-projects:
       - openstack/rally-openstack
