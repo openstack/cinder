@@ -323,7 +323,7 @@
     post-run: playbooks/legacy/cinder-tempest-dsvm-lvm-lio/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/barbican
       - openstack/python-barbicanclient
       - openstack/tempest
