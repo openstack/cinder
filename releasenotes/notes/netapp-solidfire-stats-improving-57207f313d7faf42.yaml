@@ -1,0 +1,5 @@
+features:
+  - |
+    NetApp SolidFire now reports QoS and efficiency stats allowing operators
+    to use those values in consideration for weighting and filtering of their
+    backends.
