@@ -273,11 +273,12 @@ class HPE3PARCommon(object):
         4.0.9 - Set proper backend on subsequent operation, after group
                 failover. bug #1773069
         4.0.10 - Added retry in delete_volume. bug #1783934
+        4.0.11 - Added extra spec hpe3par:convert_to_base
 
 
     """
 
-    VERSION = "4.0.10"
+    VERSION = "4.0.11"
 
     stats = {}
 
@@ -331,7 +332,8 @@ class HPE3PARCommon(object):
                     'priority']
     qos_priority_level = {'low': 1, 'normal': 2, 'high': 3}
     hpe3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs',
-                          'flash_cache', 'compression', 'group_replication']
+                          'flash_cache', 'compression', 'group_replication',
+                          'convert_to_base']
 
     def __init__(self, config, active_backend_id=None):
         self.config = config
@@ -1797,6 +1799,16 @@ class HPE3PARCommon(object):
         else:
             return default
 
+    def _get_boolean_key_value(self, hpe3par_keys, key, default=False):
+        value = self._get_key_value(
+            hpe3par_keys, key, default)
+        if isinstance(value, six.string_types):
+            if value.lower() == 'true':
+                value = True
+            else:
+                value = False
+        return value
+
     def _get_qos_value(self, qos, key, default=None):
         if key in qos:
             return qos[key]
@@ -2086,6 +2098,10 @@ class HPE3PARCommon(object):
         hpe3par_tiramisu = (
             self._get_key_value(hpe3par_keys, 'group_replication'))
 
+        # by default, set convert_to_base to False
+        convert_to_base = self._get_boolean_key_value(
+            hpe3par_keys, 'convert_to_base', False)
+
         # if provisioning is not set use thin
         default_prov = self.valid_prov_values[0]
         prov_value = self._get_key_value(hpe3par_keys, 'provisioning',
@@ -2121,7 +2137,8 @@ class HPE3PARCommon(object):
                 'vvs_name': vvs_name, 'qos': qos,
                 'tpvv': tpvv, 'tdvv': tdvv,
                 'volume_type': volume_type,
-                'group_replication': hpe3par_tiramisu}
+                'group_replication': hpe3par_tiramisu,
+                'convert_to_base': convert_to_base}
 
     def get_volume_settings_from_type(self, volume, host=None):
         """Get 3PAR volume settings given a volume.
@@ -2624,13 +2641,23 @@ class HPE3PARCommon(object):
 
             self.client.createSnapshot(volume_name, snap_name, optional)
 
-            # Convert snapshot volume to base volume type
-            LOG.debug('Converting to base volume type: %s.',
-                      volume['id'])
-            model_update = self._convert_to_base_volume(volume)
+            # by default, set convert_to_base to False
+            convert_to_base = self._get_boolean_key_value(
+                hpe3par_keys, 'convert_to_base', False)
 
-            # Grow the snapshot if needed
+            LOG.debug("convert_to_base: %(convert)s",
+                      {'convert': convert_to_base})
+
             growth_size = volume['size'] - snapshot['volume_size']
+            LOG.debug("growth_size: %(size)s", {'size': growth_size})
+            if growth_size > 0 or convert_to_base:
+                # Convert snapshot volume to base volume type
+                LOG.debug('Converting to base volume type: %(id)s.',
+                          {'id': volume['id']})
+                model_update = self._convert_to_base_volume(volume)
+            else:
+                LOG.debug("volume is created as child of snapshot")
+
             if growth_size > 0:
                 try:
                     growth_size_mib = growth_size * units.Gi / units.Mi
@@ -2925,6 +2952,37 @@ class HPE3PARCommon(object):
                             msg = _("Snapshot has a temporary snapshot that "
                                     "can't be deleted at this time.")
                             raise exception.SnapshotIsBusy(message=msg)
+
+                    if snap.startswith('osv-'):
+                        LOG.info(
+                            "Found a volume %(name)s",
+                            {'name': snap})
+
+                        # Get details of original volume v1
+                        # These details would be required to form v2
+                        s1_detail = self.client.getVolume(snap_name)
+                        v1_name = s1_detail.get('copyOf')
+                        v1 = self.client.getVolume(v1_name)
+
+                        # Get details of volume v2,
+                        # which is child of snapshot s1
+                        v2_name = snap
+                        v2 = self.client.getVolume(v2_name)
+
+                        # Update v2 object as required for
+                        # _convert_to_base function
+                        v2['volume_type_id'] = \
+                            self._get_3par_vol_comment_value(
+                            v1['comment'], 'volume_type_id')
+
+                        v2['id'] = self._get_3par_vol_comment_value(
+                            v2['comment'], 'volume_id')
+
+                        v2['host'] = '#' + v1['userCPG']
+
+                        LOG.debug('Converting to base volume type: '
+                                  '%(id)s.', {'id': v2['id']})
+                        self._convert_to_base_volume(v2)
 
                 try:
                     self.client.deleteVolume(snap_name)
