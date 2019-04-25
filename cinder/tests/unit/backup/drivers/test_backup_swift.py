@@ -107,8 +107,9 @@ class BackupSwiftTestCase(test.TestCase):
                            {u'type': u'identity', u'name': u'keystone',
                             u'endpoints': [{
                                 u'publicURL': u'http://example.com'}]}]
-        self.ctxt = context.get_admin_context()
-        self.ctxt.service_catalog = service_catalog
+        self.ctxt = context.RequestContext(user_id=fake.USER_ID,
+                                           is_admin=True,
+                                           service_catalog=service_catalog)
 
         self.mock_object(swift, 'Connection',
                          fake_swift_client.FakeSwiftClient.Connection)
@@ -878,6 +879,13 @@ class BackupSwiftTestCase(test.TestCase):
 
         self.assertEqual('none', result[0])
         self.assertEqual(already_compressed_data, result[1])
+
+    @mock.patch('cinder.backup.drivers.swift.SwiftBackupDriver.initialize')
+    def test_no_user_context(self, mock_initialize):
+        # With no user_id the driver should not initialize itself.
+        admin_context = context.get_admin_context()
+        swift_dr.SwiftBackupDriver(admin_context)
+        mock_initialize.assert_not_called()
 
 
 class WindowsBackupSwiftTestCase(BackupSwiftTestCase):

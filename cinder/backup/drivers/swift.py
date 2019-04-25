@@ -155,7 +155,11 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                                 backup_default_container,
                                                 enable_progress_timer,
                                                 db)
-        if context:
+
+        # Do not intialize the instance created when the backup service
+        # starts up. The context will be missing information to do things
+        # like fetching endpoints from the service catalog.
+        if context and context.user_id:
             self.initialize()
 
     @staticmethod
