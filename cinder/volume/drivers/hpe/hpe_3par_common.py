@@ -2100,7 +2100,7 @@ class HPE3PARCommon(object):
 
         # by default, set convert_to_base to False
         convert_to_base = self._get_boolean_key_value(
-            hpe3par_keys, 'convert_to_base', False)
+            hpe3par_keys, 'convert_to_base')
 
         # if provisioning is not set use thin
         default_prov = self.valid_prov_values[0]
@@ -2643,7 +2643,7 @@ class HPE3PARCommon(object):
 
             # by default, set convert_to_base to False
             convert_to_base = self._get_boolean_key_value(
-                hpe3par_keys, 'convert_to_base', False)
+                hpe3par_keys, 'convert_to_base')
 
             LOG.debug("convert_to_base: %(convert)s",
                       {'convert': convert_to_base})
@@ -2971,9 +2971,9 @@ class HPE3PARCommon(object):
 
                         # Update v2 object as required for
                         # _convert_to_base function
-                        v2['volume_type_id'] = \
+                        v2['volume_type_id'] = (
                             self._get_3par_vol_comment_value(
-                            v1['comment'], 'volume_type_id')
+                                v1['comment'], 'volume_type_id'))
 
                         v2['id'] = self._get_3par_vol_comment_value(
                             v2['comment'], 'volume_id')
