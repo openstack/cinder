@@ -224,7 +224,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
             LOG.debug('NFS share %(share)s is not mounted at %(path)s',
                       {'share': share, 'path': path})
             return
-        for attempt in range(0, attempts):
+        for attempt in range(attempts):
             try:
                 self._execute('umount', path, run_as_root=True)
                 LOG.debug('NFS share %(share)s has been unmounted at %(path)s',
@@ -854,7 +854,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         :param volume: volume reference
         """
         share = self._get_volume_share(volume)
-        if isinstance(share, six.text_type):
+        if six.PY3:
             share = share.encode('utf-8')
         path = hashlib.md5(share).hexdigest()
         return os.path.join(self.mount_point_base, path)

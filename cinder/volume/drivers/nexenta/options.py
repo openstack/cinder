@@ -18,8 +18,6 @@ from oslo_config import cfg
 DEFAULT_ISCSI_PORT = 3260
 DEFAULT_HOST_GROUP = 'all'
 DEFAULT_TARGET_GROUP = 'all'
-DEFAULT_NMS_PATH = '/rest/nms'
-DEFAULT_NMS_LOCK = 'nms'
 
 NEXENTA_EDGE_OPTS = [
     cfg.StrOpt('nexenta_nbd_symlinks_dir',
@@ -114,28 +112,35 @@ NEXENTA_CONNECTION_OPTS = [
 ]
 
 NEXENTA_ISCSI_OPTS = [
-    cfg.StrOpt('nexenta_iscsi_target_portal_groups',
-               default='',
-               help='NexentaStor target portal groups'),
+    cfg.ListOpt('nexenta_iscsi_target_portal_groups',
+                default=[],
+                help='List of comma-separated NexentaStor4 iSCSI target '
+                     'portal groups'),
     cfg.StrOpt('nexenta_iscsi_target_portals',
                default='',
                help='Comma separated list of portals for NexentaStor5, in'
                     'format of IP1:port1,IP2:port2. Port is optional, '
                     'default=3260. Example: 10.10.10.1:3267,10.10.1.2'),
     cfg.StrOpt('nexenta_iscsi_target_host_group',
+               deprecated_for_removal=True,
+               deprecated_reason='NexentaStor cinder driver has been '
+                                 'refactored and host groups are created '
+                                 'dynamically. So the configuration '
+                                 'parameter nexenta_iscsi_target_host_group '
+                                 'is no longer used.',
                default='all',
                help='Group of hosts which are allowed to access volumes'),
     cfg.IntOpt('nexenta_iscsi_target_portal_port',
                default=3260,
-               help='Nexenta appliance iSCSI target portal port'),
+               help='NexentaStor iSCSI target portal port'),
     cfg.IntOpt('nexenta_luns_per_target',
                default=100,
-               help='Amount of LUNs per iSCSI target'),
+               help='Limit of LUNs per iSCSI target'),
     cfg.StrOpt('nexenta_volume',
                default='cinder',
                help='NexentaStor pool name that holds all volumes'),
     cfg.StrOpt('nexenta_target_prefix',
-               default='iqn.1986-03.com.sun:02:cinder',
+               default='iqn.2005-07.com.nexenta:01:cinder',
                help='iqn prefix for NexentaStor iSCSI targets'),
     cfg.StrOpt('nexenta_target_group_prefix',
                default='cinder',
@@ -170,13 +175,13 @@ NEXENTA_NFS_OPTS = [
                 help='Create volumes as QCOW2 files rather than raw files'),
     cfg.BoolOpt('nexenta_nms_cache_volroot',
                 default=True,
-                help=('If set True cache NexentaStor appliance volroot option '
-                      'value.'))
+                help='If set True cache NexentaStor appliance volroot option '
+                     'value.')
 ]
 
 NEXENTA_DATASET_OPTS = [
     cfg.StrOpt('nexenta_dataset_compression',
-               default='on',
+               default='lz4',
                choices=['on', 'off', 'gzip', 'gzip-1', 'gzip-2', 'gzip-3',
                         'gzip-4', 'gzip-5', 'gzip-6', 'gzip-7', 'gzip-8',
                         'gzip-9', 'lzjb', 'zle', 'lz4'],
@@ -192,7 +197,7 @@ NEXENTA_DATASET_OPTS = [
                default='',
                help='Human-readable description for the folder.'),
     cfg.IntOpt('nexenta_blocksize',
-               default=4096,
+               default=32768,
                help='Block size for datasets'),
     cfg.IntOpt('nexenta_ns5_blocksize',
                default=32,
@@ -200,6 +205,16 @@ NEXENTA_DATASET_OPTS = [
     cfg.BoolOpt('nexenta_sparse',
                 default=False,
                 help='Enables or disables the creation of sparse datasets'),
+    cfg.IntOpt('nexenta_migration_throttle',
+               min=1,
+               max=2047,
+               help='Throttle migration throughput in MegaBytes per second'),
+    cfg.StrOpt('nexenta_migration_service_prefix',
+               default='cinder-migration',
+               help='Prefix for migration service name'),
+    cfg.StrOpt('nexenta_migration_snapshot_prefix',
+               default='migration-snapshot',
+               help='Prefix for migration snapshot name'),
     cfg.StrOpt('nexenta_origin_snapshot_template',
                default='origin-snapshot-%s',
                help='Template string to generate origin name of clone'),

@@ -289,17 +289,24 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         volume_path = self._get_volume_path(volume)
         if isinstance(connector, dict) and 'initiator' in connector:
             connectors = []
-            for attachment in volume['volume_attachment']:
-                connectors.append(attachment.get('connector'))
+            if 'volume_attachment' in volume:
+                if isinstance(volume['volume_attachment'], list):
+                    for attachment in volume['volume_attachment']:
+                        if not isinstance(attachment, dict):
+                            continue
+                        if 'connector' not in attachment:
+                            continue
+                        connectors.append(attachment['connector'])
             if connectors.count(connector) > 1:
-                LOG.debug('Detected multiple connections on host '
-                          '%(host_name)s [%(host_ip)s] for volume '
-                          '%(volume)s, skip terminate volume connection',
-                          {'host_name': connector.get('host', 'unknown'),
+                LOG.debug('Detected %(count)s connections from host '
+                          '%(host_name)s (IP:%(host_ip)s) to volume '
+                          '%(volume)s, skip terminating connection',
+                          {'count': connectors.count(connector),
+                           'host_name': connector.get('host', 'unknown'),
                            'host_ip': connector.get('ip', 'unknown'),
                            'volume': volume['name']})
                 return True
-            host_iqn = connector.get('initiator')
+            host_iqn = connector['initiator']
             host_groups.append(options.DEFAULT_HOST_GROUP)
             host_group = self._get_host_group(host_iqn)
             if host_group is not None:
@@ -620,7 +627,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                 props['target_iqns'] = props_iqns
                 props['target_luns'] = props_luns
             else:
-                index = random.randrange(0, len(props_luns))
+                index = random.randrange(len(props_luns))
                 props['target_portal'] = props_portals[index]
                 props['target_iqn'] = props_iqns[index]
                 props['target_lun'] = props_luns[index]
@@ -685,7 +692,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                    'hostGroup': host_group}
         self.nef.mappings.create(payload)
         mapping = {}
-        for attempt in range(0, self.nef.retries):
+        for attempt in range(self.nef.retries):
             mapping = self.nef.mappings.list(payload)
             if mapping:
                 break
@@ -702,7 +709,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             props['target_iqns'] = props_iqns
             props['target_luns'] = props_luns
         else:
-            index = random.randrange(0, len(props_luns))
+            index = random.randrange(len(props_luns))
             props['target_portal'] = props_portals[index]
             props['target_iqn'] = props_iqns[index]
             props['target_lun'] = props_luns[index]
