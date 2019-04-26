@@ -21,7 +21,3 @@ class FakeBackupServiceWithVerify(driver.BackupDriverWithVerify,
                                   fake_service.FakeBackupService):
     def verify(self, backup):
         pass
-
-
-def get_backup_driver(context):
-    return FakeBackupServiceWithVerify(context)

@@ -93,7 +93,3 @@ class GlusterfsBackupDriver(posix.PosixBackupDriver):
                           run_as_root=True)
 
         return mount_path
-
-
-def get_backup_driver(context):
-    return GlusterfsBackupDriver(context)

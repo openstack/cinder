@@ -541,7 +541,3 @@ class TSMBackupDriver(driver.BackupDriver):
                        'err': err})
 
         LOG.debug('Delete %s finished.', backup['id'])
-
-
-def get_backup_driver(context):
-    return TSMBackupDriver(context)

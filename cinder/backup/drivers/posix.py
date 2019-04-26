@@ -148,7 +148,3 @@ class PosixBackupDriver(chunkeddriver.ChunkedBackupDriver):
 
     def get_extra_metadata(self, backup, volume):
         return None
-
-
-def get_backup_driver(context):
-    return PosixBackupDriver(context)

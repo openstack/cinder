@@ -392,13 +392,3 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
             LOG.exception("Can not get Swift capabilities during backup "
                           "driver initialization.")
             raise
-
-
-def get_backup_driver(context):
-    # NOTE(mdovgal): at the moment of backup service start we need to
-    #                get driver class instance and for swift at that moment
-    #                we can't get all necessary information like endpoints
-    #                from context, so we have exception as a result.
-    if context.user is None:
-        return SwiftBackupDriver(None)
-    return SwiftBackupDriver(context)
