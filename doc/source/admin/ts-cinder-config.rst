@@ -149,24 +149,6 @@ file. If the file is not present, create it with:
 
    # echo 'include /var/lib/cinder/volumes/ *' >> /etc/tgt/conf.d/cinder.conf
 
-No sign of attach call in the ``cinder-api`` log
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Problem
--------
-
-The attach call is unavailable, or not appearing in the ``cinder-api`` log.
-
-Solution
---------
-
-Adjust the ``nova.conf`` file, and make sure that your ``nova.conf``
-has this entry:
-
-.. code-block:: ini
-
-   volume_api_class=nova.volume.cinder.API
-
 Failed to create iscsi target error in the ``cinder-volume.log`` file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
