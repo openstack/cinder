@@ -41,7 +41,7 @@ model Cinder employs and how it can be modfied by adjusting policies.
 * Instructions for generating a sample ``policy.yaml`` file directly from the
   Cinder source code can be found in the file ``README-policy.generate.md``
   in the ``etc/cinder`` directory in the Cinder `source code repository
-  <http://git.openstack.org/cgit/openstack/cinder>`_ (or its `github mirror
+  <https://opendev.org/openstack/cinder>`_ (or its `github mirror
   <https://github.com/openstack/cinder>`_).
 
 Vocabulary Note

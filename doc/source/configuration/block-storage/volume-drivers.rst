@@ -6,7 +6,7 @@ To use different volume drivers for the cinder-volume service, use the
 parameters described in these sections.
 
 These volume drivers are included in the `Block Storage repository
-<https://git.openstack.org/cgit/openstack/cinder/>`_. To set a volume
+<https://opendev.org/openstack/cinder>`_. To set a volume
 driver, use the ``volume_driver`` flag.
 
 The default is:
