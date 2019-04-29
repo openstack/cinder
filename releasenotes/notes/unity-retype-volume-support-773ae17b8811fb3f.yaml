@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Dell EMC Unity driver: Add efficient retype support when new type uses the same Unity device.

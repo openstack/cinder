@@ -119,6 +119,10 @@ class MockClient(object):
         return test_client.MockResource(_id=lun_id, name=name)
 
     @staticmethod
+    def lun_has_snapshot(lun):
+        return lun.name == 'volume_has_snapshot'
+
+    @staticmethod
     def get_lun(name=None, lun_id=None):
         if lun_id is None:
             lun_id = 'lun_4'
@@ -214,7 +218,9 @@ class MockClient(object):
 
     @staticmethod
     def get_io_limit_policy(specs):
-        return None
+        mock_io_policy = (test_client.MockResource(name=specs.get('id'))
+                          if specs else None)
+        return mock_io_policy
 
     @staticmethod
     def extend_lun(lun_id, size_gib):
@@ -257,7 +263,7 @@ class MockClient(object):
                  'PoolC': 'pool_3'}
         return pools.get(name, None)
 
-    def migrate_lun(self, lun_id, dest_pool_id):
+    def migrate_lun(self, lun_id, dest_pool_id, provision=None):
         if dest_pool_id == 'pool_2':
             return True
         if dest_pool_id == 'pool_3':
@@ -409,6 +415,20 @@ def get_connection_info(adapter, hlu, host, connector):
     return {}
 
 
+def get_volume_type_qos_specs(qos_id):
+    if qos_id == 'qos':
+        return {'qos_specs': {'id': u'qos_type_id_1',
+                              'consumer': u'back-end',
+                              u'maxBWS': u'102400',
+                              u'maxIOPS': u'500'}}
+    if qos_id == 'qos_2':
+        return {'qos_specs': {'id': u'qos_type_id_2',
+                              'consumer': u'back-end',
+                              u'maxBWS': u'102402',
+                              u'maxIOPS': u'502'}}
+    return {'qos_specs': {}}
+
+
 def get_volume_type_extra_specs(type_id):
     if type_id == 'thick':
         return {'provisioning:type': 'thick',
@@ -419,6 +439,9 @@ def get_volume_type_extra_specs(type_id):
     if type_id == 'tier_lowest':
         return {'storagetype:tiering': 'LowestAvailable',
                 'fast_support': '<is> True'}
+    if type_id == 'compressed':
+        return {'provisioning:type': 'compressed',
+                'compression_support': '<is> True'}
     return {}
 
 
@@ -439,6 +462,8 @@ def patch_for_unity_adapter(func):
                 new=get_volume_type_extra_specs)
     @mock.patch('cinder.volume.group_types.get_group_type_specs',
                 new=get_group_type_specs)
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs',
+                new=get_volume_type_qos_specs)
     @mock.patch('cinder.volume.drivers.dell_emc.unity.utils.'
                 'get_backend_qos_specs',
                 new=get_backend_qos_specs)
@@ -600,6 +625,65 @@ class CommonAdapterTest(test.TestCase):
     def test_delete_volume(self):
         volume = MockOSResource(provider_location='id^lun_4')
         self.adapter.delete_volume(volume)
+
+    @patch_for_unity_adapter
+    def test_retype_volume_has_snapshot(self):
+        volume = MockOSResource(name='volume_has_snapshot', size=5,
+                                host='HostA@BackendB#PoolB')
+        ctxt = None
+        diff = None
+        new_type = {'name': u'type01', 'id': 'compressed'}
+        host = {'host': 'HostA@BackendB#PoolB'}
+        result = self.adapter.retype(ctxt, volume, new_type, diff, host)
+        self.assertFalse(result)
+
+    @patch_for_unity_adapter
+    def test_retype_volume_thick_to_compressed(self):
+        volume = MockOSResource(name='thick_volume', size=5,
+                                host='HostA@BackendB#PoolA',
+                                provider_location='id^lun_33')
+        ctxt = None
+        diff = None
+        new_type = {'name': u'compressed_type', 'id': 'compressed'}
+        host = {'host': 'HostA@BackendB#PoolB'}
+        result = self.adapter.retype(ctxt, volume, new_type, diff, host)
+        self.assertEqual((True, {}), result)
+
+    @patch_for_unity_adapter
+    def test_retype_volume_to_compressed(self):
+        volume = MockOSResource(name='thin_volume', size=5,
+                                host='HostA@BackendB#PoolB')
+        ctxt = None
+        diff = None
+        new_type = {'name': u'compressed_type', 'id': 'compressed'}
+        host = {'host': 'HostA@BackendB#PoolB'}
+        result = self.adapter.retype(ctxt, volume, new_type, diff, host)
+        self.assertTrue(result)
+
+    @patch_for_unity_adapter
+    def test_retype_volume_to_qos(self):
+        volume = MockOSResource(name='thin_volume', size=5,
+                                host='HostA@BackendB#PoolB')
+        ctxt = None
+        diff = None
+        new_type = {'name': u'qos_type', 'id': 'qos'}
+        host = {'host': 'HostA@BackendB#PoolB'}
+        result = self.adapter.retype(ctxt, volume, new_type,
+                                     diff, host)
+        self.assertTrue(result)
+
+    @patch_for_unity_adapter
+    def test_retype_volume_revert_qos(self):
+        volume = MockOSResource(name='qos_volume', size=5,
+                                host='HostA@BackendB#PoolB',
+                                volume_type_id='qos_2')
+        ctxt = None
+        diff = None
+        new_type = {'name': u'no_qos_type', 'id': ''}
+        host = {'host': 'HostA@BackendB#PoolB'}
+        result = self.adapter.retype(ctxt, volume, new_type,
+                                     diff, host)
+        self.assertTrue(result)
 
     def test_get_pool_stats(self):
         stats_list = self.adapter.get_pools_stats()

@@ -175,6 +175,9 @@ class MockAdapter(object):
             return group_update, volumes_update
         return group_update, None
 
+    def retype(self, ctxt, volume, new_type, diff, host):
+        return True
+
 
 class MockReplicationManager(object):
     def __init__(self):
@@ -317,6 +320,17 @@ class UnityDriverTest(unittest.TestCase):
                                          volume,
                                          'HostA@BackendB#PoolC')
         self.assertEqual((True, {}), ret)
+
+    def test_retype_volume(self):
+        volume = self.get_volume()
+        new_type = {'name': u'type01', 'qos_specs_id': 'test_qos_id',
+                    'extra_specs': {},
+                    'id': u'd67c4480-a61b-44c0-a58b-24c0357cadeb'}
+        diff = None
+        ret = self.driver.retype(self.get_context(),
+                                 volume, new_type, diff,
+                                 'HostA@BackendB#PoolC')
+        self.assertTrue(ret)
 
     def test_create_snapshot(self):
         snapshot = self.get_snapshot()

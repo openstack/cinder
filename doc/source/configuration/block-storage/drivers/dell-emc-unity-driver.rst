@@ -296,12 +296,29 @@ triggered. Instead, host-assisted volume migration will be triggered:
   the storage-assisted volume migration of vol_2 will not be triggered.
 
 
+Retype volume support
+~~~~~~~~~~~~~~~~~~~~~
+
+Unity driver supports to change a volume's type after its creation.
+
+.. code-block:: console
+
+   $ cinder retype [--migration-policy <never|on-demand>] <volume> <volume-type>
+
+The --migration-policy is not enabled by default.
+Some retype operations will require migration based on back-end support.
+In these cases, the storage-assisted migration will be triggered regardless
+the --migration-policy. For examples: retype between 'thin' and 'thick', retype
+between 'thick' and 'compressed', retype to type(s) current host doesn't
+support.
+
+
 QoS support
 ~~~~~~~~~~~
 
 Unity driver supports ``maxBWS`` and ``maxIOPS`` specs for the back-end
-consumer type. ``maxBWS`` represents the ``Maximum IO/S`` absolute limit,
-``maxIOPS`` represents the ``Maximum Bandwidth (KBPS)`` absolute limit on the
+consumer type. ``maxBWS`` represents the ``Maximum Bandwidth (KBPS)`` absolute
+limit, ``maxIOPS`` represents the ``Maximum IO/S`` absolute limit on the
 Unity respectively.
 
 
@@ -654,4 +671,5 @@ to track specific Block Storage command logs.
    .. code-block:: console
 
       # grep "req-3a459e0e-871a-49f9-9796-b63cc48b5015" cinder-volume.log
+
 
