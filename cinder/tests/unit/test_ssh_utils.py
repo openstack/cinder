@@ -375,13 +375,13 @@ class SSHPoolTestCase(test.TestCase):
         with sshpool.item():
             pass
         self.assertEqual(4, sshpool.current_size)
-        fake_close.asssert_called_once_with(mock.call())
+        fake_close.assert_called_once_with()
         fake_close.reset_mock()
         sshpool.resize(3)
         with sshpool.item():
             pass
         self.assertEqual(3, sshpool.current_size)
-        fake_close.asssert_called_once_with(mock.call())
+        fake_close.assert_called_once_with()
 
     @mock.patch('six.moves.builtins.open')
     @mock.patch('os.path.isfile', return_value=True)
