@@ -191,6 +191,7 @@ class Service(service.Service):
                 service_ref.cluster_name = cluster
             service_ref.save()
             Service.service_id = service_ref.id
+            self.origin_service_id = service_ref.id
         except exception.NotFound:
             self._create_service_ref(ctxt, manager_class.RPC_API_VERSION)
             # Service entry Entry didn't exist because it was manually removed
@@ -217,6 +218,12 @@ class Service(service.Service):
 
         if self.coordination:
             coordination.COORDINATOR.start()
+
+        # NOTE(yikun): When re-spawning child process, we should set the class
+        # attribute back using the origin service_id, otherwise,
+        # the Service.service_id will be inherited from the parent process,
+        # and will be recorded as the last started service id by mistaken.
+        Service.service_id = self.origin_service_id
 
         self.manager.init_host(added_to_cluster=self.added_to_cluster,
                                service_id=Service.service_id)
@@ -342,6 +349,7 @@ class Service(service.Service):
         service_ref = objects.Service(context=context, **kwargs)
         service_ref.create()
         Service.service_id = service_ref.id
+        self.origin_service_id = service_ref.id
         self._ensure_cluster_exists(context, service_ref)
         # If we have updated the service_ref with replication data from
         # the cluster it will be saved.
