@@ -1290,7 +1290,3 @@ class CephBackupDriver(driver.BackupDriver):
             LOG.debug("Delete of backup '%(backup)s' for volume "
                       "'%(volume)s' finished.",
                       {'backup': backup.id, 'volume': backup.volume_id})
-
-
-def get_backup_driver(context):
-    return CephBackupDriver(context)

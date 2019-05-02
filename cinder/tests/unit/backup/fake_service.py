@@ -32,7 +32,3 @@ class FakeBackupService(driver.BackupDriver):
         # otherwise we return without error
         if backup['display_name'] == 'fail_on_delete':
             raise IOError('fake')
-
-
-def get_backup_driver(context):
-    return FakeBackupService(context)

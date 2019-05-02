@@ -394,7 +394,3 @@ class GoogleMediaIoBaseDownload(http.MediaIoBaseDownload):
 
         else:
             raise http.HttpError(resp, content, uri=self._uri)
-
-
-def get_backup_driver(context):
-    return GoogleBackupDriver(context)
