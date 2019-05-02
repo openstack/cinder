@@ -329,19 +329,13 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     def check_for_setup_error(self):
         pass
 
-    def get_volume_stats(self, refresh=False):
-        """Obtain status of the volume service.
+    def _update_volume_stats(self):
+        if self.configuration.safe_get('vmware_enable_volume_stats'):
+            self._stats = self._get_volume_stats()
+        else:
+            self._stats = self._get_fake_stats()
 
-        :param refresh: Whether to get refreshed information
-        """
-        if not self._stats or refresh:
-            if self.configuration.safe_get('vmware_enable_volume_stats'):
-                self._stats = self._get_volume_stats(refresh)
-            else:
-                self._stats = self._get_fake_stats(refresh)
-        return self._stats
-
-    def _get_fake_stats(self, refresh=False):
+    def _get_fake_stats(self):
         """Provide fake stats to the scheduler.
 
         :param refresh: Whether to get refreshed information
@@ -361,7 +355,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             self._stats = data
         return self._stats
 
-    def _get_volume_stats(self, refresh=False):
+    def _get_volume_stats(self):
         """Fetch the stats about the backend.
 
         This can be slow at scale, but allows
@@ -395,6 +389,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 break
         data['total_capacity_gb'] = round(global_capacity / units.Gi)
         data['free_capacity_gb'] = round(global_free / units.Gi)
+        self._stats = data
         return data
 
     def _get_datastore_summaries(self):

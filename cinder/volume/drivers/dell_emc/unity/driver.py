@@ -226,17 +226,7 @@ class UnityDriver(driver.ManageableVD,
         zm_utils.remove_fc_zone(conn_info)
         return conn_info
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        :param refresh: True to get updated data
-        """
-        if refresh:
-            self.update_volume_stats()
-
-        return self._stats
-
-    def update_volume_stats(self):
+    def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
         LOG.debug("Updating volume stats.")
         stats = self.adapter.update_volume_stats()

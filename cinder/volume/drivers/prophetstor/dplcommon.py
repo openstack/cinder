@@ -1403,16 +1403,6 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
             LOG.info('Flexvisor succeeded to delete snapshot %(id)s.',
                      {'id': snapshot['id']})
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self._update_volume_stats()
-
-        return self._stats
-
     def _get_pools(self):
         pools = []
         qpools = []

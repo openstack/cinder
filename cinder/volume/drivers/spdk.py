@@ -232,12 +232,6 @@ class SPDKDriver(driver.VolumeDriver):
 
         self._delete_bdev(volume.name)
 
-    def get_volume_stats(self, refresh=False):
-        if refresh:
-            self._update_volume_stats()
-
-        return self._stats
-
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
 

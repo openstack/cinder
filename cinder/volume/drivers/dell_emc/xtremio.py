@@ -638,15 +638,6 @@ class XtremIOVolumeDriver(san.SanDriver):
                        }
         self._stats.update(self.client.get_extra_capabilities())
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self._update_volume_stats()
-        return self._stats
-
     def manage_existing(self, volume, existing_ref, is_snapshot=False):
         """Manages an existing LV."""
         lv_name = existing_ref['source-name']

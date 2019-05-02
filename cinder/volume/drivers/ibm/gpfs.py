@@ -838,17 +838,6 @@ class GPFSDriver(driver.CloneableImageVD,
     def terminate_connection(self, volume, connector, **kwargs):
         pass
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, or stats have never been updated, run update
-        the stats first.
-        """
-        if not self._stats or refresh:
-            self._update_volume_stats()
-
-        return self._stats
-
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
@@ -1551,17 +1540,6 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
     def do_setup(self, context):
         super(GPFSNFSDriver, self).do_setup(context)
         self._context = context
-
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, or stats have never been updated, run update
-        the stats first.
-        """
-        if not self._stats or refresh:
-            self._update_volume_stats()
-
-        return self._stats
 
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""

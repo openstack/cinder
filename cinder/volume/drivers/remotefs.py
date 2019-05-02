@@ -549,16 +549,6 @@ class RemoteFSDriver(driver.BaseVD):
         """Disallow connection from connector."""
         pass
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, update the stats first.
-        """
-        if refresh or not self._stats:
-            self._update_volume_stats()
-
-        return self._stats
-
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 

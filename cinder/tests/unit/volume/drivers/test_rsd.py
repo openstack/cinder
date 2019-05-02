@@ -1014,14 +1014,6 @@ class RSDDriverTestCase(test_driver.BaseDriverTestCase):
         self.rsd_client.delete_vol_or_snap.assert_called()
         self.assertEqual(2, self.rsd_client.delete_vol_or_snap.call_count)
 
-    def test_get_volume_stats(self):
-        ret_tuple = (25.0, 60.0, 35.0, 6)
-        self.rsd_client.get_stats = mock.Mock(return_value=ret_tuple)
-
-        stats = self.volume.driver.get_volume_stats()
-
-        self.assertEqual({}, stats)
-
     def test_get_volume_stats_refresh(self):
         ret_tuple = (25.0, 60.0, 35.0, 6)
         self.rsd_client.get_stats = mock.Mock(return_value=ret_tuple)

@@ -207,18 +207,22 @@ class PowerMaxFCTest(test.TestCase):
 
     def test_get_volume_stats(self):
         with mock.patch.object(
-                self.driver, 'update_volume_stats') as mock_update:
-            # no refresh
-            self.driver.get_volume_stats()
-            mock_update.assert_not_called()
+                self.driver, '_update_volume_stats') as mock_update:
+
             # with refresh
             self.driver.get_volume_stats(True)
+
+            # set fake stats
+            self.driver._stats['driver_version'] = self.driver.VERSION
+            # no refresh
+            self.driver.get_volume_stats()
+
             mock_update.assert_called_once_with()
 
     def test_update_volume_stats(self):
         with mock.patch.object(self.common, 'update_volume_stats',
                                return_value={}) as mock_update:
-            self.driver.update_volume_stats()
+            self.driver._update_volume_stats()
             mock_update.assert_called_once_with()
 
     def test_check_for_setup_error(self):

@@ -1012,17 +1012,6 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         """Remove the specified volume from Cinder management."""
         pass
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If we haven't gotten stats yet or 'refresh' is True,
-        run update the stats first.
-        """
-        if not self._stats or refresh:
-            self._update_volume_stats()
-
-        return self._stats
-
     # ## Group method ## #
     def create_group(self, context, group):
         """Create a group.
