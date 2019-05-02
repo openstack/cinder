@@ -176,6 +176,28 @@ By default, auto-eradication is disabled and all deleted volumes, snapshots,
 and consistency groups are retained on the Pure Storage array in a recoverable
 state for 24 hours from time of deletion.
 
+Setting host personality
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The host personality determines how the Purity system tunes the protocol used
+between the array and the initiator. To ensure the array works optimally with
+the host, set the personality to the name of the host operating or virtual
+memory system. Valid values are aix, esxi, hitachi-vsp, hpux, oracle-vm-server,
+solaris, and vms. If your system is not listed as one of the valid host
+personalities, do not set the option. By default, the host personality is not
+set.
+
+To set the host personality, modify the following option in the ``cinder.conf``
+file:
+
+.. code-block:: ini
+
+   pure_host_personality = <personality>
+
+.. note::
+   ``pure_host_personality`` is available from Purity REST API version 1.14,
+   and affects only newly-created hosts.
+
 SSL certification
 ~~~~~~~~~~~~~~~~~
 
