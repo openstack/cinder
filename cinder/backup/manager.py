@@ -45,7 +45,6 @@ from oslo_utils import importutils
 from oslo_utils import timeutils
 import six
 
-from cinder.backup import driver
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder import exception
@@ -930,20 +929,6 @@ class BackupManager(manager.ThreadPoolManager):
             backup.update(backup_options)
             backup.save()
 
-            # Verify backup
-            try:
-                if isinstance(backup_service, driver.BackupDriverWithVerify):
-                    backup_service.verify(backup.id)
-                else:
-                    LOG.warning('Backup service %(service)s does not '
-                                'support verify. Backup id %(id)s is '
-                                'not verified. Skipping verify.',
-                                {'service': self.driver_name,
-                                 'id': backup.id})
-            except exception.InvalidBackup as err:
-                with excutils.save_and_reraise_exception():
-                    self._update_backup_error(backup, six.text_type(err))
-
             # Update the backup's status
             backup.update({"status": fields.BackupStatus.AVAILABLE})
             backup.save()
@@ -958,7 +943,6 @@ class BackupManager(manager.ThreadPoolManager):
         :param backup: The backup object for reset status operation
         :param status: The status to be set
         :raises InvalidBackup:
-        :raises BackupVerifyUnsupportedDriver:
         :raises AttributeError:
         """
         LOG.info('Reset backup status started, backup_id: '
@@ -977,56 +961,8 @@ class BackupManager(manager.ThreadPoolManager):
             raise exception.InvalidBackup(reason=err)
 
         if backup.service is not None:
-            # Verify backup
-            try:
-                # check whether the backup is ok or not
-                if (status == fields.BackupStatus.AVAILABLE and
-                        backup['status'] != fields.BackupStatus.RESTORING):
-                    # check whether we could verify the backup is ok or not
-                    backup_service = self.service(context)
-                    if isinstance(backup_service,
-                                  driver.BackupDriverWithVerify):
-                        backup_service.verify(backup.id)
-                        backup.status = status
-                        backup.save()
-                    # driver does not support verify function
-                    else:
-                        msg = (_('Backup service %(configured_service)s '
-                                 'does not support verify. Backup id'
-                                 ' %(id)s is not verified. '
-                                 'Skipping verify.') %
-                               {'configured_service': self.driver_name,
-                                'id': backup.id})
-                        raise exception.BackupVerifyUnsupportedDriver(
-                            reason=msg)
-                # reset status to error or from restoring to available
-                else:
-                    if (status == fields.BackupStatus.ERROR or
-                        (status == fields.BackupStatus.AVAILABLE and
-                            backup.status == fields.BackupStatus.RESTORING)):
-                        backup.status = status
-                        backup.save()
-            except exception.InvalidBackup:
-                with excutils.save_and_reraise_exception():
-                    LOG.error("Backup id %s is not invalid. Skipping reset.",
-                              backup.id)
-            except exception.BackupVerifyUnsupportedDriver:
-                with excutils.save_and_reraise_exception():
-                    LOG.error('Backup service %(configured_service)s '
-                              'does not support verify. Backup id '
-                              '%(id)s is not verified. '
-                              'Skipping verify.',
-                              {'configured_service': self.driver_name,
-                               'id': backup.id})
-            except AttributeError:
-                msg = (_('Backup service %(service)s does not support '
-                         'verify. Backup id %(id)s is not verified. '
-                         'Skipping reset.') %
-                       {'service': self.driver_name,
-                        'id': backup.id})
-                LOG.error(msg)
-                raise exception.BackupVerifyUnsupportedDriver(
-                    reason=msg)
+            backup.status = status
+            backup.save()
 
             # Needs to clean temporary volumes and snapshots.
             try:

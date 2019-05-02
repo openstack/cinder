@@ -777,10 +777,6 @@ class BackupMetadataNotFound(NotFound):
                 "key %(metadata_key)s.")
 
 
-class BackupVerifyUnsupportedDriver(BackupDriverException):
-    message = _("Unsupported backup verify driver")
-
-
 class VolumeMetadataBackupExists(BackupDriverException):
     message = _("Metadata backup already exists for this volume")
 
