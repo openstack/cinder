@@ -2034,3 +2034,26 @@ class SCCommonDriver(driver.ManageableVD,
             raise exception.Invalid(reason=msg)
 
         return True
+
+    def is_multiattach_to_host(self, volume_attachment, host_name):
+        # When multiattach is enabled, a volume could be attached to two or
+        # more instances which are hosted on one nova host.
+        # Because the backend cannot recognize the volume is attached to two
+        # or more instances, we should keep the volume attached to the nova
+        # host until the volume is detached from the last instance.
+        LOG.info('is_multiattach_to_host: volume_attachment %s.',
+                 volume_attachment)
+        LOG.info('is_multiattach_to_host: host_name %s.', host_name)
+        if not volume_attachment:
+            return False
+
+        for a in volume_attachment:
+            LOG.debug('attachment %s.', a)
+
+        attachment = [a for a in volume_attachment
+                      if a['attach_status'] ==
+                      fields.VolumeAttachStatus.ATTACHED
+                      and a['attached_host'] == host_name]
+        LOG.info('is_multiattach_to_host: attachment %s.', attachment)
+
+        return len(attachment) > 1
