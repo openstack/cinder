@@ -105,7 +105,6 @@ CONF.register_opts(nas_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 
 
-# TODO(bluex): remove when drivers stop using it
 def locked_volume_id_operation(f, external=False):
     """Lock decorator for volume operations.
 
