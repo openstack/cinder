@@ -14,9 +14,9 @@
 #    under the License.
 """Unit tests for OpenStack Cinder volume drivers."""
 
-import mock
-
 import ast
+import copy
+import mock
 
 from oslo_utils import units
 
@@ -3509,9 +3509,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        volume_type_hos = self.volume_type_hos
-        volume_type_hos['extra_specs']['convert_to_base'] = False
-        _mock_volume_types.return_value = volume_type_hos
+        _mock_volume_types.return_value = self.volume_type_hos
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -3553,7 +3551,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             'getVolume.return_value': {}
         }
         mock_client = self.setup_driver(mock_conf=conf)
-        volume_type_hos = self.volume_type_hos
+        volume_type_hos = copy.deepcopy(self.volume_type_hos)
         volume_type_hos['extra_specs']['convert_to_base'] = True
         _mock_volume_types.return_value = volume_type_hos
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -3606,9 +3604,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             'getVolume.return_value': {}
         }
         mock_client = self.setup_driver(mock_conf=conf)
-        volume_type_hos = self.volume_type_hos
-        volume_type_hos['extra_specs']['convert_to_base'] = False
-        _mock_volume_types.return_value = volume_type_hos
+        _mock_volume_types.return_value = self.volume_type_hos
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
@@ -3661,7 +3657,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             'getVolume.return_value': {}
         }
         mock_client = self.setup_driver(mock_conf=conf)
-        volume_type_hos = self.volume_type_hos
+        volume_type_hos = copy.deepcopy(self.volume_type_hos)
         volume_type_hos['extra_specs']['convert_to_base'] = True
         _mock_volume_types.return_value = volume_type_hos
         with mock.patch.object(hpecommon.HPE3PARCommon,
