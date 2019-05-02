@@ -20,6 +20,7 @@ from oslo_utils import excutils
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.sc import storagecenter_common
 
@@ -251,8 +252,11 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
         raise exception.VolumeBackendAPIException(
             _('Terminate connection failed'))
 
+    @utils.synchronized('{self.driver_prefix}-{volume.id}')
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         # Special case
+        # None `connector` indicates force detach, then detach all even if the
+        # volume is multi-attached.
         if connector is None:
             return self.force_detach(volume)
 
@@ -261,9 +265,18 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
         volume_name = volume.get('id')
         provider_id = volume.get('provider_id')
         initiator_name = None if not connector else connector.get('initiator')
-        LOG.debug('Terminate connection: %(vol)s:%(initiator)s',
-                  {'vol': volume_name,
-                   'initiator': initiator_name})
+        LOG.info('Volume in terminate connection: %(vol)s',
+                 {'vol': volume})
+
+        is_multiattached = (hasattr(volume, 'volume_attachment') and
+                            self.is_multiattach_to_host(
+                                volume.get('volume_attachment'),
+                                connector['host']))
+        if is_multiattached:
+            LOG.info('Cannot terminate connection: '
+                     '%(vol)s is multiattached.',
+                     {'vol': volume_name})
+            return True
 
         with self._client.open_connection() as api:
             try:
@@ -289,7 +302,7 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
                     scserver = (None if not initiator_name else
                                 api.find_server(initiator_name, ssn))
 
-                    # If we have a server and a volume lets pull them apart.
+                    # If we have a server and a volume lets pull them apart
                     if ((scserver and
                          api.unmap_volume(scvolume, scserver) is True) or
                        (not scserver and api.unmap_all(scvolume))):
@@ -309,6 +322,7 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
         rtn = True
         secondaryvol = api.get_volume(
             sclivevolume['secondaryVolume']['instanceId'])
+
         if secondaryvol:
             if initiatorname:
                 # Find our server.

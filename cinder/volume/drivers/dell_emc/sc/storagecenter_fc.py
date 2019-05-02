@@ -20,6 +20,7 @@ from oslo_utils import excutils
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.sc import storagecenter_common
 from cinder.zonemanager import utils as fczm_utils
@@ -240,6 +241,7 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
                 'data': {}}
         return info
 
+    @utils.synchronized('{self.driver_prefix}-{volume.id}')
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         # Special case
         if connector is None:
@@ -249,6 +251,20 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
         volume_name = volume.get('id')
         provider_id = volume.get('provider_id')
         LOG.debug('Terminate connection: %s', volume_name)
+        LOG.debug('Volume details %s', volume)
+
+        # None `connector` indicates force detach, then detach all even if the
+        # volume is multi-attached.
+        is_multiattached = (hasattr(volume, 'volume_attachment') and
+                            self.is_multiattach_to_host(
+                                volume.get('volume_attachment'),
+                                connector['host']))
+        if is_multiattached:
+            LOG.info('Cannot terminate connection: '
+                     '%(vol)s is multiattached.',
+                     {'vol': volume_name})
+
+            return True
 
         with self._client.open_connection() as api:
             try:
@@ -292,7 +308,6 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
                         raise exception.VolumeBackendAPIException(
                             data=_('Terminate connection failed'))
 
-                    # basic return info...
                     info = {'driver_volume_type': 'fibre_channel',
                             'data': {}}
 
