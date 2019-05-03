@@ -15,6 +15,7 @@
 
 from oslo_utils import strutils
 from oslo_utils import timeutils
+from six.moves import http_client
 
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
@@ -37,7 +38,7 @@ class WorkerController(wsgi.Controller):
         self.sch_api = sch_rpc.SchedulerAPI()
 
     @wsgi.Controller.api_version(mv.WORKERS_CLEANUP)
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     @validation.schema(workers.cleanup)
     def cleanup(self, req, body=None):
         """Do the cleanup on resources from a specific service/host/node."""
