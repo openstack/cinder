@@ -133,7 +133,7 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
 
     def test_invalid_target_protocol(self):
         self.configuration.target_protocol = 'iser'
-        self.assertRaises(exception.UnsupportedNVMETProtocol,
+        self.assertRaises(nvmeof.UnsupportedNVMETProtocol,
                           FakeNVMeOFDriver,
                           root_helper=utils.get_root_helper(),
                           configuration=self.configuration)
