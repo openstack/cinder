@@ -115,7 +115,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
 
     @staticmethod
     def get_driver_options():
-        return brcd_opts
+        return fabric_opts.brcd_zone_opts + brcd_opts
 
     @lockutils.synchronized('brcd', 'fcfabric-', True)
     def add_connection(self, fabric, initiator_target_map, host_name=None,
