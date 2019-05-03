@@ -71,10 +71,6 @@ from cinder import ssh_utils as cinder_sshutils
 from cinder.transfer import api as cinder_transfer_api
 from cinder.volume import api as cinder_volume_api
 from cinder.volume import driver as cinder_volume_driver
-from cinder.volume.drivers.datacore import driver as \
-    cinder_volume_drivers_datacore_driver
-from cinder.volume.drivers.datacore import iscsi as \
-    cinder_volume_drivers_datacore_iscsi
 from cinder.volume.drivers.datera import datera_iscsi as \
     cinder_volume_drivers_datera_dateraiscsi
 from cinder.volume.drivers.dell_emc.powermax import common as \
@@ -258,8 +254,6 @@ def list_opts():
                 cinder_volume_driver.scst_opts,
                 cinder_volume_driver.backup_opts,
                 cinder_volume_driver.image_opts,
-                cinder_volume_drivers_datacore_driver.datacore_opts,
-                cinder_volume_drivers_datacore_iscsi.datacore_iscsi_opts,
                 cinder_volume_drivers_fusionstorage_dsware.volume_opts,
                 cinder_volume_drivers_inspur_as13000_as13000driver.
                 inspur_as13000_opts,
