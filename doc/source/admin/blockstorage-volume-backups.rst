@@ -133,7 +133,7 @@ appropriate for your environment:
    backup_sha_block_size_bytes = 32768
    backup_file_size = 1999994880
 
-The option ``backup_compression_algorithm`` can be set to ``bz2`` or ``None``.
+The option ``backup_compression_algorithm`` can be set to ``bz2`` or ``none``.
 The latter can be a useful setting when the server providing the share for the
 backup repository itself performs deduplication or compression on the backup
 data.
