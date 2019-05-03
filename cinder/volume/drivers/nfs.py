@@ -471,8 +471,8 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
             try:
                 os.rename(current_path, original_path)
             except OSError:
-                LOG.error('Unable to rename the logical volume '
-                          'for volume: %s', volume.id)
+                LOG.exception('Unable to rename the logical volume '
+                              'for volume: %s', volume.id)
                 # If the rename fails, _name_id should be set to the new
                 # volume id and provider_location should be set to the
                 # one from the new volume as well.
