@@ -95,7 +95,7 @@ class FakeGoogleDiscovery(object):
         pass
 
     @classmethod
-    def Build(self, *args, **kargs):
+    def Build(cls, *args, **kargs):
         return FakeDiscoveryBuild()
 
 
@@ -116,7 +116,7 @@ class FakeGoogleCredentials(object):
         pass
 
     @classmethod
-    def from_stream(self, *args, **kwargs):
+    def from_stream(cls, *args, **kwargs):
         pass
 
 
