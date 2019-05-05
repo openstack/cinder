@@ -428,14 +428,12 @@ class NetAppNfsDriver(driver.ManageableVD,
         """Clean the image cache files in cache of space crunch."""
         try:
             LOG.debug('Image cache cleaning in progress.')
-            thres_size_perc_start =\
-                self.configuration.thres_avl_size_perc_start
-            thres_size_perc_stop = \
-                self.configuration.thres_avl_size_perc_stop
+            thres_size_perc_start = (
+                self.configuration.thres_avl_size_perc_start)
+            thres_size_perc_stop = self.configuration.thres_avl_size_perc_stop
             for share in getattr(self, '_mounted_shares', []):
                 try:
-                    total_size, total_avl = \
-                        self._get_capacity_info(share)
+                    total_size, total_avl = self._get_capacity_info(share)
                     avl_percent = int((float(total_avl) / total_size) * 100)
                     if avl_percent <= thres_size_perc_start:
                         LOG.info('Cleaning cache for share %s.', share)

@@ -78,8 +78,7 @@ class APIRouter(cinder.api.openstack.APIRouter):
                        action='update_all',
                        conditions={"method": ['PUT']})
 
-        self.resources['volume_metadata'] = \
-            volume_metadata.create_resource()
+        self.resources['volume_metadata'] = volume_metadata.create_resource()
         volume_metadata_controller = self.resources['volume_metadata']
 
         mapper.resource("volume_metadata", "metadata",

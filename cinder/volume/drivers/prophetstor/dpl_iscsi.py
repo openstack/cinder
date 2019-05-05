@@ -97,10 +97,9 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
                             break
 
                     if properties['target_portal'] != '':
-                        properties['target_lun'] = \
-                            int(tgInfo['logical_unit_number'])
-                        properties['target_iqn'] = \
-                            tgInfo['target_identifier']
+                        properties['target_lun'] = int(
+                            tgInfo['logical_unit_number'])
+                        properties['target_iqn'] = tgInfo['target_identifier']
                         break
 
         if not (ret == 0 or properties['target_portal']):

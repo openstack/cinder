@@ -35,10 +35,8 @@ class ISCSITarget(driver.Target):
 
     def __init__(self, *args, **kwargs):
         super(ISCSITarget, self).__init__(*args, **kwargs)
-        self.iscsi_target_prefix = \
-            self.configuration.safe_get('target_prefix')
-        self.iscsi_protocol = \
-            self.configuration.safe_get('target_protocol')
+        self.iscsi_target_prefix = self.configuration.safe_get('target_prefix')
+        self.iscsi_protocol = self.configuration.safe_get('target_protocol')
         self.protocol = 'iSCSI'
         self.volumes_dir = self.configuration.safe_get('volumes_dir')
 
