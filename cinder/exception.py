@@ -1341,10 +1341,6 @@ class AttachmentSpecsNotFound(NotFound):
                 "key %(specs_key)s.")
 
 
-class InvalidAttachment(Invalid):
-    message = _("Invalid attachment: %(reason)s")
-
-
 # Veritas driver
 class UnableToExecuteHyperScaleCmd(VolumeDriverException):
     message = _("Failed HyperScale command for '%(command)s'")
