@@ -142,7 +142,7 @@ class SynoISCSIDriver(driver.ISCSIDriver):
         try:
             if not self.common.is_lun_mapped(volume['name']):
                 return
-        except exception.SynoLUNNotExist:
+        except common.SynoLUNNotExist:
             LOG.warning("Volume not exist")
             return
 

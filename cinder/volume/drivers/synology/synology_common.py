@@ -82,6 +82,18 @@ CONF = cfg.CONF
 CONF.register_opts(cinder_opts, group=configuration.SHARED_CONF_GROUP)
 
 
+class SynoAPIHTTPError(exception.VolumeDriverException):
+    message = _("HTTP exit code: [%(code)s]")
+
+
+class SynoAuthError(exception.VolumeDriverException):
+    message = _("Synology driver authentication failed: %(reason)s.")
+
+
+class SynoLUNNotExist(exception.VolumeDriverException):
+    message = _("LUN not found by UUID: %(uuid)s.")
+
+
 class AESCipher(object):
     """Encrypt with OpenSSL-compatible way"""
 
@@ -172,7 +184,7 @@ class Session(object):
             if one_time_pass and not device_id:
                 self._did = result['data']['did']
         else:
-            raise exception.SynoAuthError(reason=_('Login failed.'))
+            raise SynoAuthError(reason=_('Login failed.'))
 
     def _random_AES_passphrase(self, length):
         available = ('0123456789'
@@ -284,7 +296,7 @@ def _connection_checker(func):
         for attempts in range(2):
             try:
                 return func(self, *args, **kwargs)
-            except exception.SynoAuthError as e:
+            except SynoAuthError as e:
                 if attempts < 1:
                     LOG.debug('Session might have expired.'
                               ' Trying to relogin')
@@ -383,8 +395,7 @@ class APIRequest(object):
 
         if ('error' in result and 'code' in result["error"]
                 and result['error']['code'] == 105):
-            raise exception.SynoAuthError(reason=_('Session might have '
-                                                   'expired.'))
+            raise SynoAuthError(reason=_('Session might have expired.'))
 
         return result
 
@@ -813,7 +824,7 @@ class SynoCommon(object):
         message = ''
 
         if code == LUN_BAD_LUN_UUID:
-            exc = exception.SynoLUNNotExist(**kwargs)
+            exc = SynoLUNNotExist(**kwargs)
             message = 'Bad LUN UUID'
         elif code == LUN_NO_SUCH_SNAPSHOT:
             exc = exception.SnapshotNotFound(**kwargs)
@@ -944,7 +955,7 @@ class SynoCommon(object):
         result = self.synoexec(api, method, version, **kwargs)
 
         if 'http_status' in result and 200 != result['http_status']:
-            raise exception.SynoAPIHTTPError(code=result['http_status'])
+            raise SynoAPIHTTPError(code=result['http_status'])
 
         result['api_info'] = {'api': api,
                               'method': method,
@@ -1085,7 +1096,7 @@ class SynoCommon(object):
 
             self.check_response(out)
 
-        except exception.SynoLUNNotExist:
+        except SynoLUNNotExist:
             LOG.warning('LUN does not exist')
         except Exception:
             with excutils.save_and_reraise_exception():

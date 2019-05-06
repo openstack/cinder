@@ -315,7 +315,7 @@ class SynoISCSIDriverTestCase(test.TestCase):
         self.driver.common.remove_iscsi_export = mock.Mock()
         self.driver.common.get_iqn_and_trgid = mock.Mock()
         self.driver.common.is_lun_mapped = (
-            mock.Mock(side_effect=exception.SynoLUNNotExist(
+            mock.Mock(side_effect=common.SynoLUNNotExist(
                 message='dont care')))
 
         result = self.driver.remove_export(CONTEXT, VOLUME)
