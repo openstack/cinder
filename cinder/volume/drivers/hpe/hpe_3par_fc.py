@@ -15,8 +15,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-Volume driver for HPE 3PAR Storage array.
+"""Volume driver for HPE 3PAR Storage array.
+
 This driver requires 3.1.3 or later firmware on the 3PAR array, using
 the 4.x version of the hpe3parclient.
 
@@ -111,6 +111,7 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         4.0.4 - Handle force detach case. bug #1686745
         4.0.5 - Set proper backend on subsequent operation, after group
                 failover. bug #1773069
+        4.0.6 - Set NSP for single path attachments. Bug #1809249
 
     """
 
@@ -169,12 +170,22 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         try:
             # we have to make sure we have a host
             host = self._create_host(common, volume, connector)
-            target_wwns, init_targ_map, numPaths = \
-                self._build_initiator_target_map(common, connector)
-            if not connector.get('multipath'):
-                target_wwns = target_wwns[:1]
+            target_wwns, init_targ_map, numPaths = (
+                self._build_initiator_target_map(common, connector))
+
+            multipath = connector.get('multipath')
+            LOG.debug("multipath: %s", multipath)
+            user_target = None
+            if not multipath:
+                user_target = self._get_user_target(common)
                 initiator = connector.get('wwpns')[0]
-                init_targ_map[initiator] = init_targ_map[initiator][:1]
+                if user_target is None:
+                    target_wwns = target_wwns[:1]
+                    init_targ_map[initiator] = init_targ_map[initiator][:1]
+                else:
+                    target_wwns = [user_target]
+                    init_targ_map[initiator] = [user_target]
+
             # check if a VLUN already exists for this host
             existing_vlun = common.find_existing_vlun(volume, host)
 
@@ -408,3 +419,25 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
             self._modify_3par_fibrechan_host(common, host['name'], new_wwns)
             host = common._get_3par_host(host['name'])
         return host
+
+    def _get_user_target(self, common):
+        target_nsp = common.config.hpe3par_target_nsp
+
+        if not target_nsp:
+            return None
+
+        # Get target wwn from target nsp
+        fc_ports = common.get_active_fc_target_ports()
+
+        target_wwn = None
+        for port in fc_ports:
+            nsp = port['nsp']
+            if target_nsp == nsp:
+                target_wwn = port['portWWN']
+                break
+
+        if not target_wwn:
+            LOG.warning("Did not get wwn for target nsp: "
+                        "%(nsp)s", {'nsp': target_nsp})
+
+        return target_wwn
