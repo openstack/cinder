@@ -4,7 +4,6 @@
 
 # DRBD
 dbus # MIT
-drbdmanage # GPLv3
 
 # HPE 3PAR
 python-3parclient>=4.1.0 # Apache-2.0
