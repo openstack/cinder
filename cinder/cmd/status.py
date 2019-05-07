@@ -131,12 +131,33 @@ class Checks(uc.UpgradeCommands):
 
         return uc.Result(SUCCESS)
 
+    def _check_nested_quota(self):
+        """Checks for the use of the nested quota driver.
+
+        The NestedDbQuotaDriver is deprecated in the Train release to prepare
+        for upcoming unified limits changes.
+        """
+        # We import here to avoid conf loading order issues with cinder.service
+        # above.
+        import cinder.quota  # noqa
+
+        quota_driver = CONF.quota_driver
+        if quota_driver == 'cinder.quota.NestedDbQuotaDriver':
+            return uc.Result(
+                WARNING,
+                'The NestedDbQuotaDriver has been deprecated. It will '
+                'continue to work in the 15.0.0 (Train) release, but will be '
+                'removed in 16.0.0')
+
+        return uc.Result(SUCCESS)
+
     _upgrade_checks = (
         # added in Stein
         ('Backup Driver Path', _check_backup_module),
         ('Use of Policy File', _check_policy_file),
         # added in Train
         ('Periodic Interval Use', _check_periodic_interval),
+        ('Use of Nest Quota Driver', _check_nested_quota),
     )
 
 

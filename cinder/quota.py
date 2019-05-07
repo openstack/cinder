@@ -452,6 +452,12 @@ class DbQuotaDriver(object):
 
 
 class NestedDbQuotaDriver(DbQuotaDriver):
+
+    def __init__(self, *args, **kwargs):
+        super(NestedDbQuotaDriver, self).__init__(*args, **kwargs)
+        LOG.warning('The NestedDbQuotaDriver is deprecated and will be '
+                    'removed in the "U" release.')
+
     def validate_nested_setup(self, ctxt, resources, project_tree,
                               fix_allocated_quotas=False):
         """Ensures project_tree has quotas that make sense as nested quotas.
