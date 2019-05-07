@@ -16,7 +16,6 @@
 from oslo_log import log as logging
 
 from cinder import coordination
-from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
 from cinder import utils
@@ -57,7 +56,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
         if not connector.get('wwpns'):
             msg = _("No wwpns found in host connector.")
             LOG.error(msg)
-            raise exception.KaminarioCinderDriverException(reason=msg)
+            raise common.KaminarioCinderDriverException(reason=msg)
         # To support replication failback
         temp_client = None
         if (hasattr(volume, 'replication_status') and
@@ -145,7 +144,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
         if not target_wwpns:
             msg = _("Unable to get FC target wwpns from K2.")
             LOG.error(msg)
-            raise exception.KaminarioCinderDriverException(reason=msg)
+            raise common.KaminarioCinderDriverException(reason=msg)
         return target_wwpns
 
     @utils.trace
@@ -162,7 +161,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
             except Exception as ex:
                 LOG.exception("Unable to create host : %s in K2.",
                               host_name)
-                raise exception.KaminarioCinderDriverException(reason=ex)
+                raise common.KaminarioCinderDriverException(reason=ex)
         else:
             # Use existing host.
             LOG.debug("Use existing initiator hostname: %s in K2.", host_name)
@@ -184,7 +183,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
                     LOG.exception("Unable to add wwpn : %(wwpn)s to "
                                   "host: %(host)s in K2.",
                                   {'wwpn': wwpn, 'host': host_name})
-                    raise exception.KaminarioCinderDriverException(reason=ex)
+                    raise common.KaminarioCinderDriverException(reason=ex)
         return host, host_rs, host_name
 
     def _build_initiator_target_map(self, connector, all_target_wwns):

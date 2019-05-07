@@ -72,6 +72,15 @@ K2HTTPError = requests.exceptions.HTTPError
 K2_RETRY_ERRORS = ("MC_ERR_BUSY", "MC_ERR_BUSY_SPECIFIC",
                    "MC_ERR_INPROGRESS", "MC_ERR_START_TIMEOUT")
 
+
+class KaminarioCinderDriverException(exception.VolumeDriverException):
+    message = _("KaminarioCinderDriver failure: %(reason)s")
+
+
+class KaminarioRetryableException(exception.VolumeDriverException):
+    message = _("Kaminario retryable exception: %(reason)s")
+
+
 if krest:
     class KrestWrap(krest.EndPoint):
         def __init__(self, *args, **kwargs):
@@ -87,7 +96,7 @@ if krest:
                         return True
             return False
 
-        @utils.retry(exception.KaminarioRetryableException,
+        @utils.retry(KaminarioRetryableException,
                      retries=MAX_K2_RETRY)
         def _request(self, method, *args, **kwargs):
             try:
@@ -98,7 +107,7 @@ if krest:
                 err_code = err.response.status_code
                 err_msg = err.response.text
                 if self._should_retry(err_code, err_msg):
-                    raise exception.KaminarioRetryableException(
+                    raise KaminarioRetryableException(
                         reason=six.text_type(err_msg))
                 raise
             finally:
@@ -135,7 +144,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         if krest is None:
             msg = _("Unable to import 'krest' python module.")
             LOG.error(msg)
-            raise exception.KaminarioCinderDriverException(reason=msg)
+            raise KaminarioCinderDriverException(reason=msg)
         else:
             conf = self.configuration
             self.client = KrestWrap(conf.san_ip,
@@ -156,12 +165,12 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                     msg = _("K2 REST API version should be "
                             ">= %s.") % K2_MIN_VERSION
                     LOG.error(msg)
-                    raise exception.KaminarioCinderDriverException(reason=msg)
+                    raise KaminarioCinderDriverException(reason=msg)
 
             else:
                 msg = _("K2 REST API version search failed.")
                 LOG.error(msg)
-                raise exception.KaminarioCinderDriverException(reason=msg)
+                raise KaminarioCinderDriverException(reason=msg)
 
     def _check_ops(self):
         """Ensure that the options we care about are set."""
@@ -213,7 +222,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 LOG.debug("Deleting vg: %s for failed volume in K2.", vg_name)
                 vg_rs.hits[0].delete()
             LOG.exception("Creation of volume %s failed.", vol_name)
-            raise exception.KaminarioCinderDriverException(reason=ex)
+            raise KaminarioCinderDriverException(reason=ex)
 
         if self._get_is_replica(volume.volume_type) and self.replica:
             self._create_volume_replica(volume, vg, vol, self.replica.rpo)
@@ -239,7 +248,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         else:
             msg = _("Unable to find K2peer in source K2:")
             LOG.error(msg)
-            raise exception.KaminarioCinderDriverException(reason=msg)
+            raise KaminarioCinderDriverException(reason=msg)
         try:
             LOG.debug("Creating source session with name: %(sname)s and "
                       " target session name: %(tname)s",
@@ -274,7 +283,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             self._delete_by_ref(self.target, "volume_groups",
                                 rvg_name, "remote vg")
             self._delete_by_ref(self.client, "volume_groups", vg.name, "vg")
-            raise exception.KaminarioCinderDriverException(reason=ex)
+            raise KaminarioCinderDriverException(reason=ex)
 
     @utils.trace
     def _create_failover_volume_replica(self, volume, vg_name, vol_name):
@@ -298,7 +307,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         else:
             msg = _("Unable to find K2peer in source K2:")
             LOG.error(msg)
-            raise exception.KaminarioCinderDriverException(reason=msg)
+            raise KaminarioCinderDriverException(reason=msg)
         try:
             LOG.debug("Creating source session with name: %(sname)s and "
                       " target session name: %(tname)s",
@@ -329,7 +338,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                                 session_name, 'remote session')
             self._delete_by_ref(self.client, "volumes", vol_name, "volume")
             self._delete_by_ref(self.client, "volume_groups", vg_name, "vg")
-            raise exception.KaminarioCinderDriverException(reason=ex)
+            raise KaminarioCinderDriverException(reason=ex)
 
     @utils.trace
     def _delete_by_ref(self, device, url, name, msg):
@@ -565,12 +574,12 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 LOG.exception("Creating a view: %(view)s from snapshot: "
                               "%(snap)s failed", {"view": view_name,
                                                   "snap": snap_name})
-                raise exception.KaminarioCinderDriverException(reason=ex)
+                raise KaminarioCinderDriverException(reason=ex)
 
         else:
             msg = _("Snapshot: %s search failed in K2.") % snap_name
             LOG.error(msg)
-            raise exception.KaminarioCinderDriverException(reason=msg)
+            raise KaminarioCinderDriverException(reason=msg)
 
         try:
             conn = self.initialize_connection(cview, properties)
@@ -597,7 +606,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             self.delete_volume(volume)
             LOG.exception("Copy to volume: %(vol)s from view: %(view)s "
                           "failed", {"vol": vol_name, "view": view_name})
-            raise exception.KaminarioCinderDriverException(reason=ex)
+            raise KaminarioCinderDriverException(reason=ex)
 
     @utils.trace
     def create_cloned_volume(self, volume, src_vref):
@@ -618,7 +627,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                     "To get this done, create a snapshot from the attached "
                     "volume and then create a volume from the snapshot.")
             LOG.error(msg)
-            raise exception.KaminarioCinderDriverException(reason=msg)
+            raise KaminarioCinderDriverException(reason=msg)
         try:
             properties = utils.brick_get_connector_properties()
             conn = self.initialize_connection(src_vref, properties)
@@ -642,7 +651,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             self.terminate_connection(volume, properties)
             self.delete_volume(volume)
             LOG.exception("Create a clone: %s failed.", clone_name)
-            raise exception.KaminarioCinderDriverException(reason=ex)
+            raise KaminarioCinderDriverException(reason=ex)
 
     @utils.trace
     def delete_volume(self, volume):
@@ -667,7 +676,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 vg_rs.hits[0].delete()
         except Exception as ex:
             LOG.exception("Deletion of volume %s failed.", vol_name)
-            raise exception.KaminarioCinderDriverException(reason=ex)
+            raise KaminarioCinderDriverException(reason=ex)
 
     @utils.trace
     def _delete_volume_replica(self, volume, vg_name, vol_name):
@@ -766,7 +775,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                             is_auto_deleteable=False).save()
         except Exception as ex:
             LOG.exception("Creation of snapshot: %s failed.", snap_name)
-            raise exception.KaminarioCinderDriverException(reason=ex)
+            raise KaminarioCinderDriverException(reason=ex)
 
     @utils.trace
     def delete_snapshot(self, snapshot):
@@ -779,7 +788,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 snap_rs.hits[0].delete()
         except Exception as ex:
             LOG.exception("Deletion of snapshot: %s failed.", snap_name)
-            raise exception.KaminarioCinderDriverException(reason=ex)
+            raise KaminarioCinderDriverException(reason=ex)
 
     @utils.trace
     def extend_volume(self, volume, new_size):
@@ -793,7 +802,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             vol.save()
         except Exception as ex:
             LOG.exception("Extending volume: %s failed.", vol_name)
-            raise exception.KaminarioCinderDriverException(reason=ex)
+            raise KaminarioCinderDriverException(reason=ex)
 
     def update_volume_stats(self):
         conf = self.configuration
@@ -879,7 +888,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                                       name="Best_Effort_Retention").hits[0]
         except Exception as ex:
             LOG.exception("Retention policy search failed in K2.")
-            raise exception.KaminarioCinderDriverException(reason=ex)
+            raise KaminarioCinderDriverException(reason=ex)
 
     def _get_volume_object(self, volume):
         vol_name = self.get_volume_name(volume.id)
@@ -890,7 +899,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         if not hasattr(vol_rs, 'hits') or vol_rs.total == 0:
             msg = _("Unable to find volume: %s from K2.") % vol_name
             LOG.error(msg)
-            raise exception.KaminarioCinderDriverException(reason=msg)
+            raise KaminarioCinderDriverException(reason=msg)
         return vol_rs.hits[0]
 
     def _get_lun_number(self, vol, host):
@@ -963,7 +972,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.exception("Unable to map volume: %(vol)s to host: "
                           "%(host)s", {'host': host_name,
                                        'vol': vol.name})
-            raise exception.KaminarioCinderDriverException(reason=ex)
+            raise KaminarioCinderDriverException(reason=ex)
         # Get lun number.
         if type(volume).__name__ == 'RestObject':
             return self._get_lun_number(vol, host)
