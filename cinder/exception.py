@@ -1173,13 +1173,6 @@ class ZadaraVolumeNotFound(VolumeDriverException):
     message = "%(reason)s"
 
 
-# ZFSSA NFS driver exception.
-class WebDAVClientError(VolumeDriverException):
-    message = _("The WebDAV request failed. Reason: %(msg)s, "
-                "Return code/reason: %(code)s, Source Volume: %(src)s, "
-                "Destination Volume: %(dst)s, Method: %(method)s.")
-
-
 # StorPool driver
 class StorPoolConfigurationInvalid(CinderException):
     message = _("Invalid parameter %(param)s in the %(section)s section "
