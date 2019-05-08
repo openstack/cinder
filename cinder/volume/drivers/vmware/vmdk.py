@@ -1306,7 +1306,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 resource_pool=rp,
                 vm_folder=folder,
                 vm_import_spec=vm_import_spec,
-                image_size=image_size)
+                image_size=image_size,
+                http_method='POST')
             self.volumeops.update_backing_disk_uuid(backing, volume['id'])
         except (exceptions.VimException,
                 exceptions.VMwareDriverException):

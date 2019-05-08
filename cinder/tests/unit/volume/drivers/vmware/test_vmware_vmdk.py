@@ -1124,7 +1124,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             resource_pool=rp,
             vm_folder=folder,
             vm_import_spec=import_spec,
-            image_size=image_size)
+            image_size=image_size,
+            http_method='POST')
         if download_error:
             self.assertFalse(vops.update_backing_disk_uuid.called)
             vops.delete_backing.assert_called_once_with(backing)
