@@ -130,7 +130,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.mock_object(
             self.library, '_get_flexvol_to_pool_map', return_value={})
 
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(na_utils.NetAppDriverException,
                           self.library.check_for_setup_error)
 
     @ddt.data({'replication_enabled': True, 'failed_over': False,
@@ -686,7 +686,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.backend_name = 'dev0'
         self.mock_object(
             data_motion.DataMotionMixin, '_complete_failover',
-            side_effect=exception.NetAppDriverException)
+            side_effect=na_utils.NetAppDriverException)
         self.mock_object(data_motion.DataMotionMixin,
                          'get_replication_backend_names',
                          return_value=['dev1', 'dev2'])
@@ -804,7 +804,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.mock_object(self.zapi_client, 'create_cg_snapshot',
                          side_effect=netapp_api.NaApiError)
 
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(na_utils.NetAppDriverException,
                           self.library.create_group_snapshot,
                           fake.VOLUME_GROUP,
                           [fake.VG_SNAPSHOT])

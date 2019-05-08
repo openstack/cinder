@@ -790,7 +790,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         except Exception as ex:
             err_msg = (_("Create group snapshot failed (%s).") % ex)
             LOG.exception(err_msg, resource=group_snapshot)
-            raise exception.NetAppDriverException(err_msg)
+            raise na_utils.NetAppDriverException(err_msg)
 
         return None, None
 

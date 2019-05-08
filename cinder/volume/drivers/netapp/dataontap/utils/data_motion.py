@@ -29,6 +29,7 @@ from cinder.objects import fields
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.utils import utils as config_utils
+from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
 
 LOG = log.getLogger(__name__)
@@ -308,7 +309,7 @@ class DataMotionMixin(object):
         retries = (source_backend_config.netapp_snapmirror_quiesce_timeout /
                    QUIESCE_RETRY_INTERVAL)
 
-        @utils.retry(exception.NetAppDriverException,
+        @utils.retry(na_utils.NetAppDriverException,
                      interval=QUIESCE_RETRY_INTERVAL,
                      retries=retries, backoff_rate=1)
         def wait_for_quiesced():
@@ -318,11 +319,11 @@ class DataMotionMixin(object):
                 desired_attributes=['relationship-status', 'mirror-state'])[0]
             if snapmirror.get('relationship-status') != 'quiesced':
                 msg = _("SnapMirror relationship is not quiesced.")
-                raise exception.NetAppDriverException(reason=msg)
+                raise na_utils.NetAppDriverException(reason=msg)
 
         try:
             wait_for_quiesced()
-        except exception.NetAppDriverException:
+        except na_utils.NetAppDriverException:
             dest_client.abort_snapmirror(src_vserver,
                                          src_flexvol_name,
                                          dest_vserver,
@@ -428,7 +429,7 @@ class DataMotionMixin(object):
         if not size:
             msg = _("Unable to read the size of the source FlexVol (%s) "
                     "to create a SnapMirror destination.")
-            raise exception.NetAppDriverException(msg % src_flexvol_name)
+            raise na_utils.NetAppDriverException(msg % src_flexvol_name)
         provisioning_options.pop('volume_type', None)
 
         source_aggregate = provisioning_options.pop('aggregate')
@@ -439,7 +440,7 @@ class DataMotionMixin(object):
             msg = _("Unable to find configuration matching the source "
                     "aggregate (%s) and the destination aggregate. Option "
                     "netapp_replication_aggregate_map may be incorrect.")
-            raise exception.NetAppDriverException(
+            raise na_utils.NetAppDriverException(
                 message=msg % source_aggregate)
 
         destination_aggregate = aggregate_map[source_aggregate]
@@ -571,7 +572,7 @@ class DataMotionMixin(object):
 
         if active_backend_name is None:
             msg = _("No suitable host was found to failover.")
-            raise exception.NetAppDriverException(msg)
+            raise na_utils.NetAppDriverException(msg)
 
         source_backend_config = config_utils.get_backend_configuration(
             source_backend_name)
@@ -631,7 +632,7 @@ class DataMotionMixin(object):
             active_backend_name, volume_updates = self._complete_failover(
                 self.backend_name, replication_targets, flexvols, volumes,
                 failover_target=secondary_id)
-        except exception.NetAppDriverException as e:
+        except na_utils.NetAppDriverException as e:
             msg = _("Could not complete failover: %s") % e
             raise exception.UnableToFailOver(reason=msg)
 

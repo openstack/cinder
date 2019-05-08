@@ -844,7 +844,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library.configuration.netapp_lun_ostype = 'unknown'
         self.library.do_setup(mock.Mock())
 
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(na_utils.NetAppDriverException,
                           self.library.check_for_setup_error)
 
         block_base.LOG.error.assert_called_once_with(mock.ANY)
@@ -856,7 +856,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library.configuration.netapp_host_type = 'future_os'
         self.library.do_setup(mock.Mock())
 
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(na_utils.NetAppDriverException,
                           self.library.check_for_setup_error)
 
         block_base.LOG.error.assert_called_once_with(mock.ANY)
@@ -955,7 +955,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library.zapi_client, 'destroy_lun',
                          side_effect=netapp_api.NaApiError)
 
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(na_utils.NetAppDriverException,
                           self.library._delete_lun,
                           fake.LUN_NAME)
 

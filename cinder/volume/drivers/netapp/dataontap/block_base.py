@@ -163,12 +163,12 @@ class NetAppBlockStorageLibrary(object):
             msg = _("Invalid value for NetApp configuration"
                     " option netapp_lun_ostype.")
             LOG.error(msg)
-            raise exception.NetAppDriverException(msg)
+            raise na_utils.NetAppDriverException(msg)
         if self.host_type not in self.ALLOWED_IGROUP_HOST_TYPES:
             msg = _("Invalid value for NetApp configuration"
                     " option netapp_host_type.")
             LOG.error(msg)
-            raise exception.NetAppDriverException(msg)
+            raise na_utils.NetAppDriverException(msg)
         lun_list = self.zapi_client.get_lun_list()
         self._extract_and_populate_luns(lun_list)
         LOG.debug("Success getting list of LUNs from server.")
@@ -289,7 +289,7 @@ class NetAppBlockStorageLibrary(object):
                                 {'name': lun_name, 'message': e})
                 else:
                     error_message = (_('A NetApp Api Error occurred: %s') % e)
-                    raise exception.NetAppDriverException(error_message)
+                    raise na_utils.NetAppDriverException(error_message)
             self.lun_table.pop(lun_name)
         else:
             LOG.warning("No entry in LUN table for volume/snapshot"

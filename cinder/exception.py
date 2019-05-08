@@ -1072,10 +1072,6 @@ class CiscoZoningCliException(CinderException):
     message = _("Cisco Fibre Channel Zoning CLI error: %(reason)s")
 
 
-class NetAppDriverException(VolumeDriverException):
-    message = _("NetApp Cinder Driver exception.")
-
-
 # ConsistencyGroup
 class ConsistencyGroupNotFound(NotFound):
     message = _("ConsistencyGroup %(consistencygroup_id)s could not be found.")

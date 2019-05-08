@@ -517,7 +517,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.mock_object(
             self.driver.zapi_client,
             'mark_qos_policy_group_for_deletion',
-            side_effect=exception.NetAppDriverException)
+            side_effect=na_utils.NetAppDriverException)
 
         self.driver.delete_volume(fake_volume)
 
@@ -1366,7 +1366,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         """This tests executes a method in the DataMotionMixin."""
         self.driver.backend_name = 'dev0'
         self.mock_object(data_motion.DataMotionMixin, '_complete_failover',
-                         side_effect=exception.NetAppDriverException)
+                         side_effect=na_utils.NetAppDriverException)
         self.mock_object(data_motion.DataMotionMixin,
                          'get_replication_backend_names',
                          return_value=['dev1', 'dev2'])
@@ -1548,7 +1548,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.mock_object(self.driver.zapi_client, 'create_cg_snapshot',
                          side_effect=netapp_api.NaApiError)
 
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(na_utils.NetAppDriverException,
                           self.driver.create_group_snapshot,
                           fake.VG_CONTEXT,
                           fake.VOLUME_GROUP,
