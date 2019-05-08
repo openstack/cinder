@@ -1226,19 +1226,6 @@ class WebDAVClientError(VolumeDriverException):
                 "Destination Volume: %(dst)s, Method: %(method)s.")
 
 
-# XtremIO Drivers
-class XtremIOAlreadyMappedError(VolumeDriverException):
-    message = _("Volume to Initiator Group mapping already exists")
-
-
-class XtremIOArrayBusy(VolumeDriverException):
-    message = _("System is busy, retry operation.")
-
-
-class XtremIOSnapshotsLimitExceeded(VolumeDriverException):
-    message = _("Exceeded the limit of snapshots per volume")
-
-
 # StorPool driver
 class StorPoolConfigurationInvalid(CinderException):
     message = _("Invalid parameter %(param)s in the %(section)s section "

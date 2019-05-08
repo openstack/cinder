@@ -536,7 +536,7 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
 
     @mock.patch.object(xtremio.XtremIOClient4, 'create_snapshot')
     def test_clone_volume_exceed_array_limit(self, create_snap, req):
-        create_snap.side_effect = exception.XtremIOSnapshotsLimitExceeded()
+        create_snap.side_effect = xtremio.XtremIOSnapshotsLimitExceeded()
         req.side_effect = xms_request
         self.driver.db = mock.Mock()
         (self.driver.db.
@@ -556,7 +556,7 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
             "message": "too_many_snapshots_per_vol",
             "error_code": 400
         }
-        self.assertRaises(exception.XtremIOSnapshotsLimitExceeded,
+        self.assertRaises(xtremio.XtremIOSnapshotsLimitExceeded,
                           self.driver.client.handle_errors,
                           response, '', '')
 
@@ -568,7 +568,7 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
             "message": "too_many_objs",
             "error_code": 400
         }
-        self.assertRaises(exception.XtremIOSnapshotsLimitExceeded,
+        self.assertRaises(xtremio.XtremIOSnapshotsLimitExceeded,
                           self.driver.client.handle_errors,
                           response, '', '')
 
