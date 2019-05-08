@@ -1100,12 +1100,6 @@ class BadResetResourceStatus(CinderException):
     message = _("Bad reset resource status : %(reason)s")
 
 
-# StorPool driver
-class StorPoolConfigurationInvalid(CinderException):
-    message = _("Invalid parameter %(param)s in the %(section)s section "
-                "of the /etc/storpool.conf file: %(error)s")
-
-
 # DOTHILL drivers
 class DotHillInvalidBackend(VolumeDriverException):
     message = _("Backend doesn't exist (%(backend)s)")

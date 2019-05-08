@@ -57,6 +57,11 @@ CONF = cfg.CONF
 CONF.register_opts(storpool_opts)
 
 
+class StorPoolConfigurationInvalid(exception.CinderException):
+    message = _("Invalid parameter %(param)s in the %(section)s section "
+                "of the /etc/storpool.conf file: %(error)s")
+
+
 @interface.volumedriver
 class StorPoolDriver(driver.VolumeDriver):
     """The StorPool block device driver.
@@ -152,7 +157,7 @@ class StorPoolDriver(driver.VolumeDriver):
         except KeyError:
             return 65
         except Exception as e:
-            raise exception.StorPoolConfigurationInvalid(
+            raise StorPoolConfigurationInvalid(
                 section=hostname, param='SP_OURID', error=e)
 
     def validate_connector(self, connector):
