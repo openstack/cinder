@@ -27,6 +27,7 @@ from cinder.volume.drivers.dothill import dothill_client as dothill
 from cinder.volume.drivers.dothill import dothill_common
 from cinder.volume.drivers.dothill import dothill_fc
 from cinder.volume.drivers.dothill import dothill_iscsi
+from cinder.volume.drivers.dothill import exception as dh_exception
 from cinder.zonemanager import utils as fczm_utils
 
 session_key = '12a1626754554a21d85040760c81b'
@@ -175,7 +176,7 @@ class TestDotHillClient(test.TestCase):
         mock_requests_get.return_value = m
 
         m.text.encode.side_effect = [resp_badlogin, resp_badlogin]
-        self.assertRaises(exception.DotHillAuthenticationError,
+        self.assertRaises(dh_exception.DotHillAuthenticationError,
                           self.client.login)
 
         m.text.encode.side_effect = [resp_login, resp_fw, resp_system]
@@ -208,10 +209,10 @@ class TestDotHillClient(test.TestCase):
         mock_requests_get.return_value = m
         ret = self.client._api_request('/path')
         self.assertTrue(type(ret) == etree.RestrictedElement)
-        self.assertRaises(exception.DotHillConnectionError,
+        self.assertRaises(dh_exception.DotHillConnectionError,
                           self.client._api_request,
                           '/path')
-        self.assertRaises(exception.DotHillConnectionError,
+        self.assertRaises(dh_exception.DotHillConnectionError,
                           self.client._api_request,
                           '/path')
 
@@ -221,15 +222,15 @@ class TestDotHillClient(test.TestCase):
         invalid_tree = etree.XML(invalid_xml)
         ret = self.client._assert_response_ok(ok_tree)
         self.assertIsNone(ret)
-        self.assertRaises(exception.DotHillRequestError,
+        self.assertRaises(dh_exception.DotHillRequestError,
                           self.client._assert_response_ok,
                           not_ok_tree)
-        self.assertRaises(exception.DotHillRequestError,
+        self.assertRaises(dh_exception.DotHillRequestError,
                           self.client._assert_response_ok, invalid_tree)
 
     @mock.patch.object(dothill.DotHillClient, '_request')
     def test_backend_exists(self, mock_request):
-        mock_request.side_effect = [exception.DotHillRequestError,
+        mock_request.side_effect = [dh_exception.DotHillRequestError,
                                     fake_xml]
         self.assertFalse(self.client.backend_exists('backend_name',
                                                     'linear'))
@@ -350,7 +351,7 @@ class TestFCDotHillCommon(test.TestCase):
         mock_backend_exists.side_effect = [False, True]
         mock_owner_info.return_value = "A"
         mock_serial_number.return_value = "xxxxx"
-        self.assertRaises(exception.DotHillInvalidBackend,
+        self.assertRaises(dh_exception.DotHillInvalidBackend,
                           self.common.do_setup, None)
         self.assertIsNone(self.common.do_setup(None))
         mock_backend_exists.assert_called_with(self.common.backend_name,
@@ -388,7 +389,7 @@ class TestFCDotHillCommon(test.TestCase):
 
     @mock.patch.object(dothill.DotHillClient, 'backend_stats')
     def test_update_volume_stats(self, mock_stats):
-        mock_stats.side_effect = [exception.DotHillRequestError,
+        mock_stats.side_effect = [dh_exception.DotHillRequestError,
                                   stats_large_space]
 
         self.assertRaises(exception.Invalid, self.common._update_volume_stats)
@@ -411,7 +412,7 @@ class TestFCDotHillCommon(test.TestCase):
 
     @mock.patch.object(dothill.DotHillClient, 'create_volume')
     def test_create_volume(self, mock_create):
-        mock_create.side_effect = [exception.DotHillRequestError, None]
+        mock_create.side_effect = [dh_exception.DotHillRequestError, None]
 
         self.assertRaises(exception.Invalid, self.common.create_volume,
                           test_volume)
@@ -424,9 +425,10 @@ class TestFCDotHillCommon(test.TestCase):
 
     @mock.patch.object(dothill.DotHillClient, 'delete_volume')
     def test_delete_volume(self, mock_delete):
-        not_found_e = exception.DotHillRequestError(
+        not_found_e = dh_exception.DotHillRequestError(
             'The volume was not found on this system.')
-        mock_delete.side_effect = [not_found_e, exception.DotHillRequestError,
+        mock_delete.side_effect = [not_found_e,
+                                   dh_exception.DotHillRequestError,
                                    None]
         self.assertIsNone(self.common.delete_volume(test_volume))
         self.assertRaises(exception.Invalid, self.common.delete_volume,
@@ -440,12 +442,13 @@ class TestFCDotHillCommon(test.TestCase):
         mock_stats.side_effect = [stats_low_space, stats_large_space,
                                   stats_large_space]
 
-        self.assertRaises(exception.DotHillNotEnoughSpace,
-                          self.common.create_cloned_volume,
-                          dest_volume, detached_volume)
+        self.assertRaises(
+            dh_exception.DotHillNotEnoughSpace,
+            self.common.create_cloned_volume,
+            dest_volume, detached_volume)
         self.assertFalse(mock_copy.called)
 
-        mock_copy.side_effect = [exception.DotHillRequestError, None]
+        mock_copy.side_effect = [dh_exception.DotHillRequestError, None]
         self.assertRaises(exception.Invalid,
                           self.common.create_cloned_volume,
                           dest_volume, detached_volume)
@@ -466,12 +469,12 @@ class TestFCDotHillCommon(test.TestCase):
         mock_stats.side_effect = [stats_low_space, stats_large_space,
                                   stats_large_space]
 
-        self.assertRaises(exception.DotHillNotEnoughSpace,
+        self.assertRaises(dh_exception.DotHillNotEnoughSpace,
                           self.common.create_cloned_volume,
                           dest_volume_larger, detached_volume)
         self.assertFalse(mock_copy.called)
 
-        mock_copy.side_effect = [exception.DotHillRequestError, None]
+        mock_copy.side_effect = [dh_exception.DotHillRequestError, None]
         self.assertRaises(exception.Invalid,
                           self.common.create_cloned_volume,
                           dest_volume_larger, detached_volume)
@@ -495,11 +498,11 @@ class TestFCDotHillCommon(test.TestCase):
         mock_stats.side_effect = [stats_low_space, stats_large_space,
                                   stats_large_space]
 
-        self.assertRaises(exception.DotHillNotEnoughSpace,
+        self.assertRaises(dh_exception.DotHillNotEnoughSpace,
                           self.common.create_volume_from_snapshot,
                           dest_volume, test_snap)
 
-        mock_copy.side_effect = [exception.DotHillRequestError, None]
+        mock_copy.side_effect = [dh_exception.DotHillRequestError, None]
         mock_get_size.return_value = test_snap['volume_size']
         self.assertRaises(exception.Invalid,
                           self.common.create_volume_from_snapshot,
@@ -517,7 +520,7 @@ class TestFCDotHillCommon(test.TestCase):
     @mock.patch.object(dothill.DotHillClient, 'get_volume_size')
     @mock.patch.object(dothill.DotHillClient, 'extend_volume')
     def test_extend_volume(self, mock_extend, mock_size):
-        mock_extend.side_effect = [exception.DotHillRequestError, None]
+        mock_extend.side_effect = [dh_exception.DotHillRequestError, None]
         mock_size.side_effect = [10, 10]
         self.assertRaises(exception.Invalid, self.common.extend_volume,
                           test_volume, 20)
@@ -527,7 +530,7 @@ class TestFCDotHillCommon(test.TestCase):
 
     @mock.patch.object(dothill.DotHillClient, 'create_snapshot')
     def test_create_snapshot(self, mock_create):
-        mock_create.side_effect = [exception.DotHillRequestError, None]
+        mock_create.side_effect = [dh_exception.DotHillRequestError, None]
 
         self.assertRaises(exception.Invalid, self.common.create_snapshot,
                           test_snap)
@@ -537,9 +540,10 @@ class TestFCDotHillCommon(test.TestCase):
 
     @mock.patch.object(dothill.DotHillClient, 'delete_snapshot')
     def test_delete_snapshot(self, mock_delete):
-        not_found_e = exception.DotHillRequestError(
+        not_found_e = dh_exception.DotHillRequestError(
             'The volume was not found on this system.')
-        mock_delete.side_effect = [not_found_e, exception.DotHillRequestError,
+        mock_delete.side_effect = [not_found_e,
+                                   dh_exception.DotHillRequestError,
                                    None]
 
         self.assertIsNone(self.common.delete_snapshot(test_snap))
@@ -551,7 +555,7 @@ class TestFCDotHillCommon(test.TestCase):
 
     @mock.patch.object(dothill.DotHillClient, 'map_volume')
     def test_map_volume(self, mock_map):
-        mock_map.side_effect = [exception.DotHillRequestError, 10]
+        mock_map.side_effect = [dh_exception.DotHillRequestError, 10]
 
         self.assertRaises(exception.Invalid, self.common.map_volume,
                           test_volume, connector, self.connector_element)
@@ -563,7 +567,7 @@ class TestFCDotHillCommon(test.TestCase):
 
     @mock.patch.object(dothill.DotHillClient, 'unmap_volume')
     def test_unmap_volume(self, mock_unmap):
-        mock_unmap.side_effect = [exception.DotHillRequestError, None]
+        mock_unmap.side_effect = [dh_exception.DotHillRequestError, None]
 
         self.assertRaises(exception.Invalid, self.common.unmap_volume,
                           test_volume, connector, self.connector_element)
@@ -577,7 +581,7 @@ class TestFCDotHillCommon(test.TestCase):
     @mock.patch.object(dothill.DotHillClient, 'delete_volume')
     @mock.patch.object(dothill.DotHillClient, 'modify_volume_name')
     def test_retype(self, mock_modify, mock_delete, mock_copy):
-        mock_copy.side_effect = [exception.DotHillRequestError, None]
+        mock_copy.side_effect = [dh_exception.DotHillRequestError, None]
         self.assertRaises(exception.Invalid, self.common.migrate_volume,
                           test_retype_volume, test_host)
         ret = self.common.migrate_volume(test_retype_volume, test_host)
@@ -590,7 +594,7 @@ class TestFCDotHillCommon(test.TestCase):
     @mock.patch.object(dothill.DotHillClient, 'modify_volume_name')
     def test_manage_existing(self, mock_modify, mock_volume):
         existing_ref = {'source-name': 'xxxx'}
-        mock_modify.side_effect = [exception.DotHillRequestError, None]
+        mock_modify.side_effect = [dh_exception.DotHillRequestError, None]
         self.assertRaises(exception.Invalid, self.common.manage_existing,
                           test_volume, existing_ref)
         ret = self.common.manage_existing(test_volume, existing_ref)
@@ -599,7 +603,7 @@ class TestFCDotHillCommon(test.TestCase):
     @mock.patch.object(dothill.DotHillClient, 'get_volume_size')
     def test_manage_existing_get_size(self, mock_volume):
         existing_ref = {'source-name': 'xxxx'}
-        mock_volume.side_effect = [exception.DotHillRequestError, 1]
+        mock_volume.side_effect = [dh_exception.DotHillRequestError, 1]
         self.assertRaises(exception.Invalid,
                           self.common.manage_existing_get_size,
                           None, existing_ref)

@@ -21,6 +21,7 @@ from cinder import exception
 from cinder.i18n import _
 import cinder.volume.driver
 from cinder.volume.drivers.dothill import dothill_common as dothillcommon
+from cinder.volume.drivers.dothill import exception as dh_exception
 from cinder.volume.drivers.san import san
 
 
@@ -58,7 +59,7 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
     def __init__(self, *args, **kwargs):
         # Make sure we're not invoked directly
         if type(self) == DotHillISCSIDriver:
-            raise exception.DotHillDriverNotSupported
+            raise dh_exception.DotHillDriverNotSupported
         super(DotHillISCSIDriver, self).__init__(*args, **kwargs)
         self.common = None
         self.configuration.append_config_values(san.san_opts)
@@ -129,7 +130,7 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
                     break
 
             if 'target_portal' not in data:
-                raise exception.DotHillNotTargetPortal()
+                raise dh_exception.DotHillNotTargetPortal()
 
             if self.configuration.use_chap_auth:
                 chap_secret = self.common.get_chap_record(
