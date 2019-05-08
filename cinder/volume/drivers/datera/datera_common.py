@@ -81,6 +81,10 @@ M_MANAGED = 'cinder_managed'
 M_KEYS = [M_TYPE, M_CALL, M_CLONE, M_MANAGED]
 
 
+class DateraAPIException(exception.VolumeBackendAPIException):
+    message = _("Bad response from Datera API")
+
+
 def _get_name(name):
     return "".join((OS_PREFIX, name))
 
@@ -157,7 +161,7 @@ def _api_lookup(func):
                 msg = _("No compatible API version found for this product: "
                         "api_versions -> %(api_version)s, %(func)s")
                 LOG.error(msg, api_version=api_version, func=func)
-                raise exception.DateraAPIException(msg % {
+                raise DateraAPIException(msg % {
                     'api_version': api_version, 'func': func})
             # Py27
             try:
@@ -190,7 +194,7 @@ def _api_lookup(func):
                 else:
                     LOG.info(e)
                     index -= 1
-            except exception.DateraAPIException as e:
+            except DateraAPIException as e:
                 if "UnsupportedVersionError" in six.text_type(e):
                     index -= 1
                 else:
@@ -221,7 +225,7 @@ def _get_supported_api_versions(driver):
         resp = driver._request(url, "get", None, header, cert_data)
         data = resp.json()
         results = [elem.strip("v") for elem in data['api_versions']]
-    except (exception.DateraAPIException, KeyError):
+    except (DateraAPIException, KeyError):
         # Fallback to pre-endpoint logic
         for version in API_VERSIONS[0:-1]:
             url = '%s://%s:%s/v%s' % (protocol, host, port, version)
@@ -311,7 +315,7 @@ def _request(driver, connection_string, method, payload, header, cert_data):
             'to the following reason: %s') % six.text_type(
             ex.message)
         LOG.error(msg)
-        raise exception.DateraAPIException(msg)
+        raise DateraAPIException(msg)
 
 
 def _raise_response(driver, response):
@@ -320,7 +324,7 @@ def _raise_response(driver, response):
                 'status': response.status_code,
                 'reason': response.reason}
     LOG.error(msg)
-    raise exception.DateraAPIException(msg)
+    raise DateraAPIException(msg)
 
 
 def _handle_bad_status(driver,
@@ -337,7 +341,7 @@ def _handle_bad_status(driver,
         # Raise the exception, but don't log any error.  We'll just fall
         # back to the old style of determining API version.  We make this
         # request a lot, so logging it is just noise
-        raise exception.DateraAPIException
+        raise DateraAPIException
     if response.status_code == http_client.NOT_FOUND:
         raise exception.NotFound(response.json()['message'])
     elif response.status_code in [http_client.FORBIDDEN,
