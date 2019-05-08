@@ -19,7 +19,12 @@ import six
 from oslo_utils import units
 import six.moves.urllib.parse as urlparse
 
+from cinder import exception
 from cinder.i18n import _
+
+
+class NexentaException(exception.VolumeDriverException):
+    message = "%(reason)s"
 
 
 def str2size(s, scale=1024):

@@ -1255,11 +1255,6 @@ class NotSupportedOperation(Invalid):
     code = 405
 
 
-# NexentaStor driver exception
-class NexentaException(VolumeDriverException):
-    message = "%(reason)s"
-
-
 # Kaminario K2
 class KaminarioCinderDriverException(VolumeDriverException):
     message = _("KaminarioCinderDriver failure: %(reason)s")
