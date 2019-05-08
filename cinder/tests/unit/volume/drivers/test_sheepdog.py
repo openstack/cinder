@@ -445,7 +445,7 @@ class SheepdogClientTestCase(test.TestCase):
                            {'addr': SHEEP_ADDR, 'port': SHEEP_PORT})
         fake_execute.side_effect = processutils.ProcessExecutionError(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        ex = self.assertRaises(exception.SheepdogError,
+        ex = self.assertRaises(sheepdog.SheepdogError,
                                self.client._run_dog, *args)
         self.assertEqual(expected_reason, ex.kwargs['reason'])
 
@@ -461,7 +461,7 @@ class SheepdogClientTestCase(test.TestCase):
                            'addr: %(addr)s, port: %(port)s'),
                            {'addr': SHEEP_ADDR, 'port': SHEEP_PORT})
         fake_execute.return_value = (stdout, stderr)
-        ex = self.assertRaises(exception.SheepdogError,
+        ex = self.assertRaises(sheepdog.SheepdogError,
                                self.client._run_dog, *args)
         self.assertEqual(expected_reason, ex.kwargs['reason'])
 
@@ -477,7 +477,7 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
         fake_execute.side_effect = processutils.ProcessExecutionError(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client._run_dog, *args)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -529,7 +529,7 @@ class SheepdogClientTestCase(test.TestCase):
                            {'addr': SHEEP_ADDR, 'port': SHEEP_PORT})
         fake_execute.side_effect = processutils.ProcessExecutionError(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        ex = self.assertRaises(exception.SheepdogError,
+        ex = self.assertRaises(sheepdog.SheepdogError,
                                self.client._run_qemu_img, *args)
         self.assertEqual(expected_reason, ex.kwargs['reason'])
 
@@ -546,7 +546,7 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
         fake_execute.side_effect = processutils.ProcessExecutionError(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client._run_qemu_img, *args)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -585,7 +585,7 @@ class SheepdogClientTestCase(test.TestCase):
                             'You should probably perform '
                             '"dog cluster format".')
         fake_execute.return_value = (stdout, stderr)
-        ex = self.assertRaises(exception.SheepdogError,
+        ex = self.assertRaises(sheepdog.SheepdogError,
                                self.client.check_cluster_status)
         self.assertEqual(expected_reason, ex.kwargs['reason'])
 
@@ -598,7 +598,7 @@ class SheepdogClientTestCase(test.TestCase):
         expected_reason = _('Waiting for all nodes to join cluster. '
                             'Ensure all sheep daemons are running.')
         fake_execute.return_value = (stdout, stderr)
-        ex = self.assertRaises(exception.SheepdogError,
+        ex = self.assertRaises(sheepdog.SheepdogError,
                                self.client.check_cluster_status)
         self.assertEqual(expected_reason, ex.kwargs['reason'])
 
@@ -610,7 +610,7 @@ class SheepdogClientTestCase(test.TestCase):
         stderr = ''
         expected_reason = _('Invalid sheepdog cluster status.')
         fake_execute.return_value = (stdout, stderr)
-        ex = self.assertRaises(exception.SheepdogError,
+        ex = self.assertRaises(sheepdog.SheepdogError,
                                self.client.check_cluster_status)
         self.assertEqual(expected_reason, ex.kwargs['reason'])
 
@@ -626,9 +626,9 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.check_cluster_status)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -649,10 +649,10 @@ class SheepdogClientTestCase(test.TestCase):
                   {'vdiname': self._vdiname})
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError, self.client.create,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError, self.client.create,
                                self._vdiname, self._vdisize)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -666,10 +666,10 @@ class SheepdogClientTestCase(test.TestCase):
         stderr = 'stderr_dummy'
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError, self.client.create,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError, self.client.create,
                                self._vdiname, self._vdisize)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -702,10 +702,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.delete, self._vdiname)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -731,10 +731,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.create_snapshot, *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -752,10 +752,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.create_snapshot, *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -772,10 +772,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.create_snapshot, *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -822,10 +822,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.delete_snapshot, *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -856,10 +856,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError, self.client.clone,
                                *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -877,10 +877,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError, self.client.clone,
                                *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -898,10 +898,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError, self.client.clone,
                                *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -919,10 +919,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError, self.client.clone,
                                *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -940,10 +940,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError, self.client.clone,
                                *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -967,10 +967,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.resize, self._vdiname, 1)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -986,10 +986,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.resize, self._vdiname, 1)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -1005,10 +1005,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.resize, self._vdiname, 5120)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -1024,10 +1024,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.resize, self._vdiname, 10)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -1050,10 +1050,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.get_volume_stats)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -1077,10 +1077,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.get_vdi_info, self._vdiname)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -1103,10 +1103,10 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
+        fake_execute.side_effect = sheepdog.SheepdogCmdError(
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
+        ex = self.assertRaises(sheepdog.SheepdogCmdError,
                                self.client.update_node_list)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
@@ -1283,9 +1283,9 @@ class SheepdogDriverTestCase(test.TestCase):
         cloned_vol = self.test_data.TEST_CLONED_VOLUME
         snapshot_name = 'tmp-snap-%s-%s' % (src_vol.name, cloned_vol.id)
 
-        fake_clone.side_effect = exception.SheepdogCmdError(
+        fake_clone.side_effect = sheepdog.SheepdogCmdError(
             cmd='dummy', exit_code=1, stdout='dummy', stderr='dummy')
-        self.assertRaises(exception.SheepdogCmdError,
+        self.assertRaises(sheepdog.SheepdogCmdError,
                           self.driver.create_cloned_volume,
                           cloned_vol, src_vol)
         fake_delete_snapshot.assert_called_once_with(src_vol.name,

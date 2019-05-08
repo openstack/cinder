@@ -56,6 +56,18 @@ CONF.import_opt("image_conversion_dir", "cinder.image.image_utils")
 CONF.register_opts(sheepdog_opts, group=configuration.SHARED_CONF_GROUP)
 
 
+class SheepdogError(exception.VolumeBackendAPIException):
+    message = _("An error has occurred in SheepdogDriver. "
+                "(Reason: %(reason)s)")
+
+
+class SheepdogCmdError(SheepdogError):
+    message = _("(Command: %(cmd)s) "
+                "(Return Code: %(exit_code)s) "
+                "(Stdout: %(stdout)s) "
+                "(Stderr: %(stderr)s)")
+
+
 class SheepdogClient(object):
     """Sheepdog command executor."""
 
@@ -113,7 +125,7 @@ class SheepdogClient(object):
                 reason = (_('Failed to connect to sheep daemon. '
                           'addr: %(addr)s, port: %(port)s'),
                           {'addr': addr, 'port': self.port})
-                raise exception.SheepdogError(reason=reason)
+                raise SheepdogError(reason=reason)
             return (_stdout, _stderr)
         except OSError as e:
             with excutils.save_and_reraise_exception():
@@ -128,8 +140,8 @@ class SheepdogClient(object):
                 reason = (_('Failed to connect to sheep daemon. '
                           'addr: %(addr)s, port: %(port)s'),
                           {'addr': addr, 'port': self.port})
-                raise exception.SheepdogError(reason=reason)
-            raise exception.SheepdogCmdError(
+                raise SheepdogError(reason=reason)
+            raise SheepdogCmdError(
                 cmd=e.cmd,
                 exit_code=e.exit_code,
                 stdout=e.stdout.replace('\n', '\\n'),
@@ -165,8 +177,8 @@ class SheepdogClient(object):
                 reason = (_('Failed to connect to sheep daemon. '
                             'addr: %(addr)s, port: %(port)s'),
                           {'addr': addr, 'port': self.port})
-                raise exception.SheepdogError(reason=reason)
-            raise exception.SheepdogCmdError(
+                raise SheepdogError(reason=reason)
+            raise SheepdogCmdError(
                 cmd=e.cmd,
                 exit_code=e.exit_code,
                 stdout=e.stdout.replace('\n', '\\n'),
@@ -175,7 +187,7 @@ class SheepdogClient(object):
     def check_cluster_status(self):
         try:
             (_stdout, _stderr) = self._run_dog('cluster', 'info')
-        except exception.SheepdogCmdError as e:
+        except SheepdogCmdError as e:
             cmd = e.kwargs['cmd']
             with excutils.save_and_reraise_exception():
                 LOG.error('Failed to check cluster status.'
@@ -192,12 +204,12 @@ class SheepdogClient(object):
         elif _stdout.startswith(self.DOG_RESP_CLUSTER_WAITING):
             reason = _('Waiting for all nodes to join cluster. '
                        'Ensure all sheep daemons are running.')
-        raise exception.SheepdogError(reason=reason)
+        raise SheepdogError(reason=reason)
 
     def create(self, vdiname, size):
         try:
             self._run_dog('vdi', 'create', vdiname, '%sG' % size)
-        except exception.SheepdogCmdError as e:
+        except SheepdogCmdError as e:
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
                 if _stderr.rstrip('\\n').endswith(
@@ -211,7 +223,7 @@ class SheepdogClient(object):
             (_stdout, _stderr) = self._run_dog('vdi', 'delete', vdiname)
             if _stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
                 LOG.warning('Volume not found. %s', vdiname)
-        except exception.SheepdogCmdError as e:
+        except SheepdogCmdError as e:
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
                 LOG.error('Failed to delete volume. %s', vdiname)
@@ -219,7 +231,7 @@ class SheepdogClient(object):
     def create_snapshot(self, vdiname, snapname):
         try:
             self._run_dog('vdi', 'snapshot', '-s', snapname, vdiname)
-        except exception.SheepdogCmdError as e:
+        except SheepdogCmdError as e:
             cmd = e.kwargs['cmd']
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
@@ -244,7 +256,7 @@ class SheepdogClient(object):
                 LOG.warning('Snapshot "%s" not found.', snapname)
             elif _stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
                 LOG.warning('Volume "%s" not found.', vdiname)
-        except exception.SheepdogCmdError as e:
+        except SheepdogCmdError as e:
             cmd = e.kwargs['cmd']
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
@@ -258,7 +270,7 @@ class SheepdogClient(object):
                                {'src_vdiname': src_vdiname,
                                 'src_snapname': src_snapname},
                                'sheepdog:%s' % dst_vdiname, '%sG' % size)
-        except exception.SheepdogCmdError as e:
+        except SheepdogCmdError as e:
             cmd = e.kwargs['cmd']
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
@@ -283,7 +295,7 @@ class SheepdogClient(object):
         size = int(size) * units.Gi
         try:
             (_stdout, _stderr) = self._run_dog('vdi', 'resize', vdiname, size)
-        except exception.SheepdogCmdError as e:
+        except SheepdogCmdError as e:
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
                 if _stderr.rstrip('\\n').endswith(
@@ -308,7 +320,7 @@ class SheepdogClient(object):
     def get_volume_stats(self):
         try:
             (_stdout, _stderr) = self._run_dog('node', 'info', '-r')
-        except exception.SheepdogCmdError as e:
+        except SheepdogCmdError as e:
             with excutils.save_and_reraise_exception():
                 LOG.error('Failed to get volume status. %s', e)
         return _stdout
@@ -317,7 +329,7 @@ class SheepdogClient(object):
         # Get info of the specified vdi.
         try:
             (_stdout, _stderr) = self._run_dog('vdi', 'list', vdiname, '-r')
-        except exception.SheepdogCmdError as e:
+        except SheepdogCmdError as e:
             with excutils.save_and_reraise_exception():
                 LOG.error('Failed to get vdi info. %s', e)
         return _stdout
@@ -325,7 +337,7 @@ class SheepdogClient(object):
     def update_node_list(self):
         try:
             (_stdout, _stderr) = self._run_dog('node', 'list', '-r')
-        except exception.SheepdogCmdError as e:
+        except SheepdogCmdError as e:
             with excutils.save_and_reraise_exception():
                 LOG.error('Failed to get node list. %s', e)
         node_list = []
