@@ -186,12 +186,12 @@ class GroupsAPITestCase(test.TestCase):
             self.assertEqual([fake.VOLUME_ID],
                              res_dict['groups'][0]['volumes'])
         else:
-            self.assertIsNone(res_dict['groups'][0].get('volumes', None))
+            self.assertNotIn('volumes', res_dict['groups'][0])
 
         # "volumes" should not be contained in the response body when list
         # groups without detail.
         res_dict = self.controller.index(req)
-        self.assertIsNone(res_dict['groups'][0].get('volumes', None))
+        self.assertNotIn('volumes', res_dict['groups'][0])
 
     @mock.patch('cinder.objects.volume_type.VolumeTypeList.get_all_by_group')
     @mock.patch('cinder.objects.volume.VolumeList.get_all_by_generic_group')
@@ -225,7 +225,7 @@ class GroupsAPITestCase(test.TestCase):
                                       version=mv.GROUP_VOLUME_LIST)
         res_dict = self.controller.show(req, self.group1.id)
         self.assertEqual(1, len(res_dict))
-        self.assertIsNone(res_dict['group'].get('volumes', None))
+        self.assertNotIn('volumes', res_dict['group'])
 
         # If the microversion < 3.25, "volumes" should not be contained in the
         # response body.
@@ -235,7 +235,7 @@ class GroupsAPITestCase(test.TestCase):
             version=mv.get_prior_version(mv.GROUP_VOLUME_LIST))
         res_dict = self.controller.show(req, self.group1.id)
         self.assertEqual(1, len(res_dict))
-        self.assertIsNone(res_dict['group'].get('volumes', None))
+        self.assertNotIn('volumes', res_dict['group'])
 
     def test_show_group_with_group_NotFound(self):
         req = fakes.HTTPRequest.blank('/v3/%s/groups/%s' %
@@ -1441,7 +1441,7 @@ class GroupsAPITestCase(test.TestCase):
             use_admin_context=True)
         res_dict = self.controller.show(req, self.group1.id)
         self.assertEqual(1, len(res_dict))
-        self.assertIsNone(res_dict['group'].get('project_id', None))
+        self.assertNotIn('project_id', res_dict['group'])
 
     def test_list_groups_with_project_id(self):
         self.group1.group_type_id = fake.GROUP_TYPE_ID
