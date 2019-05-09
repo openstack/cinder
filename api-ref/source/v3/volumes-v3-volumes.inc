@@ -221,7 +221,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - migration_status: migration_status_req
+   - migration_status: migration_status
    - attachments: attachments
    - links: links_vol
    - availability_zone: availability_zone
@@ -344,7 +344,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - migration_status: migration_status_req
+   - migration_status: migration_status
    - attachments: attachments
    - links: links_vol
    - availability_zone: availability_zone
@@ -424,7 +424,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - migration_status: migration_status_req
+   - migration_status: migration_status
    - attachments: attachments
    - links: links_vol
    - availability_zone: availability_zone
