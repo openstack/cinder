@@ -113,7 +113,7 @@ class WindowsSmbFsTestCase(test.TestCase):
         self._smbfs_driver.configuration = config
 
         if not (config.smbfs_shares_config and share_config_exists):
-            self.assertRaises(exception.SmbfsException,
+            self.assertRaises(smbfs.SmbfsException,
                               self._smbfs_driver.do_setup,
                               mock.sentinel.context)
         else:
@@ -153,7 +153,7 @@ class WindowsSmbFsTestCase(test.TestCase):
             'share0': 'pool0',
             'share1': 'pool0'
         }
-        self.assertRaises(exception.SmbfsException,
+        self.assertRaises(smbfs.SmbfsException,
                           self._smbfs_driver._setup_pool_mappings)
 
     def test_initialize_connection(self):
@@ -322,7 +322,7 @@ class WindowsSmbFsTestCase(test.TestCase):
 
         supported_fmts = self._smbfs_driver._SUPPORTED_IMAGE_FORMATS
         if volume_format.lower() not in supported_fmts:
-            self.assertRaises(exception.SmbfsException,
+            self.assertRaises(smbfs.SmbfsException,
                               self._smbfs_driver.get_volume_format,
                               self.volume,
                               qemu_format)
@@ -862,7 +862,7 @@ class WindowsSmbFsTestCase(test.TestCase):
     def test_get_pool_name_from_share_exception(self):
         self._smbfs_driver._pool_mappings = {}
 
-        self.assertRaises(exception.SmbfsException,
+        self.assertRaises(smbfs.SmbfsException,
                           self._smbfs_driver._get_share_from_pool_name,
                           mock.sentinel.pool)
 
