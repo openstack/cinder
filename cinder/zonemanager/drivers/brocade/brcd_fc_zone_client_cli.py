@@ -32,6 +32,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import ssh_utils
 from cinder import utils
+from cinder.zonemanager.drivers.brocade import exception as b_exception
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as zone_constant
 
 LOG = logging.getLogger(__name__)
@@ -82,7 +83,7 @@ class BrcdFCZoneClientCLI(object):
         try:
             switch_data = self._get_switch_info(
                 [zone_constant.GET_ACTIVE_ZONE_CFG])
-        except exception.BrocadeZoningCliException:
+        except b_exception.BrocadeZoningCliException:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed getting active zone set "
                           "from fabric %s", self.switch_ip)
@@ -196,7 +197,7 @@ class BrcdFCZoneClientCLI(object):
                     "(Zone set=%(cfg_name)s error=%(err)s)."
                     ) % {'cfg_name': cfg_name, 'err': six.text_type(e)}
             LOG.error(msg)
-            raise exception.BrocadeZoningCliException(reason=msg)
+            raise b_exception.BrocadeZoningCliException(reason=msg)
 
     def update_zones(self, zones, activate, operation, active_zone_set=None):
         """Update the zone configuration.
@@ -261,7 +262,7 @@ class BrcdFCZoneClientCLI(object):
                     "(Zone set=%(cfg_name)s error=%(err)s)."
                     ) % {'cfg_name': cfg_name, 'err': six.text_type(e)}
             LOG.error(msg)
-            raise exception.BrocadeZoningCliException(reason=msg)
+            raise b_exception.BrocadeZoningCliException(reason=msg)
 
     def activate_zoneset(self, cfgname):
         """Method to Activate the zone config. Param cfgname - ZonesetName."""
@@ -316,7 +317,7 @@ class BrcdFCZoneClientCLI(object):
                     ) % {'cmd': cmd, 'err': six.text_type(e)}
             LOG.error(msg)
             self._cfg_trans_abort()
-            raise exception.BrocadeZoningCliException(reason=msg)
+            raise b_exception.BrocadeZoningCliException(reason=msg)
 
     def get_nameserver_info(self):
         """Get name server data from fabric.
@@ -331,7 +332,7 @@ class BrcdFCZoneClientCLI(object):
                 'nsshow': zone_constant.NS_SHOW,
                 'nscamshow': zone_constant.NS_CAM_SHOW}
             cli_output = self._get_switch_info([cmd])
-        except exception.BrocadeZoningCliException:
+        except b_exception.BrocadeZoningCliException:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed collecting nsshow "
                           "info for fabric %s", self.switch_ip)
@@ -365,7 +366,7 @@ class BrcdFCZoneClientCLI(object):
                 break
         if stderr:
             msg = _("Error while checking transaction status: %s") % stderr
-            raise exception.BrocadeZoningCliException(reason=msg)
+            raise b_exception.BrocadeZoningCliException(reason=msg)
         else:
             return is_abortable
 
@@ -384,7 +385,7 @@ class BrcdFCZoneClientCLI(object):
                     "error=%(err)s).") % {'cmd': cmd_list, 'err': stdout}
             LOG.error(msg)
             self._cfg_trans_abort()
-            raise exception.BrocadeZoningCliException(reason=msg)
+            raise b_exception.BrocadeZoningCliException(reason=msg)
 
     def is_supported_firmware(self):
         """Check firmware version is v6.4 or higher.
@@ -411,7 +412,7 @@ class BrcdFCZoneClientCLI(object):
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
                     "error=%(err)s).") % {'cmd': cmd, 'err': six.text_type(e)}
             LOG.error(msg)
-            raise exception.BrocadeZoningCliException(reason=msg)
+            raise b_exception.BrocadeZoningCliException(reason=msg)
 
     def _get_switch_info(self, cmd_list):
         stdout, stderr, sw_data = None, None, None
@@ -425,7 +426,7 @@ class BrcdFCZoneClientCLI(object):
                     "error=%(err)s).") % {'cmd': cmd_list,
                                           'err': six.text_type(e)}
             LOG.error(msg)
-            raise exception.BrocadeZoningCliException(reason=msg)
+            raise b_exception.BrocadeZoningCliException(reason=msg)
 
     def _parse_ns_output(self, switch_data):
         """Parses name server data.

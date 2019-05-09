@@ -24,6 +24,7 @@ from cinder import exception
 from cinder import test
 from cinder.zonemanager.drivers.brocade import (brcd_fc_zone_client_cli
                                                 as client_cli)
+from cinder.zonemanager.drivers.brocade import exception as b_exception
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as zone_constant
 
 
@@ -82,7 +83,7 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test_get_active_zone_set_ssh_error(self, run_ssh_mock):
         run_ssh_mock.side_effect = processutils.ProcessExecutionError
-        self.assertRaises(exception.BrocadeZoningCliException,
+        self.assertRaises(b_exception.BrocadeZoningCliException,
                           self.get_active_zone_set)
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'get_active_zone_set')
@@ -190,7 +191,7 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test_get_nameserver_info_ssh_error(self, run_ssh_mock):
         run_ssh_mock.side_effect = processutils.ProcessExecutionError
-        self.assertRaises(exception.BrocadeZoningCliException,
+        self.assertRaises(b_exception.BrocadeZoningCliException,
                           self.get_nameserver_info)
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_ssh_execute')
@@ -228,7 +229,7 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test__is_trans_abortable_ssh_error(self, run_ssh_mock):
         run_ssh_mock.return_value = (Stream(), Stream())
-        self.assertRaises(exception.BrocadeZoningCliException,
+        self.assertRaises(b_exception.BrocadeZoningCliException,
                           self._is_trans_abortable)
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
@@ -282,7 +283,7 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_execute_shell_cmd')
     def test_is_supported_firmware_ssh_error(self, exec_shell_cmd_mock):
         exec_shell_cmd_mock.side_effect = processutils.ProcessExecutionError
-        self.assertRaises(exception.BrocadeZoningCliException,
+        self.assertRaises(b_exception.BrocadeZoningCliException,
                           self.is_supported_firmware)
 
 

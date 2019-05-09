@@ -40,6 +40,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
+from cinder.zonemanager.drivers.brocade import exception as b_exception
 from cinder.zonemanager.drivers.brocade import fc_zone_constants
 from cinder.zonemanager.drivers import driver_utils
 from cinder.zonemanager.drivers import fc_zone_driver
@@ -232,9 +233,9 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                                         cfgmap_from_fabric)
                     LOG.debug("Zones updated successfully: %(updatemap)s",
                               {'updatemap': zone_update_map})
-            except (exception.BrocadeZoningCliException,
-                    exception.BrocadeZoningHttpException,
-                    exception.BrocadeZoningRestException) as brocade_ex:
+            except (b_exception.BrocadeZoningCliException,
+                    b_exception.BrocadeZoningHttpException,
+                    b_exception.BrocadeZoningRestException) as brocade_ex:
                 raise exception.FCZoneDriverException(brocade_ex)
             except Exception:
                 msg = _("Failed to add or update zoning configuration.")
@@ -380,9 +381,9 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     conn.delete_zones(
                         zone_name_string, zone_activate,
                         cfgmap_from_fabric)
-            except (exception.BrocadeZoningCliException,
-                    exception.BrocadeZoningHttpException,
-                    exception.BrocadeZoningRestException) as brocade_ex:
+            except (b_exception.BrocadeZoningCliException,
+                    b_exception.BrocadeZoningHttpException,
+                    b_exception.BrocadeZoningRestException) as brocade_ex:
                 raise exception.FCZoneDriverException(brocade_ex)
             except Exception:
                 msg = _("Failed to update or delete zoning "
@@ -420,8 +421,8 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     nsinfo = conn.get_nameserver_info()
                     LOG.debug("Name server info from fabric: %(nsinfo)s",
                               {'nsinfo': nsinfo})
-                except (exception.BrocadeZoningCliException,
-                        exception.BrocadeZoningHttpException):
+                except (b_exception.BrocadeZoningCliException,
+                        b_exception.BrocadeZoningHttpException):
                     if not conn.is_supported_firmware():
                         msg = _("Unsupported firmware on switch %s. Make sure "
                                 "switch is running firmware v6.4 or higher"
@@ -460,8 +461,8 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
         cfgmap = None
         try:
             cfgmap = conn.get_active_zone_set()
-        except (exception.BrocadeZoningCliException,
-                exception.BrocadeZoningHttpException):
+        except (b_exception.BrocadeZoningCliException,
+                b_exception.BrocadeZoningHttpException):
             if not conn.is_supported_firmware():
                 msg = _("Unsupported firmware on switch %s. Make sure "
                         "switch is running firmware v6.4 or higher"
