@@ -1350,11 +1350,6 @@ class ErrorInHyperScaleVersion(VolumeDriverException):
     message = _("Error in getting HyperScale version '%(cmd_error)s'")
 
 
-# GPFS driver
-class GPFSDriverUnsupportedOperation(VolumeBackendAPIException):
-    message = _("GPFS driver unsupported operation: %(msg)s")
-
-
 class InvalidName(Invalid):
     message = _("An invalid 'name' value was provided. %(reason)s")
 

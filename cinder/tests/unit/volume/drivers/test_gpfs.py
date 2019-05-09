@@ -1668,13 +1668,13 @@ class GPFSDriverTestCase(test.TestCase):
     def test_update_consistencygroup(self):
         ctxt = self.context
         group = self._fake_group()
-        self.assertRaises(exception.GPFSDriverUnsupportedOperation,
+        self.assertRaises(gpfs.GPFSDriverUnsupportedOperation,
                           self.driver._update_consistencygroup, ctxt, group)
 
     def test_create_consisgroup_from_src(self):
         ctxt = self.context
         group = self._fake_group()
-        self.assertRaises(exception.GPFSDriverUnsupportedOperation,
+        self.assertRaises(gpfs.GPFSDriverUnsupportedOperation,
                           self.driver._create_consistencygroup_from_src,
                           ctxt, group, [])
 
