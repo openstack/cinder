@@ -107,9 +107,6 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         # manner is provided in Cinder's developer documentation.
         # Reviewers: DO NOT ALLOW THINGS TO BE ADDED HERE WITHOUT CARE
         exceptions = [
-            # NOTE : 104 modifies size of messages.project_id to 255.
-            # This should be safe according to documentation.
-            104,
             # NOTE(brinzhang): 127 changes size of quota_usage.resource
             # to 300. This should be safe for the 'quota_usage' db table,
             # because of the 255 is the length limit of volume_type_name,
@@ -131,20 +128,6 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(columns.updated_at.type, self.TIME_TYPE)
         self.assertIsInstance(columns.deleted_at.type, self.TIME_TYPE)
         self.assertIsInstance(columns.deleted.type, self.BOOL_TYPE)
-
-    def _check_098(self, engine, data):
-        self.assertTrue(engine.dialect.has_table(engine.connect(),
-                                                 "messages"))
-        ids = self.get_indexed_columns(engine, 'messages')
-        self.assertTrue('expires_at' in ids)
-
-    def _check_099(self, engine, data):
-        self.assertTrue(engine.dialect.has_table(engine.connect(),
-                                                 "volume_attachment"))
-        attachment = db_utils.get_table(engine, 'volume_attachment')
-
-        self.assertIsInstance(attachment.c.connection_info.type,
-                              self.TEXT_TYPE)
 
     def get_table_names(self, engine):
         inspector = reflection.Inspector.from_engine(engine)
@@ -182,159 +165,6 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
                 non_indexed_foreign_keys.add(table_name + '.' + column_name)
 
         self.assertSetEqual(set(), non_indexed_foreign_keys)
-
-    def _pre_upgrade_101(self, engine):
-        """Add data to test the SQL migration."""
-
-        types_table = db_utils.get_table(engine, 'volume_types')
-        for i in range(1, 5):
-            types_table.insert().execute({'id': str(i)})
-
-        specs_table = db_utils.get_table(engine, 'volume_type_extra_specs')
-        specs = [
-            {'volume_type_id': '1', 'key': 'key', 'value': '<is> False'},
-            {'volume_type_id': '2', 'key': 'replication_enabled',
-             'value': '<is> False'},
-            {'volume_type_id': '3', 'key': 'replication_enabled',
-             'value': '<is> True', 'deleted': True},
-            {'volume_type_id': '3', 'key': 'key', 'value': '<is> True'},
-            {'volume_type_id': '4', 'key': 'replication_enabled',
-             'value': '<is> True'},
-            {'volume_type_id': '4', 'key': 'key', 'value': '<is> True'},
-        ]
-        for spec in specs:
-            specs_table.insert().execute(spec)
-
-        volumes_table = db_utils.get_table(engine, 'volumes')
-        volumes = [
-            {'id': '1', 'replication_status': 'disabled',
-             'volume_type_id': None},
-            {'id': '2', 'replication_status': 'disabled',
-             'volume_type_id': ''},
-            {'id': '3', 'replication_status': 'disabled',
-             'volume_type_id': '1'},
-            {'id': '4', 'replication_status': 'disabled',
-             'volume_type_id': '2'},
-            {'id': '5', 'replication_status': 'disabled',
-             'volume_type_id': '2'},
-            {'id': '6', 'replication_status': 'disabled',
-             'volume_type_id': '3'},
-            {'id': '7', 'replication_status': 'error', 'volume_type_id': '4'},
-            {'id': '8', 'deleted': True, 'replication_status': 'disabled',
-             'volume_type_id': '4'},
-            {'id': '9', 'replication_status': 'disabled', 'deleted': None,
-             'volume_type_id': '4'},
-            {'id': '10', 'replication_status': 'disabled', 'deleted': False,
-             'volume_type_id': '4'},
-        ]
-        for volume in volumes:
-            volumes_table.insert().execute(volume)
-
-        # Only the last volume should be changed to enabled
-        expected = {v['id']: v['replication_status'] for v in volumes}
-        expected['9'] = 'enabled'
-        expected['10'] = 'enabled'
-        return expected
-
-    def _check_101(self, engine, data):
-        # Get existing volumes after the migration
-        volumes_table = db_utils.get_table(engine, 'volumes')
-        volumes = volumes_table.select().execute()
-        # Check that the replication_status is the one we expect according to
-        # _pre_upgrade_098
-        for volume in volumes:
-            self.assertEqual(data[volume.id], volume.replication_status,
-                             'id %s' % volume.id)
-
-    def _check_102(self, engine, data):
-        """Test adding replication_status to groups table."""
-        groups = db_utils.get_table(engine, 'groups')
-        self.assertIsInstance(groups.c.replication_status.type,
-                              self.VARCHAR_TYPE)
-
-    def _check_103(self, engine, data):
-        self.assertTrue(engine.dialect.has_table(engine.connect(),
-                                                 "messages"))
-        attachment = db_utils.get_table(engine, 'messages')
-
-        self.assertIsInstance(attachment.c.detail_id.type,
-                              self.VARCHAR_TYPE)
-        self.assertIsInstance(attachment.c.action_id.type,
-                              self.VARCHAR_TYPE)
-
-    def _check_104(self, engine, data):
-        messages = db_utils.get_table(engine, 'messages')
-        self.assertEqual(255, messages.c.project_id.type.length)
-
-    def _check_105(self, engine, data):
-        self.assertTrue(engine.dialect.has_table(engine.connect(),
-                                                 "backup_metadata"))
-        backup_metadata = db_utils.get_table(engine, 'backup_metadata')
-
-        self.assertIsInstance(backup_metadata.c.created_at.type,
-                              self.TIME_TYPE)
-        self.assertIsInstance(backup_metadata.c.updated_at.type,
-                              self.TIME_TYPE)
-        self.assertIsInstance(backup_metadata.c.deleted_at.type,
-                              self.TIME_TYPE)
-        self.assertIsInstance(backup_metadata.c.deleted.type,
-                              self.BOOL_TYPE)
-        self.assertIsInstance(backup_metadata.c.id.type,
-                              self.INTEGER_TYPE)
-        self.assertIsInstance(backup_metadata.c.key.type,
-                              self.VARCHAR_TYPE)
-        self.assertIsInstance(backup_metadata.c.value.type,
-                              self.VARCHAR_TYPE)
-        self.assertIsInstance(backup_metadata.c.backup_id.type,
-                              self.VARCHAR_TYPE)
-        f_keys = self.get_foreign_key_columns(engine, 'backup_metadata')
-        self.assertEqual({'backup_id'}, f_keys)
-
-    def _check_111(self, engine, data):
-        self.assertTrue(db_utils.index_exists_on_columns(
-            engine, 'quota_usages', ['project_id', 'resource']))
-
-    def _check_112(self, engine, data):
-        services = db_utils.get_table(engine, 'services')
-        self.assertIsInstance(services.c.uuid.type,
-                              self.VARCHAR_TYPE)
-
-    def _check_113(self, engine, data):
-        """Test that adding reservations index works correctly."""
-        reservations = db_utils.get_table(engine, 'reservations')
-        index_columns = []
-        for idx in reservations.indexes:
-            if idx.name == 'reservations_deleted_uuid_idx':
-                index_columns = idx.columns.keys()
-                break
-
-        self.assertEqual(sorted(['deleted', 'uuid']),
-                         sorted(index_columns))
-
-    def _check_114(self, engine, data):
-        volumes = db_utils.get_table(engine, 'volumes')
-        self.assertIsInstance(volumes.c.service_uuid.type,
-                              self.VARCHAR_TYPE)
-        index_columns = []
-        for idx in volumes.indexes:
-            if idx.name == 'volumes_service_uuid_idx':
-                index_columns = idx.columns.keys()
-                break
-        self.assertEqual(sorted(['deleted', 'service_uuid']),
-                         sorted(index_columns))
-
-    def _check_115(self, engine, data):
-        volumes = db_utils.get_table(engine, 'volumes')
-        self.assertIsInstance(volumes.c.shared_targets.type,
-                              self.BOOL_TYPE)
-
-    def _check_116(self, engine, data):
-        volume_attachment = db_utils.get_table(engine, 'volume_attachment')
-        self.assertIn('connector', volume_attachment.c)
-
-    def _check_123(self, engine, data):
-        volume_transfer = db_utils.get_table(engine, 'transfers')
-        self.assertIn('no_snapshots', volume_transfer.c)
 
     def _check_127(self, engine, data):
         quota_usage_resource = db_utils.get_table(engine, 'quota_usages')
