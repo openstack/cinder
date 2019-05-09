@@ -326,7 +326,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                     'id': 1}
         msg = ('Error (%s) encountered during '
                'SolidFire API call.' % response['error']['name'])
-        raise exception.SolidFireAPIException(message=msg)
+        raise solidfire.SolidFireAPIException(message=msg)
 
     def fake_set_qos_by_volume_type(self, type_id, ctxt):
         return {'minIOPS': 500,
@@ -602,7 +602,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.mock_object(solidfire.SolidFireDriver,
                          '_issue_api_request',
                          self.fake_issue_api_request_fails)
-        self.assertRaises(exception.SolidFireAPIException,
+        self.assertRaises(solidfire.SolidFireAPIException,
                           sfv._create_sfaccount, 'project-id')
 
     def test_get_sfaccounts_for_tenant(self):
@@ -618,7 +618,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.mock_object(solidfire.SolidFireDriver,
                          '_issue_api_request',
                          self.fake_issue_api_request_fails)
-        self.assertRaises(exception.SolidFireAPIException,
+        self.assertRaises(solidfire.SolidFireAPIException,
                           sfv._get_sfaccounts_for_tenant, 'some-name')
 
     def test_get_sfaccount_by_name(self):
@@ -700,7 +700,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                                   '_get_volumes_for_account',
                                   return_value=get_vol_result):
             sfaccount = sfv._get_account_create_availability(fake_sfaccounts)
-            self.assertRaises(exception.SolidFireDriverException,
+            self.assertRaises(solidfire.SolidFireDriverException,
                               sfv._get_create_account, sfaccount)
 
     def test_get_sfaccount_by_name_fails(self):
@@ -708,7 +708,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.mock_object(solidfire.SolidFireDriver,
                          '_issue_api_request',
                          self.fake_issue_api_request_fails)
-        self.assertRaises(exception.SolidFireAPIException,
+        self.assertRaises(solidfire.SolidFireAPIException,
                           sfv._get_sfaccount_by_name, 'some-name')
 
     def test_get_sfvol_by_cinder_vref_no_provider_id(self):
@@ -984,7 +984,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.mock_object(solidfire.SolidFireDriver,
                          '_issue_api_request',
                          self.fake_issue_api_request_fails)
-        self.assertRaises(exception.SolidFireAPIException,
+        self.assertRaises(solidfire.SolidFireAPIException,
                           sfv.extend_volume,
                           testvol, 2)
 
@@ -1429,7 +1429,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         def _fake_issue_api_req(method, params, version=0):
             if 'GetAccountByName' in method:
-                raise exception.SolidFireAPIException
+                raise solidfire.SolidFireAPIException
             return {'result': {'accountID': 1}}
 
         with mock.patch.object(sfv,
@@ -1759,7 +1759,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         def throw_request(method, params, version):
             msg = 'xExceededLimit: {}'.format(params['initiators'][0])
-            raise exception.SolidFireAPIException(message=msg)
+            raise solidfire.SolidFireAPIException(message=msg)
 
         with mock.patch.object(sfv,
                                '_issue_api_request',
@@ -1783,7 +1783,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         def throw_request(method, params, version):
             msg = 'xExceededLimit'
-            raise exception.SolidFireAPIException(message=msg)
+            raise solidfire.SolidFireAPIException(message=msg)
 
         with mock.patch.object(sfv,
                                '_issue_api_request',
@@ -1806,7 +1806,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         def throw_request(method, params, version):
             msg = 'xAlreadyInVolumeAccessGroup'
-            raise exception.SolidFireAPIException(message=msg)
+            raise solidfire.SolidFireAPIException(message=msg)
 
         with mock.patch.object(sfv,
                                '_issue_api_request',
@@ -1822,7 +1822,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         def throw_request(method, params, version):
             msg = 'xVolumeAccessGroupIDDoesNotExist'
-            raise exception.SolidFireAPIException(message=msg)
+            raise solidfire.SolidFireAPIException(message=msg)
 
         with mock.patch.object(sfv,
                                '_issue_api_request',
@@ -1843,7 +1843,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         def throw_request(method, params, version):
             msg = 'xAlreadyInVolumeAccessGroup'
-            raise exception.SolidFireAPIException(message=msg)
+            raise solidfire.SolidFireAPIException(message=msg)
 
         with mock.patch.object(sfv,
                                '_issue_api_request',
@@ -1860,7 +1860,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         def throw_request(method, params, version):
             msg = 'xVolumeAccessGroupIDDoesNotExist'
-            raise exception.SolidFireAPIException(message=msg)
+            raise solidfire.SolidFireAPIException(message=msg)
 
         with mock.patch.object(sfv,
                                '_issue_api_request',
@@ -1880,7 +1880,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         def throw_request(method, params, version):
             msg = 'xNotInVolumeAccessGroup'
-            raise exception.SolidFireAPIException(message=msg)
+            raise solidfire.SolidFireAPIException(message=msg)
 
         with mock.patch.object(sfv,
                                '_issue_api_request',
@@ -1895,7 +1895,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         def throw_request(method, params, version):
             msg = 'xVolumeAccessGroupIDDoesNotExist'
-            raise exception.SolidFireAPIException(message=msg)
+            raise solidfire.SolidFireAPIException(message=msg)
 
         with mock.patch.object(sfv,
                                '_issue_api_request',
@@ -1910,12 +1910,12 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         def throw_request(method, params, version):
             msg = 'xUnknownException'
-            raise exception.SolidFireAPIException(message=msg)
+            raise solidfire.SolidFireAPIException(message=msg)
 
         with mock.patch.object(sfv,
                                '_issue_api_request',
                                side_effect=throw_request):
-            self.assertRaises(exception.SolidFireAPIException,
+            self.assertRaises(solidfire.SolidFireAPIException,
                               sfv._remove_volume_from_vag,
                               vol_id,
                               vag_id)
@@ -2022,7 +2022,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         with mock.patch.object(sfv,
                                '_get_all_active_volumes',
                                return_value=active_vols):
-            self.assertRaises(exception.SolidFireDriverException,
+            self.assertRaises(solidfire.SolidFireDriverException,
                               sfv._group_snapshot_creator,
                               gsnap_name,
                               vol_uuids)
@@ -2084,7 +2084,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         with mock.patch.object(sfv, '_get_group_snapshot_by_name',
                                return_value=None):
-            self.assertRaises(exception.SolidFireDriverException,
+            self.assertRaises(solidfire.SolidFireDriverException,
                               sfv._delete_cgsnapshot_by_name,
                               'does not matter')
 
@@ -2197,7 +2197,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                                return_value=active_vols),\
             mock.patch.object(sfv,
                               '_sf_create_group_snapshot'):
-            self.assertRaises(exception.SolidFireDriverException,
+            self.assertRaises(solidfire.SolidFireDriverException,
                               sfv._create_cgsnapshot,
                               ctxt,
                               cgsnapshot,
@@ -2438,7 +2438,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_pythons_try_except(self):
         def _fake_retrieve_rep(vol):
-            raise exception.SolidFireAPIException
+            raise solidfire.SolidFireAPIException
 
         fake_type = {'extra_specs': {}}
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -2457,7 +2457,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                 mock.patch.object(sfv,
                                   '_retrieve_replication_settings',
                                   side_effect=_fake_retrieve_rep):
-            self.assertRaises(exception.SolidFireAPIException,
+            self.assertRaises(solidfire.SolidFireAPIException,
                               sfv.create_volume,
                               self.mock_volume)
 
