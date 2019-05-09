@@ -1323,19 +1323,6 @@ class KaminarioRetryableException(VolumeDriverException):
     message = _("Kaminario retryable exception: %(reason)s")
 
 
-# Synology driver
-class SynoAPIHTTPError(VolumeDriverException):
-    message = _("HTTP exit code: [%(code)s]")
-
-
-class SynoAuthError(VolumeDriverException):
-    message = _("Synology driver authentication failed: %(reason)s.")
-
-
-class SynoLUNNotExist(VolumeDriverException):
-    message = _("LUN not found by UUID: %(uuid)s.")
-
-
 class AttachmentSpecsNotFound(NotFound):
     message = _("Attachment %(attachment_id)s has no "
                 "key %(specs_key)s.")

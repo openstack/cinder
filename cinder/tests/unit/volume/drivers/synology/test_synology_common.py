@@ -439,7 +439,7 @@ class SynoAPIRequestTestCase(test.TestCase):
                                       'success': False
                                   }, http_client.OK))
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.request.request,
                           FAKE_API,
                           FAKE_METHOD,
@@ -516,7 +516,7 @@ class SynoCommonTestCase(test.TestCase):
             mock.Mock(side_effect=[
                       out,
                       out,
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
 
         result = self.common._get_node_uuid()
         (self.common.exec_webapi.
@@ -529,7 +529,7 @@ class SynoCommonTestCase(test.TestCase):
         self.assertRaises(exception.VolumeDriverException,
                           self.common._get_node_uuid)
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common._get_node_uuid)
 
     def test__get_pool_info(self):
@@ -543,7 +543,7 @@ class SynoCommonTestCase(test.TestCase):
             mock.Mock(side_effect=[
                       out,
                       out,
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
         result = self.common._get_pool_info()
         (self.common.exec_webapi.
             assert_called_with('SYNO.Core.Storage.Volume',
@@ -556,7 +556,7 @@ class SynoCommonTestCase(test.TestCase):
         self.assertRaises(exception.MalformedResponse,
                           self.common._get_pool_info)
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common._get_pool_info)
 
         self.conf.synology_pool_name = ''
@@ -633,7 +633,7 @@ class SynoCommonTestCase(test.TestCase):
             mock.Mock(side_effect=[
                       out,
                       out,
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
         result = self.common._get_lun_info(VOLUME['name'],
                                            ['is_mapped'])
         (self.common.exec_webapi.
@@ -649,7 +649,7 @@ class SynoCommonTestCase(test.TestCase):
                           self.common._get_lun_info,
                           VOLUME['name'])
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common._get_lun_info,
                           VOLUME['name'])
 
@@ -663,7 +663,7 @@ class SynoCommonTestCase(test.TestCase):
             mock.Mock(side_effect=[
                       lun_info,
                       lun_info,
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
 
         result = self.common._get_lun_uuid(VOLUME['name'])
         self.assertEqual(LUN_UUID, result)
@@ -673,7 +673,7 @@ class SynoCommonTestCase(test.TestCase):
                           self.common._get_lun_uuid,
                           VOLUME['name'])
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common._get_lun_uuid,
                           VOLUME['name'])
 
@@ -688,7 +688,7 @@ class SynoCommonTestCase(test.TestCase):
                       lun_info,
                       lun_info,
                       lun_info,
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
 
         result = self.common._get_lun_status(VOLUME['name'])
         self.assertEqual((lun_info['status'], lun_info['is_action_locked']),
@@ -704,7 +704,7 @@ class SynoCommonTestCase(test.TestCase):
                           self.common._get_lun_status,
                           VOLUME['name'])
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common._get_lun_status,
                           VOLUME['name'])
 
@@ -723,7 +723,7 @@ class SynoCommonTestCase(test.TestCase):
             mock.Mock(side_effect=[
                       out,
                       out,
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
         result = self.common._get_snapshot_info(DS_SNAPSHOT_UUID,
                                                 additional=['status'])
         (self.common.exec_webapi.
@@ -739,7 +739,7 @@ class SynoCommonTestCase(test.TestCase):
                           self.common._get_snapshot_info,
                           DS_SNAPSHOT_UUID)
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common._get_snapshot_info,
                           DS_SNAPSHOT_UUID)
 
@@ -754,7 +754,7 @@ class SynoCommonTestCase(test.TestCase):
                       snapshot_info,
                       snapshot_info,
                       snapshot_info,
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
 
         result = self.common._get_snapshot_status(DS_SNAPSHOT_UUID)
         self.assertEqual((snapshot_info['status'],
@@ -771,7 +771,7 @@ class SynoCommonTestCase(test.TestCase):
                           self.common._get_snapshot_status,
                           DS_SNAPSHOT_UUID)
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common._get_snapshot_status,
                           DS_SNAPSHOT_UUID)
 
@@ -876,7 +876,7 @@ class SynoCommonTestCase(test.TestCase):
         self.common.exec_webapi = (
             mock.Mock(side_effect=[
                       out,
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
         self.conf.safe_get = (
             mock.Mock(side_effect=[
                       self.conf.use_chap_auth,
@@ -888,7 +888,7 @@ class SynoCommonTestCase(test.TestCase):
                           self.common._target_create,
                           VOLUME['id'])
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common._target_create,
                           VOLUME['id'])
 
@@ -903,7 +903,7 @@ class SynoCommonTestCase(test.TestCase):
         self.common.exec_webapi = (
             mock.Mock(side_effect=[
                       out,
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
 
         result = self.common._target_delete(TRG_ID)
         (self.common.exec_webapi.
@@ -913,7 +913,7 @@ class SynoCommonTestCase(test.TestCase):
                                target_id=str(TRG_ID)))
         self.assertIsNone(result)
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common._target_delete,
                           TRG_ID)
 
@@ -929,7 +929,7 @@ class SynoCommonTestCase(test.TestCase):
             mock.Mock(side_effect=[
                       out,
                       out,
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
         self.common._get_lun_uuid = mock.Mock(return_value=LUN_UUID)
 
         result = self.common._lun_map_unmap_target(VOLUME['name'],
@@ -955,7 +955,7 @@ class SynoCommonTestCase(test.TestCase):
                                target_ids=[str(TRG_ID)]))
         self.assertIsNone(result)
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common._lun_map_unmap_target,
                           VOLUME['name'],
                           True,
@@ -994,13 +994,13 @@ class SynoCommonTestCase(test.TestCase):
         self.common.exec_webapi = (
             mock.Mock(side_effect=[
                       out,
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
 
         result = self.common._modify_lun_name(VOLUME['name'],
                                               NEW_VOLUME['name'])
         self.assertIsNone(result)
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common._modify_lun_name,
                           VOLUME['name'],
                           NEW_VOLUME['name'])
@@ -1012,7 +1012,7 @@ class SynoCommonTestCase(test.TestCase):
                       ('normal', True),
                       ('normal', False),
                       ('cloning', False),
-                      exception.SynoLUNNotExist(message='dont care')]))
+                      common.SynoLUNNotExist(message='dont care')]))
 
         result = self.common._check_lun_status_normal(VOLUME['name'])
         self.assertEqual(1, _patched_sleep.call_count)
@@ -1023,7 +1023,7 @@ class SynoCommonTestCase(test.TestCase):
         result = self.common._check_lun_status_normal(VOLUME['name'])
         self.assertFalse(result)
 
-        self.assertRaises(exception.SynoLUNNotExist,
+        self.assertRaises(common.SynoLUNNotExist,
                           self.common._check_lun_status_normal,
                           VOLUME['name'])
 
@@ -1034,7 +1034,7 @@ class SynoCommonTestCase(test.TestCase):
                       ('Healthy', True),
                       ('Healthy', False),
                       ('Unhealthy', False),
-                      exception.SynoLUNNotExist(message='dont care')]))
+                      common.SynoLUNNotExist(message='dont care')]))
 
         result = self.common._check_snapshot_status_healthy(DS_SNAPSHOT_UUID)
         self.assertEqual(1, _patched_sleep.call_count)
@@ -1045,7 +1045,7 @@ class SynoCommonTestCase(test.TestCase):
         result = self.common._check_snapshot_status_healthy(DS_SNAPSHOT_UUID)
         self.assertFalse(result)
 
-        self.assertRaises(exception.SynoLUNNotExist,
+        self.assertRaises(common.SynoLUNNotExist,
                           self.common._check_snapshot_status_healthy,
                           DS_SNAPSHOT_UUID)
 
@@ -1072,7 +1072,7 @@ class SynoCommonTestCase(test.TestCase):
         result = self.common._check_iscsi_response(out, uuid=LUN_UUID)
         self.assertEqual('Bad LUN UUID [18990505]', result[0])
         self.assertIsInstance(result[1],
-                              (exception.SynoLUNNotExist))
+                              (common.SynoLUNNotExist))
 
         out['error'].update(code=18990532)
         result = self.common._check_iscsi_response(out,
@@ -1144,8 +1144,8 @@ class SynoCommonTestCase(test.TestCase):
 
         self.common.exec_webapi = (
             mock.Mock(side_effect=
-                      exception.SynoAuthError(message='dont care')))
-        self.assertRaises(exception.SynoAuthError,
+                      common.SynoAuthError(message='dont care')))
+        self.assertRaises(common.SynoAuthError,
                           self.common._check_ds_version)
 
     def test__check_ds_ability(self):
@@ -1193,8 +1193,8 @@ class SynoCommonTestCase(test.TestCase):
 
         self.common.exec_webapi = (
             mock.Mock(side_effect=
-                      exception.SynoAuthError(message='dont care')))
-        self.assertRaises(exception.SynoAuthError,
+                      common.SynoAuthError(message='dont care')))
+        self.assertRaises(common.SynoAuthError,
                           self.common._check_ds_ability)
 
     @mock.patch.object(common.LOG, 'exception')
@@ -1229,7 +1229,7 @@ class SynoCommonTestCase(test.TestCase):
         self.common._check_iscsi_response = (
             mock.Mock(return_value=
                       ('Bad LUN UUID',
-                       exception.SynoLUNNotExist(message='dont care'))))
+                       common.SynoLUNNotExist(message='dont care'))))
         self.common._check_storage_response = (
             mock.Mock(return_value=
                       ('Internal error',
@@ -1240,7 +1240,7 @@ class SynoCommonTestCase(test.TestCase):
         self.assertEqual(0, _logexc.call_count)
         self.assertIsNone(result)
 
-        self.assertRaises(exception.SynoLUNNotExist,
+        self.assertRaises(common.SynoLUNNotExist,
                           self.common.check_response,
                           bad_out1)
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -1277,7 +1277,7 @@ class SynoCommonTestCase(test.TestCase):
                                                      param2='value2')
         self.assertDictEqual(expected, result)
 
-        self.assertRaises(exception.SynoAPIHTTPError,
+        self.assertRaises(common.SynoAPIHTTPError,
                           self.common.exec_webapi,
                           api,
                           method,
@@ -1307,13 +1307,13 @@ class SynoCommonTestCase(test.TestCase):
         self.common._get_lun_info = (
             mock.Mock(side_effect=[
                       LUN_INFO,
-                      exception.SynoAuthError(message='dont care'),
+                      common.SynoAuthError(message='dont care'),
                       bad_lun_info]))
 
         result = self.common.is_lun_mapped(VOLUME['name'])
         self.assertEqual(LUN_INFO['is_mapped'], result)
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common.is_lun_mapped,
                           VOLUME['name'])
 
@@ -1373,7 +1373,7 @@ class SynoCommonTestCase(test.TestCase):
             mock.Mock(side_effect=[
                       out,
                       out,
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
         self.common._check_lun_status_normal = (
             mock.Mock(side_effect=[True, False, True]))
 
@@ -1392,7 +1392,7 @@ class SynoCommonTestCase(test.TestCase):
                           self.common.create_volume,
                           VOLUME)
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common.create_volume,
                           VOLUME)
 
@@ -1404,8 +1404,8 @@ class SynoCommonTestCase(test.TestCase):
         self.common.exec_webapi = (
             mock.Mock(side_effect=[
                       out,
-                      exception.SynoLUNNotExist(message='dont care'),
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoLUNNotExist(message='dont care'),
+                      common.SynoAuthError(message='dont care')]))
 
         result = self.common.delete_volume(VOLUME)
         self.common._get_lun_uuid.assert_called_with(VOLUME['name'])
@@ -1419,7 +1419,7 @@ class SynoCommonTestCase(test.TestCase):
         result = self.common.delete_volume(VOLUME)
         self.assertIsNone(result)
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common.delete_volume,
                           VOLUME)
 
@@ -1564,9 +1564,9 @@ class SynoCommonTestCase(test.TestCase):
                           SNAPSHOT)
 
         self.common.exec_webapi = (
-            mock.Mock(side_effect=exception.SynoAuthError(reason='dont care')))
+            mock.Mock(side_effect=common.SynoAuthError(reason='dont care')))
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common.create_snapshot,
                           SNAPSHOT)
 
@@ -1612,7 +1612,7 @@ class SynoCommonTestCase(test.TestCase):
                       DS_SNAPSHOT_UUID,
                       DS_SNAPSHOT_UUID,
                       exception.SnapshotMetadataNotFound(message='dont care'),
-                      exception.SynoAuthError(message='dont care')]))
+                      common.SynoAuthError(message='dont care')]))
         self.common._check_lun_status_normal = (
             mock.Mock(side_effect=[True, False, True, True]))
         self.common.extend_volume = mock.Mock()
@@ -1644,7 +1644,7 @@ class SynoCommonTestCase(test.TestCase):
                           new_volume,
                           SNAPSHOT)
 
-        self.assertRaises(exception.SynoAuthError,
+        self.assertRaises(common.SynoAuthError,
                           self.common.create_volume_from_snapshot,
                           new_volume,
                           SNAPSHOT)
