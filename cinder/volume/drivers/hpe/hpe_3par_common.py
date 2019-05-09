@@ -138,6 +138,10 @@ QUEUE_LENGTH = 'queue_length'
 AVG_BUSY_PERC = 'avg_busy_perc'
 
 
+class Invalid3PARDomain(exception.VolumeDriverException):
+    message = _("Invalid 3PAR Domain: %(err)s")
+
+
 class HPE3PARCommon(object):
     """Class that contains common code for the 3PAR drivers.
 
@@ -1414,7 +1418,7 @@ class HPE3PARCommon(object):
         except hpeexceptions.HTTPBadRequest as e:
             if 'must be in the same domain' in e.get_description():
                 LOG.error(e.get_description())
-                raise exception.Invalid3PARDomain(err=e.get_description())
+                raise Invalid3PARDomain(err=e.get_description())
             else:
                 raise exception.VolumeBackendAPIException(
                     data=e.get_description())
@@ -3206,11 +3210,11 @@ class HPE3PARCommon(object):
         domain = self.get_domain(old_cpg)
         if domain != self.get_domain(new_cpg):
             reason = (_('Cannot retype to a CPG in a different domain.'))
-            raise exception.Invalid3PARDomain(reason)
+            raise Invalid3PARDomain(reason)
 
         if domain != self.get_domain(new_snap_cpg):
             reason = (_('Cannot retype to a snap CPG in a different domain.'))
-            raise exception.Invalid3PARDomain(reason)
+            raise Invalid3PARDomain(reason)
 
     def _retype(self, volume, volume_name, new_type_name, new_type_id, host,
                 new_persona, old_cpg, new_cpg, old_snap_cpg, new_snap_cpg,

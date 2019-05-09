@@ -972,11 +972,6 @@ class RBDDriverException(VolumeDriverException):
     message = _("RBD Cinder driver failure: %(reason)s")
 
 
-# HP 3Par
-class Invalid3PARDomain(VolumeDriverException):
-    message = _("Invalid 3PAR Domain: %(err)s")
-
-
 # RemoteFS drivers
 class RemoteFSException(VolumeDriverException):
     message = _("Unknown RemoteFS exception")
