@@ -115,16 +115,29 @@ CONF.register_opts(gcsbackup_service_opts)
 OAUTH_EXCEPTIONS = None
 
 
+# Google Cloud Storage(GCS) backup driver
+class GCSConnectionFailure(exception.BackupDriverException):
+    message = _("Google Cloud Storage connection failure: %(reason)s")
+
+
+class GCSApiFailure(exception.BackupDriverException):
+    message = _("Google Cloud Storage api failure: %(reason)s")
+
+
+class GCSOAuth2Failure(exception.BackupDriverException):
+    message = _("Google Cloud Storage oauth2 failure: %(reason)s")
+
+
 def gcs_logger(func):
     def func_wrapper(self, *args, **kwargs):
         try:
             return func(self, *args, **kwargs)
         except errors.Error as err:
-            raise exception.GCSApiFailure(reason=err)
+            raise GCSApiFailure(reason=err)
         except OAUTH_EXCEPTIONS as err:
-            raise exception.GCSOAuth2Failure(reason=err)
+            raise GCSOAuth2Failure(reason=err)
         except Exception as err:
-            raise exception.GCSConnectionFailure(reason=err)
+            raise GCSConnectionFailure(reason=err)
 
     return func_wrapper
 

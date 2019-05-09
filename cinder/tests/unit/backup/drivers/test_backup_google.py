@@ -427,7 +427,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
                                               container=container_name)
         service = google_dr.GoogleBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        self.assertRaises(exception.GCSApiFailure,
+        self.assertRaises(google_dr.GCSApiFailure,
                           service.backup,
                           backup, self.volume_file)
 
@@ -439,7 +439,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
                                               container=container_name)
         service = google_dr.GoogleBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        self.assertRaises(exception.GCSOAuth2Failure,
+        self.assertRaises(google_dr.GCSOAuth2Failure,
                           service.backup,
                           backup, self.volume_file)
 
@@ -507,7 +507,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
         service = google_dr.GoogleBackupDriver(self.ctxt)
 
         with tempfile.NamedTemporaryFile() as volume_file:
-            self.assertRaises(exception.GCSConnectionFailure,
+            self.assertRaises(google_dr.GCSConnectionFailure,
                               service.restore,
                               backup, volume_id, volume_file)
 

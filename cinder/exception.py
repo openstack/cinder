@@ -1301,19 +1301,6 @@ class NexentaException(VolumeDriverException):
     message = "%(reason)s"
 
 
-# Google Cloud Storage(GCS) backup driver
-class GCSConnectionFailure(BackupDriverException):
-    message = _("Google Cloud Storage connection failure: %(reason)s")
-
-
-class GCSApiFailure(BackupDriverException):
-    message = _("Google Cloud Storage api failure: %(reason)s")
-
-
-class GCSOAuth2Failure(BackupDriverException):
-    message = _("Google Cloud Storage oauth2 failure: %(reason)s")
-
-
 # Kaminario K2
 class KaminarioCinderDriverException(VolumeDriverException):
     message = _("KaminarioCinderDriver failure: %(reason)s")
