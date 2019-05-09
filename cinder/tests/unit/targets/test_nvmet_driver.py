@@ -15,7 +15,6 @@ import mock
 from oslo_utils import timeutils
 
 from cinder import context
-from cinder import exception
 from cinder.tests.unit.targets import targets_fixture as tf
 from cinder import utils
 from cinder.volume.targets import nvmet
@@ -141,7 +140,7 @@ class TestNVMETDriver(tf.TargetDriverFixture):
 
         self.target.target_ip = self.target_ip
         self.target.target_port = self.target_port
-        self.assertRaises(exception.NVMETTargetAddError,
+        self.assertRaises(nvmet.NVMETTargetAddError,
                           self.target.create_export,
                           ctxt,
                           mock_testvol,
@@ -260,7 +259,7 @@ class TestNVMETDriver(tf.TargetDriverFixture):
             "nqn.%s-%s" % (self.nvmet_subsystem_name,
                            mock_testvol['id']))
         moc_delete_nvmf_subsystem.return_value = None
-        self.assertRaises(exception.NVMETTargetDeleteError,
+        self.assertRaises(nvmet.NVMETTargetDeleteError,
                           self.target.remove_export,
                           ctxt,
                           mock_testvol)

@@ -29,6 +29,14 @@ from cinder.volume.targets import nvmeof
 LOG = logging.getLogger(__name__)
 
 
+class NVMETTargetAddError(exception.CinderException):
+    message = "Failed to add subsystem: %(subsystem)s"
+
+
+class NVMETTargetDeleteError(exception.CinderException):
+    message = "Failed to delete subsystem: %(subsystem)s"
+
+
 class NVMET(nvmeof.NVMeOF):
 
     @utils.synchronized('nvmetcli', external=True)
@@ -58,7 +66,7 @@ class NVMET(nvmeof.NVMeOF):
                 ns_id, volume_id, volume_path)
             if newly_added_subsystem is None:
                 LOG.error('Failed to add subsystem: %s', subsystem_name)
-                raise exception.NVMETTargetAddError(subsystem=subsystem_name)
+                raise NVMETTargetAddError(subsystem=subsystem_name)
             LOG.info('Added subsystem: %s', newly_added_subsystem)
             search_for_subsystem = newly_added_subsystem
         else:
@@ -142,8 +150,7 @@ class NVMET(nvmeof.NVMeOF):
             if removed_subsystem is None:
                 LOG.error(
                     'Failed to delete subsystem: %s', subsystem_name)
-                raise exception.NVMETTargetDeleteError(
-                    subsystem=subsystem_name)
+                raise NVMETTargetDeleteError(subsystem=subsystem_name)
             elif removed_subsystem == subsystem_name:
                 LOG.info(
                     'Managed to delete subsystem: %s', subsystem_name)
