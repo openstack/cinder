@@ -1033,10 +1033,6 @@ class ZoneManagerNotInitialized(CinderException):
     message = _("Fibre Channel Zone Manager not initialized")
 
 
-class CiscoZoningCliException(CinderException):
-    message = _("Cisco Fibre Channel Zoning CLI error: %(reason)s")
-
-
 # ConsistencyGroup
 class ConsistencyGroupNotFound(NotFound):
     message = _("ConsistencyGroup %(consistencygroup_id)s could not be found.")

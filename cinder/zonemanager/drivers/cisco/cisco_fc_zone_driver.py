@@ -39,6 +39,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder.zonemanager.drivers.cisco import cisco_fabric_opts as fabric_opts
+from cinder.zonemanager.drivers.cisco import exception as c_exception
 from cinder.zonemanager.drivers.cisco import fc_zone_constants as ZoneConstant
 from cinder.zonemanager.drivers import driver_utils
 from cinder.zonemanager.drivers import fc_zone_driver
@@ -267,7 +268,7 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                             cfgmap_from_fabric,
                             statusmap_from_fabric)
                     conn.cleanup()
-                except exception.CiscoZoningCliException as cisco_ex:
+                except c_exception.CiscoZoningCliException as cisco_ex:
                     msg = _("Exception: %s") % six.text_type(cisco_ex)
                     raise exception.FCZoneDriverException(msg)
                 except Exception:
@@ -498,7 +499,7 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     LOG.debug("show fcns database info from fabric: %s",
                               nsinfo)
                     conn.cleanup()
-                except exception.CiscoZoningCliException:
+                except c_exception.CiscoZoningCliException:
                     with excutils.save_and_reraise_exception():
                         LOG.exception("Error getting show fcns database info.")
                 except Exception:

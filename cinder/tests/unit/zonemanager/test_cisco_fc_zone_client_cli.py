@@ -23,10 +23,10 @@ import mock
 from oslo_concurrency import processutils
 from six.moves import range
 
-from cinder import exception
 from cinder import test
 from cinder.zonemanager.drivers.cisco \
     import cisco_fc_zone_client_cli as cli
+from cinder.zonemanager.drivers.cisco import exception as c_exception
 import cinder.zonemanager.drivers.cisco.fc_zone_constants as ZoneConstant
 
 nsshow = '20:1a:00:05:1e:e8:e3:29'
@@ -147,7 +147,7 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
     def test_get_active_zone_set_ssh_error(self, run_ssh_mock):
         run_ssh_mock.side_effect = processutils.ProcessExecutionError
-        self.assertRaises(exception.CiscoZoningCliException,
+        self.assertRaises(c_exception.CiscoZoningCliException,
                           self.get_active_zone_set)
 
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_get_switch_info')
@@ -188,7 +188,7 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
     def test_get_nameserver_info_ssh_error(self, run_ssh_mock):
         run_ssh_mock.side_effect = processutils.ProcessExecutionError
-        self.assertRaises(exception.CiscoZoningCliException,
+        self.assertRaises(c_exception.CiscoZoningCliException,
                           self.get_nameserver_info)
 
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
