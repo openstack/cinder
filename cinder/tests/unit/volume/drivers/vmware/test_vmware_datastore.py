@@ -158,6 +158,11 @@ class DatastoreTest(test.TestCase):
         ds1b_props = {'summary': self._create_summary(ds1b),
                       'host': host_mounts1}
 
+        # datastore with zero capacity
+        ds1c = self._create_datastore('ds-1c')
+        ds1c_props = {'summary': self._create_summary(ds1c, capacity=0),
+                      'host': host_mounts1}
+
         datastores = {ds1: ds1_props,
                       ds2: ds2_props,
                       ds3: ds3_props,
@@ -168,9 +173,10 @@ class DatastoreTest(test.TestCase):
                       ds8: ds8_props,
                       ds9: ds9_props,
                       ds1a: ds1a_props,
-                      ds1b: ds1b_props}
+                      ds1b: ds1b_props,
+                      ds1c: ds1c_props}
         profile_id = mock.sentinel.profile_id
-        self._ds_sel._ds_regex = re.compile(r"ds-[1-9a]{1,2}$")
+        self._ds_sel._ds_regex = re.compile(r"ds-[1-9ac]{1,2}$")
         datastores = self._ds_sel._filter_datastores(
             datastores,
             512,
