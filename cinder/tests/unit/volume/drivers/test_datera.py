@@ -80,8 +80,8 @@ class DateraVolumeTestCasev2(test.TestCase):
         self.assertIsNone(self.driver.create_volume(self.volume))
 
     def test_volume_create_fails(self):
-        self.mock_api.side_effect = exception.DateraAPIException
-        self.assertRaises(exception.DateraAPIException,
+        self.mock_api.side_effect = datc.DateraAPIException
+        self.assertRaises(datc.DateraAPIException,
                           self.driver.create_volume, self.volume)
 
     def test_volume_create_delay(self):
@@ -157,12 +157,12 @@ class DateraVolumeTestCasev2(test.TestCase):
                 cloned_volume, cloned_volume['size'])
 
     def test_create_cloned_volume_fails(self):
-        self.mock_api.side_effect = exception.DateraAPIException
+        self.mock_api.side_effect = datc.DateraAPIException
         source_volume = _stub_volume(
             id='7f91abfa-7964-41ed-88fc-207c3a290b4f',
             display_name='foo'
         )
-        self.assertRaises(exception.DateraAPIException,
+        self.assertRaises(datc.DateraAPIException,
                           self.driver.create_cloned_volume, self.volume,
                           source_volume)
 
@@ -214,8 +214,8 @@ class DateraVolumeTestCasev2(test.TestCase):
         self.assertIsNone(self.driver.delete_volume(self.volume))
 
     def test_delete_volume_fails(self):
-        self.mock_api.side_effect = exception.DateraAPIException
-        self.assertRaises(exception.DateraAPIException,
+        self.mock_api.side_effect = datc.DateraAPIException
+        self.assertRaises(datc.DateraAPIException,
                           self.driver.delete_volume, self.volume)
 
     def test_ensure_export_success(self):
@@ -226,9 +226,9 @@ class DateraVolumeTestCasev2(test.TestCase):
                                                     None))
 
     def test_ensure_export_fails(self):
-        self.mock_api.side_effect = exception.DateraAPIException
+        self.mock_api.side_effect = datc.DateraAPIException
         ctxt = context.get_admin_context()
-        self.assertRaises(exception.DateraAPIException,
+        self.assertRaises(datc.DateraAPIException,
                           self.driver.ensure_export, ctxt, self.volume, None)
 
     def test_create_export_target_does_not_exist_success(self):
@@ -240,9 +240,9 @@ class DateraVolumeTestCasev2(test.TestCase):
                                                     None))
 
     def test_create_export_fails(self):
-        self.mock_api.side_effect = exception.DateraAPIException
+        self.mock_api.side_effect = datc.DateraAPIException
         ctxt = context.get_admin_context()
-        self.assertRaises(exception.DateraAPIException,
+        self.assertRaises(datc.DateraAPIException,
                           self.driver.create_export,
                           ctxt,
                           self.volume,
@@ -267,9 +267,9 @@ class DateraVolumeTestCasev2(test.TestCase):
                                                            connector))
 
     def test_initialize_connection_fails(self):
-        self.mock_api.side_effect = exception.DateraAPIException
+        self.mock_api.side_effect = datc.DateraAPIException
         connector = {}
-        self.assertRaises(exception.DateraAPIException,
+        self.assertRaises(datc.DateraAPIException,
                           self.driver.initialize_connection,
                           self.volume,
                           connector)
@@ -303,10 +303,10 @@ class DateraVolumeTestCasev2(test.TestCase):
         self.assertIsNone(self.driver.detach_volume(ctxt, volume))
 
     def test_detach_volume_fails(self):
-        self.mock_api.side_effect = exception.DateraAPIException
+        self.mock_api.side_effect = datc.DateraAPIException
         ctxt = context.get_admin_context()
         volume = _stub_volume(status='in-use')
-        self.assertRaises(exception.DateraAPIException,
+        self.assertRaises(datc.DateraAPIException,
                           self.driver.detach_volume, ctxt, volume)
 
     def test_detach_volume_not_found(self):
@@ -334,9 +334,9 @@ class DateraVolumeTestCasev2(test.TestCase):
         self.assertIsNone(self.driver.create_snapshot(snapshot))
 
     def test_create_snapshot_fails(self):
-        self.mock_api.side_effect = exception.DateraAPIException
+        self.mock_api.side_effect = datc.DateraAPIException
         snapshot = _stub_snapshot(volume_id=self.volume['id'])
-        self.assertRaises(exception.DateraAPIException,
+        self.assertRaises(datc.DateraAPIException,
                           self.driver.create_snapshot, snapshot)
 
     def test_delete_snapshot_success(self):
@@ -361,9 +361,9 @@ class DateraVolumeTestCasev2(test.TestCase):
         self.assertIsNone(self.driver.delete_snapshot(snapshot))
 
     def test_delete_snapshot_fails(self):
-        self.mock_api.side_effect = exception.DateraAPIException
+        self.mock_api.side_effect = datc.DateraAPIException
         snapshot = _stub_snapshot(volume_id=self.volume['id'])
-        self.assertRaises(exception.DateraAPIException,
+        self.assertRaises(datc.DateraAPIException,
                           self.driver.delete_snapshot, snapshot)
 
     def test_create_volume_from_snapshot_success(self):
@@ -409,9 +409,9 @@ class DateraVolumeTestCasev2(test.TestCase):
                                                 extend_volume['size'])
 
     def test_create_volume_from_snapshot_fails(self):
-        self.mock_api.side_effect = exception.DateraAPIException
+        self.mock_api.side_effect = datc.DateraAPIException
         snapshot = _stub_snapshot(volume_id=self.volume['id'])
-        self.assertRaises(exception.DateraAPIException,
+        self.assertRaises(datc.DateraAPIException,
                           self.driver.create_volume_from_snapshot, self.volume,
                           snapshot)
 
@@ -431,9 +431,9 @@ class DateraVolumeTestCasev2(test.TestCase):
         self.assertIsNone(self.driver.extend_volume(volume, 2))
 
     def test_extend_volume_fails(self):
-        self.mock_api.side_effect = exception.DateraAPIException
+        self.mock_api.side_effect = datc.DateraAPIException
         volume = _stub_volume(size=1)
-        self.assertRaises(exception.DateraAPIException,
+        self.assertRaises(datc.DateraAPIException,
                           self.driver.extend_volume, volume, 2)
 
     def test_login_successful(self):

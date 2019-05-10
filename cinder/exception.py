@@ -1146,11 +1146,6 @@ class InvalidGroupSnapshotStatus(Invalid):
     message = _("Invalid GroupSnapshot Status: %(reason)s")
 
 
-# Datera driver
-class DateraAPIException(VolumeBackendAPIException):
-    message = _("Bad response from Datera API")
-
-
 # Target drivers
 class ISCSITargetCreateFailed(CinderException):
     message = _("Failed to create iscsi target for volume %(volume_id)s.")
