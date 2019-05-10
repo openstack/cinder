@@ -210,9 +210,8 @@ class VolumeActionsController(wsgi.Controller):
         volume = self.volume_api.get(context, id)
 
         context.authorize(policy.UPLOAD_IMAGE_POLICY)
-        # check for valid disk-format
-        disk_format = params.get("disk_format", "raw")
 
+        disk_format = params.get("disk_format", "raw")
         image_metadata = {"container_format": params.get(
             "container_format", "bare"),
             "disk_format": disk_format,
