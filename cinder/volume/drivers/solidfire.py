@@ -115,6 +115,31 @@ xVolumeAccessGroupIDDoesNotExist = 'xVolumeAccessGroupIDDoesNotExist'
 xNotInVolumeAccessGroup = 'xNotInVolumeAccessGroup'
 
 
+class DuplicateSfVolumeNames(exception.Duplicate):
+    message = _("Detected more than one volume with name %(vol_name)s")
+
+
+class SolidFireAPIException(exception.VolumeBackendAPIException):
+    message = _("Bad response from SolidFire API")
+
+
+class SolidFireDriverException(exception.VolumeDriverException):
+    message = _("SolidFire Cinder Driver exception")
+
+
+class SolidFireAPIDataException(SolidFireAPIException):
+    message = _("Error in SolidFire API response: data=%(data)s")
+
+
+class SolidFireAccountNotFound(SolidFireDriverException):
+    message = _("Unable to locate account %(account_name)s on "
+                "Solidfire device")
+
+
+class SolidFireRetryableException(exception.VolumeBackendAPIException):
+    message = _("Retryable SolidFire Exception encountered")
+
+
 def retry(exc_tuple, tries=5, delay=1, backoff=2):
     def retry_dec(f):
         @six.wraps(f)
@@ -137,7 +162,7 @@ def retry(exc_tuple, tries=5, delay=1, backoff=2):
             msg = (_('Retry count exceeded for command: %s') %
                     (args[1],))
             LOG.error(msg)
-            raise exception.SolidFireAPIException(message=msg)
+            raise SolidFireAPIException(message=msg)
         return func_retry
     return retry_dec
 
@@ -237,7 +262,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                        'maxIOPS': 200000,
                        'burstIOPS': 200000}
     cluster_stats = {}
-    retry_exc_tuple = (exception.SolidFireRetryableException,
+    retry_exc_tuple = (SolidFireRetryableException,
                        requests.exceptions.ConnectionError)
     retryable_errors = ['xDBVersionMismatch',
                         'xMaxSnapshotsPerVolumeExceeded',
@@ -283,7 +308,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         # an endpoint to issue_api_request if needed
         try:
             self._update_cluster_status()
-        except exception.SolidFireAPIException:
+        except SolidFireAPIException:
             pass
 
         if self.configuration.sf_allow_template_caching:
@@ -324,7 +349,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                 {'clusterPairingKey': pairing_info['clusterPairingKey']},
                 version='8.0',
                 endpoint=remote_device['endpoint'])['result']['clusterPairID']
-        except exception.SolidFireAPIException as ex:
+        except SolidFireAPIException as ex:
             if 'xPairingAlreadExists' in ex.msg:
                 LOG.debug('Pairing already exists during init.')
             else:
@@ -483,7 +508,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             id = self._issue_api_request(
                 'GetAccountByName',
                 {'username': account_name})['result']['account']['accountID']
-        except exception.SolidFireAPIException:
+        except SolidFireAPIException:
             chap_secret = self._generate_random_string(12)
             params = {'username': account_name,
                       'initiatorSecret': chap_secret,
@@ -538,11 +563,11 @@ class SolidFireDriver(san.SanISCSIDriver):
                    'SolidFire API call.' % response['error']['name'])
             LOG.debug(msg)
             LOG.debug("API response: %s", response)
-            raise exception.SolidFireRetryableException(message=msg)
+            raise SolidFireRetryableException(message=msg)
 
         if 'error' in response:
             msg = _('API response: %s') % response
-            raise exception.SolidFireAPIException(msg)
+            raise SolidFireAPIException(msg)
 
         return response
 
@@ -624,7 +649,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             if 'result' in data and 'account' in data['result']:
                 LOG.debug('Found solidfire account: %s', sf_account_name)
                 sfaccount = data['result']['account']
-        except exception.SolidFireAPIException as ex:
+        except SolidFireAPIException as ex:
             if 'xUnknownAccount' in ex.msg:
                 return sfaccount
             else:
@@ -642,7 +667,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         sf_account_name = self._get_sf_account_name(project_id)
         sfaccount = self._get_sfaccount_by_name(sf_account_name)
         if sfaccount is None:
-            raise exception.SolidFireAccountNotFound(
+            raise SolidFireAccountNotFound(
                 account_name=sf_account_name)
 
         return sfaccount
@@ -770,7 +795,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         data = self._issue_api_request('CloneVolume', params, version='6.0')
         if (('result' not in data) or ('volumeID' not in data['result'])):
             msg = _("API response: %s") % data
-            raise exception.SolidFireAPIException(msg)
+            raise SolidFireAPIException(msg)
 
         sf_volume_id = data['result']['volumeID']
 
@@ -792,7 +817,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         model_update = self._get_model_info(sf_account, sf_volume_id)
         if model_update is None:
             mesg = _('Failed to get model update from clone')
-            raise exception.SolidFireAPIException(mesg)
+            raise SolidFireAPIException(mesg)
 
         # Increment the usage count, just for data collection
         # We're only doing this for clones, not create_from snaps
@@ -965,7 +990,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             LOG.error("Found %(count)s volumes mapped to id: %(uuid)s.",
                       {'count': found_count,
                        'uuid': uuid})
-            raise exception.DuplicateSfVolumeNames(vol_name=uuid)
+            raise DuplicateSfVolumeNames(vol_name=uuid)
 
         return sf_volref
 
@@ -1153,7 +1178,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             if not sf_account:
                 msg = _('Volumes/account exceeded on both primary and '
                         'secondary SolidFire accounts.')
-                raise exception.SolidFireDriverException(msg)
+                raise SolidFireDriverException(msg)
         return sf_account
 
     def _create_vag(self, iqn, vol_id=None):
@@ -1171,7 +1196,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                                              params,
                                              version='7.0')
             return result['result']['volumeAccessGroupID']
-        except exception.SolidFireAPIException as error:
+        except SolidFireAPIException as error:
             if xExceededLimit in error.msg:
                 if iqn in error.msg:
                     # Initiator double registered.
@@ -1236,7 +1261,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                                     params,
                                     version='7.0')
             return vag_id
-        except exception.SolidFireAPIException as error:
+        except SolidFireAPIException as error:
             if xAlreadyInVolumeAccessGroup in error.msg:
                 return vag_id
             elif xVolumeAccessGroupIDDoesNotExist in error.msg:
@@ -1257,7 +1282,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                                     version='7.0')
             return vag_id
 
-        except exception.SolidFireAPIException as error:
+        except SolidFireAPIException as error:
             if xAlreadyInVolumeAccessGroup in error.msg:
                 return vag_id
             elif xVolumeAccessGroupIDDoesNotExist in error.msg:
@@ -1272,7 +1297,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             self._issue_api_request('RemoveVolumesFromVolumeAccessGroup',
                                     params,
                                     version='7.0')
-        except exception.SolidFireAPIException as error:
+        except SolidFireAPIException as error:
             if xNotInVolumeAccessGroup in error.msg:
                 pass
             elif xVolumeAccessGroupIDDoesNotExist in error.msg:
@@ -1293,7 +1318,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             self._issue_api_request('DeleteVolumeAccessGroup',
                                     params,
                                     version='7.0')
-        except exception.SolidFireAPIException as error:
+        except SolidFireAPIException as error:
             if xVolumeAccessGroupIDDoesNotExist not in error.msg:
                 raise
 
@@ -1343,7 +1368,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             self._verify_image_volume(context,
                                       image_meta,
                                       image_service)
-        except exception.SolidFireAPIException:
+        except SolidFireAPIException:
             return None, False
 
         # Ok, should be good to go now, try it again
@@ -1423,7 +1448,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                     int(model_update['provider_id'].split()[0]))
                 self._replicate_volume(volume, params,
                                        sf_account, rep_settings)
-        except exception.SolidFireAPIException:
+        except SolidFireAPIException:
             # NOTE(jdg): Something went wrong after the source create, due to
             # the way TFLOW works and it's insistence on retrying the same
             # command over and over coupled with the fact that the introduction
@@ -1479,7 +1504,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                 'AddAccount',
                 params,
                 endpoint=tgt_endpoint)['result']['accountID']
-        except exception.SolidFireAPIException as ex:
+        except SolidFireAPIException as ex:
             if 'xDuplicateUsername' not in ex.msg:
                 raise
 
@@ -1655,7 +1680,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                      "the provided Cinder volumes. Retrieved: %(ret)s "
                      "Desired: %(des)s") % {"ret": len(target_vols),
                                             "des": len(src_vol_ids)})
-            raise exception.SolidFireDriverException(msg)
+            raise SolidFireDriverException(msg)
 
         result = self._sf_create_group_snapshot(gsnap_name, target_vols)
         return result
@@ -1693,7 +1718,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         target = self._get_group_snapshot_by_name(snap_name)
         if not target:
             msg = _("Failed to find group snapshot named: %s") % snap_name
-            raise exception.SolidFireDriverException(msg)
+            raise SolidFireDriverException(msg)
         self._delete_group_snapshot(target['groupSnapshotID'])
 
     def _find_linked_snapshot(self, target_uuid, group_snap):
@@ -1844,7 +1869,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                      "the provided Cinder snapshots. Retrieved: %(ret)s "
                      "Desired: %(des)s") % {"ret": len(target_vols),
                                             "des": len(snapshots)})
-            raise exception.SolidFireDriverException(msg)
+            raise SolidFireDriverException(msg)
         snap_name = self.configuration.sf_volume_prefix + cgsnapshot['id']
         self._sf_create_group_snapshot(snap_name, target_vols)
         return None, None
@@ -1886,7 +1911,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         if refresh:
             try:
                 self._update_cluster_status()
-            except exception.SolidFireAPIException:
+            except SolidFireAPIException:
                 pass
 
         LOG.debug("SolidFire cluster_stats: %s", self.cluster_stats)
@@ -1945,7 +1970,7 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         try:
             results = self._issue_api_request('GetClusterCapacity', params)
-        except exception.SolidFireAPIException:
+        except SolidFireAPIException:
             data['total_capacity_gb'] = 0
             data['free_capacity_gb'] = 0
             self.cluster_stats = data
@@ -2110,8 +2135,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         sfid = external_ref.get('source-id', None)
         sfname = external_ref.get('name', None)
         if sfid is None:
-            raise exception.SolidFireAPIException(_("Manage existing volume "
-                                                    "requires 'source-id'."))
+            raise SolidFireAPIException(_("Manage existing volume "
+                                          "requires 'source-id'."))
 
         # First get the volume on the SF cluster (MUST be active)
         params = {'startVolumeID': sfid,
@@ -2151,8 +2176,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         """
         sfid = external_ref.get('source-id', None)
         if sfid is None:
-            raise exception.SolidFireAPIException(_("Manage existing get size "
-                                                    "requires 'id'."))
+            raise SolidFireAPIException(_("Manage existing get size "
+                                          "requires 'id'."))
 
         params = {'startVolumeID': int(sfid),
                   'limit': 1}
@@ -2167,8 +2192,8 @@ class SolidFireDriver(san.SanISCSIDriver):
             LOG.error("Account for Volume ID %s was not found on "
                       "the SolidFire Cluster while attempting "
                       "unmanage operation!", volume['id'])
-            raise exception.SolidFireAPIException(_("Failed to find account "
-                                                    "for volume."))
+            raise SolidFireAPIException(_("Failed to find account "
+                                          "for volume."))
 
         params = {'accountID': sfaccount['accountID']}
         sf_vol = self._get_sf_volume(volume['id'], params)
@@ -2193,7 +2218,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                   'access': 'replicationTarget'}
         try:
             self._issue_api_request('ModifyVolume', params)
-        except exception.SolidFireAPIException:
+        except SolidFireAPIException:
             # FIXME
             pass
 
@@ -2389,7 +2414,7 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
     def ensure_export(self, context, volume, volume_path):
         try:
             return self._do_iscsi_export(volume)
-        except exception.SolidFireAPIException:
+        except SolidFireAPIException:
             return None
 
     # Following are abc's that we make sure are caught and

@@ -676,10 +676,6 @@ class ImageLimitExceeded(QuotaError):
     message = _("Image quota exceeded")
 
 
-class DuplicateSfVolumeNames(Duplicate):
-    message = _("Detected more than one volume with name %(vol_name)s")
-
-
 class VolumeTypeCreateFailed(CinderException):
     message = _("Cannot create volume_type with "
                 "name %(name)s and specs %(extra_specs)s")
@@ -974,28 +970,6 @@ class PureRetryableException(VolumeBackendAPIException):
 # RBD
 class RBDDriverException(VolumeDriverException):
     message = _("RBD Cinder driver failure: %(reason)s")
-
-
-# SolidFire
-class SolidFireAPIException(VolumeBackendAPIException):
-    message = _("Bad response from SolidFire API")
-
-
-class SolidFireDriverException(VolumeDriverException):
-    message = _("SolidFire Cinder Driver exception")
-
-
-class SolidFireAPIDataException(SolidFireAPIException):
-    message = _("Error in SolidFire API response: data=%(data)s")
-
-
-class SolidFireAccountNotFound(SolidFireDriverException):
-    message = _("Unable to locate account %(account_name)s on "
-                "Solidfire device")
-
-
-class SolidFireRetryableException(VolumeBackendAPIException):
-    message = _("Retryable SolidFire Exception encountered")
 
 
 # HP 3Par
