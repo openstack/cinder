@@ -101,7 +101,7 @@ is show below::
     replication_device = backend_id:vendor-id-2,unique_key:val....
 
 In this example the result of calling
-``self.configuration.safe_get('replication_device)`` within the driver is the
+``self.configuration.safe_get('replication_device')`` within the driver is the
 following list::
 
     [{backend_id: vendor-id-1, unique_key: val1},
@@ -153,7 +153,7 @@ replicated volumes won't end up in a replicated backend.
 
 Since the driver is reporting the ``replication_enabled`` key, we just need to
 require it for replication volume types adding ``replication_enabled='<is>
-True``` and also specifying it for all non replicated volume types
+True'`` and also specifying it for all non replicated volume types
 ``replication_enabled='<is> False'``.
 
 It's up to the driver to parse the volume type info on create and set things up
