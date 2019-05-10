@@ -1308,8 +1308,7 @@ class API(base.Base):
                     # volume glance metadata table
                     pass
 
-            recv_metadata = self.image_service.create(
-                context, self.image_service._translate_to_glance(metadata))
+            recv_metadata = self.image_service.create(context, metadata)
         except Exception:
             # NOTE(geguileo): To mimic behavior before conditional_update we
             # will rollback status if image create fails
