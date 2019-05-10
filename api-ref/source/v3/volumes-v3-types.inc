@@ -290,7 +290,7 @@ Response Parameters
    - description: description_volume_type_required
    - name: name_volume_type_required
    - id: volume_type_id_body
-   - is-volume-type-access:is_public: is_public_volume_type_required
+   - os-volume-type-access:is_public: is_public_volume_type_required
    - qos_specs_id: qos_specs_id
 
 
