@@ -77,13 +77,16 @@ class AttachmentManagerTestCase(test.TestCase):
         with mock.patch.object(
                 self.manager, '_notify_about_volume_usage'):
             expected = {
-                'encrypted': False,
-                'qos_specs': None,
-                'cacheable': False,
-                'access_mode': 'rw',
-                'driver_volume_type': 'iscsi',
-                'attachment_id': attachment_ref.id,
-                'enforce_multipath': enforce_mpath}
+                "encrypted": False,
+                "qos_specs": None,
+                "cacheable": False,
+                "access_mode": "rw",
+                "driver_volume_type": "iscsi",
+                "attachment_id": attachment_ref.id,
+                "enforce_multipath": enforce_mpath,
+                "physical_block_size": "512",
+                "logical_block_size": "512",
+            }
 
             get_extra_specs.return_value = {}
             self.assertEqual(expected,
@@ -93,13 +96,16 @@ class AttachmentManagerTestCase(test.TestCase):
                                  connector,
                                  attachment_ref.id))
             expected = {
-                'encrypted': False,
-                'qos_specs': None,
-                'cacheable': True,
-                'access_mode': 'rw',
-                'driver_volume_type': 'iscsi',
-                'attachment_id': attachment_ref.id,
-                'enforce_multipath': enforce_mpath}
+                "encrypted": False,
+                "qos_specs": None,
+                "cacheable": True,
+                "access_mode": "rw",
+                "driver_volume_type": "iscsi",
+                "attachment_id": attachment_ref.id,
+                "enforce_multipath": enforce_mpath,
+                "physical_block_size": "512",
+                "logical_block_size": "512",
+            }
 
             get_extra_specs.return_value = {'cacheable': '<is> True'}
             self.assertEqual(expected,

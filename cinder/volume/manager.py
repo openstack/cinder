@@ -1819,6 +1819,31 @@ class VolumeManager(manager.CleanableManager,
                         exc_info=True, resource={'type': 'image',
                                                  'id': image_id})
 
+    def _set_connection_block_size(self, conn_info: dict) -> None:
+        # NOTE(raineszm): This is here to preserve backward
+        # compatibility for drivers, like the SolidFire ISCSI driver,
+        # that set physical_block_size and
+        # logical_block_size based on their own options.
+
+        if 'physical_block_size' in conn_info['data'] or \
+           'logical_block_size' in conn_info['data']:
+            return
+
+        disk_geometry = self.driver.configuration.safe_get('disk_geometry')
+
+        # NOTE(raineszm): Although the block sizes are
+        # logically integers, it is important to supply them
+        # as strings because that is what Nova expects.
+        if disk_geometry == "512":
+            conn_info['data']['physical_block_size'] = "512"
+            conn_info['data']['logical_block_size'] = "512"
+        elif disk_geometry == "512e":
+            conn_info['data']['physical_block_size'] = "4096"
+            conn_info['data']['logical_block_size'] = "512"
+        elif disk_geometry == "4k":
+            conn_info['data']['physical_block_size'] = "4096"
+            conn_info['data']['logical_block_size'] = "4096"
+
     def _parse_connection_options(self, context, volume: objects.Volume,
                                   conn_info: dict) -> dict:
         # Add qos_specs to connection info
@@ -1888,6 +1913,10 @@ class VolumeManager(manager.CleanableManager,
                                  .safe_get('report_discard_supported'))
             if discard_supported:
                 conn_info['data']['discard'] = True
+
+        # Configure the physical and logical block size
+        # advertised by the volume
+        self._set_connection_block_size(conn_info)
 
         return conn_info
 
