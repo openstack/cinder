@@ -1102,16 +1102,6 @@ class NetAppDriverException(VolumeDriverException):
     message = _("NetApp Cinder Driver exception.")
 
 
-class EMCVnxCLICmdError(VolumeBackendAPIException):
-    message = _("EMC VNX Cinder Driver CLI exception: %(cmd)s "
-                "(Return Code: %(rc)s) (Output: %(out)s).")
-
-
-class EMCSPUnavailableException(EMCVnxCLICmdError):
-    message = _("EMC VNX Cinder Driver SPUnavailableException: %(cmd)s "
-                "(Return Code: %(rc)s) (Output: %(out)s).")
-
-
 # ConsistencyGroup
 class ConsistencyGroupNotFound(NotFound):
     message = _("ConsistencyGroup %(consistencygroup_id)s could not be found.")
