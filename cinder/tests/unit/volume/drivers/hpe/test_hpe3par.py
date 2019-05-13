@@ -1748,7 +1748,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            self.assertRaises(exception.Invalid3PARDomain,
+            self.assertRaises(hpecommon.Invalid3PARDomain,
                               self.driver.retype,
                               self.ctxt,
                               self.RETYPE_VOLUME_INFO_0,
@@ -1784,7 +1784,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            self.assertRaises(exception.Invalid3PARDomain,
+            self.assertRaises(hpecommon.Invalid3PARDomain,
                               self.driver.retype,
                               self.ctxt,
                               self.RETYPE_VOLUME_INFO_0,
@@ -4519,7 +4519,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
             existing_ref = {'source-name': unm_matcher}
 
-            self.assertRaises(exception.Invalid3PARDomain,
+            self.assertRaises(hpecommon.Invalid3PARDomain,
                               self.driver.manage_existing,
                               volume=volume,
                               existing_ref=existing_ref)
