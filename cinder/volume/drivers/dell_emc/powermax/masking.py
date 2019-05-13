@@ -632,7 +632,7 @@ class PowerMaxMasking(object):
 
     def add_volume_to_storage_group(
             self, serial_number, device_id, storagegroup_name,
-            volume_name, extra_specs):
+            volume_name, extra_specs, force=False):
         """Add a volume to a storage group.
 
         :param serial_number: array serial number
@@ -640,6 +640,7 @@ class PowerMaxMasking(object):
         :param storagegroup_name: storage group name
         :param volume_name: volume name
         :param extra_specs: extra specifications
+        :param force: add force argument to call
         """
         start_time = time.time()
 
@@ -655,7 +656,7 @@ class PowerMaxMasking(object):
                           'sg_name': storagegroup_name})
             else:
                 self.rest.add_vol_to_sg(serial_number, sg_name,
-                                        device_id, extra_specs)
+                                        device_id, extra_specs, force)
         do_add_volume_to_sg(storagegroup_name, serial_number)
 
         LOG.debug("Add volume to storagegroup took: %(delta)s H:MM:SS.",

@@ -752,6 +752,8 @@ class PowerMaxData(object):
 
     headroom = {'headroom': [{'headroomCapacity': 20348.29}]}
 
+    ucode_5978_foxtail = {'ucode': '5978.435.435'}
+
     p_vol_rest_response_single = {
         'id': 'f3aab01c-a5a8-4fb4-af2b-16ae1c46dc9e_0', 'count': 1,
         'expirationTime': 1521650650793, 'maxPageSize': 1000,

@@ -1883,8 +1883,12 @@ class PowerMaxCommon(object):
         """
         # Cleanup remote replication
         if self.utils.is_replication_enabled(extra_specs):
+            # Add force to allow volume removal from RDF enabled storage groups
+            extra_specs['force_vol_remove'] = True
+
             self.cleanup_lun_replication(volume, volume_name,
                                          device_id, extra_specs)
+
         # Remove from any storage groups
         self.masking.remove_and_reset_members(
             array, volume, device_id, volume_name, extra_specs, False)
@@ -3486,7 +3490,8 @@ class PowerMaxCommon(object):
         try:
             self.provision.get_or_create_group(array, group_name, extra_specs)
             self.masking.add_volume_to_storage_group(
-                array, device_id, group_name, volume_name, extra_specs)
+                array, device_id, group_name, volume_name, extra_specs,
+                force=True)
             # Add remote volume
             self.provision.get_or_create_group(
                 remote_array, group_name, extra_specs)
@@ -3622,6 +3627,7 @@ class PowerMaxCommon(object):
                 array, device_id, target_device, rdf_group,
                 rep_extra_specs, metro_grp)
             # Remove the volume from the metro_grp
+            rep_extra_specs['force_vol_remove'] = True
             self.masking.remove_volume_from_sg(array, device_id, 'metro_vol',
                                                metro_grp, rep_extra_specs)
             # Resume I/O on the RDF links for any remaining volumes
@@ -4089,7 +4095,8 @@ class PowerMaxCommon(object):
                 message=exception_message)
 
         self.masking.add_volume_to_storage_group(
-            array, device_id, storagegroup_name, volume_name, extra_specs)
+            array, device_id, storagegroup_name, volume_name, extra_specs,
+            force=True)
 
         return storagegroup_name
 
