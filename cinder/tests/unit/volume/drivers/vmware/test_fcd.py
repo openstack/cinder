@@ -42,6 +42,7 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
     IP = 'localhost'
     PORT = 2321
     IMG_TX_TIMEOUT = 10
+    MAX_OBJECTS = 100
     VMDK_DRIVER = vmdk.VMwareVcVmdkDriver
     FCD_DRIVER = fcd.VMwareVStorageObjectDriver
 
@@ -60,6 +61,8 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         self._config.vmware_host_ip = self.IP
         self._config.vmware_host_port = self.PORT
         self._config.vmware_image_transfer_timeout_secs = self.IMG_TX_TIMEOUT
+        self._config.vmware_max_objects_retrieval = self.MAX_OBJECTS
+        self._config.reserved_percentage = 0
         self._driver = fcd.VMwareVStorageObjectDriver(
             configuration=self._config)
         self._context = context.get_admin_context()
@@ -72,15 +75,19 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         self.assertFalse(self._driver._storage_policy_enabled)
         vops.set_vmx_version.assert_called_once_with('vmx-13')
 
-    def test_get_volume_stats(self):
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    def test_get_volume_stats(self, session):
+        retr_result_mock = mock.Mock(spec=['objects'])
+        retr_result_mock.objects = []
+        session.vim.RetrievePropertiesEx.return_value = retr_result_mock
         stats = self._driver.get_volume_stats()
 
         self.assertEqual('VMware', stats['vendor_name'])
         self.assertEqual(self._driver.VERSION, stats['driver_version'])
         self.assertEqual(self._driver.STORAGE_TYPE, stats['storage_protocol'])
         self.assertEqual(0, stats['reserved_percentage'])
-        self.assertEqual('unknown', stats['total_capacity_gb'])
-        self.assertEqual('unknown', stats['free_capacity_gb'])
+        self.assertEqual(0, stats['total_capacity_gb'])
+        self.assertEqual(0, stats['free_capacity_gb'])
 
     def _create_volume_dict(self,
                             vol_id=VOL_ID,
