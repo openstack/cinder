@@ -261,7 +261,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             return {
                 'name': self.configuration.rbd_cluster_name,
                 'conf': self.configuration.rbd_ceph_conf,
-                'user': self.configuration.rbd_user
+                'user': self.configuration.rbd_user,
+                'secret_uuid': self.configuration.rbd_secret_uuid
             }
         raise exception.InvalidReplicationTarget(
             reason=_('RBD: Unknown failover target host %s.') % target_id)
@@ -291,10 +292,13 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                                           self.SYSCONFDIR + name + '.conf')
             user = replication_device.get(
                 'user', self.configuration.rbd_user or 'cinder')
+            secret_uuid = replication_device.get(
+                'secret_uuid', self.configuration.rbd_secret_uuid)
             # Pool has to be the same in all clusters
             replication_target = {'name': name,
                                   'conf': utils.convert_str(conf),
-                                  'user': utils.convert_str(user)}
+                                  'user': utils.convert_str(user),
+                                  'secret_uuid': secret_uuid}
             LOG.info('Adding replication target: %s.', name)
             self._replication_targets.append(replication_target)
             self._target_names.append(name)
@@ -302,7 +306,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     def _get_config_tuple(self, remote=None):
         if not remote:
             remote = self._active_config
-        return (remote.get('name'), remote.get('conf'), remote.get('user'))
+        return (remote.get('name'), remote.get('conf'), remote.get('user'),
+                remote.get('secret_uuid', None))
 
     def _trash_purge(self):
         LOG.info("Purging trash for backend '%s'", self._backend_name)
@@ -375,7 +380,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     def _ceph_args(self):
         args = []
 
-        name, conf, user = self._get_config_tuple()
+        name, conf, user, secret_uuid = self._get_config_tuple()
 
         if user:
             args.extend(['--id', user])
@@ -391,7 +396,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                      self.configuration.rados_connection_interval,
                      self.configuration.rados_connection_retries)
         def _do_conn(pool, remote, timeout):
-            name, conf, user = self._get_config_tuple(remote)
+            name, conf, user, secret_uuid = self._get_config_tuple(remote)
 
             if pool is not None:
                 pool = utils.convert_str(pool)
@@ -1389,6 +1394,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def initialize_connection(self, volume, connector):
         hosts, ports = self._get_mon_addrs()
+        name, conf, user, secret_uuid = self._get_config_tuple()
         data = {
             'driver_volume_type': 'rbd',
             'data': {
@@ -1396,11 +1402,11 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                                    volume.name),
                 'hosts': hosts,
                 'ports': ports,
-                'cluster_name': self.configuration.rbd_cluster_name,
-                'auth_enabled': (self.configuration.rbd_user is not None),
-                'auth_username': self.configuration.rbd_user,
+                'cluster_name': name,
+                'auth_enabled': (user is not None),
+                'auth_username': user,
                 'secret_type': 'ceph',
-                'secret_uuid': self.configuration.rbd_secret_uuid,
+                'secret_uuid': secret_uuid,
                 'volume_id': volume.id,
                 "discard": True,
                 'keyring': self._get_keyring_contents(),
