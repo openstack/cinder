@@ -10,15 +10,30 @@ System requirements
 ~~~~~~~~~~~~~~~~~~~
 Supported models:
 
-- NEC Storage M110, M310, M510 and M710 (SSD/HDD hybrid)
-- NEC Storage M310F and M710F (all flash)
++-----------------+------------------------+-----------------+
+| Storage model   | Storage control        | Disk type       |
+|                 | software (firmware)    |                 |
++=================+========================+=================+
+| M110,           | 0979 or later          | SSD/HDD hybrid  |
+| M310,           |                        |                 |
+| M510,           |                        |                 |
+| M710            |                        |                 |
++-----------------+------------------------+-----------------+
+| M310F,          | 0979 or later          | all flash       |
+| M710F           |                        |                 |
++-----------------+------------------------+-----------------+
+| M120,           | 1028 or later          | SSD/HDD hybrid  |
+| M320            |                        |                 |
++-----------------+------------------------+-----------------+
+| M320F           | 1028 or later          | all flash       |
++-----------------+------------------------+-----------------+
 
 Requirements:
 
-- Storage control software (firmware) revision 0950 or later (1015
-  or later is required to create more than 1024 volumes in a pool)
-- NEC Storage DynamicDataReplication license
-- (Optional) NEC Storage IO Load Manager license for QoS
+- NEC Storage M series requires firmware revision 1028 or later
+  to create more than 1024 volumes in a pool.
+- NEC Storage DynamicDataReplication license.
+- (Optional) NEC Storage IO Load Manager license for QoS.
 
 
 Supported operations
@@ -29,6 +44,7 @@ Supported operations
 - Create, list, and delete volume snapshots.
 - Create a volume from a snapshot.
 - Copy an image to a volume.
+- Copy a volume to an image.
 - Clone a volume.
 - Extend a volume.
 - Migrate a volume.
@@ -68,9 +84,9 @@ For details of each command, see the NEC Storage Manager Command Reference
 - iSCSI only
 
   #. Set IP addresses of each iSCSI port. (iSMcfg setiscsiport)
-  #. Create LD Sets for each node with setting multi-target mode on.
+  #. Create LD Sets for each node.
      (iSMcfg addldset)
-  #. Delete some iscsi portal settings of each LD Sets to set to
+  #. Delete some iSCSI portal settings of each LD Sets to set to
      ``nec_iscsi_portals_per_cont`` parameter. (iSMcfg delldsetportal)
   #. Register initiator names of each node to the corresponding LD Set.
      (iSMcfg addldsetinitiator)
@@ -153,7 +169,8 @@ Required options
     parameter.
 
 - ``nec_backup_pools``
-    Specify a pool number where snapshots are created.
+    Specify one pool number where snapshots are created. Multiple pools
+    are not supported.
 
 
 Timeout configuration
