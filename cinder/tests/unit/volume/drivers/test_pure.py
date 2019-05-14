@@ -76,6 +76,7 @@ ISCSI_PORT_NAMES = ["ct0.eth2", "ct0.eth3", "ct1.eth2", "ct1.eth3"]
 FC_PORT_NAMES = ["ct0.fc2", "ct0.fc3", "ct1.fc2", "ct1.fc3"]
 ISCSI_IPS = ["10.0.0." + str(i + 1) for i in range(len(ISCSI_PORT_NAMES))]
 AC_ISCSI_IPS = ["10.1.1." + str(i + 1) for i in range(len(ISCSI_PORT_NAMES))]
+ISCSI_CIDR = "0.0.0.0/0"
 FC_WWNS = ["21000024ff59fe9" + str(i + 1) for i in range(len(FC_PORT_NAMES))]
 AC_FC_WWNS = [
     "21000024ff59fab" + str(i + 1) for i in range(len(FC_PORT_NAMES))]
@@ -489,6 +490,7 @@ class PureDriverTestCase(test.TestCase):
         self.mock_config.pure_eradicate_on_delete = False
         self.mock_config.driver_ssl_cert_verify = False
         self.mock_config.driver_ssl_cert_path = None
+        self.mock_config.pure_iscsi_cidr = ISCSI_CIDR
         self.array = mock.Mock()
         self.array.get.return_value = GET_ARRAY_PRIMARY
         self.array.array_name = GET_ARRAY_PRIMARY["array_name"]
