@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    A new check is added to the ``cinder-status upgrade check`` CLI to check
+    for the use of backup driver module path instead of full driver class path
+    in the ``backup_driver`` configuration setting.
