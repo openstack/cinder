@@ -1292,19 +1292,19 @@ class NetAppESeriesLibrary(object):
                   msg_fmt)
 
         iscsi_details = self._get_iscsi_service_details()
-        iscsi_portal = self._get_iscsi_portal_for_vol(eseries_vol,
-                                                      iscsi_details)
+        iscsi_portals = self._get_iscsi_portals_for_vol(eseries_vol,
+                                                        iscsi_details)
         LOG.debug("Successfully fetched target details for volume %(id)s and "
                   "initiator %(initiator_name)s.", msg_fmt)
-        iqn = iscsi_portal['iqn']
-        address = iscsi_portal['ip']
-        port = iscsi_portal['tcp_port']
+        iqns = [portal['iqn'] for portal in iscsi_portals]
+        addresses = [portal['ip'] for portal in iscsi_portals]
+        ports = [portal['tcp_port'] for portal in iscsi_portals]
         properties = na_utils.get_iscsi_connection_properties(lun_id, volume,
-                                                              iqn, address,
-                                                              port)
+                                                              iqns, addresses,
+                                                              ports)
         if self.configuration.use_chap_auth:
             if self._client.features.CHAP_AUTHENTICATION:
-                chap_username, chap_password = self._configure_chap(iqn)
+                chap_username, chap_password = self._configure_chap(iqns[0])
                 properties['data']['auth_username'] = chap_username
                 properties['data']['auth_password'] = chap_password
                 properties['data']['auth_method'] = 'CHAP'
@@ -1359,13 +1359,15 @@ class NetAppESeriesLibrary(object):
                 msg % self._client.get_system_id())
         return ports
 
-    def _get_iscsi_portal_for_vol(self, volume, portals, anyController=True):
+    def _get_iscsi_portals_for_vol(self, volume, portals, anyController=True):
         """Get the iscsi portal info relevant to volume."""
-        for portal in portals:
-            if portal.get('controller') == volume.get('currentManager'):
-                return portal
+        manager = volume.get('currentManager')
+        current_manager_portals = [portal for portal in portals
+                                   if portal.get('controller') == manager]
+        if current_manager_portals:
+            return current_manager_portals
         if anyController and portals:
-            return portals[0]
+            return portals
         msg = _('No good iscsi portal found in supplied list for %s.')
         raise exception.NetAppDriverException(
             msg % self._client.get_system_id())
