@@ -101,6 +101,18 @@ XTREMIO_OID_NAME = 1
 XTREMIO_OID_INDEX = 2
 
 
+class XtremIOAlreadyMappedError(exception.VolumeDriverException):
+    message = _("Volume to Initiator Group mapping already exists")
+
+
+class XtremIOArrayBusy(exception.VolumeDriverException):
+    message = _("System is busy, retry operation.")
+
+
+class XtremIOSnapshotsLimitExceeded(exception.VolumeDriverException):
+    message = _("Exceeded the limit of snapshots per volume")
+
+
 class XtremIOClient(object):
     def __init__(self, configuration, cluster_id):
         self.configuration = configuration
@@ -121,7 +133,7 @@ class XtremIOClient(object):
 
     def req(self, object_type='volumes', method='GET', data=None,
             name=None, idx=None, ver='v1'):
-        @utils.retry(exception.XtremIOArrayBusy,
+        @utils.retry(XtremIOArrayBusy,
                      self.configuration.xtremio_array_busy_retry_count,
                      self.configuration.xtremio_array_busy_retry_interval, 1)
         def _do_req(object_type, method, data, name, idx, ver):
@@ -188,11 +200,11 @@ class XtremIOClient(object):
                           {'key': key, 'msg': err_msg, })
                 raise exception.VolumeNotFound(volume_id=key)
             elif ALREADY_MAPPED_ERR in err_msg:
-                raise exception.XtremIOAlreadyMappedError()
+                raise XtremIOAlreadyMappedError()
             elif err_msg == SYSTEM_BUSY:
-                raise exception.XtremIOArrayBusy()
+                raise XtremIOArrayBusy()
             elif err_msg in (TOO_MANY_OBJECTS, TOO_MANY_SNAPSHOTS_PER_VOL):
-                raise exception.XtremIOSnapshotsLimitExceeded()
+                raise XtremIOSnapshotsLimitExceeded()
         msg = _('Bad response from XMS, %s') % response.text
         LOG.error(msg)
         raise exception.VolumeBackendAPIException(message=msg)
@@ -510,7 +522,7 @@ class XtremIOVolumeDriver(san.SanDriver):
 
         try:
             self.client.create_snapshot(snapshot_id, volume['id'])
-        except exception.XtremIOSnapshotsLimitExceeded as e:
+        except XtremIOSnapshotsLimitExceeded as e:
             raise exception.CinderException(e.message)
 
         # extend the snapped volume if requested size is larger then original
@@ -543,7 +555,7 @@ class XtremIOVolumeDriver(san.SanDriver):
                                             '%d snapshots per volume' % limit)
         try:
             self.client.create_snapshot(src_vref['id'], volume['id'])
-        except exception.XtremIOSnapshotsLimitExceeded as e:
+        except XtremIOSnapshotsLimitExceeded as e:
             raise exception.CinderException(e.message)
 
         # extend the snapped volume if requested size is larger then original
@@ -785,7 +797,7 @@ class XtremIOVolumeDriver(san.SanDriver):
 
             lunmap = self._obj_from_result(res)
             LOG.info('Created lun-map:\n%s', lunmap)
-        except exception.XtremIOAlreadyMappedError:
+        except XtremIOAlreadyMappedError:
             LOG.info('Volume already mapped, retrieving %(ig)s, %(vol)s',
                      {'ig': ig, 'vol': volume['id']})
             lunmap = self.client.find_lunmap(ig, volume['id'])
