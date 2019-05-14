@@ -43,7 +43,8 @@ CONF = cfg.CONF
 
 def make_body(root=True, gigabytes=1000, snapshots=10,
               volumes=10, backups=10, backup_gigabytes=1000,
-              tenant_id=fake.PROJECT_ID, per_volume_gigabytes=-1, groups=10):
+              tenant_id=fake.PROJECT_ID, per_volume_gigabytes=-1, groups=10,
+              subproject=False):
     resources = {'gigabytes': gigabytes,
                  'snapshots': snapshots,
                  'volumes': volumes,
@@ -55,9 +56,11 @@ def make_body(root=True, gigabytes=1000, snapshots=10,
     volume_types = db.volume_type_get_all(context.get_admin_context())
 
     for volume_type in volume_types:
-        resources['gigabytes_' + volume_type] = -1
-        resources['snapshots_' + volume_type] = -1
-        resources['volumes_' + volume_type] = -1
+        # default values for subproject are 0
+        quota = 0 if subproject else -1
+        resources['gigabytes_' + volume_type] = quota
+        resources['snapshots_' + volume_type] = quota
+        resources['volumes_' + volume_type] = quota
 
     if tenant_id:
         resources['id'] = tenant_id
@@ -74,7 +77,8 @@ def make_subproject_body(root=True, gigabytes=0, snapshots=0,
     return make_body(root=root, gigabytes=gigabytes, snapshots=snapshots,
                      volumes=volumes, backups=backups,
                      backup_gigabytes=backup_gigabytes, tenant_id=tenant_id,
-                     per_volume_gigabytes=per_volume_gigabytes)
+                     per_volume_gigabytes=per_volume_gigabytes,
+                     subproject=True)
 
 
 class QuotaSetsControllerTestBase(test.TestCase):

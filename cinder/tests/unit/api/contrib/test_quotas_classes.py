@@ -22,6 +22,7 @@ import mock
 
 from cinder.api.contrib import quota_classes
 from cinder import context
+from cinder import db
 from cinder import exception
 from cinder import quota
 from cinder import test
@@ -48,6 +49,14 @@ def make_body(root=True, gigabytes=1000, snapshots=10,
     if not volume_types_faked:
         volume_types_faked = {'fake_type': None}
     for volume_type in volume_types_faked:
+        resources['gigabytes_' + volume_type] = -1
+        resources['snapshots_' + volume_type] = -1
+        resources['volumes_' + volume_type] = -1
+
+    # need to consider preexisting volume types as well
+    volume_types = db.volume_type_get_all(context.get_admin_context())
+
+    for volume_type in volume_types:
         resources['gigabytes_' + volume_type] = -1
         resources['snapshots_' + volume_type] = -1
         resources['volumes_' + volume_type] = -1
