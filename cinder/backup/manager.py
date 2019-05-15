@@ -500,6 +500,25 @@ class BackupManager(manager.ThreadPoolManager):
                 context, backup)
         return updates
 
+    def _is_our_backup(self, backup):
+        # Accept strings and Service OVO
+        if not isinstance(backup, six.string_types):
+            backup = backup.service
+
+        if not backup:
+            return True
+
+        # TODO(tommylikehu): We upgraded the 'driver_name' from module to
+        # class name, so we use 'startswith' here to match two namings,
+        # this can be replaced with equal sign during next release (Rocky).
+        # The 'driver_name' varies depending on the user settings, so a
+        # two-way judgment is required.
+        if self.driver_name.startswith(backup) or backup.startswith(
+                self.driver_name):
+            return True
+
+        return False
+
     def restore_backup(self, context, backup, volume_id):
         """Restore volume backups from configured backup service."""
         LOG.info('Restore backup started, backup: %(backup_id)s '
@@ -547,11 +566,7 @@ class BackupManager(manager.ThreadPoolManager):
 
         backup_service = self._map_service_to_driver(backup['service'])
         configured_service = self.driver_name
-        # TODO(tommylikehu): We upgraded the 'driver_name' from module
-        # to class name, so we use 'in' here to match two namings,
-        # this can be replaced with equal sign during next
-        # release (Rocky).
-        if backup_service not in configured_service:
+        if not self._is_our_backup(backup):
             err = _('Restore backup aborted, the backup service currently'
                     ' configured [%(configured_service)s] is not the'
                     ' backup service that was used to create this'
@@ -684,11 +699,7 @@ class BackupManager(manager.ThreadPoolManager):
         backup_service = self._map_service_to_driver(backup['service'])
         if backup_service is not None:
             configured_service = self.driver_name
-            # TODO(tommylikehu): We upgraded the 'driver_name' from module
-            # to class name, so we use 'in' here to match two namings,
-            # this can be replaced with equal sign during next
-            # release (Rocky).
-            if backup_service not in configured_service:
+            if not self._is_our_backup(backup):
                 err = _('Delete backup aborted, the backup service currently'
                         ' configured [%(configured_service)s] is not the'
                         ' backup service that was used to create this'
@@ -779,11 +790,7 @@ class BackupManager(manager.ThreadPoolManager):
         backup_record = {'backup_service': backup.service}
         backup_service = self._map_service_to_driver(backup.service)
         configured_service = self.driver_name
-        # TODO(tommylikehu): We upgraded the 'driver_name' from module
-        # to class name, so we use 'in' here to match two namings,
-        # this can be replaced with equal sign during next
-        # release (Rocky).
-        if backup_service not in configured_service:
+        if not self._is_our_backup(backup):
             err = (_('Export record aborted, the backup service currently '
                      'configured [%(configured_service)s] is not the '
                      'backup service that was used to create this '
@@ -824,7 +831,7 @@ class BackupManager(manager.ThreadPoolManager):
         LOG.info('Import record started, backup_url: %s.', backup_url)
 
         # Can we import this backup?
-        if backup_service != self.driver_name:
+        if not self._is_our_backup(backup_service):
             # No, are there additional potential backup hosts in the list?
             if len(backup_hosts) > 0:
                 # try the next host on the list, maybe he can import
@@ -940,11 +947,7 @@ class BackupManager(manager.ThreadPoolManager):
         LOG.info('Backup service: %s.', backup_service_name)
         if backup_service_name is not None:
             configured_service = self.driver_name
-            # TODO(tommylikehu): We upgraded the 'driver_name' from module
-            # to class name, so we use 'in' here to match two namings,
-            # this can be replaced with equal sign during next
-            # release (Rocky).
-            if backup_service_name not in configured_service:
+            if not self._is_our_backup(backup):
                 err = _('Reset backup status aborted, the backup service'
                         ' currently configured [%(configured_service)s] '
                         'is not the backup service that was used to create'
