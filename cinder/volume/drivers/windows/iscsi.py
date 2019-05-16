@@ -285,6 +285,8 @@ class WindowsISCSIDriver(driver.ISCSIDriver):
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
+        # retrieve store information from extra-specs
+        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
         disk_format = self._tgt_utils.get_supported_disk_format()
         temp_vhd_path = os.path.join(CONF.image_conversion_dir,
                                      str(image_meta['id']) + '.' + disk_format)
@@ -295,7 +297,8 @@ class WindowsISCSIDriver(driver.ISCSIDriver):
                 # must be exported first.
                 self._tgt_utils.export_snapshot(tmp_snap_name, temp_vhd_path)
                 image_utils.upload_volume(context, image_service, image_meta,
-                                          temp_vhd_path, 'vhd')
+                                          temp_vhd_path, 'vhd',
+                                          store_id=store_id)
         finally:
             fileutils.delete_if_exists(temp_vhd_path)
 

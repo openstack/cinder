@@ -1583,6 +1583,9 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                                              volume_id=volume.id)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        # retrieve store information from extra-specs
+        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
+
         tmp_dir = volume_utils.image_conversion_dir()
         tmp_file = os.path.join(tmp_dir,
                                 volume.name + '-' + image_meta['id'])
@@ -1593,7 +1596,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             args.extend(self._ceph_args())
             self._try_execute(*args)
             image_utils.upload_volume(context, image_service,
-                                      image_meta, tmp_file)
+                                      image_meta, tmp_file,
+                                      store_id=store_id)
         os.unlink(tmp_file)
 
     def extend_volume(self, volume, new_size):

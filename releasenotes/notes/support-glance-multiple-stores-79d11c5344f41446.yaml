@@ -1,0 +1,23 @@
+---
+features:
+  - |
+    This release includes support for Glance multiple stores.  An
+    operator may now specify which Glance store will be used when
+    a volume is uploaded to Glance as an image.  Some details
+    about this feature:
+
+    * This feature is not directly user-facing.  To enable it, an
+      operator must add the field ``image_service:store_id`` in the
+      volume-type extra-specs.  The value of the field is a valid
+      store identifier (``id``) configured in Glance, which may be
+      discovered by making a ``GET /v2/info/stores`` call to the
+      Image Service API.
+    * If ``image_service:store_id`` is not set in the extra-specs for a
+      volume-type, then any volume of that type uploaded as an image will
+      be uploaded to the default store in Glance.
+    * The ``image_service:store_id`` can only be set in the extra-specs
+      for a volume-type when multiple glance stores are configured.
+    * Cinder validates proposed Glance store identifiers by contacting
+      Glance at the time the ``image_service:store_id`` is added to a
+      volume-type's extra-specs.  Thus the Image Service API must be
+      available when a volume-type is updated.

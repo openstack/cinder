@@ -358,7 +358,8 @@ class SPDKDriver(driver.VolumeDriver):
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
-
+        # retrieve store information from extra-specs
+        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
         volume['provider_location'] = (
             self.create_export(context, volume, None)['provider_location'])
         connection_data = self.initialize_connection(volume, None)['data']
@@ -378,7 +379,8 @@ class SPDKDriver(driver.VolumeDriver):
             image_utils.upload_volume(context,
                                       image_service,
                                       image_meta,
-                                      device_info['path'])
+                                      device_info['path'],
+                                      store_id=store_id)
 
         finally:
             target_connector.disconnect_volume(connection_data, volume)

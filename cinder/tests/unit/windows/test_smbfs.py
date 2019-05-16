@@ -17,6 +17,7 @@ import os
 from unittest import mock
 
 import ddt
+from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import context
@@ -24,6 +25,7 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as test_utils
 from cinder.volume.drivers import remotefs
@@ -77,6 +79,9 @@ class WindowsSmbFsTestCase(test.TestCase):
 
         self.volume = self._simple_volume()
         self.snapshot = self._simple_snapshot(volume=self.volume)
+
+        self._context = context.get_admin_context()
+        self.updated_at = timeutils.utcnow()
 
     def _simple_volume(self, **kwargs):
         updates = {'id': self._FAKE_VOLUME_ID,
@@ -722,6 +727,17 @@ class WindowsSmbFsTestCase(test.TestCase):
     def test_copy_volume_to_image(self, has_parent=False):
         drv = self._smbfs_driver
 
+        volume = test_utils.create_volume(
+            self._context, volume_type_id=fake.VOLUME_TYPE_ID,
+            updated_at=self.updated_at)
+
+        extra_specs = {
+            'image_service:store_id': 'fake-store'
+        }
+        test_utils.create_volume_type(self._context.elevated(),
+                                      id=fake.VOLUME_TYPE_ID, name="test_type",
+                                      extra_specs=extra_specs)
+
         fake_image_meta = {'id': 'fake-image-id'}
         fake_img_format = self._smbfs_driver._DISK_FORMAT_VHDX
 
@@ -746,12 +762,12 @@ class WindowsSmbFsTestCase(test.TestCase):
         with mock.patch.object(image_utils, 'upload_volume') as (
                 fake_upload_volume):
             drv.copy_volume_to_image(
-                mock.sentinel.context, self.volume,
+                mock.sentinel.context, volume,
                 mock.sentinel.image_service, fake_image_meta)
 
             if has_parent:
                 fake_temp_image_name = '%s.temp_image.%s.%s' % (
-                    self.volume.id,
+                    volume.id,
                     fake_image_meta['id'],
                     fake_img_format)
                 fake_temp_image_path = os.path.join(
@@ -772,7 +788,8 @@ class WindowsSmbFsTestCase(test.TestCase):
 
             fake_upload_volume.assert_called_once_with(
                 mock.sentinel.context, mock.sentinel.image_service,
-                fake_image_meta, upload_path, fake_img_format)
+                fake_image_meta, upload_path, fake_img_format,
+                store_id='fake-store')
 
     @mock.patch.object(smbfs.WindowsSmbfsDriver, '_get_vhd_type')
     def test_copy_image_to_volume(self, mock_get_vhd_type):

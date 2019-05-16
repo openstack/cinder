@@ -661,12 +661,14 @@ class LinstorBaseDriver(driver.VolumeDriver):
             # Check if all replies are success
             return lin_drv.all_api_responses_success(api_response)
 
-    def _copy_vol_to_image(self, context, image_service, image_meta, rsc_path):
+    def _copy_vol_to_image(self, context, image_service, image_meta, rsc_path,
+                           store_id=None):
 
         return image_utils.upload_volume(context,
                                          image_service,
                                          image_meta,
-                                         rsc_path)
+                                         rsc_path,
+                                         store_id=store_id)
 
     #
     # Snapshot
@@ -978,11 +980,13 @@ class LinstorBaseDriver(driver.VolumeDriver):
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         full_rsc_name = self._drbd_resource_name_from_cinder_volume(volume)
         rsc_path = str(self._get_rsc_path(full_rsc_name))
-
+        # retrieve store information from extra-specs
+        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
         self._copy_vol_to_image(context,
                                 image_service,
                                 image_meta,
-                                rsc_path)
+                                rsc_path,
+                                store_id=store_id)
         return {}
 
     # Not supported currently

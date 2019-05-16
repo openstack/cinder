@@ -30,6 +30,7 @@ import psutil
 import six
 
 from cinder import context
+from cinder import db
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
@@ -1273,7 +1274,9 @@ class QuobyteDriverTestCase(test.TestCase):
     def test_copy_volume_to_image_raw_image(self):
         drv = self._driver
 
-        volume = self._simple_volume()
+        volume_type_id = db.volume_type_create(
+            self.context, {'name': 'quo_type', 'extra_specs': {}}).get('id')
+        volume = self._simple_volume(volume_type_id=volume_type_id)
         volume_path = '%s/%s' % (self.TEST_MNT_POINT, volume['name'])
         image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
 
@@ -1311,14 +1314,17 @@ class QuobyteDriverTestCase(test.TestCase):
                                                        force_share=True,
                                                        run_as_root=False)
             mock_upload_volume.assert_called_once_with(
-                mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False)
+                mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False,
+                store_id=None)
             self.assertTrue(mock_create_temporary_file.called)
 
     def test_copy_volume_to_image_qcow2_image(self):
         """Upload a qcow2 image file which has to be converted to raw first."""
         drv = self._driver
 
-        volume = self._simple_volume()
+        volume_type_id = db.volume_type_create(
+            self.context, {'name': 'quo_type', 'extra_specs': {}}).get('id')
+        volume = self._simple_volume(volume_type_id=volume_type_id)
         volume_path = '%s/%s' % (self.TEST_MNT_POINT, volume['name'])
         image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
 
@@ -1360,14 +1366,17 @@ class QuobyteDriverTestCase(test.TestCase):
             mock_convert_image.assert_called_once_with(
                 volume_path, upload_path, 'raw', run_as_root=False)
             mock_upload_volume.assert_called_once_with(
-                mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False)
+                mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False,
+                store_id=None)
             self.assertTrue(mock_create_temporary_file.called)
 
     def test_copy_volume_to_image_snapshot_exists(self):
         """Upload an active snapshot which has to be converted to raw first."""
         drv = self._driver
 
-        volume = self._simple_volume()
+        volume_type_id = db.volume_type_create(
+            self.context, {'name': 'quo_type', 'extra_specs': {}}).get('id')
+        volume = self._simple_volume(volume_type_id=volume_type_id)
         volume_path = '%s/volume-%s' % (self.TEST_MNT_POINT, self.VOLUME_UUID)
         volume_filename = 'volume-%s' % self.VOLUME_UUID
         image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
@@ -1411,7 +1420,8 @@ class QuobyteDriverTestCase(test.TestCase):
             mock_convert_image.assert_called_once_with(
                 volume_path, upload_path, 'raw', run_as_root=False)
             mock_upload_volume.assert_called_once_with(
-                mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False)
+                mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False,
+                store_id=None)
             self.assertTrue(mock_create_temporary_file.called)
 
     def test_set_nas_security_options_default(self):

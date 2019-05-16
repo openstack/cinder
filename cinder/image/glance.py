@@ -216,9 +216,15 @@ class GlanceClientWrapper(object):
                       glanceclient.exc.InvalidEndpoint,
                       glanceclient.exc.CommunicationError)
         num_attempts = 1 + CONF.glance_num_retries
+        store_id = kwargs.pop('store_id', None)
 
         for attempt in range(1, num_attempts + 1):
             client = self.client or self._create_onetime_client(context)
+            if store_id:
+                client.http_client.additional_headers = {
+                    'x-image-meta-store': store_id
+                }
+
             try:
                 controller = getattr(client,
                                      kwargs.pop('controller', 'images'))
@@ -286,6 +292,14 @@ class GlanceImageService(object):
                                      image_id=image_id)
         except Exception:
             _reraise_translated_image_exception(image_id)
+
+    def get_stores(self, context):
+        """Returns a list of dicts with stores information."""
+        try:
+            return self._client.call(context,
+                                     'get_stores_info')
+        except Exception:
+            _reraise_translated_exception()
 
     def show(self, context, image_id):
         """Returns a dict with image data for the given opaque image id."""
@@ -380,7 +394,8 @@ class GlanceImageService(object):
         return self._translate_from_glance(context, recv_service_image_meta)
 
     def update(self, context, image_id,
-               image_meta, data=None, purge_props=True):
+               image_meta, data=None, purge_props=True,
+               store_id=None):
         """Modify the given image with the new data."""
         # For v2, _translate_to_glance stores custom properties in image meta
         # directly. We need the custom properties to identify properties to
@@ -394,9 +409,13 @@ class GlanceImageService(object):
         # NOTE(bcwaldon): id is not an editable field, but it is likely to be
         # passed in by calling code. Let's be nice and ignore it.
         image_meta.pop('id', None)
+        kwargs = {}
+        if store_id:
+            kwargs['store_id'] = store_id
+
         try:
             if data:
-                self._client.call(context, 'upload', image_id, data)
+                self._client.call(context, 'upload', image_id, data, **kwargs)
             if image_meta:
                 if purge_props:
                     # Properties to remove are those not specified in

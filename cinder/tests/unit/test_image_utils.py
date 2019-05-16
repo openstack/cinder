@@ -762,7 +762,8 @@ class TestUploadVolume(test.TestCase):
         mock_proxy.assert_called_once_with(
             mock_open.return_value.__enter__.return_value)
         image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {}, mock_proxy.return_value)
+            ctxt, image_meta['id'], {}, mock_proxy.return_value,
+            store_id=None)
 
     @mock.patch('eventlet.tpool.Proxy')
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
@@ -794,7 +795,8 @@ class TestUploadVolume(test.TestCase):
         mock_proxy.assert_called_once_with(
             mock_open.return_value.__enter__.return_value)
         image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {}, mock_proxy.return_value)
+            ctxt, image_meta['id'], {}, mock_proxy.return_value,
+            store_id=None)
 
     @mock.patch('cinder.image.accelerator.ImageAccel._get_engine')
     @mock.patch('cinder.image.accelerator.ImageAccel.is_engine_ready',
@@ -849,7 +851,8 @@ class TestUploadVolume(test.TestCase):
         mock_proxy.assert_called_once_with(
             mock_open.return_value.__enter__.return_value)
         image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {}, mock_proxy.return_value)
+            ctxt, image_meta['id'], {}, mock_proxy.return_value,
+            store_id=None)
         mock_engine.compress_img.assert_called()
 
     @mock.patch('eventlet.tpool.Proxy')
@@ -882,7 +885,8 @@ class TestUploadVolume(test.TestCase):
         mock_proxy.assert_called_once_with(
             mock_open.return_value.__enter__.return_value)
         image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {}, mock_proxy.return_value)
+            ctxt, image_meta['id'], {}, mock_proxy.return_value,
+            store_id=None)
 
     @mock.patch('cinder.image.accelerator.ImageAccel._get_engine')
     @mock.patch('cinder.image.accelerator.ImageAccel.is_engine_ready',
@@ -938,7 +942,8 @@ class TestUploadVolume(test.TestCase):
         mock_proxy.assert_called_once_with(
             mock_open.return_value.__enter__.return_value)
         image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {}, mock_proxy.return_value)
+            ctxt, image_meta['id'], {}, mock_proxy.return_value,
+            store_id=None)
         mock_engine.compress_img.assert_called()
 
     @mock.patch('cinder.image.image_utils.CONF')

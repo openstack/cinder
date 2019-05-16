@@ -257,6 +257,11 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
             vmdk_file_path = self.volumeops.get_vmdk_path(backing)
             conf = self.configuration
+
+            # retrieve store information from extra-specs
+            store_id = volume.volume_type.extra_specs.get(
+                'image_service:store_id')
+
             image_transfer.upload_image(
                 context,
                 conf.vmware_image_transfer_timeout_secs,
@@ -269,7 +274,8 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
                 vm=backing,
                 vmdk_file_path=vmdk_file_path,
                 vmdk_size=volume.size * units.Gi,
-                image_name=image_meta['name'])
+                image_name=image_meta['name'],
+                store_id=store_id)
         finally:
             if attached:
                 self.volumeops.detach_fcd(backing, fcd_loc)

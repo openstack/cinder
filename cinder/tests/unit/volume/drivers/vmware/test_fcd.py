@@ -18,6 +18,7 @@
 from unittest import mock
 
 import ddt
+from oslo_utils import timeutils
 from oslo_utils import units
 from oslo_vmware import image_transfer
 from oslo_vmware.objects import datastore
@@ -26,8 +27,10 @@ from oslo_vmware import vim_util
 from cinder import context
 from cinder import exception as cinder_exceptions
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration
 from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import fcd
@@ -66,6 +69,7 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         self._driver._vc_version = self.VC_VERSION
         self._driver._storage_policy_enabled = True
         self._context = context.get_admin_context()
+        self.updated_at = timeutils.utcnow()
 
     @mock.patch.object(VMDK_DRIVER, 'do_setup')
     @mock.patch.object(FCD_DRIVER, 'volumeops')
@@ -386,7 +390,16 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         vops.get_vmdk_path.return_value = vmdk_file_path
         vops.get_backing_by_uuid.return_value = backing
 
-        volume = self._create_volume_obj()
+        volume = test_utils.create_volume(
+            self._context, volume_type_id=fake.VOLUME_TYPE_ID,
+            updated_at=self.updated_at)
+        extra_specs = {
+            'image_service:store_id': 'fake-store'
+        }
+        test_utils.create_volume_type(
+            self._context.elevated(), id=fake.VOLUME_TYPE_ID,
+            name="test_type", extra_specs=extra_specs)
+
         image_service = mock.sentinel.image_service
         image_meta = self._create_image_meta()
         self._driver.copy_volume_to_image(
@@ -411,7 +424,8 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
             vm=backing,
             vmdk_file_path=vmdk_file_path,
             vmdk_size=volume.size * units.Gi,
-            image_name=image_meta['name'])
+            image_name=image_meta['name'],
+            store_id='fake-store')
         vops.detach_fcd.assert_called_once_with(backing, fcd_loc)
         delete_temp_backing.assert_called_once_with(backing)
 

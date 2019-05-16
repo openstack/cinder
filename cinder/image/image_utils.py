@@ -48,6 +48,7 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import accelerator
+from cinder.image import glance
 from cinder import utils
 from cinder.volume import throttling
 from cinder.volume import volume_utils
@@ -86,6 +87,19 @@ QEMU_IMG_MIN_FORCE_SHARE_VERSION = [2, 10, 0]
 QEMU_IMG_MIN_CONVERT_LUKS_VERSION = '2.10'
 
 COMPRESSIBLE_IMAGE_FORMATS = ('qcow2',)
+
+
+def validate_stores_id(context, image_service_store_id):
+    image_service = glance.get_default_image_service()
+    stores_info = image_service.get_stores(context)['stores']
+    for info in stores_info:
+        if image_service_store_id == info['id']:
+            if info.get('read-only') == "true":
+                raise exception.GlanceStoreReadOnly(
+                    store_id=image_service_store_id)
+            return
+
+    raise exception.GlanceStoreNotFound(store_id=image_service_store_id)
 
 
 def fixup_disk_format(disk_format):
@@ -660,7 +674,8 @@ def _validate_file_format(image_data, expected_format):
 
 
 def upload_volume(context, image_service, image_meta, volume_path,
-                  volume_format='raw', run_as_root=True, compress=True):
+                  volume_format='raw', run_as_root=True, compress=True,
+                  store_id=None):
     image_id = image_meta['id']
     if image_meta.get('container_format') != 'compressed':
         if (image_meta['disk_format'] == volume_format):
@@ -669,12 +684,14 @@ def upload_volume(context, image_service, image_meta, volume_path,
             if os.name == 'nt' or os.access(volume_path, os.R_OK):
                 with open(volume_path, 'rb') as image_file:
                     image_service.update(context, image_id, {},
-                                         tpool.Proxy(image_file))
+                                         tpool.Proxy(image_file),
+                                         store_id=store_id)
             else:
                 with utils.temporary_chown(volume_path):
                     with open(volume_path, 'rb') as image_file:
                         image_service.update(context, image_id, {},
-                                             tpool.Proxy(image_file))
+                                             tpool.Proxy(image_file),
+                                             store_id=store_id)
             return
 
     with temporary_file() as tmp:
@@ -716,7 +733,8 @@ def upload_volume(context, image_service, image_meta, volume_path,
             accel.compress_img(run_as_root=run_as_root)
         with open(tmp, 'rb') as image_file:
             image_service.update(context, image_id, {},
-                                 tpool.Proxy(image_file))
+                                 tpool.Proxy(image_file),
+                                 store_id=store_id)
 
 
 def check_virtual_size(virtual_size, volume_size, image_id):

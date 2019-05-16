@@ -508,10 +508,14 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
+        # retrieve store information from extra-specs
+        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
+
         image_utils.upload_volume(context,
                                   image_service,
                                   image_meta,
-                                  self.local_path(volume))
+                                  self.local_path(volume),
+                                  store_id=store_id)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
