@@ -278,11 +278,12 @@ class HPE3PARCommon(object):
                 failover. bug #1773069
         4.0.10 - Added retry in delete_volume. bug #1783934
         4.0.11 - Added extra spec hpe3par:convert_to_base
+        4.0.12 - Added multiattach support
 
 
     """
 
-    VERSION = "4.0.11"
+    VERSION = "4.0.12"
 
     stats = {}
 
@@ -1615,7 +1616,7 @@ class HPE3PARCommon(object):
                     AVG_BUSY_PERC: stat_capabilities[AVG_BUSY_PERC],
                     'filter_function': filter_function,
                     'goodness_function': goodness_function,
-                    'multiattach': False,
+                    'multiattach': True,
                     'consistent_group_snapshot_enabled': True,
                     'compression': compression_support,
                     'consistent_group_replication_enabled':
