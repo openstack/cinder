@@ -11,11 +11,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Mock unit tests for the NetApp block storage driver interfaces
-"""
+"""Mock unit tests for the NetApp block storage driver interfaces"""
 
-import collections
+try:
+    from collections.abc import Callable
+except ImportError:
+    from collections import Callable
 
 from cinder import test
 from cinder.volume.drivers.netapp.dataontap import block_cmode
@@ -55,4 +56,4 @@ class NetAppBlockStorageDriverInterfaceTestCase(test.TestCase):
     def _get_local_functions(self, obj):
         """Get function names of an object without superclass functions."""
         return set([key for key, value in type(obj).__dict__.items()
-                    if isinstance(value, collections.Callable)])
+                    if isinstance(value, Callable)])
