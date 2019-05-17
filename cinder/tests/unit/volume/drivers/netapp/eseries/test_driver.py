@@ -258,17 +258,17 @@ class NetAppESeriesDriverTestCase(object):
         vol_nomatch = {'id': 'vol_id', 'currentManager': 'ctrl3'}
         portals = [{'controller': 'ctrl2', 'iqn': 'iqn2'},
                    {'controller': 'ctrl1', 'iqn': 'iqn1'}]
-        portal = self.library._get_iscsi_portal_for_vol(volume, portals)
-        self.assertEqual({'controller': 'ctrl1', 'iqn': 'iqn1'}, portal)
-        portal = self.library._get_iscsi_portal_for_vol(vol_nomatch, portals)
-        self.assertEqual({'controller': 'ctrl2', 'iqn': 'iqn2'}, portal)
+        portal = self.library._get_iscsi_portals_for_vol(volume, portals)
+        self.assertEqual({'controller': 'ctrl1', 'iqn': 'iqn1'}, portal[0])
+        portal = self.library._get_iscsi_portals_for_vol(vol_nomatch, portals)
+        self.assertEqual({'controller': 'ctrl2', 'iqn': 'iqn2'}, portal[0])
 
     def test_portal_for_vol_any_false(self):
         vol_nomatch = {'id': 'vol_id', 'currentManager': 'ctrl3'}
         portals = [{'controller': 'ctrl2', 'iqn': 'iqn2'},
                    {'controller': 'ctrl1', 'iqn': 'iqn1'}]
         self.assertRaises(exception.NetAppDriverException,
-                          self.library._get_iscsi_portal_for_vol,
+                          self.library._get_iscsi_portals_for_vol,
                           vol_nomatch, portals, False)
 
     def test_do_setup_all_default(self):
