@@ -218,9 +218,9 @@ class TestCommonAdapter(test.TestCase):
             vnx_common.do_create_cg_from_cgsnap(
                 cg_id, cg_host, volumes, cgsnap_id, snaps))
         self.assertIsNone(model_update)
-        self.assertIsNotNone(
-            re.findall('id^12',
-                       volume_updates[0]['provider_location']))
+        provider_location = re.findall('id\^12',
+                                       volume_updates[0]['provider_location'])
+        self.assertEqual(1, len(provider_location))
 
     @res_mock.patch_common_adapter
     def test_create_cloned_cg(self, common, _):
@@ -277,9 +277,9 @@ class TestCommonAdapter(test.TestCase):
         model_update, volume_updates = vnx_common.do_clone_cg(
             cg_id, cg_host, volumes, src_cg_id, src_volumes)
         self.assertIsNone(model_update)
-        self.assertIsNotNone(
-            re.findall('id^12',
-                       volume_updates[0]['provider_location']))
+        provider_location = re.findall('id\^12',
+                                       volume_updates[0]['provider_location'])
+        self.assertEqual(1, len(provider_location))
 
     @res_mock.patch_common_adapter
     def test_parse_pools(self, vnx_common, mocked):
