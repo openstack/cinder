@@ -264,6 +264,10 @@ enables compression support needs to be created first:
 
 Then create volume and specify the new created volume type.
 
+.. note:: In Unity, only All-Flash pools support compressed volume, for the
+          other type of pools, "'compression_support': False" will be
+          returned when getting pool stats.
+
 
 Storage-assisted volume migration support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
